@@ -113,6 +113,7 @@ test.describe('Print iDevices', () => {
                         type: 'adaptative-quiz',
                         properties: {
                             caseSensitive: true,
+                            numRound: 3,
                             questions: [
                                 { text: 'Is A<B true?', options: ['Yes', 'No'] },
                                 {
@@ -126,6 +127,7 @@ test.describe('Print iDevices', () => {
                                     solutionWord: 'Acidity < 7 & <script>alert(1)</script>',
                                     percentageShow: 100,
                                 },
+                                { text: 'Extra question beyond numRound', options: ['X', 'Y'] },
                             ],
                         },
                     },
@@ -147,11 +149,13 @@ test.describe('Print iDevices', () => {
             const { frame } = await choosePrintOption(page, mode);
             const quiz = frame.locator('.worksheet-activity[data-idevice="adaptative-quiz"]');
             await expect(quiz.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
+            await expect(quiz.locator('.worksheet-item')).toHaveCount(3);
             await expect(quiz.locator('.worksheet-prompt')).toHaveText([
                 'Is A<B true?',
                 'Sort order',
                 'Acidity < 7 & <script>alert(1)</script>',
             ]);
+            await expect(frame.locator('body')).not.toContainText('Extra question beyond numRound');
             await expect(quiz.locator('.worksheet-item').nth(0).locator('.worksheet-option-label')).toHaveText([
                 'Yes',
                 'No',

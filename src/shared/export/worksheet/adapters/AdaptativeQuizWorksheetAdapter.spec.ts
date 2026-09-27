@@ -67,11 +67,44 @@ describe('AdaptativeQuizWorksheetAdapter', () => {
         expect(AdaptativeQuizWorksheetAdapter.build('<div class="adaptative-quiz-IDevice"></div>', {})).toBeNull();
     });
 
-    it('prints every question, the adapting being what paper cannot do', () => {
+    it('prints every question when numRound is not configured, the adapting being what paper cannot do', () => {
         // On screen the quiz walks levels and no two learners see the same questions.
         const levels = [1, 2, 3].map(difficulty => question({ difficulty }));
 
         expect(build({ questionsGame: levels })?.items).toHaveLength(3);
+    });
+
+    describe('limiting questions by numRound ("Number of questions")', () => {
+        const fiveQuestions = () =>
+            [1, 2, 3, 4, 5].map(difficulty => question({ difficulty, question: `Pregunta ${difficulty}` }));
+
+        it('limits the questions shown to numRound when configured as a number or numeric string', () => {
+            const list = fiveQuestions();
+
+            const limitedByNumber = build({ questionsGame: list, numRound: 3 });
+            expect(limitedByNumber?.items).toHaveLength(3);
+            expect(limitedByNumber?.items.map(item => item.prompt)).toEqual(['Pregunta 1', 'Pregunta 2', 'Pregunta 3']);
+
+            const limitedByString = build({ questionsGame: list, numRound: '2' });
+            expect(limitedByString?.items).toHaveLength(2);
+            expect(limitedByString?.items.map(item => item.prompt)).toEqual(['Pregunta 1', 'Pregunta 2']);
+        });
+
+        it('recognizes numOperations or numberQuestions as fallbacks', () => {
+            const list = fiveQuestions();
+
+            expect(build({ questionsGame: list, numOperations: 2 })?.items).toHaveLength(2);
+            expect(build({ questionsGame: list, numberQuestions: 1 })?.items).toHaveLength(1);
+        });
+
+        it('keeps all questions when numRound exceeds the total questions or is invalid/non-positive', () => {
+            const list = [1, 2, 3].map(difficulty => question({ difficulty }));
+
+            expect(build({ questionsGame: list, numRound: 10 })?.items).toHaveLength(3);
+            expect(build({ questionsGame: list, numRound: 0 })?.items).toHaveLength(3);
+            expect(build({ questionsGame: list, numRound: -5 })?.items).toHaveLength(3);
+            expect(build({ questionsGame: list, numRound: 'invalid' })?.items).toHaveLength(3);
+        });
     });
 
     describe('a question with options to tick', () => {

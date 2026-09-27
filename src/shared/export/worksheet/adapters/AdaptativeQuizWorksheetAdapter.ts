@@ -5,12 +5,13 @@
  *
  * The adapting is what does not survive. On screen the quiz walks up a level after two right
  * answers and down after two wrong ones, so no two learners see the same questions; a sheet is
- * printed once and handed out, so it carries them all, in stored order, with their difficulty left
- * off. That is the one departure worth naming, and it is the same one every activity that draws
- * its questions at random already makes.
+ * printed once and handed out, so it carries up to the configured number of questions (`numRound`),
+ * in stored order, with their difficulty left off.
  *
  * Notes on the stored data:
  * - This is a `json` activity: the questions live in the component's properties.
+ * - `numRound` (or `numOperations`) specifies the number of questions configured by the author
+ *   ("Number of questions"): only that many questions are printed on the worksheet.
  * - `typeSelect` says what a question asks, in the runtime's own words: 0 select, 1 sort, 2 word.
  *   The three are printed as options to tick, options to number, and boxes to write a word in.
  * - **A word question turns the usual fields around**, and its runtime says so in as many words:
@@ -89,6 +90,25 @@ interface AdaptativeQuizProperties {
     eXeFormInstructions?: string;
     instructions?: string;
     eXeIdeviceTextAfter?: string;
+    numRound?: number | string;
+    numOperations?: number | string;
+    numberQuestions?: number | string;
+}
+
+/**
+ * How many questions the activity asks to show, as configured by "Number of questions" (`numRound`).
+ * When omitted or invalid, all printable questions are included.
+ */
+function questionLimitOf(data: AdaptativeQuizProperties): number | undefined {
+    const raw = data.numRound ?? data.numOperations ?? data.numberQuestions;
+    if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+        return Math.floor(raw);
+    }
+    if (typeof raw === 'string' && raw.trim() !== '') {
+        const parsed = parseInt(raw, 10);
+        if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return undefined;
 }
 
 /**
@@ -175,11 +195,14 @@ export const AdaptativeQuizWorksheetAdapter: WorksheetAdapter = {
 
         if (items.length === 0) return null;
 
+        const limit = questionLimitOf(data);
+        const printableItems = limit !== undefined ? items.slice(0, limit) : items;
+
         const activity: PrintableActivity = {
             ideviceType: 'adaptative-quiz',
             title: options.title || AdaptativeQuizWorksheetAdapter.defaultTitle,
             twoColumns: true,
-            items,
+            items: printableItems,
         };
 
         const instructions = sanitizeHtml(data.eXeFormInstructions || data.instructions);
