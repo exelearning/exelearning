@@ -398,9 +398,9 @@ Gutenberg pass without conditions for the functionality eXe needs.
 
 The list below is the result of a screening; details and sources follow in each
 subsection. Options 1 to 6, plus 4b, are the finalists that appear in the charts. Every finalist
-passed the *License gate*. Update 2 screened twelve more candidates; none was promoted to
-finalist, because none has evidence that it would serve eXe better than an existing
-finalist. **No round-trip result in *Experiments* makes any editor "compatible with eXe"**:
+passed the *License gate*. Update 2 screened ten more candidates (and re-checked ProseKit and
+Remirror); none was promoted to finalist, because none has evidence that it would serve eXe
+better than an existing finalist. **No round-trip result in *Experiments* makes any editor "compatible with eXe"**:
 the runs measure what one load and save keeps under a given configuration, not whether eXe's
 plugins, dialogs, `asset://` pipeline and exporters would work.
 
@@ -1937,7 +1937,7 @@ favour the TinyMCE family by small margins that a single score change can revers
   <https://github.com/red-axe/am-editor>, <https://github.com/nhn/tui.editor>,
   <https://github.com/Vanessa219/vditor>, <https://github.com/prosekit/prosekit>,
   <https://github.com/remirror/remirror> (commit 61d27d389),
-  <https://github.com/hugerte/hugerte/blob/main/CHANGELOG.md> (1.0.11 entries).
+  <https://github.com/hugerte/hugerte/blob/main/modules/hugerte/CHANGELOG.md> (1.0.11 entries).
 - Update 2 experiments: [`scripts/editor-experiments/`](../../../scripts/editor-experiments/README.md);
   npm builds <https://unpkg.com/tinymce@8.9.2/tinymce.js> and
   <https://unpkg.com/hugerte@1.0.14/hugerte.js> (line references in *Experiments*).
