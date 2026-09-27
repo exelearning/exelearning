@@ -13,7 +13,7 @@ reviewers:
   - "@juanda"
   - "@mnarvaezm"
 related:
-  prs: [1593]
+  prs: [1593, 2470]
   changes: ["1593-vendored-frontend-libs-build-pipeline"]
   adrs: [ADR-1593-02, ADR-1593-03]
 supersedes: []

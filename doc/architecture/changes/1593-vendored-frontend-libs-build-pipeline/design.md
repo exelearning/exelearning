@@ -11,7 +11,7 @@ reviewers:
   - "@ignaciogros"
   - "@juanda"
   - "@mnarvaezm"
-implementation_prs: [1593]
+implementation_prs: [1593, 2470]
 related_adrs: [ADR-1593-01, ADR-1593-02, ADR-1593-03]
 supersedes: []
 superseded_by: []
