@@ -21,17 +21,17 @@
 <line x1="730" y1="60" x2="730" y2="368" stroke="#eaeef2"/>
 <text x="724" y="386" font-size="12" fill="#57606a">140</text>
 <text x="20" y="87" font-size="13" fill="#1f2328" >TinyMCE 8</text>
-<rect x="170" y="74" width="128" height="18" fill="#6e9fd6"/>
-<line x1="254" y1="83" x2="342" y2="83" stroke="#1f2328" stroke-width="2"/>
-<line x1="254" y1="75" x2="254" y2="91" stroke="#1f2328" stroke-width="2"/>
-<line x1="342" y1="75" x2="342" y2="91" stroke="#1f2328" stroke-width="2"/>
-<text x="350" y="87" font-size="12" fill="#57606a">21-43 (medium-low)</text>
+<rect x="170" y="74" width="124" height="18" fill="#6e9fd6"/>
+<line x1="250" y1="83" x2="338" y2="83" stroke="#1f2328" stroke-width="2"/>
+<line x1="250" y1="75" x2="250" y2="91" stroke="#1f2328" stroke-width="2"/>
+<line x1="338" y1="75" x2="338" y2="91" stroke="#1f2328" stroke-width="2"/>
+<text x="346" y="87" font-size="12" fill="#57606a">20-42 (medium-low)</text>
 <text x="20" y="131" font-size="13" fill="#1f2328" >HugeRTE</text>
-<rect x="170" y="118" width="120" height="18" fill="#6e9fd6"/>
-<line x1="250" y1="127" x2="330" y2="127" stroke="#1f2328" stroke-width="2"/>
-<line x1="250" y1="119" x2="250" y2="135" stroke="#1f2328" stroke-width="2"/>
-<line x1="330" y1="119" x2="330" y2="135" stroke="#1f2328" stroke-width="2"/>
-<text x="338" y="131" font-size="12" fill="#57606a">20-40 (medium-low)</text>
+<rect x="170" y="118" width="116" height="18" fill="#6e9fd6"/>
+<line x1="246" y1="127" x2="326" y2="127" stroke="#1f2328" stroke-width="2"/>
+<line x1="246" y1="119" x2="246" y2="135" stroke="#1f2328" stroke-width="2"/>
+<line x1="326" y1="119" x2="326" y2="135" stroke="#1f2328" stroke-width="2"/>
+<text x="334" y="131" font-size="12" fill="#57606a">19-39 (medium-low)</text>
 <text x="20" y="175" font-size="13" fill="#1f2328" >CKEditor 5</text>
 <rect x="170" y="162" width="241" height="18" fill="#6e9fd6"/>
 <line x1="336" y1="171" x2="486" y2="171" stroke="#1f2328" stroke-width="2"/>
@@ -39,17 +39,17 @@
 <line x1="486" y1="163" x2="486" y2="179" stroke="#1f2328" stroke-width="2"/>
 <text x="494" y="175" font-size="12" fill="#57606a">41.5-79 (low)</text>
 <text x="20" y="219" font-size="13" fill="#1f2328" >Tiptap</text>
-<rect x="170" y="206" width="277" height="18" fill="#6e9fd6"/>
-<line x1="360" y1="215" x2="534" y2="215" stroke="#1f2328" stroke-width="2"/>
-<line x1="360" y1="207" x2="360" y2="223" stroke="#1f2328" stroke-width="2"/>
-<line x1="534" y1="207" x2="534" y2="223" stroke="#1f2328" stroke-width="2"/>
-<text x="542" y="219" font-size="12" fill="#57606a">47.5-91 (low)</text>
+<rect x="170" y="206" width="273" height="18" fill="#6e9fd6"/>
+<line x1="356" y1="215" x2="530" y2="215" stroke="#1f2328" stroke-width="2"/>
+<line x1="356" y1="207" x2="356" y2="223" stroke="#1f2328" stroke-width="2"/>
+<line x1="530" y1="207" x2="530" y2="223" stroke="#1f2328" stroke-width="2"/>
+<text x="538" y="219" font-size="12" fill="#57606a">46.5-90 (low)</text>
 <text x="20" y="263" font-size="13" fill="#1f2328" >ProseKit</text>
-<rect x="170" y="250" width="279" height="18" fill="#6e9fd6"/>
-<line x1="360" y1="259" x2="538" y2="259" stroke="#1f2328" stroke-width="2"/>
-<line x1="360" y1="251" x2="360" y2="267" stroke="#1f2328" stroke-width="2"/>
-<line x1="538" y1="251" x2="538" y2="267" stroke="#1f2328" stroke-width="2"/>
-<text x="546" y="263" font-size="12" fill="#57606a">47.5-92 (low)</text>
+<rect x="170" y="250" width="275" height="18" fill="#6e9fd6"/>
+<line x1="356" y1="259" x2="534" y2="259" stroke="#1f2328" stroke-width="2"/>
+<line x1="356" y1="251" x2="356" y2="267" stroke="#1f2328" stroke-width="2"/>
+<line x1="534" y1="251" x2="534" y2="267" stroke="#1f2328" stroke-width="2"/>
+<text x="542" y="263" font-size="12" fill="#57606a">46.5-91 (low)</text>
 <text x="20" y="307" font-size="13" fill="#1f2328" >Lexical</text>
 <rect x="170" y="294" width="309" height="18" fill="#6e9fd6"/>
 <line x1="384" y1="303" x2="574" y2="303" stroke="#1f2328" stroke-width="2"/>

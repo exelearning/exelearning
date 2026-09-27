@@ -16,9 +16,11 @@
  * are classified by sha256 against upstream and fork deltas are counted; without it a
  * header heuristic is used, which yields the same upstream/fork/own split on this tree.
  *
- * --charts writes four SVG files into doc/architecture/adr/assets/editor-comparison/.
+ * --charts writes six SVG files into doc/architecture/adr/assets/editor-comparison/.
  * Charts 1-3 are drawn from evaluation.json in that directory (opinion scores and
- * engineering estimates); chart 4 is drawn from the metrics computed here.
+ * engineering estimates); chart 4 is drawn from the metrics computed here; charts 5-6
+ * are drawn from the `experiments` results recorded in evaluation.json (measured with
+ * scripts/editor-experiments/, which this script does not run).
  *
  * The output is deterministic: files are walked in sorted order and no timestamps or
  * absolute paths are emitted. The repository is only read, except for --charts.
@@ -580,7 +582,9 @@ function scatterChart(ev, evaluation) {
         // Label right of the whisker; above the point when it would run into another whisker.
         const label = `${p.o.short} (${ev.architecturalRisk[p.o.id]})`;
         const lx = X(p.t.max) + 8;
-        const clash = pts.some(q => q !== p && Math.abs(q.cy - p.cy) < 14 && X(q.t.min) < lx + label.length * 7.5);
+        const clash = pts.some(
+            q => q !== p && Math.abs(q.cy - p.cy) < 14 && X(q.t.max) > lx && X(q.t.min) < lx + label.length * 7.5,
+        );
         const [x, y] = clash ? [p.cx - 20, p.cy - 14] : [lx, p.cy + 4];
         labels += text(x, y, label, 'paint-order="stroke" stroke="#ffffff" stroke-width="4"');
     }
@@ -616,6 +620,63 @@ function debtSvg(series, total) {
     );
 }
 
+// Charts 5-6: a grid of measured results, one row per editor configuration.
+// cells[r][c] = [text, share 0..1 or null]; the colour bands are for reading, not thresholds.
+function gridChart(title, desc, notes, rows, cols, cells) {
+    const [x0, cw, rh] = [320, 96, 30];
+    const top = 72 + notes.length * 16;
+    const band = v =>
+        v === null
+            ? '#eaeef2'
+            : ['#d73a49', '#f0883e', '#e3c34b', '#8cc265', '#2da44e'][
+                  v >= 0.99 ? 4 : v >= 0.9 ? 3 : v >= 0.75 ? 2 : v >= 0.5 ? 1 : 0
+              ];
+    let b = notes.map((n, i) => note(20, 48 + i * 16, n)).join('');
+    cols.forEach((c, j) => {
+        b += `<text x="${x0 + j * cw + cw / 2}" y="${top - 10}" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">${esc(c)}</text>\n`;
+    });
+    rows.forEach((r, i) => {
+        const y = top + i * rh;
+        b += text(20, y + 20, r);
+        cells[i].forEach(([t, v], j) => {
+            b += `<rect x="${x0 + j * cw + 2}" y="${y + 2}" width="${cw - 4}" height="${rh - 4}" rx="3" fill="${band(v)}"/>\n`;
+            b += text(x0 + j * cw + cw / 2, y + 20, t, 'text-anchor="middle" font-weight="600"');
+        });
+    });
+    return svg(x0 + cols.length * cw + 20, top + rows.length * rh + 20, title, desc, b);
+}
+
+function roundtripChart(x) {
+    return gridChart(
+        'HTML round trip on the fixture corpus',
+        'Grid of measured retention percentages per editor configuration and feature.',
+        [
+            `Measured once (Chromium, one set/get per fragment) on ${x.applicable.elements} fragments from test/fixtures. Cells: % of fragments`,
+            'with the feature that lost none of it; "Identical" and "Same as 5.x" are % of all fragments. Losses only; the configurations',
+            "differ per editor. Not a compatibility verdict: see the ADR's Experiments section before quoting a number.",
+        ],
+        x.editors.map(e => e.label),
+        x.metrics.map(m => m.label),
+        x.editors.map(e =>
+            x.metrics.map(m => (e.pct[m.id] === null ? ['–', null] : [`${e.pct[m.id]}`, e.pct[m.id] / 100])),
+        ),
+    );
+}
+
+function assetChart(x) {
+    return gridChart(
+        'asset:// experiment: checks passed',
+        'Grid of measured passed/total checks per editor with the hooks described in the ADR.',
+        [
+            'Measured once in Chromium: 6 asset:// elements, synchronous in-memory cache, stock dialogs only.',
+            "eXe's exeimage/exemedia dialogs, asynchronous resolution, Firefox and WebKit were not tested.",
+        ],
+        x.editors.map(e => e.label),
+        x.groups.map(g => g.label),
+        x.editors.map(e => x.groups.map(g => [`${e[g.id][0]}/${e[g.id][1]}`, e[g.id][0] / e[g.id][1]])),
+    );
+}
+
 // Self-check: counters and classifier must agree with known facts of this tree.
 if (count("tinymce.activeEditor.dom.select('.tox-dialog')").toxClasses !== 1) throw new Error('tox counter broken');
 if (!plugins.some(p => p.name === 'exelink' && p.classification === 'exe-fork-of-core')) {
@@ -637,5 +698,7 @@ if (CHARTS) {
     w('2-compatibility.svg', compatChart(evaluation));
     w('3-effort-vs-risk.svg', scatterChart(result.evaluation, evaluation));
     w('4-technical-debt.svg', debtSvg(debtChart, own.length));
+    w('5-html-roundtrip.svg', roundtripChart(evaluation.experiments.htmlRoundtrip));
+    w('6-asset-url-experiment.svg', assetChart(evaluation.experiments.assetUri));
 }
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

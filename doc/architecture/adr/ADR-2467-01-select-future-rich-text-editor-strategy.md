@@ -40,8 +40,10 @@ Every statement is one of the following kinds, and is labelled when it matters:
 - **[EST]**: an engineering estimate. Effort figures are never implementation
   measurements.
 - **[OPINION]**: technical judgement by the authors of this record.
-- **[MEASURED]**: a one-off experiment run outside this repository (for example the
-  HTML-fidelity run); its inputs are not committed, so it cannot be reproduced from `main`.
+- **[MEASURED]**: an experiment run outside the application. The ones in *Experiments* are
+  committed under [`scripts/editor-experiments/`](../../../scripts/editor-experiments/README.md)
+  and can be re-run; the older ones (the 941-fragment run in *Comparative analysis*, the
+  bundle sizes, the smoke tests) were one-off runs whose inputs are not committed.
 - **UNVERIFIED**: could not be confirmed; do not rely on it without checking.
 
 All external sources were checked on **2026-09-27** unless another date is given.
@@ -175,7 +177,11 @@ are written into saved content (`AssetManager.js`, `modalFileManager.js`,
 render time (`asset_url_resolver.js` selects `iframe[data-mce-html]`). Export code
 detects classes that plugins emit (`exe-fx`, `exe-tooltip`, `highlighted-code`,
 `abc-music`; `src/shared/export/constants.ts`). Editor output is therefore a public
-format contract, not a private detail.
+format contract, not a private detail. [MEASURED, see *Experiments*] The fixtures also
+carry `data-mce-fragment`, a TinyMCE paste-internal marker that leaked into saved content:
+30 of the 1,319 corpus fragments, always on `<iframe>`. With TinyMCE 8's or HugeRTE's core
+`media` plugin loaded, `data-mce-*` attributes on iframes are dropped, including eXe's
+`data-mce-html`/`data-mce-pdf`; without `media` they are kept.
 
 **Other couplings [FACT]:**
 
@@ -351,15 +357,21 @@ Modified BSD, Apache-2.0 and MPL-2.0 are listed as GPLv3-compatible
 | Milkdown 7.22.2 + `@milkdown/plugin-collab` | MIT | **PASS** | License only; discarded on model |
 | BlockNote 0.55.0 | Core, react, server-util: MPL-2.0; `xl-*` (multi-column, AI, DOCX/PDF/ODT export): npm field "GPL-3.0 OR PROPRIETARY", `LICENSE.txt` "GPL-3.0" plus a commercial license (<https://github.com/TypeCellOS/BlockNote/blob/main/LICENSE.txt>) | **PASS** (core); `xl-*` PASS-WITH-CONDITIONS | MPL-2.0 without the "Incompatible With Secondary Licenses" notice; `xl-*` combine as GPL-3.0-only under §13. Discarded on fit |
 | Quill 2.0.3 + y-quill 1.0.0 | BSD-3-Clause / MIT | **PASS** | License only; discarded on maintenance and fidelity |
-| Plate (`platejs` 53.3.14, `@platejs/yjs` 53.2.0) | MIT (`@platejs/diff` Apache-2.0 + MIT) | **PASS** | Plate Plus templates are paid and not needed. Discarded on fit |
+| Plate (`platejs` 53.3.14, `@platejs/yjs` 53.2.0) | Root `LICENSE` MIT "unless otherwise specified" in a package (GitHub reports NOASSERTION); `packages/diff/LICENSE` Apache-2.0 + MIT and **no npm `license` field** on `@platejs/diff` 53.0.0; `platejs`, `@platejs/core`, `/slate`, `/yjs` MIT (npm) | **PASS** | Do not use `@platejs/diff` without reading its file; Plate Plus templates are paid and not needed. Discarded on fit |
 | Slate 0.126.2 + `@slate-yjs/core` 1.0.2 | MIT | **PASS** | License only; discarded |
 | BlockSuite 0.22.x | npm says MIT, repository LICENSE says MPL-2.0 | **PASS-WITH-CONDITIONS** | Resolve the mismatch first (both are compatible). Discarded on fit |
 | SuperDoc 2.18.0 | AGPL-3.0 (npm; "only" vs "or later" UNVERIFIED) | **PASS** | Combined work becomes AGPL-3.0 [OPINION]. Off-target (DOCX editor) |
-| wangEditor-next 6.4.2 + `@wangeditor-next/yjs` | MIT | **PASS** | License only; not evaluated beyond screening |
+| wangEditor-next 6.4.2 + `@wangeditor-next/yjs` 6.4.2 | MIT (shipped `LICENSE` of `editor`, `core`, `yjs`) | **PASS** | License only; discarded on fidelity (see *Experiments*) |
+| Yoopta (`@yoopta/editor`, `@yoopta/collaboration` 6.0.5) | MIT (repo, npm) | **PASS** | License only; discarded on fit |
 | Jodit 4.15.14 | MIT (file); `jodit-pro` proprietary | **PASS-WITH-CONDITIONS** | Bundle Ace (BSD-3-Clause) and js-beautify locally instead of the cdnjs default (`esm/plugins/source/config.js`); never ship `jodit-pro` |
 | SunEditor 3.3.3 | MIT (file) | **PASS** | Security advisories are a separate matter |
 | Froala 5.4.0 | Proprietary (`License.txt`: "you have to purchase a license") | **FAIL** | Not free software |
-| Editor.js, Trix, Squire, Trumbowyg, Summernote, Pell | Apache-2.0 / MIT (npm field only) | **PASS** | License only; screened out on fit |
+| Squire 2.4.9 (`squire-rte`) | MIT (shipped `LICENSE`, © 2011–2023 Neil Jenkins) | **PASS** | None; secondary, not a replacement (see *Screened alternatives*) |
+| Trumbowyg 2.31.0 | MIT (shipped `LICENSE`); peer `jquery >= 1.8` | **PASS** | License only; discarded |
+| SCEditor 3.2.1 | MIT (shipped `LICENSE.md`; GitHub shows NOASSERTION); depends on DOMPurify (MPL-2.0 OR Apache-2.0) | **PASS** | License only; discarded |
+| UEditor Plus 4.5.0 (npm `ueditor-plus-main`; the npm name `ueditor-plus` is an unrelated ISC package) | Repository `LICENSE` Apache-2.0; **no npm `license` field**; bundles jQuery 1.10.2, Vue, webuploader, ZeroClipboard, CodeMirror, SyntaxHighlighter, showdown (licenses UNVERIFIED file by file) | **PASS-WITH-CONDITIONS** | Audit every bundled third-party file; discarded on offline coupling and maintenance |
+| am-editor / Aomao (`@aomao/engine` 2.10.26), TOAST UI Editor 3.2.2, Vditor 4.0.0 | MIT (repo / npm) | **PASS** | License only; discarded |
+| Editor.js, Trix, Summernote, Pell | Apache-2.0 / MIT (npm field only) | **PASS** | License only; screened out on fit |
 | CodeMirror 6 + y-codemirror.next 0.3.6 | MIT | **PASS** | None |
 | Monaco 0.57.0 + y-monaco 0.1.6 | MIT (+ `ThirdPartyNotices.txt`) | **PASS** | Ship the third-party notices |
 | Ace 1.44.0 + y-ace | BSD-3-Clause / MIT (GitHub only, not on npm) | **PASS** | None |
@@ -386,7 +398,11 @@ Gutenberg pass without conditions for the functionality eXe needs.
 
 The list below is the result of a screening; details and sources follow in each
 subsection. Options 1 to 6, plus 4b, are the finalists that appear in the charts. Every finalist
-passed the *License gate*.
+passed the *License gate*. Update 2 screened twelve more candidates; none was promoted to
+finalist, because none has evidence that it would serve eXe better than an existing
+finalist. **No round-trip result in *Experiments* makes any editor "compatible with eXe"**:
+the runs measure what one load and save keeps under a given configuration, not whether eXe's
+plugins, dialogs, `asset://` pipeline and exporters would work.
 
 | # | Option | License gate | Status after screening |
 |---|---|---|---|
@@ -399,10 +415,11 @@ passed the *License gate*.
 | 5 | **Lexical** | PASS | Finalist on request; weakest fit |
 | 6 | **Gutenberg block editor** | PASS | Finalist on request; rejected on evidence |
 | – | Jodit, SunEditor | PASS-WITH-CONDITIONS / PASS | Screened; possible second-line HTML-first editors |
-| – | Yjs-bindable editors: Remirror, Milkdown, BlockNote, Quill 2 + y-quill, Plate / Slate + slate-yjs, BlockSuite, SuperDoc, wangEditor-next | PASS (license only) | Screened under the Yjs lens and discarded on fit or maintenance; see *Editors with Yjs bindings* |
+| – | Squire | PASS | **Secondary (screened)** [OPINION]: the only maintained HTML-first candidate, but it drops media, MathML and SVG and has no UI or table editing; a possible base for a custom editor, not a replacement |
+| – | Yjs-bindable editors: Remirror, Milkdown, BlockNote, Quill 2 + y-quill, Plate / Slate + slate-yjs, BlockSuite, SuperDoc, wangEditor-next, Yoopta, am-editor | PASS (license only) | Screened under the Yjs lens and discarded on fit or maintenance; see *Editors with Yjs bindings* |
+| – | Trumbowyg, SCEditor, UEditor Plus, TOAST UI Editor, Vditor | PASS / PASS-WITH-CONDITIONS (UEditor Plus) | Discarded; see *Screened alternatives* |
 | – | Editor.js, Summernote, Trix, Pell | PASS (license only) | Screened out |
 | – | Froala, CKEditor 5 LTS, paid TinyMCE 5 LTS (former 0b) | **FAIL** | Discarded by the license gate |
-| – | Squire, Trumbowyg | PASS (npm field) | **Not screened** |
 | – | Umo Editor (Vue, Tiptap), Atlaskit editor (React) | not checked | **Not screened**; most likely out on framework or model. Licenses and versions UNVERIFIED |
 
 ### Option 0: stay on TinyMCE 5.10.9 with interim hardening
@@ -551,20 +568,37 @@ passed the *License gate*.
 
 ### Option 4b: ProseKit (added under the Yjs lens)
 
-- [FACT] `prosekit` 0.22.3 (2026-09-20), MIT, pre-1.0. A framework-agnostic toolkit over
-  ProseMirror with adapters for React, Vue, Preact, Svelte and Solid, so unlike Tiptap's
-  UI components it needs no React. Its Yjs extension (`prosekit/extensions/yjs`) peers on
-  the **upstream** `y-prosemirror >= 1.2.9` and `yjs >= 13.6.18`, not on Tiptap's fork.
-- [FACT] One dominant maintainer: ocavue has 1,087 commits
-  (`gh api repos/prosekit/prosekit/contributors`; the next entries are bots). ocavue is
-  also Remirror's second contributor (364 commits), and Remirror's README says "remirror
-  is in maintenance mode and is not recommended for new projects" and points to ProseKit
-  (<https://github.com/remirror/remirror>).
+- [FACT] `prosekit` 0.22.3 (2026-09-20), MIT, pre-1.0; 0.22.0 was released on 2026-08-12
+  after 25 betas. npm `time` lists 27 stable 0.x releases in the 12 months to 2026-09-27
+  (28 since 2025-09-01; 62 including betas). A headless toolkit over ProseMirror for vanilla
+  JS, React, Vue, Preact, Svelte and Solid, so unlike Tiptap's UI components it needs no
+  React. `@prosekit/web` provides unstyled web components (aria-ui, floating-ui); the
+  prebuilt "full" editors are shadcn scaffolds for frameworks, so eXe would build its own
+  toolbar and dialogs.
+- [FACT] Collaboration: `prosekit/extensions/yjs`; `@prosekit/extensions@0.18.3` has
+  optional peers `yjs >= 13.6.18` and the **upstream** `y-prosemirror >= 1.2.9`, not
+  Tiptap's fork. New since the first amendment: a Loro CRDT alternative,
+  `prosekit/extensions/loro` (optional peers `loro-crdt >= 1.10.0`,
+  `loro-prosemirror >= 0.4.1`).
+- [FACT] One dominant maintainer: ocavue has 1,087 commits of 19 contributors
+  (`gh api repos/prosekit/prosekit/contributors`; renovate and github-actions are bots). In
+  the last six months: ocavue 56 commits, the ocavuebot account 34, one other human 1.
+  Repository pushed 2026-09-25. ocavue is also Remirror's second contributor (364 commits),
+  and Remirror's README says "remirror is in maintenance mode and is not recommended for new
+  projects … It stays stable and we will keep fixing critical bugs … For new projects,
+  please use ProseKit" (<https://github.com/remirror/remirror>, commit 61d27d389 "docs:
+  announce maintenance mode (#2354)", 2026-06-22).
 - [OPINION] It concentrates exactly the risk that put Remirror into maintenance mode: bus
   factor 1, pre-1.0 API. Same schema-based HTML fidelity problem as Tiptap (no separate
   measurement; the Tiptap run applies to the shared ProseMirror model). It was never
   screened before this amendment and is scored so that the Yjs-capable ProseMirror family
   is represented by more than one vendor.
+- [MEASURED, *Experiments*] `asset://`: 21 of 21 asset checks pass with four model-level
+  hooks (inline image node, node views that render `blob:`, a media atom node, serialising
+  into an inert document). ProseKit was **not** run on the HTML corpus. The media atom
+  keeps `video`/`audio`/`iframe` as an outerHTML string, which preserves them by
+  construction but makes them non-editable in the model and invisible to any future
+  character-level Yjs merge.
 - [MEASURED] basic + yjs extension: 367 KB / 115 KB (Bun 1.4.2 `--minify`, `yjs`
   external, `gzip -9`, single run, ±20 %; not comparable with the esbuild figures in
   *Performance*).
@@ -601,10 +635,53 @@ passed the *License gate*.
   2026-09-22; a critical sanitiser-bypass advisory GHSA-6rf4-v2fh-m6p4 (2026-09-24,
   affects ≤2.47.10) and a high one GHSA-w93q-cq9w-58p7 (≤3.1.3). Not evaluated beyond
   this screening.
-- **Squire, Trumbowyg**: not screened. Anyone arguing for them should add the evidence.
+- **Squire** 2.4.9 (`squire-rte`, 2026-09-15; <https://github.com/fastmail/Squire>). [FACT]
+  MIT; README: "HTML remains the source-of-truth", "must handle arbitrary HTML", "does not
+  provide its own UI toolbar, widgets or overlays". The integrator supplies DOMPurify or a
+  `sanitizeToDOMFragment`, so `asset://` can be let through by a custom sanitiser.
+  47 commits from 3 authors in 12 months (neilj 547 in total); used by Fastmail, Proton and
+  Zoho (README). `dist/squire.js` 60 KB / 18.5 KB gzip, no dependencies [MEASURED]. No Yjs
+  adapter found (npm search; absence is not proof). Fidelity [MEASURED]: 4 of 12 synthetic
+  fragments identical (jsdom), and on the corpus 26.4 % identical and 49.1 % of fragments
+  with no element lost, the element figure pulled down by its `strong`→`b` and `em`→`i`
+  renames; it unwraps `details`, `video`, `audio`, `header`, `button` and drops MathML and
+  SVG (element classification in `dist/squire.mjs`). **Verdict: secondary (screened)
+  [OPINION]**: the only candidate that is both HTML-first and maintained, but eXe would have
+  to write every dialog, the table editing and media handling. A possible base for a custom
+  editor, not a replacement.
+- **Trumbowyg** 2.31.0 (2025-03-02, more than 18 months ago; the `develop` branch had 14
+  commits from 6 authors in 12 months). [FACT] MIT; peer dependency `jquery >= 1.8`;
+  contenteditable plus `execCommand`; defaults `semantic: true` (b→strong, i→em,
+  s/strike→del, **div→p**) and `semanticKeepAttributes: false`. [MEASURED] set/get kept
+  12 of 12 synthetic fragments; the edit-time rewrite of divs into paragraphs is **not
+  measured**. 28 KB / 9.7 KB gzip plus jQuery. **Verdict: discarded [OPINION]**: brings
+  jQuery back, stalled releases, a table and dialog system far weaker than TinyMCE's, and it
+  offers nothing over HugeRTE or Jodit. The verdict rests partly on unmeasured edit-time
+  behaviour.
+- **SCEditor** 3.2.1 (2026-02-06; 3 commits in 12 months). [FACT] MIT; a designMode iframe
+  with an XHTML format filter, built for forums and BBCode. It creates a private
+  `DOMPurify()` instance per editor (`src/lib/SCEditor.js:381`) and exposes no URI option;
+  [MEASURED] DOMPurify 3.4.16 with the options SCEditor passes strips every `asset://`
+  `src` and `href`. **Verdict: discarded**: breaks `asset://` without patching, near-dormant.
+- **UEditor Plus** 4.5.0 (npm `ueditor-plus-main`, 2026-01-20;
+  <https://github.com/modstart-lib/ueditor-plus>). [FACT, from the shipped `dist-min`]
+  Server- and CDN-coupled by default: `serverUrl` points to a PHP backend with
+  `loadConfigFromServer: true`, formulas are rendered by `https://r.latexeasy.com`, image
+  compression loads from `https://cdn.bootcdn.net`, `listiconpath` is
+  `http://bs.baidu.com`; `allowDivTransToP: true`; only `en` and `zh-cn`; bundles
+  jQuery 1.10.2, which has published advisories; one dominant committer (238 commits, next 8).
+  **Verdict: discarded**.
+- **Discarded without experiments**: **am-editor / Aomao** (last commit and release
+  2024-02-20, `@aomao/plugin-yjs` 1.0.5 of 2023-06-07; the README points to a successor,
+  "Editable"): unmaintained for 2.5 years. **TOAST UI Editor** (`nhn/tui.editor`,
+  **archived**, last release `editor@3.2.2` on 2023-02-24): archived, and a Markdown model
+  cannot hold eXe's HTML. **Vditor** 4.0.0 (2026-08-30): a Markdown editor whose `cdn` option
+  defaults to `https://unpkg.com/vditor@${VERSION}` and whose dist loads `cdn.jsdelivr.net`;
+  23.6 MB unpacked. **Remirror**: the project announced maintenance mode (quote in
+  *Option 4b*).
 - **Discarded on fit**: Editor.js (JSON output), Summernote (jQuery, stagnant), Trix and
-  Pell (subset models or abandoned). The Yjs-bindable editors are covered in the next
-  subsection.
+  Pell (subset models or abandoned). The Yjs-bindable editors, including wangEditor-next,
+  Plate and Yoopta, are covered in the next subsection.
 - **Discarded by the license gate**: Froala (proprietary), CKEditor 5 LTS, paid
   TinyMCE 5 LTS.
 
@@ -627,17 +704,20 @@ typing in the same paragraph merges.
 |---|---|---|---|---|---|
 | ProseMirror + y-prosemirror | Yjs author. 1.3.7 (2025-07-03); 2.x as `@y/prosemirror` beta 2.0.0-13 on `@y/y` 14 | MIT | `Y.XmlFragment`; character-level text, node-level structure | High without catch-all nodes (Tiptap run: 71 % attributes stock) | Headless; the base of every option below. Kept inside options 4 and 4b |
 | Tiptap 3 + extension-collaboration | Vendor. 3.31.3 over `@tiptap/y-tiptap` 3.0.9 (fork, Yjs 13) | MIT; Hocuspocus MIT | as ProseMirror | as ProseMirror | **Finalist (option 4)** |
-| ProseKit + `prosekit/extensions/yjs` | Vendor. 0.22.3 (2026-09-20), upstream y-prosemirror 1.x | MIT | as ProseMirror | as ProseMirror | **New finalist (option 4b)**, bus factor 1 |
+| ProseKit + `prosekit/extensions/yjs` | Vendor. 0.22.3 (2026-09-20), upstream y-prosemirror 1.x; also a Loro CRDT extension (`prosekit/extensions/loro`) | MIT | as ProseMirror | as ProseMirror | **Finalist (option 4b)**, bus factor 1 |
 | Remirror + `@remirror/extension-yjs` | Vendor. Extension 4.0.3 (2026-02-27), core 3.0.3 (2025-08-02) | MIT | as ProseMirror | as ProseMirror | **Discarded**: the project itself says it is in maintenance mode and recommends ProseKit |
 | Milkdown + `@milkdown/plugin-collab` | Vendor, thin wrapper over y-prosemirror. 7.22.2 (2026-09-23) | MIT | as ProseMirror | **Very high**: the model is Markdown | **Discarded**: if ProseMirror collaboration is wanted, use ProseMirror directly |
 | BlockNote | Vendor, y-prosemirror. 0.55.0 (2026-09-22); peer dependencies on both Yjs 13 and `@y/y` 14 | MPL-2.0 core; `xl-*` GPL-3.0 or commercial | as ProseMirror, block model | **Very high**: "If BlockNote doesn't recognize an element's tag, it will parse it as a paragraph or plain text" (<https://www.blocknotejs.org/docs/features/import/html>) | **Discarded**: lossy by design, React-only UI, mid Yjs 13→14 transition. License is not the reason |
 | Quill 2 + y-quill | Yjs author. y-quill 1.0.0 (2024-04-22); Quill 2.0.3 (2024-11-30) | BSD-3-Clause / MIT | flat `Y.Text` delta; character | **Very high** (Parchment model; [MEASURED] 8-fragment smoke test: wrappers, `dl`, classes lost, `asset://` image `src` rewritten to `//:0`) | **Discarded**: no Quill release in 22 months, dormant binding, breaks requirement 3. Its advisory GHSA-v3m3-f69x-jf25 (CVE-2025-15056) is low severity, CVSS 2.0; it is not the reason |
 | Slate + `@slate-yjs/core` | Community. 1.0.2 (**2023-07-11**); repository pushed 2024-06-20; forks exist (e.g. `@alineco/slate-yjs-core`) | MIT | `Y.XmlText`; character | High: schema-less but the HTML deserialiser is yours | **Discarded**: stale canonical binding, 0.x core (framework-agnostic; only `slate-react` is React), no HTML model |
-| Plate + `@platejs/yjs` | Vendor, over slate-yjs. 53.2.0 (2026-06-15) | MIT | `Y.XmlText` | High | **Discarded**: React-only (peer react ≥ 18) |
+| Plate + `@platejs/yjs` | Vendor, over `@slate-yjs/core ^1.0.2` (last release 2023-07-11). 53.2.0 (2026-06-15); **non-optional** peers `react`, `react-dom`, an exact `y-webrtc 10.3.0` and `@hocuspocus/provider ^3.4.0`, which excludes the Hocuspocus 4.7.0 cited above | MIT | `Y.XmlText` | High | **Discarded**: React-only (`platejs` peers on react ≥ 18), Slate model, Yjs chain on a stale slate-yjs |
 | Lexical + `@lexical/yjs` | Vendor (Meta). 0.51.0 (2026-09-17) | MIT | root `Y.XmlText` | **Very high** (class kept 0 of 6,044) | Finalist (option 5); the good binding does not offset the worst measured fidelity |
 | BlockSuite | Vendor. npm 0.22.4 (2025-07-01); repository active (pushed 2026-09-25) | MIT (npm) vs MPL-2.0 (repo) | native Yjs, block model | Very high | **Discarded** on model |
 | SuperDoc | Vendor. 2.18.0 | AGPL-3.0 | native Yjs, DOCX model | Off-target | **Discarded** on model |
-| wangEditor-next + `@wangeditor-next/yjs` | Vendor. 6.4.2 (2026-09-13) | MIT | Slate-based | High (Slate schema) | Not evaluated beyond screening; lossy by construction [OPINION] |
+| wangEditor-next + `@wangeditor-next/yjs` | Vendor, a **vendored copy of slate-yjs** (README: "base on slate-yjs"; "must contain a valid editor root before clients connect", i.e. server-side initialisation). 6.4.2 (2026-09-13), peers `yjs ^13.5.29`, `slate ^0.124.0`. The original wangEditor "is temporarily not maintained"; the fork has one main maintainer (cycleccc, 68 of the last six months' commits) | MIT | `Y.XmlText` | **Very high** [MEASURED]: 0 of 12 synthetic fragments and 24.4 % of corpus fragments identical; classes and `data-*` all lost | **Discarded**: lossy for legacy HTML by construction, effectively a single-maintainer fork, Yjs needs server initialisation |
+| Yoopta + `@yoopta/collaboration` | Vendor. 6.0.5 (2026-05-11), `yjs ^13.6.0`, peer React ≥ 18.2 | MIT | block JSON over Slate | **Very high**: Notion-style block model, HTML only through `@yoopta/exports` | **Discarded**: React-only ("built for React apps"), idle since 2026-05-11, one author in the last 92 commits |
+| am-editor (`@aomao/plugin-yjs`) | Vendor. 1.0.5 (2023-06-07); engine last released 2024-02-20 | MIT | – | – | **Discarded**: unmaintained |
+| Squire, SCEditor, Trumbowyg | **No binding found** (npm search; absence is not proof) | – | string-diff on `Y.Text` only | – | See *Screened alternatives* |
 | TinyMCE 8, HugeRTE, CKEditor 5, Jodit, SunEditor | **No free structural binding** found (npm and GitHub search; absence is not proof). Velt's TinyMCE and CKEditor adapters are "Proprietary" | – | string-diff on `Y.Text` possible (see *Yjs considerations*) | – | Unchanged; collaboration is a non-requirement |
 
 **Outcome of re-screening under the Yjs lens [OPINION]:** no earlier discard is reversed.
@@ -657,7 +737,7 @@ mode) for each option. The scores live in
 the chart is rendered by `node scripts/analyze-editor-debt.mjs --charts`. They are
 evaluation scores, not measurements.
 
-**HTML fidelity experiment** ([MEASURED], single run, scratch-built, **no committed
+**Earlier HTML fidelity experiment** ([MEASURED], single run, scratch-built, **no committed
 corpus**). 941 HTML fragments were extracted from the 24 `.elp`/`.elpx` files in
 `test/fixtures`, parsed and serialised by each engine:
 
@@ -669,14 +749,246 @@ corpus**). 941 HTML fragments were extracted from the 24 `.elp`/`.elpx` files in
 | CKEditor 5 48.5.2, stock | 44.9 % | `div`, `section`, `iframe`, `audio`, `dl`; `em` → `i` |
 | CKEditor 5 with GHS allow-all | ~100 % | `em` → `i`, `b` → `strong`; 1 fragment crashed (`view-writer-cannot-break-raw-element`) |
 
-**The same corpus was never run against TinyMCE 8 or HugeRTE.** The "pass-through"
-advantage of the TinyMCE family is therefore asserted from configuration
-(`valid_elements: '*[*]'`), not measured. With DOMPurify sanitisation,
-`sandbox_iframes`, `convert_unsafe_embeds` and the 8.0 comment stripping enabled it may
-not hold. Running this corpus on 8.9.2 and HugeRTE 1.0.14 is the first item of the
-proof of concept.
+**Update 2 ran a larger corpus, committed as a script, on TinyMCE 8.9.2 and HugeRTE 1.0.14**
+(see *Experiments*). The 941-fragment run above is kept for Tiptap with the preserve layer,
+Lexical and CKEditor 5, which were not re-run; its inputs are still not committed, and it is
+not comparable with the 1,319-fragment corpus (24 fixtures then, 30 now, a different
+extraction and different metrics).
 
 **Bundle size** (see *Performance and bundle impact*).
+
+## Experiments
+
+Update 2 adds two experiments whose code is committed under
+[`scripts/editor-experiments/`](../../../scripts/editor-experiments/README.md). It is **not
+production code**: nothing imports it, it adds no dependency to eXe, and its README says how
+to install the pinned editor versions in a temporary copy and re-run it. Both ran on
+2026-09-27 against this repository at `f64d72fb5`, read-only. Everything below is
+[MEASURED] unless labelled otherwise.
+
+### Experiment 1: HTML round trip on the fixture corpus
+
+**Corpus.** `html-roundtrip/extract-corpus.mjs` reads the 40 `.elp`/`.elpx` archives under
+`test/fixtures` (30 fixtures plus 10 export copies, which only add provenance) and writes
+1,319 unique fragments: 321 `htmlView` (saved iDevice HTML), 271 `jsonField` (HTML strings
+inside `jsonProperties`) and 727 `legacyField` (rich-text fields of old `contentv3.xml`
+files). The output is byte-identical across runs (SHA-1 in the README); at about 8 MB it is
+regenerated, not committed. `{{context_path}}/x` and legacy `resources/x` references are
+rewritten to `asset://<hash>.<ext>` to imitate the importer [EST: `ElpxImporter` uses random
+UUIDs, not hashes; equivalence is assumed, not tested].
+
+| Feature (parsed attributes and elements) | Fragments |
+|---|---|
+| class | 899 |
+| `asset://` | 622 |
+| inline style | 615 |
+| figure / figcaption | 289 |
+| `data-*` (of which not `data-mce-*`) | 181 (152) |
+| iframe | 104 |
+| table | 74 |
+| `dl` | 59 |
+| audio / video | 33 |
+| `data-mce-*` (all `data-mce-fragment`, all on `<iframe>`) | 30 |
+| MathML or LaTeX | 21 |
+| `on*` handler | 17 |
+| script | 13 |
+| comment | 12 |
+| Mermaid | 0 |
+
+The extractor's own raw-text count gives 623 for `asset://` and 616 for style; the table uses
+the parsed counts that the metrics use.
+
+**Method.** `roundtrip.mjs` loads each fragment into each editor configuration in headless
+Chromium 145 (one page per configuration) and reads it back once. The HTML is compared after
+normalising whitespace, attribute order, void-element syntax and style formatting:
+
+- **Identical**: share of all fragments whose output equals the input.
+- **Same as 5.x**: share of all fragments whose output equals TinyMCE 5.10.2's output; the
+  differential that says how far a migration moves content away from today's behaviour.
+- **Feature columns**: share of the fragments containing that feature that lost none of it.
+  "non-mce data-*" excludes `data-mce-*`.
+
+**Configurations** (asymmetric on purpose; this matters when reading the numbers):
+
+| Row | Configuration |
+|---|---|
+| TinyMCE 5.10.2 (baseline) | eXe's vendored build and `exemedia`; eXe's parsing options (`valid_elements: '*[*]'`, `schema: 'html5'`, `convert_urls: false`, `entity_encoding: 'raw'` …) and core `lists advlist link image table code` |
+| TinyMCE 8.9.2, defaults | Same options plus `license_key: 'gpl'`, core `media`; `xss_sanitization`, `sandbox_iframes`, `convert_unsafe_embeds` at their defaults (on) |
+| TinyMCE 8.9.2, relaxed | As above with those three switched off |
+| TinyMCE 8.9.2 / HugeRTE 1.0.14, relaxed, no media | Relaxed, without the core `media` plugin (isolates what `media` does) |
+| HugeRTE 1.0.14, defaults | As TinyMCE 8 defaults, no key |
+| Squire 2.4.9 | No DOMPurify (pass-through `sanitizeToDOMFragment`); more permissive than a real deployment, where DOMPurify's default URI policy would also strip `asset://` [EST] |
+| wangEditor-next 6.4.2 | Stock |
+| Tiptap 3.31.3 | StarterKit, inline Image, generic `class/style/id/title/lang/dir`; **without** the ~40-line preserve layer of the 941-fragment run, so not Tiptap's best case, and `data-*` is lost by construction |
+
+![HTML round trip on the fixture corpus](assets/editor-comparison/5-html-roundtrip.svg)
+
+*How chart 5 was computed [MEASURED]:* the values come from `results.json` of a run of
+`scripts/editor-experiments/html-roundtrip`, copied into `experiments.htmlRoundtrip` of
+[`evaluation.json`](assets/editor-comparison/evaluation.json) and drawn by
+`node scripts/analyze-editor-debt.mjs --charts`. Colours are reading aids, not thresholds.
+
+| Configuration | Identical | Same as 5.x | Elements | Classes | `data-*` | non-mce `data-*` | Styles | iframes | `asset://` | Comments |
+|---|---|---|---|---|---|---|---|---|---|---|
+| TinyMCE 5.10.2 (baseline) | 65.7 | – | 99.3 | 99.3 | 100 | 100 | 99.2 | 100 | 99.8 | 100 |
+| TinyMCE 8.9.2, defaults | 64.1 | 95.9 | 99.3 | 99.4 | 83.4 | 100 | 99.2 | 100 | 100 | 100 |
+| TinyMCE 8.9.2, relaxed | 64.6 | 96.9 | 99.4 | 99.4 | 83.4 | 100 | 99.2 | 100 | 100 | 100 |
+| TinyMCE 8.9.2, relaxed, no media | 65.7 | 99.2 | 99.4 | 99.4 | 100 | 100 | 99.2 | 100 | 100 | 100 |
+| HugeRTE 1.0.14, defaults | 64.1 | 96.0 | 99.4 | 99.4 | 83.4 | 100 | 99.2 | 100 | 100 | 100 |
+| HugeRTE 1.0.14, relaxed, no media | 65.7 | 99.2 | 99.4 | 99.4 | 100 | 100 | 99.2 | 100 | 100 | 100 |
+| Squire 2.4.9 | 26.4 | 29.2 | 49.1 | 96.1 | 99.4 | 99.3 | 86.0 | 100 | 99.8 | 0 |
+| wangEditor-next 6.4.2 | 24.4 | 24.4 | 29.1 | 0 | 0 | 0 | 5.2 | 1.9 | 11.4 | 0 |
+| Tiptap 3.31.3 (no preserve layer) | 24.7 | 24.4 | 29.0 | 1.1 | 0 | 0 | 22.6 | 0 | 58.4 | 0 |
+
+All 1,319 fragments were processed by every configuration with 0 errors. Denominators:
+elements 1,319, classes 899, `data-*` 181, non-mce `data-*` 152, styles 615, iframes 104,
+`asset://` 622, comments 12. A second full run gave identical results.
+
+**Synthetic probes** (not in the percentages; inputs in `roundtrip.mjs`):
+
+| Probe | TinyMCE 5.10.2 | TinyMCE 8 defaults | TinyMCE 8 relaxed | HugeRTE defaults | TinyMCE 8 / HugeRTE relaxed, no media |
+|---|---|---|---|---|---|
+| `<iframe data-mce-html>` (and `data-mce-pdf`) | kept; `exemedia` rewrites `width:100%` to `width="100"` | **marker dropped**, `sandbox=""` added | **marker dropped** | **marker dropped**, `sandbox=""` added | kept |
+| `data-mce-*` on `span`, `div` | kept | kept | kept | kept | kept |
+| third-party iframe (not YouTube) | kept | `sandbox=""` added | kept | `sandbox=""` added | kept |
+| `object` / `embed` | size attributes added | converted to sandboxed `iframe`s | size attributes added | converted to sandboxed `iframe`s | kept |
+| comment containing HTML | kept | **removed** | kept | kept | kept |
+| MathML | kept | `<br>` appended | `<br>` appended | kept | TinyMCE: `<br>` appended; HugeRTE: kept |
+| `javascript:` link with `onclick` | `href` removed, `onclick` kept | same | same | same | same |
+| inline `<script>` | kept | kept | kept | kept | kept |
+
+**Findings.**
+
+- **Element, class, style, iframe and `asset://` presence is about the same in TinyMCE 8 and
+  HugeRTE as in the 5.x baseline** under eXe's permissive schema. The strict differential is
+  95.9–96.9 % of fragments unchanged relative to 5.x with `media` loaded and 99.2 % without
+  it. This is a fidelity measurement of one load and save, not a compatibility verdict (see
+  *What the experiments do not show*).
+- **The `data-*` figure of 83.4 % is entirely `data-mce-fragment`** (30 of 181 fragments).
+  That marker is a TinyMCE paste internal that leaked into saved content, so dropping it is
+  arguably cleanup. Non-`mce` `data-*` fidelity is 100 % for TinyMCE 8 and HugeRTE. Do not
+  quote 83.4 % as a fidelity loss.
+- **With the core `media` plugin, TinyMCE 8 and HugeRTE drop `data-mce-*` attributes from
+  iframes, including eXe's `data-mce-html`/`data-mce-pdf`. Without `media` they are kept**,
+  and `data-mce-*` on other elements is kept in every TinyMCE 8 and HugeRTE configuration. An `exemedia` port must
+  preserve them, or the markers must be renamed to eXe-owned `data-exe-*`. The cause is
+  UNVERIFIED: a plausible one is the fix for CVE-2026-47761 ("stored XSS in the media plugin
+  via crafted data-mce-p-* attributes" in HugeRTE 1.0.11's changelog; TinyMCE 8.5.1) [EST,
+  not diffed].
+- **Defaults change content**: `sandbox=""` on 21 corpus iframes (which breaks
+  script-driven `asset://…html` iframes), `object`/`embed` converted to sandboxed iframes
+  (`convert_unsafe_embeds`), comments containing HTML removed (TinyMCE 8 only). HugeRTE's
+  `sandbox_iframes` also defaults to true. All three need an explicit decision
+  (*Open questions*).
+- **All TinyMCE versions, 5.x included**, remove `javascript:` link targets and keep
+  `onclick` and inline `<script>`; all remove an empty `dl`/`dt`/`dd` (6 fragments). 5.x
+  removes an `<a>` that wraps a block `<div>`; 8.x keeps it.
+- **Squire** renames `strong`/`em` to `b`/`i`, unwraps `header` and `button`, drops video,
+  MathML and scripts; its 49.1 % element figure is inflated by the renames.
+  **wangEditor-next and Tiptap without a preserve layer** drop `div`, `span`, classes and
+  every `data-*`; 42 % (Tiptap) and 89 % (wangEditor-next) of the fragments that contain
+  `asset://` lose at least one reference.
+
+Earlier one-off smoke test [MEASURED, not committed]: 12 hand-written eXe-style fragments in
+jsdom (Node 26.10.0) gave Squire 4/12, wangEditor-next 0/12 and Trumbowyg 12/12 identical
+(set/get only); DOMPurify 3.4.16 with SCEditor's options stripped every `asset://` URL.
+
+### Experiment 2: `asset://` in TinyMCE 8, HugeRTE and ProseKit
+
+**Method.** `asset-uri/store.js` stands in for eXe's `AssetManager`: in-memory blobs,
+`asset://<uuid>.<ext>` (and the legacy `asset://<uuid>/<name>`), a blob-to-asset reverse map.
+The content has six elements: an inline image with alt and size, a link to a PDF, a
+legacy-path image, a `video` with `source`, an `audio`, and an
+`<iframe src="asset://….html" data-mce-html="true">`. `run.mjs` drives each editor in
+Chromium through Playwright: display, untouched round trip, typing, moving the image with a
+real cut and paste, changing alt in the stock image dialog, inserting a new asset, reload,
+leak checks. Each hook can be switched off (`--off=N`) to measure whether it is needed. The
+TinyMCE/HugeRTE harness loads `plugins: 'image link'` only (no `media`), which is why the
+`data-mce-html` marker survives here and not in Experiment 1.
+
+![asset:// experiment: checks passed](assets/editor-comparison/6-asset-url-experiment.svg)
+
+*How chart 6 was computed [MEASURED]:* pass counts from `run.mjs`, grouped into `asset://`
+checks, the two byte-identity checks (S6 untouched round trip, R1b reload) and the
+informational "no `asset://` fetch", recorded in `experiments.assetUri` of
+`evaluation.json`.
+
+| Result | TinyMCE 8.9.2 | HugeRTE 1.0.14 | ProseKit 0.22.3 |
+|---|---|---|---|
+| All checks | 23/25 | 24/25 | 22/24 (no stock image dialog) |
+| `asset://` checks (display as `blob:`, stored as `asset://`, no `blob:`/`data:`/`http` leak, no extra undo step, paste, dialog, insert, reload) | 22/22 | 22/22 | 21/21 |
+| Byte-identical untouched round trip (S6) | fail: one `<p>` wraps video, audio and iframe | same | fail: newlines between blocks dropped |
+| Byte-identical after reload (R1b) | pass | pass | fail: a double space collapses |
+| Browser never tried to fetch `asset://` | 1 failed fetch (image dialog size probe) | pass | pass |
+| Hooks needed | minimal set {2, 3, 4, 6, 7}, recommended {1, 2, 3, 4, 6, 7}; about 75 lines [EST] | same | 4 model-level hooks; about 95 lines [EST] |
+
+With an eXe-style regex safety net at GetContent (`--net`) the counts are the same, and no
+`blob:` reached it.
+
+**TinyMCE 8 and HugeRTE hooks** (same code points in both; ablation-measured):
+
+1. `editor.parser.addAttributeFilter('src,href', …)` in `PreInit`: sets `data-mce-src` to
+   the `asset://` URL and `src` to the `blob:` URL from a synchronous cache; the core
+   serializer writes `data-mce-src` back as `src`.
+2. `editor.editorUpload.addFilter(img => !isKnownDisplayBlob(img))`: **required**. Without
+   it the image scanner copies display blobs and GetContent stores them as
+   `data:image/png;base64` (`tinymce.js:27087`, `:27112`), the most dangerous silent failure
+   found: the asset reference is lost and the document swells. `addFilter` is typed in
+   `tinymce.d.ts:2862-2864` but absent from the online docs: public API status UNVERIFIED.
+3. `sandbox_iframes: false` (default true, `tinymce.js:10711`).
+4. A `blob:`→`asset://` filter on `editor.serializer`: paste and `insertContent` parse twice,
+   and a parser filter that strips incoming `data-mce-src` (`tinymce.js:38069`,
+   `hugerte.js:29992`) removes the canonical URL. That this filter comes from the
+   CVE-2026-47759 fix is UNVERIFIED [EST]; nobody diffed before and after.
+5. A `SetContent` handler restoring `data-mce-src` (replaceable by 4).
+6. The public `OpenWindow` event (`dialog.getData()`/`setData()`) instead of the
+   `windowManager.open` monkeypatch, for the **stock** image dialog.
+7. A `NodeChange ExecCommand` handler that swaps `src="asset://"` written by the dialog back
+   to `blob:` inside `undoManager.ignore`.
+
+`urlconverter_callback` cannot do this job (the URL filter skips `blob:` and `data:` before
+calling it, `tinymce.js:38085`). Line references are to the npm builds of 8.9.2 and 1.0.14.
+
+**ProseKit hooks:** a custom inline `image` node with the `asset://` URL in `attrs.src`;
+`defineNodeView` for images and media rendering `blob:`; a `media` atom node storing each
+`video`/`audio`/`iframe` as an outerHTML string (which keeps `data-mce-html` by
+construction, makes media non-editable in the model and hides it from any future
+character-level Yjs merge); serialising `doc.content` into an inert document
+(`editor.getDocHTML()` wraps output in a `<div>`, and serialising into the live document
+made the browser fetch every `asset://` image). Paste needs no hook. The same hooks work at
+the ProseMirror model level, so the result applies to Tiptap too [EST, not run on Tiptap].
+
+### What the experiments do not show
+
+- **Compatibility with eXe.** Neither experiment loads eXe's own plugins (`exeimage`,
+  `exemedia`, `definitionlist`, `template`, `paste` … about 40 in production). The corpus
+  run uses core `lists advlist link image media table code`; the `asset://` run uses
+  `image link`. Iframe sandboxing, `object`/`embed` conversion, the `media`-plugin marker
+  loss and comment stripping all still need configuration or a port.
+- **Additions and breakage.** The feature metrics count losses only; additions show up only
+  in "Identical": `sandbox=""` on 21 iframe fragments, `object`/`embed` turned into iframes,
+  `<br>` after MathML, `rel` on links, `<p>` around media. "iframes 100 %" and
+  "`asset://` 100 %" do not mean the content still works.
+- **A fair comparison.** The configurations favour the TinyMCE family by construction (eXe's
+  permissive schema versus stock or near-stock setups elsewhere). ProseKit, a finalist, was
+  not run on the corpus at all; only the six elements of Experiment 2 went through it.
+- **Representative content.** The corpus is 30 test fixtures, deduplicated (so frequency
+  is lost); 55 % are legacy `contentv3.xml` fields; `htmlView` of JSON iDevices is partly
+  generated by iDevice code and never typed in the editor; not every `jsonField` string is
+  edited through TinyMCE. The fixture choice is not a sample of real user projects
+  [OPINION].
+- **Editing.** Every corpus fragment got one API load and save: no typing, undo, drag and
+  drop or paste; Chromium only; one run. The edit-time rewrites (Trumbowyg's
+  `semantic: true` div→p, TinyMCE's forced root block) are not measured.
+- **eXe's paste path.** eXe sets `paste_as_text: true` (`tinymce_5_settings.js:305`); the
+  cut-and-paste check E2 exercises HTML paste, which eXe's default does not use. It shows
+  that the hooks work, not that eXe's paste works.
+- **The rest of the `asset://` pipeline.** Only a synchronous in-memory cache was tested:
+  not asynchronous or peer resolution, `span.mce-preview-object`/`data-mce-p-src`,
+  `resolveHtmlWithAssets`, eXe's `exeimage`/`exemedia` dialogs, Firefox or WebKit.
+- **Person-day figures.** The experiment's own effort guesses (2–4 person-days for the
+  TinyMCE family's hooks and dialogs, 3–5 for ProseKit) are [EST] and are not used directly;
+  the *Migration cost* table stays in person-weeks.
 
 ## Migration impact
 
@@ -685,8 +997,8 @@ proof of concept.
 | iDevices (12 init sites, ~300 `get()` calls) | Unchanged through `$exeTinyMCE`; the global becomes `hugerte` for HugeRTE | Need the facade described in *Proposed migration strategy* | Each field needs a React root |
 | 4 core forks | Re-fork or rebuild on 8.x `image`/`link`/`media` | Rewrite as model plugins | Rewrite as blocks/formats |
 | 20 own plugins | Port (`DomQuery`, settings, `.tox-*`) | Rewrite against a different paradigm | Rewrite in React |
-| Settings and `asset://` hooks | Port the monkeypatch; re-check `data-mce-*` handling | Rebuild on converters/upload adapters | Rebuild |
-| Persisted `data-mce-html/pdf` | Keep; round-trip test required (CVE-2026-47759 concerns exactly `data-mce-` attributes) | Migrate markers or map them in converters | Migrate |
+| Settings and `asset://` hooks | Stock image dialog: replaceable by the public `OpenWindow` event plus parser/serializer filters, `editorUpload.addFilter` and `sandbox_iframes: false` ([MEASURED], stock plugins only, see *Experiments*); `exeimage`/`exemedia` not tested | ProseMirror family: model-level hooks ([MEASURED] on ProseKit); CKEditor 5 and Lexical: rebuild on converters/upload adapters | Rebuild |
+| Persisted `data-mce-html/pdf` | [MEASURED] Kept without the core `media` plugin; **dropped from iframes with it**. An `exemedia` port must preserve them, or rename them to `data-exe-*` with a load-time mapper | ProseKit's media atom keeps them verbatim; otherwise migrate markers or map them in converters | Migrate |
 | Theme CSS (`body#tinymce` in 6 themes) | Mostly keeps | Rewrite selectors | Rewrite |
 | E2E (26 files pin `.tox-*`) | Partly survive (8.x still uses `.tox`) | Rewrite | Rewrite |
 | i18n (`langs/all.js`) | Keep mapping, new strings | Rebuild | Rebuild |
@@ -849,8 +1161,9 @@ before the engine decision and would have reduced #2463's regression to zero.
   markup its schema does not model. Fidelity comes from keeping that markup verbatim;
   character-level collaboration then works only in the parts the schema models. This is
   the realistic way to get "Yjs plus legacy eXe HTML" and it weakens the claim that legacy
-  HTML is a hard blocker. It needs a measurement on the 941-fragment corpus: the share of
-  content that ends up inside opaque nodes.
+  HTML is a hard blocker. Update 2's ProseKit harness uses exactly such an atom for media
+  (see *Experiments*), but the share of the 1,319-fragment corpus that would end up inside
+  opaque nodes is still **not measured**.
 - [OPINION] Adopting any native binding would change the stored model from HTML strings to
   `Y.XmlFragment` (or `XmlText`) per field, move the lock from iDevice to field level, need
   a server-side Yjs-tree-to-HTML serialiser (schema plus a DOM) for the exporters and the
@@ -1047,6 +1360,11 @@ or an MIT editor avoids the question.
 | ProseKit (basic + yjs extension, `yjs` external) | 367 KB / 115 KB, no UI | Bun build | [MEASURED] |
 | CKEditor 5 Classic + GHS + tables, media, source | 1,139 KB / 311 KB + ~216 KB CSS | esbuild | [MEASURED] |
 | Gutenberg minimal field | ~4.96 MB / 1.14 MB (+ ~69 KB gzip CSS) | Bun build | [MEASURED] |
+| Squire 2.4.9 (`dist/squire.js`) | 60 KB / 18.5 KB, no UI, no dependencies | npm tarball | [MEASURED] |
+| wangEditor-next 6.4.2 (`dist/index.js`) | 734 KB / 214 KB | npm tarball | [MEASURED] |
+| Trumbowyg 2.31.0 | 28 KB / 9.7 KB plus jQuery | npm tarball | [MEASURED] |
+| SCEditor 3.2.1 | 74 KB / 27 KB | npm tarball | [MEASURED] |
+| UEditor Plus 4.5.0 (`ueditor.all.js`) | 591 KB / 152 KB | npm tarball | [MEASURED] |
 
 - [EST] TinyMCE 8 adds ~25–30 % of core payload over 5.x; dropping `paste`, `hr`, `lists`
   and `template` folders offsets part of it. eXe's plugins (~1.7 MB in `plugins/`) are
@@ -1077,13 +1395,13 @@ these or with each other.
 | Core migration | 1–3 | 3–6 | 3–5 | 6–10 | 8–14 | 8–15 | 10–18 | 12–24 |
 | Own plugins | 0 | 8–16 | 7–14 | 16–30 | 18–34 | 18–34 | 20–38 | 24–45 |
 | CodeMagic | 1–2 | 1–2 | 1–2 | 1.5–3 | 1.5–3 | 1.5–3 | 1.5–3 | 1.5–3 |
-| asset:// pipeline | 0 | 2–4 | 2–4 | 3–6 | 3–6 | 3–6 | 3–6 | 4–8 |
+| asset:// pipeline | 0 | 1–3 | 1–3 | 3–6 | 2–5 | 2–5 | 3–6 | 4–8 |
 | Unit tests | 0.5–1 | 2–4 | 2–4 | 4–8 | 4–8 | 4–8 | 4–8 | 5–10 |
 | E2E tests | 0–0.5 | 1–3 | 1–3 | 3–6 | 3–6 | 3–6 | 3–6 | 4–8 |
 | Legacy compatibility | 0–0.5 | 2–4 | 2–4 | 4–8 | 6–12 | 6–12 | 8–14 | 8–16 |
 | Documentation | 0.25–0.5 | 0.5–1 | 0.5–1 | 1–2 | 1–2 | 1–2 | 1–2 | 1–2 |
 | Cleanup | 0 | 0.5–1 | 0.5–1 | 1–2 | 1–2 | 1–2 | 1–2 | 1–3 |
-| **Total** | **2.8–7.5** | **21–43** | **20–40** | **41.5–79** | **47.5–91** | **47.5–92** | **53.5–101** | **63.5–125** |
+| **Total** | **2.8–7.5** | **20–42** | **19–39** | **41.5–79** | **46.5–90** | **46.5–91** | **53.5–101** | **63.5–125** |
 | Confidence | medium | medium-low | medium-low | low | low | low | low | very low |
 
 Notes on the estimates:
@@ -1098,8 +1416,14 @@ Notes on the estimates:
   [EST], see *Yjs considerations*).
 - *CodeMagic* is identical across TinyMCE-family options if built engine-agnostic; for
   other engines the dialog host must be rebuilt.
-- *Legacy compatibility* includes building the round-trip corpus gate in CI; for schema
-  editors it also includes the "preserve" layer.
+- *asset:// pipeline* (Update 2): lowered by one person-week at each end for TinyMCE 8,
+  HugeRTE, Tiptap and ProseKit, because *Experiments* shows the core mechanism working with a
+  small set of public hooks (TinyMCE family) or model-level nodes (ProseMirror family). The
+  remaining cost is what was not tested: asynchronous resolution, eXe's `exeimage`/`exemedia`
+  dialogs, media preview placeholders and tests. CKEditor 5, Lexical and Gutenberg are
+  unchanged because they were not tested. [EST]
+- *Legacy compatibility* includes turning the committed corpus extractor and round-trip
+  harness into a CI gate; for schema editors it also includes the "preserve" layer.
 - *E2E* is smaller for the TinyMCE family because 8.x still renders `.tox-*`; whether the
   specific selectors survive is UNVERIFIED.
 
@@ -1119,7 +1443,7 @@ Only eXe-specific points.
 |---|---|
 | Clean up `.tox-*`, `DomQuery`, forks while porting; move plugins out of `public/libs` | npm 8.3+ license sentence; conflict with #1593's plain npm route |
 | Same engine as Moodle and (soon) Chamilo; shared knowledge | Further features moving to premium; license changed twice already |
-| A maintained engine strengthens the wp-exelearning case | Persisted `data-mce-*` markers vs CVE-2026-47759 behaviour are untested |
+| A maintained engine strengthens the wp-exelearning case | The core `media` plugin drops persisted `data-mce-html/pdf` from iframes ([MEASURED]); `sandbox_iframes` and `convert_unsafe_embeds` defaults change content |
 
 ### HugeRTE
 
@@ -1177,9 +1501,11 @@ Probability and impact are **[OPINION]** (Low / Medium / High).
 
 | Risk | Probability | Impact | Option | Mitigation |
 |---|---|---|---|---|
-| Historical HTML silently rewritten or lost on load/save | High | High | Tiptap, Lexical, Gutenberg | Corpus round-trip gate in CI; opaque HTML island node; do not choose without passing the gate |
-| Historical HTML altered by sanitisation/sandbox defaults | Medium | High | TinyMCE 8, HugeRTE, CKEditor 5 | Run the 941-fragment corpus on 8.9.2/HugeRTE first; decide `xss_sanitization`, `sandbox_iframes`, `convert_unsafe_embeds` explicitly |
-| Persisted `data-mce-html/pdf` markers stripped or rewritten | Medium | High | All except Stay | Round-trip test on the target; migrate markers to eXe-owned `data-exe-*` with a load-time mapper |
+| Historical HTML silently rewritten or lost on load/save | High | High | Tiptap, ProseKit, Lexical, Gutenberg (also measured high for Squire and wangEditor-next) | Corpus round-trip gate in CI (extractor and harness now in `scripts/editor-experiments/`); opaque HTML island node; do not choose without passing the gate |
+| Historical HTML altered by sanitisation/sandbox defaults | **High** ([MEASURED]: `sandbox=""` on 21 corpus iframes, `object`/`embed` converted, HTML comments removed by TinyMCE 8) | High | TinyMCE 8, HugeRTE, CKEditor 5 | Decide `xss_sanitization`, `sandbox_iframes`, `convert_unsafe_embeds` explicitly; add the differential against 5.x output to the corpus gate |
+| Persisted `data-mce-html/pdf` markers stripped or rewritten | **High** with the core `media` plugin ([MEASURED] on TinyMCE 8 and HugeRTE) | High | All except Stay | `exemedia` port that preserves them, or migrate markers to eXe-owned `data-exe-*` with a load-time mapper; round-trip test on the target |
+| `EditorUpload` turns display `blob:` images into base64 `data:` URIs (asset reference lost, Yjs document swells) | High without a filter ([MEASURED]) | High | TinyMCE 8, HugeRTE | `editorUpload.addFilter` (public status UNVERIFIED) or eXe's current upload-handler approach; regression test |
+| The incoming `data-mce-src` strip filter drops canonical `asset://` URLs on paste and `insertContent` | High without a serializer filter ([MEASURED]) | High | TinyMCE 8, HugeRTE | `blob:`→`asset://` filter on `editor.serializer`; regression tests for paste and insert |
 | Broken eXe plugins after migration | High | High | All except Stay | Migrate by risk tier; tests first for exelink and tooltips; feature flag |
 | Feature loss (template, Word paste, source view, mind maps) | Medium | Medium | TinyMCE 8 (template), schema editors (source view) | Rebuild `template` as an eXe plugin; CodeMagic B; accept documented losses explicitly |
 | Unpatched vulnerabilities while migrating | High | Medium | Stay, and any option during the transition | Interim CSP and import sanitisation; bump to 5.10.9 now |
@@ -1193,7 +1519,7 @@ Probability and impact are **[OPINION]** (Low / Medium / High).
 | wp-exelearning users without `unfiltered_html` running uploaded scripts | Medium | High | Independent of editor | Capability check or sanitising extraction in wp-exelearning |
 | Bundle growth | High | Low | CKEditor 5, Gutenberg (high); TinyMCE 8 (low) | Lazy-load plugins and CodeMagic; measure in CI |
 | Offline/static breakage (CDN defaults, license servers, absolute paths) | Medium | High | Jodit, CKEditor 5 cloud build, TinyMCE without `gpl` key | Self-hosted builds only; static-mode E2E |
-| `asset://` regressions (blob mapping, dialog patch, upload handler) | High | High | All except Stay | Port `_patchAssetDialogs` to a public hook; dedicated tests |
+| `asset://` regressions (blob mapping, dialog patch, upload handler) | High | High | All except Stay | Replace `_patchAssetDialogs` with the public `OpenWindow` event (works for the stock dialog, [MEASURED]; `exeimage`/`exemedia` untested); test asynchronous resolution, media placeholders and Firefox/WebKit |
 | Dialog, iframe and media regressions (`openUrl` apps, `sandbox_iframes`, media placeholder) | High | Medium | All except Stay | Keep `openUrl` apps behind a small dialog adapter; exemedia rewrite with tests |
 | Future migrations become as costly as this one | High | High | All | Move plugins out of the vendor tree; narrow boundary; no new `.tox-*` or internal markers |
 
@@ -1220,6 +1546,17 @@ were scattered in the text: CKEditor 5's LTS is paid, so a GPL user must take ev
 cannot absorb TinyMCE's GPL fixes into its MIT code (3); staying on 5.x has only a paid
 LTS (1); Tiptap has a paid tier that is not needed (4); ProseKit, Lexical and Gutenberg
 have no paid tier (5).
+
+**Changes in Update 2 [OPINION, from the MEASURED results in *Experiments*]:** criterion 32
+"asset:// preservation" raised from 2 to 3 for **both** ProseKit and Tiptap: every `asset://`
+check passed on ProseKit with four model-level hooks, and those hooks work at the
+ProseMirror model level that Tiptap shares (Tiptap itself was not run, so raising only
+ProseKit would be biased). It stays below the TinyMCE family's 4 because media survive only
+as opaque atoms. TinyMCE 8 and HugeRTE keep 4 (the hooks work, but only with stock dialogs
+and a synchronous cache) and HTML compatibility keeps 4 (presence is at the 5.x level, but
+sandboxing, embed conversion and the `media`-plugin marker loss need configuration).
+CKEditor 5, Lexical and Gutenberg are unchanged because they were not tested. No screened
+candidate is scored: none became a finalist.
 
 | # | Criterion | Stay 5.10.9 | TinyMCE 8 | HugeRTE | CKEditor 5 | Tiptap | ProseKit | Lexical | Gutenberg |
 |---|---|---|---|---|---|---|---|---|---|
@@ -1254,14 +1591,14 @@ have no paid tier (5).
 | 29 | Server | 5 | 5 | 5 | 5 | 5 | 5 | 5 | 4 |
 | 30 | WordPress (wp-exelearning) | 3 | 4 | 4 | 3 | 4 | 4 | 4 | 1 |
 | 31 | Guideline 13 risk | 2 | 3 | 4 | 4 | 5 | 5 | 5 | 1 |
-| 32 | asset:// preservation | 5 | 4 | 4 | 2 | 2 | 2 | 2 | 2 |
+| 32 | asset:// preservation | 5 | 4 | 4 | 2 | 3 | 3 | 2 | 2 |
 | 33 | Educational plugin preservation | 5 | 3 | 3 | 2 | 2 | 2 | 1 | 1 |
 | 34 | Framework dependency | 5 | 5 | 5 | 5 | 4 | 5 | 4 | 1 |
 | 35 | Lock-in | 3 | 3 | 4 | 3 | 3 | 3 | 3 | 1 |
 | 36 | Abandonment risk | 1 | 4 | 2 | 4 | 4 | 2 | 3 | 5 |
 | 37 | Ease of replacing the engine later | 3 | 3 | 3 | 2 | 2 | 2 | 2 | 1 |
 | 38 | Free maintenance path | 1 | 3 | 3 | 2 | 4 | 5 | 5 | 5 |
-| | **Unweighted total (of 190)** | **131** | **143** | **135** | **125** | **130** | **125** | **123** | **103** |
+| | **Unweighted total (of 190)** | **131** | **143** | **135** | **125** | **131** | **126** | **123** | **103** |
 
 Scoring notes: for "cost", "risk", "effort", "lock-in" and "dependency" criteria a higher
 score means *less* cost or risk. ProseKit's scores differ from Tiptap's only on project
@@ -1326,18 +1663,18 @@ the weighted sum divided by the maximum reachable with the same weights, as a pe
 | Free maintenance path | 2 | 1 | 2 | 1 | 3 | 2 |
 
 **Weighted result, suggested profile:** TinyMCE 8 76.6 · HugeRTE 74.1 · Stay 5.10.9 73.5 ·
-Tiptap 67.9 · CKEditor 5 67.0 · ProseKit 65.6 · Lexical 63.7 · Gutenberg 55.2.
+Tiptap 68.7 · CKEditor 5 67.0 · ProseKit 66.5 · Lexical 63.7 · Gutenberg 55.2.
 
 ## How changing the weights changes the result
 
 | Weight profile | Stay 5.10.9 | TinyMCE 8 | HugeRTE | CKEditor 5 | Tiptap | ProseKit | Lexical | Gutenberg | Leader (margin) |
 |---|---|---|---|---|---|---|---|---|---|
-| Suggested (balanced) | 73.5 | 76.6 | 74.1 | 67.0 | 67.9 | 65.6 | 63.7 | 55.2 | TinyMCE 8 (+2.5 over HugeRTE) |
-| Maximum compatibility | 79.6 | 77.5 | 74.7 | 64.6 | 61.8 | 60.0 | 57.9 | 50.2 | Stay 5.10.9 (+2.1 over TinyMCE 8) |
-| Maximum security | 60.0 | 78.0 | 66.8 | 69.6 | 70.8 | 64.4 | 66.0 | 62.4 | TinyMCE 8 (+7.2 over Tiptap) |
-| Maximum innovation | 61.9 | 73.8 | 67.7 | 65.8 | 72.7 | 70.0 | 70.0 | 55.4 | TinyMCE 8 (+1.1 over Tiptap) |
-| Minimum own maintenance | 65.0 | 73.8 | 66.5 | 62.7 | 64.2 | 60.0 | 58.8 | 54.2 | TinyMCE 8 (+7.3 over HugeRTE) |
-| Maximum WordPress distribution | 72.1 | 75.7 | 76.8 | 67.9 | 75.4 | 74.3 | 73.6 | 56.1 | HugeRTE (+1.1 over TinyMCE 8) |
+| Suggested (balanced) | 73.5 | 76.6 | 74.1 | 67.0 | 68.7 | 66.5 | 63.7 | 55.2 | TinyMCE 8 (+2.5 over HugeRTE) |
+| Maximum compatibility | 79.6 | 77.5 | 74.7 | 64.6 | 62.8 | 61.1 | 57.9 | 50.2 | Stay 5.10.9 (+2.1 over TinyMCE 8) |
+| Maximum security | 60.0 | 78.0 | 66.8 | 69.6 | 71.2 | 64.8 | 66.0 | 62.4 | TinyMCE 8 (+6.8 over Tiptap) |
+| Maximum innovation | 61.9 | 73.8 | 67.7 | 65.8 | 73.1 | 70.4 | 70.0 | 55.4 | TinyMCE 8 (+0.7 over Tiptap) |
+| Minimum own maintenance | 65.0 | 73.8 | 66.5 | 62.7 | 64.6 | 60.4 | 58.8 | 54.2 | TinyMCE 8 (+7.3 over HugeRTE) |
+| Maximum WordPress distribution | 72.1 | 75.7 | 76.8 | 67.9 | 75.7 | 74.6 | 73.6 | 56.1 | HugeRTE (+1.1 over TinyMCE 8 and Tiptap) |
 
 What the sensitivity analysis shows [OPINION]:
 
@@ -1348,12 +1685,16 @@ What the sensitivity analysis shows [OPINION]:
   moved HugeRTE above Stay in the suggested profile, and TinyMCE 8's margin in maximum
   innovation widened from +0.4 to +1.1 over Tiptap because Tiptap's Yjs score dropped;
   every profile keeps the same winner as before.
+- **Update 2 did not change any leader either.** Raising `asset://` preservation for Tiptap
+  and ProseKit lifts both by 0.3–1.1 points depending on the profile: Tiptap's gap to
+  TinyMCE 8 in maximum innovation narrows from 1.1 to 0.7, and in maximum WordPress
+  distribution Tiptap now ties TinyMCE 8 for second place.
 - **Maximum compatibility favours staying**, which is expected (the baseline *is* current
   compatibility) and is exactly why a hard security requirement, not a weight, has to
   exclude Stay in the long term.
 - **Maximum security** separates TinyMCE 8 most clearly; HugeRTE drops because of bus
   factor, lag and abandonment risk.
-- **Maximum innovation** makes Tiptap nearly tie TinyMCE 8, only because plugin
+- **Maximum innovation** makes Tiptap nearly tie TinyMCE 8 (+0.7), only because plugin
   compatibility and migration cost weigh 0. Any weight on HTML fidelity puts Tiptap back
   behind. This is the only profile where the Yjs lens matters, and even there it does not
   change the leader.
@@ -1362,9 +1703,9 @@ What the sensitivity analysis shows [OPINION]:
   matrix as the non-React, upstream-y-prosemirror alternative if the team ever prefers the
   ProseMirror family.
 - **Maximum WordPress distribution** puts HugeRTE first: MIT, a different global, no npm
-  license sentence. The margin (1.1) is small.
-- **Gutenberg is last in every profile.** Lexical is never above fifth, except in maximum
-  innovation, where it ties ProseKit for third.
+  license sentence. The margin (1.1 over TinyMCE 8 and Tiptap) is small.
+- **Gutenberg is last in every profile.** Lexical is fourth in maximum innovation, just
+  behind ProseKit, and fifth or lower elsewhere.
 - A reviewer who changes a single score can flip the TinyMCE 8 / HugeRTE / Stay order;
   anyone disagreeing should propose the score change in the PR with its evidence.
 
@@ -1378,8 +1719,11 @@ To recompute after changing `evaluation.json`: `node scripts/analyze-editor-debt
 2. `xss_sanitization`, `sandbox_iframes` and `convert_unsafe_embeds` policy, decided
    together with the trust model (untrusted `.elp` import, server collaboration,
    wp-exelearning without `unfiltered_html`).
-3. Does the 941-fragment corpus survive TinyMCE 8.9.2 and HugeRTE 1.0.14 with the proposed
-   configuration? Do persisted `data-mce-html/pdf` markers survive 8.x?
+3. *Partly answered by Update 2.* The 1,319-fragment corpus keeps about 5.x-level element,
+   class, style, iframe and `asset://` presence on TinyMCE 8.9.2 and HugeRTE 1.0.14, and
+   persisted `data-mce-html/pdf` survive only without the core `media` plugin. Still open:
+   does it survive with eXe's own plugins loaded (`exemedia`, `exeimage`, …), with the
+   sanitisation policy of question 2, and after user edits?
 4. Which current features are non-negotiable (template, Word paste, mind maps, hangman,
    RSS feed)? Can `exegames_hangman` and `rssfeed` be deleted?
 5. Does the GPL self-hosted TinyMCE 8 build make any network request at runtime? Needs a
@@ -1396,11 +1740,20 @@ To recompute after changing `evaluation.json`: `node scripts/analyze-editor-debt
    the Yjs-native engine for iDevices 4.0) and say which wins.
 10. Where does eXe's CodeMagic port come from (MIT, GPL-2.0-only or the paid "Pro"
     product)? Until answered, CodeMagic B is also the license fix.
-11. If the ProseMirror family is ever preferred: what share of the 941-fragment corpus ends
-    up inside a raw-HTML atom node, and which Yjs line (Tiptap's Yjs 13 fork or upstream
-    `@y/*` 14) would eXe follow?
+11. If the ProseMirror family is ever preferred: what share of the 1,319-fragment corpus
+    ends up inside a raw-HTML atom node (ProseKit and Tiptap with a preserve layer were not
+    run on it), and which Yjs line (Tiptap's Yjs 13 fork, upstream `@y/*` 14, or ProseKit's
+    Loro option) would eXe follow?
 12. Is any feature the team calls non-negotiable (question 4) premium-only in the preferred
     engine? If so, that engine fails the license gate for that need.
+13. Should the persisted markers be renamed from `data-mce-html`/`data-mce-pdf` to eXe-owned
+    `data-exe-*` regardless of the engine, given that TinyMCE's own `media` plugin drops them
+    and `data-mce-fragment` has already leaked into saved content?
+14. Do the `asset://` hooks hold with eXe's `exeimage`/`exemedia` dialogs, asynchronous asset
+    resolution, `span.mce-preview-object` placeholders, and in Firefox and WebKit? Is
+    `editorUpload.addFilter` public API that Tiny will keep?
+15. Is a custom editor on Squire (HTML-first, maintained, no UI) worth estimating as a
+    long-term option, or is the cost of writing every dialog and plugin prohibitive?
 
 ## Proposed migration strategy
 
@@ -1505,8 +1858,10 @@ favour the TinyMCE family by small margins that a single score change can revers
 - `node scripts/analyze-editor-debt.mjs` reproduces every repository count quoted here;
   `bun test scripts/analyze-editor-debt.spec.ts` checks determinism and that the charts in
   `assets/editor-comparison/` match the script and `evaluation.json`.
-- Before acceptance: run the HTML corpus on the preferred engine(s); capture the network
-  activity of a GPL self-hosted TinyMCE 8 build; round-trip `data-mce-html/pdf`.
+- Before acceptance: run the committed HTML corpus experiment on the preferred engine(s)
+  with eXe's plugins and the chosen sanitisation policy (done for stock TinyMCE 8.9.2 and
+  HugeRTE 1.0.14 in Update 2); capture the network activity of a GPL self-hosted TinyMCE 8
+  build; `data-mce-html/pdf` round trip done in Update 2 (kept only without `media`).
 - After implementation: the round-trip gate runs in CI and the script shows zero
   `.tox-*`, internal markers and removed APIs in eXe plugins.
 
@@ -1514,7 +1869,8 @@ favour the TinyMCE family by small margins that a single score change can revers
 
 - Bump TinyMCE to 5.10.9 and add interim hardening (independent of the choice).
 - CodeMagic on CodeMirror 6 behind the same ID (reopens the substance of #2463).
-- Commit the HTML round-trip corpus and its gate.
+- Turn the committed corpus extractor and round-trip harness (`scripts/editor-experiments/`)
+  into a CI gate with a differential against the current engine's output.
 - wp-exelearning: policy for `.elp` uploads by users without `unfiltered_html`.
 - Clarify licenses of eXe plugins (CC BY-SA 4.0 headers, codemagic provenance); consider
   relicensing eXe-own plugins to AGPL-3.0-or-later.
@@ -1573,6 +1929,18 @@ favour the TinyMCE family by small margins that a single score change can revers
   <https://pro.platejs.org/pricing>, <https://github.com/advisories/GHSA-v3m3-f69x-jf25>,
   <https://github.com/toeverything/blocksuite>.
 - TinyMCE RTC retirement: <https://www.tiny.cloud/docs/tinymce/6/rtc-introduction/>.
+- Update 2 screening (all checked 2026-09-27; npm facts via `npm view`, repository facts via
+  `gh api`): <https://github.com/wangeditor-next/wangEditor-next>,
+  <https://github.com/udecode/plate>, <https://github.com/yoopta-editor/Yoopta-Editor>,
+  <https://github.com/fastmail/Squire>, <https://github.com/Alex-D/Trumbowyg>,
+  <https://github.com/samclarke/SCEditor>, <https://github.com/modstart-lib/ueditor-plus>,
+  <https://github.com/red-axe/am-editor>, <https://github.com/nhn/tui.editor>,
+  <https://github.com/Vanessa219/vditor>, <https://github.com/prosekit/prosekit>,
+  <https://github.com/remirror/remirror> (commit 61d27d389),
+  <https://github.com/hugerte/hugerte/blob/main/CHANGELOG.md> (1.0.11 entries).
+- Update 2 experiments: [`scripts/editor-experiments/`](../../../scripts/editor-experiments/README.md);
+  npm builds <https://unpkg.com/tinymce@8.9.2/tinymce.js> and
+  <https://unpkg.com/hugerte@1.0.14/hugerte.js> (line references in *Experiments*).
 - DR-0006 and DR-0017 (private repository):
   <https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0006-collaborative-non-blocking-editing.md>,
   <https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0017-modern-yjs-native-rich-text-editor.md>.
