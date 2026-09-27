@@ -238,8 +238,12 @@ Derived from the facts above. A candidate that cannot meet the first seven is no
    (`test/e2e/playwright/specs/collaborative/idevice-save-sync.spec.ts`).
 6. **Runs with no server and no network**: static, Electron, offline and embedded in
    WordPress, Moodle and Omeka S. No license server, no CDN, no phone-home.
-7. **License compatible with AGPL-3.0-or-later and redistributable offline**, and
-   acceptable for a GPL WordPress.org plugin.
+7. **License gate: free software compatible with AGPL-3.0-or-later.** The engine and
+   every component eXe needs from it must be free software that can be combined into an
+   AGPL-3.0-or-later distribution, redistributable offline and acceptable for a GPL
+   WordPress.org plugin. The functionality eXe needs must not depend on proprietary or
+   premium components, nor on a runtime license key or license server that restricts use.
+   This is a **hard gate**, applied before scoring; see *License gate* below.
 8. The educational plugins keep their output contract (`exe-fx`, `exe-tooltip`,
    `highlighted-code`, `abc-music`, math, Mermaid, mind maps).
 9. A source-HTML view with search/replace (today: CodeMagic).
@@ -249,30 +253,156 @@ Derived from the facts above. A candidate that cannot meet the first seven is no
 
 - **Character-level collaborative editing.** It does not exist, was deliberately not
   activated (#2169), and is off in static mode. A native Yjs binding is a *possible
-  future advantage*, not a requirement for this migration.
-- Premium or cloud features of any vendor (AI, comments, track changes, cloud RTC).
+  future advantage*, not a requirement for this migration. The sibling specification
+  record DR-0006 points the other way; see *Yjs considerations* for how the two relate.
+- Premium or cloud features of any vendor (AI, comments, track changes, cloud RTC). If
+  co-editing is ever promoted to a requirement, it must also pass the license gate: a
+  vendor whose only collaboration path is commercial then fails for that need.
 - Feature parity with Word paste cleaning beyond what eXe has today.
 - Changing the ELPX content model from HTML to a structured document model.
 - Changing the iDevice lock model.
 
+## License gate
+
+eXeLearning is AGPL-3.0-or-later. Requirement 7 is applied as a hard gate **before** any
+scoring. An option passes only if all four hold:
+
+- **(a)** it is free software;
+- **(b)** its license can be combined into an AGPL-3.0-or-later distribution;
+- **(c)** the features eXe needs are in the free build, with no premium or proprietary
+  component;
+- **(d)** it runs self-hosted and offline, with no license server, phone-home or CDN, and
+  no runtime key that restricts use. A fixed, public, offline value such as TinyMCE's
+  `'gpl'` or CKEditor's `'GPL'` counts as a condition, not a failure.
+
+Verdicts are **PASS**, **PASS-WITH-CONDITIONS** (the conditions are listed and become
+obligations of the option) or **FAIL**. An option that fails is not scored; it is listed
+under *Discarded by the license gate*. `evaluation.json` records the verdict of every
+scored option (`license.gate`) and the discarded ones (`discardedByLicenseGate`), and
+`scripts/analyze-editor-debt.mjs` refuses to score an option whose verdict is not PASS or
+PASS-WITH-CONDITIONS.
+
+**How the licenses were read [FACT]:** the `LICENSE`/`license.md` file inside the
+published npm tarball (`npm pack`), the repository LICENSE file, or the npm `license`
+field where marked "npm field". All checked **2026-09-27**. The compatibility reasoning
+follows the FSF: GPL-2.0-or-later code can be used under GPLv3, and "You can always link
+GPLv3-covered modules with AGPLv3-covered modules"
+(<https://www.gnu.org/licenses/gpl-faq.html#AllCompatibility>); LGPL-2.1, Expat (MIT),
+Modified BSD, Apache-2.0 and MPL-2.0 are listed as GPLv3-compatible
+(<https://www.gnu.org/licenses/license-list.html>). **This is not legal advice.**
+
+### Is CKEditor 5 free?
+
+**Yes for the core, no for collaboration and several features.** In detail:
+
+- [FACT] `ckeditor5@48.5.2` `LICENSE.md`: "Licensed under a dual-license model … the GNU
+  General Public License Version 2 or later (see COPYING.GPL), or commercial license
+  terms". That is free software, and through "or later" it combines with AGPL-3.0 under
+  GPLv3 §13. The GPL meta-package depends only on GPL packages and contains everything
+  eXe needs: General HTML Support, `html-embed`, basic `source-editing`, `table`,
+  `media-embed`, `image`, `upload`, basic `paste-from-office`, `find-and-replace`,
+  `list`, `font`, `code-block`, `style`.
+- [FACT] Everything in `ckeditor5-premium-features@48.5.2` is commercial ("licensed under a
+  commercial license"): real-time collaboration, comments, track changes, revision
+  history, **Templates**, **enhanced source editing**, **enhanced paste from Office**,
+  export to PDF/Word, import from Word, AI, multi-level lists, pagination and others
+  (<https://ckeditor.com/legal/ckeditor-licensing-options>).
+- [FACT] **The LTS edition is not free.** `@ckeditor/ckeditor5-core@47.7.5` (dist-tags
+  `lts-v47` and `staging`) says "CKEditor 5 Long Term Support Edition is licensed under a
+  commercial license", and its code runs `if (licenseKey == 'GPL') { blockEditor('lts');
+  … }` (<https://ckeditor.com/docs/ckeditor5/latest/getting-started/setup/using-lts-edition.html>).
+  A GPL user has to follow the current major line (48.x) and absorb every major upgrade.
+- [FACT] Under GPL: `licenseKey: 'GPL'` is required and works only for self-hosted
+  builds (npm or ZIP), not the CDN; the GPL branch returns before the usage-reporting code
+  runs; the "Powered by CKEditor" badge is forced on
+  (<https://ckeditor.com/docs/ckeditor5/latest/getting-started/licensing/license-key-and-activation.html>,
+  source of `@ckeditor/ckeditor5-core` and `-ui` 48.5.2).
+- [FACT] The collaboration engine is operational transformation, present in the GPL
+  `@ckeditor/ckeditor5-engine@48.5.2` itself (`dist/model/operation/…`); only the
+  collaboration plugin and its server are commercial. A free, open-source OT server for
+  CKEditor 5 was not found (UNVERIFIED that none exists). No Yjs binding exists except
+  Velt's `@veltdev/ckeditor-crdt`, which is licensed "Proprietary" and needs a Velt SaaS
+  account.
+- **Verdict: PASS-WITH-CONDITIONS** for single-author editing. Conditions: the 48.x GPL
+  build only; `licenseKey:'GPL'`; self-hosted; the badge stays; never import
+  `ckeditor5-premium-features`; eXe writes its own template plugin (it ships 12 layout
+  templates, `tinymce_5_settings.js:51-81`). [OPINION] **It would FAIL the gate if
+  co-editing became a requirement**, because its only collaboration path is commercial.
+  So would TinyMCE 8, HugeRTE and Jodit, which have no free *structural* collaboration
+  path either; what sets CKEditor apart is its commercial-only LTS line.
+
+### Gate table
+
+| Option (version checked) | SPDX (source) | Verdict | Conditions / reason |
+|---|---|---|---|
+| TinyMCE 5.10.9 (`5-latest`) | LGPL-2.1 (npm; bundled `license.txt`) | **PASS** | None for the license; security end of life is a separate problem |
+| TinyMCE 5.11 LTS (paid) | UNVERIFIED | **FAIL** | Commercial; redistribution under AGPL not confirmed in writing |
+| TinyMCE 8.9.2 | GPL-2.0-or-later (repo `LICENSE.md`); npm 8.3+ `license.md` adds "By use of this Software you have agreed to these Tiny … Terms" | **PASS-WITH-CONDITIONS** | `license_key:'gpl'` (offline, no license plugin loaded); build from the tagged GitHub source or get a written opinion on the npm sentence (see *Licensing*); no `tinymce-premium`; own `template` plugin ("Removed in 7.0. Replaced by the premium Templates plugin", <https://www.tiny.cloud/docs/tinymce/latest/migration-from-6x/>); no advcode or PowerPaste |
+| HugeRTE 1.0.14 | MIT (file) | **PASS** | Keeps `template` under MIT. [OPINION] Later TinyMCE fixes are GPL and cannot be merged into MIT |
+| CKEditor 5 48.5.2 | GPL-2.0-or-later OR LicenseRef-Commercial (file) | **PASS-WITH-CONDITIONS** | See *Is CKEditor 5 free?* |
+| CKEditor 5 47.x LTS | LicenseRef-Commercial (file) | **FAIL** | Commercial; blocks the GPL key |
+| Tiptap 3.31.3 (core, StarterKit, table, image, collaboration, `@tiptap/y-tiptap`) | MIT (npm, repo) | **PASS** | Pro extensions ("Snapshots, Comments, and some features of AI Toolkit also require an active subscription", <https://github.com/ueberdosis/tiptap-docs/blob/main/src/content/guides/pro-extensions.mdx>) and Tiptap Cloud are paid and not needed; Hocuspocus 4.7.0 is MIT |
+| ProseMirror + y-prosemirror 1.3.7 | MIT | **PASS** | None |
+| ProseKit 0.22.3 | MIT (npm) | **PASS** | None |
+| Lexical 0.51.0 + `@lexical/yjs` | MIT | **PASS** | None |
+| Gutenberg (`@wordpress/block-editor` 18.0.0) | GPL-2.0-or-later (npm); `LICENSE.md` adds MPL-2.0 for contributions since 2021-04-15 | **PASS** | None (rejected on fit) |
+| Remirror 3.0.3 + `@remirror/extension-yjs` 4.0.3 | MIT | **PASS** | License only; discarded on maintenance status |
+| Milkdown 7.22.2 + `@milkdown/plugin-collab` | MIT | **PASS** | License only; discarded on model |
+| BlockNote 0.55.0 | Core, react, server-util: MPL-2.0; `xl-*` (multi-column, AI, DOCX/PDF/ODT export): "GPL-3.0 OR PROPRIETARY" (<https://github.com/TypeCellOS/BlockNote/blob/main/LICENSE.txt>) | **PASS** (core); `xl-*` PASS-WITH-CONDITIONS | MPL-2.0 without the "Incompatible With Secondary Licenses" notice; `xl-*` combine as GPL-3.0-only under §13. Discarded on fit |
+| Quill 2.0.3 + y-quill 1.0.0 | BSD-3-Clause / MIT | **PASS** | License only; discarded on maintenance and fidelity |
+| Plate (`platejs` 53.3.14, `@platejs/yjs` 53.2.0) | MIT (`@platejs/diff` Apache-2.0 + MIT) | **PASS** | Plate Plus templates are paid and not needed. Discarded on fit |
+| Slate 0.126.2 + `@slate-yjs/core` 1.0.2 | MIT | **PASS** | License only; discarded |
+| BlockSuite 0.22.x | npm says MIT, repository LICENSE says MPL-2.0 | **PASS-WITH-CONDITIONS** | Resolve the mismatch first (both are compatible). Discarded on fit |
+| SuperDoc 2.18.0 | AGPL-3.0 (npm; "only" vs "or later" UNVERIFIED) | **PASS** | Combined work becomes AGPL-3.0 [OPINION]. Off-target (DOCX editor) |
+| wangEditor-next 6.4.2 + `@wangeditor-next/yjs` | MIT | **PASS** | License only; not evaluated beyond screening |
+| Jodit 4.15.14 | MIT (file); `jodit-pro` proprietary | **PASS-WITH-CONDITIONS** | Bundle Ace (BSD-3-Clause) and js-beautify locally instead of the cdnjs default (`esm/plugins/source/config.js`); never ship `jodit-pro` |
+| SunEditor 3.3.3 | MIT (file) | **PASS** | Security advisories are a separate matter |
+| Froala 5.4.0 | Proprietary (`License.txt`: "you have to purchase a license") | **FAIL** | Not free software |
+| Editor.js, Trix, Squire, Trumbowyg, Summernote, Pell | Apache-2.0 / MIT (npm field only) | **PASS** | License only; screened out on fit |
+| CodeMirror 6 + y-codemirror.next 0.3.6 | MIT | **PASS** | None |
+| Monaco 0.57.0 + y-monaco 0.1.6 | MIT (+ `ThirdPartyNotices.txt`) | **PASS** | Ship the third-party notices |
+| Ace 1.44.0 + y-ace | BSD-3-Clause / MIT (GitHub only, not on npm) | **PASS** | None |
+| Prism Code Editor 5.4.0 | MIT (file) | **PASS** | None |
+| Yjs 13.6.33, y-protocols, y-websocket, Hocuspocus 4.7.0 | MIT | **PASS** | None |
+| eXe's current CodeMagic plugin | **No license text** | **UNVERIFIED, treated as a risk** | See *CodeMagic strategy* |
+
+**Headline [OPINION]:** every scored finalist passes the gate; none is excluded by it. The
+hard FAILs are Froala, the CKEditor 5 LTS edition and the paid TinyMCE 5 LTS, and none of
+them was a finalist. What differs between finalists is the **conditions**: TinyMCE 8 has
+the npm terms sentence and a premium `template`; CKEditor 5 has the badge, no free LTS, a
+premium `template` and no free collaboration; HugeRTE, Tiptap, ProseKit, Lexical and
+Gutenberg pass without conditions for the functionality eXe needs.
+
+### Discarded by the license gate
+
+| Option | Reason |
+|---|---|
+| Froala | Proprietary; not free software |
+| CKEditor 5 LTS (47.x) | Commercial edition; refuses the GPL key |
+| Paid TinyMCE 5 LTS (5.11.x), former option 0b | Commercial; redistribution inside an AGPL application and a WordPress.org plugin not confirmed in writing. Price UNVERIFIED |
+
 ## Alternatives considered
 
 The list below is the result of a screening; details and sources follow in each
-subsection. Options 1 to 6 are the finalists that appear in the charts.
+subsection. Options 1 to 6, plus 4b, are the finalists that appear in the charts. Every finalist
+passed the *License gate*.
 
-| # | Option | Status after screening |
-|---|---|---|
-| 0 | Stay on TinyMCE 5 (5.10.9 bump plus interim hardening) | Baseline, not a long-term option |
-| 0b | Paid TinyMCE 5 LTS (5.11.x) | Listed; price and redistribution terms UNVERIFIED |
-| 1 | **TinyMCE 8** | Finalist |
-| 2 | **HugeRTE** (MIT fork of TinyMCE 6/7-pre) | Finalist |
-| 3 | **CKEditor 5** with General HTML Support | Finalist, best "modern rewrite" for HTML fidelity |
-| 4 | **Tiptap / ProseMirror** | Finalist, best for a structured model and Yjs |
-| 5 | **Lexical** | Finalist on request; weakest fit |
-| 6 | **Gutenberg block editor** | Finalist on request; rejected on evidence |
-| – | Jodit, SunEditor | Screened; possible second-line HTML-first editors |
-| – | Quill, Editor.js, Slate, Milkdown, Summernote, Froala, BlockNote, Trix, Pell | Screened out |
-| – | Squire, Trumbowyg | **Not screened** |
+| # | Option | License gate | Status after screening |
+|---|---|---|---|
+| 0 | Stay on TinyMCE 5 (5.10.9 bump plus interim hardening) | PASS | Baseline, not a long-term option |
+| 1 | **TinyMCE 8** | PASS-WITH-CONDITIONS | Finalist |
+| 2 | **HugeRTE** (MIT fork of TinyMCE 6/7-pre) | PASS | Finalist |
+| 3 | **CKEditor 5** with General HTML Support | PASS-WITH-CONDITIONS | Finalist, best "modern rewrite" for HTML fidelity |
+| 4 | **Tiptap / ProseMirror** | PASS | Finalist, best for a structured model and Yjs |
+| 4b | **ProseKit** (ProseMirror) | PASS | Finalist added under the Yjs lens; bus factor 1 |
+| 5 | **Lexical** | PASS | Finalist on request; weakest fit |
+| 6 | **Gutenberg block editor** | PASS | Finalist on request; rejected on evidence |
+| – | Jodit, SunEditor | PASS-WITH-CONDITIONS / PASS | Screened; possible second-line HTML-first editors |
+| – | Yjs-bindable editors: Remirror, Milkdown, BlockNote, Quill 2 + y-quill, Plate / Slate + slate-yjs, BlockSuite, SuperDoc, wangEditor-next | PASS (license only) | Screened under the Yjs lens and discarded on fit or maintenance; see *Editors with Yjs bindings* |
+| – | Editor.js, Summernote, Trix, Pell | PASS (license only) | Screened out |
+| – | Froala, CKEditor 5 LTS, paid TinyMCE 5 LTS (former 0b) | **FAIL** | Discarded by the license gate |
+| – | Squire, Trumbowyg | PASS (npm field) | **Not screened** |
+| – | Umo Editor (Vue, Tiptap), Atlaskit editor (React) | not checked | **Not screened**; most likely out on framework or model. Licenses and versions UNVERIFIED |
 
 ### Option 0: stay on TinyMCE 5.10.9 with interim hardening
 
@@ -286,13 +416,13 @@ subsection. Options 1 to 6 are the finalists that appear in the charts.
   monotonically, and the argument "core's TinyMCE cannot run our plugins" is weaker
   for an end-of-life 5.x than for a maintained 8.x.
 
-### Option 0b: paid TinyMCE 5 LTS
+### Former option 0b: paid TinyMCE 5 LTS (discarded by the license gate)
 
 - [FACT] Tiny sells extended 5.x support (support page above); 5.11.0/5.11.1 fix the
-  2024 and 2026 advisories.
+  2024 and 2026 advisories. The 5.11 builds are not on npm.
 - UNVERIFIED: price, and whether the LTS build may be redistributed inside an AGPL
-  application and a WordPress.org plugin. **[OPINION]** Unless both are confirmed
-  in writing, this is not an option for an openly redistributed product.
+  application and a WordPress.org plugin. **[OPINION]** Until both are confirmed in
+  writing it fails the license gate, and it is not scored.
 
 ### Option 1: TinyMCE 8
 
@@ -333,7 +463,14 @@ subsection. Options 1 to 6 are the finalists that appear in the charts.
   8.2.2, most likely stale metadata (the "why" is UNVERIFIED). Chamilo is moving from
   5.10.9 to 8.x for the same CVEs (<https://github.com/chamilo/chamilo-lms/issues/9092>).
   [OPINION] Moodle is a weaker precedent than it looks.
-- Licensing: see *Licensing*.
+- License gate: **PASS-WITH-CONDITIONS** (see *License gate* and *Licensing*). The
+  `template` replacement is premium, so eXe's `template` fork has to be rebuilt as an eXe
+  plugin; that work is inside the "Own plugins" estimate (it is one of the 4 forks) and is
+  the main reason TinyMCE 8 is estimated slightly above HugeRTE.
+- [FACT] No Yjs binding, free or paid: Tiny's own RTC "will be retired and deactivated on
+  December 31, 2023" (<https://www.tiny.cloud/docs/tinymce/6/rtc-introduction/>) and was
+  not Yjs. The only Yjs adapter found is Velt's `@veltdev/tinymce-crdt` 1.0.2, licensed
+  "Proprietary" and SaaS-bound, which fails the gate.
 
 ### Option 2: HugeRTE
 
@@ -367,11 +504,16 @@ subsection. Options 1 to 6 are the finalists that appear in the charts.
 
 ### Option 3: CKEditor 5 with General HTML Support (GHS)
 
-- [FACT] `ckeditor5` 48.5.2 (2026-09-22), LTS line 47.7.5. GPL-2.0-or-later or commercial;
+- [FACT] `ckeditor5` 48.5.2 (2026-09-22). GPL-2.0-or-later or commercial;
   `licenseKey: 'GPL'` required since v44 and valid only for self-hosted builds
   (<https://ckeditor.com/docs/ckeditor5/latest/getting-started/licensing/license-key-and-activation.html>).
   Under GPL the "Powered by CKEditor" badge is always shown and usage reporting is skipped
   (source of `@ckeditor/ckeditor5-ui` and `-core` 48.5.2).
+- [FACT] The LTS line (47.7.5, dist-tag `lts-v47`) is **commercial and refuses the GPL
+  key**; an open-source user must follow 48.x and every later major. Templates, enhanced
+  source editing and enhanced paste from Office are premium. License gate:
+  **PASS-WITH-CONDITIONS** (see *Is CKEditor 5 free?*). The `template` rebuild is inside
+  the "Own plugins" estimate.
 - [FACT] GHS keeps markup no plugin handles but "does not offer any UI" and elements
   "still need to adhere to certain rules derived from the HTML schema"
   (<https://ckeditor.com/docs/ckeditor5/latest/features/html/general-html-support.html>).
@@ -380,6 +522,7 @@ subsection. Options 1 to 6 are the finalists that appear in the charts.
   (<https://ckeditor.com/docs/ckeditor5/latest/features/accessibility.html>).
 - Real-time collaboration needs CKEditor Cloud Services or a commercial on-premises
   server (<https://ckeditor.com/docs/ckeditor5/latest/features/collaboration/collaboration.html>).
+  It is operational transformation, not Yjs; no free Yjs binding exists.
 
 ### Option 4: Tiptap / ProseMirror
 
@@ -389,19 +532,50 @@ subsection. Options 1 to 6 are the finalists that appear in the charts.
   (`npm view prosemirror-model repository.url`); one lead maintainer.
 - [FACT] Schema-driven: "You can't use any HTML element or attribute that is not defined
   in your schema" (<https://tiptap.dev/docs/editor/api/schema>). UI components are React.
-- [FACT] Yjs: `@tiptap/extension-collaboration` (MIT) over `@tiptap/y-tiptap`;
-  `y-prosemirror` npm `latest` 1.3.7, while 2.0 prereleases targeting Yjs 14 exist only
-  in the repository, not as a published dist-tag.
+- [FACT] Yjs: `@tiptap/extension-collaboration` 3.31.3 (MIT) runs over
+  `@tiptap/y-tiptap` 3.0.9 (2026-08-18), **Tiptap's own fork** of y-prosemirror 1.x, with
+  a peer dependency on `yjs ^13.5.38`. The Yjs author's binding has moved on: unscoped
+  `y-prosemirror` `latest` is 1.3.7 (2025-07-03, no 1.x release since), the repository
+  `master` is on 2.x ("2.0.0-13", 2026-09-25), and 2.x is **published under a new scope**:
+  `@y/prosemirror` (dist-tags `latest` 2.0.0-0, `beta` 2.0.0-13) on `@y/y` 14 (`beta`
+  14.0.0-rc.26). [OPINION] Tiptap and plain ProseMirror are therefore heading towards
+  different Yjs majors; choosing Tiptap ties a future collaboration path to a fork that
+  Tiptap maintains. Hocuspocus 4.7.0 (server and provider) is MIT, so no paid Tiptap
+  component is needed for co-editing.
+- License gate: **PASS**. Pro extensions (comments, snapshots, parts of the AI toolkit)
+  and Tiptap Cloud are paid and not needed.
 - [FACT] Advisories 2026: GHSA-cp6q-959q-f8rh (high, `mergeAttributes()` prototype
   pollution leading to executable attributes), relevant to any "preserve all attributes"
   strategy.
+
+### Option 4b: ProseKit (added under the Yjs lens)
+
+- [FACT] `prosekit` 0.22.3 (2026-09-20), MIT, pre-1.0. A framework-agnostic toolkit over
+  ProseMirror with adapters for React, Vue, Preact, Svelte and Solid, so unlike Tiptap's
+  UI components it needs no React. Its Yjs extension (`prosekit/extensions/yjs`) peers on
+  the **upstream** `y-prosemirror >= 1.2.9` and `yjs >= 13.6.18`, not on Tiptap's fork.
+- [FACT] One dominant maintainer: ocavue has 1,087 commits
+  (`gh api repos/prosekit/prosekit/contributors`; the next entries are bots). ocavue is
+  also Remirror's second contributor (364 commits), and Remirror's README says "remirror
+  is in maintenance mode and is not recommended for new projects" and points to ProseKit
+  (<https://github.com/remirror/remirror>).
+- [OPINION] It concentrates exactly the risk that put Remirror into maintenance mode: bus
+  factor 1, pre-1.0 API. Same schema-based HTML fidelity problem as Tiptap (no separate
+  measurement; the Tiptap run applies to the shared ProseMirror model). It was never
+  screened before this amendment and is scored so that the Yjs-capable ProseMirror family
+  is represented by more than one vendor.
+- [MEASURED] basic + yjs extension: 367 KB / 115 KB (Bun 1.4.2 `--minify`, `yjs`
+  external, `gzip -9`, single run, ±20 %; not comparable with the esbuild figures in
+  *Performance*).
+- License gate: **PASS**.
 
 ### Option 5: Lexical
 
 - [FACT] `lexical` 0.51.0 (2026-09-17), MIT, pre-1.0; nine of the last ten release notes
   mention breaking changes (<https://github.com/facebook/lexical/releases>). No published
-  image node; reference UI is React. `@lexical/yjs` exists. The vanilla-JS integration
-  effort is UNVERIFIED.
+  image node; reference UI is React. `@lexical/yjs` 0.51.0 (MIT, maintained by Meta with
+  the core) binds a root `Y.XmlText`. The vanilla-JS integration effort is UNVERIFIED.
+  License gate: **PASS**.
 
 ### Option 6: Gutenberg block editor
 
@@ -427,10 +601,49 @@ subsection. Options 1 to 6 are the finalists that appear in the charts.
   affects ≤2.47.10) and a high one GHSA-w93q-cq9w-58p7 (≤3.1.3). Not evaluated beyond
   this screening.
 - **Squire, Trumbowyg**: not screened. Anyone arguing for them should add the evidence.
-- **Discarded**: Quill 2.0.3 (no release in 12 months, unpatched GHSA-v3m3-f69x-jf25),
-  Editor.js (JSON output), Slate (beta, React), Milkdown (Markdown), Summernote (jQuery,
-  stagnant), Froala (proprietary), BlockNote, Trix, Pell (schema/subset models or
-  abandoned).
+- **Discarded on fit**: Editor.js (JSON output), Summernote (jQuery, stagnant), Trix and
+  Pell (subset models or abandoned). The Yjs-bindable editors are covered in the next
+  subsection.
+- **Discarded by the license gate**: Froala (proprietary), CKEditor 5 LTS, paid
+  TinyMCE 5 LTS.
+
+### Editors with Yjs bindings
+
+The maintainer review asked for editors with Yjs bindings to be considered seriously.
+The Yjs project keeps **two lists**, and they differ [FACT, both fetched 2026-09-27]:
+the docs page (<https://docs.yjs.dev/ecosystem/editor-bindings>) lists ProseMirror,
+Tiptap, Monaco, Quill, CodeMirror (`y-codemirror.next`) and Remirror; the README
+bindings table (<https://github.com/yjs/yjs#bindings>) lists ProseMirror, Tiptap, Quill,
+Monaco, CodeMirror 5 (`y-codemirror`), Ace, Slate, BlockSuite, Lexical, BlockNote,
+Milkdown and SuperDoc, plus non-editor bindings (valtio, immer, SyncedStore, PSPDFKit…)
+that are not editor candidates. Remirror is only on the docs page.
+
+"Official" means maintained by the editor vendor or by the Yjs author. Versions and dates
+from `npm view` and `gh api` on 2026-09-27. Granularity: "character" means concurrent
+typing in the same paragraph merges.
+
+| Stack | Binding: who, latest release | License | Yjs type, granularity | Legacy-HTML risk | Fit / outcome [OPINION] |
+|---|---|---|---|---|---|
+| ProseMirror + y-prosemirror | Yjs author. 1.3.7 (2025-07-03); 2.x as `@y/prosemirror` beta 2.0.0-13 on `@y/y` 14 | MIT | `Y.XmlFragment`; character-level text, node-level structure | High without catch-all nodes (Tiptap run: 71 % attributes stock) | Headless; the base of every option below. Kept inside options 4 and 4b |
+| Tiptap 3 + extension-collaboration | Vendor. 3.31.3 over `@tiptap/y-tiptap` 3.0.9 (fork, Yjs 13) | MIT; Hocuspocus MIT | as ProseMirror | as ProseMirror | **Finalist (option 4)** |
+| ProseKit + `prosekit/extensions/yjs` | Vendor. 0.22.3 (2026-09-20), upstream y-prosemirror 1.x | MIT | as ProseMirror | as ProseMirror | **New finalist (option 4b)**, bus factor 1 |
+| Remirror + `@remirror/extension-yjs` | Vendor. Extension 4.0.3 (2026-02-27), core 3.0.3 (2025-08-02) | MIT | as ProseMirror | as ProseMirror | **Discarded**: the project itself says it is in maintenance mode and recommends ProseKit |
+| Milkdown + `@milkdown/plugin-collab` | Vendor, thin wrapper over y-prosemirror. 7.22.2 (2026-09-23) | MIT | as ProseMirror | **Very high**: the model is Markdown | **Discarded**: if ProseMirror collaboration is wanted, use ProseMirror directly |
+| BlockNote | Vendor, y-prosemirror. 0.55.0 (2026-09-22); peer dependencies on both Yjs 13 and `@y/y` 14 | MPL-2.0 core; `xl-*` GPL-3.0 or commercial | as ProseMirror, block model | **Very high**: "If BlockNote doesn't recognize an element's tag, it will parse it as a paragraph or plain text" (<https://www.blocknotejs.org/docs/features/import/html>) | **Discarded**: lossy by design, React-only UI, mid Yjs 13→14 transition. License is not the reason |
+| Quill 2 + y-quill | Yjs author. y-quill 1.0.0 (2024-04-22); Quill 2.0.3 (2024-11-30) | BSD-3-Clause / MIT | flat `Y.Text` delta; character | **Very high** (Parchment model; [MEASURED] 8-fragment smoke test: wrappers, `dl`, classes lost, `asset://` image `src` rewritten to `//:0`) | **Discarded**: no Quill release in 22 months, dormant binding, breaks requirement 3. Its advisory GHSA-v3m3-f69x-jf25 (CVE-2025-15056) is low severity, CVSS 2.0; it is not the reason |
+| Slate + `@slate-yjs/core` | Community. 1.0.2 (**2023-07-11**); repository pushed 2024-06-20; forks exist (e.g. `@alineco/slate-yjs-core`) | MIT | `Y.XmlText`; character | High: schema-less but the HTML deserialiser is yours | **Discarded**: stale canonical binding, 0.x core (framework-agnostic; only `slate-react` is React), no HTML model |
+| Plate + `@platejs/yjs` | Vendor, over slate-yjs. 53.2.0 (2026-06-15) | MIT | `Y.XmlText` | High | **Discarded**: React-only (peer react ≥ 18) |
+| Lexical + `@lexical/yjs` | Vendor (Meta). 0.51.0 (2026-09-17) | MIT | root `Y.XmlText` | **Very high** (class kept 0 of 6,044) | Finalist (option 5); the good binding does not offset the worst measured fidelity |
+| BlockSuite | Vendor. npm 0.22.4 (2025-07-01); repository active (pushed 2026-09-25) | MIT (npm) vs MPL-2.0 (repo) | native Yjs, block model | Very high | **Discarded** on model |
+| SuperDoc | Vendor. 2.18.0 | AGPL-3.0 | native Yjs, DOCX model | Off-target | **Discarded** on model |
+| wangEditor-next + `@wangeditor-next/yjs` | Vendor. 6.4.2 (2026-09-13) | MIT | Slate-based | High (Slate schema) | Not evaluated beyond screening; lossy by construction [OPINION] |
+| TinyMCE 8, HugeRTE, CKEditor 5, Jodit, SunEditor | **No free structural binding** found (npm and GitHub search; absence is not proof). Velt's TinyMCE and CKEditor adapters are "Proprietary" | – | string-diff on `Y.Text` possible (see *Yjs considerations*) | – | Unchanged; collaboration is a non-requirement |
+
+**Outcome of re-screening under the Yjs lens [OPINION]:** no earlier discard is reversed.
+The Yjs lens upgrades only the ProseMirror family, adds ProseKit as a finalist, and adds
+evidence to the existing discards. All free Yjs rich-text paths are schema-based, so the
+legacy-HTML problem measured in *Comparative analysis* remains the cost of choosing any of
+them.
 
 ## Comparative analysis
 
@@ -466,7 +679,7 @@ proof of concept.
 
 ## Migration impact
 
-| Area | TinyMCE 8 / HugeRTE | CKEditor 5 / Tiptap / Lexical | Gutenberg |
+| Area | TinyMCE 8 / HugeRTE | CKEditor 5 / Tiptap / ProseKit / Lexical | Gutenberg |
 |---|---|---|---|
 | iDevices (12 init sites, ~300 `get()` calls) | Unchanged through `$exeTinyMCE`; the global becomes `hugerte` for HugeRTE | Need the facade described in *Proposed migration strategy* | Each field needs a React root |
 | 4 core forks | Re-fork or rebuild on 8.x `image`/`link`/`media` | Rewrite as model plugins | Rewrite as blocks/formats |
@@ -520,16 +733,51 @@ states no license; `grep -i license` in the plugin JS finds nothing. **[OPINION]
 a WordPress.org Guideline 1 blocker candidate. A clean reimplementation removes the code of
 unknown license; whether the UI design itself needs attribution is UNVERIFIED.
 
+**Provenance, a risk to resolve (not a finding):**
+
+- [FACT] The original CodeMagic for TinyMCE 3 is MIT: "Released under MIT License"
+  (<https://github.com/tinymce-plugins/codemagic>, `licence.txt`).
+- [FACT] Josh Lobe's free WordPress plugin "Ultimate TinyMCE" is GPL version 2 **without**
+  "or later" (`main.php` on <https://plugins.svn.wordpress.org/ultimate-tinymce/trunk/>),
+  and still bundles the MIT CodeMagic; "Ultimate TinyMCE Pro" was a paid product.
+- UNVERIFIED: where eXe's TinyMCE 4+ port came from. [OPINION] If it derives from
+  GPL-2.0-only code it cannot be combined with AGPL-3.0-or-later; if it derives from the
+  "Pro" product it cannot be redistributed; if it is an MIT derivative the MIT notice is
+  missing. Until provenance is shown, treat it as failing the license gate for
+  redistribution. Option B below removes the question, so it now has a license argument as
+  well as a technical one.
+
+**Yjs bindings for the source view [FACT]:**
+
+- CodeMirror 6: `y-codemirror.next` 0.3.6 (2026-08-18), MIT, by the Yjs author. It binds a
+  plain `Y.Text`, character-level, and is on the Yjs docs page. (The README's CodeMirror
+  row links `y-codemirror`, the CodeMirror 5 binding.)
+- Monaco: `y-monaco` 0.1.6 (**2024-07-31**, repository last pushed then), MIT. Monaco
+  0.57.0 measured 2,696 KB / 688 KB plus 104 KB CSS without language workers ([MEASURED],
+  Bun 1.4.2, single run), and "Is the editor supported in mobile browsers…? No."
+  (<https://github.com/microsoft/monaco-editor#faq>).
+- Ace: `y-ace`, MIT, GitHub only (not on npm), repository last pushed 2025-03-19; stale
+  (<https://github.com/bajrangCoder/y-ace>).
+- [OPINION] The value is narrow: a source view and a WYSIWYG binding cannot coherently
+  co-edit the same field. The exception is a field that is a raw HTML string: eXe's
+  existing `Y.Text htmlContent` could be bound by `y-codemirror.next` once the save path
+  stops doing delete-all + insert. That is a bonus for B, not a reason for it. Monaco and
+  Ace are discarded: size, no mobile support and a stale binding for Monaco; no advantage
+  and a stale binding for Ace.
+
 | Option | Size (measured, min / gzip) | Effort [EST] | Assessment [OPINION] |
 |---|---|---|---|
 | A. Keep, upgrade to CodeMirror 5.65.21 | 279 KB / 90 KB | 1–3 days, UNVERIFIED | Stop-gap only: keeps iframe, jQuery, routes, unknown license; ships a second copy of the library WordPress ships (`wp-codemirror`, CM 5.65.20) |
 | **B. CodeMirror 6 behind the same `codemagic` ID** | 544 KB / 183 KB, lazy-loadable | 1–2 person-weeks | Removes iframe, jQuery injection, routes and `parent.tinymce` coupling |
 | C. CodeJar | 6 KB / 2.6 KB + highlighter | – | No search/replace or autocomplete: regression |
 | D. Prism Code Editor 5.4.0 | 58 KB / 23.5 KB | 1–2 person-weeks | Credible, smaller; one maintainer, recent ownership change, accessibility claim UNVERIFIED |
-| E. Ace 1.44.0 | 475 KB / 126 KB + modes | – | Heavier than B with no advantage |
+| E. Ace 1.44.0 | 475 KB / 126 KB + modes | – | Heavier than B with no advantage; `y-ace` stale |
+| G. Monaco 0.57.0 | 2,696 KB / 688 KB + CSS | – | Rejected: size, no mobile support, `y-monaco` unreleased since 2024 |
 | F. Engine's plain `code` dialog | 0 | < 1 day | The regression rejected in #2463; TinyMCE's advcode is premium |
 
-Sizes: `bun build --minify`, `gzip -9`, Bun 1.4.2, ±20 %.
+Sizes: `bun build --minify`, `gzip -9`, Bun 1.4.2, ±20 %. The libraries in A, B, D, E and G are
+MIT or BSD-3-Clause and pass the license gate (CodeJar's license was not checked); eXe's
+current CodeMagic code does not pass until its provenance is shown.
 
 **Testing the hypothesis "CodeMirror 6 behind the same plugin ID" (without assuming it):**
 
@@ -561,18 +809,73 @@ before the engine decision and would have reduced #2463's regression to zero.
 - [FACT] Current model: iDevice locks plus whole-HTML save-time sync; `Y.Text` is used as
   a container with delete-all + insert; no collaboration in static mode (see *Current
   architecture*).
-- [FACT] Native bindings: ProseMirror/Tiptap (`y-prosemirror`, `@tiptap/y-tiptap`) and
-  Lexical (`@lexical/yjs`) have them; TinyMCE, HugeRTE and CKEditor 5 do not
-  (<https://docs.yjs.dev/ecosystem/editor-bindings>). CKEditor's collaboration is
-  proprietary and server-bound.
-- [FACT] Gutenberg's own sync stores rich text as HTML strings in `Y.Text` and applies a
-  diff (`@wordpress/core-data`, `src/utils/crdt-blocks.ts:1097-1135`), and admits the diff
-  "fails in certain cases, producing corrupted output". [OPINION] So a TinyMCE-family
-  editor is not excluded from future character-level sync, but string-diff sync on raw
-  HTML is fragile; eXe's removed binding used the same approach.
-- [OPINION] Adopting a native binding would change the stored model from HTML strings to
-  `Y.XmlFragment` per field, conflict with the lock model and, for y-prosemirror 2, pull a
-  Yjs 13 → 14 upgrade. That is a separate ADR. Recommended weight in this decision: low.
+- [FACT] The code confirms it: `YjsStructureBinding.updateComponent()` runs
+  `ytext.delete(0, ytext.length); ytext.insert(0, safeValue)`
+  (`public/app/yjs/YjsStructureBinding.js:2139-2140`); eXe depends on `yjs ^13.6.32` and
+  `y-websocket ^3.1.0` (`package.json`). Server-side exporters read the HTML as a string
+  (`src/shared/export/adapters/YjsDocumentAdapter.ts:344`, `src/yjs/structure-binding.ts:323`).
+- [FACT] Native *structural* bindings exist only for schema-based editors: the ProseMirror
+  family (y-prosemirror, Tiptap's fork `@tiptap/y-tiptap`, ProseKit, Remirror, Milkdown,
+  BlockNote), Lexical (`@lexical/yjs`), Slate/Plate (`@slate-yjs/core`, `@platejs/yjs`)
+  and Quill (y-quill). All are MIT (see *Editors with Yjs bindings* and both Yjs lists
+  cited there). TinyMCE, HugeRTE, CKEditor 5, Jodit and SunEditor have **no free
+  structural binding**. CKEditor's collaboration is commercial OT and server-bound; Velt's
+  TinyMCE and CKEditor adapters are proprietary SaaS.
+- [FACT] **A string-diff binding is still a license-clean path for HTML-first editors.**
+  Gutenberg's own sync stores rich text as HTML strings in `Y.Text` and applies a diff
+  (`@wordpress/core-data`, `src/utils/crdt-blocks.ts:1097-1135`), and admits the diff
+  "fails in certain cases, producing corrupted output". eXe's removed
+  `YjsTinyMCEBinding` did the same ("common prefix and suffix" diff and a full
+  `setContent` on remote change; `git show dfdd7cd9f^:public/app/yjs/YjsTinyMCEBinding.js`).
+  [OPINION] So a TinyMCE-family editor is not excluded from future sync, but string-diff
+  sync on raw HTML is fragile. The accurate statement is "no *structural* binding", not
+  "no Yjs path".
+- [FACT] **Yjs 14 is a change of namespace, not a version bump.** `@y/prosemirror@2.0.0-13`
+  depends on `@y/y ^14.0.0-rc.26` and peers on `@y/protocols`, not on `yjs`/`y-protocols`.
+  Following it would move eXe's whole stack to the `@y/*` scope, including
+  `y-websocket` → `@y/websocket`, whose `latest` is the prerelease 4.0.0-0. The unscoped
+  `yjs` package also carries stale 14 prereleases (`next` 14.0.0-8, 2025-06-23; `beta`
+  14.0.0-16, 2025-12-07), so "Yjs 14" is ambiguous (`npm view yjs dist-tags time`).
+  [OPINION] Two Yjs cores in one bundle (as BlockNote's peer dependencies allow) is a
+  known duplicate-instance hazard.
+- [FACT] **The ProseMirror family is splitting across Yjs majors.** Tiptap's
+  `@tiptap/y-tiptap` 3.0.9 peers on `yjs ^13.5.38`; ProseKit peers on unscoped
+  `y-prosemirror >= 1.2.9` (1.x, frozen since 2025-07-03); upstream development is on
+  `@y/prosemirror` 2.x over `@y/y` 14. [OPINION] Near term, Yjs 13 matches what eXe ships;
+  long term, each choice implies a different migration.
+- [OPINION] **A hybrid binding was not evaluated and should be measured.** A schema-based
+  editor (ProseMirror, Tiptap or ProseKit) can carry a catch-all *raw-HTML atom node* for
+  markup its schema does not model. Fidelity comes from keeping that markup verbatim;
+  character-level collaboration then works only in the parts the schema models. This is
+  the realistic way to get "Yjs plus legacy eXe HTML" and it weakens the claim that legacy
+  HTML is a hard blocker. It needs a measurement on the 941-fragment corpus: the share of
+  content that ends up inside opaque nodes.
+- [OPINION] Adopting any native binding would change the stored model from HTML strings to
+  `Y.XmlFragment` (or `XmlText`) per field, move the lock from iDevice to field level, need
+  a server-side Yjs-tree-to-HTML serialiser (schema plus a DOM) for the exporters and the
+  CLI, keep HTML fields inside `jsonProperties` out of the binding, and possibly pull the
+  Yjs 14 namespace move. [EST, low confidence] **+3 to 8 person-weeks on top of** the
+  migration estimates, which do not include it. That is a separate ADR. Recommended
+  weight in this decision: low.
+
+**Relation to DR-0006 [FACT + OPINION].** The sibling specification record
+`exelearning/idevices-spec` DR-0006 (status "Recommended", 2026-04-09) recommends
+continuous, non-blocking sync with no save step and maps rich text to `Y.XmlFragment`
+(<https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0006-collaborative-non-blocking-editing.md>).
+That contradicts requirement 5 (save-time commit) and the non-requirement
+"character-level collaborative editing" of this record. It also calls `Y.XmlFragment`
+"compatible with TinyMCE Yjs bindings (y-prosemirror or y-tiptap adapters)"; that is
+inaccurate, because both bind ProseMirror, not TinyMCE. Proposed resolution, for the team
+to confirm in PR #2467:
+
+- **For the first migration this record governs**: requirement 5 describes what the code
+  and `idevice-save-sync.spec.ts` do today, and no engine choice should also change the
+  collaboration model (non-requirement "Changing the iDevice lock model").
+- **DR-0006 remains the long-term direction**, and the engine choice must not close that
+  door. That is why "Yjs integration (free, maintained binding)" is scored and why the
+  ProseMirror family stays in the matrix, and why the collaboration-model ADR (open
+  question 9) should cite DR-0006 and supersede or amend one of the two.
+- DR-0006's TinyMCE sentence should be corrected in that repository.
 - Independent of the editor, and to be filed separately: no lock keep-alive during long
   iDevice edits, no notice to a client that loses a lock race, and the concatenation
   hazard of concurrent delete-all + insert (all **PLAUSIBLE, not reproduced by a test**);
@@ -609,6 +912,15 @@ before the engine decision and would have reduced #2463's regression to zero.
   in their headers, exemindmap declares MIT, codemagic declares none. [OPINION] CC BY-SA
   4.0 is one-way compatible with GPLv3 only; whether WordPress.org accepts it under
   Guideline 1 is UNVERIFIED. This applies to every option.
+  Addition [FACT]: Creative Commons declared the one-way route to GPLv3 on 2015-10-08
+  (<https://creativecommons.org/share-your-work/licensing-considerations/compatible-licenses/>),
+  and the FSF notes that adapted CC BY-SA works cannot be licensed "GPL version 3, or (at
+  your option) any later version" unless CC is named as a proxy under GPLv3 §14
+  (<https://www.gnu.org/licenses/license-list.html#ccbysa>). [OPINION, not legal advice]
+  So those files end up **GPL-3.0-only** inside the AGPL program (combined under §13):
+  legal but untidy. The clean fix, whatever the editor, is for the copyright holders to
+  relicense eXe's own plugins to AGPL-3.0-or-later; whether all contributors consent is
+  UNVERIFIED.
 
 ## Licensing
 
@@ -625,9 +937,18 @@ before the engine decision and would have reduced #2463's regression to zero.
 | TinyMCE 5.10.x | LGPL-2.1 | none | yes |
 | TinyMCE 8 | GPL-2.0-or-later; npm 8.3+ `license.md` adds Tiny's terms (below) | `license_key:'gpl'`, `promotion:false` | yes by code reading; runtime network capture **UNVERIFIED** |
 | HugeRTE | MIT (+ bundled DOMPurify MPL-2.0/Apache-2.0) | none | yes |
-| CKEditor 5 | GPL-2.0-or-later or commercial | `licenseKey:'GPL'`, permanent badge | yes for self-hosted |
-| Tiptap / ProseMirror / Lexical | MIT | none (cloud features paid) | yes |
+| CKEditor 5 48.x | GPL-2.0-or-later or commercial | `licenseKey:'GPL'`, permanent badge | yes for self-hosted |
+| CKEditor 5 47.x LTS | commercial | GPL key blocked | – (fails the gate) |
+| Tiptap / ProseMirror / ProseKit / Lexical | MIT | none (Tiptap Pro and Cloud paid, not needed) | yes |
 | Gutenberg | GPL-2.0-or-later | none | yes |
+| Yjs bindings (y-prosemirror, `@tiptap/y-tiptap`, `@lexical/yjs`, y-codemirror.next …) and Hocuspocus | MIT | none | yes, self-hosted |
+| BlockNote | MPL-2.0 core; `xl-*` GPL-3.0 or commercial | none | yes |
+| CodeMirror 6 / Monaco | MIT | none | yes |
+| Froala | proprietary | commercial key | – (fails the gate) |
+
+The full per-option verdicts are in *License gate*. [FACT] Whichever editor is chosen,
+its notice (and for Monaco its `ThirdPartyNotices.txt`) must be added to
+`THIRD-PARTY-NOTICES.md`, which today lists neither TinyMCE nor CodeMirror.
 
 **The TinyMCE 8 npm license text [FACT].** Up to 8.2.2 the npm `license.md` is plain GPL.
 From **8.3.0 (2025-12-10)** it reads "Licensed under, and subject to the restrictions of:
@@ -706,6 +1027,7 @@ or an MIT editor avoids the question.
 | HugeRTE 1.0.14 | 482 KB / 169 KB; all min assets ~2.57 MB | npm tarball | [FACT] |
 | Lexical (core + rich-text, html, table, list, link, history) | 291 KB / 93 KB | esbuild | [MEASURED] |
 | Tiptap (StarterKit + TableKit + Image) | 439 KB / 139 KB, no UI | esbuild | [MEASURED] |
+| ProseKit (basic + yjs extension, `yjs` external) | 367 KB / 115 KB, no UI | Bun build | [MEASURED] |
 | CKEditor 5 Classic + GHS + tables, media, source | 1,139 KB / 311 KB + ~216 KB CSS | esbuild | [MEASURED] |
 | Gutenberg minimal field | ~4.96 MB / 1.14 MB (+ ~69 KB gzip CSS) | Bun build | [MEASURED] |
 
@@ -732,27 +1054,31 @@ iDevice init sites, ~300 `get()` calls, 17 Vitest and 26 Playwright files, the
 ("several person-weeks", "multi-quarter", "several person-months") is comparable with
 these or with each other.
 
-| Category | Stay 5.10.9 | TinyMCE 8 | HugeRTE | CKEditor 5 | Tiptap | Lexical | Gutenberg |
-|---|---|---|---|---|---|---|---|
-| Proof of concept | 0 | 1–2 | 1–2 | 2–4 | 2–4 | 2–4 | 3–6 |
-| Core migration | 1–3 | 3–6 | 3–5 | 6–10 | 8–14 | 10–18 | 12–24 |
-| Own plugins | 0 | 8–16 | 7–14 | 16–30 | 18–34 | 20–38 | 24–45 |
-| CodeMagic | 1–2 | 1–2 | 1–2 | 1.5–3 | 1.5–3 | 1.5–3 | 1.5–3 |
-| asset:// pipeline | 0 | 2–4 | 2–4 | 3–6 | 3–6 | 3–6 | 4–8 |
-| Unit tests | 0.5–1 | 2–4 | 2–4 | 4–8 | 4–8 | 4–8 | 5–10 |
-| E2E tests | 0–0.5 | 1–3 | 1–3 | 3–6 | 3–6 | 3–6 | 4–8 |
-| Legacy compatibility | 0–0.5 | 2–4 | 2–4 | 4–8 | 6–12 | 8–14 | 8–16 |
-| Documentation | 0.25–0.5 | 0.5–1 | 0.5–1 | 1–2 | 1–2 | 1–2 | 1–2 |
-| Cleanup | 0 | 0.5–1 | 0.5–1 | 1–2 | 1–2 | 1–2 | 1–3 |
-| **Total** | **2.8–7.5** | **21–43** | **20–40** | **41.5–79** | **47.5–91** | **53.5–101** | **63.5–125** |
-| Confidence | medium | medium-low | medium-low | low | low | low | very low |
+| Category | Stay 5.10.9 | TinyMCE 8 | HugeRTE | CKEditor 5 | Tiptap | ProseKit | Lexical | Gutenberg |
+|---|---|---|---|---|---|---|---|---|
+| Proof of concept | 0 | 1–2 | 1–2 | 2–4 | 2–4 | 2–4 | 2–4 | 3–6 |
+| Core migration | 1–3 | 3–6 | 3–5 | 6–10 | 8–14 | 8–15 | 10–18 | 12–24 |
+| Own plugins | 0 | 8–16 | 7–14 | 16–30 | 18–34 | 18–34 | 20–38 | 24–45 |
+| CodeMagic | 1–2 | 1–2 | 1–2 | 1.5–3 | 1.5–3 | 1.5–3 | 1.5–3 | 1.5–3 |
+| asset:// pipeline | 0 | 2–4 | 2–4 | 3–6 | 3–6 | 3–6 | 3–6 | 4–8 |
+| Unit tests | 0.5–1 | 2–4 | 2–4 | 4–8 | 4–8 | 4–8 | 4–8 | 5–10 |
+| E2E tests | 0–0.5 | 1–3 | 1–3 | 3–6 | 3–6 | 3–6 | 3–6 | 4–8 |
+| Legacy compatibility | 0–0.5 | 2–4 | 2–4 | 4–8 | 6–12 | 6–12 | 8–14 | 8–16 |
+| Documentation | 0.25–0.5 | 0.5–1 | 0.5–1 | 1–2 | 1–2 | 1–2 | 1–2 | 1–2 |
+| Cleanup | 0 | 0.5–1 | 0.5–1 | 1–2 | 1–2 | 1–2 | 1–2 | 1–3 |
+| **Total** | **2.8–7.5** | **21–43** | **20–40** | **41.5–79** | **47.5–91** | **47.5–92** | **53.5–101** | **63.5–125** |
+| Confidence | medium | medium-low | medium-low | low | low | low | low | very low |
 
 Notes on the estimates:
 
 - *Stay* core migration includes the interim hardening (CSP, import sanitisation).
 - *HugeRTE* is slightly cheaper than TinyMCE 8 because `template` survives and no license
-  route has to be settled, but its later exit to TinyMCE 8 is estimated separately at
+  route has to be settled (TinyMCE 7+ and CKEditor 5 moved Templates to premium, so both
+  estimates include rebuilding eXe's `template` fork, 12 templates, as an eXe plugin), but its later exit to TinyMCE 8 is estimated separately at
   **4–10 person-weeks** (see Option 2).
+- *ProseKit* equals Tiptap except core migration (+1 week at the top of the range for
+  pre-1.0 API churn). No estimate includes a native Yjs binding (+3 to 8 person-weeks
+  [EST], see *Yjs considerations*).
 - *CodeMagic* is identical across TinyMCE-family options if built engine-agnostic; for
   other engines the dialog host must be rebuilt.
 - *Legacy compatibility* includes building the round-trip corpus gate in CI; for schema
@@ -797,12 +1123,13 @@ Only eXe-specific points.
 |---|---|
 | Real UI included; strongest accessibility statement (VPAT) | Largest bundle (~311 KB gzip JS + CSS) |
 | GHS keeps ~100 % of attributes in the single-run experiment | Every eXe plugin rewritten on the model/view/converter architecture |
-| Active vendor with an LTS line | Permanent "Powered by" badge under GPL; `licenseKey` plumbing |
+| Active vendor; GPL build contains everything eXe needs for single-author editing | Permanent "Powered by" badge under GPL; `licenseKey` plumbing; the LTS line is commercial, so GPL users must take every major |
 
 | Opportunities | Threats |
 |---|---|
 | Modern model, source editing (Classic editor) | GHS is where a 2026 XSS advisory landed; `em` → `i` and a crash on 1 of 941 fragments |
-| Clearer separation of eXe features as widgets | Upsell pressure (RTC, enhanced source are commercial) |
+| | No free collaboration path at all: would fail the license gate if co-editing became a requirement |
+| Clearer separation of eXe features as widgets | Upsell pressure (RTC, Templates, enhanced source and paste are commercial) |
 
 ### Tiptap / ProseMirror (best modern rewrite for a structured model and Yjs)
 
@@ -813,8 +1140,19 @@ Only eXe-specific points.
 
 | Opportunities | Threats |
 |---|---|
-| Character-level collaboration if ever wanted | ProseMirror has one lead maintainer; y-prosemirror 2 moves to Yjs 14 |
+| Character-level collaboration if ever wanted, all MIT (y-tiptap, Hocuspocus) | ProseMirror has one lead maintainer; upstream y-prosemirror 2 moves to the `@y/*` namespace while Tiptap stays on its own Yjs 13 fork |
 | Structured content for future features | A preserve-all-attributes layer reopens the XSS surface (GHSA-cp6q-959q-f8rh) |
+
+### ProseKit (the second ProseMirror finalist)
+
+| Strengths | Weaknesses |
+|---|---|
+| MIT, framework-agnostic (no React), upstream y-prosemirror | Bus factor 1 (the same maintainer who stepped back from Remirror); pre-1.0 |
+| Same ProseMirror model and Yjs path as Tiptap without a vendor fork | Same schema fidelity problem as Tiptap; smaller community |
+
+| Opportunities | Threats |
+|---|---|
+| A vanilla-JS ProseMirror route that fits eXe's non-React UI | Remirror's fate repeating; y-prosemirror 1.x is frozen and 2.x moves to `@y/*` |
 
 ## Risk matrix
 
@@ -829,8 +1167,11 @@ Probability and impact are **[OPINION]** (Low / Medium / High).
 | Feature loss (template, Word paste, source view, mind maps) | Medium | Medium | TinyMCE 8 (template), schema editors (source view) | Rebuild `template` as an eXe plugin; CodeMagic B; accept documented losses explicitly |
 | Unpatched vulnerabilities while migrating | High | Medium | Stay, and any option during the transition | Interim CSP and import sanitisation; bump to 5.10.9 now |
 | Upstream abandonment | Medium | High | HugeRTE (high), Lexical 0.x churn (medium) | Keep an exit plan and a thin boundary; contribute upstream |
-| Single-maintainer dependency | High | Medium | HugeRTE, ProseMirror/Tiptap, CodeMirror 6, Prism Code Editor | Same rubric for all; pin versions; watch advisories; budget a fork |
+| Single-maintainer dependency | High | Medium | HugeRTE, ProseKit, ProseMirror/Tiptap, CodeMirror 6, Prism Code Editor | Same rubric for all; pin versions; watch advisories; budget a fork |
 | Vendor license or feature drift | Medium | Medium | TinyMCE 8, CKEditor 5 | Decide the license route; avoid premium-dependent features |
+| A needed feature turns out to be premium-only (license gate) | Medium | High | TinyMCE 8, CKEditor 5 (Templates, enhanced source, collaboration) | Gate every new need against the free build; own template plugin; CodeMagic B |
+| Yjs stack split: `@y/*` 14 upstream vs Tiptap's Yjs 13 fork | Medium | Medium | Tiptap, ProseKit, BlockNote | Pin one line; no native binding without its own ADR; avoid two Yjs cores in one bundle |
+| CodeMagic code of unknown provenance redistributed | Medium | High | All (current code) | CodeMagic B, a clean CodeMirror 6 implementation |
 | WordPress.org rejection of bundled libraries or plugin licenses | Medium | High | All (TinyMCE via human review; CodeMirror 3 and jQuery via automated check; CC BY-SA and unlicensed plugin code) | CodeMagic B; remove jQuery 1.6.1 from exemindmap; clarify plugin licenses; argue the self-contained editor |
 | wp-exelearning users without `unfiltered_html` running uploaded scripts | Medium | High | Independent of editor | Capability check or sanitising extraction in wp-exelearning |
 | Bundle growth | High | Low | CKEditor 5, Gutenberg (high); TinyMCE 8 (low) | Lazy-load plugins and CodeMagic; measure in CI |
@@ -847,49 +1188,68 @@ anchored in the facts cited above; the source of truth is
 reference point: it scores well on compatibility because it *is* the current state, and it
 fails the security requirement in the long term.
 
-| # | Criterion | Stay 5.10.9 | TinyMCE 8 | HugeRTE | CKEditor 5 | Tiptap | Lexical | Gutenberg |
-|---|---|---|---|---|---|---|---|---|
-| 1 | HTML compatibility | 5 | 4 | 4 | 3 | 2 | 1 | 1 |
-| 2 | Plugin compatibility | 5 | 3 | 3 | 1 | 1 | 1 | 1 |
-| 3 | Migration cost | 5 | 3 | 3 | 2 | 1 | 1 | 1 |
-| 4 | Own maintenance effort | 2 | 4 | 3 | 3 | 2 | 1 | 2 |
-| 5 | Project stability | 3 | 4 | 3 | 4 | 4 | 1 | 2 |
-| 6 | Security | 1 | 4 | 3 | 3 | 3 | 3 | 3 |
-| 7 | Update frequency | 1 | 5 | 3 | 5 | 5 | 5 | 5 |
-| 8 | Community | 1 | 5 | 2 | 4 | 4 | 4 | 5 |
-| 9 | Bus factor | 1 | 4 | 1 | 4 | 3 | 4 | 5 |
-| 10 | License | 5 | 3 | 5 | 3 | 5 | 5 | 4 |
-| 11 | AGPL compatibility | 5 | 4 | 5 | 5 | 5 | 5 | 5 |
-| 12 | Offline redistribution | 5 | 4 | 5 | 4 | 5 | 5 | 4 |
-| 13 | No cloud dependency | 5 | 4 | 5 | 4 | 5 | 5 | 5 |
-| 14 | Bundle size | 4 | 3 | 3 | 1 | 4 | 5 | 1 |
-| 15 | Runtime size | 3 | 3 | 3 | 2 | 4 | 4 | 1 |
-| 16 | Lazy loading | 3 | 3 | 3 | 3 | 4 | 4 | 2 |
-| 17 | Performance | 3 | 3 | 3 | 3 | 4 | 4 | 2 |
-| 18 | Accessibility | 2 | 4 | 3 | 5 | 2 | 3 | 4 |
-| 19 | Mobile | 2 | 4 | 3 | 4 | 3 | 3 | 3 |
-| 20 | Tables | 4 | 4 | 4 | 4 | 3 | 2 | 3 |
-| 21 | Media | 4 | 3 | 3 | 3 | 2 | 1 | 3 |
-| 22 | Custom dialogs | 5 | 4 | 4 | 3 | 2 | 2 | 3 |
-| 23 | Custom plugins | 5 | 4 | 4 | 3 | 3 | 2 | 2 |
-| 24 | Source HTML | 4 | 4 | 4 | 3 | 1 | 1 | 2 |
-| 25 | Extensibility | 3 | 4 | 4 | 4 | 5 | 4 | 4 |
-| 26 | Yjs integration | 2 | 2 | 2 | 1 | 5 | 4 | 2 |
-| 27 | Static mode | 5 | 5 | 5 | 4 | 4 | 4 | 2 |
-| 28 | Electron | 5 | 5 | 5 | 5 | 5 | 5 | 4 |
-| 29 | Server | 5 | 5 | 5 | 5 | 5 | 5 | 4 |
-| 30 | WordPress (wp-exelearning) | 3 | 4 | 4 | 3 | 4 | 4 | 1 |
-| 31 | Guideline 13 risk | 2 | 3 | 4 | 4 | 5 | 5 | 1 |
-| 32 | asset:// preservation | 5 | 4 | 4 | 2 | 2 | 2 | 2 |
-| 33 | Educational plugin preservation | 5 | 3 | 3 | 2 | 2 | 1 | 1 |
-| 34 | Framework dependency | 5 | 5 | 5 | 5 | 4 | 4 | 1 |
-| 35 | Lock-in | 3 | 3 | 4 | 3 | 3 | 3 | 1 |
-| 36 | Abandonment risk | 1 | 4 | 2 | 4 | 4 | 3 | 5 |
-| 37 | Ease of replacing the engine later | 3 | 3 | 3 | 2 | 2 | 2 | 1 |
-| | **Unweighted total (of 185)** | **130** | **140** | **132** | **123** | **127** | **118** | **98** |
+**The license gate comes first.** Only options that PASS or PASS-WITH-CONDITIONS in
+*License gate* are scored; FAIL options (Froala, CKEditor 5 LTS, paid TinyMCE 5 LTS) are
+not in the matrix, and the script refuses to score an option without a passing verdict.
+Conditions are not scored away: they are obligations of the option if it is chosen, and
+they feed criteria 10 ("License") and 38 ("Free maintenance path").
+
+**Changes in this amendment [OPINION]:** ProseKit added as a finalist; criterion 26
+renamed "Yjs integration (free, maintained binding)" and Tiptap lowered from 5 to 4
+because its binding is a vendor fork on Yjs 13 while upstream moves to `@y/*` 14 (ProseKit
+and Lexical also 4); criterion 38 "Free maintenance path" added, which gathers facts that
+were scattered in the text: CKEditor 5's LTS is paid, so a GPL user must take every major
+(2); TinyMCE gives free fixes only for about six months after each new major (3); HugeRTE
+cannot absorb TinyMCE's GPL fixes into its MIT code (3); staying on 5.x has only a paid
+LTS (1); Tiptap has a paid tier that is not needed (4); ProseKit, Lexical and Gutenberg
+have no paid tier (5).
+
+| # | Criterion | Stay 5.10.9 | TinyMCE 8 | HugeRTE | CKEditor 5 | Tiptap | ProseKit | Lexical | Gutenberg |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | HTML compatibility | 5 | 4 | 4 | 3 | 2 | 2 | 1 | 1 |
+| 2 | Plugin compatibility | 5 | 3 | 3 | 1 | 1 | 1 | 1 | 1 |
+| 3 | Migration cost | 5 | 3 | 3 | 2 | 1 | 1 | 1 | 1 |
+| 4 | Own maintenance effort | 2 | 4 | 3 | 3 | 2 | 2 | 1 | 2 |
+| 5 | Project stability | 3 | 4 | 3 | 4 | 4 | 3 | 1 | 2 |
+| 6 | Security | 1 | 4 | 3 | 3 | 3 | 3 | 3 | 3 |
+| 7 | Update frequency | 1 | 5 | 3 | 5 | 5 | 5 | 5 | 5 |
+| 8 | Community | 1 | 5 | 2 | 4 | 4 | 2 | 4 | 5 |
+| 9 | Bus factor | 1 | 4 | 1 | 4 | 3 | 1 | 4 | 5 |
+| 10 | License | 5 | 3 | 5 | 3 | 5 | 5 | 5 | 4 |
+| 11 | AGPL compatibility | 5 | 4 | 5 | 5 | 5 | 5 | 5 | 5 |
+| 12 | Offline redistribution | 5 | 4 | 5 | 4 | 5 | 5 | 5 | 4 |
+| 13 | No cloud dependency | 5 | 4 | 5 | 4 | 5 | 5 | 5 | 5 |
+| 14 | Bundle size | 4 | 3 | 3 | 1 | 4 | 4 | 5 | 1 |
+| 15 | Runtime size | 3 | 3 | 3 | 2 | 4 | 4 | 4 | 1 |
+| 16 | Lazy loading | 3 | 3 | 3 | 3 | 4 | 4 | 4 | 2 |
+| 17 | Performance | 3 | 3 | 3 | 3 | 4 | 4 | 4 | 2 |
+| 18 | Accessibility | 2 | 4 | 3 | 5 | 2 | 2 | 3 | 4 |
+| 19 | Mobile | 2 | 4 | 3 | 4 | 3 | 3 | 3 | 3 |
+| 20 | Tables | 4 | 4 | 4 | 4 | 3 | 3 | 2 | 3 |
+| 21 | Media | 4 | 3 | 3 | 3 | 2 | 2 | 1 | 3 |
+| 22 | Custom dialogs | 5 | 4 | 4 | 3 | 2 | 2 | 2 | 3 |
+| 23 | Custom plugins | 5 | 4 | 4 | 3 | 3 | 3 | 2 | 2 |
+| 24 | Source HTML | 4 | 4 | 4 | 3 | 1 | 1 | 1 | 2 |
+| 25 | Extensibility | 3 | 4 | 4 | 4 | 5 | 5 | 4 | 4 |
+| 26 | Yjs integration (free, maintained binding) | 2 | 2 | 2 | 1 | 4 | 4 | 4 | 2 |
+| 27 | Static mode | 5 | 5 | 5 | 4 | 4 | 4 | 4 | 2 |
+| 28 | Electron | 5 | 5 | 5 | 5 | 5 | 5 | 5 | 4 |
+| 29 | Server | 5 | 5 | 5 | 5 | 5 | 5 | 5 | 4 |
+| 30 | WordPress (wp-exelearning) | 3 | 4 | 4 | 3 | 4 | 4 | 4 | 1 |
+| 31 | Guideline 13 risk | 2 | 3 | 4 | 4 | 5 | 5 | 5 | 1 |
+| 32 | asset:// preservation | 5 | 4 | 4 | 2 | 2 | 2 | 2 | 2 |
+| 33 | Educational plugin preservation | 5 | 3 | 3 | 2 | 2 | 2 | 1 | 1 |
+| 34 | Framework dependency | 5 | 5 | 5 | 5 | 4 | 5 | 4 | 1 |
+| 35 | Lock-in | 3 | 3 | 4 | 3 | 3 | 3 | 3 | 1 |
+| 36 | Abandonment risk | 1 | 4 | 2 | 4 | 4 | 2 | 3 | 5 |
+| 37 | Ease of replacing the engine later | 3 | 3 | 3 | 2 | 2 | 2 | 2 | 1 |
+| 38 | Free maintenance path | 1 | 3 | 3 | 2 | 4 | 5 | 5 | 5 |
+| | **Unweighted total (of 190)** | **131** | **143** | **135** | **125** | **130** | **125** | **123** | **103** |
 
 Scoring notes: for "cost", "risk", "effort", "lock-in" and "dependency" criteria a higher
-score means *less* cost or risk. "Runtime size", "lazy loading", "performance" and
+score means *less* cost or risk. ProseKit's scores differ from Tiptap's only on project
+stability (3, pre-1.0), community (2), bus factor (1), framework dependency (5, no React),
+abandonment risk (2, the Remirror precedent) and free maintenance path (5). "Runtime size", "lazy loading", "performance" and
 "mobile" were not measured for any engine and carry the least evidence.
 
 ![Migration effort vs long-term architectural risk](assets/editor-comparison/3-effort-vs-risk.svg)
@@ -907,7 +1267,7 @@ Weights are 0 (ignored) to 3 (critical). **These weights are debatable, are offe
 to structure the discussion, and must not decide automatically.** The weighted result is
 the weighted sum divided by the maximum reachable with the same weights, as a percentage.
 
-| Criterion | Suggested (balanced) | Max compatibility | Max security | Max innovation | Min maintenance | Max WordPress |
+| Criterion | Suggested (balanced) | Maximum compatibility | Maximum security | Maximum innovation | Minimum own maintenance | Maximum WordPress distribution |
 |---|---|---|---|---|---|---|
 | HTML compatibility | 3 | 3 | 1 | 1 | 1 | 1 |
 | Plugin compatibility | 2 | 3 | 1 | 0 | 3 | 1 |
@@ -934,7 +1294,7 @@ the weighted sum divided by the maximum reachable with the same weights, as a pe
 | Custom plugins | 2 | 1 | 1 | 1 | 1 | 1 |
 | Source HTML | 2 | 3 | 1 | 1 | 1 | 1 |
 | Extensibility | 1 | 1 | 1 | 3 | 1 | 1 |
-| Yjs integration | 1 | 0 | 0 | 3 | 1 | 1 |
+| Yjs integration (free, maintained binding) | 1 | 0 | 0 | 3 | 1 | 1 |
 | Static mode | 3 | 3 | 1 | 1 | 1 | 3 |
 | Electron | 2 | 3 | 1 | 1 | 1 | 1 |
 | Server | 2 | 3 | 1 | 1 | 1 | 1 |
@@ -946,26 +1306,31 @@ the weighted sum divided by the maximum reachable with the same weights, as a pe
 | Lock-in | 1 | 1 | 1 | 1 | 1 | 1 |
 | Abandonment risk | 2 | 1 | 3 | 1 | 3 | 1 |
 | Ease of replacing the engine later | 1 | 1 | 1 | 2 | 2 | 1 |
+| Free maintenance path | 2 | 1 | 2 | 1 | 3 | 2 |
 
-**Weighted result, suggested profile:** TinyMCE 8 77.1 · Stay 5.10.9 75.1 · HugeRTE 74.5 ·
-CKEditor 5 67.8 · Tiptap 67.8 · Lexical 62.6 · Gutenberg 53.9.
+**Weighted result, suggested profile:** TinyMCE 8 76.6 · HugeRTE 74.1 · Stay 5.10.9 73.5 ·
+Tiptap 67.9 · CKEditor 5 67.0 · ProseKit 65.6 · Lexical 63.7 · Gutenberg 55.2.
 
 ## How changing the weights changes the result
 
-| Weight profile | Stay 5.10.9 | TinyMCE 8 | HugeRTE | CKEditor 5 | Tiptap | Lexical | Gutenberg | Leader (margin) |
-|---|---|---|---|---|---|---|---|---|
-| Suggested (balanced) | 75.1 | 77.1 | 74.5 | 67.8 | 67.8 | 62.6 | 53.9 | TinyMCE 8 (+2.0 over Stay) |
-| Maximum compatibility | 80.7 | 77.9 | 75.0 | 65.0 | 61.4 | 57.1 | 49.3 | Stay 5.10.9 (+2.8 over TinyMCE 8) |
-| Maximum security | 61.7 | 78.8 | 67.1 | 70.8 | 70.4 | 64.6 | 60.8 | TinyMCE 8 (+8.0 over CKEditor 5) |
-| Maximum innovation | 62.7 | 74.1 | 67.8 | 66.3 | 73.7 | 69.4 | 54.5 | TinyMCE 8 (+0.4 over Tiptap) |
-| Minimum own maintenance | 67.8 | 74.7 | 66.9 | 64.1 | 63.7 | 56.3 | 51.4 | TinyMCE 8 (+6.9 over Stay) |
-| Maximum WordPress distribution | 74.1 | 76.3 | 77.4 | 68.9 | 75.6 | 72.6 | 54.4 | HugeRTE (+1.1 over TinyMCE 8) |
+| Weight profile | Stay 5.10.9 | TinyMCE 8 | HugeRTE | CKEditor 5 | Tiptap | ProseKit | Lexical | Gutenberg | Leader (margin) |
+|---|---|---|---|---|---|---|---|---|---|
+| Suggested (balanced) | 73.5 | 76.6 | 74.1 | 67.0 | 67.9 | 65.6 | 63.7 | 55.2 | TinyMCE 8 (+2.5 over HugeRTE) |
+| Maximum compatibility | 79.6 | 77.5 | 74.7 | 64.6 | 61.8 | 60.0 | 57.9 | 50.2 | Stay 5.10.9 (+2.1 over TinyMCE 8) |
+| Maximum security | 60.0 | 78.0 | 66.8 | 69.6 | 70.8 | 64.4 | 66.0 | 62.4 | TinyMCE 8 (+7.2 over Tiptap) |
+| Maximum innovation | 61.9 | 73.8 | 67.7 | 65.8 | 72.7 | 70.0 | 70.0 | 55.4 | TinyMCE 8 (+1.1 over Tiptap) |
+| Minimum own maintenance | 65.0 | 73.8 | 66.5 | 62.7 | 64.2 | 60.0 | 58.8 | 54.2 | TinyMCE 8 (+7.3 over HugeRTE) |
+| Maximum WordPress distribution | 72.1 | 75.7 | 76.8 | 67.9 | 75.4 | 74.3 | 73.6 | 56.1 | HugeRTE (+1.1 over TinyMCE 8) |
 
 What the sensitivity analysis shows [OPINION]:
 
 - **The top of the ranking is fragile.** In four of six profiles the leader wins by less
   than 3 points out of 100, well inside the uncertainty of opinion scores. The matrix does
   not "pick" an engine; it narrows the discussion.
+- **The amendment did not change any leader.** The new "Free maintenance path" criterion
+  moved HugeRTE above Stay in the suggested profile, and TinyMCE 8's margin in maximum
+  innovation widened from +0.4 to +1.1 over Tiptap because Tiptap's Yjs score dropped;
+  every profile keeps the same winner as before.
 - **Maximum compatibility favours staying**, which is expected (the baseline *is* current
   compatibility) and is exactly why a hard security requirement, not a weight, has to
   exclude Stay in the long term.
@@ -973,10 +1338,16 @@ What the sensitivity analysis shows [OPINION]:
   factor, lag and abandonment risk.
 - **Maximum innovation** makes Tiptap nearly tie TinyMCE 8, only because plugin
   compatibility and migration cost weigh 0. Any weight on HTML fidelity puts Tiptap back
-  behind.
+  behind. This is the only profile where the Yjs lens matters, and even there it does not
+  change the leader.
+- **ProseKit never beats Tiptap.** Framework independence and a free maintenance path do
+  not offset bus factor 1, pre-1.0 stability and the Remirror precedent. It stays in the
+  matrix as the non-React, upstream-y-prosemirror alternative if the team ever prefers the
+  ProseMirror family.
 - **Maximum WordPress distribution** puts HugeRTE first: MIT, a different global, no npm
   license sentence. The margin (1.1) is small.
-- **Gutenberg is last in every profile**, and Lexical is never above fifth.
+- **Gutenberg is last in every profile.** Lexical is never above fifth, except in maximum
+  innovation, where it ties ProseKit for third.
 - A reviewer who changes a single score can flip the TinyMCE 8 / HugeRTE / Stay order;
   anyone disagreeing should propose the score change in the PR with its evidence.
 
@@ -1003,7 +1374,15 @@ To recompute after changing `evaluation.json`: `node scripts/analyze-editor-debt
 8. Does `window.parent.eXeLearning.symfony.fullURL` or `top.$exeAuthoring.fileUpload`
    (used by exemindmap) still exist at runtime? UNVERIFIED.
 9. Should the collaboration model (locks plus save-time sync) get its own ADR before any
-   Yjs-driven editor argument is weighed?
+   Yjs-driven editor argument is weighed? It must reconcile this record's requirement 5
+   with `idevices-spec` DR-0006 (continuous `Y.XmlFragment` sync) and say which wins.
+10. Where does eXe's CodeMagic port come from (MIT, GPL-2.0-only or the paid "Pro"
+    product)? Until answered, CodeMagic B is also the license fix.
+11. If the ProseMirror family is ever preferred: what share of the 941-fragment corpus ends
+    up inside a raw-HTML atom node, and which Yjs line (Tiptap's Yjs 13 fork or upstream
+    `@y/*` 14) would eXe follow?
+12. Is any feature the team calls non-negotiable (question 4) premium-only in the preferred
+    engine? If so, that engine fails the license gate for that need.
 
 ## Proposed migration strategy
 
@@ -1095,6 +1474,8 @@ policy), and the names of the deciders in the frontmatter.
 
 - #2464 (TinyMCE part) and #2463 stay closed; their outcome follows from this record.
 - Whatever is chosen should be consumed through #1593.
+- Every candidate passed the license gate; the gate stays in force for any option added
+  later and for any feature promoted to a requirement.
 
 ## Risks
 
@@ -1117,7 +1498,11 @@ favour the TinyMCE family by small margins that a single score change can revers
 - CodeMagic on CodeMirror 6 behind the same ID (reopens the substance of #2463).
 - Commit the HTML round-trip corpus and its gate.
 - wp-exelearning: policy for `.elp` uploads by users without `unfiltered_html`.
-- Clarify licenses of eXe plugins (CC BY-SA 4.0 headers, codemagic).
+- Clarify licenses of eXe plugins (CC BY-SA 4.0 headers, codemagic provenance); consider
+  relicensing eXe-own plugins to AGPL-3.0-or-later.
+- Add the chosen editor's notice to `THIRD-PARTY-NOTICES.md`.
+- Ask `idevices-spec` to correct DR-0006's "TinyMCE Yjs bindings" sentence and to
+  cross-reference this record.
 - Separate issues: Yjs lock keep-alive and lost-lock notice; stale `INTEGRATION.md`.
 
 ## References
@@ -1153,4 +1538,23 @@ favour the TinyMCE family by small margins that a single score change can revers
   <https://github.com/WordPress/plugin-check>.
 - DOMPurify: <https://github.com/cure53/DOMPurify/security/advisories>.
 - CodeMirror: <https://codemirror.net/>, <https://code.haverbeke.berlin/codemirror/dev>.
-- GNU license compatibility: <https://www.gnu.org/licenses/gpl-faq.html#AllCompatibility>.
+- GNU license compatibility: <https://www.gnu.org/licenses/gpl-faq.html#AllCompatibility>,
+  <https://www.gnu.org/licenses/license-list.html>.
+- Creative Commons: <https://creativecommons.org/share-your-work/licensing-considerations/compatible-licenses/>,
+  <https://wiki.creativecommons.org/wiki/ShareAlike_compatibility:_GPLv3>.
+- CKEditor 5 licensing: <https://ckeditor.com/legal/ckeditor-licensing-options>,
+  <https://ckeditor.com/docs/ckeditor5/latest/getting-started/setup/using-lts-edition.html>,
+  <https://ckeditor.com/docs/ckeditor5/latest/features/source-editing/source-editing.html>.
+- Yjs bindings: <https://docs.yjs.dev/ecosystem/editor-bindings>, <https://github.com/yjs/yjs#bindings>,
+  <https://github.com/yjs/y-prosemirror>, <https://www.npmjs.com/package/@y/prosemirror>,
+  <https://www.npmjs.com/package/@tiptap/y-tiptap>, <https://github.com/yjs/y-codemirror.next>,
+  <https://github.com/yjs/y-monaco>, <https://github.com/bajrangCoder/y-ace>.
+- Yjs-bindable editors: <https://github.com/prosekit/prosekit>, <https://github.com/remirror/remirror>,
+  <https://www.blocknotejs.org/pricing>, <https://www.blocknotejs.org/docs/features/import/html>,
+  <https://github.com/TypeCellOS/BlockNote/blob/main/LICENSE.txt>, <https://tiptap.dev/pricing>,
+  <https://pro.platejs.org/pricing>, <https://github.com/advisories/GHSA-v3m3-f69x-jf25>,
+  <https://github.com/toeverything/blocksuite>.
+- TinyMCE RTC retirement: <https://www.tiny.cloud/docs/tinymce/6/rtc-introduction/>.
+- DR-0006: <https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0006-collaborative-non-blocking-editing.md>.
+- CodeMagic provenance: <https://github.com/tinymce-plugins/codemagic>,
+  <https://plugins.svn.wordpress.org/ultimate-tinymce/trunk/>.

@@ -361,6 +361,9 @@ const EVAL_FILE = path.join(CHART_DIR, 'evaluation.json');
 const evaluation = fs.existsSync(EVAL_FILE) ? JSON.parse(read(EVAL_FILE)) : null;
 const round1 = n => Math.round(n * 10) / 10;
 if (evaluation) {
+    // License gate (ADR-2467-01): an option that is not AGPL-compatible free software is never scored.
+    const gated = evaluation.options.filter(o => !['PASS', 'PASS-WITH-CONDITIONS'].includes(o.license?.gate));
+    if (gated.length) throw new Error(`license gate: move ${gated.map(o => o.id)} to discardedByLicenseGate`);
     const ids = evaluation.options.map(o => o.id);
     const effortTotals = {};
     for (const id of ids) {
