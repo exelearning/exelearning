@@ -178,6 +178,23 @@ test.describe('Print iDevices', () => {
             ]);
             await expect(list.locator('.worksheet-option-line')).toHaveCount(2);
 
+            if (mode === 'idevices') {
+                await page.emulateMedia({ media: 'print' });
+                const firstActivityBreak = await quiz.evaluate(el => {
+                    const style = window.getComputedStyle(el);
+                    return style.breakBefore || style.pageBreakBefore;
+                });
+                expect(firstActivityBreak).toBe('auto');
+
+                const secondActivityBreak = await list.evaluate(el => {
+                    const style = window.getComputedStyle(el);
+                    return style.breakBefore || style.pageBreakBefore;
+                });
+                expect(['page', 'always']).toContain(secondActivityBreak);
+
+                await page.emulateMedia({ media: null });
+            }
+
             if (mode === 'appendix') {
                 await page.emulateMedia({ media: 'print' });
                 const appendixBreak = await frame.locator('#section-worksheet-appendix').evaluate(el => {

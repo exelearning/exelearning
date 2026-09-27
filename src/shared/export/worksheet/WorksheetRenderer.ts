@@ -1102,6 +1102,18 @@ const DOCUMENT_STYLES_AFTER = `
         padding: 0;
         box-shadow: none;
     }
+
+    /* Start each page section after the first on a new page */
+    .worksheet-page:not(:first-of-type) {
+        page-break-before: always;
+        break-before: page;
+    }
+
+    /* Start each activity after the first in a page section on a new page */
+    .worksheet-activity:not(:first-of-type) {
+        page-break-before: always;
+        break-before: page;
+    }
 }
 `;
 

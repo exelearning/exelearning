@@ -62,6 +62,14 @@ describe('renderWorksheet', () => {
         expect(html).not.toContain('<h3 class="worksheet-activity-title">');
     });
 
+    it('paginates worksheet sections and activities in print mode', () => {
+        const html = renderWorksheet(model());
+
+        expect(html).toContain('.worksheet-page:not(:first-of-type) {');
+        expect(html).toContain('.worksheet-activity:not(:first-of-type) {');
+        expect(html).toContain('break-before: page;');
+    });
+
     it('skips pages that hold no activities', () => {
         const html = renderWorksheet(
             model({
