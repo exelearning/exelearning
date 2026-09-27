@@ -241,18 +241,29 @@ describe('exemindmap editor - host translators', () => {
     it('ships and names no private or legacy jQuery / jQuery UI', () => {
         // The editor runs on eXeLearning's own /libs/jquery and /libs/jquery-ui. A
         // private copy, or a leftover reference to the 1.6.1 / 1.8 ones it used to
-        // carry, is exactly what a plugin-directory review flags. (The Aristo theme
-        // stylesheet keeps its jquery-ui-1.8.7.custom.css name: it is CSS only.)
+        // carry, is exactly what a plugin-directory review flags. That covers the
+        // vendored mindmaps tree the iframe loads, too: its Aristo theme is CSS only and
+        // ships as aristo-theme.css, so a jquery-ui-1.8*.css file name or a banner that
+        // reads as the 1.8 library ("jQuery UI CSS Framework 1.8.7", "jQuery UI Dialog
+        // 1.8.7", "jQuery UI - v1.8") must not come back. The attribution the theme
+        // keeps ("derived from jQuery UI's CSS, version 1.8.7") names no library build
+        // and is allowed.
+        const mindmapsDir = path.resolve(__dirname, '../../../../../../app/common/mindmaps');
         const walk = dir =>
             fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
                 const full = path.join(dir, entry.name);
                 return entry.isDirectory() ? walk(full) : [full];
             });
-        for (const file of walk(__dirname).filter(f => !f.endsWith('.test.js'))) {
+        const files = [...walk(__dirname), ...walk(mindmapsDir)].filter(f => !f.endsWith('.test.js'));
+        expect(files).toContain(path.join(mindmapsDir, 'src/css/Aristo/aristo-theme.css'));
+        for (const file of files) {
             expect(path.basename(file), file).not.toMatch(/^jquery(-ui)?([.-][\d.]+)?(\.custom)?(\.min)?\.js$/i);
+            expect(path.basename(file), file).not.toMatch(/^jquery-ui-1\.8/i);
             if (!/\.(js|html|css)$/.test(file)) continue;
             const text = fs.readFileSync(file, 'utf8');
-            expect(text, file).not.toMatch(/jQuery (JavaScript Library )?v1\.|jquery-ui-1\.8[\w.-]*\.js|jQuery UI (- )?v?1\.8/i);
+            expect(text, file).not.toMatch(
+                /jQuery (JavaScript Library )?v1\.|jquery-ui-1\.8|jQuery UI( [A-Za-z]+)*( -)? v?1\.8/i,
+            );
         }
     });
 

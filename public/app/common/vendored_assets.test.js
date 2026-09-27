@@ -37,7 +37,7 @@ describe('mindmaps vendored tree', () => {
             'min/js/script.js',
             'src/css/common.css',
             'src/css/app.css',
-            'src/css/Aristo/jquery-ui-1.8.7.custom.css',
+            'src/css/Aristo/aristo-theme.css',
             'src/css/minicolors/jquery.miniColors.css',
             'LICENSE',
         ]) {

@@ -32,6 +32,9 @@
  *   copy-lf       from the fork with CRLF normalised to LF. The fork stores some CSS
  *                 with CRLF; eXeLearning has always shipped it as LF. Normalising is
  *                 declared here rather than left to a .gitattributes accident.
+ *                 A copy-lf entry may also declare `rewrites` (exact-count text edits
+ *                 that fail the refresh if the fork's text moves) and a `path` that
+ *                 differs from its `source`; the Aristo theme uses both.
  *   recompressed  an eXeLearning-local lossless recompression of the fork's image
  *                 (#1015, #1908, #2260 shrank the static build and exports). The
  *                 pixels match; the bytes do not. Refresh will not overwrite these,
@@ -96,7 +99,49 @@ export interface VendoredFile {
     sourceSha256?: string;
     /** sha256 of the committed file here. */
     sha256: string;
+    /**
+     * Text edits applied after newline normalisation, for `copy-lf` files only. Each
+     * `find` must be a global RegExp and must match exactly `count` times, otherwise
+     * rendering throws: a fork change that moves the text these edits expect has to
+     * stop the refresh, not ship a half-patched file.
+     */
+    rewrites?: readonly TextRewrite[];
 }
+
+export interface TextRewrite {
+    find: RegExp;
+    replace: string;
+    count: number;
+}
+
+/**
+ * The Aristo theme is CSS only: the editor's appearance, laid over the markup of the
+ * jQuery UI 1.14 that eXeLearning loads from /libs/jquery-ui, with app.css re-aiming
+ * the rules 1.14's markup needs. It started life as a jQuery UI 1.8.7 theme, and the
+ * fork still ships it under that file name with jQuery UI's own section banners, which
+ * reads like a copy of the 1.8.7 library. So it is vendored as aristo-theme.css and its
+ * banners are relabelled. The jQuery UI copyright and licence lines are left intact.
+ */
+const ARISTO_REWRITES: readonly TextRewrite[] = [
+    {
+        find: /^\/\*\n \* jQuery UI CSS Framework 1\.8\.7\n/g,
+        replace: [
+            '/*',
+            ' * Aristo theme stylesheet for the mindmaps editor. CSS only, not the jQuery UI',
+            ' * library: the editor runs on the jQuery UI 1.14 in /libs/jquery-ui, and',
+            " * mindmaps' app.css adapts these rules to the markup 1.14 emits.",
+            ' *',
+            " * Derived from jQuery UI's CSS framework, version 1.8.7:",
+            '',
+        ].join('\n'),
+        count: 1,
+    },
+    {
+        find: /^ \* jQuery UI ([A-Za-z ]+) 1\.8\.7$/gm,
+        replace: " * Aristo theme: $1 (derived from jQuery UI's CSS, version 1.8.7)",
+        count: 12,
+    },
+];
 
 /**
  * Every file eXeLearning ships from mindmaps, and nothing else.
@@ -169,11 +214,13 @@ export const VENDORED: readonly VendoredFile[] = [
         sha256: 'c3f55fa4ff1db6c7fd56b4c0f44f4d77c6fe00faf89552642a61fb098e2d2020',
     },
     {
-        path: 'src/css/Aristo/jquery-ui-1.8.7.custom.css',
+        // Renamed and relabelled on the way in; see ARISTO_REWRITES.
+        path: 'src/css/Aristo/aristo-theme.css',
         provenance: 'copy-lf',
         source: 'src/css/Aristo/jquery-ui-1.8.7.custom.css',
+        rewrites: ARISTO_REWRITES,
         sourceSha256: '77d751610f8d1727dd2413f5484142ef835a95f6e4b6f6fd7032384205f28c9b',
-        sha256: '3b308d74d644ec4fbcbcb2ecdfe1cd44346272518a1631da11c1a2815d5f3d16',
+        sha256: 'c26df0321bfc847e7925b6d2afce26564f52273ef7820b3a6e92e5983ffabf13',
     },
     {
         path: 'src/css/app.css',
@@ -261,7 +308,7 @@ export const LIVE_ASSETS: readonly string[] = [
     'min/js/script.js',
     'src/css/common.css',
     'src/css/app.css',
-    'src/css/Aristo/jquery-ui-1.8.7.custom.css',
+    'src/css/Aristo/aristo-theme.css',
     'src/css/minicolors/jquery.miniColors.css',
     'LICENSE',
 ] as const;
@@ -287,8 +334,27 @@ export function renderFile(entry: VendoredFile, sourceBytes: Buffer): Buffer | n
     if (entry.provenance === 'copy') return sourceBytes;
     // The generated bundle is normalised for the same reason the CSS is: .gitattributes
     // pins *.js to LF here, while the fork stores its sources with CRLF.
-    if (entry.provenance === 'copy-lf' || entry.provenance === 'generated') return normalizeLineEndings(sourceBytes);
+    if (entry.provenance === 'generated') return normalizeLineEndings(sourceBytes);
+    if (entry.provenance === 'copy-lf') {
+        const normalized = normalizeLineEndings(sourceBytes);
+        if (!entry.rewrites) return normalized;
+        return Buffer.from(applyRewrites(entry.path, normalized.toString('utf8'), entry.rewrites), 'utf8');
+    }
     return null;
+}
+
+/** Applies the rewrites in order, throwing if any matches other than `count` times. */
+export function applyRewrites(file: string, text: string, rewrites: readonly TextRewrite[]): string {
+    let result = text;
+    for (const { find, replace, count } of rewrites) {
+        if (!find.global) throw new Error(`${file}: rewrite ${find} must be a global RegExp`);
+        const found = [...result.matchAll(find)].length;
+        if (found !== count) {
+            throw new Error(`${file}: rewrite ${find} expected ${count} match(es) in the fork's file, found ${found}`);
+        }
+        result = result.replace(find, replace);
+    }
+    return result;
 }
 
 export function isWritable(entry: VendoredFile): boolean {

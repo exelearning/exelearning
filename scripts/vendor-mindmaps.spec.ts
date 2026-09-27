@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+    applyRewrites,
     countByProvenance,
     isWritable,
     needsBuild,
@@ -221,6 +222,51 @@ describe('vendor-mindmaps', () => {
                     binary,
                 ),
             ).toBeNull();
+        });
+    });
+
+    describe('rewrites', () => {
+        const rewrite = { find: /old/g, replace: 'new', count: 2 };
+
+        it('applies each rewrite when it matches the declared number of times', () => {
+            expect(applyRewrites('f.css', 'old old', [rewrite])).toBe('new new');
+        });
+
+        it('fails loudly when the fork no longer has the text a rewrite expects', () => {
+            expect(() => applyRewrites('f.css', 'old', [rewrite])).toThrow(/expected 2 match\(es\).*found 1/);
+            expect(() => applyRewrites('f.css', 'old old old', [rewrite])).toThrow(/found 3/);
+        });
+
+        it('refuses a non-global pattern, whose count could not be trusted', () => {
+            expect(() => applyRewrites('f.css', 'old', [{ find: /old/, replace: 'new', count: 1 }])).toThrow(
+                /global RegExp/,
+            );
+        });
+
+        it('runs only after newline normalisation, so patterns can assume LF', () => {
+            const entry: VendoredFile = {
+                path: 'x.css',
+                provenance: 'copy-lf',
+                source: 'x.css',
+                sha256: '',
+                sourceSha256: '',
+                rewrites: [{ find: /^a\nb$/gm, replace: 'c', count: 1 }],
+            };
+            expect(renderFile(entry, Buffer.from('a\r\nb'))?.toString()).toBe('c');
+        });
+
+        it('vendors the Aristo theme under a neutral name, relabelled away from jQuery UI 1.8', () => {
+            // Guards the rename a plugin-directory grep asked for: the theme is CSS only,
+            // and must not read as a bundled copy of the jQuery UI 1.8.7 library.
+            const aristo = VENDORED.find(entry => entry.source === 'src/css/Aristo/jquery-ui-1.8.7.custom.css');
+            expect(aristo?.path).toBe('src/css/Aristo/aristo-theme.css');
+            expect(VENDORED.some(entry => /jquery-ui-1\.8/i.test(entry.path))).toBe(false);
+
+            const css = fs.readFileSync(path.join(vendoredRoot, 'src', 'css', 'Aristo', 'aristo-theme.css'), 'utf8');
+            expect(css.startsWith('/*\n * Aristo theme stylesheet for the mindmaps editor.')).toBe(true);
+            expect(css).not.toMatch(/jQuery UI( [A-Za-z]+)* v?1\.8/i);
+            // The jQuery UI copyright and licence lines stay, once per original banner.
+            expect(css.match(/Dual licensed under the MIT or GPL Version 2 licenses\./g)).toHaveLength(13);
         });
     });
 

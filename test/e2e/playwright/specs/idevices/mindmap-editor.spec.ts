@@ -13,9 +13,9 @@ import {
 /**
  * Behavioural baseline for the embedded mindmaps editor.
  *
- * mindmaps runs on jQuery 1.6.1, jQuery UI 1.8.11 and a set of plugins that have had no
- * release in over a decade — mousewheel, hotkeys, dragscrollable, minicolors, tmpl. Each of
- * those is a candidate for an upgrade, and none of them had any browser coverage, so a
+ * mindmaps was written against a decade-old jQuery and jQuery UI and a set of plugins
+ * that had no release in over a decade — mousewheel, hotkeys, dragscrollable, minicolors,
+ * tmpl. Each of those is a candidate for an upgrade, and none of them had any browser coverage, so a
  * regression would have surfaced as a user report rather than a failing test.
  *
  * These tests exist to be run before and after such an upgrade. They cover the contracts
@@ -52,6 +52,22 @@ test.describe('Mind map editor', () => {
         await expect(frame.locator('#inspector')).toBeVisible();
         await expect(frame.locator('#navigator')).toBeVisible();
         expect(await readZoomPercent(frame2)).toBe(100);
+
+        // The Aristo theme (CSS only, vendored as aristo-theme.css) loads and styles the
+        // jQuery UI 1.14 widgets: its .ui-widget font stack is the one app.css lacks.
+        const themeRules = await frame
+            .locator('body')
+            .evaluate(
+                () =>
+                    [...document.styleSheets].find(sheet => sheet.href?.endsWith('/Aristo/aristo-theme.css'))?.cssRules
+                        .length ?? 0,
+            );
+        expect(themeRules).toBeGreaterThan(0);
+        const widgetFont = await frame
+            .locator('.ui-widget')
+            .first()
+            .evaluate(node => window.getComputedStyle(node).fontFamily);
+        expect(widgetFont).toMatch(/^Helvetica, Arial, sans-serif$/);
 
         expect(errors, `uncaught page errors: ${errors.join(' | ')}`).toEqual([]);
     });
