@@ -177,6 +177,34 @@ test.describe('Print iDevices', () => {
                 'Second',
             ]);
             await expect(list.locator('.worksheet-option-line')).toHaveCount(2);
+
+            if (mode === 'appendix') {
+                await page.emulateMedia({ media: 'print' });
+                const appendixBreak = await frame.locator('#section-worksheet-appendix').evaluate(el => {
+                    const style = window.getComputedStyle(el);
+                    return style.breakBefore || style.pageBreakBefore;
+                });
+                expect(['page', 'always']).toContain(appendixBreak);
+
+                const firstItemBreak = await frame
+                    .locator('#section-worksheet-appendix .box-content > :first-child')
+                    .evaluate(el => {
+                        const style = window.getComputedStyle(el);
+                        return style.breakBefore || style.pageBreakBefore;
+                    });
+                expect(firstItemBreak).toBe('auto');
+
+                const secondItemBreak = await frame
+                    .locator('#section-worksheet-appendix .box-content > :not(:first-child)')
+                    .first()
+                    .evaluate(el => {
+                        const style = window.getComputedStyle(el);
+                        return style.breakBefore || style.pageBreakBefore;
+                    });
+                expect(['page', 'always']).toContain(secondItemBreak);
+
+                await page.emulateMedia({ media: null });
+            }
         });
     }
 

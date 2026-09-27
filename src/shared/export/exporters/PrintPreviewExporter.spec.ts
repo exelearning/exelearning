@@ -295,6 +295,11 @@ describe('PrintPreviewExporter', () => {
 
             expect(result.html).toContain('.exe-udlContent-block.js-hidden,');
             expect(result.html).toContain('.js .exe-udlContent-block.js-hidden {');
+
+            // 6. Appendix pagination rules
+            expect(result.html).toContain('#section-worksheet-appendix {');
+            expect(result.html).toContain('#section-worksheet-appendix .box-content > :not(:first-child) {');
+            expect(result.html).toContain('break-before: page;');
         });
     });
 
@@ -1770,6 +1775,8 @@ describe('PrintPreviewExporter and interactive activities', () => {
         expect(html).toContain('See appendix, activity 1');
         expect(html).toContain('Anexo');
         expect(html).toContain('Ciudad conquistada');
+        expect(html).toContain('#section-worksheet-appendix {');
+        expect(html).toContain('#section-worksheet-appendix .box-content > :not(:first-child) {');
     });
 
     it('asks for no iDevice files for markup that needs none', async () => {

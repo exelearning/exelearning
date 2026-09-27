@@ -449,6 +449,18 @@ figure img {
         break-inside: avoid;
         border-bottom: none;
     }
+
+    /* Start the appendix on a new page */
+    #section-worksheet-appendix {
+        page-break-before: always;
+        break-before: page;
+    }
+
+    /* In the appendix, start each activity after the first on a new page */
+    #section-worksheet-appendix .box-content > :not(:first-child) {
+        page-break-before: always;
+        break-before: page;
+    }
 }
 
 /* Force visibility for feedback elements even if JS tries to hide them */
