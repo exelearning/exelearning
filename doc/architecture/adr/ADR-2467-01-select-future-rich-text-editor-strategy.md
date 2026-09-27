@@ -5,7 +5,7 @@ status: Proposed
 date: 2026-09-27
 tracking_issue: 2467
 deciders:
-  # Filled in when the team accepts or rejects this record.
+  # Required by the records checker; replaced by the actual deciders on acceptance.
   - "@erseco"
 reviewers:
   - "@ignaciogros"
@@ -32,7 +32,7 @@ ai_assistance:
 
 ## How to read this record
 
-Every statement is one of three kinds, and is labelled when it matters:
+Every statement is one of the following kinds, and is labelled when it matters:
 
 - **[FACT]**: observed in this repository at `f64d72fb5` (the `main` this branch starts
   from), reproduced by [`scripts/analyze-editor-debt.mjs`](../../../scripts/analyze-editor-debt.mjs),
@@ -40,6 +40,8 @@ Every statement is one of three kinds, and is labelled when it matters:
 - **[EST]**: an engineering estimate. Effort figures are never implementation
   measurements.
 - **[OPINION]**: technical judgement by the authors of this record.
+- **[MEASURED]**: a one-off experiment run outside this repository (for example the
+  HTML-fidelity run); its inputs are not committed, so it cannot be reproduced from `main`.
 - **UNVERIFIED**: could not be confirmed; do not rely on it without checking.
 
 All external sources were checked on **2026-09-27** unless another date is given.
@@ -337,7 +339,7 @@ subsection. Options 1 to 6 are the finalists that appear in the charts.
 
 - [FACT] MIT fork of TinyMCE `main` at 6.8.3 plus unreleased 7.0 work, taken just before
   the GPL relicensing commit (<https://github.com/hugerte/hugerte>,
-  <https://github.com/hugerte/hugerte/issues/1>). npm `hugerte` 1.0.14 (2026-09-05),
+  <https://github.com/hugerte/hugerte/issues/1>). npm `hugerte` 1.0.14 (2026-09-06 UTC),
   MIT, **one npm maintainer** (`carlosmintfan`). Global renamed to `window.hugerte`; no
   `tinymce` alias. Keeps `template`; `hr` and `paste` are in core. 30 plugins.
 - [FACT] Activity 2025-09-27 → 2026-09-27: 104 commits (carlosmintfan 56, dependabot 34,
@@ -1012,7 +1014,7 @@ To recompute after changing `evaluation.json`: `node scripts/analyze-editor-debt
 | Shape | One branch replaces TinyMCE 5 and all plugins | Steps below, each shippable |
 | Dual maintenance | None, but a long-lived branch rots against `main` | Bounded: two engines only behind a flag, with a removal date |
 | Risk | All regressions surface at once | Regressions surface per plugin tier |
-| Fit for eXe | [OPINION] Poor: 24 plugins, ~20 % tested, three deployment targets | [OPINION] Better, if the dual phase is time-boxed |
+| Fit for eXe | [OPINION] Poor: 24 plugins, 7 of them (~29 %) with tests, three deployment targets | [OPINION] Better, if the dual phase is time-boxed |
 
 **Proposed incremental sequence [OPINION]:**
 
@@ -1053,7 +1055,7 @@ test/fixtures/editor-roundtrip/   # the HTML corpus and expected outputs
 - **Yes, at the boundary between eXe and the editor**, which is small and already exists as
   `$exeTinyMCE`: create/destroy editors, `get(id).getContent/setContent/save`,
   `editors[]`, the `asset://` hooks, the upload handler, the dialog host and the Yjs
-  save hook. Pointing iDevices at that object instead of the `tinyMCE` global covers ~95 %
+  save hook. Pointing iDevices at that object instead of the `tinyMCE` global covers ~95 % [EST]
   of their ~300 calls and makes the next engine change cheaper.
 - **No, inside plugins.** Emulating the TinyMCE API over another engine would be a large,
   leaky abstraction that nobody upstream maintains. Plugins should use the chosen engine's
