@@ -133,21 +133,21 @@ them as standalone `<script>` files.
 - `scripts/copy-vendor-libs.js` — the `COPIES` table maps each `node_modules`
   source to its `public/` destination (pdf.js, mermaid, jQuery, Bootstrap +
   Popper bundle, showdown, fflate, abcjs, html2canvas ×3, DOMPurify ×2, fabric,
-  interact.js, jQuery UI). It fails on the first missing source rather than
-  skipping silently. Its header documents the files deliberately kept out of it
-  (MathJax, the patched SimpleLightbox).
+  interact.js, jQuery UI, SimpleLightbox). It fails on the first missing source
+  rather than skipping silently. Its header documents the files deliberately
+  kept out of it (MathJax).
 - `scripts/copy-vendor-libs.spec.ts` — asserts the `COPIES` table is non-empty,
   that the runtime-loaded rubric `html2canvas.js` copy is present, that all three
   html2canvas destinations resolve from the npm package, that every `src` path
-  exists after install, that no entry targets the patched SimpleLightbox files,
-  and that `copyFile` throws on a missing source and creates each destination
+  exists after install, that SimpleLightbox is copied into the image-gallery
+  iDevice export folder, and that `copyFile` throws on a missing source and creates each destination
   directory once.
 - `public/files/perm/idevices/base/image-gallery/export/image-gallery.test.js` —
-  opens a gallery through the tracked SimpleLightbox fork and asserts the
-  caption renders the title, author link and license link (fails against the
-  upstream build).
+  opens a gallery through the npm SimpleLightbox build and asserts the caption
+  that `image-gallery.js` builds renders the title, author link and license
+  link, and that stored values are rendered as text.
 - `package.json` — adds `abcjs`, `bootstrap`, `html2canvas`, `interactjs`,
-  `jquery`, `jquery-ui`, `showdown` as devDependencies
+  `jquery`, `jquery-ui`, `showdown`, `simplelightbox` (pinned) as devDependencies
   (`dompurify`, `fabric`, `esbuild` were already present); `mermaid`,
   `pdfjs-dist`, `yjs`, `y-websocket`, `lib0` are runtime dependencies. It defines
   `"bundle:vendor": "bun scripts/build-yjs-shims.js && bun scripts/copy-vendor-libs.js"`
@@ -199,9 +199,9 @@ ported.
 
 | Committed file on `main` | Difference from upstream | Outcome |
 |---|---|---|
-| `image-gallery/export/simple-lightbox.min.js` | eXe-patched SimpleLightbox 2.10.3: accepts `captionsData` as an array and renders `myCaptionData` (title, author, license and their links) in the caption; `image-gallery.js` depends on it. | Kept tracked, outside the pipeline, until the patch is ported. |
-| `image-gallery/export/simple-lightbox.min.css` | Upstream CSS plus a local `/* SDWEB */` block (caption link colour and author/license padding). | Kept tracked together with the JS above. |
-| `public/libs/simplelightbox/dist/*` | Upstream 2.10.1 (`simple-lightbox.min.js` identical to npm; other variants only reformatted), and nothing loaded it. | Removed, together with the `simplelightbox` dependency. |
+| `image-gallery/export/simple-lightbox.min.js` | eXe-patched SimpleLightbox 2.10.3 (a Prettier-reformatted, non-minified build): accepts `captionsData` as an array and renders `myCaptionData` (title, author, license and their links) in the caption; `image-gallery.js` depends on it. | Replaced by npm `simplelightbox` 2.14.3. `image-gallery.js` now builds the same caption itself with DOM APIs and passes it through the public `captionSelector` option (`captionType: 'text'`), so the patch is no longer needed. |
+| `image-gallery/export/simple-lightbox.min.css` | SimpleLightbox 2.10.1 CSS plus a local `/* SDWEB */` block (caption link colour and author/license padding). | Replaced by npm's 2.14.3 CSS; the SDWEB rules moved to `image-gallery.css`, scoped to `.sl-caption`. |
+| `public/libs/simplelightbox/dist/*` | Upstream 2.10.1 (`simple-lightbox.min.js` identical to npm; other variants only reformatted), and nothing loaded it. | Removed; the image-gallery copy is now generated from the same `simplelightbox` package. |
 | `html2canvas.js` ×3 (`checklist`, `progress-report`, `rubric`) | Same version as npm (1.4.1), but a Prettier-reformatted non-minified build; two copies also carried an added `/* eslint-disable */`. No functional change. | Replaced by npm's `html2canvas.min.js` 1.4.1. |
 | `public/libs/abcjs/abcjs-audio.css` | Upstream 6.0.4 file, reformatted, plus an eXe block of presentation rules (`.abc-container`, `pre.abc-music`, …). | Kept tracked (not generated) because of the eXe block; the upstream part was aligned with abcjs 6.7.0 (`line-height: 1` on `.abcjs-btn`). |
 | Bootstrap `*.min.{js,css}` | Upstream files; npm's `sourceMappingURL` comments announce maps not shipped in exports. | Generated; the comments are stripped during the copy (#2260). |
@@ -231,7 +231,7 @@ ported.
 
 - The newly added UI libraries are declared as devDependencies because only their
   build-time dist artifacts ship at runtime, not the `node_modules` trees.
-- MathJax, the patched SimpleLightbox and `abcjs-audio.css` remain committed, so
+- MathJax and `abcjs-audio.css` remain committed, so
   the "no committed vendor blobs" goal is not yet fully complete.
 
 ## Risks
@@ -262,8 +262,6 @@ ported.
 
 - Migrate MathJax (`exe_math/`) off its committed subset and into the same
   npm-sourced flow (tracked by the exclusion note in `scripts/copy-vendor-libs.js`).
-- Port the SimpleLightbox caption patch (to an upstream release or to
-  `image-gallery.js`) so the fork can be generated from npm.
 - Consider integrity verification (e.g. subresource integrity or checksum
   assertions) for the copied files beyond the lockfile hash.
 - Extend the copy manifest as further tracked vendor files are identified.
