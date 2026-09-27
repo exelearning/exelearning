@@ -32,7 +32,7 @@ describe('vendor-edicuatex', () => {
 
     describe('buildVendorPlan', () => {
         it('vendors what the editor loads at runtime', () => {
-            const plan = buildVendorPlan(packageRoot).map(entry => entry.relativePath);
+            const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
 
             expect(plan).toContain('index.html');
             expect(plan).toContain('js/edicuatex-tools.js');
@@ -41,7 +41,7 @@ describe('vendor-edicuatex', () => {
         });
 
         it('vendors the assets the editor used to take from a CDN', () => {
-            const plan = buildVendorPlan(packageRoot).map(entry => entry.relativePath);
+            const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
 
             // Since 1.5.2 Tailwind and SortableJS are served from the package, which is
             // what makes the editor work offline and under a restrictive CSP.
@@ -50,16 +50,16 @@ describe('vendor-edicuatex', () => {
         });
 
         it('keeps the licence, which the static pruner refuses to remove anyway', () => {
-            expect(buildVendorPlan(packageRoot).map(e => e.relativePath)).toContain('LICENSE.txt');
+            expect(buildVendorPlan(packageRoot).map((e) => e.relativePath)).toContain('LICENSE.txt');
         });
 
         it('leaves out what only builds the package', () => {
-            const plan = buildVendorPlan(packageRoot).map(entry => entry.relativePath);
+            const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
 
             for (const excluded of ['package.json', 'tailwind.config.js', 'README.md', 'README_es.md']) {
                 expect(plan).not.toContain(excluded);
             }
-            expect(plan.some(relativePath => relativePath.startsWith('scripts/'))).toBe(false);
+            expect(plan.some((relativePath) => relativePath.startsWith('scripts/'))).toBe(false);
         });
 
         it('points every planned file at a file that exists in the package', () => {
@@ -71,7 +71,7 @@ describe('vendor-edicuatex', () => {
 
     describe('vendoredContents', () => {
         it('strips the CDN fallback from the real package, leaving no remote MathJax URL', () => {
-            const entry = buildVendorPlan(packageRoot).find(e => e.relativePath === 'js/edicuatex-tools.js');
+            const entry = buildVendorPlan(packageRoot).find((e) => e.relativePath === 'js/edicuatex-tools.js');
             const text = vendoredContents(entry!).toString('utf8');
 
             expect(text).toContain('var MATHJAX_CDN_URL = null;');
@@ -153,7 +153,7 @@ describe('vendor-edicuatex', () => {
         /** Collects both streams in order, which is all these assertions need. */
         function recordingIo(): { io: CliIo; output: string[] } {
             const output: string[] = [];
-            return { io: { log: m => output.push(m), error: m => output.push(m) }, output };
+            return { io: { log: (m) => output.push(m), error: (m) => output.push(m) }, output };
         }
 
         it('stops with an actionable error when the package is not installed', () => {
