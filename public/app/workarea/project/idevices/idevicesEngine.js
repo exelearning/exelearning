@@ -2484,6 +2484,10 @@ export default class IdevicesEngine {
             this.mode = 'view';
         }
         this.nodeContentElement.setAttribute('mode', this.mode);
+        // Remote structure changes received during the edition are applied now (#2427)
+        if (!ideviceEdition) {
+            this.project?._yjsBridge?.flushDeferredPageReload?.();
+        }
     }
 
     /*******************************************************************************

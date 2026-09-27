@@ -44,6 +44,13 @@ jobs:
           images: |
             ${{ github.repository }}
             ghcr.io/${{ github.repository }}
+          # `latest` moves only in promote-latest.yml, when a release stops
+          # being a pre-release. The action's default flavor is `latest=auto`,
+          # which adds `latest` to every `type=ref,event=tag` build — the tag
+          # string is all it sees, so it cannot know the release is still a
+          # pre-release. It has to be turned off explicitly.
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=tag
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
