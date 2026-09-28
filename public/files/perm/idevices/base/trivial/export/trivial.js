@@ -77,7 +77,7 @@ var $eXeTrivial = {
     saveDataStorage: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
 
-        if (typeof mOptions.trivialID == 'undefined') return;
+        if (!mOptions.storageKey) return;
 
         const data = {
             trivialID: mOptions.trivialID,
@@ -91,10 +91,7 @@ var $eXeTrivial = {
             direccion: mOptions.direccion,
             contadorJuego: mOptions.contadorJuego,
         };
-        localStorage.setItem(
-            'dataTrivial-' + mOptions.trivialID,
-            JSON.stringify(data)
-        );
+        localStorage.setItem(mOptions.storageKey, JSON.stringify(data));
     },
 
     reloadGame: function (dataTrivial, instance) {
@@ -121,6 +118,22 @@ var $eXeTrivial = {
         }
     },
 
+    /**
+     * Where a board keeps its game: under its own component's id.
+     *
+     * The id in the board's data travels with it when the iDevice is
+     * duplicated, so two copies read and wrote the same entry and each resumed
+     * the other's game. The component's id is its own, in the editor and once
+     * exported. Without one there is nowhere safe to keep it, and nothing is.
+     *
+     * @param {Element} activity - The board's element
+     * @returns {string} The key, or '' when the board belongs to no component
+     */
+    storageKeyOf: function (activity) {
+        const nodeId = $(activity).closest('.idevice_node').attr('id');
+        return nodeId ? 'dataTrivial-' + nodeId : '';
+    },
+
     loadGame: function () {
         $eXeTrivial.options = [];
         $eXeTrivial.activities.each(function (i) {
@@ -134,6 +147,7 @@ var $eXeTrivial = {
             mOption.idevicePath = $eXeTrivial.idevicePath;
             mOption.main = 'trivialMainContainer-' + i;
             mOption.idevice = 'trivial-IDevice';
+            mOption.storageKey = $eXeTrivial.storageKeyOf(this);
 
             for (let j = 0; j < mOption.numeroTemas; j++) {
                 mOption.activesQuestions.push(-1);
@@ -706,7 +720,7 @@ var $eXeTrivial = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        localStorage.removeItem('dataTrivial-' + mOptions.trivialID);
+        if (mOptions.storageKey) localStorage.removeItem(mOptions.storageKey);
 
         mOptions.contadorJuego = 0;
 
@@ -2438,8 +2452,8 @@ var $eXeTrivial = {
             $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
-        if (typeof mOptions.trivialID != 'undefined') {
-            const dataTrivial = $eXeTrivial.getDataStorage(mOptions.trivialID);
+        if (mOptions.storageKey) {
+            const dataTrivial = $eXeTrivial.getDataStorage(mOptions.storageKey);
             if (dataTrivial) {
                 if (dataTrivial) {
                     if (
@@ -2470,9 +2484,9 @@ var $eXeTrivial = {
         }
     },
 
-    getDataStorage: function (id) {
+    getDataStorage: function (key) {
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataTrivial-' + id)
+            localStorage.getItem(key)
         );
     },
 

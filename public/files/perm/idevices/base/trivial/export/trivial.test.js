@@ -402,4 +402,86 @@ describe('trivial iDevice export', () => {
       expect($eXeTrivial.showTargetPositions).not.toHaveBeenCalled();
     });
   });
+
+  // A duplicated board carries the same trivialID. Kept under it, the two
+  // copies shared one entry and each resumed the other's game.
+  describe('where a board keeps its game', () => {
+    let previousLocalStorage;
+    let store;
+
+    beforeEach(() => {
+      previousLocalStorage = global.localStorage;
+      store = {};
+      global.localStorage = {
+        getItem: key => (key in store ? store[key] : null),
+        setItem: (key, value) => {
+          store[key] = String(value);
+        },
+        removeItem: key => {
+          delete store[key];
+        },
+      };
+    });
+
+    afterEach(() => {
+      global.localStorage = previousLocalStorage;
+      document.body.innerHTML = '';
+    });
+
+    it("names the entry after the board's own component", () => {
+      document.body.innerHTML =
+        '<div class="idevice_node trivial" id="idevice-abc"><div class="trivial-IDevice"></div></div>';
+
+      expect($eXeTrivial.storageKeyOf(document.querySelector('.trivial-IDevice'))).toBe('dataTrivial-idevice-abc');
+    });
+
+    it('gives no key to a board outside any component', () => {
+      document.body.innerHTML = '<div class="trivial-IDevice"></div>';
+
+      expect($eXeTrivial.storageKeyOf(document.querySelector('.trivial-IDevice'))).toBe('');
+    });
+
+    it('keeps the game under its own component, not under the id its data carries', () => {
+      $eXeTrivial.options = [{ trivialID: 7, storageKey: 'dataTrivial-idevice-copy-a', gamers: [] }];
+
+      $eXeTrivial.saveDataStorage(0);
+
+      expect(store['dataTrivial-idevice-copy-a']).toBeDefined();
+      expect(store['dataTrivial-7']).toBeUndefined();
+      expect(store['dataTrivial-idevice-copy-b']).toBeUndefined();
+    });
+
+    it('keeps nothing when the board belongs to no component', () => {
+      $eXeTrivial.options = [{ trivialID: 7, storageKey: '', gamers: [] }];
+
+      $eXeTrivial.saveDataStorage(0);
+
+      expect(Object.keys(store)).toEqual([]);
+    });
+
+    it('forgets only its own game when played again', () => {
+      store['dataTrivial-idevice-copy-a'] = '{}';
+      store['dataTrivial-idevice-copy-b'] = '{}';
+      $eXeTrivial.options = [
+        {
+          storageKey: 'dataTrivial-idevice-copy-a',
+          numeroJugadores: 1,
+          numeroTemas: 3,
+          numeroCasillas: 20,
+          pT: [{}, {}],
+          gamers: [{ score: 0, quesos: [], cheeses: [], casilla: 0 }],
+          msgs: {},
+        },
+      ];
+      for (const method of ['updateTimeGame', 'saveEvaluation', 'placePlayerToken', 'activeCheese', 'loadGameBoard']) {
+        vi.spyOn($eXeTrivial, method).mockImplementation(() => {});
+      }
+
+      $eXeTrivial.rebootGame(0);
+
+      expect(store['dataTrivial-idevice-copy-a']).toBeUndefined();
+      expect(store['dataTrivial-idevice-copy-b']).toBe('{}');
+      vi.restoreAllMocks();
+    });
+  });
 });
