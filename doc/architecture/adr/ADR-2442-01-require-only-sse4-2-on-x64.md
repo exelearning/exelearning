@@ -1,7 +1,7 @@
 ---
 id: ADR-2442-01
 title: "Require only SSE4.2 on x86_64 in the Docker entrypoint"
-status: Proposed
+status: Accepted
 date: 2026-09-17
 tracking_issue: 2442
 deciders:
