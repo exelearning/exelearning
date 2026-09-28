@@ -684,6 +684,49 @@ describe('ImsExporter', () => {
             expect(manifest).toContain('<file href="content.dtd"/>');
         });
 
+        it('should NOT include content.xml or content.dtd when exportSource is false (#2415)', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(false);
+            expect(zip.files.has('content.dtd')).toBe(false);
+        });
+
+        it('should NOT reference content.xml in the manifest when exportSource is false (#2415)', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).not.toContain('<file href="content.xml"/>');
+            expect(manifest).not.toContain('<file href="content.dtd"/>');
+        });
+
+        it('should include content.xml when a host forces the editable source', async () => {
+            // A host that stores the package AS the project and re-opens it
+            // later (Moodle mod_exescorm) must never get a package it cannot
+            // read back, whatever the author chose.
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            await exporter.export({ forceEditableSource: true });
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('should include content.xml when exportSource is explicitly true', async () => {
+            document = new MockDocument({ exportSource: true }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+        });
+
         it('should keep hidden pages in the re-editable content.xml', async () => {
             // A hidden page (visibility: false) must NOT be rendered into the
             // package HTML or the manifest, but MUST survive in content.xml so a
