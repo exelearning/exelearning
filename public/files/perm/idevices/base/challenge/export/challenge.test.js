@@ -41,6 +41,25 @@ describe('challenge iDevice export', () => {
     $eXeDesafio = loadExportIdevice(code);
   });
 
+  describe('storageKeyOf', () => {
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    it("names the entry after the game's own component", () => {
+      document.body.innerHTML =
+        '<div class="idevice_node challenge" id="idevice-abc"><div class="desafio-IDevice"></div></div>';
+
+      expect($eXeDesafio.storageKeyOf(document.querySelector('.desafio-IDevice'))).toBe('dataDesafio-idevice-abc');
+    });
+
+    it('gives no key to a game outside any component', () => {
+      document.body.innerHTML = '<div class="desafio-IDevice"></div>';
+
+      expect($eXeDesafio.storageKeyOf(document.querySelector('.desafio-IDevice'))).toBe('');
+    });
+  });
+
   describe('createArrayStateChallenges', () => {
     it('creates array with correct length', () => {
       const result = $eXeDesafio.createArrayStateChallenges(0, 5);
@@ -429,6 +448,26 @@ describe('challenge iDevice export', () => {
       expect(calls).toHaveLength(1);
       expect(calls[0].auto).toBe(true);
       expect(calls[0].gameOver).toBe(false);
+    });
+
+    // A duplicated desafio carries the same desafioID. Kept under it, the two
+    // copies shared one entry and each resumed the other's game.
+    it('keeps its progress under its own component, not under the id its data carries', () => {
+      const instance = givenInstance({ storageKey: 'dataDesafio-idevice-copy-a' });
+
+      $eXeDesafio.saveDataStorage(instance);
+
+      expect(localStorage.getItem('dataDesafio-idevice-copy-a')).not.toBeNull();
+      expect(localStorage.getItem('dataDesafio-7')).toBeNull();
+      expect(localStorage.getItem('dataDesafio-idevice-copy-b')).toBeNull();
+    });
+
+    it('keeps nothing when it belongs to no component, and still reports', () => {
+      $eXeDesafio.saveDataStorage(givenInstance({ storageKey: '' }));
+
+      expect(localStorage.getItem('dataDesafio-')).toBeNull();
+      expect(localStorage.getItem('dataDesafio-7')).toBeNull();
+      expect(calls).toHaveLength(1);
     });
 
     it('reports the activity as finished once the desafio is solved', () => {

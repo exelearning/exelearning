@@ -6,10 +6,11 @@ test('Challenge keeps each clock to its own game across pages', async ({ authent
         type: 'challenge',
         html: storedIdevice('challenge').html,
         dataGame: 'desafio',
-        setTime: (data, copy) => {
+        // Both copies carry the same desafioID, as a duplicated desafio does. Its
+        // progress used to be kept under that id, so the second page resumed the
+        // first page's game as soon as it loaded.
+        setTime: data => {
             data.showMinimize = false;
-            // Each copy keeps its progress under its own id, so neither resumes the other's.
-            data.desafioID = `clock-test-${copy}`;
             // Four minutes, far from the few seconds the first game is left with.
             data.desafioTime = 4;
         },

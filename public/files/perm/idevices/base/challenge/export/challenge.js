@@ -83,6 +83,22 @@ var $eXeDesafio = {
         $eXeDesafio.loadGame();
     },
 
+    /**
+     * Where a game keeps its progress: under its own component's id.
+     *
+     * The id in the game's data travels with it when the iDevice is
+     * duplicated, so two copies read and wrote the same entry and each resumed
+     * the other's game. The component's id is its own, in the editor and once
+     * exported. Without one there is nowhere safe to keep it, and nothing is.
+     *
+     * @param {Element} activity - The game's element
+     * @returns {string} The key, or '' when the game belongs to no component
+     */
+    storageKeyOf: function (activity) {
+        const nodeId = $(activity).closest('.idevice_node').attr('id');
+        return nodeId ? 'dataDesafio-' + nodeId : '';
+    },
+
     loadGame: function () {
         $eXeDesafio.options = [];
 
@@ -97,6 +113,7 @@ var $eXeDesafio = {
             mOption.idevicePath = $eXeDesafio.idevicePath;
             mOption.main = 'desafioMainContainer-' + i;
             mOption.idevice = 'desafio-IDevice';
+            mOption.storageKey = $eXeDesafio.storageKeyOf(this);
 
             $eXeDesafio.options.push(mOption);
 
@@ -540,9 +557,9 @@ var $eXeDesafio = {
         mOptions.counter = parseInt(mOptions.desafioTime) * 60;
         mOptions.activeChallenge = 0;
 
-        if (typeof mOptions.desafioID !== 'undefined') {
+        if (mOptions.storageKey) {
             const dataDesafio = $eXeDesafio.getDesafioStorage(
-                mOptions.desafioID
+                mOptions.storageKey
             );
             if (dataDesafio) {
                 if (
@@ -551,9 +568,7 @@ var $eXeDesafio = {
                         mOptions.challengesGame.length ||
                     dataDesafio.desafioTime !== mOptions.desafioTime
                 ) {
-                    localStorage.removeItem(
-                        `dataDesafio-${mOptions.desafioID}`
-                    );
+                    localStorage.removeItem(mOptions.storageKey);
                 } else {
                     $eXeDesafio.reloadGame(instance, dataDesafio);
                 }
@@ -613,7 +628,7 @@ var $eXeDesafio = {
 
         clearInterval(mOptions.counterClock);
 
-        localStorage.removeItem('dataDesafio-' + mOptions.desafioID);
+        if (mOptions.storageKey) localStorage.removeItem(mOptions.storageKey);
         mOptions.stateChallenges = $eXeDesafio.createArrayStateChallenges(
             mOptions.desafioType,
             mOptions.challengesGame.length
@@ -809,10 +824,9 @@ var $eXeDesafio = {
                 `${mOptions.msgs.msgYouScore}: ${score}`
             );
         }
-        localStorage.setItem(
-            'dataDesafio-' + mOptions.desafioID,
-            JSON.stringify(data)
-        );
+        if (mOptions.storageKey) {
+            localStorage.setItem(mOptions.storageKey, JSON.stringify(data));
+        }
     },
 
     changeStateButton: function (instance) {
@@ -840,9 +854,9 @@ var $eXeDesafio = {
         }
     },
 
-    getDesafioStorage: function (id) {
+    getDesafioStorage: function (key) {
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataDesafio-' + id)
+            localStorage.getItem(key)
         );
     },
 
