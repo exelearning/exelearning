@@ -1153,7 +1153,10 @@ var $azquizgame = {
                 // takes the same number, and a pointer placed a second later
                 // by number landed on that one.
                 setTimeout(() => {
-                    if ($azquizgame.options[instance] === mOptions) {
+                    if (
+                        imgElement?.isConnected &&
+                        $azquizgame.options[instance] === mOptions
+                    ) {
                         $azquizgame.positionPointer(instance);
                     }
                 }, 1000);

@@ -523,6 +523,37 @@ describe('az-quiz-game iDevice export', () => {
       expect(positionPointer).toHaveBeenCalledWith(instance);
     });
 
+    it('does not position a removed picture when the next page has no Rosco', () => {
+      $azquizgame.options[instance].wordsGame[0].x = 0.5;
+      const positionPointer = vi.spyOn($azquizgame, 'positionPointer');
+      $azquizgame.refreshImageActiveNeo(instance);
+
+      document.body.innerHTML = '<p>A page without Rosco</p>';
+
+      expect(() => vi.advanceTimersByTime(1000)).not.toThrow();
+      expect(positionPointer).not.toHaveBeenCalled();
+    });
+
+    it('does not schedule pointer work onto a replacement picture with the same id', () => {
+      const positionPointer = vi.spyOn($azquizgame, 'positionPointer');
+      $azquizgame.refreshImageActiveNeo(instance);
+      document.getElementById('roscoImage-0').outerHTML = '<img id="roscoImage-0">';
+
+      vi.advanceTimersByTime(1000);
+
+      expect(positionPointer).not.toHaveBeenCalled();
+    });
+
+    it('ignores a layout refresh with no picture element', () => {
+      document.getElementById('roscoImage-0').remove();
+      const positionPointer = vi.spyOn($azquizgame, 'positionPointer');
+      $azquizgame.refreshImageActiveNeo(instance);
+
+      vi.advanceTimersByTime(1000);
+
+      expect(positionPointer).not.toHaveBeenCalled();
+    });
+
     it('ignores a picture that finished loading after its page was left', () => {
       const positionPointer = vi.spyOn($azquizgame, 'positionPointer').mockImplementation(() => {});
       $azquizgame.showImageNeo('pic.png', instance);
