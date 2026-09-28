@@ -41,8 +41,8 @@ export function storedIdevice(type: string): { html: string; jsonProperties: str
  */
 const LEFT_SECONDS = 10;
 
-/** One timed game, and where it keeps what the test needs to reach. */
-export interface TimedGame {
+/** A game as it is stored, and how to make a copy of it for each page. */
+export interface StoredGame {
     /** The iDevice type, e.g. 'guess'. */
     type: string;
     /** The game's stored markup. */
@@ -55,12 +55,16 @@ export interface TimedGame {
      * first and 1 for the second, for a game that has to tell the two apart.
      */
     setTime: (data: any, copy: number) => void;
-    /** What is clicked to start the first game on the page. */
-    start: string;
     /** Where the first game on the page shows its time. */
     clock: string;
     /** The first game's own element. */
     container: string;
+}
+
+/** One timed game, started by the learner, and where it keeps what the test needs to reach. */
+export interface TimedGame extends StoredGame {
+    /** What is clicked to start the first game on the page. */
+    start: string;
     /** Where, in the page, the first game on the page keeps its remaining seconds, e.g. `$guess.options[0].counter`. */
     counter: string;
     /** What the second game's own clock shows. */
@@ -69,13 +73,19 @@ export interface TimedGame {
     over: string;
 }
 
+/** A game whose clock waits for the learner's first move, so a copy nobody has played never counts. */
+export interface IdleClockGame extends StoredGame {
+    /** Run in the page: sets the first game's clock going, as the learner's first move would. */
+    begin: string;
+}
+
 /**
  * The game's markup with its data made timed.
  *
  * The data is read and written back through the page's own helpers, encrypted
  * or not as the iDevice stored it.
  */
-async function timedMarkup(page: Page, game: TimedGame, copy: number): Promise<string> {
+async function timedMarkup(page: Page, game: StoredGame, copy: number): Promise<string> {
     const read = await page.evaluate(
         ({ html, dataGame }) => {
             const $wrapper = (window as any).$('<div>').html(html);
@@ -104,25 +114,17 @@ async function timedMarkup(page: Page, game: TimedGame, copy: number): Promise<s
     );
 }
 
-/** Show a page in the editor and wait for its game to be ready to start. */
-async function openPageWithGame(page: Page, title: string, game: TimedGame): Promise<void> {
-    await page.locator('.nav-element .nav-element-text', { hasText: title }).first().click();
-    await page.locator(game.start).waitFor({ state: 'visible', timeout: 30000 });
-}
-
 /**
- * Start a timed game on one page, move to another holding a game of the same
- * type, and check that the first game's clock leaves the second one alone.
+ * A new project with two pages, 'First game' and 'Second game', each holding
+ * its own copy of the game.
  *
- * @param page - The authenticated page.
- * @param createProject - The fixture that creates a project.
- * @param game - The game under test.
+ * @returns The errors the page throws from here on, collected as they come.
  */
-export async function expectClockKeptToItsGame(
+async function projectWithTwoGames(
     page: Page,
     createProject: (page: Page, title: string) => Promise<string>,
-    game: TimedGame,
-): Promise<void> {
+    game: StoredGame,
+): Promise<string[]> {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
 
@@ -144,31 +146,68 @@ export async function expectClockKeptToItsGame(
         { type: game.type, games },
     );
 
-    await openPageWithGame(page, 'First game', game);
+    return errors;
+}
+
+/** Show a page in the editor and wait for what says its game is ready. */
+async function openPage(page: Page, title: string, ready: string): Promise<void> {
+    await page.locator('.nav-element .nav-element-text', { hasText: title }).first().click();
+    await page.locator(ready).waitFor({ state: 'visible', timeout: 30000 });
+}
+
+/**
+ * Record everything written on a clock from now on.
+ *
+ * @returns A reader for what has been written so far.
+ */
+async function recordClock(page: Page, clock: string): Promise<() => Promise<string[]>> {
+    const key = `__clockWrites${Date.now()}`;
+    await page.evaluate(
+        ({ clock, key }) => {
+            const element = document.querySelector(clock) as HTMLElement;
+            const writes: string[] = [];
+            (window as any)[key] = writes;
+            new MutationObserver(() => writes.push((element.textContent || '').trim())).observe(element, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+        },
+        { clock, key },
+    );
+
+    return () => page.evaluate(key => (window as any)[key] as string[], key);
+}
+
+/**
+ * Start a timed game on one page, move to another holding a game of the same
+ * type, and check that the first game's clock leaves the second one alone.
+ *
+ * @param page - The authenticated page.
+ * @param createProject - The fixture that creates a project.
+ * @param game - The game under test.
+ */
+export async function expectClockKeptToItsGame(
+    page: Page,
+    createProject: (page: Page, title: string) => Promise<string>,
+    game: TimedGame,
+): Promise<void> {
+    const errors = await projectWithTwoGames(page, createProject, game);
+
+    await openPage(page, 'First game', game.start);
     await page.locator(game.start).click();
     await page.evaluate(`${game.counter} = ${LEFT_SECONDS}`);
     const shortenedAt = Date.now();
     const firstGame = await page.locator(game.container).elementHandle();
 
-    await openPageWithGame(page, 'Second game', game);
+    await openPage(page, 'Second game', game.start);
     await page.waitForFunction(element => !element?.isConnected, firstGame);
     // Otherwise the first game ended on its own page, and nothing below would test anything.
     expect(Date.now() - shortenedAt, 'the first game ran out before the second was reached').toBeLessThan(
         (LEFT_SECONDS - 3) * 1000,
     );
 
-    // Everything written on the second game's clock from here on.
-    await page.evaluate(clock => {
-        const element = document.querySelector(clock) as HTMLElement;
-        const writes: string[] = [];
-        (window as any).__secondClockWrites = writes;
-        new MutationObserver(() => writes.push((element.textContent || '').trim())).observe(element, {
-            childList: true,
-            characterData: true,
-            subtree: true,
-        });
-    }, game.clock);
-    const writes = () => page.evaluate(() => (window as any).__secondClockWrites as string[]);
+    const writes = await recordClock(page, game.clock);
 
     // Not started, nothing counts down on it. Waiting is the assertion: the
     // first game's clock ticks once a second, so two seconds would show it.
@@ -183,5 +222,51 @@ export async function expectClockKeptToItsGame(
     expect(written.length, 'the second clock never ran').toBeGreaterThan(0);
     for (const time of written) expect(time, 'another game wrote on the second clock').toMatch(game.ownTime);
     expect(await page.evaluate(game.over), 'the second game was ended by the first one').toBeFalsy();
+    expect(errors, 'the page threw').toEqual([]);
+}
+
+/**
+ * Set a game's clock going on one page, move to another holding a game of the
+ * same type that nobody has played, and check that its clock stays still.
+ *
+ * For the games whose clock waits for the learner's first move: there is no
+ * start to press, and the copy on the next page, untouched, has nothing of its
+ * own to show.
+ *
+ * @param page - The authenticated page.
+ * @param createProject - The fixture that creates a project.
+ * @param game - The game under test.
+ */
+export async function expectIdleClockLeftAlone(
+    page: Page,
+    createProject: (page: Page, title: string) => Promise<string>,
+    game: IdleClockGame,
+): Promise<void> {
+    const errors = await projectWithTwoGames(page, createProject, game);
+
+    await openPage(page, 'First game', game.container);
+    const firstClock = await recordClock(page, game.clock);
+    // Made until the clock is seen counting: the game may still be setting
+    // itself up, and undo a first move made too early. Otherwise the first
+    // game's clock never ran, and nothing below would test anything.
+    await expect
+        .poll(
+            async () => {
+                await page.evaluate(game.begin);
+                return new Set(await firstClock()).size;
+            },
+            { message: "the first game's clock never counted", timeout: 15000 },
+        )
+        .toBeGreaterThan(1);
+    const firstGame = await page.locator(game.container).elementHandle();
+
+    await openPage(page, 'Second game', game.container);
+    await page.waitForFunction(element => !element?.isConnected, firstGame);
+
+    // Waiting is the assertion: the first game's clock ticks once a second, so
+    // three seconds would show it here.
+    const writes = await recordClock(page, game.clock);
+    await page.waitForTimeout(3000);
+    expect(await writes(), "another game's clock ran on the second one").toEqual([]);
     expect(errors, 'the page threw').toEqual([]);
 }
