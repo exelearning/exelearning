@@ -10,6 +10,9 @@ function loadIdevice(code) {
     const modifiedCode = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
     // eslint-disable-next-line no-eval
     (0, eval)(modifiedCode);
+    // Same lifecycle the workarea publishes before calling init(), so the suite
+    // can close the edition and assert on what is actually released.
+    global.attachEditionLifecycle(global.$exeDevice);
     return global.$exeDevice;
 }
 
@@ -556,7 +559,10 @@ describe('electrical-circuits iDevice edition', () => {
 
         const font = await $exeDevice.loadTikzFont('cmr10');
         expect(font.unitsPerEm).toBeGreaterThan(0);
-        expect(okFetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf');
+        // The download is aborted with the edition.
+        expect(okFetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
 
         // Second call is served from cache (no extra fetch).
         await $exeDevice.loadTikzFont('cmr10');
@@ -883,6 +889,309 @@ describe('electrical-circuits iDevice edition', () => {
         }
     });
 
+    describe('edition lifecycle', () => {
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        describe('renderTikzCodeToSvg', () => {
+            it('resolves empty when TikZJax does not answer within the timeout', async () => {
+                vi.useFakeTimers();
+                document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+
+                const promise = $exeDevice.renderTikzCodeToSvg('\\draw (0,0);', 500);
+                vi.advanceTimersByTime(500);
+
+                await expect(promise).resolves.toBe('');
+            });
+
+            // Review H1: teardown cancels the timeout and the listener that
+            // used to complete this promise, so it must settle on its own —
+            // otherwise insertAIQuestions() never reaches its `finally` and
+            // the app-level "generating circuits" modal stays open.
+            it('rejects with an AbortError when the edition closes, and ignores later answers', async () => {
+                vi.useFakeTimers();
+                document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+                const preview = document.getElementById('elceTikzPreview');
+                const sanitize = vi.spyOn($exeDevice, 'sanitizeTikzSvg');
+
+                const pending = $exeDevice.renderTikzCodeToSvg('\\draw (0,0);', 500);
+                $exeDevice.$lifecycle.destroy();
+                vi.advanceTimersByTime(5000);
+                preview.innerHTML = '<svg viewBox="0 0 10 10"></svg>';
+                preview
+                    .querySelector('svg')
+                    .dispatchEvent(
+                        new Event('tikzjax-load-finished', { bubbles: true })
+                    );
+
+                await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+                expect(sanitize).not.toHaveBeenCalled();
+            });
+
+            it('rejects at once when the edition is already closed', async () => {
+                document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+                $exeDevice.$lifecycle.destroy();
+
+                await expect(
+                    $exeDevice.renderTikzCodeToSvg('\\draw (0,0);', 500)
+                ).rejects.toMatchObject({ name: 'AbortError' });
+            });
+
+            // Review H3 (same shape): a conversion started in edition A must
+            // finish on A, never on the $exeDevice that replaced it.
+            it('never finishes a render on the edition that replaced it', async () => {
+                document.body.innerHTML =
+                    '<div id="elceTikzPreview"></div>';
+                const preview = document.getElementById('elceTikzPreview');
+                let finishConversion;
+                vi.spyOn($exeDevice, 'convertTikzTextToPaths').mockReturnValue(
+                    new Promise((resolve) => (finishConversion = resolve))
+                );
+                const pending = $exeDevice.renderTikzCodeToSvg('\\draw (0,0);', 5000);
+                preview.innerHTML = '<svg viewBox="0 0 10 10"><text>x</text></svg>';
+                preview
+                    .querySelector('svg')
+                    .dispatchEvent(
+                        new Event('tikzjax-load-finished', { bubbles: true })
+                    );
+
+                const editionA = $exeDevice;
+                editionA.$lifecycle.destroy();
+                const editionB = { sanitizeTikzSvg: vi.fn(() => '<svg/>') };
+                global.$exeDevice = editionB;
+                finishConversion();
+
+                await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+                expect(editionB.sanitizeTikzSvg).not.toHaveBeenCalled();
+                global.$exeDevice = editionA;
+            });
+        });
+
+        describe('insertAIQuestions', () => {
+            it('closes the generating modal and stops when the edition closes mid-render', async () => {
+                const hideModal = vi
+                    .spyOn($exeDevice, 'hideCircuitGenerationModal')
+                    .mockImplementation(() => {});
+                vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(() => {});
+                const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+                const showMessage = vi.spyOn($exeDevice, 'showMessage').mockImplementation(() => {});
+                const render = vi
+                    .spyOn($exeDevice, 'renderTikzCodeToSvg')
+                    .mockImplementation(() => {
+                        $exeDevice.$lifecycle.destroy();
+                        return $exeDevice.$lifecycle.delay(1);
+                    });
+                const line =
+                    'Desc#\\begin{circuitikz}\\draw (0,0);\\end{circuitikz}#A#Q#Opt A#Opt B';
+
+                // Called detached, exactly as the shared AI handler calls it.
+                const insertAIQuestions = $exeDevice.insertAIQuestions;
+                const result = await insertAIQuestions([line, line], []);
+
+                expect(hideModal).toHaveBeenCalled();
+                expect(render).toHaveBeenCalledTimes(1);
+                expect(addQuestions).not.toHaveBeenCalled();
+                expect(showMessage).not.toHaveBeenCalled();
+                expect(result).toEqual({ handledMessaging: true });
+            });
+
+            it('still reports a render that fails for another reason', async () => {
+                vi.spyOn($exeDevice, 'hideCircuitGenerationModal').mockImplementation(() => {});
+                vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(() => {});
+                vi.spyOn($exeDevice, 'renderTikzCodeToSvg').mockRejectedValue(new Error('boom'));
+                const line =
+                    'Desc#\\begin{circuitikz}\\draw (0,0);\\end{circuitikz}#A#Q#Opt A#Opt B';
+
+                await expect($exeDevice.insertAIQuestions([line], [])).rejects.toThrow('boom');
+            });
+        });
+
+        describe('renderTikzPreview', () => {
+            it('ignores a TikZJax answer that arrives after the edition closed', () => {
+                document.body.innerHTML = `
+                    <textarea id="elceTikzCode">\\draw (0,0);</textarea>
+                    <div id="elceTikzPreview"></div>
+                    <div id="elceNoCircuit"></div>
+                `;
+                const preview = document.getElementById('elceTikzPreview');
+                const capture = vi
+                    .spyOn($exeDevice, 'captureRenderedTikzPreview')
+                    .mockImplementation(() => {});
+
+                $exeDevice.renderTikzPreview();
+                expect($exeDevice.tikzFinishedHandler).not.toBeNull();
+
+                $exeDevice.$lifecycle.destroy();
+                preview.dispatchEvent(
+                    new Event('tikzjax-load-finished', { bubbles: true })
+                );
+
+                expect(capture).not.toHaveBeenCalled();
+            });
+
+            // Review H3: bind() guards the entry of the TikZJax callback, not
+            // the font conversion it starts. Its continuation used to read the
+            // $exeDevice global, which by then may be the next edition.
+            it('does not capture into the next edition when the conversion finishes after close', async () => {
+                document.body.innerHTML = `
+                    <textarea id="elceTikzCode">\\draw (0,0);</textarea>
+                    <div id="elceTikzPreview"></div>
+                    <div id="elceNoCircuit"></div>
+                `;
+                const preview = document.getElementById('elceTikzPreview');
+                let finishConversion;
+                vi.spyOn($exeDevice, 'convertTikzTextToPaths').mockReturnValue(
+                    new Promise((resolve) => (finishConversion = resolve))
+                );
+                const captureA = vi
+                    .spyOn($exeDevice, 'captureRenderedTikzPreview')
+                    .mockImplementation(() => '');
+
+                $exeDevice.renderTikzPreview();
+                preview.innerHTML = '<svg viewBox="0 0 10 10"><text>x</text></svg>';
+                preview.dispatchEvent(
+                    new Event('tikzjax-load-finished', { bubbles: true })
+                );
+
+                const editionA = $exeDevice;
+                editionA.$lifecycle.destroy();
+                const editionB = { captureRenderedTikzPreview: vi.fn() };
+                global.$exeDevice = editionB;
+                finishConversion();
+                await editionA.tikzCapturePromise;
+
+                expect(editionB.captureRenderedTikzPreview).not.toHaveBeenCalled();
+                expect(captureA).not.toHaveBeenCalled();
+                global.$exeDevice = editionA;
+            });
+
+            it('converts glyphs with the edition that started the conversion', async () => {
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.innerHTML = '<text font-family="cmr10" x="1" y="2">x</text>';
+                let finishFont;
+                vi.spyOn($exeDevice, 'loadTikzFont').mockReturnValue(
+                    new Promise((resolve) => (finishFont = resolve))
+                );
+                const glyphA = vi
+                    .spyOn($exeDevice, 'tikzGlyphStringToPath')
+                    .mockReturnValue('M0 0');
+
+                const editionA = $exeDevice;
+                const pending = editionA.convertTikzTextToPaths(svg);
+                global.$exeDevice = { tikzGlyphStringToPath: vi.fn() };
+                finishFont({});
+                await pending;
+
+                expect(glyphA).toHaveBeenCalled();
+                expect(global.$exeDevice.tikzGlyphStringToPath).not.toHaveBeenCalled();
+                global.$exeDevice = editionA;
+            });
+        });
+
+        describe('loadTikzFont', () => {
+            it('aborts the pending font download when the edition closes', async () => {
+                let received = null;
+                let sawTtf;
+                const ttfFetched = new Promise((resolve) => {
+                    sawTtf = resolve;
+                });
+                global.fetch = vi.fn((url, options) => {
+                    if (String(url).endsWith('.ttf')) {
+                        received = options;
+                        sawTtf();
+                    }
+                    return new Promise(() => {});
+                });
+                $exeDevice.tikzFontCache = {};
+                $exeDevice.tikzFontPackPromise = null;
+                window.fzstd = undefined;
+
+                $exeDevice.loadTikzFont('cmr10');
+                await ttfFetched;
+                expect(received.signal.aborted).toBe(false);
+
+                $exeDevice.$lifecycle.destroy();
+
+                expect(received.signal.aborted).toBe(true);
+            });
+        });
+
+        describe('font loading continuations', () => {
+            it('parse fonts with the edition that asked for them', async () => {
+                let finishPack;
+                const editionA = $exeDevice;
+                editionA.tikzFontCache = {};
+                vi.spyOn(editionA, 'loadTikzFontPack').mockReturnValue(
+                    new Promise((resolve) => (finishPack = resolve))
+                );
+                const parseA = vi.spyOn(editionA, 'parseTikzFont').mockReturnValue('fontA');
+
+                const pending = editionA.loadTikzFont('cmr10');
+                global.$exeDevice = { parseTikzFont: vi.fn() };
+                finishPack({ header: { cmr10: [0, 1] }, payload: new Uint8Array([1]) });
+
+                await expect(pending).resolves.toBe('fontA');
+                expect(parseA).toHaveBeenCalled();
+                expect(global.$exeDevice.parseTikzFont).not.toHaveBeenCalled();
+                global.$exeDevice = editionA;
+            });
+
+            it('a failed pack download resets its own cache, not the next edition\'s', async () => {
+                const editionA = $exeDevice;
+                editionA.tikzFontPackPromise = null;
+                window.fzstd = { decompress: vi.fn() };
+                let failFetch;
+                global.fetch = vi.fn(() => new Promise((_r, reject) => (failFetch = reject)));
+                const editionB = { tikzFontPackPromise: 'B pack' };
+
+                const pending = editionA.loadTikzFontPack();
+                global.$exeDevice = editionB;
+                failFetch(new Error('network'));
+
+                await expect(pending).resolves.toBeNull();
+                expect(editionA.tikzFontPackPromise).toBeNull();
+                expect(editionB.tikzFontPackPromise).toBe('B pack');
+                global.$exeDevice = editionA;
+                window.fzstd = undefined;
+            });
+        });
+
+        describe('exportQuestions', () => {
+            it('revokes the download object URL when the edition closes first', () => {
+                vi.useFakeTimers();
+                document.body.innerHTML =
+                    '<div id="electricalCircuitsIdeviceForm"></div>';
+                vi.spyOn($exeDevice, 'validateData').mockReturnValue({
+                    selectsGame: [],
+                });
+                vi.spyOn($exeDevice, 'getLinesQuestions').mockReturnValue(['a']);
+                const createObjectURL = vi
+                    .spyOn(window.URL, 'createObjectURL')
+                    .mockReturnValue('blob:elce-1');
+                const revokeObjectURL = vi
+                    .spyOn(window.URL, 'revokeObjectURL')
+                    .mockImplementation(() => {});
+
+                $exeDevice.exportQuestions();
+                expect(createObjectURL).toHaveBeenCalledTimes(1);
+                expect(revokeObjectURL).not.toHaveBeenCalled();
+
+                $exeDevice.$lifecycle.destroy();
+
+                expect(revokeObjectURL).toHaveBeenCalledWith('blob:elce-1');
+
+                // The cleanup timer is cancelled, so it cannot run against the
+                // form of the iDevice that replaced this one.
+                revokeObjectURL.mockClear();
+                vi.advanceTimersByTime(1000);
+                expect(revokeObjectURL).not.toHaveBeenCalled();
+            });
+        });
+    });
+
     it('circuit modal helpers are a no-op when the modal manager is missing', () => {
         expect(() => {
             $exeDevice.showCircuitGenerationModal();
@@ -922,6 +1231,7 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
         $exeDevice.tikzFontCache = {};
         $exeDevice.tikzFontPackPromise = null;
         $exeDevice.idevicePath = '/idevice/';
+        global.attachEditionLifecycle($exeDevice);
     });
 
     afterEach(() => {
@@ -964,7 +1274,9 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
         const font = await $exeDevice.loadTikzFont('cmmi10');
 
         expect(font.unitsPerEm).toBeGreaterThan(0);
-        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmmi10.ttf');
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmmi10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
     });
 
     it('falls back to the loose TTF when fzstd is unavailable (server mode)', async () => {
@@ -976,7 +1288,9 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
         expect(font.unitsPerEm).toBeGreaterThan(0);
         // No pack request at all — straight to the loose file.
         expect(global.fetch).toHaveBeenCalledTimes(1);
-        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf');
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
     });
 
     it('falls back to the loose TTF when the pack request fails', async () => {
@@ -993,6 +1307,8 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
 
         expect(font.unitsPerEm).toBeGreaterThan(0);
         expect(window.fzstd.decompress).not.toHaveBeenCalled();
-        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf');
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
     });
 });
