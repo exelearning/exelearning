@@ -48,6 +48,18 @@ const LEFT_SECONDS = 10;
  */
 export const COMPONENT_IDS = ['idevice-first-game', 'idevice-second-game'];
 
+/** An iDevice as it is stored, and what to change in the copy each page holds. */
+export interface StoredCopies {
+    /** The iDevice type, e.g. 'checklist'. */
+    type: string;
+    /** The iDevice's stored markup. */
+    html: string;
+    /** Class prefix of the element holding the iDevice's data, e.g. 'listacotejo' for `.listacotejo-DataGame`. */
+    dataGame: string;
+    /** Changes the stored data of each page's copy, `copy` being 0 for the first and 1 for the second. */
+    change: (data: any, copy: number) => void;
+}
+
 /** A game as it is stored, and how to make a copy of it for each page. */
 export interface StoredGame {
     /** The iDevice type, e.g. 'guess'. */
@@ -92,12 +104,12 @@ export interface IdleClockGame extends StoredGame {
 }
 
 /**
- * The game's markup with its data made timed.
+ * The iDevice's markup with its data changed for one page's copy.
  *
  * The data is read and written back through the page's own helpers, encrypted
  * or not as the iDevice stored it.
  */
-async function timedMarkup(page: Page, game: StoredGame, copy: number): Promise<string> {
+async function copyMarkup(page: Page, game: StoredCopies, copy: number): Promise<string> {
     const read = await page.evaluate(
         ({ html, dataGame }) => {
             const $wrapper = (window as any).$('<div>').html(html);
@@ -110,7 +122,7 @@ async function timedMarkup(page: Page, game: StoredGame, copy: number): Promise<
     );
 
     const data = JSON.parse(read.json);
-    game.setTime(data, copy);
+    game.change(data, copy);
 
     return page.evaluate(
         ({ html, dataGame, json, encrypted }) => {
@@ -128,23 +140,23 @@ async function timedMarkup(page: Page, game: StoredGame, copy: number): Promise<
 
 /**
  * A new project with two pages, 'First game' and 'Second game', each holding
- * its own copy of the game.
+ * its own copy of the iDevice, created with the ids in COMPONENT_IDS.
  *
  * @returns The errors the page throws from here on, collected as they come.
  */
-async function projectWithTwoGames(
+export async function projectWithTwoCopies(
     page: Page,
     createProject: (page: Page, title: string) => Promise<string>,
-    game: StoredGame,
+    game: StoredCopies,
 ): Promise<string[]> {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
 
-    const uuid = await createProject(page, `${game.type} clocks`);
+    const uuid = await createProject(page, `${game.type} copies`);
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
 
-    const games = [await timedMarkup(page, game, 0), await timedMarkup(page, game, 1)];
+    const games = [await copyMarkup(page, game, 0), await copyMarkup(page, game, 1)];
     await page.evaluate(
         ({ type, games, ids }) => {
             const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
@@ -163,7 +175,7 @@ async function projectWithTwoGames(
 }
 
 /** Show a page in the editor and wait for what says its game is ready. */
-async function openPage(page: Page, title: string, ready: string): Promise<void> {
+export async function openPage(page: Page, title: string, ready: string): Promise<void> {
     await page.locator('.nav-element .nav-element-text', { hasText: title }).first().click();
     await page.locator(ready).waitFor({ state: 'visible', timeout: 30000 });
 }
@@ -205,7 +217,7 @@ export async function expectClockKeptToItsGame(
     createProject: (page: Page, title: string) => Promise<string>,
     game: TimedGame,
 ): Promise<void> {
-    const errors = await projectWithTwoGames(page, createProject, game);
+    const errors = await projectWithTwoCopies(page, createProject, { ...game, change: game.setTime });
 
     await openPage(page, 'First game', game.start);
     await page.locator(game.start).click();
@@ -256,7 +268,7 @@ export async function expectIdleClockLeftAlone(
     createProject: (page: Page, title: string) => Promise<string>,
     game: IdleClockGame,
 ): Promise<void> {
-    const errors = await projectWithTwoGames(page, createProject, game);
+    const errors = await projectWithTwoCopies(page, createProject, { ...game, change: game.setTime });
 
     await openPage(page, 'First game', game.container);
     const firstClock = await recordClock(page, game.clock);
