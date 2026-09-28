@@ -1,7 +1,7 @@
 ---
 id: ADR-2415-01
 title: "Separate the publication and storage contracts for the editable source"
-status: Proposed
+status: Accepted
 date: 2026-09-14
 tracking_issue: 2415
 deciders:
@@ -106,6 +106,10 @@ nothing it serves today becomes more or less exposed, while a package uploaded t
 it is no longer rejected for carrying no source. Hosts that ignore the flag and
 store a publication package as their project inherit the defect the flag exists
 to prevent; the embedding documentation says so explicitly.
+
+Minimum host version: `mod_exescorm` sends the flag from **v4.0.5**, the first
+release that includes mod_exescorm#96. With an earlier version, an author who
+turns the property off saves a package the plugin cannot re-open for editing.
 
 ## Validation
 
