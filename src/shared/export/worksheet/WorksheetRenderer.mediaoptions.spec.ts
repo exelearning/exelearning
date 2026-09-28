@@ -85,10 +85,12 @@ describe('renderWorksheet with pictures to choose between', () => {
     });
 
     it('renders options without an outer frame or border, preserving readable text color', () => {
-        const body = render([{ ...picture, textColor: '#333333' }]);
+        // Even a card that arrives with an author colour gets no frame: the picture is the option.
+        const body = render([{ ...picture, accentColor: '#a40000', textColor: '#333333' }]);
 
         expect(body).toContain('<li class="worksheet-media-option">');
         expect(body).not.toContain('worksheet-media-option-marked');
+        expect(body).not.toContain('#a40000');
         expect(body).toContain('<span class="worksheet-media-option-text" style="color: #333333">Pato</span>');
     });
 

@@ -815,6 +815,10 @@ describe('questions set in two columns', () => {
         expect(ruleFor('.worksheet-items-columns > .worksheet-item:nth-child(odd)')).toContain(
             'border-right: 1px solid #ccc',
         );
+        // Except beside an empty half: a question alone on the last row has nothing to be parted from.
+        expect(ruleFor('.worksheet-items-columns > .worksheet-item:nth-child(odd):last-child')).toContain(
+            'border-right: none',
+        );
         // Spaced with padding, so the rule runs unbroken from one row to the next.
         expect(ruleFor('.worksheet-items-columns > .worksheet-item')).toContain('margin-bottom: 0');
     });
@@ -843,15 +847,23 @@ describe('writing lines and cards to be ordered', () => {
         const one = answered({ kind: 'writingSpace', lines: 1 });
         const three = answered({ kind: 'writingSpace', lines: 3 });
 
-        expect(one).toContain('height: 7mm');
-        expect(three).toContain('height: 21mm');
+        expect(one).toContain('height: 5mm');
+        expect(three).toContain('height: 15mm');
     });
 
     it('leaves a line of room at least, whatever it is asked for', () => {
         // Zero would print an answer space with nowhere to write.
         for (const lines of [0, -2]) {
-            expect(answered({ kind: 'writingSpace', lines })).toContain('height: 7mm');
+            expect(answered({ kind: 'writingSpace', lines })).toContain('height: 5mm');
         }
+    });
+
+    it('leaves the height of the room to the lines asked for, never to the stylesheet', () => {
+        // A rule setting it would silently override every adapter's line count.
+        const rules = WORKSHEET_ACTIVITY_STYLES.split('}').filter(rule => rule.includes('.worksheet-writing-space'));
+
+        expect(rules.length).toBeGreaterThan(0);
+        for (const rule of rules) expect(rule).not.toMatch(/(^|[\s;{])height\s*:/);
     });
 
     it('sets compact vertical spacing for sort sentence mode, math problems, challenge and identify', () => {

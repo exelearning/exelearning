@@ -188,6 +188,11 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     padding-left: 5mm;
 }
 
+/* A question alone on the last row, or alone in the list, has nothing beside it to be parted from. */
+.worksheet-items-columns > .worksheet-item:nth-child(odd):last-child {
+    border-right: none;
+}
+
 /* A number sits outside its question, so on the right it needs room between the rule and itself. */
 .worksheet-items-columns:not(.worksheet-items-plain) > .worksheet-item:nth-child(even) {
     margin-left: 12mm;
@@ -537,7 +542,8 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-top: 2mm;
 }
 
-/* Sort sentence mode, Maths problems, Challenge and Identify: compact vertical space just enough to write the answer. */
+/* Sort sentence mode, Maths problems, Challenge and Identify: compact vertical space just enough to
+   write the answer. The height of the room itself is the renderer's, from the lines each asks for. */
 .worksheet-activity[data-idevice="sort"] .worksheet-item,
 .worksheet-activity[data-idevice="mathproblems"] .worksheet-item,
 .worksheet-activity[data-idevice="challenge"] .worksheet-item,
@@ -561,13 +567,11 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 .worksheet-activity[data-idevice="challenge"] .worksheet-writing-space,
 .worksheet-activity[data-idevice="identify"] .worksheet-writing-space {
     margin-top: 0.5mm;
-    height: 5mm !important;
 }
 
 .worksheet-activity[data-idevice="challenge"] .worksheet-extra > p {
     margin: 1mm 0;
 }
-
 
 /* A line to write a single value on, under the card it belongs to. */
 .worksheet-line {
@@ -1371,7 +1375,7 @@ function renderRubricTable(table: PrintableRubric): string {
 
     if (table.notes) {
         html += `<p class="worksheet-rubric-notes">${table.notes}:</p>`;
-        html += `<div class="worksheet-writing-space" style="height: ${2 * WRITING_LINE_HEIGHT_MM}mm"></div>`;
+        html += `<div class="worksheet-writing-space" style="height: ${RUBRIC_NOTES_HEIGHT_MM}mm"></div>`;
     }
 
     return `${html}</div>`;
@@ -1495,8 +1499,15 @@ const ROWS_PER_BLOCK = 5;
 /** How far the ring's letters sit from its centre, as a share of the board's half-width. */
 const RING_RADIUS_PERCENT = 40;
 
-/** Height of one line of writing space, in millimetres. */
-const WRITING_LINE_HEIGHT_MM = 7;
+/**
+ * Height of one line of answer space, in millimetres: room to write a short answer by hand and no
+ * more, so a sheet of them stays short. How many lines an answer gets is the adapter's to say, and
+ * the stylesheet never overrides the result.
+ */
+const WRITING_LINE_HEIGHT_MM = 5;
+
+/** Room left under a rubric for the assessor's notes, in millimetres. */
+const RUBRIC_NOTES_HEIGHT_MM = 14;
 
 /** Split a list into chunks of at most `size`. */
 function chunk<T>(items: T[], size: number): T[][] {
