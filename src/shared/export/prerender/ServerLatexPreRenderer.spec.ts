@@ -500,4 +500,35 @@ describe('ServerLatexPreRenderer', () => {
             expect(decoded.itinerary.messageCodeAccess).toContain('exe-math-rendered');
         });
     });
+
+    describe('inline line breaking (issue #2440)', () => {
+        // MathJax 4 turns in-line line breaking on by default. With SVG output that is
+        // one <svg> per break opportunity (every top-level `=`, `+`, `\mid`, `\,`) and
+        // the pre-renderer keeps a single <svg>, so every formula was cut at its first
+        // break point: `\( x = 3 = 4 = 5 \)` shipped as a lone `x`. Pre-rendered SVG
+        // is static and cannot reflow, so the output jax has to emit one <svg>.
+        const glyphsOf = (html: string): string =>
+            [...html.matchAll(/data-c="([0-9A-F]+)"/g)].map(m => String.fromCodePoint(parseInt(m[1], 16))).join('');
+
+        it('renders an inline formula with several relation operators as one complete SVG', async () => {
+            const result = await renderer.preRender('<p>\\( x = 3 = 4 = 5 \\)</p>');
+
+            expect(result.count).toBe(1);
+            expect((result.html.match(/<svg\b/g) || []).length).toBe(1);
+            expect(result.html).not.toContain('<mjx-break');
+            expect(glyphsOf(result.html)).toBe('𝑥=3=4=5');
+        });
+
+        it('keeps the glyphs after every break opportunity of the issue examples', async () => {
+            const cases: Array<[string, string]> = [
+                ['\\(x^2 + y^2 = z^2\\)', '𝑥2+𝑦2=𝑧2'],
+                ['\\(P(A \\mid B) = 1\\)', '𝑃(𝐴∣𝐵)=1'],
+            ];
+            for (const [latex, glyphs] of cases) {
+                const result = await renderer.preRender(`<p>${latex}</p>`);
+                expect((result.html.match(/<svg\b/g) || []).length).toBe(1);
+                expect(glyphsOf(result.html)).toBe(glyphs);
+            }
+        });
+    });
 });
