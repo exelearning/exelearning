@@ -292,13 +292,14 @@ export class FileSystemAssetHandler implements AssetHandler {
             const folderPath = path.dirname(assetInfo.relativePath);
             const fullFolderPath = assetInfo.assetDir === 'content' ? path.join('content', folderPath) : folderPath;
 
-            // Use filename-based ID (not UUID) to match FileSystemAssetProvider expectations
-            // For root-level assets, id is just the filename
-            // For nested assets, id includes the folder path
-            const assetId =
-                fullFolderPath && fullFolderPath !== '.'
-                    ? `${fullFolderPath.replace(/^(content\/)?/, '')}/${filename}`
-                    : filename;
+            // Use the same path-based ID FileSystemAssetProvider gives this file,
+            // relative to content/resources/ (e.g. 20251009090601DKVACR/01.jpg).
+            // The exporter looks asset:// references up by that ID and prefixes
+            // content/resources/ itself, so keeping "resources/" here would
+            // export the reference as content/resources/resources/... — a path
+            // no file is written to.
+            const idFolder = fullFolderPath === '.' ? '' : fullFolderPath.replace(/^content\/(resources(\/|$))?/, '');
+            const assetId = idFolder ? `${idFolder}/${filename}` : filename;
 
             // Store the asset with the full folder structure
             await this.storeAsset(assetId, content, {

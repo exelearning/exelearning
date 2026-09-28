@@ -8,6 +8,7 @@ import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 
 import { FileSystemAssetHandler } from './FileSystemAssetHandler';
+import { FileSystemAssetProvider } from '../export/providers/FileSystemAssetProvider';
 
 describe('FileSystemAssetHandler', () => {
     let testDir: string;
@@ -146,6 +147,23 @@ describe('FileSystemAssetHandler', () => {
             expect(assetMap.size).toBeGreaterThan(0);
             expect(assetMap.has('resources/image.png')).toBe(true);
             expect(assetMap.has('resources/doc.pdf')).toBe(true);
+        });
+
+        it('should give content/resources assets the IDs FileSystemAssetProvider lists', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            const assetMap = await handler.extractAssetsFromZip({
+                'content/resources/20260121165359522NHK/card.png': new Uint8Array([137, 80]),
+                'content/resources/flat.png': new Uint8Array([137, 80]),
+            });
+
+            expect(assetMap.get('content/resources/20260121165359522NHK/card.png')).toBe(
+                '20260121165359522NHK/card.png',
+            );
+            expect(assetMap.get('content/resources/flat.png')).toBe('flat.png');
+
+            const listed = await new FileSystemAssetProvider(testDir).listAssetMetadata();
+            expect(listed.map(asset => asset.id).sort()).toEqual(['20260121165359522NHK/card.png', 'flat.png']);
         });
 
         it('should skip root-level files', async () => {
