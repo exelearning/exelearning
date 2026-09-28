@@ -7,6 +7,8 @@
 
 import {
     SW_VERSION,
+    SW_APP_VERSION,
+    resolveServiceWorkerVersion,
     MIME_TYPES,
     EXTERNAL_LINK_HANDLER_SCRIPT,
     PREVIEW_REFRESH_SCRIPT,
@@ -38,7 +40,21 @@ describe('Preview Service Worker', () => {
 
     describe('Constants', () => {
         it('should have SW_VERSION defined', () => {
-            expect(SW_VERSION).toBe('1.1.0');
+            expect(SW_VERSION).toBe('1.2.0');
+        });
+
+        it('should report the app version as unversioned when no version query is present', () => {
+            // The test environment loads the script without ?v=, like a build that does
+            // not expose eXeLearning.version.
+            expect(SW_APP_VERSION).toBe('unversioned');
+        });
+
+        it('should derive the app version from the registration URL query', () => {
+            expect(resolveServiceWorkerVersion('?v=4.0.5')).toBe('4.0.5');
+            expect(resolveServiceWorkerVersion('?x=1&v=v4.0.5-em')).toBe('v4.0.5-em');
+            expect(resolveServiceWorkerVersion('')).toBe('unversioned');
+            expect(resolveServiceWorkerVersion('?v=')).toBe('unversioned');
+            expect(resolveServiceWorkerVersion(undefined)).toBe('unversioned');
         });
 
         it('should have MIME_TYPES with common file types', () => {
