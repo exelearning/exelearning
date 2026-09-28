@@ -3005,6 +3005,7 @@ describe('common_edition.js', () => {
         document.body.innerHTML = `
           <div id="eXeFormIAContainer"><textarea id="eXeThemeIA"></textarea></div>
           <p id="eXeIAMessage"></p>
+          <textarea id="eXeEQuestionsArea"></textarea>
         `;
       };
 
@@ -3018,7 +3019,9 @@ describe('common_edition.js', () => {
         }
       };
 
-      it('delivers generated questions while the editor is still open', async () => {
+      // Generated questions are staged in the Questions tab for review, never
+      // inserted straight away (#1998).
+      it('stages generated questions while the editor is still open', async () => {
         mountIAForm();
         const saveQuestions = vi.fn();
 
@@ -3028,7 +3031,8 @@ describe('common_edition.js', () => {
             openEdition();
             await iDevice().gamification.share.genarateIAQuestons(0, saveQuestions);
 
-            expect(saveQuestions).toHaveBeenCalledWith(['Heart#A muscular organ']);
+            expect(document.getElementById('eXeEQuestionsArea').value).toBe('Heart#A muscular organ');
+            expect(saveQuestions).not.toHaveBeenCalled();
           }
         );
       });
@@ -3051,6 +3055,7 @@ describe('common_edition.js', () => {
             resolveRequest({ questions: ['Heart#A muscular organ'] });
             await pending;
 
+            expect(document.getElementById('eXeEQuestionsArea').value).toBe('');
             expect(saveQuestions).not.toHaveBeenCalled();
           }
         );
