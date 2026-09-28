@@ -3390,6 +3390,117 @@ describe('IdeviceBlockNode', () => {
             expect(capturedInput.accept).toBe('.idevice');
             appendSpy.mockRestore();
         });
+
+        // ---- Additional coverage ----
+
+        // Clicks the button and returns the one-shot input appended to the body.
+        const clickAndCaptureInput = () => {
+            let capturedInput;
+            const realAppend = document.body.appendChild.bind(document.body);
+            const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
+                capturedInput = node;
+                return realAppend(node);
+            });
+            const clickSpy = vi
+                .spyOn(HTMLInputElement.prototype, 'click')
+                .mockImplementation(() => {});
+            block.addBehaviourImportIdeviceButton();
+            importButton.click();
+            appendSpy.mockRestore();
+            return { input: capturedInput, clickSpy };
+        };
+
+        const setFiles = (input, files) => {
+            Object.defineProperty(input, 'files', { value: files, configurable: true });
+        };
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+            document.querySelectorAll('input[type="file"].d-none').forEach((n) => n.remove());
+        });
+
+        it('appends a hidden input to the body and opens the file picker', () => {
+            const { input, clickSpy } = clickAndCaptureInput();
+
+            expect(input.classList.contains('d-none')).toBe(true);
+            expect(document.body.contains(input)).toBe(true);
+            expect(clickSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('removes the input when the file picker is cancelled', () => {
+            const { input } = clickAndCaptureInput();
+
+            input.dispatchEvent(new Event('cancel'));
+
+            expect(document.body.contains(input)).toBe(false);
+        });
+
+        it('imports the selected file and removes the input on change', async () => {
+            const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
+            const { input } = clickAndCaptureInput();
+            const file = new File([new Uint8Array([1])], 'test.idevice');
+            setFiles(input, [file]);
+
+            input.dispatchEvent(new Event('change'));
+            await vi.waitFor(() => expect(importSpy).toHaveBeenCalledWith(file));
+
+            expect(importSpy).toHaveBeenCalledTimes(1);
+            expect(document.body.contains(input)).toBe(false);
+        });
+
+        it('does not import when the change event has an empty file list', async () => {
+            const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
+            const { input } = clickAndCaptureInput();
+            setFiles(input, []);
+
+            input.dispatchEvent(new Event('change'));
+            await Promise.resolve();
+
+            expect(importSpy).not.toHaveBeenCalled();
+            expect(document.body.contains(input)).toBe(false);
+        });
+
+        it('does not import when the input has no files property', async () => {
+            const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
+            const { input } = clickAndCaptureInput();
+            setFiles(input, null);
+
+            input.dispatchEvent(new Event('change'));
+            await Promise.resolve();
+
+            expect(importSpy).not.toHaveBeenCalled();
+            expect(document.body.contains(input)).toBe(false);
+        });
+
+        it('does not throw when the input was already detached before change', async () => {
+            const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
+            const { input } = clickAndCaptureInput();
+            const file = new File([new Uint8Array([1])], 'test.idevice');
+            setFiles(input, [file]);
+
+            input.dispatchEvent(new Event('cancel')); // detaches the input
+            input.dispatchEvent(new Event('change'));
+            await vi.waitFor(() => expect(importSpy).toHaveBeenCalledWith(file));
+
+            expect(document.body.contains(input)).toBe(false);
+        });
+
+        it('creates a new independent input on every click', () => {
+            const inputs = [];
+            const realAppend = document.body.appendChild.bind(document.body);
+            vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
+                inputs.push(node);
+                return realAppend(node);
+            });
+            vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+            block.addBehaviourImportIdeviceButton();
+
+            importButton.click();
+            importButton.click();
+
+            expect(inputs).toHaveLength(2);
+            expect(inputs[0]).not.toBe(inputs[1]);
+        });
     });
 
     // -------------------------------------------------------------------------
@@ -3567,6 +3678,282 @@ describe('IdeviceBlockNode', () => {
             await block.importIdeviceFileIntoBlock(file);
 
             expect(loadIdevicesMock).toHaveBeenCalledWith(true);
+        });
+        it('falls back to the default message when the error has no message', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => ({})),
+                assetManager: null,
+            };
+            window.ComponentImporter = class {
+                constructor() {}
+                importIdeviceIntoBlock = vi.fn(() => {
+                    // Throw a non-Error object: no .message property
+                    throw { toString: () => 'weird failure' };
+                });
+            };
+
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Import error',
+                    // Falls back to the translated default message
+                    body: expect.any(String),
+                }),
+            );
+        });
+
+        // ---- Additional coverage ----
+
+        const setupBridge = ({ importResult, assetManager = null, documentManager = {} } = {}) => {
+            const importMock = vi.fn().mockResolvedValue(importResult);
+            const ctorSpy = vi.fn();
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => documentManager),
+                assetManager,
+            };
+            window.ComponentImporter = class {
+                constructor(...args) {
+                    ctorSpy(...args);
+                }
+                importIdeviceIntoBlock = importMock;
+            };
+            return { importMock, ctorSpy };
+        };
+
+        const makeFile = () => new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+        it('shows an alert when the Yjs bridge is not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            window.ComponentImporter = class {};
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Import error',
+                    body: 'Yjs document manager not available',
+                }),
+            );
+        });
+
+        it('shows an alert when the bridge does not expose getDocumentManager', async () => {
+            eXeLearning.app.project._yjsBridge = { assetManager: null };
+            window.ComponentImporter = class {};
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    body: 'Yjs document manager not available',
+                }),
+            );
+        });
+
+        it('creates the importer with the document manager and the asset manager', async () => {
+            const documentManager = { name: 'doc-manager' };
+            const assetManager = { preloadAllAssets: vi.fn().mockResolvedValue(0) };
+            const { ctorSpy } = setupBridge({
+                importResult: { success: true, componentIds: ['a'] },
+                assetManager,
+                documentManager,
+            });
+            eXeLearning.app.project.idevices = {
+                loadApiIdevicesInPage: vi.fn().mockResolvedValue(),
+            };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(ctorSpy).toHaveBeenCalledWith(documentManager, assetManager);
+        });
+
+        it('imports without an asset manager and still refreshes the page', async () => {
+            const loadIdevicesMock = vi.fn().mockResolvedValue();
+            const { importMock, ctorSpy } = setupBridge({
+                importResult: { success: true, componentIds: ['a'] },
+                assetManager: undefined,
+            });
+            eXeLearning.app.project.idevices = { loadApiIdevicesInPage: loadIdevicesMock };
+
+            const file = makeFile();
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(ctorSpy.mock.calls[0][1]).toBeFalsy();
+            expect(importMock).toHaveBeenCalledWith(file, 'page-1', block.blockId);
+            expect(loadIdevicesMock).toHaveBeenCalledWith(true);
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
+        });
+
+        it('falls back to the selected navigation node when the block has no pageId', async () => {
+            const { importMock } = setupBridge({
+                importResult: { success: true, componentIds: ['a'] },
+            });
+            eXeLearning.app.project.idevices = {
+                loadApiIdevicesInPage: vi.fn().mockResolvedValue(),
+            };
+            block.pageId = null;
+            const getAttribute = vi.fn(() => 'nav-9');
+            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = {
+                getAttribute,
+            };
+
+            const file = makeFile();
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(getAttribute).toHaveBeenCalledWith('nav-id');
+            expect(importMock).toHaveBeenCalledWith(file, 'nav-9', block.blockId);
+        });
+
+        it('prefers the block pageId over the selected navigation node', async () => {
+            const { importMock } = setupBridge({
+                importResult: { success: true, componentIds: ['a'] },
+            });
+            eXeLearning.app.project.idevices = {
+                loadApiIdevicesInPage: vi.fn().mockResolvedValue(),
+            };
+            const getAttribute = vi.fn(() => 'nav-9');
+            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = {
+                getAttribute,
+            };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(getAttribute).not.toHaveBeenCalled();
+            expect(importMock.mock.calls[0][1]).toBe('page-1');
+        });
+
+        it('shows an alert when the selected node has no nav-id attribute', async () => {
+            const { importMock } = setupBridge({
+                importResult: { success: true },
+            });
+            block.pageId = null;
+            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = {
+                getAttribute: vi.fn(() => null),
+            };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(importMock).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'No page selected' }),
+            );
+        });
+
+        it('shows a generic alert when the importer returns no result', async () => {
+            setupBridge({ importResult: undefined });
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({ title: 'Import error', body: 'Import failed' }),
+            );
+        });
+
+        it('does not preload assets nor refresh the page when the import fails', async () => {
+            const preloadMock = vi.fn().mockResolvedValue(0);
+            const loadIdevicesMock = vi.fn().mockResolvedValue();
+            setupBridge({
+                importResult: { success: false, error: 'boom' },
+                assetManager: { preloadAllAssets: preloadMock },
+            });
+            eXeLearning.app.project.idevices = { loadApiIdevicesInPage: loadIdevicesMock };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(preloadMock).not.toHaveBeenCalled();
+            expect(loadIdevicesMock).not.toHaveBeenCalled();
+        });
+
+        it('preloads assets before refreshing the page and shows no alert on success', async () => {
+            const calls = [];
+            setupBridge({
+                importResult: { success: true, componentIds: ['a'] },
+                assetManager: {
+                    preloadAllAssets: vi.fn(async () => {
+                        calls.push('preload');
+                    }),
+                },
+            });
+            eXeLearning.app.project.idevices = {
+                loadApiIdevicesInPage: vi.fn(async () => {
+                    calls.push('load');
+                }),
+            };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(calls).toEqual(['preload', 'load']);
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
+        });
+
+        it('shows an alert when preloading assets fails and skips the page refresh', async () => {
+            const loadIdevicesMock = vi.fn().mockResolvedValue();
+            setupBridge({
+                importResult: { success: true, componentIds: ['a'] },
+                assetManager: {
+                    preloadAllAssets: vi.fn().mockRejectedValue(new Error('preload failed')),
+                },
+            });
+            eXeLearning.app.project.idevices = { loadApiIdevicesInPage: loadIdevicesMock };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(loadIdevicesMock).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({ title: 'Import error', body: 'preload failed' }),
+            );
+        });
+
+        it('shows an alert when refreshing the page fails', async () => {
+            setupBridge({ importResult: { success: true, componentIds: ['a'] } });
+            eXeLearning.app.project.idevices = {
+                loadApiIdevicesInPage: vi.fn().mockRejectedValue(new Error('reload failed')),
+            };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({ title: 'Import error', body: 'reload failed' }),
+            );
+        });
+
+        it('uses the translated default message when the error has an empty message', async () => {
+            setupBridge({ importResult: { success: true } });
+            window.ComponentImporter = class {
+                importIdeviceIntoBlock = vi.fn().mockRejectedValue(new Error(''));
+            };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'Import error',
+                body: 'An error occurred while importing the component.',
+                contentId: 'error',
+            });
+        });
+
+        it('logs the failure to the console', async () => {
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            setupBridge({ importResult: { success: false, error: 'boom' } });
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(errorSpy).toHaveBeenCalledWith(
+                '[BlockNode] Import content failed:',
+                expect.objectContaining({ message: 'boom' }),
+            );
+            errorSpy.mockRestore();
+        });
+
+        it('passes contentId "error" to the alert', async () => {
+            setupBridge({ importResult: { success: false, error: 'boom' } });
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({ contentId: 'error' }),
+            );
         });
     });
 

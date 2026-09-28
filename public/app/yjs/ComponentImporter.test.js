@@ -1967,5 +1967,334 @@ describe('ComponentImporter', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('fflate library not loaded');
     });
+
+    // ---- Additional coverage for importIdeviceIntoBlock ----
+
+    const wrapComponentsXml = (componentsXml) => `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig</odeBlockId>
+    <blockName>Wrapper</blockName>
+    <odeComponents>${componentsXml}</odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+    const getTargetBlock = (docManager) =>
+      docManager.getNavigation().get(0).get('blocks').get(0);
+
+    it('accepts the .idevice extension case-insensitively', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'TEST.IDEVICE');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+    });
+
+    it('returns error when the ZIP cannot be unzipped', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      global.window.fflate = {
+        unzipSync: vi.fn(() => {
+          throw new Error('Invalid ZIP data');
+        }),
+      };
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid ZIP file');
+      expect(result.error).toContain('Invalid ZIP data');
+    });
+
+    it('returns the declared-size violation reported by the unzip filter', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      vi.spyOn(importer, 'createDeclaredSizeFilter').mockImplementation((violation) => () => {
+        violation.error = 'declared size violation';
+        return false;
+      });
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          options.filter({ name: 'content.xml', originalSize: 1 });
+          return {};
+        },
+      };
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('declared size violation');
+    });
+
+    it('returns error when content.xml is missing from the ZIP', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      global.window.fflate = {
+        unzipSync: vi.fn(() => ({ 'other.txt': new TextEncoder().encode('x') })),
+      };
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No content.xml found in component file');
+    });
+
+    it('returns error for malformed XML', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      global.window.fflate = createMockFflate('<?xml version="1.0"?><unclosed>');
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/XML parsing error|missing odeComponentsResources marker/);
+    });
+
+    it('returns error when the XML has no odePagStructure', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      global.window.fflate = createMockFflate(`<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures></odePagStructures>
+</ode>`);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No iDevice found in component file');
+    });
+
+    it('works without an asset manager', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, null);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(getTargetBlock(docManager).get('components').length).toBe(1);
+    });
+
+    it('converts asset references using the extracted asset map', async () => {
+      const docManager = createManagerWithBlock();
+      const assetMap = new Map([['img/photo.png', 'uuid-1/photo.png']]);
+      const assetManager = createMockAssetManager(assetMap);
+      assetManager.convertContextPathToAssetRefs = vi.fn(() => '<p>converted</p>');
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(assetManager.convertContextPathToAssetRefs).toHaveBeenCalled();
+      const compMap = getTargetBlock(docManager).get('components').get(0);
+      expect(compMap.get('htmlView')).toBe('<p>converted</p>');
+    });
+
+    it('returns error when the page has no blocks array', async () => {
+      const docManager = createManagerWithBlock();
+      const pageMap = docManager.getNavigation().get(0);
+      pageMap._data.delete('blocks');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Target block not found');
+    });
+
+    it('creates the components array when the block does not have one', async () => {
+      const docManager = createManagerWithBlock();
+      const blockMap = getTargetBlock(docManager);
+      expect(blockMap.get('components')).toBeUndefined();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(blockMap.get('components')).toBeDefined();
+      expect(blockMap.get('components').length).toBe(1);
+    });
+
+    it('matches the target block by id when blockId is not set', async () => {
+      const docManager = createManagerWithBlock();
+      const blockMap = getTargetBlock(docManager);
+      blockMap._data.delete('blockId');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(blockMap.get('components').length).toBe(1);
+    });
+
+    it('finds the target page by pageId when id is not set', async () => {
+      const docManager = createManagerWithBlock();
+      docManager.getNavigation().get(0)._data.delete('id');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+    });
+
+    it('imports several components with fresh unique IDs and consecutive order', async () => {
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-a</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;A&lt;/p&gt;</htmlView>
+        <jsonProperties>{"a":1}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>
+      <odeComponent>
+        <odeIdeviceId>idevice-b</odeIdeviceId>
+        <odeIdeviceTypeName>quiz</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;B&lt;/p&gt;</htmlView>
+        <jsonProperties>{"b":2}</jsonProperties>
+        <odeComponentsOrder>1</odeComponentsOrder>
+      </odeComponent>`);
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(xml);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(result.componentIds).toHaveLength(2);
+      expect(new Set(result.componentIds).size).toBe(2);
+      expect(result.componentIds).not.toContain('idevice-a');
+      expect(result.componentIds).not.toContain('idevice-b');
+
+      const components = getTargetBlock(docManager).get('components');
+      expect(components.length).toBe(2);
+      expect(components.get(0).get('ideviceType')).toBe('text');
+      expect(components.get(0).get('order')).toBe(0);
+      expect(components.get(1).get('ideviceType')).toBe('quiz');
+      expect(components.get(1).get('order')).toBe(1);
+      expect(components.get(0).get('id')).toBe(result.componentIds[0]);
+      expect(components.get(1).get('ideviceId')).toBe(result.componentIds[1]);
+    });
+
+    it('keeps an embedded ideviceId that does not match the original component id', async () => {
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-orig</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <jsonProperties>{"ideviceId":"some-other-id"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>`);
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(xml);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const compMap = getTargetBlock(docManager).get('components').get(0);
+      expect(JSON.parse(compMap.get('jsonProperties')).ideviceId).toBe('some-other-id');
+    });
+
+    it('preserves component structure properties (issue #1991)', async () => {
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-props</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <jsonProperties>{}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties>
+          <odeComponentsProperty><key>visibility</key><value>false</value></odeComponentsProperty>
+          <odeComponentsProperty><key>cssClass</key><value>my-class</value></odeComponentsProperty>
+        </odeComponentsProperties>
+      </odeComponent>`);
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(xml);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const propsMap = getTargetBlock(docManager).get('components').get(0).get('properties');
+      expect(propsMap.get('visibility')).toBe('false');
+      expect(propsMap.get('cssClass')).toBe('my-class');
+    });
+
+    it('runs the insertion inside a Yjs transaction with the doc clientID', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(docManager.getDoc().transact).toHaveBeenCalledTimes(1);
+      expect(docManager.getDoc().transact.mock.calls[0][1]).toBe('test-client-id');
+    });
+
+    it('does not modify the block when the target block is missing', async () => {
+      const docManager = createManagerWithBlock('page-1', 'block-other');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      await importer.importIdeviceIntoBlock(file, 'page-1', 'block-missing');
+
+      expect(getTargetBlock(docManager).get('components')).toBeUndefined();
+    });
+
+    it('handles unexpected exceptions gracefully', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const badFile = {
+        name: 'test.idevice',
+        size: 10,
+        arrayBuffer: () => Promise.reject(new Error('Read error')),
+      };
+
+      const result = await importer.importIdeviceIntoBlock(badFile, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Read error');
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it('falls back to a generic error message when the exception has no message', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const badFile = {
+        name: 'test.idevice',
+        size: 10,
+        arrayBuffer: () => Promise.reject({}),
+      };
+
+      const result = await importer.importIdeviceIntoBlock(badFile, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Import failed');
+      errorSpy.mockRestore();
+    });
   });
 });
