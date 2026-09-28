@@ -358,6 +358,75 @@ describe('trivial iDevice export', () => {
       expect($eXeTrivial.updateTime).toHaveBeenLastCalledWith(27, instance);
     });
 
+    it.each([true, false])('delivers a delayed answer (%s) to its own board', correct => {
+      $eXeTrivial.scheduleQuestionAnswer(correct, instance, 3000);
+      vi.advanceTimersByTime(2999);
+      expect($eXeTrivial.questionAnswer).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1);
+
+      expect($eXeTrivial.questionAnswer).toHaveBeenCalledExactlyOnceWith(correct, instance);
+    });
+
+    it.each(['removed', 'replaced', 'options', 'edition', 'missing'])('drops a delayed answer after its board is %s', change => {
+      if (change === 'missing') document.body.innerHTML = '';
+      $eXeTrivial.scheduleQuestionAnswer(false, instance, 3000);
+      if (change === 'removed') document.body.innerHTML = '';
+      if (change === 'replaced') document.body.innerHTML = '<div id="trivialMainContainer-0"></div>';
+      if (change === 'options') $eXeTrivial.options[instance] = {};
+      if (change === 'edition') document.body.insertAdjacentHTML('beforeend', '<div id="node-content" mode="edition"></div>');
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeTrivial.questionAnswer).not.toHaveBeenCalled();
+    });
+
+    it('drops the answer queued by an expired question when the next board opens', () => {
+      const gamification = global.$exeDevices.iDevice.gamification;
+      const media = gamification.media;
+      gamification.media = { stopVideo: vi.fn() };
+      try {
+        $eXeTrivial.showGameQuestion(0, instance);
+        $eXeTrivial.options[instance].counter = 1;
+        vi.advanceTimersByTime(1000);
+        expect($eXeTrivial.options[instance].activeCounter).toBe(false);
+
+        moveToNextPage({ activeCounter: true, counter: 240 });
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeTrivial.questionAnswer).not.toHaveBeenCalled();
+        expect($eXeTrivial.options[instance].counter).toBe(240);
+      } finally {
+        gamification.media = media;
+      }
+    });
+
+    it.each(['text', 'board'])('keeps the %s answer delay on its own board', mode => {
+      const gamification = global.$exeDevices.iDevice.gamification;
+      const media = gamification.media;
+      gamification.media = { stopVideo: vi.fn() };
+      vi.spyOn($eXeTrivial, 'getRetroFeedMessages').mockReturnValue('Correct');
+      vi.spyOn($eXeTrivial, 'showMessage').mockImplementation(() => {});
+      Object.assign($eXeTrivial.options[instance], {
+        activeTema: 0,
+        activesQuestions: [0],
+        activeCounter: true,
+        respuesta: 'A',
+        temas: [[{ solution: 'A', typeSelect: 0 }]],
+      });
+      try {
+        if (mode === 'text') $eXeTrivial.answerQuestion(instance);
+        else $eXeTrivial.answerQuestionBoard(true, instance);
+        expect($eXeTrivial.questionAnswer).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeTrivial.questionAnswer).toHaveBeenCalledExactlyOnceWith(true, instance);
+      } finally {
+        gamification.media = media;
+      }
+    });
+
     it("leaves the next page's question alone, though it takes the same ids", () => {
       $eXeTrivial.showGameQuestion(0, instance);
       vi.advanceTimersByTime(1000);

@@ -789,6 +789,21 @@ var $eXeTrivial = {
         );
     },
 
+    // The feedback delay belongs to this board, just like its question clock.
+    // All answer paths must stop when the board or its options are replaced.
+    scheduleQuestionAnswer: function (correct, instance, delay) {
+        const mOptions = $eXeTrivial.options[instance],
+            board = document.getElementById('trivialMainContainer-' + instance);
+        setTimeout(() => {
+            if (
+                $eXeTrivial.options[instance] === mOptions &&
+                $eXeTrivial.isClockLive(board)
+            ) {
+                $eXeTrivial.questionAnswer(correct, instance);
+            }
+        }, delay);
+    },
+
     continueGame: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
         mOptions.numeroJugadores = mOptions.gamers.length;
@@ -1436,9 +1451,7 @@ var $eXeTrivial = {
                         ? mOptions.timeShowSolution * 1000
                         : 3000;
                     clearInterval(clock);
-                    setTimeout(function () {
-                        $eXeTrivial.questionAnswer(false, instance);
-                    }, ts);
+                    $eXeTrivial.scheduleQuestionAnswer(false, instance, ts);
                     return;
                 }
             }
@@ -3179,9 +3192,7 @@ var $eXeTrivial = {
         const ts = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 3000;
-        setTimeout(function () {
-            $eXeTrivial.questionAnswer(correct, instance);
-        }, ts);
+        $eXeTrivial.scheduleQuestionAnswer(correct, instance, ts);
         $eXeTrivial.saveDataStorage(instance);
     },
 
@@ -3227,9 +3238,7 @@ var $eXeTrivial = {
         const ts = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 3000;
-        setTimeout(function () {
-            $eXeTrivial.questionAnswer(value, instance);
-        }, ts);
+        $eXeTrivial.scheduleQuestionAnswer(value, instance, ts);
         $eXeTrivial.saveDataStorage(instance);
     },
 
