@@ -126,6 +126,12 @@ var $padlock = {
             $padlock.addEvents(i);
             $('#candadoMainContainer-' + i).show();
         });
+        // One handler for the whole page, set once per load. Each padlock used
+        // to add its own in addEvents, whose removeEvents first took every
+        // padlock's off the window: a page with several kept only the last.
+        $(window)
+            .off('pagehide.eXeCandado')
+            .on('pagehide.eXeCandado', () => $padlock.saveStartedPadlocks());
         const candadoHtml = $('.candado-IDevice').html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(candadoHtml)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -212,6 +218,18 @@ var $padlock = {
             };
         if (!mOptions.storageKey) return;
         localStorage.setItem(mOptions.storageKey, JSON.stringify(data));
+    },
+
+    /**
+     * Keep the state of every padlock on the page that has been started, as
+     * the page goes.
+     */
+    saveStartedPadlocks: function () {
+        $padlock.options.forEach((mOptions, instance) => {
+            if (mOptions.candadoStarted) {
+                $padlock.saveCandadoData(instance);
+            }
+        });
     },
 
     getCandadoData: function (instance) {
@@ -327,13 +345,6 @@ var $padlock = {
                     : 0;
             }
         }
-        $(window).on('pagehide.eXeCandado', function () {
-            const mOptions = $padlock.options[instance];
-            if (mOptions.candadoStarted) {
-                $padlock.saveCandadoData(instance);
-            }
-        });
-
         $('#candadoMainContainer-' + instance)
             .closest('.idevice_node')
             .on('click', '.Games-SendScore', function () {
@@ -373,8 +384,6 @@ var $padlock = {
         $(`#candadoShowIntro-${instance}`).off('click');
         $(`#candadoShowRetro-${instance}`).off('click');
         $(`#candadoSendScore`).off('click');
-
-        $(window).off('pagehide.eXeCandado');
     },
 
     startGame: function (instance) {

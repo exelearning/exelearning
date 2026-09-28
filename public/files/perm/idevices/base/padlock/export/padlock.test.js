@@ -626,4 +626,63 @@ describe('padlock iDevice export', () => {
       expect($padlock.getCandadoData(0)).toBe(false);
     });
   });
+
+  describe('keeping every padlock as the page goes', () => {
+    let previousLocalStorage;
+    let store;
+
+    // Two started padlocks and one never opened, as a page with three holds them.
+    const threePadlocks = () => [
+      { storageKey: 'dataCandado-idevice-a', candadoStarted: true, counter: 30, candadoTime: 1 },
+      { storageKey: 'dataCandado-idevice-b', candadoStarted: true, counter: 50, candadoTime: 1 },
+      { storageKey: 'dataCandado-idevice-c', candadoStarted: false, counter: 60, candadoTime: 1 },
+    ];
+
+    beforeEach(() => {
+      previousLocalStorage = global.localStorage;
+      store = {};
+      global.localStorage = {
+        getItem: key => (key in store ? store[key] : null),
+        setItem: (key, value) => {
+          store[key] = String(value);
+        },
+        removeItem: key => {
+          delete store[key];
+        },
+      };
+      $padlock.activities = $();
+    });
+
+    afterEach(() => {
+      $(window).off('pagehide.eXeCandado');
+      global.localStorage = previousLocalStorage;
+      vi.restoreAllMocks();
+    });
+
+    it('keeps every started padlock, not only the last one set up', () => {
+      $padlock.loadGame();
+      $padlock.options = threePadlocks();
+      // What each padlock's addEvents does first.
+      $padlock.removeEvents(0);
+      $padlock.removeEvents(1);
+      $padlock.removeEvents(2);
+
+      window.dispatchEvent(new Event('pagehide'));
+
+      expect(JSON.parse(store['dataCandado-idevice-a'])).toMatchObject({ counter: 30 });
+      expect(JSON.parse(store['dataCandado-idevice-b'])).toMatchObject({ counter: 50 });
+      expect(store['dataCandado-idevice-c']).toBeUndefined();
+    });
+
+    it('keeps each padlock once, however many times the page is loaded', () => {
+      $padlock.loadGame();
+      $padlock.loadGame();
+      $padlock.options = threePadlocks();
+      const save = vi.spyOn($padlock, 'saveCandadoData');
+
+      window.dispatchEvent(new Event('pagehide'));
+
+      expect(save.mock.calls).toEqual([[0], [1]]);
+    });
+  });
 });

@@ -58,6 +58,8 @@ export interface StoredCopies {
     dataGame: string;
     /** Changes the stored data of each page's copy, `copy` being 0 for the first and 1 for the second. */
     change: (data: any, copy: number) => void;
+    /** Both copies on the first page, one after the other, instead of one on each. */
+    samePage?: boolean;
 }
 
 /** A game as it is stored, and how to make a copy of it for each page. */
@@ -140,7 +142,8 @@ async function copyMarkup(page: Page, game: StoredCopies, copy: number): Promise
 
 /**
  * A new project with two pages, 'First game' and 'Second game', each holding
- * its own copy of the iDevice, created with the ids in COMPONENT_IDS.
+ * its own copy of the iDevice, or the first holding both when `samePage` is
+ * set. The copies are created with the ids in COMPONENT_IDS.
  *
  * @returns The errors the page throws from here on, collected as they come.
  */
@@ -158,17 +161,18 @@ export async function projectWithTwoCopies(
 
     const games = [await copyMarkup(page, game, 0), await copyMarkup(page, game, 1)];
     await page.evaluate(
-        ({ type, games, ids }) => {
+        ({ type, games, ids, samePage }) => {
             const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
-            for (const [index, title] of ['First game', 'Second game'].entries()) {
-                const parent = binding.createPage(title);
+            const first = binding.createPage('First game');
+            const second = samePage ? first : binding.createPage('Second game');
+            for (const [index, parent] of [first, second].entries()) {
                 binding.createComponent(parent.id, binding.createBlock(parent.id), type, {
                     id: ids[index],
                     htmlContent: games[index],
                 });
             }
         },
-        { type: game.type, games, ids: COMPONENT_IDS },
+        { type: game.type, games, ids: COMPONENT_IDS, samePage: !!game.samePage },
     );
 
     return errors;
