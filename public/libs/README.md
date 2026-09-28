@@ -155,6 +155,9 @@
 *   Package: jsdom
     *   Copyright: Elijah Insua, Domenic Denicola, Sebastian Mayr
     *   License: MIT
+*   Package: jspdf
+    *   Copyright: James Hall
+    *   License: MIT
 *   Package: kill-port
     *   Copyright: Tiaan du Plessis
     *   License: MIT

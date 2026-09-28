@@ -139,6 +139,25 @@ describe('LibraryDetector', () => {
             expect(result.files).toContain('jquery-ui/jquery-ui.min.js');
         });
 
+        it.each([
+            ['checklist', '<div class="listacotejo-IDevice">Checklist</div>'],
+            ['progress report', '<div class="informe-IDevice">Report</div>'],
+            ['rubric', '<div class="rubric"><div class="exe-rubrics-DataGame js-hidden">%7B%7D</div></div>'],
+            ['legacy rubric', '<div class="rubric-IDevice">Rubric</div>'],
+        ])('should detect jspdf for the %s iDevice', (_name, html) => {
+            const result = detector.detectLibraries(html);
+
+            expect(result.libraries.map(l => l.name)).toContain('jspdf');
+            expect(result.files).toContain('jspdf/jspdf.umd.min.js');
+        });
+
+        it('should not detect jspdf for unrelated content', () => {
+            const html = '<p class="informe">A rubric-like checklist text</p>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.files).not.toContain('jspdf/jspdf.umd.min.js');
+        });
+
         it('should detect exe_elpx_download by class pattern (download-source-file iDevice)', () => {
             const html = '<a href="#" class="exe-download-package-link">Download</a>';
             const result = detector.detectLibraries(html);

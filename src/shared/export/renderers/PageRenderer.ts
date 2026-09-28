@@ -327,7 +327,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // Content-detected libraries (e.g., exe_lightbox, exe_highlighter, etc.)
         for (const libName of detectedLibraries) {
             const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
-            if (!libPattern) continue;
+            if (!libPattern || libPattern.loadOnDemand) continue;
 
             // Add JS files first, then CSS files (legacy order)
             const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
@@ -1542,7 +1542,7 @@ ${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
         let html = '';
         for (const libName of detectedLibraries) {
             const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
-            if (!libPattern) continue;
+            if (!libPattern || libPattern.loadOnDemand) continue;
 
             const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
             const cssFiles = libPattern.files.filter(f => f.endsWith('.css'));

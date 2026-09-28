@@ -1999,7 +1999,7 @@ var $eXeInforme = {
                 if (window.jspdf && window.jspdf.jsPDF) {
                     if (!doPdf()) fallbackPng();
                 } else {
-                    $eXeInforme.ensureJsPDF(
+                    $exe.loadJsPDF(
                         () => {
                             if (!doPdf()) fallbackPng();
                         },
@@ -2124,41 +2124,6 @@ var $eXeInforme = {
 
     addZero: function (number) {
         return number < 10 ? '0' + number : number;
-    },
-
-    ensureJsPDF: function (onReady, onError) {
-        try {
-            if (window.jspdf && window.jspdf.jsPDF) {
-                onReady();
-                return;
-            }
-        } catch (_) {}
-        const scriptId = 'jspdf-umd-loader';
-        if (document.getElementById(scriptId)) {
-            let tries = 0;
-            const iv = setInterval(() => {
-                tries++;
-                if (window.jspdf && window.jspdf.jsPDF) {
-                    clearInterval(iv);
-                    onReady();
-                } else if (tries > 50) {
-                    clearInterval(iv);
-                    onError && onError();
-                }
-            }, 100);
-            return;
-        }
-        const s = document.createElement('script');
-        s.id = scriptId;
-        s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
-        s.async = true;
-        s.onload = function () {
-            onReady();
-        };
-        s.onerror = function () {
-            onError && onError();
-        };
-        document.head.appendChild(s);
     },
 };
 $(function () {

@@ -870,6 +870,107 @@ describe('common.js $exe helpers', () => {
     });
   });
 
+  describe('$exe.getLibUrl', () => {
+    afterEach(() => {
+      document.querySelectorAll('script[data-test-jquery]').forEach(el => el.remove());
+    });
+
+    const addJquery = src => {
+      const el = document.createElement('script');
+      el.setAttribute('data-test-jquery', '');
+      el.setAttribute('src', src);
+      document.head.appendChild(el);
+    };
+
+    it.each([
+      ['libs/jquery/jquery.min.js', 'libs/jspdf/jspdf.umd.min.js'],
+      ['../libs/jquery/jquery.min.js', '../libs/jspdf/jspdf.umd.min.js'],
+      ['./libs/jquery/jquery.min.js?v=123', './libs/jspdf/jspdf.umd.min.js'],
+      ['/web/v4.0.0/libs/jquery/jquery.min.js', '/web/v4.0.0/libs/jspdf/jspdf.umd.min.js'],
+    ])('resolves libs/ next to %s', (jquerySrc, expected) => {
+      addJquery(jquerySrc);
+      expect(global.$exe.getLibUrl('jspdf/jspdf.umd.min.js')).toBe(new URL(expected, document.baseURI).href);
+    });
+
+    it('returns an empty string when no jQuery script is present', () => {
+      expect(global.$exe.getLibUrl('jspdf/jspdf.umd.min.js')).toBe('');
+    });
+  });
+
+  describe('$exe.loadJsPDF', () => {
+    let jquery;
+
+    beforeEach(() => {
+      jquery = document.createElement('script');
+      jquery.setAttribute('src', 'libs/jquery/jquery.min.js');
+      document.head.appendChild(jquery);
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      jquery.remove();
+      document.getElementById('jspdf-umd-loader')?.remove();
+      delete window.jspdf;
+    });
+
+    it('calls onReady immediately when jsPDF is already loaded', () => {
+      window.jspdf = { jsPDF: function () {} };
+      const onReady = vi.fn();
+      global.$exe.loadJsPDF(onReady, vi.fn());
+      expect(onReady).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('jspdf-umd-loader')).toBeNull();
+    });
+
+    it('injects the bundled copy from libs/, never a CDN, and reports ready on load', () => {
+      const onReady = vi.fn();
+      const onError = vi.fn();
+      global.$exe.loadJsPDF(onReady, onError);
+      const script = document.getElementById('jspdf-umd-loader');
+      expect(script.src).toBe(new URL('libs/jspdf/jspdf.umd.min.js', document.baseURI).href);
+      expect(script.src).not.toMatch(/jsdelivr|unpkg|cdnjs/);
+      window.jspdf = { jsPDF: function () {} };
+      script.dispatchEvent(new Event('load'));
+      expect(onReady).toHaveBeenCalledTimes(1);
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('reuses an in-flight script instead of injecting a second one', () => {
+      const first = vi.fn();
+      const second = vi.fn();
+      global.$exe.loadJsPDF(first, vi.fn());
+      global.$exe.loadJsPDF(second, vi.fn());
+      expect(document.querySelectorAll('#jspdf-umd-loader')).toHaveLength(1);
+      window.jspdf = { jsPDF: function () {} };
+      document.getElementById('jspdf-umd-loader').dispatchEvent(new Event('load'));
+      expect(first).toHaveBeenCalledTimes(1);
+      expect(second).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails clearly and drops the tag so a later call retries', () => {
+      const onError = vi.fn();
+      global.$exe.loadJsPDF(vi.fn(), onError);
+      document.getElementById('jspdf-umd-loader').dispatchEvent(new Event('error'));
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('jsPDF could not be loaded'));
+      expect(document.getElementById('jspdf-umd-loader')).toBeNull();
+    });
+
+    it('fails when the script loads but does not expose jsPDF', () => {
+      const onError = vi.fn();
+      global.$exe.loadJsPDF(vi.fn(), onError);
+      document.getElementById('jspdf-umd-loader').dispatchEvent(new Event('load'));
+      expect(onError).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails without injecting anything when libs/ cannot be located', () => {
+      jquery.remove();
+      const onError = vi.fn();
+      global.$exe.loadJsPDF(vi.fn(), onError);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('jspdf-umd-loader')).toBeNull();
+    });
+  });
+
   describe('$exe.getIdeviceInstalledExportPath edge cases', () => {
     it('returns undefined when no matching idevice found', () => {
       document.body.innerHTML = '';

@@ -657,5 +657,45 @@ test.describe('Rubric iDevice', () => {
             // Verify the weight is displayed
             await expect(rubricRoot).toContainText('(3)', { timeout: 5000 });
         });
+
+        test('should save the rubric as PDF with the bundled jsPDF, not a CDN', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Rubric PDF Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+            await editRubricContent(page, `PDF Rubric ${Date.now()}`, 'PDF descriptor', '2');
+            await saveRubricIdevice(page);
+            await workarea.save();
+
+            const jspdfRequests: string[] = [];
+            page.on('request', request => {
+                if (/jspdf/i.test(request.url())) jspdfRequests.push(request.url());
+            });
+
+            expect(await waitForPreviewContent(page, 45000)).toBe(true);
+            await ensureExpandedRubricInPreview(page);
+            const rubricRoot = await getRubricRootInPreview(page);
+            const downloadButton = rubricRoot.locator('button.exe-rubrics-download').first();
+            await expect(downloadButton).toBeVisible({ timeout: 10000 });
+
+            const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+            await downloadButton.click();
+            const download = await downloadPromise;
+
+            expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
+            expect(jspdfRequests.length).toBeGreaterThan(0);
+            for (const url of jspdfRequests) {
+                expect(url).toContain('/libs/jspdf/jspdf.umd.min.js');
+                expect(url).not.toMatch(/jsdelivr|unpkg|cdnjs/);
+            }
+        });
     });
 });
