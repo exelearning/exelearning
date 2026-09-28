@@ -25,6 +25,9 @@ function loadIdevice(code) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  // The edition scripts register their timers, handlers and disposers through
+  // `this.$lifecycle`, exactly as IdeviceNode provides it in the workarea.
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -215,6 +218,7 @@ describe('mathematicaloperations iDevice', () => {
     });
 
     afterEach(() => {
+      $exeDevice.$lifecycle.destroy();
       $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
       document.body.innerHTML = '';
     });
@@ -229,6 +233,98 @@ describe('mathematicaloperations iDevice', () => {
       $('#eRMQTime').val('1a234').trigger('keyup');
 
       expect($('#eRMQTime').val()).toBe('12');
+    });
+  });
+
+  describe('edition lifecycle teardown', () => {
+    let itinerary;
+
+    beforeEach(() => {
+      // The edition is loaded through the shared helper so it gets the same
+      // real lifecycle IdeviceNode hands it in the workarea.
+      global.$exeDevice = undefined;
+      $exeDevice = global.loadIdevice(join(__dirname, 'mathematicaloperations.js'));
+
+      itinerary = { addEvents: vi.fn() };
+      global.$exeDevicesEdition.iDevice.gamification.itinerary = itinerary;
+
+      document.body.innerHTML = `
+        <form id="mathematicaloperationsQEIdeviceForm">
+          <div class="toggle-item" role="switch">
+            <input type="checkbox" class="toggle-input" data-target="#mopToggleTarget" />
+          </div>
+          <div id="mopToggleTarget"></div>
+          <div id="eXeGameExportImport">
+            <input type="file" id="eXeGameImportGame" />
+            <button id="eXeGameExportQuestions"></button>
+          </div>
+        </form>`;
+    });
+
+    afterEach(() => {
+      if (!$exeDevice.$lifecycle.isDestroyed()) $exeDevice.$lifecycle.destroy();
+      delete global.$exeDevicesEdition.iDevice.gamification.itinerary;
+      document.body.innerHTML = '';
+    });
+
+    it('keeps the toggles in sync through the delegated document handler', () => {
+      $exeDevice.addEvents();
+
+      $('.toggle-input').prop('checked', true).trigger('change');
+
+      expect($('.toggle-item').attr('aria-checked')).toBe('true');
+      expect($('#mopToggleTarget').css('display')).toBe('flex');
+    });
+
+    it('stops handling toggle changes on document once the edition is closed', () => {
+      $exeDevice.addEvents();
+
+      $exeDevice.$lifecycle.destroy();
+      $('.toggle-input').prop('checked', true).trigger('change');
+
+      expect($('.toggle-item').attr('aria-checked')).toBe('false');
+    });
+
+    it('leaves unrelated document handlers in place after teardown', () => {
+      const unrelated = vi.fn();
+      $(document).on('change.mopUnrelated', '.toggle-input', unrelated);
+      $exeDevice.addEvents();
+
+      $exeDevice.$lifecycle.destroy();
+      $('.toggle-input').trigger('change');
+
+      expect(unrelated).toHaveBeenCalledTimes(1);
+      $(document).off('change.mopUnrelated');
+    });
+
+    it('imports a game file read by the edition', async () => {
+      const importGame = vi.fn();
+      $exeDevice.importGame = importGame;
+      $exeDevice.addEvents();
+
+      const event = $.Event('change');
+      event.target = { files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })] };
+      $('#eXeGameImportGame').trigger(event);
+
+      await vi.waitFor(() => expect(importGame).toHaveBeenCalledWith('{"a":1}'));
+    });
+
+    it('aborts an in-flight import read and never imports into a closed edition', async () => {
+      const abortSpy = vi.spyOn(window.FileReader.prototype, 'abort');
+      const importGame = vi.fn();
+      $exeDevice.importGame = importGame;
+      $exeDevice.addEvents();
+
+      const event = $.Event('change');
+      event.target = { files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })] };
+      $('#eXeGameImportGame').trigger(event);
+
+      $exeDevice.$lifecycle.destroy();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(abortSpy).toHaveBeenCalledTimes(1);
+      expect(importGame).not.toHaveBeenCalled();
+      abortSpy.mockRestore();
     });
   });
 });
