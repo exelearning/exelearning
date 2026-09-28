@@ -1016,6 +1016,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         if (
             window.File &&
             window.FileReader &&
@@ -1028,10 +1029,11 @@ var $exeDevice = {
                 if (!file) {
                     return;
                 }
-                let reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result);
-                };
+                const reader = new FileReader();
+                lifecycle.ownFileReader(reader);
+                reader.onload = lifecycle.bind(function (e) {
+                    this.importGame(e.target.result);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {
@@ -1221,7 +1223,7 @@ var $exeDevice = {
             }
         });
 
-        $(document).on('input', '#eCQformula', $exeDevice.updateVariables);
+        lifecycle.on(document, 'input', '#eCQformula', this.updateVariables);
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
