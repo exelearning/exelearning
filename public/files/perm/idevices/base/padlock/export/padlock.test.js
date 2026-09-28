@@ -498,4 +498,58 @@ describe('padlock iDevice export', () => {
       ]);
     });
   });
+
+  // The editor never reloads the document between pages, and a padlock's ids
+  // are numbered by position: the next page's first padlock takes the ids this
+  // one had. The clock used to find that padlock by id and run it, counting
+  // down on its display and opening it when its own time ran out.
+  describe('the clock of a timed padlock', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="candadoMainContainer-${instance}"></div>`;
+      $padlock.options = [{ candadoTime: 1, counter: 60, candadoSolved: false }];
+      for (const method of ['uptateTime', 'showFeedback']) {
+        vi.spyOn($padlock, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own padlock', () => {
+      $padlock.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($padlock.uptateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('opens its own padlock when the time runs out', () => {
+      $padlock.startGame(instance);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($padlock.showFeedback).toHaveBeenCalledWith(instance);
+    });
+
+    it("leaves the next page's padlock alone, though it takes the same ids", () => {
+      $padlock.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first padlock is numbered the same.
+      document.body.innerHTML = `<div id="candadoMainContainer-${instance}"></div>`;
+      $padlock.options[instance] = { candadoTime: 4, counter: 240, candadoSolved: false };
+      $padlock.uptateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($padlock.uptateTime).not.toHaveBeenCalled();
+      expect($padlock.showFeedback).not.toHaveBeenCalled();
+      expect($padlock.options[instance].counter).toBe(240);
+    });
+  });
 });

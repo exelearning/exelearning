@@ -373,24 +373,33 @@ var $padlock = {
 
         $padlock.uptateTime(0, instance);
 
-        mOptions.counterClock = setInterval(() => {
-            let $node = $('#candadoMainContainer-' + instance);
-            let $content = $('#node-content');
+        // Bound to this padlock's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first padlock takes the same ones: a
+        // clock that looked its padlock up by id each second found that one
+        // and ran it, counting down on its display and opening it when its
+        // own time ran out.
+        const container = document.getElementById(
+            'candadoMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
             mOptions.counter--;
 
             $padlock.uptateTime(mOptions.counter, instance);
             if (mOptions.counter <= 0 || mOptions.candadoSolved) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 $padlock.showFeedback(instance);
             }
         }, 1000);
+        mOptions.counterClock = clock;
     },
 
     /**
