@@ -1763,10 +1763,16 @@ export default class IdeviceNode {
         // Check sync idevice
         if (this.isSync == true) {
             this.isSync = false;
-        } else {
-            if (typeof $exeDevice !== 'undefined') {
-                $exeDevice = undefined;
-            }
+            return;
+        }
+        // $exeDevice is the edition object of the iDevice being edited locally.
+        // Rendering another iDevice in export mode (e.g. one just received from
+        // a collaborator) must not clear it, or the open editor saves the last
+        // saved data instead of its current content (#2427).
+        const editing = this.engine?.isIdeviceInEdition?.();
+        if (editing && editing !== this) return;
+        if (typeof $exeDevice !== 'undefined') {
+            $exeDevice = undefined;
         }
     }
 
