@@ -272,4 +272,84 @@ describe('geogebra-activity iDevice (edition)', () => {
       }
     });
   });
+
+  describe('edition lifecycle', () => {
+    let handlers;
+    let abort;
+
+    beforeEach(() => {
+      document.body.innerHTML = `
+        <input id="geogebraActivityURL" value="VgHhQXCC" />
+        <input id="geogebraActivityWidth" value="" />
+        <input id="geogebraActivityHeight" value="" />
+        <span id="geogebraActivityAuthorURL"></span>
+        <span id="geogebraActivityTitle"></span>
+      `;
+      handlers = null;
+      abort = vi.fn();
+      vi.spyOn($, 'ajax').mockImplementation((options) => {
+        handlers = options;
+        return { abort };
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    const answer = {
+      responses: {
+        response: {
+          item: {
+            width: '800',
+            height: '600',
+            author: 'Ada Lovelace',
+            url: 'https://www.geogebra.org/m/VgHhQXCC',
+            title: 'Pendiente de una recta',
+            visibility: 'O',
+          },
+        },
+      },
+    };
+
+    it('fills the form when the lookup answers while the editor is open', () => {
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+
+      handlers.success(answer);
+
+      expect($('#geogebraActivityWidth').val()).toBe('800');
+      expect($('#geogebraActivityAuthorURL').text()).toBe('Ada Lovelace');
+    });
+
+    it('aborts the pending lookup when the edition closes', () => {
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+
+      expect(abort).not.toHaveBeenCalled();
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(abort).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a lookup that answers after the edition closed', () => {
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+      $exeDevice.$lifecycle.destroy();
+
+      handlers.success(answer);
+
+      expect($('#geogebraActivityWidth').val()).toBe('');
+      expect($('#geogebraActivityAuthorURL').text()).toBe('');
+    });
+
+    it('does not report an error raised by its own abort', () => {
+      const errorMessage = vi.spyOn($exeDevice, 'errorMessage');
+
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+      // jQuery calls the error handler synchronously when a request is aborted.
+      abort.mockImplementation(() => handlers.error());
+      $exeDevice.$lifecycle.destroy();
+
+      expect(errorMessage).not.toHaveBeenCalled();
+    });
+  });
 });
