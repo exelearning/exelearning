@@ -34,13 +34,15 @@ describe('exe_elpx_download', () => {
      * addFileProtocolWarning through setTimeout(..., 100); left on the real
      * clock, that timer can fire while this file's environment is being torn
      * down and throw "window is not defined" outside any test. Queue it on a
-     * fake clock that is discarded straight away instead.
+     * fake clock, run the pending warning while the DOM is still alive, then
+     * restore the real clock.
      */
     function runScript() {
         vi.useFakeTimers({ toFake: ['setTimeout'] });
         try {
             // eslint-disable-next-line no-eval
             eval(scriptContent);
+            vi.runOnlyPendingTimers();
         } finally {
             vi.useRealTimers();
         }
@@ -92,6 +94,7 @@ describe('exe_elpx_download', () => {
         delete global.downloadElpx;
         delete window.__ELPX_MANIFEST__;
         vi.clearAllMocks();
+        vi.restoreAllMocks();
     });
 
     describe('script structure', () => {
@@ -231,6 +234,32 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain("document.readyState === 'loading'");
             expect(scriptContent).toContain('setTimeout(addFileProtocolWarning, 100)');
         });
+
+        it('adds the deferred warning in file:// context', () => {
+            Object.defineProperty(window, 'location', {
+                value: {
+                    pathname: '/index.html',
+                    href: 'file:///path/to/index.html',
+                    protocol: 'file:',
+                },
+                writable: true,
+                configurable: true,
+            });
+            document.body.innerHTML = `
+                <p class="exe-download-package-link"><a href="#">Download</a></p>
+            `;
+
+            expect(document.readyState).not.toBe('loading');
+            runScript();
+
+            const btn = document.querySelector('.exe-download-package-link a');
+            const warning = document.querySelector('.exe-file-protocol-warning');
+
+            expect(btn.getAttribute('data-file-protocol-warning')).toBe('true');
+            expect(btn.title).toContain('Local mode:');
+            expect(warning).not.toBeNull();
+            expect(warning.getAttribute('data-bs-toggle')).toBe('tooltip');
+        });
     });
 
     describe('folder picker (webkitdirectory)', () => {
@@ -307,6 +336,8 @@ describe('exe_elpx_download', () => {
 
     describe('downloadElpx function', () => {
         it('keeps the deferred file:// warning off the real clock', () => {
+            expect(document.readyState).not.toBe('loading');
+
             const realSetTimeout = vi.spyOn(globalThis, 'setTimeout');
             runScript();
             expect(realSetTimeout).not.toHaveBeenCalledWith(expect.any(Function), 100);
