@@ -388,7 +388,7 @@ export class Epub3Exporter extends BaseExporter {
             const _assetsAdded = await this.addEpubAssets();
 
             // 9.5. Add content.xml (ODE format for re-import) - only if exportSource is enabled
-            if (meta.exportSource !== false) {
+            if (this.shipsEditableSource(meta, options)) {
                 try {
                     const contentXml = await this.getContentXml();
                     if (contentXml) {
