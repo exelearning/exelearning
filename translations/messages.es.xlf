@@ -5091,7 +5091,7 @@
       </trans-unit>
       <trans-unit id="pJZJlf4" resname="Before">
         <source>Before</source>
-        <target>Antes</target>
+        <target>Antes de optimizar</target>
       </trans-unit>
       <trans-unit id="o3vRjwz" resname="More">
         <source>More</source>
