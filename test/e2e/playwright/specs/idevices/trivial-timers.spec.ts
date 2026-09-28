@@ -43,7 +43,9 @@ test('Trivial drops an expired question answer after navigating to another board
     });
     await openPage(page, 'First game', '#trivialMainContainer-0');
     await page.clock.install();
-    await page.clock.pauseAt(new Date());
+    // A second ahead: the page's clock can already be a little past a time read
+    // here, and pauseAt refuses to go back. Nothing of the test is scheduled yet.
+    await page.clock.pauseAt(Date.now() + 1000);
     await page.evaluate(() => {
         const game = (window as any).$eXeTrivial;
         (window as any).$('#trivialNameGamers-0 input').val('Ana');

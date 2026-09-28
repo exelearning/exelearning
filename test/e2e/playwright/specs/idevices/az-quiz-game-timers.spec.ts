@@ -44,7 +44,9 @@ test('A-Z quiz cancels a pending pointer when navigating to a page without Rosco
     });
     await openPage(page, 'First game', '#roscoStartGame-0');
     await page.clock.install();
-    await page.clock.pauseAt(new Date());
+    // A second ahead: the page's clock can already be a little past a time read
+    // here, and pauseAt refuses to go back. Nothing of the test is scheduled yet.
+    await page.clock.pauseAt(Date.now() + 1000);
     await page.evaluate(() => {
         const game = (window as any).$azquizgame;
         const options = game.options[0];
