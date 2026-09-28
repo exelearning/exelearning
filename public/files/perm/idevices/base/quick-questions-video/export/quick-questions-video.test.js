@@ -146,4 +146,65 @@ describe('quick-questions-video iDevice export', () => {
             expect($quickquestionsvideo.sendScore).not.toHaveBeenCalled();
         });
     });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. The clock driving the video used to find that game by id and
+    // drive it, stopping its video at this one's questions.
+    describe('the clock of a game', () => {
+        const instance = 0;
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `<div id="vquextMainContainer-${instance}"></div>`;
+            $quickquestionsvideo.options = [
+                {
+                    gameStarted: false,
+                    videoType: 1,
+                    localPlayer: { currentTime: 5 },
+                    questionsGame: [{ pointVideo: 100 }],
+                    startVideoQuExt: 0,
+                    endVideoQuExt: 1000,
+                    numberQuestions: 1,
+                    numberLives: 3,
+                },
+            ];
+            for (const method of [
+                'createPointsVideo',
+                'showNavigationButtons',
+                'updateLives',
+                'showQuestion',
+                'startVideo',
+                'uptateTime',
+                'updataProgressBar',
+                'saveScormScore',
+                'gameOver',
+            ]) {
+                vi.spyOn($quickquestionsvideo, method).mockImplementation(() => {});
+            }
+        });
+
+        it('follows its own video', () => {
+            $quickquestionsvideo.startGame(instance);
+
+            vi.advanceTimersByTime(3000);
+
+            expect($quickquestionsvideo.updataProgressBar).toHaveBeenCalledTimes(3);
+            expect($quickquestionsvideo.updataProgressBar).toHaveBeenLastCalledWith(5, instance);
+        });
+
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            $quickquestionsvideo.startGame(instance);
+            vi.advanceTimersByTime(1000);
+
+            // The author moves to another page, whose first game is numbered the same.
+            document.body.innerHTML = `<div id="vquextMainContainer-${instance}"></div>`;
+            $quickquestionsvideo.options[instance] = { gameStarted: true, stateReproduction: 0 };
+            $quickquestionsvideo.updataProgressBar.mockClear();
+            vi.advanceTimersByTime(5000);
+
+            expect($quickquestionsvideo.updataProgressBar).not.toHaveBeenCalled();
+            expect($quickquestionsvideo.gameOver).not.toHaveBeenCalled();
+        });
+    });
 });
