@@ -271,4 +271,135 @@ describe('trivial iDevice export', () => {
       expect($eXeTrivial.sendScore).not.toHaveBeenCalled();
     });
   });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first board takes the ids this one
+  // had. The question clock and the dice used to find that board by id and run
+  // it; the game clock and the video clock never looked at all, and ran for
+  // ever — counting on the next page's board and driving its video.
+  describe('the timers of a board', () => {
+    const instance = 0;
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    let getTimeSeconds;
+
+    /** The author moves to another page, whose first board is numbered the same. */
+    function moveToNextPage(options) {
+      document.body.innerHTML = `<div id="trivialMainContainer-${instance}"></div>`;
+      $eXeTrivial.options[instance] = options;
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      getTimeSeconds = helpers().getTimeSeconds;
+      helpers().getTimeSeconds = () => 30;
+      document.body.innerHTML = `<div id="trivialMainContainer-${instance}"></div>`;
+      $eXeTrivial.options = [
+        {
+          gameStarted: false,
+          numeroJugadores: 1,
+          numeroTemas: 4,
+          msgs: {},
+          temas: [[{ time: 1, type: 0 }]],
+          activesQuestions: [-1],
+          nombresTemas: ['Tema'],
+          localPlayer: { play: vi.fn() },
+        },
+      ];
+      vi.spyOn($eXeTrivial, 'loadPlayers').mockImplementation(() => true);
+      for (const method of [
+        'loadGameBoard',
+        'initCheeses',
+        'changePlayer',
+        'updateTimeGame',
+        'saveScormScore',
+        'saveDataStorage',
+        'showQuestion',
+        'updateTime',
+        'updateSoundVideo',
+        'questionAnswer',
+        'updateTimerDisplayLocal',
+        'showTargetPositions',
+      ]) {
+        vi.spyOn($eXeTrivial, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      helpers().getTimeSeconds = getTimeSeconds;
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('counts the game time on its own board', () => {
+      $eXeTrivial.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeTrivial.updateTimeGame).toHaveBeenLastCalledWith(3, instance);
+    });
+
+    it("stops counting the game time once its board leaves the page, leaving the next page's alone", () => {
+      $eXeTrivial.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      moveToNextPage({ contadorJuego: 0 });
+      $eXeTrivial.updateTimeGame.mockClear();
+      vi.advanceTimersByTime(5000);
+
+      expect($eXeTrivial.updateTimeGame).not.toHaveBeenCalled();
+      expect($eXeTrivial.options[instance].contadorJuego).toBe(0);
+    });
+
+    it('counts down a question on its own board', () => {
+      $eXeTrivial.showGameQuestion(0, instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeTrivial.updateTime).toHaveBeenLastCalledWith(27, instance);
+    });
+
+    it("leaves the next page's question alone, though it takes the same ids", () => {
+      $eXeTrivial.showGameQuestion(0, instance);
+      vi.advanceTimersByTime(1000);
+
+      moveToNextPage({ activeCounter: true, counter: 30 });
+      $eXeTrivial.updateTime.mockClear();
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeTrivial.updateTime).not.toHaveBeenCalled();
+      expect($eXeTrivial.questionAnswer).not.toHaveBeenCalled();
+      expect($eXeTrivial.options[instance].counter).toBe(30);
+    });
+
+    it("stops following a question's video once its board leaves the page", () => {
+      $eXeTrivial.startVideo('clip.mp4', 0, 10, instance, 1);
+      vi.advanceTimersByTime(1000);
+      expect($eXeTrivial.updateTimerDisplayLocal).toHaveBeenCalledTimes(1);
+
+      moveToNextPage({ localPlayer: { play: vi.fn() } });
+      vi.advanceTimersByTime(5000);
+
+      expect($eXeTrivial.updateTimerDisplayLocal).toHaveBeenCalledTimes(1);
+    });
+
+    it('lands its own dice', () => {
+      $eXeTrivial.options[instance].gameStarted = true;
+      $eXeTrivial.throwDice(instance);
+
+      vi.advanceTimersByTime(5000);
+
+      expect($eXeTrivial.showTargetPositions).toHaveBeenCalledWith($eXeTrivial.options[instance].valorDado, instance);
+    });
+
+    it("stops the dice once its board leaves the page, not moving the next page's pieces", () => {
+      $eXeTrivial.options[instance].gameStarted = true;
+      $eXeTrivial.throwDice(instance);
+      vi.advanceTimersByTime(150);
+
+      moveToNextPage({ gameStarted: true });
+      vi.advanceTimersByTime(5000);
+
+      expect($eXeTrivial.showTargetPositions).not.toHaveBeenCalled();
+    });
+  });
 });

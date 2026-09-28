@@ -753,6 +753,28 @@ var $eXeTrivial = {
         }
         $eXeTrivial.loadGameBoard(instance);
     },
+    /**
+     * Whether a timer's game is still on the page, and the page is not being
+     * edited.
+     *
+     * A timer holds the element its game had when it started, not the
+     * element's id. The editor never reloads the document between pages and
+     * ids are numbered by position, so the next page's first game takes the
+     * same ones: a timer that looked its game up by id found that game and ran
+     * it, and the game clock and the video clock, which never looked at all,
+     * ran for ever.
+     *
+     * @param {Element|null} container - The game's element when the timer started
+     * @returns {boolean}
+     */
+    isClockLive: function (container) {
+        const $content = $('#node-content');
+        return (
+            !!container?.isConnected &&
+            !($content.length && $content.attr('mode') === 'edition')
+        );
+    },
+
     continueGame: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
         mOptions.numeroJugadores = mOptions.gamers.length;
@@ -781,10 +803,18 @@ var $eXeTrivial = {
         $('#trivialDado-' + instance).show();
         $eXeTrivial.changePlayer(instance, true);
 
-        mOptions.relojJuego = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const gameClock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(gameClock);
+                return;
+            }
             mOptions.contadorJuego++;
             $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance);
         }, 1000);
+        mOptions.relojJuego = gameClock;
         setTimeout(function () {
             if (mOptions.numeroJugadores === 1) {
                 $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
@@ -834,10 +864,18 @@ var $eXeTrivial = {
         );
         $eXeTrivial.changePlayer(instance, false);
 
-        mOptions.relojJuego = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const gameClock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(gameClock);
+                return;
+            }
             mOptions.contadorJuego++;
             $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance);
         }, 1000);
+        mOptions.relojJuego = gameClock;
 
         mOptions.gameStarted = true;
         // After gameStarted, never before: sendScoreNew ignores a game that
@@ -1176,13 +1214,20 @@ var $eXeTrivial = {
             contador = 0;
 
         mOptions.valorDado = valor;
-        mOptions.contadorDado = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const dice = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(dice);
+                return;
+            }
             if (mOptions.gameStarted && contador < pos.length) {
                 contador++;
                 image =
                     $eXeTrivial.idevicePath + 'tvlpt' + pos[contador] + '.png';
                 if (contador == pos.length - 1) {
-                    clearInterval(mOptions.contadorDado);
+                    clearInterval(dice);
                     $eXeTrivial.showTargetPositions(
                         mOptions.valorDado,
                         instance
@@ -1196,6 +1241,7 @@ var $eXeTrivial = {
                 });
             }
         }, 150);
+        mOptions.contadorDado = dice;
     },
 
     showTargetPositions: function (vd, instance) {
@@ -1341,14 +1387,12 @@ var $eXeTrivial = {
 
         $eXeTrivial.showQuestion(ntema, active, instance);
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#trivialMainContainer-' + instance);
-            let $content = $('#node-content');
-            if (
-                !$node.length ||
-                ($content.length && $content.attr('mode') === 'edition')
-            ) {
-                clearInterval(mOptions.counterClock);
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(clock);
                 return;
             }
             if (mOptions.activeCounter) {
@@ -1377,7 +1421,7 @@ var $eXeTrivial = {
                     const ts = mOptions.showSolution
                         ? mOptions.timeShowSolution * 1000
                         : 3000;
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     setTimeout(function () {
                         $eXeTrivial.questionAnswer(false, instance);
                     }, ts);
@@ -1385,6 +1429,7 @@ var $eXeTrivial = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
     },
 
     showGameMessage: function (mensaje, time, type, instance) {
@@ -1861,9 +1906,17 @@ var $eXeTrivial = {
                 }
             }
             clearInterval(mOptions.timeUpdateInterval);
-            mOptions.timeUpdateInterval = setInterval(function () {
+            const board = document.getElementById(
+                'trivialMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$eXeTrivial.isClockLive(board)) {
+                    clearInterval(clock);
+                    return;
+                }
                 $eXeTrivial.updateTimerDisplayLocal(instance);
             }, 1000);
+            mOptions.timeUpdateInterval = clock;
             return;
         }
         if (
