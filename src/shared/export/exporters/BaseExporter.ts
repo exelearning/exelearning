@@ -1406,6 +1406,27 @@ window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
     // =========================================================================
 
     /**
+     * Whether this export ships the re-editable ODE source (`content.xml`).
+     *
+     * Single source of truth for every exporter that can omit it, so the
+     * website, ePub, single-page, SCORM and IMS packages all answer the
+     * question identically (#2415).
+     *
+     * The project property `exportSource` ("Editable export") is the author's
+     * decision and governs by default. `options.forceEditableSource` overrides
+     * it only for a host that stores the exported package as the project
+     * itself and re-opens it later — see `ExportOptions.forceEditableSource`.
+     *
+     * `.elpx` never asks: `content.xml` is mandatory in that format.
+     *
+     * @param meta - Project metadata carrying the author's `exportSource`.
+     * @param options - Export options, if the caller has them in scope.
+     */
+    protected shipsEditableSource(meta: ExportMetadata, options?: ExportOptions): boolean {
+        return options?.forceEditableSource === true || meta.exportSource !== false;
+    }
+
+    /**
      * Generate content.xml from document structure
      * Uses unified OdeXmlGenerator for consistent output across all exporters
      *
