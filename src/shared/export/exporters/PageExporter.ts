@@ -129,7 +129,7 @@ export class PageExporter extends Html5Exporter {
             this.zip.addFile('content/css/single-page.css', this.getSinglePageCss());
 
             // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
-            if (meta.exportSource !== false) {
+            if (this.shipsEditableSource(meta, options)) {
                 const contentXml = this.generateContentXml(pages);
                 this.zip.addFile('content.xml', contentXml);
             }
