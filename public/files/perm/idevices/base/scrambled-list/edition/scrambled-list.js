@@ -363,6 +363,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#sortableAttemptsNumber')
@@ -405,9 +408,10 @@ var $exeDevice = {
                 }
 
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
         } else {
