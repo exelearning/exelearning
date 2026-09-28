@@ -1,7 +1,7 @@
 ---
 id: ADR-2440-01
 title: "Render each in-line formula as one SVG: no MathJax in-line line breaking"
-status: Proposed
+status: Accepted
 date: 2026-09-17
 tracking_issue: 2440
 deciders:
