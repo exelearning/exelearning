@@ -296,10 +296,8 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('.exe-udlContent-block.js-hidden,');
             expect(result.html).toContain('.js .exe-udlContent-block.js-hidden {');
 
-            // 6. Appendix pagination rules
-            expect(result.html).toContain('#section-worksheet-appendix {');
-            expect(result.html).toContain('#section-worksheet-appendix .box-content > :not(:first-child) {');
-            expect(result.html).toContain('break-before: page;');
+            // 6. No appendix pagination: a document that converts no activity has no appendix.
+            expect(result.html).not.toContain('#section-worksheet-appendix');
         });
     });
 
@@ -1751,6 +1749,9 @@ describe('PrintPreviewExporter and interactive activities', () => {
         expect(await preview()).not.toContain('.worksheet-box {');
         expect(await preview({ mode: 'omit' })).not.toContain('.worksheet-box {');
         expect(await preview({ mode: 'in-place' })).toContain('.worksheet-box {');
+        // The appendix's page breaks are part of that styling, not of every printed document.
+        expect(await preview()).not.toContain('#section-worksheet-appendix');
+        expect(await preview({ mode: 'omit' })).not.toContain('#section-worksheet-appendix');
     });
 
     it('leaves the activity out when asked to', async () => {
@@ -1776,7 +1777,9 @@ describe('PrintPreviewExporter and interactive activities', () => {
         expect(html).toContain('Anexo');
         expect(html).toContain('Ciudad conquistada');
         expect(html).toContain('#section-worksheet-appendix {');
-        expect(html).toContain('#section-worksheet-appendix .box-content > :not(:first-child) {');
+        expect(html).toContain(
+            '#section-worksheet-appendix .box-content > :not(:first-child):not(:has(.worksheet-activity-unprintable)) {',
+        );
     });
 
     it('asks for no iDevice files for markup that needs none', async () => {

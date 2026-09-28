@@ -1391,6 +1391,69 @@ test.describe('Print iDevices', () => {
         );
     });
 
+    for (const mode of ['idevices', 'in-place', 'appendix']) {
+        test(`says a padlock guarding no writing is not available in print, in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Print iDevices empty padlock');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+
+            const padlock = (feedback: string) =>
+                '<div class="candado-IDevice">' +
+                '<div class="candado-instructions js-hidden"><p>Busca el código en la unidad</p></div>' +
+                `<div class="candado-retro js-hidden">${feedback}</div>` +
+                '</div>';
+            await page.evaluate(
+                ({ contents }) => {
+                    const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                    const parent = binding.createPage('Padlock Page');
+                    for (const htmlContent of contents)
+                        binding.createComponent(parent.id, binding.createBlock(parent.id), 'padlock', { htmlContent });
+                },
+                { contents: [padlock('<p>Texto desbloqueado</p>'), padlock('')] },
+            );
+
+            await openPrintDialog(page);
+            const { frame } = await choosePrintOption(page, mode);
+            const labels = await page.evaluate(() => ({
+                listed: (window as any)._('Not available in print'),
+                note: (window as any)._('Not available in print.'),
+            }));
+
+            // The lock that guards writing prints it; the empty one has nothing of its own to print.
+            await expect(frame.locator('.worksheet-activity[data-idevice="padlock"] .worksheet-item')).toHaveText([
+                'Texto desbloqueado',
+            ]);
+            await expect(frame.locator('body')).not.toContainText('Busca el código en la unidad');
+
+            if (mode === 'idevices') {
+                // Listed for the teacher as settled, not as data that could not be read.
+                await expect(frame.locator('.worksheet-unsupported')).toContainText(labels.listed);
+                return;
+            }
+
+            const note = frame.locator(
+                '.worksheet-activity-unprintable[data-idevice="padlock"] .worksheet-not-printable',
+            );
+            await expect(note).toHaveText(labels.note);
+
+            if (mode === 'appendix') {
+                // A line-long note follows the exercise before it rather than taking a sheet of its own.
+                await page.emulateMedia({ media: 'print' });
+                const breaks = await frame.locator('#section-worksheet-appendix .box-content > *').evaluateAll(nodes =>
+                    nodes.map(node => {
+                        const style = window.getComputedStyle(node);
+                        return style.breakBefore || style.pageBreakBefore;
+                    }),
+                );
+                expect(breaks).toEqual(['auto', 'auto']);
+                await page.emulateMedia({ media: null });
+            }
+        });
+    }
+
     test('prints a sort activity in sentence mode with compact writing spaces', async ({
         authenticatedPage: page,
         createProject,

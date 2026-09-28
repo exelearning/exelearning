@@ -30,6 +30,29 @@ import {
 } from './printActivityModes';
 
 /**
+ * How the appendix of exercises breaks across printed pages.
+ *
+ * Carried with the exercise styles and never without them: a document that converts no activity
+ * has no appendix to lay out.
+ */
+const APPENDIX_PRINT_STYLES = `
+@media print {
+    /* Start the appendix on a new page */
+    #section-worksheet-appendix {
+        page-break-before: always;
+        break-before: page;
+    }
+
+    /* In the appendix, start each activity after the first on a new page. The note standing in for
+       one that cannot be printed is a line long, so it follows whatever came before it instead. */
+    #section-worksheet-appendix .box-content > :not(:first-child):not(:has(.worksheet-activity-unprintable)) {
+        page-break-before: always;
+        break-before: page;
+    }
+}
+`;
+
+/**
  * Options for print preview generation
  */
 export interface PrintPreviewOptions {
@@ -449,18 +472,6 @@ figure img {
         break-inside: avoid;
         border-bottom: none;
     }
-
-    /* Start the appendix on a new page */
-    #section-worksheet-appendix {
-        page-break-before: always;
-        break-before: page;
-    }
-
-    /* In the appendix, start each activity after the first on a new page */
-    #section-worksheet-appendix .box-content > :not(:first-child) {
-        page-break-before: always;
-        break-before: page;
-    }
 }
 
 /* Force visibility for feedback elements even if JS tries to hide them */
@@ -468,7 +479,7 @@ figure img {
     display: block !important;
 }
 ${logoCss}
-${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES : ''}
+${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''}
 </style>
 `;
         return html.replace('</head>', `${styles}${includeActivityStyles ? renderMatchingLayoutScript() : ''}</head>`);
