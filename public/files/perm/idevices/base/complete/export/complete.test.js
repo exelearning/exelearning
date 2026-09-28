@@ -1058,4 +1058,59 @@ describe('complete iDevice export', () => {
       expect($(`#cmptReloadPhrase-${instance}`).css('display')).toBe('none');
     });
   });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and ending it when its own time ran out.
+  describe('the clock of a timed game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="cmptMainContainer-${instance}"></div>`;
+      $eXeCompleta.options = [{ gameStarted: false, time: 1, type: 0 }];
+      for (const method of ['updateTime', 'saveScormScore', 'checkPhrase', 'gameOver']) {
+        vi.spyOn($eXeCompleta, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeCompleta.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeCompleta.updateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('ends its own game when the time runs out', () => {
+      $eXeCompleta.startGame(instance);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeCompleta.gameOver).toHaveBeenCalledWith(2, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeCompleta.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="cmptMainContainer-${instance}"></div>`;
+      $eXeCompleta.options[instance] = { gameStarted: true, activeCounter: true, counter: 240 };
+      $eXeCompleta.updateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeCompleta.updateTime).not.toHaveBeenCalled();
+      expect($eXeCompleta.checkPhrase).not.toHaveBeenCalled();
+      expect($eXeCompleta.gameOver).not.toHaveBeenCalled();
+      expect($eXeCompleta.options[instance].counter).toBe(240);
+    });
+  });
 });
