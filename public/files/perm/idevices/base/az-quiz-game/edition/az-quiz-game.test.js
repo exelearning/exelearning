@@ -22,6 +22,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
+ * The real browser environment, captured before `loadIdevice` below replaces
+ * it with the lightweight stubs the pure-function tests rely on. The edition
+ * lifecycle tests need real jQuery and a real document, so they restore these.
+ */
+const realEnvironment = {
+    $: global.$,
+    jQuery: global.jQuery,
+    document: global.document,
+    translate: global._,
+};
+
+/**
  * Helper to load iDevice file and expose $exeDevice globally.
  * Replaces 'var $exeDevice' with 'global.$exeDevice' to make it accessible.
  */
@@ -115,7 +127,7 @@ function loadIdevice(code) {
     querySelector: () => null,
     querySelectorAll: () => [],
     body: {
-      appendChild: (child) => {
+        appendChild: function(child) {
         child.parentNode = global.document.body;
         return child;
       },
@@ -525,4 +537,272 @@ describe('az-quiz-game iDevice', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
     });
   });
+});
+
+describe('az-quiz-game edition lifecycle', () => {
+    let $exeDevice;
+    let savedAnimationsOff;
+
+    beforeEach(() => {
+        // Undo the lightweight stubs installed by the pure-function suite above:
+        // these tests drive real DOM events through real jQuery.
+        global.$ = realEnvironment.$;
+        global.jQuery = realEnvironment.jQuery;
+        global.document = realEnvironment.document;
+        global._ = realEnvironment.translate;
+
+        global.$exeDevices = {
+            iDevice: {
+                gamification: {
+                    media: { extractURLGD: url => url },
+                    helpers: { supportedBrowser: () => true },
+                },
+            },
+        };
+        global.$exeDevicesEdition = {
+            iDevice: {
+                gamification: {
+                    progressBar: { addEvents: vi.fn() },
+                    itinerary: { addEvents: vi.fn() },
+                    share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
+                    helpers: { stopSound: vi.fn(), playSound: vi.fn() },
+                    common: { getLanguageTab: () => '' },
+                },
+                tabs: { init: () => {} },
+            },
+        };
+
+        // slideToggle would otherwise leave animation frames running past the test.
+        savedAnimationsOff = $.fx.off;
+        $.fx.off = true;
+
+        document.body.innerHTML = `
+      <div id="roscoIdeviceForm">
+        <div id="roscoDataWord">
+          <div class="roscoFileWordEdition">
+            <h3 class="roscoLetterEdition">A</h3>
+            <input class="roscoWordEdition" value="">
+          </div>
+          <div class="roscoWordMutimediaEdition">
+            <a href="#" class="roscoLinkSelectImage"></a>
+            <div class="roscoImageBarEdition">
+              <img class="roscoHomeImageEdition" alt="">
+              <input class="roscoURLImageEdition" value="files/pic.png">
+              <input class="roscoAlt" value="a picture">
+              <input class="roscoXImageEdition" value="0">
+              <input class="roscoYImageEdition" value="0">
+              <input class="roscoURLAudioEdition" value="">
+              <span class="roscoCursorEdition"></span>
+              <span class="roscoNoImageEdition"></span>
+            </div>
+            <img class="roscoSelectImageEdition" alt="">
+          </div>
+        </div>
+        <div class="toggle-item" idevice-id="tglInput"><span class="toggle-face"></span></div>
+        <input id="tglInput" type="checkbox">
+        <input id="eXeGameImportGame" type="file">
+      </div>
+    `;
+
+        global.$exeDevice = undefined;
+        $exeDevice = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
+        $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+        // Close the edition the test opened, so its document handlers cannot leak
+        // into the next one.
+        $exeDevice.$lifecycle.destroy();
+        $.fx.off = savedAnimationsOff;
+        document.body.innerHTML = '';
+    });
+
+    describe('delegated .toggle-item click handler on document', () => {
+        it('toggles the linked checkbox while the edition is open', () => {
+            $('.toggle-item').trigger('click');
+
+            expect($('#tglInput').is(':checked')).toBe(true);
+        });
+
+        it('stops toggling once the edition is closed', () => {
+            const changed = vi.fn();
+            $('#tglInput').on('change', changed);
+
+            $exeDevice.$lifecycle.destroy();
+            $('.toggle-item').trigger('click');
+
+            expect(changed).not.toHaveBeenCalled();
+            expect($('#tglInput').is(':checked')).toBe(false);
+        });
+
+        it('leaves unrelated document handlers registered', () => {
+            const unrelated = vi.fn();
+            $(document).on('click.roscoUnrelated', '.toggle-item', unrelated);
+
+            $exeDevice.$lifecycle.destroy();
+            $('.toggle-item').trigger('click');
+
+            expect(unrelated).toHaveBeenCalledTimes(1);
+            $(document).off('click.roscoUnrelated');
+        });
+    });
+
+    describe('delegated image click handler on document', () => {
+        it('reports the clicked image while the edition is open', () => {
+            const clickImage = vi.fn();
+            $exeDevice.clickImage = clickImage;
+
+            $('#roscoDataWord img.roscoHomeImageEdition').trigger('click');
+
+            expect(clickImage).toHaveBeenCalledTimes(1);
+            expect(clickImage.mock.calls[0][0]).toBe(
+                document.querySelector('#roscoDataWord img.roscoHomeImageEdition'),
+            );
+        });
+
+        it('stops reporting once the edition is closed', () => {
+            const clickImage = vi.fn();
+            $exeDevice.clickImage = clickImage;
+
+            $exeDevice.$lifecycle.destroy();
+            $('#roscoDataWord img.roscoHomeImageEdition').trigger('click');
+
+            expect(clickImage).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('delegated image panel handler on document', () => {
+        it('previews the selected image while the edition is open', () => {
+            const showImage = vi.fn();
+            $exeDevice.showImage = showImage;
+
+            $('#roscoDataWord a.roscoLinkSelectImage').trigger('click');
+
+            expect(showImage).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops previewing once the edition is closed', () => {
+            const showImage = vi.fn();
+            $exeDevice.showImage = showImage;
+
+            $exeDevice.$lifecycle.destroy();
+            $('#roscoDataWord a.roscoLinkSelectImage').trigger('click');
+
+            expect(showImage).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('delegated word focusout handler on document', () => {
+        it('repaints the letter while the edition is open', () => {
+            const letter = document.querySelector('h3.roscoLetterEdition');
+            letter.style.backgroundColor = '';
+
+            $('#roscoDataWord .roscoWordEdition').trigger('focusout');
+
+            expect(letter.style.backgroundColor).not.toBe('');
+        });
+
+        it('stops repainting once the edition is closed', () => {
+            const letter = document.querySelector('h3.roscoLetterEdition');
+
+            $exeDevice.$lifecycle.destroy();
+            letter.style.backgroundColor = '';
+            $('#roscoDataWord .roscoWordEdition').trigger('focusout');
+
+            expect(letter.style.backgroundColor).toBe('');
+        });
+    });
+
+    describe('import FileReader', () => {
+        /**
+         * Drive the file input the way a user picking a file does, and hand back
+         * the FileReader the edition created for it.
+         *
+         * @returns {FileReader}
+         */
+        function pickFile() {
+            const readers = [];
+            const RealFileReader = global.FileReader;
+            class TrackedFileReader extends RealFileReader {
+                constructor() {
+                    super();
+                    readers.push(this);
+                }
+            }
+            global.FileReader = TrackedFileReader;
+            try {
+                const input = document.getElementById('eXeGameImportGame');
+                Object.defineProperty(input, 'files', {
+                    configurable: true,
+                    value: [new File(['word'], 'game.txt', { type: 'text/plain' })],
+                });
+                $(input).trigger('change');
+            } finally {
+                global.FileReader = RealFileReader;
+            }
+            return readers[0];
+        }
+
+        it('aborts a read that is still in flight when the edition closes', () => {
+            const reader = pickFile();
+            expect(reader).toBeDefined();
+            const abort = vi.spyOn(reader, 'abort');
+
+            expect(reader.readyState).toBe(1);
+            $exeDevice.$lifecycle.destroy();
+
+            expect(abort).toHaveBeenCalledTimes(1);
+            abort.mockRestore();
+        });
+
+        it('discards a load that resolves after the edition closed', () => {
+            const reader = pickFile();
+            const importGame = vi.fn();
+            $exeDevice.importGame = importGame;
+
+            $exeDevice.$lifecycle.destroy();
+            reader.onload({ target: { result: 'word' } });
+
+            expect(importGame).not.toHaveBeenCalled();
+        });
+
+        it('imports a load that resolves while the edition is open', () => {
+            const reader = pickFile();
+            const importGame = vi.fn();
+            $exeDevice.importGame = importGame;
+
+            reader.onload({ target: { result: 'word' } });
+
+            expect(importGame).toHaveBeenCalledWith('word', 'text/plain');
+        });
+    });
+
+    describe('preview audio', () => {
+        it('stops playback and releases the stream when the edition closes', () => {
+            $exeDevice.playSound('files/beep.mp3');
+            const player = $exeDevice.playerAudio;
+            const pause = vi.spyOn(player, 'pause');
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(pause).toHaveBeenCalledTimes(1);
+            expect(player.hasAttribute('src')).toBe(false);
+            pause.mockRestore();
+        });
+
+        it('plays on canplaythrough while open, and stays silent afterwards', () => {
+            $exeDevice.playSound('files/beep.mp3');
+            const player = $exeDevice.playerAudio;
+            const play = vi.spyOn(player, 'play').mockReturnValue(Promise.resolve());
+
+            player.dispatchEvent(new Event('canplaythrough'));
+            expect(play).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            player.dispatchEvent(new Event('canplaythrough'));
+
+            expect(play).toHaveBeenCalledTimes(1);
+            play.mockRestore();
+        });
+    });
 });
