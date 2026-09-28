@@ -170,14 +170,16 @@ function appendixHeading(entry?: { number: number; blockTitle: string }): string
  *
  * Which note depends on whether one is coming. An activity that is simply waiting for an adapter
  * says so; one whose answer is settled says that instead, because "yet" would have the teacher
- * waiting for a release that is not on its way.
+ * waiting for a release that is not on its way. The answer is settled for a whole iDevice type, or
+ * for one component whose adapter found nothing in it that paper could carry.
  */
 function unprintableMarkup(
     type: string,
     options: ApplyActivityModeOptions,
     entry?: { number: number; blockTitle: string },
+    settled = isNeverPrintable(type),
 ): string {
-    const label = isNeverPrintable(type)
+    const label = settled
         ? options.labels?.notAvailable || DEFAULT_LABELS.notAvailable
         : options.labels?.notPrintable || DEFAULT_LABELS.notPrintable;
 
@@ -203,7 +205,8 @@ function referenceMarkup(type: string, options: ApplyActivityModeOptions, number
 /**
  * Convert one activity into printable markup.
  *
- * @returns The markup, or null when the iDevice has no adapter
+ * @returns The markup — the settled note when the adapter found nothing to print — or null when the
+ *   iDevice has no adapter or its data could not be read
  */
 function convert(
     component: ExportComponent,
@@ -225,7 +228,11 @@ function convert(
             ideviceBasePath: options.ideviceBasePath,
             onOmission: (reason, count = 1) => omissions.set(reason, (omissions.get(reason) ?? 0) + count),
         });
-        if (!activity) return null;
+        // An adapter that found nothing for paper in this component says so, and the note is the
+        // settled one rather than the "not yet" left for data it could not read.
+        if (!activity) {
+            return omissions.has('not-printable') ? unprintableMarkup(component.type, options, appendix, true) : null;
+        }
 
         // In place the block draws its own heading, so the exercise carries none. In the appendix
         // it needs both: the number the body points at, and what the author called the block.

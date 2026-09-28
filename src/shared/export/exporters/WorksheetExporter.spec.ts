@@ -431,6 +431,22 @@ describe('WorksheetExporter', () => {
 
             expect((await exporter.buildModel()).pages).toHaveLength(0);
         });
+
+        it('reports a padlock that guards no writing as not printable, not as data it could not read', async () => {
+            const content =
+                '<div class="candado-IDevice"><div class="candado-instructions js-hidden"><p>Busca el código</p></div>' +
+                '<div class="candado-retro js-hidden"></div></div>';
+            const exporter = new WorksheetExporter(
+                documentOf([{ title: 'Repaso', components: [{ type: 'padlock', content }] }]),
+            );
+
+            const model = await exporter.buildModel();
+
+            expect(model.pages).toHaveLength(0);
+            expect(model.unsupported.map(entry => [entry.ideviceType, entry.reason])).toEqual([
+                ['padlock', 'not-printable'],
+            ]);
+        });
     });
 
     describe('activities with no adapter', () => {

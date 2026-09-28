@@ -49,6 +49,18 @@ function page(components: ExportComponent[], overrides: Partial<ExportPage> = {}
 
 const text = () => component({ id: 'text-1', type: 'text', content: '<p>El Cid</p>' });
 
+/** An activity with no adapter yet, whose note says it cannot be printed *yet*. */
+const WAITING = 'an-activity-with-no-adapter';
+
+/** A padlock that guards no writing: its instructions only say how to open it. */
+const emptyPadlock = () =>
+    component({
+        type: 'padlock',
+        content:
+            '<div class="candado-IDevice"><div class="candado-instructions js-hidden"><p>Busca el código</p></div>' +
+            '<div class="candado-retro js-hidden"></div></div>',
+    });
+
 function componentsOf(pages: ExportPage[]): ExportComponent[] {
     return pages.flatMap(p => (p.blocks || []).flatMap(b => b.components || []));
 }
@@ -147,15 +159,14 @@ describe('applyActivityMode', () => {
         });
 
         it('prints a note where an activity has no printable form yet', () => {
-            const content = componentsOf(
-                run([page([component({ type: 'padlock', content: '<div/>' })])], 'in-place'),
-            )[0].content;
+            const content = componentsOf(run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place'))[0]
+                .content;
 
             expect(content).toContain('worksheet-activity-unprintable');
             expect(content).toContain('This activity cannot be printed yet.');
             // The type survives as an attribute, for stylesheets and tests, but is not written out
             // anywhere a reader would see it.
-            expect(content).toContain('data-idevice="padlock"');
+            expect(content).toContain(`data-idevice="${WAITING}"`);
         });
 
         it('says an activity is not available rather than not ready, where that is settled', () => {
@@ -179,13 +190,24 @@ describe('applyActivityMode', () => {
             }
         });
 
+        it('says a padlock that guards no writing is not available, that being settled for it', () => {
+            // Its adapter found nothing for paper, which no release will change; it is not data
+            // that could not be read.
+            const content = componentsOf(run([page([emptyPadlock()])], 'in-place'))[0].content;
+
+            expect(content).toContain('worksheet-activity-unprintable');
+            expect(content).toContain('Not available in print.');
+            expect(content).not.toContain('cannot be printed yet');
+            expect(content).not.toContain('Busca el código');
+        });
+
         it('lets the caller word both notes', () => {
             const labels = { notPrintable: 'Aún no', notAvailable: 'No disponible en impresión' };
             const settled = componentsOf(
                 run([page([component({ type: 'trivial', content: '<div/>' })])], 'in-place', { labels }),
             )[0].content;
             const waiting = componentsOf(
-                run([page([component({ type: 'padlock', content: '<div/>' })])], 'in-place', { labels }),
+                run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place', { labels }),
             )[0].content;
 
             expect(settled).toContain('No disponible en impresión');
@@ -237,12 +259,22 @@ describe('applyActivityMode', () => {
         });
 
         it('numbers an activity with no printable form too, so the pointers still line up', () => {
-            const result = run([page([component({ type: 'padlock', content: '<div/>' }), component()])], 'appendix');
+            const result = run([page([component({ type: WAITING, content: '<div/>' }), component()])], 'appendix');
             const inAppendix = componentsOf([result[result.length - 1]]);
 
             expect(inAppendix[0].content).toContain('worksheet-not-printable');
             expect(inAppendix[0].content).toContain('>1. Bloque<');
             expect(inAppendix[1].content).toContain('>2. Bloque<');
+        });
+
+        it('numbers and names a padlock that guards no writing, and says it is not available', () => {
+            const result = run([page([component(), emptyPadlock()])], 'appendix');
+            const entry = componentsOf([result[result.length - 1]])[1].content;
+
+            expect(componentsOf([result[0]])[1].content).toContain('See appendix, activity 2');
+            expect(entry).toContain('>2. Bloque<');
+            expect(entry).toContain('Not available in print.');
+            expect(entry).not.toContain('cannot be printed yet');
         });
 
         it('builds the appendix as an ordinary page, after the last one', () => {
@@ -271,7 +303,7 @@ describe('applyActivityMode', () => {
 
     describe('translated strings', () => {
         it('uses the labels it is given', () => {
-            const result = run([page([component(), component({ type: 'padlock', content: '<div/>' })])], 'appendix', {
+            const result = run([page([component(), component({ type: WAITING, content: '<div/>' })])], 'appendix', {
                 labels: {
                     appendixTitle: 'Anexo',
                     appendixReference: 'Ver anexo, actividad %s',
@@ -309,7 +341,7 @@ describe('applyActivityMode', () => {
         });
 
         it('escapes a translated label before putting it in markup', () => {
-            const result = run([page([component({ type: 'padlock', content: '<div/>' })])], 'in-place', {
+            const result = run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place', {
                 labels: { notPrintable: '<img src=x onerror=alert(1)>' },
             });
 
@@ -345,11 +377,11 @@ describe('the iDevice name is never printed', () => {
     });
 
     it('is absent from the note for an activity with no printable form', () => {
-        const unprintable = component({ type: 'padlock', content: '<div/>' });
+        const unprintable = component({ type: WAITING, content: '<div/>' });
         const markup = componentsOf(applyActivityMode([page([unprintable])], 'in-place', named))[0].content;
 
         expect(visibleText(markup)).not.toContain('Puzle');
-        expect(visibleText(markup)).not.toContain('padlock');
+        expect(visibleText(markup)).not.toContain(WAITING);
     });
 
     it('is absent from the pointer into the appendix and from the entry it points at', () => {
@@ -473,7 +505,7 @@ describe("the author's own heading", () => {
     });
 
     it('names an appendix entry that has no printable form too', () => {
-        const unprintable = component({ type: 'padlock', content: '<div/>' });
+        const unprintable = component({ type: WAITING, content: '<div/>' });
         const result = applyActivityMode(
             [page([unprintable], { blocks: [{ id: 'b1', name: 'El puzle', order: 0, components: [unprintable] }] })],
             'appendix',

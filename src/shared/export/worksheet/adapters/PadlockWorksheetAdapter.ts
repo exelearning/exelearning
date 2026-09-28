@@ -5,7 +5,8 @@
  *
  * There is nothing to solve on paper. The activity is a combination the student types in, and what
  * it protects is a passage of the author's writing; a printed sheet has no lock to open, so it
- * carries the writing. What it never carries is the combination or the instructions to unlock it.
+ * carries the writing. What it never carries is the combination or the instructions to unlock it,
+ * so a lock that guards no writing has nothing to print and says so.
  *
  * Notes on the stored data:
  * - The DataGame class prefix is 'candado', not the iDevice's name.
@@ -29,8 +30,13 @@ export const PadlockWorksheetAdapter: WorksheetAdapter = {
     build(html: string, options: WorksheetAdapterOptions = {}): PrintableActivity | null {
         const feedback = sanitizeHtml(extractDivContent(html, `${PREFIX}-retro`));
 
-        // Without feedback there is nothing of the activity left to print.
-        if (!feedback) return null;
+        // Without feedback the lock guards nothing, and the instructions only say how to open it:
+        // nothing of the activity is left for paper. That is settled, not a gap waiting on a
+        // release, so it is reported as such rather than as data this adapter could not read.
+        if (!feedback) {
+            options.onOmission?.('not-printable');
+            return null;
+        }
 
         const activity: PrintableActivity = {
             ideviceType: 'padlock',

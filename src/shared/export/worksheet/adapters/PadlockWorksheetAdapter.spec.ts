@@ -100,5 +100,15 @@ describe('PadlockWorksheetAdapter', () => {
         it('skips a component when it has instructions but no feedback', () => {
             expect(PadlockWorksheetAdapter.build(padlockHtml({ instructions: '<p>Instrucciones</p>' }), {})).toBeNull();
         });
+
+        it('says it has nothing for paper, rather than leaving it to read as data it could not parse', () => {
+            const omissions: string[] = [];
+            const onOmission = (reason: string) => omissions.push(reason);
+
+            PadlockWorksheetAdapter.build(padlockHtml({ instructions: '<p>Instrucciones</p>' }), { onOmission });
+            PadlockWorksheetAdapter.build(padlockHtml({ feedback: '<p>Texto</p>' }), { onOmission });
+
+            expect(omissions).toEqual(['not-printable']);
+        });
     });
 });
