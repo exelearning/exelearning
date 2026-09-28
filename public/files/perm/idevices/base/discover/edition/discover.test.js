@@ -510,4 +510,182 @@ describe('Discover Edition Functions', () => {
             expect(downloadBlob.mock.calls[0][2]).toBe('descubreQEIdeviceForm');
         });
     });
+
+    describe('edition lifecycle', () => {
+        // This file stubs the global `$` for the pure-function tests, but the
+        // lifecycle tests drive real DOM events, so real jQuery is restored
+        // while they run.
+        const jq = window.jQuery;
+        let device;
+        let savedGlobals;
+
+        beforeEach(() => {
+            savedGlobals = {
+                $: global.$,
+                jQuery: global.jQuery,
+                gamification: global.$exeDevicesEdition.iDevice.gamification,
+                media: global.$exeDevices.iDevice.gamification.media,
+            };
+            global.$ = jq;
+            global.jQuery = jq;
+            global.$exeDevicesEdition.iDevice.gamification = {
+                ...savedGlobals.gamification,
+                progressBar: { addEvents: vi.fn() },
+                itinerary: { addEvents: vi.fn() },
+                share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
+                helpers: { stopSound: vi.fn(), playSound: vi.fn() },
+            };
+            global.$exeDevices.iDevice.gamification.media = {
+                extractURLGD: url => url,
+            };
+
+            document.body.innerHTML = `
+                <div id="descubreQEIdeviceForm">
+                    <span class="toggle-item" role="switch">
+                        <input id="tgl" class="toggle-input" type="checkbox" data-target="#tgt">
+                    </span>
+                    <div id="tgt"></div>
+                    <input id="eXeGameImportGame" type="file">
+                </div>
+            `;
+
+            device = global.loadIdevice(join(__dirname, 'discover.js'));
+            device.addEvents();
+        });
+
+        afterEach(() => {
+            // Close the edition the test opened, so its document handlers
+            // cannot leak into the next one.
+            device.$lifecycle.destroy();
+            document.body.innerHTML = '';
+            global.$ = savedGlobals.$;
+            global.jQuery = savedGlobals.jQuery;
+            global.$exeDevicesEdition.iDevice.gamification = savedGlobals.gamification;
+            global.$exeDevices.iDevice.gamification.media = savedGlobals.media;
+        });
+
+        describe('delegated .toggle-input handler on document', () => {
+            it('reacts to a change while the edition is open', () => {
+                jq('#tgl').prop('checked', true).trigger('change');
+
+                expect(jq('.toggle-item').attr('aria-checked')).toBe('true');
+                expect(jq('#tgt').css('display')).toBe('flex');
+            });
+
+            it('stops reacting once the edition is closed', () => {
+                jq('#tgl').prop('checked', true).trigger('change');
+                expect(jq('.toggle-item').attr('aria-checked')).toBe('true');
+
+                device.$lifecycle.destroy();
+                jq('.toggle-item').attr('aria-checked', 'stale');
+                jq('#tgl').prop('checked', false).trigger('change');
+
+                expect(jq('.toggle-item').attr('aria-checked')).toBe('stale');
+            });
+
+            it('leaves unrelated document handlers registered', () => {
+                const unrelated = vi.fn();
+                jq(document).on('change.discoverUnrelated', '.toggle-input', unrelated);
+
+                device.$lifecycle.destroy();
+                jq('#tgl').trigger('change');
+
+                expect(unrelated).toHaveBeenCalledTimes(1);
+                jq(document).off('change.discoverUnrelated');
+            });
+        });
+
+        describe('import FileReader', () => {
+            /**
+             * Drive the file input the way a user picking a file does, and hand
+             * back the FileReader the edition created for it.
+             *
+             * @returns {FileReader}
+             */
+            function pickFile() {
+                const readers = [];
+                const RealFileReader = global.FileReader;
+                class TrackedFileReader extends RealFileReader {
+                    constructor() {
+                        super();
+                        readers.push(this);
+                    }
+                }
+                global.FileReader = TrackedFileReader;
+                try {
+                    const input = document.getElementById('eXeGameImportGame');
+                    Object.defineProperty(input, 'files', {
+                        configurable: true,
+                        value: [new File(['card'], 'game.txt', { type: 'text/plain' })],
+                    });
+                    jq(input).trigger('change');
+                } finally {
+                    global.FileReader = RealFileReader;
+                }
+                return readers[0];
+            }
+
+            it('aborts a read that is still in flight when the edition closes', () => {
+                const reader = pickFile();
+                expect(reader).toBeDefined();
+                const abort = vi.spyOn(reader, 'abort');
+
+                expect(reader.readyState).toBe(1);
+                device.$lifecycle.destroy();
+
+                expect(abort).toHaveBeenCalledTimes(1);
+                abort.mockRestore();
+            });
+
+            it('discards a load that resolves after the edition closed', () => {
+                const reader = pickFile();
+                const importGame = vi.fn();
+                device.importGame = importGame;
+
+                device.$lifecycle.destroy();
+                reader.onload({ target: { result: 'card' } });
+
+                expect(importGame).not.toHaveBeenCalled();
+            });
+
+            it('imports a load that resolves while the edition is open', () => {
+                const reader = pickFile();
+                const importGame = vi.fn();
+                device.importGame = importGame;
+
+                reader.onload({ target: { result: 'card' } });
+
+                expect(importGame).toHaveBeenCalledWith('card', 'text/plain');
+            });
+        });
+
+        describe('preview audio', () => {
+            it('stops playback and releases the stream when the edition closes', () => {
+                device.playSound('files/beep.mp3');
+                const player = device.playerAudio;
+                const pause = vi.spyOn(player, 'pause');
+
+                device.$lifecycle.destroy();
+
+                expect(pause).toHaveBeenCalledTimes(1);
+                expect(player.hasAttribute('src')).toBe(false);
+                pause.mockRestore();
+            });
+
+            it('plays on canplaythrough while open, and stays silent afterwards', () => {
+                device.playSound('files/beep.mp3');
+                const player = device.playerAudio;
+                const play = vi.spyOn(player, 'play').mockReturnValue(undefined);
+
+                player.dispatchEvent(new Event('canplaythrough'));
+                expect(play).toHaveBeenCalledTimes(1);
+
+                device.$lifecycle.destroy();
+                player.dispatchEvent(new Event('canplaythrough'));
+
+                expect(play).toHaveBeenCalledTimes(1);
+                play.mockRestore();
+            });
+        });
+    });
 });
