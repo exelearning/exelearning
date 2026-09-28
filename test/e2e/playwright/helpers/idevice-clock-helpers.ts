@@ -178,10 +178,20 @@ export async function projectWithTwoCopies(
     return errors;
 }
 
-/** Show a page in the editor and wait for what says its game is ready. */
+/**
+ * Show a page in the editor and wait for what says its game is ready, and for
+ * the page tree to take the page as selected.
+ *
+ * The tree does that only once the page has finished loading, after its games
+ * show. Until then it still takes the page left behind as the selected one,
+ * and a click on that page renames it instead of opening it.
+ */
 export async function openPage(page: Page, title: string, ready: string): Promise<void> {
     await page.locator('.nav-element .nav-element-text', { hasText: title }).first().click();
     await page.locator(ready).waitFor({ state: 'visible', timeout: 30000 });
+    await page
+        .locator('.nav-element.selected > .nav-element-text', { hasText: title })
+        .waitFor({ state: 'visible', timeout: 30000 });
 }
 
 /**
