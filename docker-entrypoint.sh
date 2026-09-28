@@ -21,7 +21,11 @@ err()  { printf "%b[entrypoint] %s%b\n" "${RED}" "$1" "${NC}" >&2; }
 check_bun_cpu_requirements() {
     arch="$(uname -m 2>/dev/null || echo unknown)"
 
-    # Bun x64 requires at least SSE4.2 + AVX + AVX2. Only check on x86_64.
+    # The official oven/bun:*-alpine image ships the x64 musl *baseline* binary,
+    # whose minimum x86_64 target is SSE4.2 (Intel Nehalem / AMD Bulldozer or
+    # newer). Since Bun 1.4 there is a single x64 binary that dispatches
+    # AVX2/AVX-512 at runtime, so AVX and AVX2 are optimisations, not
+    # requirements. Only check on x86_64.
     case "$arch" in
         x86_64|amd64)
             ;;
@@ -37,7 +41,7 @@ check_bun_cpu_requirements() {
 
     flags="$(tr '\n' ' ' < /proc/cpuinfo)"
     missing=""
-    for required_flag in sse4_2 avx avx2; do
+    for required_flag in sse4_2; do
         if ! printf "%s" "$flags" | grep -qw "$required_flag"; then
             missing="$missing $required_flag"
         fi
@@ -45,7 +49,7 @@ check_bun_cpu_requirements() {
 
     if [ -n "$missing" ]; then
         err "Unsupported CPU for Bun x64. Missing CPU flags:${missing}"
-        err "Bun requires at least SSE4.2, AVX and AVX2 on x64 (Haswell/Excavator or newer)."
+        err "Bun requires at least SSE4.2 on x64 (Intel Nehalem / AMD Bulldozer or newer)."
         err "This container will not start on this machine. Use legacy runtime/image or newer hardware."
         exit 1
     fi
