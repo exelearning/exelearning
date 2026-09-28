@@ -779,24 +779,33 @@ var $azquizgame = {
         $azquizgame.updateTime(mOptions.durationGame, instance);
         $azquizgame.drawRosco(instance);
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#roscoMainContainer-' + instance);
-            let $content = $('#node-content');
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and ending it when its own
+        // time ran out.
+        const container = document.getElementById(
+            'roscoMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
             $azquizgame.updateTime(mOptions.counter, instance);
             mOptions.counter--;
             if (mOptions.counter <= 0) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 $azquizgame.gameOver(1, instance);
                 return;
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $('#roscoPShowClue-' + instance)
             .text('')
