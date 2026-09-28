@@ -1057,6 +1057,10 @@ var $azquizgame = {
             .attr('src', '')
             .attr('src', url)
             .on('load', function () {
+                // A picture that finishes loading after the page has changed
+                // belongs to a game that is gone; its number now names the
+                // next page's game.
+                if (!this.isConnected) return;
                 if (
                     !this.complete ||
                     typeof this.naturalWidth === 'undefined' ||
@@ -1086,8 +1090,10 @@ var $azquizgame = {
 
     positionPointer: function (instance) {
         const mOptions = $azquizgame.options[instance],
-            mWord = mOptions.wordsGame[mOptions.activeWord],
-            x = parseFloat(mWord.x) || 0,
+            mWord = mOptions.wordsGame[mOptions.activeWord];
+        // No word on the board, as before the game starts or once it is over.
+        if (!mWord) return;
+        const x = parseFloat(mWord.x) || 0,
             y = parseFloat(mWord.y) || 0,
             $cursor = $('#roscoCursor-' + instance);
 
@@ -1143,7 +1149,14 @@ var $azquizgame = {
                 $azquizgame.showImageNeo(mWord.url, instance);
             } else {
                 $('#roscoCursor-' + instance).hide();
-                setTimeout(() => $azquizgame.positionPointer(instance), 1000);
+                // Only for this game: in the editor the next page's first game
+                // takes the same number, and a pointer placed a second later
+                // by number landed on that one.
+                setTimeout(() => {
+                    if ($azquizgame.options[instance] === mOptions) {
+                        $azquizgame.positionPointer(instance);
+                    }
+                }, 1000);
             }
         }
     },

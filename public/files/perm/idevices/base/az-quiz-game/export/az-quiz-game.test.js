@@ -462,4 +462,78 @@ describe('az-quiz-game iDevice export', () => {
       expect($azquizgame.options[instance].counter).toBe(240);
     });
   });
+
+  // A picture's pointer is placed once the picture has loaded, or a second
+  // after the layout changes. Both reached the game by its number, which in the
+  // editor names the next page's game once the author has moved on — where no
+  // word is on the board yet, and reading one threw.
+  describe('placing the pointer on a picture', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `
+        <div id="roscoMultimedia-${instance}">
+          <img id="roscoImage-${instance}" src="pic.png">
+          <div id="roscoCursor-${instance}"></div>
+        </div>`;
+      $azquizgame.options = [{ activeWord: 0, wordsGame: [{ url: 'pic.png', x: 0, y: 0, author: '', alt: '' }] }];
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('does nothing when no word is on the board', () => {
+      $azquizgame.options[instance].activeWord = -1;
+
+      expect(() => $azquizgame.positionPointer(instance)).not.toThrow();
+    });
+
+    it('places it on its own game a second after the layout changed', () => {
+      const positionPointer = vi.spyOn($azquizgame, 'positionPointer').mockImplementation(() => {});
+
+      $azquizgame.refreshImageActiveNeo(instance);
+      vi.advanceTimersByTime(1000);
+
+      expect(positionPointer).toHaveBeenCalledWith(instance);
+    });
+
+    it("leaves the next page's game alone when the page changed within that second", () => {
+      const positionPointer = vi.spyOn($azquizgame, 'positionPointer').mockImplementation(() => {});
+
+      $azquizgame.refreshImageActiveNeo(instance);
+      $azquizgame.options[instance] = { activeWord: -1, wordsGame: [] };
+      vi.advanceTimersByTime(1000);
+
+      expect(positionPointer).not.toHaveBeenCalled();
+    });
+
+    it('places it once its own picture has loaded', () => {
+      const positionPointer = vi.spyOn($azquizgame, 'positionPointer').mockImplementation(() => {});
+      $azquizgame.showImageNeo('pic.png', instance);
+      const picture = document.getElementById(`roscoImage-${instance}`);
+      Object.defineProperty(picture, 'naturalWidth', { value: 100 });
+      Object.defineProperty(picture, 'complete', { value: true });
+
+      $(picture).trigger('load');
+
+      expect(positionPointer).toHaveBeenCalledWith(instance);
+    });
+
+    it('ignores a picture that finished loading after its page was left', () => {
+      const positionPointer = vi.spyOn($azquizgame, 'positionPointer').mockImplementation(() => {});
+      $azquizgame.showImageNeo('pic.png', instance);
+      const picture = document.getElementById(`roscoImage-${instance}`);
+      Object.defineProperty(picture, 'naturalWidth', { value: 100 });
+      Object.defineProperty(picture, 'complete', { value: true });
+
+      picture.remove();
+      $(picture).trigger('load');
+
+      expect(positionPointer).not.toHaveBeenCalled();
+    });
+  });
 });
