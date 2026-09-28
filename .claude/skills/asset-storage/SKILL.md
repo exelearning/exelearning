@@ -17,6 +17,17 @@ Trace `src/utils/asset-paths.ts`, `src/services/file-helper.ts`, `src/db/queries
   reinterpret a rejected path. Build paths with `path.join()`, never string concatenation.
 - Browser Yjs metadata, Cache API blobs and server files have different lifetimes. Check reload/offline
   behavior and ownership before deleting shared/referenced assets. Do not treat derived caches as canonical data.
+
+## Client-side storage
+
+| Storage | Pattern | Purpose |
+| --- | --- | --- |
+| IndexedDB | `exelearning-project-{uuid}` | Yjs Y.Doc persistence |
+| IndexedDB | `exelearning` | User preferences |
+| IndexedDB | `exelearning-resources-v1` | Theme/library cache |
+| Cache API | `exe-assets-{uuid}` | Blob storage for images and files |
+
+Preserve these names when changing persistence, migration or cleanup behavior; existing browser data may depend on them.
 - Direct ELP/ELPX import happens in the browser: `importElpDirectly` → `importFromElpxViaYjs`, then the
   UI refreshes from the Y.Doc and saves on explicit save/autosave. The fallback uploads chunks to
   `POST /api/project/upload-chunk`, the server only concatenates them into a temp file, the workarea
