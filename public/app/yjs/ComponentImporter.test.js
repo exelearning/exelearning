@@ -274,6 +274,23 @@ describe('ComponentImporter', () => {
       expect(result.error).toBe('fflate library not loaded');
     });
 
+    it('should find the target page when it is not the first in navigation', async () => {
+      const docManager = createMockDocumentManager([
+        { id: 'page-0', name: 'First' },
+        { id: 'page-1', name: 'Target' },
+      ]);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+      // The block was added to page-1 (index 1), not page-0 (index 0)
+      const navigation = docManager._navigation;
+      expect(navigation.get(0).get('blocks').length).toBe(0);
+      expect(navigation.get(1).get('blocks').length).toBe(1);
+    });
+
     it('should reject a file larger than the maximum compressed size before reading it', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
       const importer = new ComponentImporter(docManager, null);
@@ -644,6 +661,26 @@ describe('ComponentImporter', () => {
 
       expect(importer.isComponentExport(xmlDoc)).toBe(false);
     });
+
+    it('returns false when resources do not match', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+
+      const XML_OTHER_RESOURCE = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>otherKey</key>
+    <value>otherValue</value>
+  </odeResource>
+</odeResources>
+</ode>`;
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_OTHER_RESOURCE, 'text/xml');
+
+      expect(importer.isComponentExport(xmlDoc)).toBe(false);
+    });
   });
 
   describe('parseBlockFromXml', () => {
@@ -672,6 +709,28 @@ describe('ComponentImporter', () => {
       const blockData = importer.parseBlockFromXml(xmlDoc);
 
       expect(blockData).toBeNull();
+    });
+
+    it('handles missing odePagStructureProperties without throwing', () => {
+      const XML_NO_PROPS = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-noprops</odeBlockId>
+    <blockName>No Props</blockName>
+    <odeComponents></odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_NO_PROPS, 'text/xml');
+
+      const blockData = importer.parseBlockFromXml(xmlDoc);
+
+      expect(blockData.properties).toEqual({});
     });
   });
 
@@ -781,6 +840,41 @@ describe('ComponentImporter', () => {
       expect(compData.structureProperties).toBeUndefined();
     });
 
+    it('parseComponentStructureProperties skips properties without a key', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+
+      const XML_MISSING_KEY = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odePagStructures>
+  <odePagStructure>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-nokey</odeIdeviceId>
+        <odeComponentsProperties>
+          <odeComponentsProperty>
+            <value>orphan-value</value>
+          </odeComponentsProperty>
+          <odeComponentsProperty>
+            <key>validKey</key>
+            <value>validValue</value>
+          </odeComponentsProperty>
+        </odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_MISSING_KEY, 'text/xml');
+      const compNode = xmlDoc.querySelector('odeComponent');
+
+      const result = importer.parseComponentStructureProperties(compNode);
+
+      expect(result).toEqual({ validKey: 'validValue' });
+    });
+
     it('should store structure properties in the component properties Y.Map on import', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
       const assetManager = createMockAssetManager();
@@ -864,6 +958,19 @@ describe('ComponentImporter', () => {
 
       // New format: asset://uuid.ext (extension from filename in assetMap path)
       expect(result).toBe('<img src="asset://new-uuid-456.jpg">');
+    });
+
+    it('leaves asset:// URLs unchanged when no matching asset is found', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+      importer.assetMap = new Map([
+        ['content/resources/completely-different-uuid/image.jpg', 'new-uuid'],
+      ]);
+
+      const content = '<img src="asset://old-uuid-123/image.jpg">';
+      const result = importer.convertAssetPaths(content);
+
+      expect(result).toBe(content);
     });
 
     it('should return unchanged content when no assets match', () => {
@@ -1306,6 +1413,33 @@ describe('ComponentImporter', () => {
       expect(blockData.components[0].htmlView).toBe('');
       expect(blockData.components[0].properties.question).toBe('What is 2+2?');
     });
+
+    it('parseComponentFromXml handles missing jsonProperties', () => {
+      const XML_NO_JSON = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odePagStructures>
+  <odePagStructure>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-nojson</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;No JSON&lt;/p&gt;</htmlView>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_NO_JSON, 'text/xml');
+      const compNode = xmlDoc.querySelector('odeComponent');
+
+      const compData = importer.parseComponentFromXml(compNode);
+
+      expect(compData.properties).toEqual({});
+    });
   });
 
   describe('createBlockYMap edge cases', () => {
@@ -1483,6 +1617,26 @@ describe('ComponentImporter', () => {
 
       expect(found).toBeNull();
     });
+
+    it('skips non-matching pages before finding the target', () => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+
+      const page1 = new Y.Map();
+      page1.set('id', 'page-a');
+      page1.set('pageId', 'page-a');
+      navigation.push([page1]);
+
+      const page2 = new Y.Map();
+      page2.set('id', 'page-b');
+      page2.set('pageId', 'page-b');
+      navigation.push([page2]);
+
+      const docManager = { getNavigation: () => navigation };
+      const importer = new ComponentImporter(docManager, null);
+
+      expect(importer.findPage('page-b')).toBe(page2);
+    });
   });
 
   describe('importIdeviceIntoBlock', () => {
@@ -1626,6 +1780,50 @@ describe('ComponentImporter', () => {
       expect(result.componentIds[0]).toMatch(/^idevice-/);
     });
 
+    it('rewrites embedded ideviceId in jsonProperties when component id is regenerated (#1786)', async () => {
+      const COMPONENT_WITH_EMBEDDED_ID = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig-1</odeBlockId>
+    <blockName>Embedded id</blockName>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-orig-1</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;hi&lt;/p&gt;</htmlView>
+        <jsonProperties>{"ideviceId":"idevice-orig-1","textTextarea":"&lt;p&gt;hi&lt;/p&gt;"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(COMPONENT_WITH_EMBEDDED_ID);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+      expect(result.success).toBe(true);
+
+      const pageMap = docManager.getNavigation().get(0);
+      const blockMap = pageMap.get('blocks').get(0);
+      const compMap = blockMap.get('components').get(0);
+      const newCompId = compMap.get('id');
+      const parsed = JSON.parse(compMap.get('jsonProperties'));
+
+      expect(newCompId).not.toBe('idevice-orig-1');
+      expect(parsed.ideviceId).toBe(newCompId);
+    });
+
     it('appends after existing components and preserves their order', async () => {
       const docManager = createManagerWithBlock();
       const Y = docManager._Y;
@@ -1649,6 +1847,42 @@ describe('ComponentImporter', () => {
       expect(components.get(1).get('order')).toBe(1);
     });
 
+    it('finds the target block when it is not the first in the array', async () => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+      const pageMap = new Y.Map();
+      pageMap.set('id', 'page-1');
+      pageMap.set('pageId', 'page-1');
+      pageMap.set('blocks', new Y.Array());
+
+      // Two blocks: the second is the target
+      const block1 = new Y.Map();
+      block1.set('blockId', 'block-other');
+      block1.set('id', 'block-other');
+      pageMap.get('blocks').push([block1]);
+
+      const block2 = new Y.Map();
+      block2.set('blockId', 'block-target');
+      block2.set('id', 'block-target');
+      pageMap.get('blocks').push([block2]);
+
+      navigation.push([pageMap]);
+
+      const mockDoc = { clientID: 'test', transact: vi.fn((fn) => fn()) };
+      const docManager = {
+        getDoc: () => mockDoc,
+        getNavigation: () => navigation,
+      };
+
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-target');
+
+      expect(result.success).toBe(true);
+      expect(result.blockId).toBe('block-target');
+    });
+
     it('returns error when the target block is not in the page', async () => {
       const docManager = createManagerWithBlock('page-1', 'block-other');
       const importer = new ComponentImporter(docManager, createMockAssetManager());
@@ -1658,6 +1892,43 @@ describe('ComponentImporter', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('not found');
+    });
+
+    it('returns error when the target page does not exist', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'nonexistent-page', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Target page not found');
+    });
+
+    it('returns error when the component file has no components', async () => {
+      const XML_WITH_NO_COMPONENTS = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-empty</odeBlockId>
+    <blockName>Empty</blockName>
+    <odeComponents></odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(XML_WITH_NO_COMPONENTS);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No iDevice');
     });
 
     it('returns error for missing content.xml marker', async () => {
@@ -1682,6 +1953,19 @@ describe('ComponentImporter', () => {
       await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
 
       expect(assetManager.extractAssetsFromZip).toHaveBeenCalled();
+    });
+
+    it('returns error when fflate is not loaded', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      global.window.fflate = null;
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('fflate library not loaded');
     });
   });
 });

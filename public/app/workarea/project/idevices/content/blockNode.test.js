@@ -3464,6 +3464,110 @@ describe('IdeviceBlockNode', () => {
                 expect.objectContaining({ title: 'Import error', body: 'boom' }),
             );
         });
+
+        it('shows an alert when the Yjs document manager is not available', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => undefined),
+                assetManager: null,
+            };
+            window.ComponentImporter = class {};
+
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Import error',
+                    body: 'Yjs document manager not available',
+                }),
+            );
+        });
+
+        it('shows an alert when ComponentImporter is not loaded', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => ({})),
+                assetManager: null,
+            };
+            window.ComponentImporter = undefined;
+
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Import error',
+                    body: 'ComponentImporter not loaded',
+                }),
+            );
+        });
+
+        it('shows an alert when no page is selected', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => ({})),
+                assetManager: null,
+            };
+            window.ComponentImporter = class {
+                importIdeviceIntoBlock = vi.fn();
+            };
+            block.pageId = null;
+            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = null;
+
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Import error',
+                    body: 'No page selected',
+                }),
+            );
+        });
+
+        it('shows a generic alert when the import result has no error message', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => ({})),
+                assetManager: null,
+            };
+            window.ComponentImporter = class {
+                constructor() {}
+                importIdeviceIntoBlock = vi.fn().mockResolvedValue({
+                    success: false,
+                });
+            };
+
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Import error',
+                    body: 'Import failed',
+                }),
+            );
+        });
+
+        it('does not call preloadAllAssets when the asset manager does not expose it', async () => {
+            const loadIdevicesMock = vi.fn().mockResolvedValue();
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => ({})),
+                assetManager: {},
+            };
+            window.ComponentImporter = class {
+                importIdeviceIntoBlock = vi.fn().mockResolvedValue({
+                    success: true,
+                    blockId: block.blockId,
+                    componentIds: ['x'],
+                });
+            };
+            eXeLearning.app.project.idevices = {
+                loadApiIdevicesInPage: loadIdevicesMock,
+            };
+
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(loadIdevicesMock).toHaveBeenCalledWith(true);
+        });
     });
 
     // -------------------------------------------------------------------------
