@@ -41,6 +41,13 @@ export function storedIdevice(type: string): { html: string; jsonProperties: str
  */
 const LEFT_SECONDS = 10;
 
+/**
+ * The component id each page's copy is created with, the first page's first.
+ * Known beforehand, so a copy's data can carry another's, as a duplicated
+ * iDevice does until it is edited.
+ */
+export const COMPONENT_IDS = ['idevice-first-game', 'idevice-second-game'];
+
 /** A game as it is stored, and how to make a copy of it for each page. */
 export interface StoredGame {
     /** The iDevice type, e.g. 'guess'. */
@@ -71,6 +78,11 @@ export interface TimedGame extends StoredGame {
     ownTime: RegExp;
     /** Run in the page: whether the first game on the page has ended. */
     over: string;
+    /**
+     * Run in the page before the second page is opened, for a game that keeps
+     * its state only when the learner leaves: what leaving makes it store.
+     */
+    leave?: string;
 }
 
 /** A game whose clock waits for the learner's first move, so a copy nobody has played never counts. */
@@ -134,16 +146,17 @@ async function projectWithTwoGames(
 
     const games = [await timedMarkup(page, game, 0), await timedMarkup(page, game, 1)];
     await page.evaluate(
-        ({ type, games }) => {
+        ({ type, games, ids }) => {
             const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
             for (const [index, title] of ['First game', 'Second game'].entries()) {
                 const parent = binding.createPage(title);
                 binding.createComponent(parent.id, binding.createBlock(parent.id), type, {
+                    id: ids[index],
                     htmlContent: games[index],
                 });
             }
         },
-        { type: game.type, games },
+        { type: game.type, games, ids: COMPONENT_IDS },
     );
 
     return errors;
@@ -199,6 +212,7 @@ export async function expectClockKeptToItsGame(
     await page.evaluate(`${game.counter} = ${LEFT_SECONDS}`);
     const shortenedAt = Date.now();
     const firstGame = await page.locator(game.container).elementHandle();
+    if (game.leave) await page.evaluate(game.leave);
 
     await openPage(page, 'Second game', game.start);
     await page.waitForFunction(element => !element?.isConnected, firstGame);

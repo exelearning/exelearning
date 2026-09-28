@@ -155,6 +155,7 @@ describe('padlock iDevice export', () => {
         <div id="candadoPTime-0"></div>`;
       $padlock.options[0] = {
         id: 0,
+        storageKey: 'dataCandado-idevice-0',
         isScorm: 1,
         candadoTime: 5,
         candadoReboot: false,
@@ -369,7 +370,7 @@ describe('padlock iDevice export', () => {
 
         $padlock.addEvents(0);
 
-        expect(global.localStorage.removeItem).toHaveBeenCalledWith('dataCandado-0');
+        expect(global.localStorage.removeItem).toHaveBeenCalledWith('dataCandado-idevice-0');
         expect($padlock.options[0].candadoSolved).toBe(false);
         expect($padlock.options[0].counter).toBe(5 * 60);
       });
@@ -550,6 +551,79 @@ describe('padlock iDevice export', () => {
       expect($padlock.uptateTime).not.toHaveBeenCalled();
       expect($padlock.showFeedback).not.toHaveBeenCalled();
       expect($padlock.options[instance].counter).toBe(240);
+    });
+  });
+
+  // A duplicated padlock carries the same id, and one saved without an id fell
+  // back to its position on the page, which the first padlock of every page
+  // shares. Kept under either, two padlocks shared one entry.
+  describe('where a padlock keeps its state', () => {
+    let previousLocalStorage;
+    let previousHelpers;
+    let store;
+
+    beforeEach(() => {
+      previousLocalStorage = global.localStorage;
+      previousHelpers = global.$exeDevices.iDevice.gamification.helpers;
+      store = {};
+      global.localStorage = {
+        getItem: key => (key in store ? store[key] : null),
+        setItem: (key, value) => {
+          store[key] = String(value);
+        },
+        removeItem: key => {
+          delete store[key];
+        },
+      };
+      global.$exeDevices.iDevice.gamification.helpers = {
+        ...previousHelpers,
+        isJsonString: value => (typeof value === 'string' ? JSON.parse(value) : false),
+      };
+    });
+
+    afterEach(() => {
+      global.localStorage = previousLocalStorage;
+      global.$exeDevices.iDevice.gamification.helpers = previousHelpers;
+      document.body.innerHTML = '';
+    });
+
+    it("names the entry after the padlock's own component", () => {
+      document.body.innerHTML =
+        '<div class="idevice_node padlock" id="idevice-abc"><div class="candado-IDevice"></div></div>';
+
+      expect($padlock.storageKeyOf(document.querySelector('.candado-IDevice'))).toBe('dataCandado-idevice-abc');
+    });
+
+    it('gives no key to a padlock outside any component', () => {
+      document.body.innerHTML = '<div class="candado-IDevice"></div>';
+
+      expect($padlock.storageKeyOf(document.querySelector('.candado-IDevice'))).toBe('');
+    });
+
+    it('keeps its state under its own component, not under the id its data carries', () => {
+      $padlock.options = [{ id: 0, storageKey: 'dataCandado-idevice-copy-a', counter: 60, candadoTime: 1 }];
+
+      $padlock.saveCandadoData(0);
+
+      expect(store['dataCandado-idevice-copy-a']).toBeDefined();
+      expect(store['dataCandado-0']).toBeUndefined();
+      expect($padlock.getCandadoData(0)).toMatchObject({ counter: 60, candadoTime: 1 });
+    });
+
+    it("does not read another padlock's state", () => {
+      store['dataCandado-idevice-copy-b'] = JSON.stringify({ counter: 5 });
+      $padlock.options = [{ id: 0, storageKey: 'dataCandado-idevice-copy-a' }];
+
+      expect($padlock.getCandadoData(0)).toBeFalsy();
+    });
+
+    it('keeps and reads nothing when it belongs to no component', () => {
+      $padlock.options = [{ id: 0, storageKey: '', counter: 60, candadoTime: 1 }];
+
+      $padlock.saveCandadoData(0);
+
+      expect(Object.keys(store)).toEqual([]);
+      expect($padlock.getCandadoData(0)).toBe(false);
     });
   });
 });

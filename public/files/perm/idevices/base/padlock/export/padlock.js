@@ -49,6 +49,28 @@ var $padlock = {
         $padlock.loadGame();
     },
 
+    /**
+     * Where a padlock keeps its state: under its own component's id.
+     *
+     * The key used to come from `mOptions.id`, which changes under the
+     * padlock: it starts as the id in the padlock's data, or its position on
+     * the page when the data has none, and updateEvaluationIcon replaces it
+     * with the component's id half a second after loading. The state was
+     * written under the component and read back under the data: a duplicated
+     * padlock, which carries the original's id until it is edited, came back
+     * with the original's time and result, and one saved without an id never
+     * found its own. The component's id is the padlock's own, in the editor
+     * and once exported. Without one there is nowhere safe to keep the state,
+     * and nothing is.
+     *
+     * @param {Element} activity - The padlock's element
+     * @returns {string} The key, or '' when the padlock belongs to no component
+     */
+    storageKeyOf: function (activity) {
+        const nodeId = $(activity).closest('.idevice_node').attr('id');
+        return nodeId ? 'dataCandado-' + nodeId : '';
+    },
+
     loadGame: function () {
         $padlock.options = [];
         $padlock.activities.each(function (i) {
@@ -67,6 +89,7 @@ var $padlock = {
             mOption.candadoErrors = 0;
 
             mOption.id = typeof mOption.id === 'undefined' ? i : mOption.id;
+            mOption.storageKey = $padlock.storageKeyOf(this);
             $padlock.options.push(mOption);
 
             mOption.scorerp = 0;
@@ -187,16 +210,15 @@ var $padlock = {
                 candadoErrors: mOptions.candadoErrors,
                 candadoScore: mOptions.score,
             };
-        localStorage.setItem(
-            'dataCandado-' + mOptions.id,
-            JSON.stringify(data)
-        );
+        if (!mOptions.storageKey) return;
+        localStorage.setItem(mOptions.storageKey, JSON.stringify(data));
     },
 
     getCandadoData: function (instance) {
         const mOptions = $padlock.options[instance];
+        if (!mOptions.storageKey) return false;
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataCandado-' + mOptions.id)
+            localStorage.getItem(mOptions.storageKey)
         );
     },
 
@@ -281,7 +303,7 @@ var $padlock = {
                 (mOptions.candadoReboot && dataCandado.candadoSolved)
             ) {
                 mOptions.score = 0;
-                localStorage.removeItem(`dataCandado-${mOptions.id}`);
+                localStorage.removeItem(mOptions.storageKey);
                 // The board is reset and the clock below starts again, but the
                 // LMS is told nothing: loading a page changes no mark. The
                 // score moves only when the learner enters the code or the
