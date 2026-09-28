@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const EDITION_SRC = 'public/files/perm/idevices/base/adaptative-quiz/edition/adaptative-quiz.js';
 const EDITION_CSS = 'public/files/perm/idevices/base/adaptative-quiz/edition/adaptative-quiz.css';
@@ -1934,6 +1934,99 @@ describe('adaptative-quiz edition', () => {
             idevice.applyLevelFilter('3');
             expect(idevice.levelFilter).toBe(3);
             expect(validateCalls).toBe(0);
+        });
+    });
+
+    describe('edition lifecycle', () => {
+        let savedGamification;
+
+        beforeEach(() => {
+            savedGamification = global.$exeDevicesEdition.iDevice.gamification;
+            global.$exeDevicesEdition.iDevice.gamification = {
+                ...savedGamification,
+                progressBar: { addEvents: vi.fn() },
+                itinerary: { addEvents: vi.fn() },
+                share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
+                helpers: { stopSound: vi.fn(), playSound: vi.fn() },
+            };
+
+            document.body.innerHTML = `
+                <div id="adaptativeQuizIdeviceForm">
+                    <input id="eXeGameImportGame" type="file">
+                </div>
+            `;
+
+            idevice.addEvents();
+        });
+
+        afterEach(() => {
+            // Close the edition the test opened, so nothing it registered
+            // leaks into the next one.
+            idevice.$lifecycle.destroy();
+            document.body.innerHTML = '';
+            global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+        });
+
+        /**
+         * Drive the file input the way a user picking a file does, and hand
+         * back the FileReader the edition created for it.
+         *
+         * @returns {FileReader}
+         */
+        function pickFile() {
+            const readers = [];
+            const RealFileReader = global.FileReader;
+            class TrackedFileReader extends RealFileReader {
+                constructor() {
+                    super();
+                    readers.push(this);
+                }
+            }
+            global.FileReader = TrackedFileReader;
+            try {
+                const input = document.getElementById('eXeGameImportGame');
+                Object.defineProperty(input, 'files', {
+                    configurable: true,
+                    value: [new File(['line'], 'game.txt', { type: 'text/plain' })],
+                });
+                $(input).trigger('change');
+            } finally {
+                global.FileReader = RealFileReader;
+            }
+            return readers[0];
+        }
+
+        it('aborts an import read that is still in flight when the edition closes', () => {
+            const reader = pickFile();
+            expect(reader).toBeDefined();
+            const abort = vi.spyOn(reader, 'abort');
+
+            expect(reader.readyState).toBe(1);
+            idevice.$lifecycle.destroy();
+
+            expect(abort).toHaveBeenCalledTimes(1);
+            abort.mockRestore();
+        });
+
+        it('discards an import that resolves after the edition closed', () => {
+            const reader = pickFile();
+            const importGame = vi.fn();
+            idevice.importGame = importGame;
+
+            idevice.$lifecycle.destroy();
+            reader.onload({ target: { result: 'line' } });
+
+            expect(importGame).not.toHaveBeenCalled();
+        });
+
+        it('imports a read that resolves while the edition is open', () => {
+            const reader = pickFile();
+            const importGame = vi.fn();
+            idevice.importGame = importGame;
+
+            reader.onload({ target: { result: 'line' } });
+
+            expect(importGame).toHaveBeenCalledWith('line', 'text/plain');
         });
     });
 });
