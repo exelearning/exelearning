@@ -988,17 +988,25 @@ var $eXeMathProblems = {
         $('#mthpPNumber-' + instance).text(mOptions.numberQuestions);
         $('#mthpDivReply-' + instance).show();
 
-        mOptions.counterClock = setInterval(function () {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and answering its question when
+        // its own time ran out.
+        const container = document.getElementById(
+            'mthpMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#mthpMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXeMathProblems.uptateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
@@ -1024,6 +1032,7 @@ var $eXeMathProblems = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $eXeMathProblems.uptateTime(0, instance);
         mOptions.gameStarted = true;
