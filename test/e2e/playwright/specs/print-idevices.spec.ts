@@ -21,12 +21,6 @@ import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-helpers';
 import { encryptDataGame } from '../../../../src/shared/export/utils/dataGameCipher';
 
-declare global {
-    interface Window {
-        eXeLearning: any;
-    }
-}
-
 const FIXTURE = 'test/fixtures/old_el_cid.elp';
 
 /**
@@ -106,7 +100,7 @@ test.describe('Print iDevices', () => {
             await gotoWorkarea(page, uuid);
             await waitForAppReady(page);
             await page.evaluate(() => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Legacy activities');
                 const components = [
                     {
@@ -312,7 +306,7 @@ test.describe('Print iDevices', () => {
                 { type: 'an-activity-with-no-adapter', properties: {}, html: '<div class="no-adapter-IDevice"></div>' },
             ];
             await page.evaluate(components => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Adapter regressions');
                 for (const component of components) {
                     const block = binding.createBlock(parent.id);
@@ -414,7 +408,7 @@ test.describe('Print iDevices', () => {
             ];
             await page.evaluate(
                 async ({ components, pictureId }) => {
-                    const bridge = window.eXeLearning.app.project._yjsBridge;
+                    const bridge = (window as any).eXeLearning.app.project._yjsBridge;
                     const binding = bridge.structureBinding;
                     const parent = binding.createPage('Printable rubric and diagrams');
                     for (const component of components) {
@@ -503,7 +497,7 @@ test.describe('Print iDevices', () => {
             }),
         )}</div>`;
         await page.evaluate(html => {
-            const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('Molecules');
             const block = binding.createBlock(parent.id);
             binding.createComponent(parent.id, block, '3dmol', { htmlContent: html });
@@ -658,7 +652,7 @@ test.describe('Print iDevices', () => {
                 )}</div>`;
                 await page.evaluate(
                     ({ htmlContent, idevice }) => {
-                        const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                        const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                         const parent = binding.createPage('Illustrated clues');
                         binding.createComponent(parent.id, binding.createBlock(parent.id), idevice, { htmlContent });
                     },
@@ -778,7 +772,7 @@ test.describe('Print iDevices', () => {
                 },
             ];
             await page.evaluate(components => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Printable regressions');
                 for (const component of components) {
                     const block = binding.createBlock(parent.id);
@@ -1147,7 +1141,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Circuits Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), 'electrical-circuits', {
                     htmlContent,
@@ -1200,7 +1194,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Circuits Show Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), 'electrical-circuits', {
                     htmlContent,
@@ -1265,7 +1259,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Molecules Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), '3dmol', {
                     htmlContent,
@@ -1320,7 +1314,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Molecules Show Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), '3dmol', {
                     htmlContent,
@@ -1370,7 +1364,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Padlock Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), 'padlock', {
                     htmlContent,
@@ -1414,7 +1408,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Sort Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), 'sort', {
                     htmlContent,
@@ -1462,7 +1456,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Math Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), 'mathproblems', {
                     htmlContent,
@@ -1524,7 +1518,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Challenge Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), 'challenge', {
                     htmlContent,
@@ -1583,7 +1577,7 @@ test.describe('Print iDevices', () => {
 
         await page.evaluate(
             ({ htmlContent }) => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Identify Page');
                 binding.createComponent(parent.id, binding.createBlock(parent.id), 'identify', {
                     htmlContent,
@@ -1717,7 +1711,7 @@ test.describe('Print iDevices', () => {
                 }),
             )}</div>`;
             await page.evaluate(html => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                 const parent = binding.createPage('Matching exercise');
                 const block = binding.createBlock(parent.id);
                 binding.createComponent(parent.id, block, 'classify', { htmlContent: html });
@@ -1785,7 +1779,7 @@ test.describe('Print iDevices', () => {
         // The json activities that still have no paper form. `form` is no longer one of them.
         const types = ['an-activity-with-no-adapter'];
         await page.evaluate(types => {
-            const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('JSON exercises');
             const block = binding.createBlock(parent.id);
             for (const type of types) binding.createComponent(parent.id, block, type, { htmlContent: '' });
@@ -1846,7 +1840,7 @@ test.describe('Print iDevices', () => {
         ];
         await page.evaluate(
             async ({ components, pictureId }) => {
-                const bridge = window.eXeLearning.app.project._yjsBridge;
+                const bridge = (window as any).eXeLearning.app.project._yjsBridge;
                 const binding = bridge.structureBinding;
                 const parent = binding.createPage('Printable cases');
                 const blockId = binding.createBlock(parent.id);
@@ -2084,7 +2078,7 @@ test.describe('Print: choosing which interactive activities to print', () => {
                 await gotoWorkarea(page, uuid);
                 await waitForAppReady(page);
                 await page.evaluate(() => {
-                    const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                    const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
                     const visible = binding.createPage('Visible activities');
                     const block = binding.createBlock(visible.id);
                     const addQuestion = (pageId: string, blockId: string, id: string, question: string) =>
@@ -2267,7 +2261,7 @@ test.describe('Print: a folded block opens on paper', () => {
 
         // Three blocks, all folded. Only the first is the reader's to see.
         await page.evaluate(() => {
-            const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('Folded');
             const kinds: [string, string, string][] = [
                 ['ep-open', '', ''],

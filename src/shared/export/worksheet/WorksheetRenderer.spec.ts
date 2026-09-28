@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import { WORKSHEET_ACTIVITY_STYLES, renderActivityFragment, renderWorksheet } from './WorksheetRenderer';
 import type { CharacterBoxGroup, PrintableActivity, WorksheetModel } from './types';

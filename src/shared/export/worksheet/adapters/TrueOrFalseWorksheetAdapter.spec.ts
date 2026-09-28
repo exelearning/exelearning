@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import type { PrintableActivity, PrintableItem, UnsupportedActivity } from '../types';
 import { TrueOrFalseWorksheetAdapter } from './TrueOrFalseWorksheetAdapter';

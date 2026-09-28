@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../../utils/dataGameCipher';
 import { MathProblemsWorksheetAdapter } from './MathProblemsWorksheetAdapter';
