@@ -1,17 +1,22 @@
 /**
  * Adaptative quiz ('adaptative-quiz') worksheet adapter
  *
- * Prints every question the quiz holds, each in the shape its own kind calls for.
+ * Prints the questions the quiz asks, each in the shape its own kind calls for.
  *
- * The adapting is what does not survive. On screen the quiz walks up a level after two right
- * answers and down after two wrong ones, so no two learners see the same questions; a sheet is
- * printed once and handed out, so it carries up to the configured number of questions (`numRound`),
- * in stored order, with their difficulty left off.
+ * The adapting is what does not survive. On screen the quiz starts at its initial level, walks up a
+ * level after two right answers and down after two wrong ones, and draws each question at random
+ * from the level the learner is on, so no two learners see the same questions. A sheet is printed
+ * once and handed out, so it asks as many questions as a learner answers — the author's "Number of
+ * questions" — shared out between the levels rather than following any one learner, and printed in
+ * stored order with their difficulty left off.
  *
  * Notes on the stored data:
  * - This is a `json` activity: the questions live in the component's properties.
- * - `numRound` (or `numOperations`) specifies the number of questions configured by the author
- *   ("Number of questions"): only that many questions are printed on the worksheet.
+ * - `numRound` is the "Number of questions", read with `parseInt` as the runtime reads it. The
+ *   editor always saves one, five unless the author changed it. Without a whole number of at least
+ *   one there is no count, and the sheet prints every question.
+ * - `difficulty` is a question's level and `initialLevel` the one the quiz starts at, both 2 when
+ *   unset, as the runtime has them.
  * - `typeSelect` says what a question asks, in the runtime's own words: 0 select, 1 sort, 2 word.
  *   The three are printed as options to tick, options to number, and boxes to write a word in.
  * - **A word question turns the usual fields around**, and its runtime says so in as many words:
@@ -46,6 +51,9 @@ const ASK_WORD = 2;
 /** A question carrying a picture. */
 const WITH_PICTURE = 1;
 
+/** The level the runtime gives a question, or a quiz's start, that does not say. */
+const DEFAULT_LEVEL = 2;
+
 /** One option offered for a question. */
 interface QuizOption {
     text?: string;
@@ -74,6 +82,8 @@ interface QuizQuestion {
     /** In a word question, the definition shown above the input. */
     solutionWord?: string;
     percentageShow?: number;
+    /** The question's level, 1 being the easiest. */
+    difficulty?: number | string;
 }
 
 /** What the question asks, whichever field this project keeps it in. */
@@ -90,25 +100,63 @@ interface AdaptativeQuizProperties {
     eXeFormInstructions?: string;
     instructions?: string;
     eXeIdeviceTextAfter?: string;
+    /** "Number of questions": how many a learner answers. */
     numRound?: number | string;
-    numOperations?: number | string;
-    numberQuestions?: number | string;
+    /** The level the quiz starts at. */
+    initialLevel?: number | string;
+}
+
+/** A question the sheet can print, with the level it belongs to. */
+interface LeveledItem {
+    item: PrintableItem;
+    level: number;
 }
 
 /**
- * How many questions the activity asks to show, as configured by "Number of questions" (`numRound`).
- * When omitted or invalid, all printable questions are included.
+ * How many questions a learner answers, read with `parseInt` as the runtime reads `numRound`.
+ *
+ * @returns The count, or undefined when the value is not a whole number of at least one
  */
-function questionLimitOf(data: AdaptativeQuizProperties): number | undefined {
-    const raw = data.numRound ?? data.numOperations ?? data.numberQuestions;
-    if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
-        return Math.floor(raw);
+function questionCountOf(value: unknown): number | undefined {
+    const count = Number.parseInt(String(value), 10);
+
+    return count >= 1 ? count : undefined;
+}
+
+/** A level as the runtime falls back to it: whatever `parseInt` makes of it, or the default. */
+function levelOf(value: unknown): number {
+    return Number.parseInt(String(value), 10) || DEFAULT_LEVEL;
+}
+
+/**
+ * Share `count` questions out between the levels.
+ *
+ * The runtime starts at the initial level and moves up or down from there, so the levels are taken
+ * in turn from that one outwards — the nearest first, the easier of two equally near — one question
+ * from each in stored order, until there are enough. Every level gives one before any gives a
+ * second, and the chosen questions go back into stored order.
+ *
+ * @param questions - The printable questions, in stored order
+ * @param count - How many to keep
+ * @param initialLevel - The level the quiz starts at
+ * @returns The questions to print, in stored order
+ */
+function shareOutByLevel(questions: LeveledItem[], count: number, initialLevel: number): PrintableItem[] {
+    const byLevel = new Map<number, number[]>();
+    questions.forEach(({ level }, index) => byLevel.set(level, [...(byLevel.get(level) ?? []), index]));
+
+    const turns = [...byLevel.keys()].sort((a, b) => Math.abs(a - initialLevel) - Math.abs(b - initialLevel) || a - b);
+    const deepest = Math.max(...[...byLevel.values()].map(indices => indices.length));
+
+    const chosen = new Set<number>();
+    for (let round = 0; round < deepest && chosen.size < count; round++) {
+        for (const level of turns) {
+            const index = byLevel.get(level)?.[round];
+            if (index !== undefined && chosen.size < count) chosen.add(index);
+        }
     }
-    if (typeof raw === 'string' && raw.trim() !== '') {
-        const parsed = parseInt(raw, 10);
-        if (Number.isFinite(parsed) && parsed > 0) return parsed;
-    }
-    return undefined;
+
+    return questions.filter((_, index) => chosen.has(index)).map(({ item }) => item);
 }
 
 /**
@@ -186,23 +234,28 @@ export const AdaptativeQuizWorksheetAdapter: WorksheetAdapter = {
         if (!Array.isArray(questions)) return null;
 
         const random: RandomSource = options.random ?? Math.random;
-        const items = questions.flatMap(question => {
+        const printable = questions.flatMap<LeveledItem>(question => {
             const item = buildQuestion(question ?? {}, random, data.caseSensitive === true);
-            if (item) return [item];
+            if (item) return [{ item, level: levelOf(question?.difficulty) }];
             options.onOmission?.('invalid-data');
             return [];
         });
 
-        if (items.length === 0) return null;
+        if (printable.length === 0) return null;
 
-        const limit = questionLimitOf(data);
-        const printableItems = limit !== undefined ? items.slice(0, limit) : items;
+        // A question left off here is one a learner would not have been asked either, so it is not
+        // reported as an omission.
+        const count = questionCountOf(data.numRound);
+        const items =
+            count === undefined || count >= printable.length
+                ? printable.map(({ item }) => item)
+                : shareOutByLevel(printable, count, levelOf(data.initialLevel));
 
         const activity: PrintableActivity = {
             ideviceType: 'adaptative-quiz',
             title: options.title || AdaptativeQuizWorksheetAdapter.defaultTitle,
             twoColumns: true,
-            items: printableItems,
+            items,
         };
 
         const instructions = sanitizeHtml(data.eXeFormInstructions || data.instructions);

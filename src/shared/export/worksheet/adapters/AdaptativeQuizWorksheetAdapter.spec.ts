@@ -73,36 +73,67 @@ describe('AdaptativeQuizWorksheetAdapter', () => {
         expect(build({ questionsGame: levels })?.items).toHaveLength(3);
     });
 
-    describe('limiting questions by numRound ("Number of questions")', () => {
-        const fiveQuestions = () =>
-            [1, 2, 3, 4, 5].map(difficulty => question({ difficulty, question: `Pregunta ${difficulty}` }));
+    describe('as many questions as a learner answers ("Number of questions")', () => {
+        /** Questions stored grouped by level, easiest first, as an author often enters them. */
+        const byLevel = (levels: number[]) =>
+            levels.map((difficulty, index) => question({ difficulty, question: `L${difficulty}-${index + 1}` }));
+        const promptsOf = (activity: PrintableActivity | null) => activity?.items.map(item => item.prompt);
 
-        it('limits the questions shown to numRound when configured as a number or numeric string', () => {
-            const list = fiveQuestions();
+        it('asks that many, read as the runtime reads it, a number or a string alike', () => {
+            const list = byLevel([2, 2, 2, 2, 2]);
 
-            const limitedByNumber = build({ questionsGame: list, numRound: 3 });
-            expect(limitedByNumber?.items).toHaveLength(3);
-            expect(limitedByNumber?.items.map(item => item.prompt)).toEqual(['Pregunta 1', 'Pregunta 2', 'Pregunta 3']);
-
-            const limitedByString = build({ questionsGame: list, numRound: '2' });
-            expect(limitedByString?.items).toHaveLength(2);
-            expect(limitedByString?.items.map(item => item.prompt)).toEqual(['Pregunta 1', 'Pregunta 2']);
+            expect(promptsOf(build({ questionsGame: list, numRound: 3 }))).toEqual(['L2-1', 'L2-2', 'L2-3']);
+            expect(promptsOf(build({ questionsGame: list, numRound: '2' }))).toEqual(['L2-1', 'L2-2']);
+            // `parseInt` stops at the first character that is not a digit.
+            expect(build({ questionsGame: list, numRound: 2.9 })?.items).toHaveLength(2);
+            expect(build({ questionsGame: list, numRound: '4 preguntas' })?.items).toHaveLength(4);
         });
 
-        it('recognizes numOperations or numberQuestions as fallbacks', () => {
-            const list = fiveQuestions();
+        it('shares them out between the levels instead of taking the first ones stored', () => {
+            // Five questions of fifteen stored easy, medium, hard: the first five would all be easy.
+            const list = byLevel([1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3]);
 
-            expect(build({ questionsGame: list, numOperations: 2 })?.items).toHaveLength(2);
-            expect(build({ questionsGame: list, numberQuestions: 1 })?.items).toHaveLength(1);
+            // From the default start, 2, outwards: 2, 1, 3, then 2 and 1 again — in stored order.
+            expect(promptsOf(build({ questionsGame: list, numRound: 5 }))).toEqual([
+                'L1-1',
+                'L1-2',
+                'L2-6',
+                'L2-7',
+                'L3-11',
+            ]);
         });
 
-        it('keeps all questions when numRound exceeds the total questions or is invalid/non-positive', () => {
-            const list = [1, 2, 3].map(difficulty => question({ difficulty }));
+        it('gives the level the quiz starts at, and the ones nearest it, the first turns', () => {
+            const list = byLevel([1, 1, 2, 2, 3, 3]);
 
-            expect(build({ questionsGame: list, numRound: 10 })?.items).toHaveLength(3);
-            expect(build({ questionsGame: list, numRound: 0 })?.items).toHaveLength(3);
-            expect(build({ questionsGame: list, numRound: -5 })?.items).toHaveLength(3);
-            expect(build({ questionsGame: list, numRound: 'invalid' })?.items).toHaveLength(3);
+            expect(promptsOf(build({ questionsGame: list, numRound: 2, initialLevel: 3 }))).toEqual(['L2-3', 'L3-5']);
+            expect(promptsOf(build({ questionsGame: list, numRound: 2, initialLevel: '1' }))).toEqual(['L1-1', 'L2-3']);
+        });
+
+        it('keeps taking from the levels that still have questions once the others run out', () => {
+            const list = byLevel([1, 2, 2, 2, 2]);
+
+            expect(promptsOf(build({ questionsGame: list, numRound: 4 }))).toEqual(['L1-1', 'L2-2', 'L2-3', 'L2-4']);
+        });
+
+        it('counts a question with no level as the runtime does, at the medium one', () => {
+            const list = [...byLevel([1, 3]), question({ difficulty: undefined, question: 'Sin nivel' })];
+
+            expect(promptsOf(build({ questionsGame: list, numRound: 1 }))).toEqual(['Sin nivel']);
+        });
+
+        it('shares out only the questions paper can carry', () => {
+            const list = [question({ question: '', text: '' }), ...byLevel([2, 2])];
+
+            expect(promptsOf(build({ questionsGame: list, numRound: 2 }))).toEqual(['L2-1', 'L2-2']);
+        });
+
+        it('prints every question when the count is missing, too large, or not a whole number of at least one', () => {
+            const list = byLevel([1, 2, 3]);
+
+            for (const numRound of [undefined, 3, 10, 0, 0.5, -5, '', 'invalid']) {
+                expect(build({ questionsGame: list, numRound })?.items).toHaveLength(3);
+            }
         });
     });
 
