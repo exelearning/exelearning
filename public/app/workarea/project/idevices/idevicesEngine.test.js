@@ -376,6 +376,27 @@ describe('IdevicesEngine', () => {
             expect(engine.nodeContentElement.getAttribute('mode')).toBe('edition');
         });
 
+        it('flushes a deferred remote page reload once no iDevice is in edition (#2427)', () => {
+            const bridge = { flushDeferredPageReload: vi.fn() };
+            engine.project._yjsBridge = bridge;
+            engine.components.idevices = [{ mode: 'export' }];
+
+            engine.updateMode();
+
+            expect(bridge.flushDeferredPageReload).toHaveBeenCalledTimes(1);
+            delete engine.project._yjsBridge;
+        });
+
+        it('does not flush a deferred remote page reload while an iDevice is in edition', () => {
+            const bridge = { flushDeferredPageReload: vi.fn() };
+            engine.project._yjsBridge = bridge;
+            engine.components.idevices = [{ mode: 'edition' }];
+
+            engine.updateMode();
+
+            expect(bridge.flushDeferredPageReload).not.toHaveBeenCalled();
+            delete engine.project._yjsBridge;
+        });
     });
 
     describe('isIdeviceInEdition', () => {
@@ -4669,6 +4690,42 @@ describe('IdevicesEngine', () => {
             engine.applyPageTitleText(titleEl, '\\(a+b\\)');
             expect(global.MathJax.typesetPromise).toHaveBeenCalledWith([titleEl]);
             global.MathJax = original;
+        });
+    });
+
+    describe('destroyEditionIdevices', () => {
+        it('disposes the owner wherever it sits in the list', () => {
+            // Only one iDevice is ever in edition, and it is not necessarily the
+            // first node the engine tracks.
+            const idle1 = { destroyEditionInstance: vi.fn() };
+            const owner = { destroyEditionInstance: vi.fn() };
+            const idle2 = { destroyEditionInstance: vi.fn() };
+            engine.components.idevices = [idle1, owner, idle2];
+
+            engine.destroyEditionIdevices();
+
+            expect(idle1.destroyEditionInstance).toHaveBeenCalledTimes(1);
+            expect(owner.destroyEditionInstance).toHaveBeenCalledTimes(1);
+            expect(idle2.destroyEditionInstance).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps releasing the rest when one node fails', () => {
+            const failing = {
+                destroyEditionInstance: vi.fn(() => {
+                    throw new Error('teardown exploded');
+                }),
+            };
+            const healthy = { destroyEditionInstance: vi.fn() };
+            engine.components.idevices = [failing, healthy];
+
+            expect(() => engine.destroyEditionIdevices()).not.toThrow();
+
+            expect(healthy.destroyEditionInstance).toHaveBeenCalledTimes(1);
+        });
+
+        it('skips components that never had an edition', () => {
+            engine.components.idevices = [{}, { destroyEditionInstance: vi.fn() }];
+            expect(() => engine.destroyEditionIdevices()).not.toThrow();
         });
     });
 

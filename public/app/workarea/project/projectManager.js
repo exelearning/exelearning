@@ -330,7 +330,11 @@ export default class projectManager {
         const notices = [];
         const damaged = buildDamagedPropertiesNotice(stats?.malformedProperties);
         if (damaged) notices.push({ ...damaged, contentId: 'damaged-activities' });
-        const missing = buildMissingAssetsNotice(stats?.missingAssets);
+        const missing = buildMissingAssetsNotice(
+            stats?.missingAssets,
+            this._yjsBridge?.documentManager?.getNavigation(),
+            (type) => this.app.idevices?.getIdeviceInstalled(type)?.title
+        );
         if (missing) notices.push({ ...missing, contentId: 'missing-assets' });
         if (notices.length === 0) return;
 
