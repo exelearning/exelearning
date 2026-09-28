@@ -78,6 +78,7 @@ var $exeDevice = {
     },
 
     async getIdevicesBySessionId() {
+        const lifecycle = this.$lifecycle;
         const odeSessionId = eXeLearning.app.project.odeSession;
         let data = [];
 
@@ -85,7 +86,7 @@ var $exeDevice = {
         const yjsBridge = eXeLearning.app.project?._yjsBridge;
         if (yjsBridge && yjsBridge.documentManager) {
             try {
-                data = $exeDevice.extractIdevicesFromYjs(yjsBridge, odeSessionId);
+                data = this.extractIdevicesFromYjs(yjsBridge, odeSessionId);
                 console.log('[Progress Report] Loaded', data.length, 'items from local Yjs');
             } catch (err) {
                 console.warn('[Progress Report] Failed to load from local Yjs:', err);
@@ -105,16 +106,19 @@ var $exeDevice = {
             }
         }
 
-        let idevices = $exeDevice.buildNestedPages(data);
+        // The edition may have been closed while the data was loading.
+        if (lifecycle && !lifecycle.isActive()) return;
 
-        $exeDevice.sessionIdevices = idevices;
+        const idevices = this.buildNestedPages(data);
 
-        $exeDevice.number = 0;
-        const htmlContent = $exeDevice.generateHtmlFromPagesEdition(idevices);
+        this.sessionIdevices = idevices;
+
+        this.number = 0;
+        const htmlContent = this.generateHtmlFromPagesEdition(idevices);
 
         $('#informeEPages').empty();
         $('#informeEPages').html(htmlContent);
-        $exeDevice.showPages();
+        this.showPages();
     },
 
     /**
@@ -930,8 +934,8 @@ var $exeDevice = {
             $exeDevice.getIdevicesBySessionId();
         });
 
-        $(document).on('click', 'input[name="showtype"]', function () {
-            $exeDevice.showPages();
+        this.$lifecycle.on(document, 'click', 'input[name="showtype"]', function () {
+            this.showPages();
         });
     },
 

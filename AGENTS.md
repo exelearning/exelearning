@@ -40,14 +40,46 @@ make test-frontend         # Vitest browser/iDevice suite and coverage (separate
 make test-integration
 make test-e2e              # Chromium; Firefox has its own target
 make test-e2e-static       # static/embedding/export changes
+make test-coverage         # test-unit + test-frontend with coverage
 make architecture-check
 ```
 
-Read [verify-change](.agents/skills/verify-change/SKILL.md) to select focused checks and the final gates.
-Code changes keep the existing unit, integration, E2E and coverage requirements; patch coverage is ≥90%.
-`make test-unit` does not run Vitest, and `make test-coverage` is not a Make target. Guidance-only changes
-need skill/link/copy-parity, workflow and archive checks rather than unrelated application builds or tests.
-Report actual results and missing prerequisites; never weaken tests/coverage to make a PR pass.
+Read [verify-change](.agents/skills/verify-change/SKILL.md) to select focused checks while editing.
+`make test-unit` does not run Vitest; `make test-frontend` (or `make test-coverage`) does.
+
+### Definition of Done (code changes)
+
+1. `make fix` is clean.
+2. `make test-unit`, `make test-frontend` and `make test-integration` pass.
+3. `make test-e2e` passes; add `make test-e2e-static` for static, embedding or export changes.
+4. Patch coverage is ≥90% on added/modified executable lines (backend global 90%, frontend 80%).
+   Justify genuinely untestable lines in the PR description.
+5. New code ships with tests in the same PR: `src/**/*.ts` needs a colocated `*.spec.ts`,
+   `public/app/**/*.js` a colocated `*.test.js`, and user-visible flows a Playwright spec.
+6. No skipped or disabled tests without an issue link and explanation.
+
+If a gate cannot be met, stop and ask instead of submitting partial work. Report actual results and
+missing prerequisites; never weaken tests/coverage to make a PR pass. Guidance-only changes need
+skill/link/copy-parity, workflow and archive checks rather than unrelated application builds or tests.
+
+### Lint and format scope
+
+Config: `biome.json` (120 columns, 4-space indent, single quotes, trailing commas, semicolons).
+`make fix` is deliberately narrow:
+
+| Path | What runs | Formatting |
+| --- | --- | --- |
+| `src/`, `test/` | `biome check --write` | yes |
+| `public/app/` | `biome lint --write` | no, lint only (legacy code) |
+| `public/app/common/` | nothing | excluded in `biome.json` |
+| `public/files/perm/idevices/**` | nothing | excluded in `biome.json` |
+
+**Never run Biome outside those scripts.** A directory walk (including editor format-on-save through the
+Biome LSP) skips the excluded iDevice directories, but an explicitly named path does not. Its lint fixes
+change behavior, not just layout: it rewrites `name: function () {}` object methods as arrows (breaking
+`this`, which the iDevice edition lifecycle depends on) and has dropped parameters from converted methods.
+To check one file, use `bun x biome check <file>` without `--write`. A file whose committed content
+`biome format` changes, or whose line count shrank in a normal change, is suspect. _Example: #2293._
 
 ## Task skills
 
@@ -76,17 +108,29 @@ For durable decisions or significant cross-cutting changes, read
 tracking number, not a global counter. Preserve accepted history; do not create empty records or indexes.
 Contributor-facing architecture records stay outside published MkDocs navigation.
 
+## Deep-dive documentation
+
+[Contributing](doc/development/contributing.md), [testing](doc/development/testing.md),
+[version control](doc/development/version-control.md), [environment and `.env`](doc/development/environment.md),
+[internationalization](doc/development/internationalization.md), [real-time/Yjs](doc/development/real-time.md),
+[REST API v1](doc/development/rest-api.md), [embedding](doc/development/embedding.md),
+[profiling](doc/development/profiling.md), [styles/themes](doc/development/styles.md),
+[conventions](doc/conventions.md), [architecture](doc/architecture.md) and
+[ADRs](doc/architecture/adr/README.md).
+
 ## Skill maintenance
 
 Keep canonical skills in `.agents/skills/` and identical regular-file copies in `.claude/skills/`.
 Do not use symlinks: Windows checkouts must work without Developer Mode or elevated permissions.
 After editing or installing a skill, copy its whole directory to Claude, including references and removals.
-The updater mirrors the canonical tree into Claude on every run. Keep other agent entry points as pointers. Update a skill when its command/path/contract changes.
+The updater mirrors the canonical tree into Claude on every run, and the `Agent Skills Parity` workflow
+fails PRs whose copies differ or contain symlinks. Keep other agent entry points as pointers.
+Update a skill when its command/path/contract changes.
 Install externals with `gh skills install OWNER/REPO PATH --dir .agents/skills`; preserve upstream files,
 provenance and licenses verbatim. Review `gh skills update --all` diffs as behavior changes.
 The weekly/manual updater opens PRs; default-token PRs require deliberate CI triggering.
 
 Project conventions override generic skill examples. Actions use version tags, not SHA pins:
-checkout v7, create-pull-request v8, update-agent-skills v13.3.3 until a floating v13 exists.
+checkout v7, create-pull-request v8, update-agent-skills v13.10.3 until a floating v13 exists.
 Read [the external-skill assessment](.agents/references/skill-assessment.md) before importing another
 framework tutorial. Official API documentation and this repository's contracts take precedence.

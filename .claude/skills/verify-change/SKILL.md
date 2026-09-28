@@ -21,20 +21,15 @@ Keep validation isolated from other worktrees' ports, databases and shared tempo
 | Static/embedding/preview | Capabilities/bridge/preview tests | Static E2E and host save/load flow |
 | Workflows | actionlint on changed YAML | Triggers, token permissions, untrusted-input handling |
 | Architecture docs | `make architecture-check` | Tracking IDs and links; no generated index |
-| Agent guidance only | Frontmatter, relative links, identical Claude copies (no symlinks) | Referenced paths/commands, archive exclusions, upstream provenance |
+| Agent guidance only | Frontmatter, relative links, `diff -r .agents/skills .claude/skills` (no symlinks) | Referenced paths/commands, archive exclusions, upstream provenance |
 
 ## Final code gates
 
-Run `make fix`, `make test-unit`, **`make test-frontend`**, `make test-integration` and `make test-e2e`.
-Also run `make test-e2e-static` for static, embedding or export behavior; use Firefox for browser-specific
-changes. A focused test passing does not replace these submission gates for code changes.
-New backend `.ts` code needs colocated `.spec.ts`; browser JS needs `.test.js`; visible behavior needs
-an E2E spec. Follow the existing TypeScript iDevice's Vitest harness rather than switching runners.
-
-Keep patch coverage ≥90% on executable changed lines. Backend and frontend global targets remain 90%
-and 80%; inspect the actual coverage reports/Codecov patch result, not just an aggregate percentage.
-`make test-unit` covers Bun only; Vitest is separate. There is no `make test-coverage` target.
-Do not skip/disable tests without the existing issue-linked justification policy.
+The mandatory gates are the Definition of Done in [AGENTS.md](../../../AGENTS.md). A focused test passing
+does not replace them. Use Firefox as well for browser-specific changes, and follow the existing
+TypeScript iDevice's Vitest harness rather than switching runners. Inspect the actual coverage
+reports/Codecov patch result, not just an aggregate percentage. `make test-unit` covers Bun only;
+`make test-frontend` runs Vitest and `make test-coverage` runs both.
 
 For documentation/skill-only changes, executable-line coverage and application E2E are not applicable.
 Validate instructions against actual source and commands instead. Changed workflow/package logic still
