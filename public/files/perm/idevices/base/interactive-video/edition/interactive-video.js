@@ -623,12 +623,55 @@ var $exeDevice = {
     	</div>	
     	`;
             $('body').append(html);
-            win = new bootstrap.Modal(
-                document.getElementById('modalGenericIframeContainer')
-            );
+            win = new bootstrap.Modal(document.getElementById('modalGenericIframeContainer'));
+            // The modal, its stylesheet and the editor iframe are appended
+            // outside the edition form, so nothing detaches them when the
+            // editor closes. Left behind, the iframe keeps running and keeps
+            // writing into `top.interactiveVideoEditor`, which the next iDevice
+            // edition rebuilds for itself. Removing them here is the same
+            // cleanup `start()` performs before it opens a new modal.
+            const lifecycle = $exeDevice.$lifecycle;
+            const editor = $exeDevice.editor;
+            lifecycle.own(() => editor.destroyModal(win));
             win.show();
             // Save the status (with or without changes)
             top.interactiveVideoEditor.hasChanged = false;
+        },
+        /**
+         * Tear the editor modal down.
+         *
+         * Bootstrap's `dispose()` destroys the instance without hiding it, so a
+         * teardown that happens with the modal still open — a page switch, say
+         * — would leave the scroll lock (`modal-open` on `<body>`) and the
+         * backdrop behind, with no modal left to close them. Hiding first lets
+         * Bootstrap undo both.
+         *
+         * @param {Object} modal Bootstrap modal instance opened by `start()`.
+         */
+        destroyModal: function (modal) {
+            if (modal && typeof modal.hide === 'function') {
+                try {
+                    modal.hide();
+                } catch (error) {
+                    console.warn('[InteractiveVideo] Could not hide the editor modal:', error);
+                }
+            }
+            if (modal && typeof modal.dispose === 'function') {
+                try {
+                    modal.dispose();
+                } catch (error) {
+                    console.warn('[InteractiveVideo] Could not dispose the editor modal:', error);
+                }
+            }
+            $('#modalGenericIframeContainer,#modalGenericIframeContainerCSS').remove();
+            // `hide()` is a no-op while Bootstrap is mid-transition, so sweep
+            // what it may have left — but only once no modal is on screen: the
+            // scroll lock and the backdrop are shared with every other one.
+            if (document.querySelector('.modal.show')) return;
+            document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
         },
         close: function () {
             $(document.getElementById('modalGenericIframeContainer')).modal(

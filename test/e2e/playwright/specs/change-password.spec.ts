@@ -29,9 +29,15 @@ async function fillChangePasswordForm(
     page: Page,
     values: { current: string; next: string; confirm: string },
 ): Promise<void> {
-    await page.locator('[data-testid="change-password-current"]').fill(values.current);
-    await page.locator('[data-testid="change-password-new"]').fill(values.next);
-    await page.locator('[data-testid="change-password-confirm"]').fill(values.confirm);
+    const currentField = page.locator('[data-testid="change-password-current"]');
+    const nextField = page.locator('[data-testid="change-password-new"]');
+    const confirmField = page.locator('[data-testid="change-password-confirm"]');
+    await currentField.fill(values.current);
+    await nextField.fill(values.next);
+    await confirmField.fill(values.confirm);
+    await expect(currentField).toHaveValue(values.current);
+    await expect(nextField).toHaveValue(values.next);
+    await expect(confirmField).toHaveValue(values.confirm);
 }
 
 test.describe('Change password', () => {
@@ -85,6 +91,7 @@ test.describe('Change password', () => {
         await expect(page.locator('[data-testid="change-password-feedback"]')).toContainText(
             'Current password is incorrect',
         );
+        await expect(page.locator('[data-testid="change-password-submit"]')).toBeEnabled();
         await expect(page).toHaveURL(/\/workarea/);
 
         // A mismatched confirmation is caught before any request goes out.
@@ -95,6 +102,7 @@ test.describe('Change password', () => {
         });
         await page.locator('[data-testid="change-password-submit"]').click();
         await expect(page.locator('[data-testid="change-password-feedback"]')).toContainText('Passwords do not match');
+        await expect(page.locator('[data-testid="change-password-submit"]')).toBeEnabled();
 
         // The real change.
         await fillChangePasswordForm(page, {

@@ -9,6 +9,7 @@ import {
     waitForPreviewContent,
     getPreviewFrame,
     addTextIdevice,
+    addTextIdeviceWithContent,
     waitForTinyMCEReady,
     saveProject,
     reloadPage,
@@ -392,6 +393,52 @@ test.describe('LaTeX Rendering', () => {
 
             // Should have rendered math content (either pre-rendered or MathJax processed)
             expect(mathRendered.totalMath).toBeGreaterThan(0);
+        });
+
+        test('renders inline formulas with several break opportunities as one complete SVG (issue #2440)', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'LaTeX Inline Breaks Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // MathJax 4 breaks in-line formulas at every top-level `=`, `+`, `\mid` or
+            // `\,` and, with SVG output, emits one <svg> per fragment. The pre-renderer
+            // keeps a single <svg>, so each formula was cut at its first break point:
+            // `x = 3 = 4 = 5` reached the preview as a lone `x`.
+            await addTextIdeviceWithContent(
+                page,
+                '<p>Chain: \\(x = 3 = 4 = 5\\)</p><p>Sum: \\(x^2 + y^2 = z^2\\)</p><p>Mid: \\(P(A \\mid B) = 1\\)</p>',
+            );
+
+            await waitForPreviewContent(page);
+            const iframe = getPreviewFrame(page);
+            await iframe.locator('.exe-math-rendered').first().waitFor({ state: 'attached', timeout: 15000 });
+
+            const rendered = await iframe.locator('body').evaluate(body =>
+                Array.from(body.querySelectorAll('.exe-math-rendered')).map(span => ({
+                    latex: span.getAttribute('data-latex'),
+                    svgCount: span.querySelectorAll('svg').length,
+                    breaks: span.querySelectorAll('mjx-break').length,
+                    // Glyph evidence, not container counting: every <use> names the
+                    // code point it draws, so this is the formula as the reader sees it.
+                    glyphs: Array.from(span.querySelectorAll('svg use[data-c]'))
+                        .map(use => String.fromCodePoint(parseInt(use.getAttribute('data-c') || '0', 16)))
+                        .join(''),
+                })),
+            );
+
+            expect(rendered).toHaveLength(3);
+            for (const formula of rendered) {
+                expect(formula.svgCount).toBe(1);
+                expect(formula.breaks).toBe(0);
+            }
+            expect(rendered[0].glyphs).toBe('𝑥=3=4=5');
+            expect(rendered[1].glyphs).toBe('𝑥2+𝑦2=𝑧2');
+            expect(rendered[2].glyphs).toBe('𝑃(𝐴∣𝐵)=1');
         });
 
         test('should not have rendering errors in preview', async ({ authenticatedPage, createProject }) => {
