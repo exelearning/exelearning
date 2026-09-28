@@ -21,7 +21,7 @@ test('Quick questions keep each clock to its own game across pages', async ({
         start: '#quextStartGame-0',
         clock: '#quextPTime-0',
         container: '#quextMainContainer-0',
-        shorten: '$quickquestions.options[0].counter = 3',
+        counter: '$quickquestions.options[0].counter',
         ownTime: /^(10:00|09:5\d)$/,
         over: '$quickquestions.options[0].gameOver',
     });

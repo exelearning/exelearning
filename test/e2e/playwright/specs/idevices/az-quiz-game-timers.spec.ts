@@ -15,7 +15,7 @@ test('A-Z quiz keeps each clock to its own game across pages', async ({ authenti
         start: '#roscoStartGame-0',
         clock: '#roscoPTime-0',
         container: '#roscoMainContainer-0',
-        shorten: '$azquizgame.options[0].counter = 3',
+        counter: '$azquizgame.options[0].counter',
         ownTime: /^0[34]:\d\d$/,
         over: '$azquizgame.options[0].gameOver',
     });

@@ -18,7 +18,7 @@ test('Word search keeps each clock to its own game across pages', async ({
         start: '#sopaStartGame-0',
         clock: '#sopaPTime-0',
         container: '#sopaMainContainer-0',
-        shorten: '$eXeSopa.instances[0].counter = 3',
+        counter: '$eXeSopa.instances[0].counter',
         ownTime: /^0[34]:\d\d$/,
         over: '$eXeSopa.instances[0].gameOver',
     });

@@ -21,7 +21,7 @@ test('Multiple choice keeps each clock to its own game across pages', async ({
         start: '#seleccionaStartGame-0',
         clock: '#seleccionaPTime-0',
         container: '#seleccionaMainContainer-0',
-        shorten: '$quickquestionsmultiplechoice.options[0].counter = 3',
+        counter: '$quickquestionsmultiplechoice.options[0].counter',
         ownTime: /^(10:00|09:5\d)$/,
         over: '$quickquestionsmultiplechoice.options[0].gameOver',
     });

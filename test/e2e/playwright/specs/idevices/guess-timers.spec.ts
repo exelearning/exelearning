@@ -18,7 +18,7 @@ test('Guess keeps each clock to its own game across pages', async ({ authenticat
         start: '#adivinaStartGame-0',
         clock: '#adivinaPTime-0',
         container: '#adivinaMainContainer-0',
-        shorten: '$guess.options[0].counter = 3',
+        counter: '$guess.options[0].counter',
         ownTime: /^(10:00|09:5\d)$/,
         over: '$guess.options[0].gameOver',
     });

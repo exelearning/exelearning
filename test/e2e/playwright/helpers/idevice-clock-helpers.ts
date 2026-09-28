@@ -34,6 +34,13 @@ export function storedIdevice(type: string): { html: string; jsonProperties: str
     return { html: cdata('htmlView'), jsonProperties: cdata('jsonProperties') };
 }
 
+/**
+ * What the first game is left with once it is going. More than moving to the
+ * next page takes, so its clock is still running when the second game is
+ * reached, and little enough for its end to fall inside the test.
+ */
+const LEFT_SECONDS = 10;
+
 /** One timed game, and where it keeps what the test needs to reach. */
 export interface TimedGame {
     /** The iDevice type, e.g. 'guess'. */
@@ -42,16 +49,20 @@ export interface TimedGame {
     html: string;
     /** Class prefix of the element holding the game's data, e.g. 'adivina' for `.adivina-DataGame`. */
     dataGame: string;
-    /** Turns the stored data into a timed game, long enough to tell its clock from another's. */
-    setTime: (data: any) => void;
+    /**
+     * Turns the stored data into a timed game, long enough to tell its clock
+     * from another's. Called once for each page's copy, `copy` being 0 for the
+     * first and 1 for the second, for a game that has to tell the two apart.
+     */
+    setTime: (data: any, copy: number) => void;
     /** What is clicked to start the first game on the page. */
     start: string;
     /** Where the first game on the page shows its time. */
     clock: string;
     /** The first game's own element. */
     container: string;
-    /** Run in the page once the first game is going: leaves it a few seconds, so its end falls inside the test. */
-    shorten: string;
+    /** Where, in the page, the first game on the page keeps its remaining seconds, e.g. `$guess.options[0].counter`. */
+    counter: string;
     /** What the second game's own clock shows. */
     ownTime: RegExp;
     /** Run in the page: whether the first game on the page has ended. */
@@ -64,7 +75,7 @@ export interface TimedGame {
  * The data is read and written back through the page's own helpers, encrypted
  * or not as the iDevice stored it.
  */
-async function timedMarkup(page: Page, game: TimedGame): Promise<string> {
+async function timedMarkup(page: Page, game: TimedGame, copy: number): Promise<string> {
     const read = await page.evaluate(
         ({ html, dataGame }) => {
             const $wrapper = (window as any).$('<div>').html(html);
@@ -77,7 +88,7 @@ async function timedMarkup(page: Page, game: TimedGame): Promise<string> {
     );
 
     const data = JSON.parse(read.json);
-    game.setTime(data);
+    game.setTime(data, copy);
 
     return page.evaluate(
         ({ html, dataGame, json, encrypted }) => {
@@ -119,25 +130,32 @@ export async function expectClockKeptToItsGame(
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
 
-    const htmlContent = await timedMarkup(page, game);
+    const games = [await timedMarkup(page, game, 0), await timedMarkup(page, game, 1)];
     await page.evaluate(
-        ({ type, htmlContent }) => {
+        ({ type, games }) => {
             const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
-            for (const title of ['First game', 'Second game']) {
+            for (const [index, title] of ['First game', 'Second game'].entries()) {
                 const parent = binding.createPage(title);
-                binding.createComponent(parent.id, binding.createBlock(parent.id), type, { htmlContent });
+                binding.createComponent(parent.id, binding.createBlock(parent.id), type, {
+                    htmlContent: games[index],
+                });
             }
         },
-        { type: game.type, htmlContent },
+        { type: game.type, games },
     );
 
     await openPageWithGame(page, 'First game', game);
     await page.locator(game.start).click();
-    await page.evaluate(game.shorten);
+    await page.evaluate(`${game.counter} = ${LEFT_SECONDS}`);
+    const shortenedAt = Date.now();
     const firstGame = await page.locator(game.container).elementHandle();
 
     await openPageWithGame(page, 'Second game', game);
     await page.waitForFunction(element => !element?.isConnected, firstGame);
+    // Otherwise the first game ended on its own page, and nothing below would test anything.
+    expect(Date.now() - shortenedAt, 'the first game ran out before the second was reached').toBeLessThan(
+        (LEFT_SECONDS - 3) * 1000,
+    );
 
     // Everything written on the second game's clock from here on.
     await page.evaluate(clock => {
@@ -159,7 +177,7 @@ export async function expectClockKeptToItsGame(
 
     // Started, it counts its own time, and outlives the moment the first game ran out.
     await page.locator(game.start).click();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(Math.max(1000, shortenedAt + (LEFT_SECONDS + 2) * 1000 - Date.now()));
 
     const written = await writes();
     expect(written.length, 'the second clock never ran').toBeGreaterThan(0);
