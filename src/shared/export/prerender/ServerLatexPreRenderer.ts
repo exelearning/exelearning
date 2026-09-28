@@ -294,6 +294,12 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         // Create SVG output processor
         this.svg = new SVG({
             fontCache: 'local',
+            // MathJax 4 breaks in-line formulas at every top-level operator and emits
+            // one <svg> per fragment; renderLatexExpression keeps a single <svg>, so
+            // `\( x = 3 = 4 = 5 \)` exported as a lone `x` (issue #2440). Pre-rendered
+            // SVG cannot reflow, so ask for one <svg> per formula. Mirrors
+            // `svg.linebreaks.inline` in public/app/common/common.js.
+            linebreaks: { inline: false },
         });
 
         // Create document for processing
