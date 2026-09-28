@@ -11,7 +11,7 @@ reviewers:
   - "@ignaciogros"
   - "@juanda"
   - "@mnarvaezm"
-implementation_prs: [1593]
+implementation_prs: [1593, 2470]
 related_adrs: [ADR-1593-01, ADR-1593-02, ADR-1593-03]
 supersedes: []
 superseded_by: []
@@ -64,8 +64,6 @@ desktop, static, and embedded/opaque deployments — a runtime CDN is not an opt
 
 - Migrating MathJax (`public/app/common/exe_math/`) off its committed subset —
   explicitly deferred.
-- Porting the eXe patch of SimpleLightbox (image-gallery captions) to a current
-  upstream release — deferred; the patched files stay tracked.
 - Rewriting the vanilla frontend to import libraries as ESM through an
   application bundler (globals are retained).
 - Adding subresource-integrity/checksum verification of the copied files beyond
@@ -153,9 +151,9 @@ exit. Duplicated libraries are expressed as multiple `COPIES` entries from one
 source: `html2canvas` → `progress-report`, `checklist`, `rubric` export dirs;
 `dompurify/purify.min.js` → `edicuatex` and `public/libs/dompurify/`. Entries
 flagged `stripSourceMap` (the Bootstrap dist files) have their
-`sourceMappingURL` comments removed after copying (#2260). MathJax and the
-patched SimpleLightbox are intentionally excluded (documented in the file
-header).
+`sourceMappingURL` comments removed after copying (#2260). SimpleLightbox is
+copied into the image-gallery iDevice export folder, like html2canvas. MathJax
+is intentionally excluded (documented in the file header).
 
 ### Local modifications and version differences
 
@@ -165,9 +163,9 @@ follows (details in ADR-1593-01):
 
 | Committed file on `main` | Difference from upstream | Handling |
 |---|---|---|
-| `image-gallery/export/simple-lightbox.min.js` | eXe-patched SimpleLightbox 2.10.3 (array `captionsData`, title/author/license caption links via `myCaptionData`); `image-gallery.js` needs it. | Kept tracked and out of `COPIES`/`.gitignore` until the patch is ported. |
-| `image-gallery/export/simple-lightbox.min.css` | Upstream CSS plus a local `/* SDWEB */` block. | Kept tracked with the JS above. |
-| `public/libs/simplelightbox/dist/*` | Upstream 2.10.1, not loaded by anything. | Deleted; `simplelightbox` dropped from `package.json`. |
+| `image-gallery/export/simple-lightbox.min.js` | eXe-patched SimpleLightbox 2.10.3 (array `captionsData`, title/author/license caption links via `myCaptionData`); `image-gallery.js` needed it. | Generated from npm `simplelightbox` 2.14.3; `image-gallery.js` builds the caption itself and passes it through `captionSelector`. |
+| `image-gallery/export/simple-lightbox.min.css` | 2.10.1 CSS plus a local `/* SDWEB */` block. | Generated from npm; the SDWEB rules moved to `image-gallery.css`. |
+| `public/libs/simplelightbox/dist/*` | Upstream 2.10.1, not loaded by anything. | Deleted. |
 | `html2canvas.js` ×3 | Same version (1.4.1) but a Prettier-reformatted non-minified build; two copies added `/* eslint-disable */`. No functional change. | Replaced by npm's `html2canvas.min.js`. |
 | `libs/abcjs/abcjs-audio.css` | Upstream 6.0.4 file, reformatted, plus an eXe block of presentation rules. | Kept tracked; the upstream part was aligned with abcjs 6.7.0. `abcjs-basic-min.js` is generated. |
 | Bootstrap, jQuery UI, interact.js, DOMPurify, pdf.js, mermaid, abcjs JS | Version bumps; no local markers. | Generated from npm. |
@@ -226,7 +224,7 @@ static declarative structures:
   versions (see the table above); locally patched files are not replaced.
 - Rollback is a revert of PR #1593 (restore blobs, drop the scripts and the
   `bundle:vendor` wiring).
-- MathJax, the SimpleLightbox fork and `abcjs-audio.css` are deliberately left
+- MathJax and `abcjs-audio.css` are deliberately left
   tracked, so the "no committed vendor blobs" state is partial.
 
 ## Security and privacy
@@ -277,7 +275,8 @@ intentionally not translated.
 - **Unit (`bun test`).** `scripts/copy-vendor-libs.spec.ts` verifies the `COPIES`
   table is non-empty, the runtime-loaded rubric `html2canvas.js` copy is present,
   all three html2canvas destinations map from the npm package, every `src`
-  resolves after install, no entry targets the patched SimpleLightbox files, and
+  resolves after install, SimpleLightbox is copied into the image-gallery export
+  folder, and
   `copyFile` throws on a missing source and creates each destination directory
   once.
   `scripts/build-resource-bundles.spec.ts` ("required vendor libs") verifies
@@ -287,9 +286,9 @@ intentionally not translated.
 - **Frontend (Vitest).** `public/vitest.setup.js` loads the generated
   `libs/yjs/yjs.min.js` and exposes `window.Y` / `global.Y`, so Yjs client tests
   under `public/app/yjs/` run against the real generated shim.
-  `image-gallery/export/image-gallery.test.js` opens a gallery through the
-  tracked SimpleLightbox fork and asserts the title, author link and license
-  link are rendered in the caption.
+  `image-gallery/export/image-gallery.test.js` opens a gallery through the npm
+  SimpleLightbox build and asserts the title, author link and license link are
+  rendered in the caption, with stored values rendered as text.
 - **E2E (Playwright).** Collaboration and export/static flows run against the
   vendor assets now included in the e2e dynamic-bundles artifact
   (`.github/workflows/e2e.yml`). `abc-music.spec.ts` renders ABC notation with
@@ -327,8 +326,9 @@ same PR; Dependabot (ADR-1593-03) turns on grouped updates going forward.
   CDN. Future SRI/checksum work.
 - **Silently dropping a local patch** when a committed file is replaced by its
   upstream build → each file was diffed against its npm release; patched files
-  stay tracked, and `image-gallery.test.js` plus the `copy-vendor-libs.spec.ts`
-  guard fail if the SimpleLightbox fork is replaced.
+  stay tracked. The SimpleLightbox caption patch was re-implemented in
+  `image-gallery.js` on the library's public options, and `image-gallery.test.js`
+  fails if the caption loses its title, author or license.
 
 ## Open questions
 
@@ -337,8 +337,6 @@ same PR; Dependabot (ADR-1593-03) turns on grouped updates going forward.
 - Can the hand-written `y-indexeddb-browser.js` be replaced by a bundled npm
   `y-indexeddb` through the existing alias mechanism?
 - What is the concrete migration path for MathJax (`exe_math/`) into this flow?
-- Should the SimpleLightbox caption patch move into `image-gallery.js` (using a
-  stock upstream release) or be upstreamed?
 
 ## ADRs required or referenced
 
@@ -397,8 +395,10 @@ same PR; Dependabot (ADR-1593-03) turns on grouped updates going forward.
 - [x] Add colocated specs (`copy-vendor-libs.spec.ts`,
       `build-resource-bundles.spec.ts`).
 - [x] Audit committed copies for local modifications; keep patched files
-      (SimpleLightbox fork, `abcjs-audio.css`) tracked.
-- [ ] Follow-up: MathJax migration; port the SimpleLightbox patch; consider
+      (`abcjs-audio.css`) tracked.
+- [x] Move the SimpleLightbox caption patch into `image-gallery.js` and generate
+      SimpleLightbox from npm.
+- [ ] Follow-up: MathJax migration; consider
       SRI/checksums; evaluate npm `y-indexeddb`.
 
 ## References

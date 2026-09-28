@@ -1805,6 +1805,19 @@ describe('PageRenderer', () => {
             expect(libs).toContain('exe_effects');
         });
 
+        it('should not detect a lightbox library for the image-gallery iDevice markup', () => {
+            const html =
+                '<div class="imageGallery-IDevice"><a class="imageLink" href="a.jpg"><img src="t.jpg"></a></div>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).not.toContain('exe_lightbox');
+            expect(libs).not.toContain('exe_lightbox_gallery');
+        });
+
+        it('should detect the legacy eXe 2 gallery class', () => {
+            const libs = renderer.detectContentLibraries('<ul class="exeImageGallery"><li>x</li></ul>');
+            expect(libs).toContain('exe_lightbox_gallery');
+        });
+
         it('should detect exe_lightbox by rel attribute', () => {
             const html = '<a rel="lightbox" href="img.jpg"><img src="thumb.jpg"></a>';
             const libs = renderer.detectContentLibraries(html);

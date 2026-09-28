@@ -69,6 +69,7 @@ updates:
           - "fflate"
           - "abcjs"
           - "html2canvas"
+          - "simplelightbox"
           - "interactjs"
           - "dompurify"
           - "fabric"
