@@ -514,4 +514,67 @@ describe('challenge iDevice export', () => {
       expect(calls.map((call) => call.gameOver)).toEqual([false, true]);
     });
   });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and ending it when its own time ran out.
+  describe('the clock of a game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="desafioMainContainer-${instance}"></div>`;
+      $eXeDesafio.options = [
+        {
+          gameStarted: false,
+          counter: 60,
+          typeQuestion: 0,
+          solvedsChallenges: [],
+          challengesGame: [],
+          msgs: { msgReadTime: '' },
+        },
+      ];
+      for (const method of ['updateTime', 'gameOver', 'showDesafio', 'showMessage', 'saveDataStorage']) {
+        vi.spyOn($eXeDesafio, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeDesafio.startGame(instance, 0);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeDesafio.updateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('ends its own game when the time runs out', () => {
+      $eXeDesafio.startGame(instance, 0);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeDesafio.gameOver).toHaveBeenCalledWith(1, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeDesafio.startGame(instance, 0);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="desafioMainContainer-${instance}"></div>`;
+      $eXeDesafio.options[instance] = { gameStarted: true, counter: 240, typeQuestion: 0 };
+      $eXeDesafio.updateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeDesafio.updateTime).not.toHaveBeenCalled();
+      expect($eXeDesafio.gameOver).not.toHaveBeenCalled();
+      expect($eXeDesafio.options[instance].counter).toBe(240);
+    });
+  });
 });
