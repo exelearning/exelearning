@@ -283,14 +283,11 @@ export default class structureEngine {
 
                 // Only force a content reload when the selected page itself is structurally affected
                 // and the change cannot already be handled incrementally by the Yjs bridge.
+                // The bridge debounces it with the reload it schedules for the same
+                // events and defers it while an iDevice is being edited (#2427).
                 if (pageToReload && pageToReload === selectedNavId && affectedPageIds.has(pageToReload)) {
-                    const pageElement = this.menuStructureBehaviour?.menuNav?.querySelector(
-                        `.nav-element[nav-id="${pageToReload}"]`
-                    );
-                    if (pageElement) {
-                        Logger.log('[StructureEngine] Forcing page content reload for remote changes');
-                        await eXeLearning.app.project.idevices.loadApiIdevicesInPage(false, pageElement);
-                    }
+                    Logger.log('[StructureEngine] Scheduling page content reload for remote changes');
+                    this.project._yjsBridge?.schedulePageReloadIfCurrent?.(pageToReload);
                 }
             }
         });
