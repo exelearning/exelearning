@@ -1225,25 +1225,53 @@ class YjsProjectBridge {
   schedulePageReloadIfCurrent(pageId) {
     // Get current page ID
     const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+    if (currentPageId !== pageId) return;
 
-    if (currentPageId === pageId) {
-      // Debounce to avoid multiple reloads
-      if (this._pageReloadTimer) {
-        clearTimeout(this._pageReloadTimer);
-      }
-
-      this._pageReloadTimer = setTimeout(async () => {
-        Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
-        const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
-          `.nav-element[nav-id="${pageId}"]`
-        );
-        if (pageElement) {
-          await this.app?.project?.idevices?.loadApiIdevicesInPage(false, pageElement);
-          // Check if the page is now empty and show empty_articles message
-          this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
-        }
-      }, 100); // Small debounce
+    // A full reload tears down every iDevice on the page, including the one this
+    // user is editing, and its unsaved changes with it (#2427). Keep the reload
+    // pending until the edition ends; IdevicesEngine.updateMode() flushes it.
+    if (this.hasLocalIdeviceInEdition()) {
+      this._deferredPageReloadId = pageId;
+      Logger.log('[YjsProjectBridge] Page reload deferred until the local iDevice edition ends');
+      return;
     }
+
+    // Debounce to avoid multiple reloads
+    if (this._pageReloadTimer) {
+      clearTimeout(this._pageReloadTimer);
+    }
+
+    this._pageReloadTimer = setTimeout(async () => {
+      Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
+      const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
+        `.nav-element[nav-id="${pageId}"]`
+      );
+      if (pageElement) {
+        await this.app?.project?.idevices?.loadApiIdevicesInPage(false, pageElement);
+        // Check if the page is now empty and show empty_articles message
+        this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
+      }
+    }, 100); // Small debounce
+  }
+
+  /**
+   * Whether this client has an iDevice open for editing on the current page.
+   * @returns {boolean}
+   */
+  hasLocalIdeviceInEdition() {
+    return Boolean(this.app?.project?.idevices?.isIdeviceInEdition?.());
+  }
+
+  /**
+   * Run the page reload that was deferred while an iDevice was being edited.
+   * Called by IdevicesEngine.updateMode() once no iDevice is in edition; the
+   * reload is skipped if the user has meanwhile moved to another page.
+   */
+  flushDeferredPageReload() {
+    const pageId = this._deferredPageReloadId;
+    if (!pageId) return;
+    this._deferredPageReloadId = null;
+    this.schedulePageReloadIfCurrent(pageId);
   }
 
   /**
@@ -1291,6 +1319,14 @@ class YjsProjectBridge {
         `.nav-element[nav-id="${currentPageId}"]`
       );
       if (!pageElement) return;
+
+      // Same rule as schedulePageReloadIfCurrent (#2427). The deferred reload
+      // renders with the asset already cached, so no patch pass is needed.
+      if (this.hasLocalIdeviceInEdition()) {
+        this._deferredPageReloadId = currentPageId;
+        Logger.log('[YjsProjectBridge] Late asset page reload deferred until the local iDevice edition ends');
+        return;
+      }
 
       Logger.log('[YjsProjectBridge] Reloading current page after late asset arrival');
       await idevicesEngine.loadApiIdevicesInPage(false, pageElement);
