@@ -464,6 +464,28 @@ test.describe('Share Modal', () => {
         });
     });
 
+    test.describe('Modal Layout', () => {
+        test('keeps the Done button on screen once the public link is enabled', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // A common laptop height: with the public link section expanded the
+            // dialog is taller than this, so its body must scroll, not the page.
+            await authenticatedPage.setViewportSize({ width: 1280, height: 720 });
+            const projectUuid = await createProject(authenticatedPage, 'Modal Layout Project');
+
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await waitForAppReady(authenticatedPage);
+
+            await authenticatedPage.locator('#head-top-share-button').click();
+            await shareModal.waitForOpen();
+            await shareModal.setPublicView('enabled');
+            await expect(authenticatedPage.locator('#public-link-section')).toBeVisible();
+
+            await expect(shareModal.doneButton).toBeInViewport({ ratio: 1 });
+        });
+    });
+
     test.describe('Modal Closing', () => {
         test('should close modal when clicking Done button', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Close Modal Project');

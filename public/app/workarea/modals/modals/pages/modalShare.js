@@ -143,10 +143,10 @@ export default class ModalShare extends Modal {
 
         setTimeout(() => {
             // Update modal title
+            // The document title is the live one; the stored project title can
+            // still hold the server-side placeholder ("New Project").
             const documentTitle = eXeLearning.app.project?.properties?.properties?.pp_title?.value;
-            const projectTitle = (this.projectData?.title === _('Untitled document') || !this.projectData?.title)
-                ? documentTitle
-                : this.projectData?.title;
+            const projectTitle = documentTitle || this.projectData?.title;
 
             const title = _('Share "{title}"').replace(
                 '{title}',

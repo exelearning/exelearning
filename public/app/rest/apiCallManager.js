@@ -2453,7 +2453,7 @@ export default class ApiCallManager {
                 const errorData = await response.json().catch(() => ({}));
                 return {
                     responseMessage: 'ERROR',
-                    detail: errorData.message || `HTTP ${response.status}`,
+                    detail: errorData.detail || errorData.message || `HTTP ${response.status}`,
                 };
             }
 

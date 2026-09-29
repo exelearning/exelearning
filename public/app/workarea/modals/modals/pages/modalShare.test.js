@@ -1200,6 +1200,35 @@ describe('ModalShare', () => {
       expect(setTitleSpy).toHaveBeenCalledWith(expect.stringContaining('Untitled document'));
       vi.useRealTimers();
     });
+
+    it('prefers the live document title over the stored server placeholder', async () => {
+      vi.useFakeTimers();
+      window.eXeLearning.app.project.properties = { properties: { pp_title: { value: 'My lesson' } } };
+      window.eXeLearning.app.api.getProject.mockResolvedValueOnce({
+        responseMessage: 'OK',
+        project: { id: 'proj-123', title: 'New Project', visibility: 'private', collaborators: [] },
+      });
+      const setTitleSpy = vi.spyOn(modal, 'setTitle');
+      await modal.show();
+      vi.advanceTimersByTime(1000);
+      expect(setTitleSpy).toHaveBeenCalledWith(expect.stringContaining('My lesson'));
+      expect(setTitleSpy).not.toHaveBeenCalledWith(expect.stringContaining('New Project'));
+      delete window.eXeLearning.app.project.properties;
+      vi.useRealTimers();
+    });
+
+    it('falls back to the stored project title without a document title', async () => {
+      vi.useFakeTimers();
+      window.eXeLearning.app.api.getProject.mockResolvedValueOnce({
+        responseMessage: 'OK',
+        project: { id: 'proj-123', title: 'Stored title', visibility: 'private', collaborators: [] },
+      });
+      const setTitleSpy = vi.spyOn(modal, 'setTitle');
+      await modal.show();
+      vi.advanceTimersByTime(1000);
+      expect(setTitleSpy).toHaveBeenCalledWith(expect.stringContaining('Stored title'));
+      vi.useRealTimers();
+    });
   });
 
   describe('renderInviteSection - null guard', () => {

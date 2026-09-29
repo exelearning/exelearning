@@ -1590,6 +1590,21 @@ describe('ApiCallManager', () => {
       expect(result.responseMessage).toBe('ERROR');
     });
 
+    it('surfaces the server error detail on a failed public-view request', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: vi.fn().mockResolvedValue({
+          responseMessage: 'FORBIDDEN',
+          detail: 'Only the project owner can change this',
+        }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result).toEqual({ responseMessage: 'ERROR', detail: 'Only the project owner can change this' });
+    });
+
     it('should enable the public read-only link via PATCH /public-view', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
