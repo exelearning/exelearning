@@ -439,7 +439,23 @@ describe('exe_elpx_download', () => {
     });
 
     describe('worker fallback under a restrictive CSP', () => {
-        async function runDownload() {
+        /**
+         * Load the script without leaving its deferred file:// warning timer
+         * (setTimeout(addFileProtocolWarning, 100)) on the real clock, where it
+         * can fire after the environment is torn down ("window is not defined").
+         */
+        function loadScript() {
+            vi.useFakeTimers({ toFake: ['setTimeout'] });
+            try {
+                // eslint-disable-next-line no-eval
+                eval(scriptContent);
+                vi.runOnlyPendingTimers();
+            } finally {
+                vi.useRealTimers();
+            }
+        }
+
+        function prepareDownload() {
             document.body.innerHTML = `<p class="exe-download-package-link"><a href="#">Download</a></p>`;
             window.__ELPX_MANIFEST__ = {
                 version: 1,
@@ -451,9 +467,11 @@ describe('exe_elpx_download', () => {
                 ok: true,
                 arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
             });
+            loadScript();
+        }
 
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+        async function runDownload() {
+            prepareDownload();
             await window.downloadElpx();
         }
 
@@ -497,11 +515,11 @@ describe('exe_elpx_download', () => {
         });
 
         it('falls back to zipSync when the worker probe never answers', async () => {
+            global.Worker = createWorkerMock('silent');
+            prepareDownload();
             vi.useFakeTimers();
             try {
-                global.Worker = createWorkerMock('silent');
-
-                const download = runDownload();
+                const download = window.downloadElpx();
                 await vi.advanceTimersByTimeAsync(5000);
                 await download;
 
@@ -531,8 +549,7 @@ describe('exe_elpx_download', () => {
             window.__ELPX_MANIFEST__ = { version: 1, files: [...stored, ...deflated], projectTitle: 'Levels', basePath: '' };
             global.fetch.mockResolvedValue({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)) });
 
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            loadScript();
             await window.downloadElpx();
 
             const zipInput = global.fflate.zip.mock.calls[0][0];
