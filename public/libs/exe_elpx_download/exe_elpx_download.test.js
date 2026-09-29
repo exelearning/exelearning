@@ -512,6 +512,38 @@ describe('exe_elpx_download', () => {
             }
         });
 
+        it('stores already-compressed media and deflates text', async () => {
+            document.body.innerHTML = `<p class="exe-download-package-link"><a href="#">Download</a></p>`;
+            const stored = [
+                'content/resources/photo.JPG',
+                'content/resources/photo.jpeg',
+                'content/resources/diagram.png',
+                'content/resources/anim.gif',
+                'content/resources/pic.webp',
+                'content/resources/pic.avif',
+                'content/resources/guide.pdf',
+                'content/resources/sheet.xlsx',
+                'content/resources/slides.odp',
+                'content/resources/clip.webm',
+                'theme/fonts/Font.woff2',
+            ];
+            const deflated = ['content.xml', 'index.html', 'theme/style.css', 'libs/common.js', 'content/resources/icon.svg'];
+            window.__ELPX_MANIFEST__ = { version: 1, files: [...stored, ...deflated], projectTitle: 'Levels', basePath: '' };
+            global.fetch.mockResolvedValue({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)) });
+
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+            await window.downloadElpx();
+
+            const zipInput = global.fflate.zip.mock.calls[0][0];
+            for (const path of stored) {
+                expect(zipInput[path][1]).toEqual({ level: 0 });
+            }
+            for (const path of deflated) {
+                expect(zipInput[path][1]).toEqual({ level: 6 });
+            }
+        });
+
         it('terminates the probe worker', async () => {
             await runDownload();
 

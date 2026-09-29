@@ -346,9 +346,10 @@
             .substring(0, 100);
     }
 
-    // File extensions that are already compressed — use STORE (level 0) to skip wasting CPU
+    // File extensions that are already compressed — use STORE (level 0) to skip wasting CPU.
+    // Deflating photos, PDFs and office documents costs several times the CPU for a few percent.
     var STORE_EXTENSIONS =
-        /\.(mp4|mp3|ogg|ogv|webm|woff|woff2|zip|gz|elpx)$/i;
+        /\.(mp4|m4a|m4v|mov|mp3|ogg|oga|ogv|webm|wav|flac|aac|opus|woff|woff2|zip|gz|7z|rar|elpx|jpe?g|png|gif|webp|avif|pdf|docx|xlsx|pptx|odt|ods|odp|epub)$/i;
 
     // How long to wait for the probe worker before assuming workers are unusable
     var WORKER_PROBE_TIMEOUT = 2000;
