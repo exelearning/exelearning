@@ -4553,7 +4553,7 @@ describe('getMimeTypeFromFilename', () => {
         sourceUrl: 'https://src.example/sunset.jpg',
       });
 
-      expect(modal.editMetadataForm.style.display).toBe('block');
+      expect(modal.editMetadataForm.style.display).toBe('');
       expect(modal.metaTitleInput.value).toBe('Sunset');
       expect(modal.metaDescriptionInput.value).toBe('A sunset');
       expect(modal.metaLicenseSelect.value).toBe('Creative Commons BY');
@@ -4565,14 +4565,15 @@ describe('getMimeTypeFromFilename', () => {
     });
 
     it('shows the edit form for non-image assets too', () => {
+      modal.editMetadataForm.style.display = 'none';
       modal.populateEditMetadata({ id: 'a2', mime: 'application/pdf', description: 'A report' });
-      expect(modal.editMetadataForm.style.display).toBe('block');
+      expect(modal.editMetadataForm.style.display).toBe('');
       expect(modal.metaDescriptionInput.value).toBe('A report');
     });
 
     it('shows the edit form for a 3D model (e.g. .stl)', () => {
       modal.populateEditMetadata({ id: 'a3', mime: 'model/stl', filename: 'part.stl' });
-      expect(modal.editMetadataForm.style.display).toBe('block');
+      expect(modal.editMetadataForm.style.display).toBe('');
     });
 
     it('preserves an unknown stored license value as an option', () => {

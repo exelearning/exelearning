@@ -2470,8 +2470,9 @@ export default class ModalFilemanager extends Modal {
     populateEditMetadata(asset) {
         if (!this.editMetadataForm) return;
 
-        // Metadata applies to all asset types.
-        this.editMetadataForm.style.display = 'block';
+        // Metadata applies to all asset types. Clear the inline `none` rather
+        // than forcing `block`, so the stylesheet can lay the form out as a grid.
+        this.editMetadataForm.style.display = '';
 
         // Distinguish a fresh selection (full repopulate, reset dirty/status) from a
         // refresh of the same asset (preserve fields the user is actively editing).

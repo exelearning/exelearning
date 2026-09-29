@@ -219,7 +219,7 @@ test.describe('Centralized image caption', () => {
 
         await reopenDialog();
         await labelledInput(/header|encabezado/i).fill('Figure 1');
-        await labelledInput(/notes|notas|observaciones/i).fill('Cropped for clarity');
+        await labelledInput(/additional information|información adicional/i).fill('Cropped for clarity');
         await saveDialog();
 
         // The caption now reflects the edited heading + notes (the bug: it did not).

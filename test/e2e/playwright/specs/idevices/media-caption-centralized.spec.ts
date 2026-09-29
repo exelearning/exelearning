@@ -177,7 +177,7 @@ test.describe('Centralized media caption', () => {
         expect(tabTexts.some(t => /atribuci|attribution/.test(t))).toBe(true);
         await expect(hideCaptionCheckbox(page)).toHaveCount(1);
         await expect(labelledField(page, /header|encabezado/i)).toBeVisible();
-        await expect(labelledField(page, /notes|notas|observaciones/i)).toBeVisible();
+        await expect(labelledField(page, /additional information|información adicional/i)).toBeVisible();
 
         await openDialogTab(page, /atribuci|attribution/i);
         await expect(page.locator('.tox-dialog .exe-attr-fm-hint')).toBeVisible();
@@ -239,7 +239,7 @@ test.describe('Centralized media caption', () => {
         // Edit per-instance heading + notes: the figure re-renders with both.
         await reopenMediaDialog(page);
         await labelledField(page, /header|encabezado/i).fill('Clip 1');
-        await labelledField(page, /notes|notas|observaciones/i).fill('Trimmed for length');
+        await labelledField(page, /additional information|información adicional/i).fill('Trimmed for length');
         await saveMediaDialog(page);
 
         await expect(figure.locator('.figcaption.header')).toContainText('Clip 1');

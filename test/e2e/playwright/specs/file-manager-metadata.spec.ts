@@ -48,6 +48,28 @@ async function selectFirstFile(page: Page): Promise<void> {
 }
 
 test.describe('File Manager - centralized asset metadata', () => {
+    test('shows the whole Metadata tab without scrolling on a 1366x768 screen', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await page.setViewportSize({ width: 1366, height: 768 });
+        const projectUuid = await createProject(page, 'File Manager - Metadata Layout');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await openFileManagerFromUtilitiesMenu(page);
+        await uploadFile(page, 'test/fixtures/sample-2.jpg');
+        await selectFirstFile(page);
+
+        // Every field and the caption preview are visible at once: the panel
+        // does not need to scroll.
+        const panel = page.locator('#modalFileManager .media-library-sidebar-content');
+        const overflow = await panel.evaluate(el => el.scrollHeight - el.clientHeight);
+        expect(overflow).toBeLessThanOrEqual(1);
+        await expect(page.locator('#modalFileManager .media-library-caption-preview')).toBeInViewport({ ratio: 1 });
+    });
+
     test('edits, saves and persists image metadata; searches by description', async ({
         authenticatedPage,
         createProject,

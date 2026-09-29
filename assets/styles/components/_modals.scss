@@ -1341,7 +1341,28 @@
         min-height: 0;
 
         > .media-library-tab-pane {
-            padding: var(--margin-m) var(--margin-l) var(--margin-l);
+            padding: var(--margin-m) var(--margin-l) var(--margin-m);
+        }
+    }
+
+    /* Wide screens: a wider panel lays the metadata out in two columns
+       (Name | License, Description | Source URL, Author | Author link) so the
+       whole Metadata tab is visible without scrolling. */
+    @media (min-width: 1200px) {
+        .media-library-edit-metadata {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            column-gap: var(--margin-m);
+            align-items: start;
+
+            > * {
+                grid-column: 1 / -1;
+            }
+
+            > .metadata-edit-row--half {
+                grid-column: auto;
+                min-width: 0;
+            }
         }
     }
 
@@ -4252,7 +4273,9 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 }
 
 #modalFileManager .modal-content {
-    height: 78vh;
+    /* Use the height the viewport leaves around the dialog (Bootstrap's
+       1.75rem margins) so the Metadata tab fits on common laptop screens. */
+    height: calc(100dvh - 3.5rem);
     max-height: 800px;
     min-height: 500px;
     display: flex;
@@ -4366,6 +4389,13 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     flex-shrink: 0;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+/* Wide screens: room for the two-column metadata layout */
+@media (min-width: 1200px) {
+    #modalFileManager .media-library-sidebar {
+        width: 460px;
+    }
 }
 
 /* Preview image constraints */
