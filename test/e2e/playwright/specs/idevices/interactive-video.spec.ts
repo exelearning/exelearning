@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { storedIdevice } from '../../helpers/idevice-clock-helpers';
+import { waitForAppReady, reloadPage, gotoWorkarea, expandIdeviceCategory } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -695,6 +696,67 @@ test.describe('Interactive Video iDevice', () => {
             // Verify the interactive video container is visible in preview
             const videoContainer = previewIframe.locator('.exe-interactive-video').first();
             await expect(videoContainer).toBeAttached({ timeout: 10000 });
+        });
+    });
+
+    // The iDevices menu gives each iDevice's button its type name as id, and it
+    // comes before the page: the Slide iDevice's button is `#slide`. The player's
+    // question box used to have that same id, so in the editor a question was
+    // written into the menu button and never shown, and the player's stylesheet
+    // hid the button.
+    test.describe('Editor view', () => {
+        test('shows a question inside the video and leaves the Slide iDevice in the menu', async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const errors: string[] = [];
+            page.on('pageerror', error => errors.push(error.message));
+
+            const projectUuid = await createProject(page, 'Interactive Video Question Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // The stored interactive video: a YouTube video with a single-choice
+            // question, "1+1 =", at its fifth second.
+            await page.evaluate(html => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Quiz clip');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'interactive-video', {
+                    htmlContent: html,
+                });
+            }, storedIdevice('interactive-video').html);
+            await page.locator('.nav-element .nav-element-text', { hasText: 'Quiz clip' }).first().click();
+            const activity = page.locator('#node-content .exe-interactive-video #activity');
+            await page.locator('#start-link').waitFor({ state: 'visible', timeout: 30000 });
+
+            const slideButton = page.locator('.idevice_item#slide');
+            await expandIdeviceCategory(page, /Information and presentation/i);
+            await expect(slideButton, "the player's stylesheet hid the Slide iDevice").toBeVisible();
+
+            // The learner starts the video and it reaches the question: the
+            // player follows the time and shows the question at its second.
+            // No video actually plays here, so there is nothing to play or pause.
+            await page.evaluate(() => {
+                const controls = (window as any).$interactivevideo.controls;
+                controls.play = () => {};
+                controls.pause = () => {};
+            });
+            await page.locator('#start-link').click();
+            await page.evaluate(() => {
+                const player = (window as any).$interactivevideo;
+                player.track(4);
+                player.track(5);
+            });
+
+            await expect(activity.locator('.question'), 'the question is not shown inside the video').toBeVisible();
+            await expect(activity.locator('.question')).toContainText('1+1');
+            await expect(slideButton, 'the question was written into the Slide iDevice button').not.toContainText(
+                '1+1',
+            );
+            // A click in the page folds the menu's categories: open it again.
+            await expandIdeviceCategory(page, /Information and presentation/i);
+            await expect(slideButton).toBeVisible();
+            expect(errors, 'the page threw').toEqual([]);
         });
     });
 

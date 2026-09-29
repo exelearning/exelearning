@@ -242,12 +242,15 @@ var $interactivevideo = {
         }
         var i18n = $interactivevideo.i18n;
 
+        // Not "slide": in the editor the iDevices menu gives each iDevice's button
+        // its type name as id, and the Slide iDevice's came first. The question
+        // was written into that button, never shown, and this stylesheet hid it.
         var html =
             '\
 			 <div id="activity-wrapper">\
 			 <div id="activity">\
 				 <div id="player" style="width:448px;height:356px"></div>\
-				 <div id="slide"></div>\
+				 <div id="activity-slide"></div>\
 			 </div>\
 		 ';
 
@@ -1045,7 +1048,7 @@ var $interactivevideo = {
         if ($interactivevideo.isSeek) {
             if ($('BODY').hasClass('active')) {
                 // Check if it has endTime
-                var slide = $('#slide');
+                var slide = $('#activity-slide');
                 var c = slide.attr('class');
                 if (c == 'image' || c == 'text') {
                     if (
@@ -1588,8 +1591,8 @@ var $interactivevideo = {
             }
 
             $('BODY').addClass('active');
-            $('#slide').before(
-                '<a href="#slide" id="slide-link" class="sr-av">' +
+            $('#activity-slide').before(
+                '<a href="#activity-slide" id="slide-link" class="sr-av">' +
                     InteractiveVideo.i18n.slide +
                     '</a>'
             );
@@ -1607,7 +1610,7 @@ var $interactivevideo = {
             }
             if (!e.endTime) $interactivevideo.controls.pause();
 
-            var slide = $('#slide');
+            var slide = $('#activity-slide');
             slide.html('');
             slide.attr('class', e.type);
 

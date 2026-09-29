@@ -1046,4 +1046,50 @@ describe('interactive-video iDevice export', () => {
       expect($interactivevideo.getScore()).toBe(7.5);
     });
   });
+
+  // In the editor the iDevices menu gives each iDevice's button its type name
+  // as id, and the menu comes before the page: the Slide iDevice's button is
+  // `#slide`. The player's question box used to have that same id.
+  describe('where a question is shown', () => {
+    const menuButton = () => document.querySelector('.idevice_item#slide');
+    const questionBox = () => document.querySelector('#activity #activity-slide');
+
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      global.InteractiveVideo = { i18n: { slide: 'Slide' }, slides: [] };
+      document.body.innerHTML = `
+        <div id="list_menu_idevices"><div id="slide" class="idevice_item draggable">Slide</div></div>
+        <div id="node-content">
+          <div id="activity-wrapper"><div id="activity">
+            <div id="player"></div><div id="activity-slide"></div>
+          </div></div>
+        </div>`;
+      vi.spyOn($interactivevideo, 'isFullScreen').mockReturnValue(false);
+      vi.spyOn($interactivevideo.controls, 'pause').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      document.body.className = '';
+      vi.restoreAllMocks();
+    });
+
+    it('writes the question into the player, not into the Slide iDevice button', () => {
+      $interactivevideo.slide.show({ type: 'text', text: '<p>1+1 =</p>', startTime: 5 }, 0);
+
+      expect(questionBox().className).toBe('text');
+      expect(questionBox().innerHTML).toContain('1+1 =');
+      expect(menuButton().className).toBe('idevice_item draggable');
+      expect(menuButton().textContent).toBe('Slide');
+    });
+
+    it("points the screen reader's link at the player's question", () => {
+      $interactivevideo.slide.show({ type: 'text', text: '<p>1+1 =</p>', startTime: 5 }, 0);
+
+      const link = document.getElementById('slide-link');
+      expect(link.getAttribute('href')).toBe('#activity-slide');
+      expect(link.nextElementSibling).toBe(questionBox());
+    });
+  });
 });
