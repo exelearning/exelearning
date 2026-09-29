@@ -1473,7 +1473,7 @@ export default class IdevicesEngine {
 
         // Initialize the iDevice
         await ideviceNode.loadInitScriptIdevice('export');
-        this.reloadExportRuntimeForIdevice(ideviceNode);
+        this.scheduleRemoteExportRuntimeReload(pageId);
 
         // Hide empty node message since we now have content
         if (eXeLearning?.app?.menus?.menuStructure?.menuStructureBehaviour) {
@@ -1488,8 +1488,9 @@ export default class IdevicesEngine {
      * Called when another client saves content for a component we already have rendered
      *
      * @param {Object} componentData - Updated component data from Yjs
+     * @param {string} pageId - Page the component belongs to
      */
-    async updateRemoteIdeviceContent(componentData) {
+    async updateRemoteIdeviceContent(componentData, pageId) {
         // Find the existing iDevice node
         const ideviceNode = this.components.idevices.find(
             i => i.odeIdeviceId === componentData.id || i.yjsComponentId === componentData.id
@@ -1566,7 +1567,7 @@ export default class IdevicesEngine {
                 ideviceNode.ideviceBody.innerHTML = sanitizeCollaborativeHtml(incomingHtml);
             }
             await ideviceNode.loadInitScriptIdevice('export');
-            this.reloadExportRuntimeForIdevice(ideviceNode);
+            this.scheduleRemoteExportRuntimeReload(pageId);
         }
 
         // Update the lock indicator in the header
@@ -1685,10 +1686,9 @@ export default class IdevicesEngine {
      * The legacy functionalities then render ABC music notation, effects,
      * games and the highlighter, and internal links are wired.
      *
-     * This is the page-level variant, used by a local save through
-     * resetCurrentIdevicesExportView(), which rebuilds every iDevice on the
-     * page anyway. The incremental remote paths must NOT use it: see
-     * reloadExportRuntimeForIdevice().
+     * Page-level only: re-executing an export script redefines its global
+     * and drops the state of instances already on the page. The incremental
+     * remote paths therefore go through scheduleRemoteExportRuntimeReload().
      */
     reloadExportRuntime() {
         this.clearNeedlessScripts();
@@ -1698,60 +1698,21 @@ export default class IdevicesEngine {
     }
 
     /**
-     * Same post-render hooks, scoped to a single iDevice arriving from a
-     * collaborator (renderRemoteIdevice / updateRemoteIdeviceContent, #2428).
+     * Post-render hooks for an iDevice that arrived from a collaborator
+     * (renderRemoteIdevice / updateRemoteIdeviceContent, #2428).
      *
-     * Deliberately not reloadExportRuntime(): clearNeedlessScripts() drops
-     * every `head > script:not(.exe)`, edition scripts included, and only the
-     * export ones are put back. A remote update can land at any moment —
-     * including while the local user has an editor open — and a single remote
-     * save produces several of them, so the page-wide teardown both breaks the
-     * "tag in <head> means the global is loaded" invariant that
-     * loadScriptDynamically() relies on for the shared `$exeDevice` global, and
-     * re-downloads every export script of the page on each update (#2434).
+     * The export runtime is page-wide: HTML-type iDevices bootstrap every
+     * instance from `$(function () { $x.init() })` and reset their shared
+     * state when re-executed, and the legacy $exe* hooks expect fresh DOM.
+     * Running them piecemeal breaks the other instances on the page (#2434),
+     * so the page is reloaded through the bridge instead: debounced across the
+     * several updates of one remote save, and deferred while this user has an
+     * iDevice open for editing (#2427).
      *
-     * Only HTML-type iDevices need their script executed again: they bootstrap
-     * from `$(function () { $x.init() })`, so a script already in <head> never
-     * picks up content added later. JSON-type ones are initialised explicitly
-     * by generateContentExportView() through their export object.
-     *
-     * @param {IdeviceNode} ideviceNode
+     * @param {string} pageId
      */
-    reloadExportRuntimeForIdevice(ideviceNode) {
-        const idevice = ideviceNode?.idevice;
-        if (idevice && idevice.componentType !== 'json') {
-            this.reexecuteExportScripts(idevice);
-        }
-        this.loadLegacyExeFunctionalitiesExport();
-        this.enableInternalLinks();
-    }
-
-    /**
-     * Run the export scripts of one iDevice type again.
-     *
-     * Their current <head> tags are removed first, otherwise
-     * loadScriptDynamically() would skip them as already loaded and the
-     * document-ready bootstrap would never see the new HTML.
-     *
-     * @param {Object} idevice
-     */
-    reexecuteExportScripts(idevice) {
-        const paths = (idevice.exportJs || []).map((script) =>
-            this.normalizeScriptSrc(
-                idevice.getResourceServicePath(`${idevice.pathExport}${script}`)
-            )
-        );
-        if (paths.length === 0) return;
-
-        document
-            .querySelectorAll('head > script[src]')
-            .forEach((scriptElement) => {
-                const src = this.normalizeScriptSrc(
-                    scriptElement.getAttribute('src')
-                );
-                if (paths.includes(src)) scriptElement.remove();
-            });
-        idevice.loadScriptsExport();
+    scheduleRemoteExportRuntimeReload(pageId) {
+        this.project?._yjsBridge?.schedulePageReloadIfCurrent?.(pageId);
     }
 
     /**

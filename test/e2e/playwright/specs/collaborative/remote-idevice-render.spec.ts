@@ -140,57 +140,46 @@ test.describe('Remote iDevice rendering after a collaborator saves (#2428)', () 
 });
 
 /**
- * Regression test for the defect found while reviewing the fix above (#2434):
- * rendering a remote iDevice must not tear down the scripts of the whole page.
+ * Regression tests for the review of #2434: the export runtime is page-wide.
  *
- * clearNeedlessScripts() removes every `head > script:not(.exe)`, edition
- * scripts included, and only the export ones were put back. A single remote
- * save produces several updates, so the page-wide teardown left the shared
- * `$exeDevice` global out of sync with the tags in <head>, and a later local
- * save exhausted the export-load retry loop and raised "Failed to load the
- * iDevice view" instead of saving.
+ * Re-executing one type's export script redefines its global, so a remote
+ * save of an A-Z quiz reset `$azquizgame.options` and broke the quizzes that
+ * were already on the page. Remote renders now reload the page through the
+ * bridge (debounced, and deferred while an editor is open — that part is
+ * covered by editor-preservation.spec.ts).
  */
-test.describe('A remote render must not disturb the local page runtime (#2434)', () => {
-    test.setTimeout(120000);
+test.describe('Remote renders keep the rest of the page working (#2434)', () => {
+    test.setTimeout(180000);
 
     test.beforeEach(async ({}, testInfo) => {
         skipInStaticMode(test, testInfo, 'WebSocket collaboration');
     });
 
-    /** Tag the scripts already in <head> so we can tell survivors from replacements. */
-    function markLoadedScripts(page: Page): Promise<number> {
-        return page.evaluate(() => {
-            const scripts = Array.from(document.querySelectorAll('head > script[src]'));
-            scripts.forEach(script => script.setAttribute('data-e2e-marked', '1'));
-            return scripts.length;
-        });
-    }
-
-    function countMarkedScripts(page: Page): Promise<number> {
-        return page.evaluate(() => document.querySelectorAll('head > script[data-e2e-marked="1"]').length);
-    }
-
-    /**
-     * Write into the editor that belongs to a given iDevice. `tinymce.get()`
-     * can still hand back a removed instance right after an editor is reopened,
-     * and writing there silently loses the content.
-     */
-    async function setTextIdeviceContentIn(page: Page, ideviceId: string, html: string): Promise<void> {
+    async function addAzQuiz(page: Page, word: string): Promise<string> {
+        const before = await page.locator('#node-content article .idevice_node.az-quiz-game').count();
+        await addIdevice(page, 'az-quiz-game');
+        const idevices = page.locator('#node-content article .idevice_node.az-quiz-game');
+        await expect(idevices).toHaveCount(before + 1, { timeout: 20000 });
+        const ideviceId = (await page
+            .locator('#node-content article .idevice_node.az-quiz-game[mode="edition"]')
+            .first()
+            .getAttribute('id')) as string;
+        expect(ideviceId).toBeTruthy();
         await page.waitForFunction(
-            id => {
-                const editor = (window as any).tinymce?.get('textTextarea');
-                if (!editor || !editor.initialized || editor.removed) return false;
-                const node = document.getElementById(id as string);
-                const container = editor.getContainer?.() || editor.getElement?.();
-                return !!node && !!container && node.contains(container);
+            () => {
+                const editors = (window as any).tinymce?.editors || [];
+                return editors.length >= 2 && editors.every((e: any) => e.initialized);
             },
-            ideviceId,
+            undefined,
             { timeout: 20000 },
         );
-        await setTextIdeviceContent(page, html);
+        await page.locator('.roscoWordEdition').first().fill(word);
+        await page.locator('.roscoDefinitionEdition').first().fill(`Definition of ${word}`);
+        await saveIdevice(page, ideviceId);
+        return ideviceId;
     }
 
-    test('User B keeps its loaded scripts and can still edit and save', async ({
+    test('a second A-Z quiz saved by User A leaves both quizzes playable for User B', async ({
         authenticatedPage,
         secondAuthenticatedPage,
         createProject,
@@ -200,60 +189,32 @@ test.describe('A remote render must not disturb the local page runtime (#2434)',
         const pageA = authenticatedPage;
         const pageB = secondAuthenticatedPage;
 
-        await openSharedProject(
-            pageA,
-            pageB,
-            createProject,
-            getShareUrl,
-            joinSharedProject,
-            'Remote render keeps runtime',
-        );
+        await openSharedProject(pageA, pageB, createProject, getShareUrl, joinSharedProject, 'Two remote A-Z quizzes');
 
-        // B owns a text iDevice, so its scripts are loaded on B's page.
+        const first = await addAzQuiz(pageA, 'Alpha');
+        await expect(ideviceLocator(pageB, first).locator('.rosco-MainContainer')).toBeVisible({ timeout: 20000 });
+
+        const second = await addAzQuiz(pageA, 'Apple');
+        await expect(ideviceLocator(pageB, second).locator('.rosco-MainContainer')).toBeVisible({ timeout: 20000 });
+        await expect(ideviceLocator(pageB, first).locator('.rosco-MainContainer')).toBeVisible();
+
+        // One runtime entry per board: re-executing the script used to drop the
+        // first quiz's options, leaving it inert.
+        await expect
+            .poll(() =>
+                pageB.evaluate(() => ({
+                    boards: document.querySelectorAll('#node-content .rosco-IDevice .rosco-MainContainer').length,
+                    options: ((window as any).$azquizgame?.options || []).filter(Boolean).length,
+                })),
+            )
+            .toEqual({ boards: 2, options: 2 });
+
+        // Several remote saves in a row must not leave B unable to edit and save.
         await addTextIdevice(pageB);
-        const ideviceB = await getTextIdeviceId(pageB);
-        await setTextIdeviceContent(pageB, '<p>First draft from user B</p>');
-        await saveIdevice(pageB, ideviceB);
-
-        const markedScripts = await markLoadedScripts(pageB);
-        expect(markedScripts).toBeGreaterThan(0);
-
-        // A saves an HTML-type iDevice: the case that does need its own export
-        // script executed again on B.
-        await addIdevice(pageA, 'az-quiz-game');
-        const ideviceA = await pageA
-            .locator('#node-content article .idevice_node.az-quiz-game')
-            .first()
-            .getAttribute('id');
-        expect(ideviceA).toBeTruthy();
-        await pageA.waitForFunction(
-            () => {
-                const editors = (window as any).tinymce?.editors || [];
-                return editors.length >= 2 && editors.every((e: any) => e.initialized);
-            },
-            undefined,
-            { timeout: 20000 },
-        );
-        await pageA.locator('.roscoWordEdition').first().fill('Alpha');
-        await pageA.locator('.roscoDefinitionEdition').first().fill('First letter of the alphabet');
-        await saveIdevice(pageA, ideviceA as string);
-
-        const remoteIdevice = ideviceLocator(pageB, ideviceA as string);
-        await expect(remoteIdevice).toBeVisible({ timeout: 20000 });
-        await expect(remoteIdevice.locator('.rosco-MainContainer')).toBeVisible({ timeout: 20000 });
-
-        // The remote render must have left every script B had loaded in place.
-        expect(await countMarkedScripts(pageB)).toBe(markedScripts);
-
-        // And B must still be able to edit and save, instead of exhausting the
-        // export-load retry loop and raising "Failed to load the iDevice view".
-        const ownIdevice = ideviceLocator(pageB, ideviceB);
-        await ownIdevice.hover();
-        await ownIdevice.locator('.btn-edit-idevice').first().click({ force: true });
-        await setTextIdeviceContentIn(pageB, ideviceB, '<p>Second draft from user B</p>');
-        await saveIdevice(pageB, ideviceB);
-
-        await expect(ownIdevice).toContainText('Second draft from user B', { timeout: 20000 });
+        const ownIdevice = await getTextIdeviceId(pageB);
+        await setTextIdeviceContent(pageB, '<p>Draft from user B</p>');
+        await saveIdevice(pageB, ownIdevice);
+        await expect(ideviceLocator(pageB, ownIdevice)).toContainText('Draft from user B', { timeout: 20000 });
         await expect(pageB.locator('.modal.show')).toHaveCount(0);
     });
 });
