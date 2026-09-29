@@ -50,6 +50,25 @@ describe('exe_elpx_download', () => {
         scriptContent = readFileSync(scriptPath, 'utf-8');
     });
 
+    /**
+     * Run the script under test. With the DOM already loaded it defers
+     * addFileProtocolWarning through setTimeout(..., 100); left on the real
+     * clock, that timer can fire while this file's environment is being torn
+     * down and throw "window is not defined" outside any test. Queue it on a
+     * fake clock, run the pending warning while the DOM is still alive, then
+     * restore the real clock.
+     */
+    function runScript() {
+        vi.useFakeTimers({ toFake: ['setTimeout'] });
+        try {
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+            vi.runOnlyPendingTimers();
+        } finally {
+            vi.useRealTimers();
+        }
+    }
+
     beforeEach(() => {
         // Store originals
         originalFflate = global.fflate;
@@ -102,6 +121,7 @@ describe('exe_elpx_download', () => {
         delete global.downloadElpx;
         delete window.__ELPX_MANIFEST__;
         vi.clearAllMocks();
+        vi.restoreAllMocks();
     });
 
     describe('script structure', () => {
@@ -241,6 +261,32 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain("document.readyState === 'loading'");
             expect(scriptContent).toContain('setTimeout(addFileProtocolWarning, 100)');
         });
+
+        it('adds the deferred warning in file:// context', () => {
+            Object.defineProperty(window, 'location', {
+                value: {
+                    pathname: '/index.html',
+                    href: 'file:///path/to/index.html',
+                    protocol: 'file:',
+                },
+                writable: true,
+                configurable: true,
+            });
+            document.body.innerHTML = `
+                <p class="exe-download-package-link"><a href="#">Download</a></p>
+            `;
+
+            expect(document.readyState).not.toBe('loading');
+            runScript();
+
+            const btn = document.querySelector('.exe-download-package-link a');
+            const warning = document.querySelector('.exe-file-protocol-warning');
+
+            expect(btn.getAttribute('data-file-protocol-warning')).toBe('true');
+            expect(btn.title).toContain('Local mode:');
+            expect(warning).not.toBeNull();
+            expect(warning.getAttribute('data-bs-toggle')).toBe('tooltip');
+        });
     });
 
     describe('folder picker (webkitdirectory)', () => {
@@ -316,9 +362,17 @@ describe('exe_elpx_download', () => {
     });
 
     describe('downloadElpx function', () => {
+        it('keeps the deferred file:// warning off the real clock', () => {
+            expect(document.readyState).not.toBe('loading');
+
+            const realSetTimeout = vi.spyOn(globalThis, 'setTimeout');
+            runScript();
+            expect(realSetTimeout).not.toHaveBeenCalledWith(expect.any(Function), 100);
+            realSetTimeout.mockRestore();
+        });
+
         it('is exposed on window after script execution', () => {
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            runScript();
             expect(typeof window.downloadElpx).toBe('function');
         });
 
@@ -331,8 +385,7 @@ describe('exe_elpx_download', () => {
             const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             // Re-execute script
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            runScript();
 
             // downloadElpx should not be defined
             expect(global.downloadElpx).toBeUndefined();
@@ -638,8 +691,7 @@ describe('exe_elpx_download', () => {
                 <p class="exe-download-package-link"><a href="#">Download</a></p>
             `;
 
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            runScript();
 
             // Simulate the indicator being shown (sync DOM mutation) by
             // manually replicating the markup the show path produces.
@@ -673,8 +725,7 @@ describe('exe_elpx_download', () => {
                 arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
             });
 
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            runScript();
 
             await window.downloadElpx();
 
@@ -725,8 +776,7 @@ describe('exe_elpx_download', () => {
             });
 
             // Execute script
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            runScript();
 
             // Call downloadElpx
             await window.downloadElpx();
@@ -745,8 +795,7 @@ describe('exe_elpx_download', () => {
             const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             // Execute script (no manifest set)
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            runScript();
 
             // Call downloadElpx - should show alert
             await window.downloadElpx();
@@ -772,8 +821,7 @@ describe('exe_elpx_download', () => {
                 arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
             });
 
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            runScript();
 
             await window.downloadElpx({ filename: 'custom-name' });
 
@@ -813,8 +861,7 @@ describe('exe_elpx_download', () => {
                 return el;
             });
 
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
+            runScript();
 
             // Start downloadElpx (won't complete because we mock the click)
             const downloadPromise = window.downloadElpx();
