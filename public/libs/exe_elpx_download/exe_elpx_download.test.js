@@ -18,10 +18,31 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/**
+ * Build a Worker stand-in whose startup ends with the given outcome:
+ * 'message' (worker runs), 'error' (blocked, e.g. by CSP worker-src), 'throw'
+ * (constructor throws) or 'silent' (never answers).
+ */
+function createWorkerMock(outcome) {
+    return vi.fn(function () {
+        if (outcome === 'throw') {
+            throw new DOMException('Worker creation blocked', 'SecurityError');
+        }
+        this.terminate = vi.fn();
+        if (outcome === 'message' || outcome === 'error') {
+            setTimeout(() => {
+                const handler = outcome === 'message' ? this.onmessage : this.onerror;
+                if (handler) handler({ data: 1 });
+            }, 0);
+        }
+    });
+}
+
 describe('exe_elpx_download', () => {
     let scriptContent;
     let originalFflate;
     let originalFetch;
+    let originalWorker;
 
     beforeAll(() => {
         // Read the script content
@@ -40,7 +61,12 @@ describe('exe_elpx_download', () => {
                 const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // ZIP magic bytes
                 setTimeout(() => callback(null, mockZipData), 0);
             }),
+            zipSync: vi.fn(() => new Uint8Array([0x50, 0x4b, 0x03, 0x04])),
         };
+
+        // Mock a browser where blob: workers can start (no restrictive CSP)
+        originalWorker = global.Worker;
+        global.Worker = createWorkerMock('message');
 
         // Mock fetch
         global.fetch = vi.fn();
@@ -72,6 +98,7 @@ describe('exe_elpx_download', () => {
         // Restore originals
         global.fflate = originalFflate;
         global.fetch = originalFetch;
+        global.Worker = originalWorker;
         delete global.downloadElpx;
         delete window.__ELPX_MANIFEST__;
         vi.clearAllMocks();
@@ -408,6 +435,88 @@ describe('exe_elpx_download', () => {
         it('cleans up blob URL after download', () => {
             expect(scriptContent).toContain('URL.revokeObjectURL');
             expect(scriptContent).toContain('setTimeout');
+        });
+    });
+
+    describe('worker fallback under a restrictive CSP', () => {
+        async function runDownload() {
+            document.body.innerHTML = `<p class="exe-download-package-link"><a href="#">Download</a></p>`;
+            window.__ELPX_MANIFEST__ = {
+                version: 1,
+                files: ['content.xml', 'theme/style.css'],
+                projectTitle: 'CSP Project',
+                basePath: '',
+            };
+            global.fetch.mockResolvedValue({
+                ok: true,
+                arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+            });
+
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+            await window.downloadElpx();
+        }
+
+        it('compresses with async workers when blob: workers can start', async () => {
+            await runDownload();
+
+            expect(global.fflate.zip).toHaveBeenCalled();
+            expect(global.fflate.zipSync).not.toHaveBeenCalled();
+            expect(global.URL.createObjectURL).toHaveBeenCalled();
+        });
+
+        it('falls back to zipSync when the CSP blocks blob: workers', async () => {
+            global.Worker = createWorkerMock('error');
+
+            await runDownload();
+
+            expect(global.fflate.zip).not.toHaveBeenCalled();
+            expect(global.fflate.zipSync).toHaveBeenCalledTimes(1);
+            const zipInput = global.fflate.zipSync.mock.calls[0][0];
+            expect(Object.keys(zipInput).sort()).toEqual(['content.xml', 'theme/style.css']);
+            expect(global.alert).not.toHaveBeenCalled();
+            expect(document.querySelector('.exe-download-package-link a').getAttribute('aria-busy')).toBeNull();
+        });
+
+        it('falls back to zipSync when creating the worker throws', async () => {
+            global.Worker = createWorkerMock('throw');
+
+            await runDownload();
+
+            expect(global.fflate.zip).not.toHaveBeenCalled();
+            expect(global.fflate.zipSync).toHaveBeenCalledTimes(1);
+        });
+
+        it('falls back to zipSync when Worker is unavailable', async () => {
+            delete global.Worker;
+
+            await runDownload();
+
+            expect(global.fflate.zip).not.toHaveBeenCalled();
+            expect(global.fflate.zipSync).toHaveBeenCalledTimes(1);
+        });
+
+        it('falls back to zipSync when the worker probe never answers', async () => {
+            vi.useFakeTimers();
+            try {
+                global.Worker = createWorkerMock('silent');
+
+                const download = runDownload();
+                await vi.advanceTimersByTimeAsync(5000);
+                await download;
+
+                expect(global.fflate.zip).not.toHaveBeenCalled();
+                expect(global.fflate.zipSync).toHaveBeenCalledTimes(1);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('terminates the probe worker', async () => {
+            await runDownload();
+
+            const probe = global.Worker.mock.instances[0];
+            expect(probe.terminate).toHaveBeenCalled();
         });
     });
 

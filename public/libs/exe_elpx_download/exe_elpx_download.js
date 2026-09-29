@@ -346,59 +346,118 @@
             .substring(0, 100);
     }
 
+    // File extensions that are already compressed — use STORE (level 0) to skip wasting CPU
+    var STORE_EXTENSIONS =
+        /\.(mp4|mp3|ogg|ogv|webm|woff|woff2|zip|gz|elpx)$/i;
+
+    // How long to wait for the probe worker before assuming workers are unusable
+    var WORKER_PROBE_TIMEOUT = 2000;
+    var workerSupportPromise = null;
+
+    /**
+     * Check whether this page may start blob: Web Workers.
+     *
+     * fflate.zip() compresses in workers created from blob: URLs and only listens for
+     * their messages. When a Content Security Policy blocks blob: workers (e.g. content
+     * served by a platform plugin without worker-src blob:), the worker never starts and
+     * fflate's callback is never called, so the download would hang forever.
+     * The result is cached for the lifetime of the page.
+     * @returns {Promise<boolean>}
+     */
+    function canUseZipWorkers() {
+        if (workerSupportPromise) {
+            return workerSupportPromise;
+        }
+        workerSupportPromise = new Promise(function (resolve) {
+            if (typeof Worker === 'undefined' || typeof Blob === 'undefined' || !URL.createObjectURL) {
+                resolve(false);
+                return;
+            }
+            var url = null;
+            var worker = null;
+            var timer = null;
+            var settled = false;
+            function finish(supported) {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                if (worker) {
+                    try { worker.terminate(); } catch (e) { /* ignore */ }
+                }
+                if (url) {
+                    try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+                }
+                resolve(supported);
+            }
+            try {
+                url = URL.createObjectURL(new Blob(['postMessage(1)'], { type: 'text/javascript' }));
+                worker = new Worker(url);
+                worker.onmessage = function () { finish(true); };
+                worker.onerror = function () { finish(false); };
+                timer = setTimeout(function () { finish(false); }, WORKER_PROBE_TIMEOUT);
+            } catch (e) {
+                finish(false);
+            }
+        });
+        return workerSupportPromise;
+    }
+
+    /**
+     * Compress with fflate, off the main thread when workers are allowed.
+     * @param {Object} zipInput - Map of path -> [Uint8Array, options]
+     * @returns {Promise<Uint8Array>}
+     */
+    async function zipFiles(zipInput) {
+        if (!(await canUseZipWorkers())) {
+            console.warn('[ELPX Download] Web Workers are unavailable (blocked by CSP?); compressing on the main thread');
+            return fflate.zipSync(zipInput);
+        }
+        return new Promise(function (resolve, reject) {
+            fflate.zip(zipInput, function (err, data) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(data);
+            });
+        });
+    }
+
     /**
      * Create ZIP and trigger download
      * @param {Object} files - Map of path -> Uint8Array
      * @param {string} projectName - Project name for filename
      */
-    // File extensions that are already compressed — use STORE (level 0) to skip wasting CPU
-    var STORE_EXTENSIONS =
-        /\.(mp4|mp3|ogg|ogv|webm|woff|woff2|zip|gz|elpx)$/i;
-
     async function createZipAndDownload(files, projectName) {
-        return new Promise(function (resolve, reject) {
-            try {
-                // Set per-file compression: skip already-compressed formats
-                var zipInput = {};
-                var fileKeys = Object.keys(files);
-                for (var f = 0; f < fileKeys.length; f++) {
-                    var key = fileKeys[f];
-                    if (STORE_EXTENSIONS.test(key)) {
-                        zipInput[key] = [files[key], { level: 0 }];
-                    } else {
-                        zipInput[key] = [files[key], { level: 6 }];
-                    }
-                }
-
-                // Use fflate.zip for async compression
-                fflate.zip(zipInput, function (err, data) {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-
-                    // Create blob and download
-                    var blob = new Blob([data], { type: 'application/zip' });
-                    var url = URL.createObjectURL(blob);
-
-                    var a = document.createElement('a');
-                    a.href = url;
-                    a.download = projectName + '.elpx';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-
-                    // Clean up
-                    setTimeout(function () {
-                        URL.revokeObjectURL(url);
-                    }, 1000);
-
-                    resolve();
-                });
-            } catch (e) {
-                reject(e);
+        // Set per-file compression: skip already-compressed formats
+        var zipInput = {};
+        var fileKeys = Object.keys(files);
+        for (var f = 0; f < fileKeys.length; f++) {
+            var key = fileKeys[f];
+            if (STORE_EXTENSIONS.test(key)) {
+                zipInput[key] = [files[key], { level: 0 }];
+            } else {
+                zipInput[key] = [files[key], { level: 6 }];
             }
-        });
+        }
+
+        var data = await zipFiles(zipInput);
+
+        // Create blob and download
+        var blob = new Blob([data], { type: 'application/zip' });
+        var url = URL.createObjectURL(blob);
+
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = projectName + '.elpx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Clean up
+        setTimeout(function () {
+            URL.revokeObjectURL(url);
+        }, 1000);
     }
 
     /**
