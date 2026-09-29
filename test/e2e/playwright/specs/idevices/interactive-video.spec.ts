@@ -1,6 +1,12 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { storedIdevice } from '../../helpers/idevice-clock-helpers';
-import { waitForAppReady, reloadPage, gotoWorkarea, expandIdeviceCategory } from '../../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+    expandIdeviceCategory,
+    getPreviewFrame,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -759,6 +765,83 @@ test.describe('Interactive Video iDevice', () => {
             expect(errors, 'the page threw').toEqual([]);
         });
     });
+
+    for (const view of ['editor', 'preview'] as const) {
+        test(`keeps one YouTube tracking timer and cancels it on cleanup in ${view}`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            // Exercise the real runtime's YouTube callbacks without network or playback.
+            await page.context().route('https://www.youtube.com/iframe_api', route =>
+                route.fulfill({
+                    contentType: 'application/javascript',
+                    body: `window.YT = { Player: class {
+                    constructor(id, options) {
+                        this.events = options.events;
+                        this.position = 4;
+                        this.reads = 0;
+                        queueMicrotask(() => this.events.onReady({ target: this }));
+                    }
+                    emitState(data) { this.events.onStateChange({ target: this, data }); }
+                    getCurrentTime() { this.reads++; return this.position; }
+                    playVideo() { this.emitState(1); }
+                    pauseVideo() { this.emitState(2); }
+                    stopVideo() { this.emitState(0); }
+                    seekTo(position) { this.position = position; }
+                }};`,
+                }),
+            );
+            const uuid = await createProject(page, `YouTube timer ${view}`);
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const pageId = await page.evaluate(html => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.getPages()[0];
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'interactive-video', {
+                    htmlContent: html,
+                });
+                return parent.id;
+            }, storedIdevice('interactive-video').html);
+            await page.locator(`.nav-element-text[data-node-id="${pageId}"]`).click();
+            await page.locator('#start-link').waitFor({ state: 'visible' });
+            if (view === 'preview') {
+                await page.click('#head-bottom-preview');
+            }
+            const root = view === 'preview' ? getPreviewFrame(page) : page;
+            await root.locator('#start-link').waitFor({ state: 'visible', timeout: 30000 });
+            const body = root.locator('body');
+            await expect
+                .poll(() => body.evaluate(() => typeof (window as any).$interactivevideo?.player?.emitState))
+                .toBe('function');
+            await page.clock.install();
+            await root.locator('#start-link').click();
+            await body.evaluate(() => {
+                const player = (window as any).$interactivevideo.player;
+                for (const state of [2, 3, 1, 2, 1]) player.emitState(state);
+            });
+            await page.clock.runFor(500);
+            expect(await body.evaluate(() => (window as any).$interactivevideo.player.reads)).toBe(1);
+            await body.evaluate(() => {
+                (window as any).$interactivevideo.player.position = 5;
+            });
+            await page.clock.runFor(500);
+            await expect(root.locator('#activity-slide .question')).toBeVisible();
+            await expect(root.locator('#activity-slide .question')).toContainText('1+1');
+            expect(await body.evaluate(() => (window as any).$interactivevideo.player.reads)).toBe(2);
+            await body.evaluate(() => {
+                const runtime = (window as any).$interactivevideo;
+                runtime.observersDisconnect();
+                runtime.player.emitState(1); // An event queued before cleanup must not restart polling.
+            });
+            await page.clock.runFor(1000);
+            expect(
+                await body.evaluate(() => ({
+                    reads: (window as any).$interactivevideo.player.reads,
+                    timer: (window as any).$interactivevideo.youtubeCounter,
+                })),
+            ).toEqual({ reads: 2, timer: null });
+        });
+    }
 
     test.describe('Configuration API', () => {
         test('should have eXeLearning.config defined after page load', async ({ authenticatedPage, createProject }) => {

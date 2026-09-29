@@ -12,7 +12,7 @@
 
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,7 +30,7 @@ function loadExportIdevice(code) {
   modifiedCode = modifiedCode.replace(/var\s+mejsFullScreen;/, 'global.mejsFullScreen = undefined;');
 
   // eslint-disable-next-line no-eval
-  (0, eval)(modifiedCode);
+  (0, eval)(`${modifiedCode}\n//# sourceURL=${pathToFileURL(join(__dirname, 'interactive-video.js')).href}`);
   return global.$interactivevideo;
 }
 
@@ -1044,6 +1044,133 @@ describe('interactive-video iDevice export', () => {
       $interactivevideo.numSlides = 4;
 
       expect($interactivevideo.getScore()).toBe(7.5);
+    });
+  });
+
+  describe('YouTube tracking lifecycle', () => {
+    let events;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      global.$ = jquery;
+      window.$ = jquery;
+      global.InteractiveVideo = { slides: [] };
+      global.YT = {
+        Player: vi.fn(function (_id, options) {
+          events = options.events;
+          this.getCurrentTime = vi.fn(() => 5);
+        }),
+      };
+      $interactivevideo.type = 'youtube';
+      vi.spyOn($interactivevideo, 'track').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'checkSlides').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'complete').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'showYoutubeFallback').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      $interactivevideo.ready();
+    });
+
+    afterEach(() => {
+      $interactivevideo.observersDisconnect();
+      delete global.YT;
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    it('keeps one poller through repeated play, pause, buffering and ended events', () => {
+      events.onReady();
+      expect($interactivevideo.complete).toHaveBeenCalledOnce();
+      for (const data of [1, 2, 3, 1, 0, 1]) events.onStateChange({ data });
+      expect(vi.getTimerCount()).toBe(1);
+      vi.advanceTimersByTime(1500);
+      expect($interactivevideo.track).toHaveBeenCalledTimes(3);
+      expect($interactivevideo.track).toHaveBeenLastCalledWith(5);
+      expect($interactivevideo.checkSlides).toHaveBeenCalledTimes(6);
+      expect($interactivevideo.hasPlayed).toBe(true);
+    });
+
+    it('continues tracking seeks while paused', () => {
+      events.onStateChange({ data: 2 });
+      $interactivevideo.player.getCurrentTime.mockReturnValue(12);
+      vi.advanceTimersByTime(500);
+      expect($interactivevideo.track).toHaveBeenCalledWith(12);
+    });
+
+    it.each([null, {}])('stops polling if the player becomes unavailable: %s', player => {
+      $interactivevideo.player = player;
+      events.onStateChange({ data: 1 });
+      vi.advanceTimersByTime(500);
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.youtubeCounter).toBeNull();
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+    });
+
+    it('does not drive a replacement player with the previous timer', () => {
+      events.onStateChange({ data: 1 });
+      $interactivevideo.player = { getCurrentTime: vi.fn(() => 20) };
+      vi.advanceTimersByTime(500);
+      expect($interactivevideo.player.getCurrentTime).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps callbacks bound to their runtime when the global changes', () => {
+      const other = { track: vi.fn(), youtubeCounter: null };
+      global.$interactivevideo = other;
+      events.onStateChange({ data: 1 });
+      vi.advanceTimersByTime(500);
+      expect($interactivevideo.track).toHaveBeenCalledOnce();
+      expect(other.track).not.toHaveBeenCalled();
+      expect(other.youtubeCounter).toBeNull();
+    });
+
+    it('cancels timers even without document data and ignores late player events', () => {
+      events.onStateChange({ data: 1 });
+      $interactivevideo.localCounter = setInterval(() => {}, 500);
+      global.InteractiveVideo = undefined;
+      $interactivevideo.observersDisconnect();
+      $interactivevideo.observersDisconnect();
+      events.onStateChange({ data: 1 });
+      events.onReady();
+      events.onError({ data: 150 });
+      vi.advanceTimersByTime(1000);
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect($interactivevideo.complete).not.toHaveBeenCalled();
+      expect($interactivevideo.showYoutubeFallback).not.toHaveBeenCalled();
+    });
+
+    it('starts a fresh session without reviving callbacks from the previous player', () => {
+      const oldEvents = events;
+      oldEvents.onStateChange({ data: 1 });
+      $interactivevideo.ready();
+      expect(vi.getTimerCount()).toBe(0);
+      oldEvents.onStateChange({ data: 1 });
+      oldEvents.onReady();
+      oldEvents.onError({ data: 150 });
+      expect(vi.getTimerCount()).toBe(0);
+      events.onStateChange({ data: 1 });
+      vi.advanceTimersByTime(500);
+      expect($interactivevideo.track).toHaveBeenCalledOnce();
+    });
+
+    it.each([2, 5, 100, 101, 150, 153])('stops polling on YouTube error %s', data => {
+      events.onStateChange({ data: 1 });
+      events.onError({ data });
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.youtubeCounter).toBeNull();
+      expect($interactivevideo.showYoutubeFallback).toHaveBeenCalledTimes([101, 150, 153].includes(data) ? 1 : 0);
+    });
+
+    it('cleans up its own runtime when the editor changes mode', async () => {
+      const node = document.createElement('div');
+      $interactivevideo.observeMutations(node);
+      events.onStateChange({ data: 1 });
+      global.$interactivevideo = {};
+      node.setAttribute('mode', 'edition');
+      await vi.waitFor(() => expect($interactivevideo.youtubeCounter).toBeNull());
+      expect($interactivevideo.observers.size).toBe(0);
+      events.onStateChange({ data: 1 });
+      expect(vi.getTimerCount()).toBe(0);
     });
   });
 

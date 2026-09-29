@@ -1067,6 +1067,26 @@ var $interactivevideo = {
         $interactivevideo.isSeek = false;
     },
 
+    startYoutubeTracking: function () {
+        if (this.youtubeCounter !== null) return;
+        const instance = this;
+        const player = this.player;
+        this.youtubeCounter = setInterval(function () {
+            if (player && instance.player === player && typeof player.getCurrentTime === 'function') {
+                instance.track(player.getCurrentTime());
+            } else {
+                instance.stopYoutubeTracking();
+            }
+        }, 500);
+    },
+
+    stopYoutubeTracking: function () {
+        if (this.youtubeCounter !== null) {
+            clearInterval(this.youtubeCounter);
+            this.youtubeCounter = null;
+        }
+    },
+
     ready: function () {
         $interactivevideo.orderSlides();
 
@@ -1086,6 +1106,10 @@ var $interactivevideo = {
 
             $interactivevideo.complete();
         } else if ($interactivevideo.type == 'youtube') {
+            const instance = this;
+            const session = {};
+            this.stopYoutubeTracking();
+            this.youtubeSession = session;
             $interactivevideo.player = new YT.Player('player', {
                 height: '356',
                 width: '448',
@@ -1099,38 +1123,25 @@ var $interactivevideo = {
                 },
                 events: {
                     onReady: function () {
-                        $interactivevideo.complete();
+                        if (instance.youtubeSession !== session) return;
+                        instance.complete();
                     },
                     onStateChange: function (e) {
-                        $interactivevideo.hasPlayed = true;
-                        $interactivevideo.youtubeCounter = setInterval(
-                            function () {
-                                if (
-                                    $interactivevideo.player &&
-                                    typeof $interactivevideo.player
-                                        .getCurrentTime === 'function'
-                                ) {
-                                    $interactivevideo.track(
-                                        $interactivevideo.player.getCurrentTime()
-                                    );
-                                } else {
-                                    clearInterval(
-                                        $interactivevideo.youtubeCounter
-                                    );
-                                }
-                            },
-                            500
-                        );
-                        $interactivevideo.checkSlides();
+                        if (instance.youtubeSession !== session) return;
+                        instance.hasPlayed = true;
+                        instance.startYoutubeTracking();
+                        instance.checkSlides();
                     },
                     onError: function (e) {
+                        if (instance.youtubeSession !== session) return;
+                        instance.stopYoutubeTracking();
                         // Handle YouTube errors gracefully
                         console.error('[InteractiveVideo] YouTube error:', e.data);
                         // Error codes: 2=invalid param, 5=HTML5 error, 100=not found,
                         // 101/150=embedding disabled, 153=playback restricted
                         if (e.data === 150 || e.data === 101 || e.data === 153) {
                             // Video cannot be embedded - show fallback
-                            $interactivevideo.showYoutubeFallback();
+                            instance.showYoutubeFallback();
                         }
                     },
                 },
@@ -2892,6 +2903,7 @@ var $interactivevideo = {
 
     observeMutations: function (element) {
         if (!element) return;
+        const instance = this;
 
         if (!$interactivevideo.observers)
             $interactivevideo.observers = new Map();
@@ -2907,7 +2919,7 @@ var $interactivevideo = {
                     (mutation.attributeName === 'node-selected' &&
                         mode === 'view')
                 ) {
-                    $interactivevideo.observersDisconnect();
+                    instance.observersDisconnect();
                 }
             });
         });
@@ -2923,24 +2935,21 @@ var $interactivevideo = {
     },
 
     observersDisconnect: function () {
-        if (!$interactivevideo || !InteractiveVideo) return;
-
-        if ($interactivevideo.youtubeCounter) {
-            clearInterval($interactivevideo.youtubeCounter);
-            $interactivevideo.youtubeCounter = null;
-        }
-        if ($interactivevideo.localCounter) {
-            clearInterval($interactivevideo.localCounter);
-            $interactivevideo.localCounter = null;
+        // Ignore callbacks already queued by a player from this closed session.
+        this.youtubeSession = null;
+        this.stopYoutubeTracking();
+        if (this.localCounter) {
+            clearInterval(this.localCounter);
+            this.localCounter = null;
         }
 
         $('.interactive-video').find('.Games-ReportIconDiv').remove();
 
-        if ($interactivevideo.observers) {
-            $interactivevideo.observers.forEach((observer) => {
+        if (this.observers) {
+            this.observers.forEach((observer) => {
                 observer.disconnect();
             });
-            $interactivevideo.observers.clear();
+            this.observers.clear();
         }
     },
 
