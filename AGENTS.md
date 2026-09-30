@@ -114,7 +114,8 @@ Contributor-facing architecture records stay outside published MkDocs navigation
 [version control](doc/development/version-control.md), [environment and `.env`](doc/development/environment.md),
 [internationalization](doc/development/internationalization.md), [real-time/Yjs](doc/development/real-time.md),
 [REST API v1](doc/development/rest-api.md), [embedding](doc/development/embedding.md),
-[profiling](doc/development/profiling.md), [styles/themes](doc/development/styles.md),
+[profiling](doc/development/profiling.md), [TypeScript iDevices](doc/development/idevices-typescript.md),
+[styles/themes](doc/development/styles.md),
 [conventions](doc/conventions.md), [architecture](doc/architecture.md) and
 [ADRs](doc/architecture/adr/README.md).
 
