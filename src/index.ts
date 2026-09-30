@@ -24,6 +24,7 @@ import { themesRoutes } from './routes/themes';
 import { resourcesRoutes } from './routes/resources';
 import { userRoutes } from './routes/user';
 import { adminRoutes } from './routes/admin';
+import { aiRoutes } from './routes/ai';
 import { adminThemesRoutes } from './routes/admin-themes';
 import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
@@ -579,6 +580,7 @@ if (registerRootRoutes) {
         .use(resourcesRoutes)
         .use(userRoutes)
         .use(adminRoutes)
+        .use(aiRoutes)
         .use(adminThemesRoutes)
         .use(adminTemplatesRoutes)
         .use(yjsRoutes)
@@ -615,6 +617,7 @@ if (routePrefix) {
             .use(resourcesRoutes)
             .use(userRoutes)
             .use(adminRoutes)
+            .use(aiRoutes)
             .use(adminThemesRoutes)
             .use(adminTemplatesRoutes)
             .use(yjsRoutes)
