@@ -2,7 +2,7 @@
  * FileSystemAssetHandler Unit Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
@@ -164,6 +164,22 @@ describe('FileSystemAssetHandler', () => {
 
             const listed = await new FileSystemAssetProvider(testDir).listAssetMetadata();
             expect(listed.map(asset => asset.id).sort()).toEqual(['20260121165359522NHK/card.png', 'flat.png']);
+        });
+
+        it('should keep POSIX asset IDs when the platform path.join uses backslashes (Windows)', async () => {
+            const joinSpy = spyOn(path, 'join').mockImplementation(path.win32.join);
+            try {
+                const handler = new FileSystemAssetHandler(testDir);
+                const assetMap = await handler.extractAssetsFromZip({
+                    'content/resources/20260121165359522NHK/card.png': new Uint8Array([137, 80]),
+                });
+
+                expect(assetMap.get('content/resources/20260121165359522NHK/card.png')).toBe(
+                    '20260121165359522NHK/card.png',
+                );
+            } finally {
+                joinSpy.mockRestore();
+            }
         });
 
         it('should skip root-level files', async () => {

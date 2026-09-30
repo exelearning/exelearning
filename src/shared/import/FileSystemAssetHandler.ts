@@ -289,8 +289,11 @@ export class FileSystemAssetHandler implements AssetHandler {
 
             // Determine the folder path (directory structure to preserve)
             // e.g., for content/resources/20251009090601DKVACR/01.jpg -> content/resources/20251009090601DKVACR
-            const folderPath = path.dirname(assetInfo.relativePath);
-            const fullFolderPath = assetInfo.assetDir === 'content' ? path.join('content', folderPath) : folderPath;
+            // ZIP entry names are always POSIX, so use path.posix: on Windows path.join
+            // would yield backslashes and the ID regex below would strip nothing.
+            const folderPath = path.posix.dirname(assetInfo.relativePath);
+            const fullFolderPath =
+                assetInfo.assetDir === 'content' ? path.posix.join('content', folderPath) : folderPath;
 
             // Use the same path-based ID FileSystemAssetProvider gives this file,
             // relative to content/resources/ (e.g. 20251009090601DKVACR/01.jpg).
