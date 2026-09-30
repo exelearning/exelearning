@@ -59,6 +59,26 @@ describe('copy-vendor-libs', () => {
             expect(dests.some(d => d.endsWith('rubric/export/html2canvas.js'))).toBe(true);
         });
 
+        it('copies model-viewer and its local Draco/KTX2 decoders into the 3D viewer iDevice', () => {
+            const exportDir = 'files/perm/idevices/base/three-d-viewer/export/';
+            const dests = COPIES.map(c => c.dest.replace(/\\/g, '/'));
+            const modelViewer = COPIES[dests.findIndex(d => d.endsWith(`${exportDir}model-viewer.min.js`))];
+            // The UMD build defines window.ModelViewerElement, which model-viewer-decoders.js hooks.
+            expect(modelViewer?.src.replace(/\\/g, '/')).toEndWith('@google/model-viewer/dist/model-viewer-umd.min.js');
+            expect(modelViewer?.stripSourceMap).toBe(true);
+            for (const file of [
+                'draco/draco_wasm_wrapper.js',
+                'draco/draco_decoder.wasm',
+                'basis/basis_transcoder.js',
+                'basis/basis_transcoder.wasm',
+            ]) {
+                expect(
+                    dests.some(d => d.endsWith(exportDir + file)),
+                    file,
+                ).toBe(true);
+            }
+        });
+
         // (c) every COPIES src path resolves after install
         it('resolves every source path (run `bun install` first)', () => {
             const missing = COPIES.filter(c => !fs.existsSync(c.src)).map(c => path.relative(projectRoot, c.src));

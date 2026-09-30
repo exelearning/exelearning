@@ -92,6 +92,14 @@ function run() {
     console.log('Done.');
 }
 
+/** Decoder files model-viewer requests from its draco/ and basis/ locations. */
+const MODEL_VIEWER_DECODERS = [
+    'draco/draco_wasm_wrapper.js',
+    'draco/draco_decoder.wasm',
+    'basis/basis_transcoder.js',
+    'basis/basis_transcoder.wasm',
+];
+
 const COPIES = [
     // pdfjs-dist ships ESM as .mjs; copy to .js so nginx/static hosts serve
     // text/javascript instead of application/octet-stream (see #2254).
@@ -161,6 +169,24 @@ const COPIES = [
     // jquery-ui
     { src: nm('jquery-ui/dist/jquery-ui.min.js'), dest: pub('libs/jquery-ui/jquery-ui.min.js') },
     { src: nm('jquery-ui/dist/themes/base/jquery-ui.min.css'), dest: pub('libs/jquery-ui/jquery-ui.min.css') },
+
+    // model-viewer (3D viewer iDevice). The UMD build assigns window.ModelViewerElement,
+    // which model-viewer-decoders.js relies on; it keeps its historical file name.
+    // The map is not shipped, so drop the comment that announces it.
+    {
+        src: nm('@google/model-viewer/dist/model-viewer-umd.min.js'),
+        dest: pub('files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js'),
+        stripSourceMap: true,
+    },
+
+    // Draco decoder and Basis/KTX2 transcoder for model-viewer, served from the
+    // iDevice folder instead of www.gstatic.com (see model-viewer-decoders.js).
+    // Taken from the `three` package: its examples/jsm/libs copies are the ones
+    // the DRACOLoader/KTX2Loader bundled in model-viewer are released with.
+    ...MODEL_VIEWER_DECODERS.map(file => ({
+        src: nm(`three/examples/jsm/libs/${file}`),
+        dest: pub(`files/perm/idevices/base/three-d-viewer/export/${file}`),
+    })),
 ];
 
 // Exported for unit testing. The CLI entry point runs below.

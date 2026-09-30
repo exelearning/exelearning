@@ -201,6 +201,65 @@ test.describe('3D Viewer iDevice', () => {
         });
     });
 
+    test('model-viewer points its Draco and KTX2 decoders at the local iDevice folder', async ({
+        authenticatedPage,
+    }) => {
+        const page = authenticatedPage;
+        const remote: string[] = [];
+        page.on('request', req => {
+            if (/gstatic\.com|jsdelivr\.net/.test(req.url())) remote.push(req.url());
+        });
+        const result = await page.evaluate(async () => {
+            const base = `${location.origin}/files/perm/idevices/base/three-d-viewer/export/`;
+            const load = (src: string) =>
+                new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            if (!customElements.get('model-viewer')) {
+                await load(`${base}model-viewer-decoders.js`);
+                await load(`${base}model-viewer.min.js`);
+            }
+            // Instantiating the element is what applies the configured locations.
+            document.body.appendChild(document.createElement('model-viewer')).remove();
+            const MV = customElements.get('model-viewer') as any;
+            const decoders = ['draco/draco_wasm_wrapper.js', 'draco/draco_decoder.wasm'];
+            decoders.push('basis/basis_transcoder.js', 'basis/basis_transcoder.wasm');
+            const statuses = await Promise.all(decoders.map(f => fetch(base + f).then(r => r.status)));
+            return { base, draco: MV.dracoDecoderLocation, ktx2: MV.ktx2TranscoderLocation, statuses };
+        });
+        expect(result.draco).toBe(`${result.base}draco/`);
+        expect(result.ktx2).toBe(`${result.base}basis/`);
+        expect(result.statuses).toEqual([200, 200, 200, 200]);
+        expect(remote).toEqual([]);
+    });
+
+    test('vendored three ES modules load and parse an STL', async ({ authenticatedPage }) => {
+        const page = authenticatedPage;
+        const stl = fs.readFileSync(path.join(process.cwd(), 'test/fixtures/ascii-cube.stl'), 'utf-8');
+        const result = await page.evaluate(async source => {
+            const base = `${location.origin}/files/perm/idevices/base/three-d-viewer/export/`;
+            const THREE = await import(`${base}three.module.min.js`);
+            const { STLLoader } = await import(`${base}STLLoader.js`);
+            const { OrbitControls } = await import(`${base}OrbitControls.js`);
+            const geometry = new STLLoader().parse(source);
+            const controls = new OrbitControls(new THREE.PerspectiveCamera(), document.createElement('canvas'));
+            controls.dispose();
+            return {
+                revision: THREE.REVISION,
+                vertices: geometry.getAttribute('position').count,
+                sharedCore: geometry instanceof THREE.BufferGeometry,
+            };
+        }, stl);
+        expect(Number(result.revision)).toBeGreaterThanOrEqual(186);
+        expect(result.vertices).toBeGreaterThan(0);
+        // The addons must resolve `three` to the same module instance as the viewer.
+        expect(result.sharedCore).toBe(true);
+    });
+
     test.describe('Model Upload', () => {
         test('should upload GLB model and display in preview', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;

@@ -158,6 +158,15 @@ public/libs/jquery-ui/jquery-ui.min.js
 public/libs/jquery-ui/jquery-ui.min.css
 public/libs/fabric/fabric.min.js
 public/libs/dompurify/purify.min.js
+# 3D / 360° viewers: model-viewer + its Draco/KTX2 decoders (copy-vendor-libs.js)
+# and Three.js built by scripts/vendor-three.ts
+public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
+public/files/perm/idevices/base/three-d-viewer/export/draco/
+public/files/perm/idevices/base/three-d-viewer/export/basis/
+public/files/perm/idevices/base/three-d-viewer/export/three.module.min.js
+public/files/perm/idevices/base/three-d-viewer/export/OrbitControls.js
+public/files/perm/idevices/base/three-d-viewer/export/STLLoader.js
+public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js
 
 ###> claude-code ###
 .claude/settings.local.json

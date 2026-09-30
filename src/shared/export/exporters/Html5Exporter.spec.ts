@@ -2422,6 +2422,67 @@ describe('Html5Exporter', () => {
             expect(files.has('content/resources/unused.jpg')).toBe(false);
         });
 
+        it('should include content assets in preview files when a block has a custom icon', async () => {
+            const contentAssetId = 'a1b2c3d4-0000-4000-8000-000000000001';
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: `<p><img src="asset://${contentAssetId}.png"></p>`,
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                        {
+                            id: contentAssetId,
+                            filename: 'Captura desde 2026-09-29 10-13-04.png',
+                            originalPath: `${contentAssetId}/Captura desde 2026-09-29 10-13-04.png`,
+                            folderPath: '',
+                            mime: 'image/png',
+                            mimeType: 'image/png',
+                            data: Buffer.from('PNG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            expect(files.has('content/resources/Captura desde 2026-09-29 10-13-04.png')).toBe(true);
+        });
+
         it('should handle asset fetch failure gracefully', async () => {
             // Create asset provider that throws
             const failingAssets = new (class extends MockAssetProvider {
