@@ -602,6 +602,69 @@ test.describe('Form iDevice', () => {
         });
     });
 
+    test.describe('Pass rate', () => {
+        /**
+         * The exported activity graded every learner against a literal 50 in
+         * gameOver(), while the threshold an activity carries travels as
+         * `dropdownPassRate` — what ScormTestHandler writes when it imports a
+         * legacy SCORM Test. A half-right sheet therefore always passed.
+         *
+         * Here the activity asks for 100%, and a 1-out-of-2 sheet must fail.
+         * Against the old hardcode the same sheet reported a pass.
+         */
+        test('grades against the rate the activity carries, not a hardcoded 50', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // Two TinyMCE inits plus a preview render.
+            test.slow();
+
+            const projectUuid = await createProject(page, 'Form Pass Rate Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addFormIdeviceFromPanel(page);
+            await addTrueFalseQuestion(page, 'Water boils at 100 degrees Celsius.', true);
+            await addTrueFalseQuestion(page, 'The Earth orbits the Sun.', true);
+
+            // The control is in the edition form but its container is hidden,
+            // so drive the value the way save() reads it. Setting it is what a
+            // legacy import does to the stored property.
+            await page.evaluate(() => {
+                const dropdown = document.querySelector<HTMLSelectElement>('select.dropdownPassRate');
+                if (!dropdown) throw new Error('pass rate dropdown is not in the edition form');
+                dropdown.value = '100';
+            });
+
+            await saveFormIdevice(page);
+            await workarea.save();
+
+            await page.click('#head-bottom-preview');
+            await expect(page.locator('#previewsidenav')).toBeVisible({ timeout: 15000 });
+
+            const iframe = page.frameLocator('#preview-iframe');
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+
+            const questions = iframe.locator('[id^="TrueFalseQuestion_"]');
+            await expect(questions).toHaveCount(2);
+
+            // One right, one wrong: 50%, which clears the old hardcoded 50 and
+            // falls well short of the 100 the activity asks for.
+            await questions.nth(0).locator('input[type="radio"][value="1"]').check();
+            await questions.nth(1).locator('input[type="radio"][value="0"]').check();
+
+            await iframe.locator('[id^="form-button-check-"]').first().click();
+
+            const result = iframe.locator('[id^="form-result-test-"]').first();
+            await expect(result).toBeVisible({ timeout: 10000 });
+            await expect(result).toHaveText(/Sorry\. You failed the test/i);
+            await expect(result).toHaveClass(/fail-test/);
+        });
+    });
+
     test.describe('Persistence', () => {
         test('should persist after reload', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
