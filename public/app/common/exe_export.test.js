@@ -151,6 +151,7 @@ describe('exe_export.js', () => {
     window.$exe = { init: vi.fn(), clearHistory: vi.fn(), _confirmResponses: new Map() };
     window.$exe_i18n = {
       teacher_mode: 'Teacher Mode',
+      presentation_mode: 'Presentation mode',
       search: 'Search',
       hide: 'Hide',
       previous: 'Previous',
@@ -2854,6 +2855,476 @@ describe('exe_export.js', () => {
 
       // Verify init doesn't throw when called (it may have already been called)
       expect(() => window.$exeExport.searchBar.init()).not.toThrow();
+    });
+  });
+
+  describe('presentationMode', () => {
+    const pm = () => window.$exeExport.presentationMode;
+
+    function mockSearchParams(map) {
+      const original = window.URLSearchParams;
+      window.URLSearchParams = function () {
+        this.get = (key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null);
+      };
+      return () => {
+        window.URLSearchParams = original;
+      };
+    }
+
+    function makeEvent(overrides) {
+      return Object.assign(
+        {
+          key: '',
+          code: '',
+          ctrlKey: false,
+          metaKey: false,
+          altKey: false,
+          shiftKey: false,
+          isComposing: false,
+          defaultPrevented: false,
+          cancelable: true,
+          target: document.body,
+          preventDefault: vi.fn(),
+        },
+        overrides
+      );
+    }
+
+    // A minimal web-site export page: nav toggler + prev/next links, plus the
+    // "made with eXe" badge that the control must sit next to.
+    function buildWebSitePage({ expanded = true } = {}) {
+      document.body.className = 'exe-export exe-web-site';
+      document.body.innerHTML =
+        '<button type="button" id="siteNavToggler" aria-expanded="' + (expanded ? 'true' : 'false') + '"></button>' +
+        '<nav id="siteNav"><a href="page1.html">1</a><a href="page2.html">2</a></nav>' +
+        '<div class="nav-buttons"><a class="nav-button-left" href="prev.html">Prev</a><a class="nav-button-right" href="next.html">Next</a></div>' +
+        '<p id="made-with-eXe"><a href="https://exelearning.net/">eXe</a></p>';
+      const toggler = document.getElementById('siteNavToggler');
+      toggler.addEventListener('click', () => {
+        toggler.setAttribute('aria-expanded', toggler.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+      });
+    }
+
+    function bootstrapWith(value) {
+      const restore = mockSearchParams(value === undefined ? {} : { 'exe-presentation': value });
+      pm().bootstrap();
+      restore();
+    }
+
+    const control = () => document.getElementById('exe-presentation-toggler');
+    const menuExpanded = () => document.getElementById('siteNavToggler').getAttribute('aria-expanded');
+    const firstMenuHref = () => document.querySelector('#siteNav a').getAttribute('href');
+    const presenting = () => document.documentElement.classList.contains('mode-presentation');
+
+    let replaceState;
+
+    beforeEach(() => {
+      window.$exe_i18n.exit_presentation_mode = 'Exit presentation mode';
+      window.$exe_i18n.presentation_mode_keys = 'Keys: Left/Right change page, M menu, T teacher mode, F11 full screen';
+      // Earlier describes replace window.location with bare objects and never restore
+      // it; the URL rewrite needs a real href, so pin one for these tests.
+      Object.defineProperty(window, 'location', {
+        value: { href: 'http://localhost/index.html', search: '' },
+        writable: true,
+        configurable: true,
+      });
+      replaceState = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      pm().leave();
+      replaceState.mockRestore();
+      document.documentElement.classList.remove('mode-presentation');
+      document.body.className = '';
+      window.top = window;
+    });
+
+    describe('bootstrap (the parameter carries the state)', () => {
+      it('is unavailable and captures nothing without the parameter', () => {
+        bootstrapWith(undefined);
+        expect(pm()._available).toBe(false);
+        expect(pm().navParams()).toBe('');
+        expect(presenting()).toBe(false);
+      });
+
+      it.each(['1', 'true', 'yes'])('?exe-presentation=%s requests the mode flicker-free', (value) => {
+        bootstrapWith(value);
+        expect(pm()._available).toBe(true);
+        expect(presenting()).toBe(true);
+      });
+
+      it.each(['0', 'false', 'no'])('?exe-presentation=%s makes the control available with the mode off', (value) => {
+        bootstrapWith(value);
+        expect(pm()._available).toBe(true);
+        expect(presenting()).toBe(false);
+        expect(pm().navParams()).toBe('exe-presentation=0');
+      });
+    });
+
+    describe('isSupported (web site export, top-level document only)', () => {
+      it('supports a top-level web site export', () => {
+        buildWebSitePage();
+        expect(pm().isSupported()).toBe(true);
+      });
+
+      it.each(['exe-scorm', 'exe-ims', 'exe-epub'])('rejects a %s export', (cls) => {
+        document.body.className = 'exe-export ' + cls;
+        expect(pm().isSupported()).toBe(false);
+      });
+
+      it('rejects a page without the web site body class', () => {
+        document.body.className = 'exe-export';
+        expect(pm().isSupported()).toBe(false);
+      });
+
+      it('rejects a document embedded in an iframe', () => {
+        buildWebSitePage();
+        window.top = {};
+        expect(pm().isSupported()).toBe(false);
+      });
+    });
+
+    describe('init', () => {
+      it('injects nothing without the parameter', () => {
+        buildWebSitePage();
+        bootstrapWith(undefined);
+        pm().init();
+        expect(control()).toBeNull();
+        expect(firstMenuHref()).toBe('page1.html');
+      });
+
+      it('injects nothing and drops the requested mode when the export is not supported', () => {
+        document.body.className = 'exe-export exe-scorm';
+        document.body.innerHTML = '<nav id="siteNav"><a href="page1.html">1</a></nav>';
+        bootstrapWith('1');
+        pm().init();
+        expect(control()).toBeNull();
+        expect(presenting()).toBe(false);
+        expect(pm().isActive()).toBe(false);
+      });
+
+      it('with =1 enters the mode at once: exit control, collapsed menu, links carrying =1', () => {
+        buildWebSitePage();
+        bootstrapWith('1');
+        pm().init();
+        expect(control().tagName).toBe('BUTTON');
+        expect(control().getAttribute('type')).toBe('button');
+        expect(control().textContent).toBe('Exit presentation mode');
+        expect(control().title).toBe('Keys: Left/Right change page, M menu, T teacher mode, F11 full screen');
+        expect(pm().isActive()).toBe(true);
+        expect(menuExpanded()).toBe('false');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=1');
+        expect(document.querySelector('a.nav-button-right').getAttribute('href')).toBe('next.html?exe-presentation=1');
+      });
+
+      it('with =0 offers the control with the mode off and links carrying =0', () => {
+        buildWebSitePage();
+        bootstrapWith('0');
+        pm().init();
+        expect(control().textContent).toBe('Presentation mode');
+        expect(pm().isActive()).toBe(false);
+        expect(menuExpanded()).toBe('true');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=0');
+      });
+
+      it('appends the control before </body>, after the made-with-eXe badge', () => {
+        buildWebSitePage();
+        bootstrapWith('1');
+        pm().init();
+        expect(document.body.lastElementChild).toBe(control());
+        expect(control().previousElementSibling.id).toBe('made-with-eXe');
+      });
+
+      it('falls back to English labels when the i18n bundle predates the keys', () => {
+        delete window.$exe_i18n.presentation_mode;
+        delete window.$exe_i18n.exit_presentation_mode;
+        delete window.$exe_i18n.presentation_mode_keys;
+        buildWebSitePage();
+        bootstrapWith('1');
+        pm().init();
+        expect(control().textContent).toBe('Exit presentation mode');
+        expect(control().title).toBe('Keys: Left/Right change page, M menu, T teacher mode, F11 full screen');
+        pm().leave();
+        expect(control().textContent).toBe('Presentation mode');
+      });
+
+      it('does not add a second control when called twice', () => {
+        buildWebSitePage();
+        bootstrapWith('1');
+        pm().init();
+        pm().init();
+        expect(document.querySelectorAll('#exe-presentation-toggler').length).toBe(1);
+      });
+
+      it('never throws when the theme has no nav toggler', () => {
+        buildWebSitePage();
+        document.getElementById('siteNavToggler').remove();
+        bootstrapWith('1');
+        expect(() => pm().init()).not.toThrow();
+        expect(pm().isActive()).toBe(true);
+      });
+    });
+
+    describe('enter / leave / toggle', () => {
+      beforeEach(() => {
+        buildWebSitePage();
+        bootstrapWith('0');
+        pm().init();
+      });
+
+      it('enter() marks <html>, relabels the control, collapses the menu and rewrites links and URL to =1', () => {
+        pm().enter();
+        expect(presenting()).toBe(true);
+        expect(control().textContent).toBe('Exit presentation mode');
+        expect(menuExpanded()).toBe('false');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=1');
+        expect(replaceState.mock.lastCall[2]).toContain('exe-presentation=1');
+      });
+
+      it('enter() leaves an already collapsed menu alone', () => {
+        const toggler = document.getElementById('siteNavToggler');
+        toggler.setAttribute('aria-expanded', 'false');
+        const clickSpy = vi.spyOn(toggler, 'click');
+        pm().enter();
+        expect(clickSpy).not.toHaveBeenCalled();
+      });
+
+      it('leave() reverses everything and rewrites links and URL to =0', () => {
+        pm().enter();
+        pm().leave();
+        expect(presenting()).toBe(false);
+        expect(control().textContent).toBe('Presentation mode');
+        expect(menuExpanded()).toBe('true');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=0');
+        expect(replaceState.mock.lastCall[2]).toContain('exe-presentation=0');
+      });
+
+      it('uses no storage: the URL is the only state', () => {
+        const setItem = vi.spyOn(window.localStorage, 'setItem');
+        pm().enter();
+        pm().leave();
+        expect(setItem).not.toHaveBeenCalled();
+      });
+
+      it('the menu can still be opened normally while presenting', () => {
+        pm().enter();
+        document.getElementById('siteNavToggler').click();
+        expect(menuExpanded()).toBe('true');
+        expect(presenting()).toBe(true);
+      });
+
+      it('clicking the control toggles the mode', () => {
+        control().click();
+        expect(pm().isActive()).toBe(true);
+        control().click();
+        expect(pm().isActive()).toBe(false);
+      });
+
+      it('survives a history API that refuses to rewrite the URL', () => {
+        replaceState.mockImplementation(() => {
+          throw new Error('SecurityError');
+        });
+        expect(() => pm().enter()).not.toThrow();
+        expect(pm().isActive()).toBe(true);
+      });
+
+      it('enter() twice binds a single keydown listener', () => {
+        const addSpy = vi.spyOn(document, 'addEventListener');
+        pm().enter();
+        pm().enter();
+        expect(addSpy.mock.calls.filter((c) => c[0] === 'keydown').length).toBe(1);
+        addSpy.mockRestore();
+      });
+
+      it('leave() removes the keydown listener', () => {
+        const removeSpy = vi.spyOn(document, 'removeEventListener');
+        pm().enter();
+        pm().leave();
+        expect(removeSpy.mock.calls.filter((c) => c[0] === 'keydown').length).toBe(1);
+        removeSpy.mockRestore();
+      });
+    });
+
+    describe('keys while presenting', () => {
+      beforeEach(() => {
+        buildWebSitePage();
+        bootstrapWith('1');
+        pm().init();
+      });
+
+      it.each(['ArrowRight', 'PageDown'])('%s goes to the next page', (key) => {
+        const next = document.querySelector('a.nav-button-right');
+        const clickSpy = vi.spyOn(next, 'click');
+        const event = makeEvent({ key });
+        pm().handleKeydown(event);
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(event.preventDefault).toHaveBeenCalledTimes(1);
+      });
+
+      it.each(['ArrowLeft', 'PageUp'])('%s goes to the previous page', (key) => {
+        const prev = document.querySelector('a.nav-button-left');
+        const clickSpy = vi.spyOn(prev, 'click');
+        const event = makeEvent({ key });
+        pm().handleKeydown(event);
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(event.preventDefault).toHaveBeenCalledTimes(1);
+      });
+
+      it.each(['ArrowUp', 'ArrowDown', 'Escape', ' ', 'Enter', 'f'])('%s is left to the browser', (key) => {
+        const event = makeEvent({ key });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('m shows and hides the menu through the style toggler', () => {
+        const event = makeEvent({ key: 'm', code: 'KeyM' });
+        pm().handleKeydown(event);
+        expect(menuExpanded()).toBe('true');
+        expect(event.preventDefault).toHaveBeenCalledTimes(1);
+        pm().handleKeydown(makeEvent({ key: 'm', code: 'KeyM' }));
+        expect(menuExpanded()).toBe('false');
+      });
+
+      it('m works by physical key on any layout and does nothing without a toggler', () => {
+        const byCode = makeEvent({ key: 'µ', code: 'KeyM' });
+        pm().handleKeydown(byCode);
+        expect(byCode.preventDefault).toHaveBeenCalledTimes(1);
+        document.getElementById('siteNavToggler').remove();
+        const event = makeEvent({ key: 'm', code: 'KeyM' });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('t toggles Teacher Mode through its own toggle when it is on the page', () => {
+        document.body.insertAdjacentHTML('beforeend', '<input type="checkbox" id="teacher-mode-toggler">');
+        const toggle = document.getElementById('teacher-mode-toggler');
+        const clickSpy = vi.spyOn(toggle, 'click');
+        const event = makeEvent({ key: 't', code: 'KeyT' });
+        pm().handleKeydown(event);
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(event.preventDefault).toHaveBeenCalledTimes(1);
+      });
+
+      it('t does nothing when Teacher Mode is not available on the page', () => {
+        const event = makeEvent({ key: 't', code: 'KeyT' });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it.each([{ ctrlKey: true }, { metaKey: true }, { altKey: true }])('never shadows a modified m or t %o', (mods) => {
+        for (const [key, code] of [['m', 'KeyM'], ['t', 'KeyT']]) {
+          const event = makeEvent(Object.assign({ key, code }, mods));
+          pm().handleKeydown(event);
+          expect(event.preventDefault).not.toHaveBeenCalled();
+        }
+      });
+
+      it('does nothing when there is no page to go to', () => {
+        document.querySelector('a.nav-button-right').remove();
+        const event = makeEvent({ key: 'ArrowRight' });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it.each([{ altKey: true }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }])(
+        'never shadows a modified arrow key %o',
+        (mods) => {
+          const event = makeEvent(Object.assign({ key: 'ArrowLeft' }, mods));
+          pm().handleKeydown(event);
+          expect(event.preventDefault).not.toHaveBeenCalled();
+        }
+      );
+
+      it('does nothing while typing in a form field', () => {
+        const input = document.createElement('input');
+        document.body.appendChild(input);
+        const event = makeEvent({ key: 'ArrowRight', target: input });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('does nothing when something already handled the event', () => {
+        const event = makeEvent({ key: 'ArrowRight', defaultPrevented: true });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('does nothing while an overlay owns the keyboard', () => {
+        document.body.insertAdjacentHTML('beforeend', '<div class="sl-wrapper"></div>');
+        const event = makeEvent({ key: 'ArrowRight' });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('keys are inert again after leaving the mode', () => {
+        pm().leave();
+        const next = document.querySelector('a.nav-button-right');
+        const clickSpy = vi.spyOn(next, 'click');
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true, bubbles: true }));
+        expect(clickSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('isTypingTarget', () => {
+      it.each(['input', 'textarea', 'select'])('is true inside a %s', (tag) => {
+        const el = document.createElement(tag);
+        document.body.appendChild(el);
+        expect(pm().isTypingTarget(el)).toBe(true);
+      });
+
+      it('is true inside contenteditable and role=textbox', () => {
+        document.body.innerHTML = '<div contenteditable="true"><span id="a"></span></div><div role="textbox"><span id="b"></span></div>';
+        expect(pm().isTypingTarget(document.getElementById('a'))).toBe(true);
+        expect(pm().isTypingTarget(document.getElementById('b'))).toBe(true);
+      });
+
+      it('is false for contenteditable="false" and for plain elements', () => {
+        document.body.innerHTML = '<div contenteditable="false"><span id="a"></span></div><p id="b"></p>';
+        expect(pm().isTypingTarget(document.getElementById('a'))).toBe(false);
+        expect(pm().isTypingTarget(document.getElementById('b'))).toBe(false);
+        expect(pm().isTypingTarget(null)).toBe(false);
+      });
+    });
+
+    describe('overlay signals', () => {
+      it('is inactive on a plain page', () => {
+        expect(pm().isOverlayActive()).toBe(false);
+      });
+
+      it('exe_lightbox (prettyPhoto) counts only while visible', () => {
+        document.body.innerHTML = '<div class="pp_pic_holder" style="display:none"></div>';
+        expect(pm().isOverlayActive()).toBe(false);
+        document.querySelector('.pp_pic_holder').style.display = 'block';
+        expect(pm().isOverlayActive()).toBe(true);
+      });
+
+      it.each(['sl-wrapper', 'Games-OverlayImage', 'mejs-container-fullscreen'])(
+        '.%s counts while present in the DOM',
+        (cls) => {
+          document.body.innerHTML = '<div class="' + cls + '"></div>';
+          expect(pm().isOverlayActive()).toBe(true);
+        }
+      );
+
+      it('an iDevice that went fullscreen on its own counts as an overlay', () => {
+        Object.defineProperty(document, 'fullscreenElement', { value: document.body, configurable: true });
+        try {
+          expect(pm().isOverlayActive()).toBe(true);
+        } finally {
+          delete document.fullscreenElement;
+        }
+      });
+
+      it('a broken probe never masks the other signals', () => {
+        document.body.innerHTML = '<div class="sl-wrapper"></div>';
+        const signals = pm().overlaySignals;
+        signals.unshift({ name: 'broken', isActive: () => { throw new Error('boom'); } });
+        try {
+          expect(pm().isOverlayActive()).toBe(true);
+        } finally {
+          signals.shift();
+        }
+      });
     });
   });
 });
