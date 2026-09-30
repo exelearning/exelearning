@@ -3,6 +3,8 @@
  *
  * Simple fullscreen overlay for print preview (no Bootstrap dependency)
  */
+import { createPreviewContentPolicy } from '../../../../utils/previewContentPolicy.js';
+
 export default class ModalPrintPreview {
     constructor(manager) {
         this.manager = manager;
@@ -117,6 +119,7 @@ export default class ModalPrintPreview {
                     : (window.eXeLearning?.config?.baseURL || window.location.origin),
                 basePath: window.eXeLearning?.config?.basePath || '',
                 version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
+                previewContentPolicy: createPreviewContentPolicy(yjsBridge.documentManager.projectId),
             },
             yjsBridge.assetManager || null
         );
@@ -124,6 +127,9 @@ export default class ModalPrintPreview {
         if (!result.success || !result.html) {
             throw new Error(result.error || _('Failed to generate preview'));
         }
+
+        const previewPanel = eXeLearning.app.interface?.previewButton?.getPanel?.();
+        previewPanel?._updateActiveContentIndicator?.(result.activeContentReport);
 
         // Resolve asset URLs if available
         const html = result.html;

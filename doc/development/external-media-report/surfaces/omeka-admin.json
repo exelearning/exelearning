@@ -1,0 +1,21 @@
+{
+  "id": "omeka-admin",
+  "expect": "promoted",
+  "platform": "Omeka S",
+  "name": "Ficha de media en administración",
+  "url": "http://localhost:8080/admin/media/14",
+  "frame": "iframe[data-exe-content-path]",
+  "login": "omeka",
+  "note": "ruta de admin, la que ofrece «Edit in eXeLearning»",
+  "players": [
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+  ],
+  "sandboxes": [
+    "allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+  ],
+  "canonicalHost": "object",
+  "youtubeSdk": "undefined",
+  "vimeoSdk": "undefined",
+  "contentSandbox": "allow-scripts allow-popups allow-forms",
+  "contentOpaque": true
+}
