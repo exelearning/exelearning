@@ -17,6 +17,15 @@ Trace `src/utils/asset-paths.ts`, `src/services/file-helper.ts`, `src/db/queries
   reinterpret a rejected path. Build paths with `path.join()`, never string concatenation.
 - Browser Yjs metadata, Cache API blobs and server files have different lifetimes. Check reload/offline
   behavior and ownership before deleting shared/referenced assets. Do not treat derived caches as canonical data.
+- Direct ELP/ELPX import happens in the browser: `importElpDirectly` → `importFromElpxViaYjs`, then the
+  UI refreshes from the Y.Doc and saves on explicit save/autosave. The fallback uploads chunks to
+  `POST /api/project/upload-chunk`, the server only concatenates them into a temp file, the workarea
+  reloads with `?import=...` and imports client-side, then calls `DELETE /api/project/cleanup-import`.
+  The server is never the normal package parser. Preserve cleanup-import and cancellation paths.
+- Preserve previous usable content on failed replacement/save. Close handles/kill processes before deleting
+  their files (Windows raises `EBUSY` on locked files); use isolated temp directories and clean up failed uploads/exports.
+- Large packages need bounded processing. Use existing metadata APIs and profiling rather than loading
+  every blob or base64 copy merely to count, list or locate assets.
 
 ## Client-side storage
 
@@ -28,15 +37,6 @@ Trace `src/utils/asset-paths.ts`, `src/services/file-helper.ts`, `src/db/queries
 | Cache API | `exe-assets-{uuid}` | Blob storage for images and files |
 
 Preserve these names when changing persistence, migration or cleanup behavior; existing browser data may depend on them.
-- Direct ELP/ELPX import happens in the browser: `importElpDirectly` → `importFromElpxViaYjs`, then the
-  UI refreshes from the Y.Doc and saves on explicit save/autosave. The fallback uploads chunks to
-  `POST /api/project/upload-chunk`, the server only concatenates them into a temp file, the workarea
-  reloads with `?import=...` and imports client-side, then calls `DELETE /api/project/cleanup-import`.
-  The server is never the normal package parser. Preserve cleanup-import and cancellation paths.
-- Preserve previous usable content on failed replacement/save. Close handles/kill processes before deleting
-  their files (Windows raises `EBUSY` on locked files); use isolated temp directories and clean up failed uploads/exports.
-- Large packages need bounded processing. Use existing metadata APIs and profiling rather than loading
-  every blob or base64 copy merely to count, list or locate assets.
 
 Run affected path/helper/query tests plus frontend asset/import tests. Include subpaths, legacy stored
 paths, invalid UUID/path input, failed replacement, reload and cleanup. Use disposable fixtures, never
