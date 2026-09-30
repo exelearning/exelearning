@@ -1067,17 +1067,70 @@ var $interactivevideo = {
         $interactivevideo.isSeek = false;
     },
 
-    startYoutubeTracking: function () {
+    /**
+     * Whether a video's tracking still belongs on screen: its container is in
+     * the page, and the page is not being edited.
+     *
+     * The editor never reloads the document between pages and runs a new copy
+     * of this script for the next page. A timer that waited for its own copy
+     * to be told to stop kept running once its video was gone: the observer
+     * meant to tell it gives up as the page loads, when the editor marks the
+     * page as selected.
+     *
+     * @param {Element|null} container - The video's #activity, taken as it was built
+     * @returns {boolean}
+     */
+    isTrackingLive: function (container) {
+        const $content = $('#node-content');
+        return (
+            !!container?.isConnected &&
+            !($content.length && $content.attr('mode') === 'edition')
+        );
+    },
+
+    startYoutubeTracking: function (container) {
         if (this.youtubeCounter !== null) return;
         const instance = this;
         const player = this.player;
         this.youtubeCounter = setInterval(function () {
+            if (!instance.isTrackingLive(container)) {
+                instance.stopYoutubeTracking();
+                // Gone with its page: the late events of its player are not
+                // this video's any more.
+                if (!container?.isConnected) instance.youtubeSession = null;
+                return;
+            }
             if (player && instance.player === player && typeof player.getCurrentTime === 'function') {
                 instance.track(player.getCurrentTime());
             } else {
                 instance.stopYoutubeTracking();
             }
         }, 500);
+    },
+
+    /**
+     * @param {Element|null} container - The video's #activity, taken as it was built
+     * @param {Function} readTime - Returns the video's position in seconds, or
+     * undefined once it cannot be read
+     */
+    startLocalTracking: function (container, readTime) {
+        if (this.localCounter !== null) return;
+        const instance = this;
+        this.localCounter = setInterval(function () {
+            const time = instance.isTrackingLive(container) ? readTime() : undefined;
+            if (typeof time === 'undefined') {
+                instance.stopLocalTracking();
+                return;
+            }
+            instance.track(time);
+        }, 500);
+    },
+
+    stopLocalTracking: function () {
+        if (this.localCounter !== null) {
+            clearInterval(this.localCounter);
+            this.localCounter = null;
+        }
     },
 
     stopYoutubeTracking: function () {
@@ -1108,6 +1161,8 @@ var $interactivevideo = {
         } else if ($interactivevideo.type == 'youtube') {
             const instance = this;
             const session = {};
+            // Taken now, while the ids on the page are still this video's.
+            const container = document.getElementById('activity');
             this.stopYoutubeTracking();
             this.youtubeSession = session;
             $interactivevideo.player = new YT.Player('player', {
@@ -1129,7 +1184,7 @@ var $interactivevideo = {
                     onStateChange: function (e) {
                         if (instance.youtubeSession !== session) return;
                         instance.hasPlayed = true;
-                        instance.startYoutubeTracking();
+                        instance.startYoutubeTracking(container);
                         instance.checkSlides();
                     },
                     onError: function (e) {
@@ -1147,49 +1202,32 @@ var $interactivevideo = {
                 },
             });
         } else if ($interactivevideo.type == 'local') {
+            const instance = this;
+            // Taken now, while the ids on the page are still this video's.
+            const container = document.getElementById('activity');
+            this.stopLocalTracking();
             $interactivevideo.complete();
 
             if ($interactivevideo.extension == 'flv') {
-                $interactivevideo.localCounter = setInterval(function () {
-                    if (
-                        typeof $interactivevideo.hourToSeconds(
-                            $('#player .mejs-currenttime')
-                        ) !== 'undefined'
-                    ) {
-                        $interactivevideo.track(
-                            $interactivevideo.hourToSeconds(
-                                $('#player .mejs-currenttime').eq(0).text()
-                            )
-                        );
-                    } else {
-                        clearInterval($interactivevideo.localCounter);
-                    }
-                }, 500);
+                // Read from this video's own time display. The lookup by id used
+                // to hand hourToSeconds the jQuery object instead of its text,
+                // and every tick threw.
+                instance.startLocalTracking(container, function () {
+                    const $time = $('.mejs-currenttime', container);
+                    return $time.length
+                        ? instance.hourToSeconds($time.eq(0).text())
+                        : undefined;
+                });
             } else {
-                $interactivevideo.mediaElementVideo[0].addEventListener(
-                    'playing',
-                    function (e) {
-                        $interactivevideo.localCounter = setInterval(
-                            function () {
-                                if (
-                                    typeof $interactivevideo.mediaElementVideo !==
-                                    'undefined'
-                                ) {
-                                    $interactivevideo.track(
-                                        $interactivevideo.mediaElementVideo[0]
-                                            .currentTime
-                                    );
-                                } else {
-                                    clearInterval(
-                                        $interactivevideo.localCounter
-                                    );
-                                }
-                            },
-                            500
-                        );
-                        $interactivevideo.checkSlides();
-                    }
-                );
+                const video = $interactivevideo.mediaElementVideo[0];
+                video.addEventListener('playing', function () {
+                    // Every resume fires "playing": one timer, not one per
+                    // resume, and it reads this video, not the next page's.
+                    instance.startLocalTracking(container, function () {
+                        return video.currentTime;
+                    });
+                    instance.checkSlides();
+                });
             }
         }
     },
@@ -2938,10 +2976,7 @@ var $interactivevideo = {
         // Ignore callbacks already queued by a player from this closed session.
         this.youtubeSession = null;
         this.stopYoutubeTracking();
-        if (this.localCounter) {
-            clearInterval(this.localCounter);
-            this.localCounter = null;
-        }
+        this.stopLocalTracking();
 
         $('.interactive-video').find('.Games-ReportIconDiv').remove();
 

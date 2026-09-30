@@ -1067,14 +1067,43 @@ describe('interactive-video iDevice export', () => {
       vi.spyOn($interactivevideo, 'complete').mockImplementation(() => {});
       vi.spyOn($interactivevideo, 'showYoutubeFallback').mockImplementation(() => {});
       vi.spyOn(console, 'error').mockImplementation(() => {});
+      // The video on the page: its tracking only runs while it is there.
+      document.body.innerHTML = '<div id="activity"><div id="player"></div></div>';
       $interactivevideo.ready();
     });
 
     afterEach(() => {
       $interactivevideo.observersDisconnect();
       delete global.YT;
+      document.body.innerHTML = '';
       vi.restoreAllMocks();
       vi.useRealTimers();
+    });
+
+    // The editor never reloads the document: the next page brings its own
+    // #activity, and this one's video is gone from it.
+    it('stops tracking once its video has left the page, and ignores its late events', () => {
+      events.onStateChange({ data: 1 });
+      document.body.innerHTML = '<div id="activity"><div id="player"></div></div>';
+
+      vi.advanceTimersByTime(500);
+      events.onStateChange({ data: 1 });
+      vi.advanceTimersByTime(1000);
+
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.youtubeCounter).toBeNull();
+      expect($interactivevideo.youtubeSession).toBeNull();
+    });
+
+    it('stops tracking while the page is being edited', () => {
+      events.onStateChange({ data: 1 });
+      document.body.insertAdjacentHTML('beforeend', '<div id="node-content" mode="edition"></div>');
+
+      vi.advanceTimersByTime(500);
+
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
     });
 
     it('keeps one poller through repeated play, pause, buffering and ended events', () => {
@@ -1170,6 +1199,100 @@ describe('interactive-video iDevice export', () => {
       await vi.waitFor(() => expect($interactivevideo.youtubeCounter).toBeNull());
       expect($interactivevideo.observers.size).toBe(0);
       events.onStateChange({ data: 1 });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
+  describe('local video tracking', () => {
+    const at = (video, seconds) =>
+      Object.defineProperty(video, 'currentTime', { value: seconds, writable: true, configurable: true });
+    const load = (extension, player) => {
+      document.body.innerHTML = `<div id="activity"><div id="player">${player}</div></div>`;
+      $interactivevideo.type = 'local';
+      $interactivevideo.extension = extension;
+      $interactivevideo.mediaElementVideo = jquery('#player video');
+      $interactivevideo.ready();
+    };
+    const video = () => document.querySelector('#player video');
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      global.$ = jquery;
+      window.$ = jquery;
+      global.InteractiveVideo = { slides: [] };
+      vi.spyOn($interactivevideo, 'track').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'checkSlides').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'complete').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      $interactivevideo.observersDisconnect();
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    it('keeps one timer through pauses and resumes', () => {
+      load('mp4', '<video></video>');
+      at(video(), 7);
+
+      for (let i = 0; i < 3; i++) video().dispatchEvent(new Event('playing'));
+      vi.advanceTimersByTime(500);
+
+      expect(vi.getTimerCount()).toBe(1);
+      expect($interactivevideo.track).toHaveBeenCalledExactlyOnceWith(7);
+      expect($interactivevideo.checkSlides).toHaveBeenCalledTimes(3);
+    });
+
+    it("reads its own video, not the one the next page's copy takes over", () => {
+      load('mp4', '<video></video>');
+      at(video(), 7);
+      video().dispatchEvent(new Event('playing'));
+
+      const next = document.createElement('video');
+      at(next, 42);
+      $interactivevideo.mediaElementVideo = jquery(next);
+      vi.advanceTimersByTime(500);
+
+      expect($interactivevideo.track).toHaveBeenCalledExactlyOnceWith(7);
+    });
+
+    it('stops once its video has left the page', () => {
+      load('mp4', '<video></video>');
+      video().dispatchEvent(new Event('playing'));
+      document.body.innerHTML = '<div id="activity"><div id="player"><video></video></div></div>';
+
+      vi.advanceTimersByTime(1000);
+
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.localCounter).toBeNull();
+    });
+
+    it('stops when the editor cleans up', () => {
+      load('mp4', '<video></video>');
+      video().dispatchEvent(new Event('playing'));
+
+      $interactivevideo.observersDisconnect();
+
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.localCounter).toBeNull();
+    });
+
+    it("reads an flv video's time from its own display", () => {
+      load('flv', '<span class="mejs-currenttime">00:07</span>');
+
+      vi.advanceTimersByTime(500);
+
+      expect($interactivevideo.track).toHaveBeenCalledExactlyOnceWith(7);
+    });
+
+    it('stops an flv video with no time display', () => {
+      load('flv', '');
+
+      vi.advanceTimersByTime(500);
+
+      expect($interactivevideo.track).not.toHaveBeenCalled();
       expect(vi.getTimerCount()).toBe(0);
     });
   });

@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { storedIdevice } from '../../helpers/idevice-clock-helpers';
+import { openPage, storedIdevice } from '../../helpers/idevice-clock-helpers';
 import {
     waitForAppReady,
     reloadPage,
@@ -441,6 +441,33 @@ async function createSingleChoiceSlide(
 /**
  * Helper to save the editor and close it
  */
+/**
+ * Serve a stand-in for YouTube's iframe API, so the runtime's real YouTube
+ * callbacks run without network or playback. The test drives its player by
+ * hand (`emitState`), and it counts every read of its position in `reads`.
+ */
+async function fakeYouTubeApi(page: Page): Promise<void> {
+    await page.context().route('https://www.youtube.com/iframe_api', route =>
+        route.fulfill({
+            contentType: 'application/javascript',
+            body: `window.YT = { Player: class {
+                constructor(id, options) {
+                    this.events = options.events;
+                    this.position = 4;
+                    this.reads = 0;
+                    queueMicrotask(() => this.events.onReady({ target: this }));
+                }
+                emitState(data) { this.events.onStateChange({ target: this, data }); }
+                getCurrentTime() { this.reads++; return this.position; }
+                playVideo() { this.emitState(1); }
+                pauseVideo() { this.emitState(2); }
+                stopVideo() { this.emitState(0); }
+                seekTo(position) { this.position = position; }
+            }};`,
+        }),
+    );
+}
+
 async function saveAndCloseEditor(page: Page, editorIframe: FrameLocator): Promise<void> {
     // Click the Save link in the actions menu (using CSS class selector to avoid translation issues)
     const saveLink = editorIframe.locator('#actions li.save a').first();
@@ -771,26 +798,7 @@ test.describe('Interactive Video iDevice', () => {
             authenticatedPage: page,
             createProject,
         }) => {
-            // Exercise the real runtime's YouTube callbacks without network or playback.
-            await page.context().route('https://www.youtube.com/iframe_api', route =>
-                route.fulfill({
-                    contentType: 'application/javascript',
-                    body: `window.YT = { Player: class {
-                    constructor(id, options) {
-                        this.events = options.events;
-                        this.position = 4;
-                        this.reads = 0;
-                        queueMicrotask(() => this.events.onReady({ target: this }));
-                    }
-                    emitState(data) { this.events.onStateChange({ target: this, data }); }
-                    getCurrentTime() { this.reads++; return this.position; }
-                    playVideo() { this.emitState(1); }
-                    pauseVideo() { this.emitState(2); }
-                    stopVideo() { this.emitState(0); }
-                    seekTo(position) { this.position = position; }
-                }};`,
-                }),
-            );
+            await fakeYouTubeApi(page);
             const uuid = await createProject(page, `YouTube timer ${view}`);
             await gotoWorkarea(page, uuid);
             await waitForAppReady(page);
@@ -842,6 +850,55 @@ test.describe('Interactive Video iDevice', () => {
             ).toEqual({ reads: 2, timer: null });
         });
     }
+
+    // The editor never reloads the document between pages and runs a new copy
+    // of the player's script for the next page. The first page's tracking used
+    // to outlive its video: the observer meant to stop it gives up as the page
+    // loads, when the editor marks the page as selected.
+    test('stops tracking a YouTube video once its page is left', async ({ authenticatedPage: page, createProject }) => {
+        await fakeYouTubeApi(page);
+        const uuid = await createProject(page, 'YouTube tracking across pages');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(html => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            for (const title of ['Clip one', 'Clip two']) {
+                const parent = binding.createPage(title);
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'interactive-video', {
+                    htmlContent: html,
+                });
+            }
+        }, storedIdevice('interactive-video').html);
+
+        await openPage(page, 'Clip one', '#start-link');
+        await expect
+            .poll(() => page.evaluate(() => typeof (window as any).$interactivevideo?.player?.emitState))
+            .toBe('function');
+        await page.clock.install();
+        await page.locator('#start-link').click();
+        await page.evaluate(() => {
+            const runtime = (window as any).$interactivevideo;
+            (window as any).__firstPage = runtime;
+            runtime.player.emitState(1);
+        });
+        await page.clock.runFor(500);
+        const readsOnItsPage = await page.evaluate(() => (window as any).__firstPage.player.reads);
+        expect(readsOnItsPage, "the first page's video was never tracked").toBeGreaterThan(0);
+
+        const firstVideo = await page.locator('#activity').elementHandle();
+        await openPage(page, 'Clip two', '#start-link');
+        await page.waitForFunction(element => !element?.isConnected, firstVideo);
+        const readsWhenLeft = await page.evaluate(() => (window as any).__firstPage.player.reads);
+        await page.clock.runFor(2000);
+
+        expect(
+            await page.evaluate(() => {
+                const first = (window as any).__firstPage;
+                return { reads: first.player.reads, timer: first.youtubeCounter };
+            }),
+            "the first page's video is still being tracked",
+        ).toEqual({ reads: readsWhenLeft, timer: null });
+    });
 
     test.describe('Configuration API', () => {
         test('should have eXeLearning.config defined after page load', async ({ authenticatedPage, createProject }) => {
