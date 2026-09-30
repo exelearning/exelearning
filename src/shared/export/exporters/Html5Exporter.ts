@@ -649,6 +649,10 @@ export class Html5Exporter extends BaseExporter {
             // Check for ELPX download support (looks for exe-package:elp in content)
             const needsElpxDownload = this.needsElpxDownloadSupport(pages);
 
+            // Collect asset:// references before preprocessing rewrites them to
+            // {{context_path}}/content/resources/... paths the collector cannot see.
+            const referencedAssetIds = this.getReferencedAssetIds(pages);
+
             // Pre-process pages: add filenames to asset URLs, convert internal links
             pages = await this.preprocessPagesForExport(pages);
 
@@ -853,7 +857,6 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 10. Add project assets
-            const referencedAssetIds = this.getReferencedAssetIds(pages);
             await this.addAssetsToPreviewFiles(files, fileList, referencedAssetIds);
 
             // 11. Generate ELPX manifest file and ensure required libraries if download-source-file is used
