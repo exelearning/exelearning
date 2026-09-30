@@ -2219,6 +2219,15 @@ describe('YjsProjectBridge', () => {
       expect(bridge._deferredPageReloadId).toBe('current-page');
     });
 
+    it('defers the reload when an iDevice is opened for editing during the debounce (#2434)', async () => {
+      bridge.schedulePageReloadIfCurrent('current-page');
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('current-page');
+    });
+
     it('flushDeferredPageReload runs the deferred reload once the edition ends', async () => {
       bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
       bridge.schedulePageReloadIfCurrent('current-page');
@@ -3320,7 +3329,7 @@ describe('YjsProjectBridge', () => {
 
       await bridge.updateRemoteComponent({ id: 'comp-1' }, 'page-1');
 
-      expect(mockEngine.updateRemoteIdeviceContent).toHaveBeenCalled();
+      expect(mockEngine.updateRemoteIdeviceContent).toHaveBeenCalledWith({ id: 'comp-1' }, 'page-1');
     });
 
     it('skips update when on different page', async () => {

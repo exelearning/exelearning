@@ -595,3 +595,56 @@ describe('map iDevice export — completion signal', () => {
         });
     });
 });
+
+// The editor never reloads the document between pages, and a map's ids are
+// numbered by position: the next page's first map takes the ids this one had.
+// The clock following a point's local video used to find that map by id and go
+// on driving its player, pausing it at this one's end point.
+describe('map iDevice export — the clock of a local video', () => {
+    const instance = 0;
+    let $eXeMapa;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        global.$eXeMapa = undefined;
+        $eXeMapa = loadExport();
+        document.body.innerHTML = `<div id="mapaMainContainer-${instance}"></div>`;
+        $eXeMapa.options = [{ localPlayer: { play: vi.fn() } }];
+        vi.spyOn($eXeMapa, 'updateTimerDisplayLocal').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        document.body.innerHTML = '';
+    });
+
+    it('follows its own video', () => {
+        $eXeMapa.startVideo('clip.mp4', 0, 10, instance, 1);
+
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeMapa.updateTimerDisplayLocal).toHaveBeenCalledTimes(3);
+    });
+
+    it("stops once its map leaves the page, leaving the next page's video alone", () => {
+        $eXeMapa.startVideo('clip.mp4', 0, 10, instance, 1);
+        vi.advanceTimersByTime(1000);
+
+        // The author moves to another page, whose first map is numbered the same.
+        document.body.innerHTML = `<div id="mapaMainContainer-${instance}"></div>`;
+        $eXeMapa.options[instance] = { localPlayer: { play: vi.fn() } };
+        vi.advanceTimersByTime(5000);
+
+        expect($eXeMapa.updateTimerDisplayLocal).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops while the page is being edited', () => {
+        $eXeMapa.startVideo('clip.mp4', 0, 10, instance, 1);
+        document.body.insertAdjacentHTML('beforeend', '<div id="node-content" mode="edition"></div>');
+
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeMapa.updateTimerDisplayLocal).not.toHaveBeenCalled();
+    });
+});

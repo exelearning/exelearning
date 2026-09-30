@@ -242,12 +242,15 @@ var $interactivevideo = {
         }
         var i18n = $interactivevideo.i18n;
 
+        // Not "slide": in the editor the iDevices menu gives each iDevice's button
+        // its type name as id, and the Slide iDevice's came first. The question
+        // was written into that button, never shown, and this stylesheet hid it.
         var html =
             '\
 			 <div id="activity-wrapper">\
 			 <div id="activity">\
 				 <div id="player" style="width:448px;height:356px"></div>\
-				 <div id="slide"></div>\
+				 <div id="activity-slide"></div>\
 			 </div>\
 		 ';
 
@@ -1045,7 +1048,7 @@ var $interactivevideo = {
         if ($interactivevideo.isSeek) {
             if ($('BODY').hasClass('active')) {
                 // Check if it has endTime
-                var slide = $('#slide');
+                var slide = $('#activity-slide');
                 var c = slide.attr('class');
                 if (c == 'image' || c == 'text') {
                     if (
@@ -1062,6 +1065,79 @@ var $interactivevideo = {
             }
         }
         $interactivevideo.isSeek = false;
+    },
+
+    /**
+     * Whether a video's tracking still belongs on screen: its container is in
+     * the page, and the page is not being edited.
+     *
+     * The editor never reloads the document between pages and runs a new copy
+     * of this script for the next page. A timer that waited for its own copy
+     * to be told to stop kept running once its video was gone: the observer
+     * meant to tell it gives up as the page loads, when the editor marks the
+     * page as selected.
+     *
+     * @param {Element|null} container - The video's #activity, taken as it was built
+     * @returns {boolean}
+     */
+    isTrackingLive: function (container) {
+        const $content = $('#node-content');
+        return (
+            !!container?.isConnected &&
+            !($content.length && $content.attr('mode') === 'edition')
+        );
+    },
+
+    startYoutubeTracking: function (container) {
+        if (this.youtubeCounter !== null) return;
+        const instance = this;
+        const player = this.player;
+        this.youtubeCounter = setInterval(function () {
+            if (!instance.isTrackingLive(container)) {
+                instance.stopYoutubeTracking();
+                // Gone with its page: the late events of its player are not
+                // this video's any more.
+                if (!container?.isConnected) instance.youtubeSession = null;
+                return;
+            }
+            if (player && instance.player === player && typeof player.getCurrentTime === 'function') {
+                instance.track(player.getCurrentTime());
+            } else {
+                instance.stopYoutubeTracking();
+            }
+        }, 500);
+    },
+
+    /**
+     * @param {Element|null} container - The video's #activity, taken as it was built
+     * @param {Function} readTime - Returns the video's position in seconds, or
+     * undefined once it cannot be read
+     */
+    startLocalTracking: function (container, readTime) {
+        if (this.localCounter !== null) return;
+        const instance = this;
+        this.localCounter = setInterval(function () {
+            const time = instance.isTrackingLive(container) ? readTime() : undefined;
+            if (typeof time === 'undefined') {
+                instance.stopLocalTracking();
+                return;
+            }
+            instance.track(time);
+        }, 500);
+    },
+
+    stopLocalTracking: function () {
+        if (this.localCounter !== null) {
+            clearInterval(this.localCounter);
+            this.localCounter = null;
+        }
+    },
+
+    stopYoutubeTracking: function () {
+        if (this.youtubeCounter !== null) {
+            clearInterval(this.youtubeCounter);
+            this.youtubeCounter = null;
+        }
     },
 
     ready: function () {
@@ -1083,6 +1159,12 @@ var $interactivevideo = {
 
             $interactivevideo.complete();
         } else if ($interactivevideo.type == 'youtube') {
+            const instance = this;
+            const session = {};
+            // Taken now, while the ids on the page are still this video's.
+            const container = document.getElementById('activity');
+            this.stopYoutubeTracking();
+            this.youtubeSession = session;
             $interactivevideo.player = new YT.Player('player', {
                 height: '356',
                 width: '448',
@@ -1096,86 +1178,56 @@ var $interactivevideo = {
                 },
                 events: {
                     onReady: function () {
-                        $interactivevideo.complete();
+                        if (instance.youtubeSession !== session) return;
+                        instance.complete();
                     },
                     onStateChange: function (e) {
-                        $interactivevideo.hasPlayed = true;
-                        $interactivevideo.youtubeCounter = setInterval(
-                            function () {
-                                if (
-                                    $interactivevideo.player &&
-                                    typeof $interactivevideo.player
-                                        .getCurrentTime === 'function'
-                                ) {
-                                    $interactivevideo.track(
-                                        $interactivevideo.player.getCurrentTime()
-                                    );
-                                } else {
-                                    clearInterval(
-                                        $interactivevideo.youtubeCounter
-                                    );
-                                }
-                            },
-                            500
-                        );
-                        $interactivevideo.checkSlides();
+                        if (instance.youtubeSession !== session) return;
+                        instance.hasPlayed = true;
+                        instance.startYoutubeTracking(container);
+                        instance.checkSlides();
                     },
                     onError: function (e) {
+                        if (instance.youtubeSession !== session) return;
+                        instance.stopYoutubeTracking();
                         // Handle YouTube errors gracefully
                         console.error('[InteractiveVideo] YouTube error:', e.data);
                         // Error codes: 2=invalid param, 5=HTML5 error, 100=not found,
                         // 101/150=embedding disabled, 153=playback restricted
                         if (e.data === 150 || e.data === 101 || e.data === 153) {
                             // Video cannot be embedded - show fallback
-                            $interactivevideo.showYoutubeFallback();
+                            instance.showYoutubeFallback();
                         }
                     },
                 },
             });
         } else if ($interactivevideo.type == 'local') {
+            const instance = this;
+            // Taken now, while the ids on the page are still this video's.
+            const container = document.getElementById('activity');
+            this.stopLocalTracking();
             $interactivevideo.complete();
 
             if ($interactivevideo.extension == 'flv') {
-                $interactivevideo.localCounter = setInterval(function () {
-                    if (
-                        typeof $interactivevideo.hourToSeconds(
-                            $('#player .mejs-currenttime')
-                        ) !== 'undefined'
-                    ) {
-                        $interactivevideo.track(
-                            $interactivevideo.hourToSeconds(
-                                $('#player .mejs-currenttime').eq(0).text()
-                            )
-                        );
-                    } else {
-                        clearInterval($interactivevideo.localCounter);
-                    }
-                }, 500);
+                // Read from this video's own time display. The lookup by id used
+                // to hand hourToSeconds the jQuery object instead of its text,
+                // and every tick threw.
+                instance.startLocalTracking(container, function () {
+                    const $time = $('.mejs-currenttime', container);
+                    return $time.length
+                        ? instance.hourToSeconds($time.eq(0).text())
+                        : undefined;
+                });
             } else {
-                $interactivevideo.mediaElementVideo[0].addEventListener(
-                    'playing',
-                    function (e) {
-                        $interactivevideo.localCounter = setInterval(
-                            function () {
-                                if (
-                                    typeof $interactivevideo.mediaElementVideo !==
-                                    'undefined'
-                                ) {
-                                    $interactivevideo.track(
-                                        $interactivevideo.mediaElementVideo[0]
-                                            .currentTime
-                                    );
-                                } else {
-                                    clearInterval(
-                                        $interactivevideo.localCounter
-                                    );
-                                }
-                            },
-                            500
-                        );
-                        $interactivevideo.checkSlides();
-                    }
-                );
+                const video = $interactivevideo.mediaElementVideo[0];
+                video.addEventListener('playing', function () {
+                    // Every resume fires "playing": one timer, not one per
+                    // resume, and it reads this video, not the next page's.
+                    instance.startLocalTracking(container, function () {
+                        return video.currentTime;
+                    });
+                    instance.checkSlides();
+                });
             }
         }
     },
@@ -1588,8 +1640,8 @@ var $interactivevideo = {
             }
 
             $('BODY').addClass('active');
-            $('#slide').before(
-                '<a href="#slide" id="slide-link" class="sr-av">' +
+            $('#activity-slide').before(
+                '<a href="#activity-slide" id="slide-link" class="sr-av">' +
                     InteractiveVideo.i18n.slide +
                     '</a>'
             );
@@ -1607,7 +1659,7 @@ var $interactivevideo = {
             }
             if (!e.endTime) $interactivevideo.controls.pause();
 
-            var slide = $('#slide');
+            var slide = $('#activity-slide');
             slide.html('');
             slide.attr('class', e.type);
 
@@ -2889,6 +2941,7 @@ var $interactivevideo = {
 
     observeMutations: function (element) {
         if (!element) return;
+        const instance = this;
 
         if (!$interactivevideo.observers)
             $interactivevideo.observers = new Map();
@@ -2904,7 +2957,7 @@ var $interactivevideo = {
                     (mutation.attributeName === 'node-selected' &&
                         mode === 'view')
                 ) {
-                    $interactivevideo.observersDisconnect();
+                    instance.observersDisconnect();
                 }
             });
         });
@@ -2920,24 +2973,18 @@ var $interactivevideo = {
     },
 
     observersDisconnect: function () {
-        if (!$interactivevideo || !InteractiveVideo) return;
-
-        if ($interactivevideo.youtubeCounter) {
-            clearInterval($interactivevideo.youtubeCounter);
-            $interactivevideo.youtubeCounter = null;
-        }
-        if ($interactivevideo.localCounter) {
-            clearInterval($interactivevideo.localCounter);
-            $interactivevideo.localCounter = null;
-        }
+        // Ignore callbacks already queued by a player from this closed session.
+        this.youtubeSession = null;
+        this.stopYoutubeTracking();
+        this.stopLocalTracking();
 
         $('.interactive-video').find('.Games-ReportIconDiv').remove();
 
-        if ($interactivevideo.observers) {
-            $interactivevideo.observers.forEach((observer) => {
+        if (this.observers) {
+            this.observers.forEach((observer) => {
                 observer.disconnect();
             });
-            $interactivevideo.observers.clear();
+            this.observers.clear();
         }
     },
 

@@ -818,4 +818,57 @@ describe('electrical-circuits iDevice export', () => {
             expect(attempt(0, 'global')).toBe(1);
         });
     });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. The clock used to find that game by id and run it, counting
+    // down on its display and moving it on to the next question.
+    describe('the clock of a game', () => {
+        const instance = 0;
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `<div id="elcpMainContainer-${instance}"></div>`;
+            $eXeEC.options = [{ gameStarted: false, numberQuestions: 1, selectsGame: [{}] }];
+            for (const method of ['updateTime', 'newQuestion', 'saveScormScore', 'drawSolution']) {
+                vi.spyOn($eXeEC, method).mockImplementation(() => {});
+            }
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        /** Start the game and put its first question on the clock, as newQuestion does. */
+        function startGame() {
+            $eXeEC.startGame(instance);
+            Object.assign($eXeEC.options[instance], { activeCounter: true, counter: 30 });
+        }
+
+        it('counts down on its own game', () => {
+            startGame();
+
+            vi.advanceTimersByTime(3000);
+
+            expect($eXeEC.updateTime).toHaveBeenLastCalledWith(27, instance);
+        });
+
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            startGame();
+            vi.advanceTimersByTime(1000);
+
+            // The author moves to another page, whose first game is numbered the same.
+            document.body.innerHTML = `<div id="elcpMainContainer-${instance}"></div>`;
+            $eXeEC.options[instance] = { gameStarted: true, activeCounter: true, counter: 30, selectsGame: [] };
+            $eXeEC.updateTime.mockClear();
+            $eXeEC.newQuestion.mockClear();
+            vi.advanceTimersByTime(60000);
+
+            expect($eXeEC.updateTime).not.toHaveBeenCalled();
+            expect($eXeEC.newQuestion).not.toHaveBeenCalled();
+            expect($eXeEC.options[instance].counter).toBe(30);
+        });
+    });
 });

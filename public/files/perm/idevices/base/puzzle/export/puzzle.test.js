@@ -1091,4 +1091,78 @@ describe('puzzle iDevice export', () => {
       expect($eXePuzzle.options[0].selectedTile).toBeNull();
     });
   });
+
+  // The editor never reloads the document between pages, and a puzzle's ids
+  // are numbered by position: the next page's first puzzle takes the ids this
+  // one had. Its clock and its solution animation used to find that puzzle by
+  // id and go on with it — counting on its display, revealing its tiles and
+  // showing its completed window.
+  describe('the timers of a puzzle', () => {
+    const instance = 0;
+
+    /** The author moves to another page, whose first puzzle is numbered the same. */
+    function moveToNextPage(options) {
+      document.body.innerHTML = `<div id="pzlMainContainer-${instance}"></div>`;
+      $eXePuzzle.options[instance] = options;
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `
+        <div id="pzlMainContainer-${instance}">
+          <div id="pzlImagePuzzle-${instance}"></div>
+        </div>`;
+      $eXePuzzle.options = [
+        { active: 0, loading: false, puzzlesGame: [{ columns: 2, rows: 2, type: 0, url: '', showTime: true }] },
+      ];
+      vi.spyOn($eXePuzzle, 'shuffle').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'checkCorrectPlaces').mockImplementation(() => false);
+      vi.spyOn($eXePuzzle, 'uptateTime').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'showCompletedWindows').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts the time on its own puzzle', () => {
+      $eXePuzzle.placePuzzlePieces({ w: 100, h: 100 }, instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXePuzzle.uptateTime).toHaveBeenLastCalledWith(3, instance);
+    });
+
+    it("leaves the next page's puzzle clock alone, though it takes the same ids", () => {
+      $eXePuzzle.placePuzzlePieces({ w: 100, h: 100 }, instance);
+      vi.advanceTimersByTime(1000);
+
+      moveToNextPage({ gameStarted: true, loading: false, counter: 0 });
+      $eXePuzzle.uptateTime.mockClear();
+      vi.advanceTimersByTime(5000);
+
+      expect($eXePuzzle.uptateTime).not.toHaveBeenCalled();
+      expect($eXePuzzle.options[instance].counter).toBe(0);
+    });
+
+    it('shows its own completed window at the end of the solution', () => {
+      $eXePuzzle.showSholution(instance);
+
+      vi.advanceTimersByTime(5000);
+
+      expect($eXePuzzle.showCompletedWindows).toHaveBeenCalledWith(instance);
+    });
+
+    it("stops the solution once its page is left, not showing the next page's window", () => {
+      $eXePuzzle.showSholution(instance);
+      vi.advanceTimersByTime(300);
+
+      moveToNextPage({ active: 0, puzzlesGame: [{}] });
+      vi.advanceTimersByTime(5000);
+
+      expect($eXePuzzle.showCompletedWindows).not.toHaveBeenCalled();
+    });
+  });
 });
