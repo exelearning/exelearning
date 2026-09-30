@@ -1,12 +1,12 @@
 /**
- * Unit tests for the SCORM/xAPI reporting glue.
+ * Unit tests for the SCORM reporting glue.
  *
  * The runtime reports through the SAME public flow every other gradable
  * iDevice uses (`$exeDevices.iDevice.gamification.scorm`), so the stub here
  * enforces the REAL contract: the shared layer resolves the activity's
  * identity from `main` and throws without it. An earlier version of this
  * runtime passed a shape of its own; because the call is guarded, the score
- * then vanished without a word — no SCORM, no xAPI.
+ * then vanished without a word.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -354,7 +354,7 @@ describe('reporting a live activity', () => {
         expect(game?.msgs).toMatchObject({ msgYouScore: 'Your score' });
     });
 
-    it('reports the score through sendScoreNew, which is what emits xAPI', () => {
+    it('reports the score through sendScoreNew', () => {
         const instance = boot();
         answerCorrectly();
         expect(instance.results['iv-q']).toBe(1);

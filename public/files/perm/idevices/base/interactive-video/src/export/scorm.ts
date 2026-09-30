@@ -1,5 +1,5 @@
 /**
- * SCORM/xAPI reporting through the SAME public flow every other gradable
+ * SCORM reporting through the SAME public flow every other gradable
  * iDevice uses (`$exeDevices.iDevice.gamification.scorm`). Tracking is
  * best-effort: failing here must never stop the video from playing.
  */
@@ -29,7 +29,7 @@ function gamificationScorm(): GamificationScorm | null {
  * `sendScoreNew` reads `scorerp`, `weighted` and `msgs` from it. Passing a
  * shape of our own — as an earlier version of this runtime did — throws
  * inside the shared layer, and since the call is guarded the score then
- * vanishes without a word: no SCORM, no xAPI.
+ * vanishes without a word.
  *
  * `main` is this instance's own container id, so several interactive videos
  * on one page each report as themselves.
@@ -89,8 +89,8 @@ export function trackingOptions(instance: RuntimeInstance): Record<string, unkno
 }
 
 /**
- * Announce this activity to the shared layer once, so SCORM can restore a
- * previous score and the xAPI emitter knows which iDevice we are.
+ * Announce this activity to the shared layer once, so SCORM knows which
+ * iDevice this is and can restore a previous score.
  */
 export function registerTracking(instance: RuntimeInstance): void {
     const scorm = gamificationScorm();
@@ -105,10 +105,9 @@ export function registerTracking(instance: RuntimeInstance): void {
 }
 
 /**
- * Report the current score: `sendScoreNew` emits the per-iDevice xAPI
- * `answered` statement and updates SCORM. Sent automatically (auto=true)
+ * Report the current score: `sendScoreNew` updates SCORM. Sent automatically (auto=true)
  * because this iDevice has no manual "save score" button, and only when the
- * reported value actually changed, so a re-render cannot duplicate statements.
+ * reported value actually changed, so a re-render cannot report it twice.
  */
 export function reportScore(instance: RuntimeInstance): void {
     const scorm = gamificationScorm();

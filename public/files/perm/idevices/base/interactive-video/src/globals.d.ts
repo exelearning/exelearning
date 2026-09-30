@@ -70,7 +70,7 @@ declare var eXe:
       }
     | undefined;
 
-/** The shared export/preview helper layer (gamification, SCORM, xAPI). */
+/** The shared export/preview helper layer (gamification, SCORM). */
 declare var $exeDevices:
     | {
           iDevice?: {

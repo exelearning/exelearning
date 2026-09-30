@@ -651,17 +651,16 @@ uses, and no second emitter is introduced:
 
 1. `gamification.scorm.registerActivity(options)` once when the instance binds —
    it resolves the iDevice identity from the DOM, restores a previous SCORM
-   score and is what the xAPI emitter uses to know which iDevice this is.
+   score.
 2. `gamification.scorm.sendScoreNew(true, options)` whenever the reported value
-   changes — this is the call that emits the per-iDevice xAPI `answered`
-   statement (`common.js`, via `gamification.track`) and updates SCORM.
+   changes — this is the call that updates SCORM.
 
 `options` is not a shape of our own: `main` must be this instance's container id
 (the shared layer resolves it as `$('#' + main)`, which also keeps several videos
 on one page reporting as themselves), and `scorerp`, `weighted` and `msgs` are
 read directly by the shared layer. An earlier version of this runtime passed
 `{id, score, completed}`; that throws inside `registerActivity`, and because the
-call is guarded the score vanished silently — no SCORM, no xAPI. The `msgs` map
+call is guarded the score vanished silently. The `msgs` map
 is also how the author's Custom texts reach the shared layer.
 
 `auto` is `true`: this iDevice has no manual "save score" button, so the score
