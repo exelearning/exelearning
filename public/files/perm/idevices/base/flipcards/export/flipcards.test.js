@@ -504,6 +504,60 @@ describe('flipcards iDevice export', () => {
         expect($eXeFlipCards.options[i]).toMatchObject({ score: 0, gameStarted: true, gameOver: false });
       });
     });
+
+    // The editor never reloads the document between pages, and a game's ids are
+    // numbered by position: the next page's first memory game takes the ids this
+    // one had. The clock used to find that game by id and run it, counting down
+    // on its display and ending it when its own time ran out.
+    describe('the clock of a timed game', () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('counts down on its own game', () => {
+        const i = givenStartableGame({ time: 1 });
+
+        $eXeFlipCards.startGameMemory(i);
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeFlipCards.updateTimeMemory).toHaveBeenLastCalledWith(57, i);
+      });
+
+      it('ends its own game when the time runs out', () => {
+        const i = givenStartableGame({ time: 1 });
+        const gameOver = vi.spyOn($eXeFlipCards, 'gameOverMemory').mockImplementation(() => {});
+
+        $eXeFlipCards.startGameMemory(i);
+        vi.advanceTimersByTime(60000);
+
+        expect(gameOver).toHaveBeenCalledWith(1, i);
+      });
+
+      it("leaves the next page's game alone, though it takes the same ids", () => {
+        const i = givenStartableGame({ time: 1 });
+        $eXeFlipCards.startGameMemory(i);
+        vi.advanceTimersByTime(3000);
+
+        // The author moves to another page, whose first game is numbered the same.
+        document.body.innerHTML = `
+          <div id="flcdsMainContainer-${i}">
+            <div id="flcdsPTime-${i}">04:00</div>
+          </div>`;
+        $eXeFlipCards.options[i] = { type: 3, time: 4, counter: 240, gameStarted: true, gameOver: false };
+        const gameOver = vi.spyOn($eXeFlipCards, 'gameOverMemory').mockImplementation(() => {});
+        $eXeFlipCards.updateTimeMemory.mockClear();
+
+        vi.advanceTimersByTime(120000);
+
+        expect($eXeFlipCards.updateTimeMemory).not.toHaveBeenCalled();
+        expect(gameOver).not.toHaveBeenCalled();
+        expect($eXeFlipCards.options[i]).toMatchObject({ counter: 240, gameStarted: true, gameOver: false });
+      });
+    });
   });
 
   // The text of a card is sized by measurement, and every way that measurement

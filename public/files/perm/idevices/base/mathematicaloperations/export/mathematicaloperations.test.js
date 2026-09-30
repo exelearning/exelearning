@@ -436,4 +436,58 @@ describe('mathematicaloperations iDevice export', () => {
       expect($eXeMathOperations.idevicePath).toBe('');
     });
   });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and ending it when its own time ran out.
+  describe('the clock of a timed game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="mthoMainContainer-${instance}"></div>`;
+      $eXeMathOperations.options = [{ gameStarted: false, time: 1 }];
+      for (const method of ['updateGameBoard', 'uptateTime', 'gameOver', 'saveScormScore']) {
+        vi.spyOn($eXeMathOperations, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeMathOperations.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeMathOperations.uptateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('ends its own game when the time runs out', () => {
+      $eXeMathOperations.startGame(instance);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeMathOperations.gameOver).toHaveBeenCalledWith(0, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeMathOperations.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="mthoMainContainer-${instance}"></div>`;
+      $eXeMathOperations.options[instance] = { gameStarted: true, activeCounter: true, counter: 240 };
+      $eXeMathOperations.uptateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeMathOperations.uptateTime).not.toHaveBeenCalled();
+      expect($eXeMathOperations.gameOver).not.toHaveBeenCalled();
+      expect($eXeMathOperations.options[instance].counter).toBe(240);
+    });
+  });
 });
