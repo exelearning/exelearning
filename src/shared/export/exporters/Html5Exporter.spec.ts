@@ -2483,6 +2483,71 @@ describe('Html5Exporter', () => {
             expect(files.has('content/resources/Captura desde 2026-09-29 10-13-04.png')).toBe(true);
         });
 
+        it('should include assets referenced inside a JSON-string iDevice payload in preview files', async () => {
+            const contentAssetId = 'a1b2c3d4-0000-4000-8000-000000000002';
+            // JSON iDevices (e.g. interactive-video) keep their document as a JSON string,
+            // so the reference is quote-escaped: ...src=\"asset://id.png\"...
+            const payload = JSON.stringify({
+                interactions: [{ type: 'cover', body: `<p><img src="asset://${contentAssetId}.png"></p>` }],
+            });
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'interactive-video',
+                                    order: 0,
+                                    content: '',
+                                    properties: { jsonProperties: payload },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                        {
+                            id: contentAssetId,
+                            filename: 'cover.png',
+                            originalPath: `${contentAssetId}/cover.png`,
+                            folderPath: '',
+                            mime: 'image/png',
+                            mimeType: 'image/png',
+                            data: Buffer.from('PNG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/cover.png')).toBe(true);
+        });
+
         it('should handle asset fetch failure gracefully', async () => {
             // Create asset provider that throws
             const failingAssets = new (class extends MockAssetProvider {
