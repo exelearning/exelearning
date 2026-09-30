@@ -205,7 +205,6 @@ var $exe = {
         // Accessibility toolbar
         atools: {
             modeToggler: false,
-            translator: false,
             i18n: {}
         }
     },
@@ -2605,7 +2604,7 @@ var $exeDevices = {
 
                     if (url.includes("https://mediateca.educa.madrid.org/video/")) {
                         const id = url.split("https://mediateca.educa.madrid.org/video/")[1].split("?")[0];
-                        return `http://mediateca.educa.madrid.org/streaming.php?id=${id}`;
+                        return `https://mediateca.educa.madrid.org/streaming.php?id=${id}`;
                     }
 
                     return false;
