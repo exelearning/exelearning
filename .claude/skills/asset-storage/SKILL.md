@@ -17,6 +17,17 @@ Trace `src/utils/asset-paths.ts`, `src/services/file-helper.ts`, `src/db/queries
   reinterpret a rejected path. Build paths with `path.join()`, never string concatenation.
 - Browser Yjs metadata, Cache API blobs and server files have different lifetimes. Check reload/offline
   behavior and ownership before deleting shared/referenced assets. Do not treat derived caches as canonical data.
+
+Client-side storage names; preserve them when changing persistence, migration or cleanup, since existing
+browser data depends on them:
+
+| Storage | Pattern | Purpose |
+| --- | --- | --- |
+| IndexedDB | `exelearning-project-{uuid}` | Yjs Y.Doc persistence |
+| IndexedDB | `exelearning` | User preferences |
+| IndexedDB | `exelearning-resources-v1` | Theme/library cache |
+| Cache API | `exe-assets-{uuid}` | Blob storage for images and files |
+
 - Direct ELP/ELPX import happens in the browser: `importElpDirectly` → `importFromElpxViaYjs`, then the
   UI refreshes from the Y.Doc and saves on explicit save/autosave. The fallback uploads chunks to
   `POST /api/project/upload-chunk`, the server only concatenates them into a temp file, the workarea
@@ -26,17 +37,6 @@ Trace `src/utils/asset-paths.ts`, `src/services/file-helper.ts`, `src/db/queries
   their files (Windows raises `EBUSY` on locked files); use isolated temp directories and clean up failed uploads/exports.
 - Large packages need bounded processing. Use existing metadata APIs and profiling rather than loading
   every blob or base64 copy merely to count, list or locate assets.
-
-## Client-side storage
-
-| Storage | Pattern | Purpose |
-| --- | --- | --- |
-| IndexedDB | `exelearning-project-{uuid}` | Yjs Y.Doc persistence |
-| IndexedDB | `exelearning` | User preferences |
-| IndexedDB | `exelearning-resources-v1` | Theme/library cache |
-| Cache API | `exe-assets-{uuid}` | Blob storage for images and files |
-
-Preserve these names when changing persistence, migration or cleanup behavior; existing browser data may depend on them.
 
 Run affected path/helper/query tests plus frontend asset/import tests. Include subpaths, legacy stored
 paths, invalid UUID/path input, failed replacement, reload and cleanup. Use disposable fixtures, never
