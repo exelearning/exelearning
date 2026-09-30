@@ -2220,13 +2220,6 @@ var $exeDevice = {
                 e.stopPropagation();
             }
         );
-        $dmoleForm.on(
-            'click',
-            '#eXeProgressReportHelpLnk, #eXeProgressReportHelpLnk *',
-            function (e) {
-                e.stopPropagation();
-            }
-        );
 
         $('#dmoleShowCodeAccess').on('change', function () {
             const marcado = $(this).is(':checked');

@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures/auth.fixture';
 import {
     addIdevice,
     editIdevice,
+    expandIdeviceCategory,
     getPreviewFrame,
     gotoWorkarea,
     saveIdevice,
@@ -9,6 +10,51 @@ import {
     waitForAppReady,
     waitForPreviewContent,
 } from '../../helpers/workarea-helpers';
+
+for (const device of [
+    { name: '3dmol', form: '#dMoleIdeviceForm' },
+    { name: 'electrical-circuits', form: '#electricalCircuitsIdeviceForm' },
+]) {
+    test(`${device.name} opens progress report help without changing report settings`, async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, `${device.name} progress report help`);
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        if (device.name === '3dmol') {
+            // The generic helper uses a class selector, which cannot start with a digit.
+            await expandIdeviceCategory(page, /Science|Ciencia/i);
+            await page.locator('.idevice_item[id="3dmol"]').click();
+            await expect(page.locator('#dmoleModelFileName')).not.toBeEmpty({ timeout: 20000 });
+        } else {
+            await addIdevice(page, device.name);
+        }
+        const form = page.locator(device.form);
+        await form
+            .locator('.exe-form-tabs a')
+            .filter({ hasText: /^Grading$/ })
+            .click();
+        const report = form.locator('#eXeProgressReport');
+        const identifier = form.locator('#eXeProgressReportID');
+        const help = form.locator('#eXeProgressReportHelp');
+        const link = form.locator('#eXeProgressReportHelpLnk');
+        const reportId = await identifier.inputValue();
+
+        for (const enabled of [false, true]) {
+            await report.setChecked(enabled);
+            await expect(help).toBeHidden();
+            await link.locator('img').click();
+            await expect(help).toBeVisible();
+            await link.click();
+            await expect(help).toBeHidden();
+            await expect(report).toBeChecked({ checked: enabled });
+            await expect(identifier).toBeEnabled({ enabled });
+            await expect(identifier).toHaveValue(reportId);
+        }
+    });
+}
 
 test('rubric reports its custom pass mark in the workarea and preview', async ({
     authenticatedPage: page,

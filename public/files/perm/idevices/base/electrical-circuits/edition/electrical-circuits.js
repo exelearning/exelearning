@@ -2223,13 +2223,6 @@ var $exeDevice = {
                 e.stopPropagation();
             }
         );
-        $electricalCircuitsForm.on(
-            'click',
-            '#eXeProgressReportHelpLnk, #eXeProgressReportHelpLnk *',
-            function (e) {
-                e.stopPropagation();
-            }
-        );
 
         $('#elceShowCodeAccess').on('change', function () {
             const marcado = $(this).is(':checked');

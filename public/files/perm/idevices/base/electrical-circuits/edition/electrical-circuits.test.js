@@ -45,6 +45,49 @@ describe('electrical-circuits iDevice edition', () => {
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound = vi.fn();
     });
 
+    describe('progress report help', () => {
+        let previousGamification;
+        let previousLearning;
+
+        beforeEach(() => {
+            previousGamification = global.$exeDevicesEdition.iDevice.gamification;
+            previousLearning = global.eXeLearning;
+            const { progressBar, itinerary } =
+                require('../../../../../../app/common/common_edition.js').iDevice.gamification;
+            global.$exeDevicesEdition.iDevice.gamification = { ...previousGamification, progressBar, itinerary };
+            global.eXeLearning = { app: { project: { odeId: 'report-id' } } };
+            document.body.innerHTML = `<div id="electricalCircuitsIdeviceForm">${progressBar.getContents('/idevice/')}</div>`;
+            $exeDevice.addEvents();
+        });
+
+        afterEach(() => {
+            $(document).off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk');
+            document.body.innerHTML = '';
+            global.$exeDevicesEdition.iDevice.gamification = previousGamification;
+            global.eXeLearning = previousLearning;
+        });
+
+        it.each([
+            ['link', '#eXeProgressReportHelpLnk', false],
+            ['icon', '#eXeProgressReportHelpLnk img', false],
+            ['link', '#eXeProgressReportHelpLnk', true],
+            ['icon', '#eXeProgressReportHelpLnk img', true],
+        ])('toggles help through the %s (%s), reporting enabled=%s', (_target, selector, enabled) => {
+            const checkbox = $('#eXeProgressReport').prop('checked', enabled).trigger('change');
+            const identifier = $('#eXeProgressReportID');
+            const note = $('#eXeProgressReportHelp');
+
+            expect(note.hasClass('d-none')).toBe(true);
+            $(selector).trigger('click');
+            expect(note.hasClass('d-none')).toBe(false);
+            $(selector).trigger('click');
+            expect(note.hasClass('d-none')).toBe(true);
+            expect(checkbox.prop('checked')).toBe(enabled);
+            expect(identifier.prop('disabled')).toBe(!enabled);
+            expect(identifier.val()).toBe('report-id');
+        });
+    });
+
     it('creates default questions with tikzCode and an empty tikzSvg', () => {
         const question = $exeDevice.getCuestionDefault();
 
