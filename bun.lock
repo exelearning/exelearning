@@ -26,7 +26,7 @@
         "ioredis": "^6.0.0",
         "jose": "^6.2.12",
         "jsdom": "^30.0.1",
-        "kysely": "^0.29.5",
+        "kysely": "^0.29.6",
         "kysely-bun-worker": "^2.0.1",
         "lib0": "^0.2.117",
         "mermaid": "^11.17.2",
@@ -1060,7 +1060,7 @@
 
     "kill-port": ["kill-port@2.0.1", "", { "dependencies": { "get-them-args": "1.3.2", "shell-exec": "1.0.2" }, "bin": { "kill-port": "cli.js" } }, "sha512-e0SVOV5jFo0mx8r7bS29maVWp17qGqLBZ5ricNSajON6//kmb7qqqNnml4twNE8Dtj97UQD+gNFOaipS/q1zzQ=="],
 
-    "kysely": ["kysely@0.29.5", "", {}, "sha512-ooa+eSbBNPTo3MycPEuW5jdrxQdQwdtB3LC3h43FiXQbIry5tR0C5lDG7eealK0E4D7XjrnOP5DIUg/LyjRMYQ=="],
+    "kysely": ["kysely@0.29.6", "", {}, "sha512-hHaB8C/rfzDDtr/t8YZwxAuPJTT0zHyaPoVzcXwDYhYNAgH/4sIfVhi/XLLIY+bL/FqaIJnjATDbi8ObSELmxg=="],
 
     "kysely-bun-worker": ["kysely-bun-worker@2.0.1", "", { "dependencies": { "kysely-generic-sqlite": "2.0.1" }, "peerDependencies": { "bun-types": ">=1.1.14", "kysely": ">=0.29" } }, "sha512-OI+1h7KqcrCgo805N2LiMgm+974BlUxscUUVjkqL0gLEMAIwqlb0hMw76v4rHdBAllRsHzFNtN/hoVBuIJTTQQ=="],
 
