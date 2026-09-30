@@ -292,7 +292,7 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
-            this.addEditableContentXml(pages, meta, addFile);
+            this.addEditableContentXml(pages, meta, addFile, options);
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -608,8 +608,8 @@ export class Html5Exporter extends BaseExporter {
     }
 
     /**
-     * Add the re-editable ODE `content.xml` to the package, unless the author
-     * opted out of shipping the source (`exportSource === false`).
+     * Add the re-editable ODE `content.xml` to the package, unless
+     * `shipsEditableSource` says this export omits it.
      *
      * Single source of truth shared by the HTML5 ZIP export and the Service
      * Worker preview so both decide identically whether the output stays
@@ -621,8 +621,9 @@ export class Html5Exporter extends BaseExporter {
         pages: ExportPage[],
         meta: ExportMetadata,
         addFile: (path: string, content: string) => void,
+        options?: ExportOptions,
     ): void {
-        if (meta.exportSource === false) {
+        if (!this.shipsEditableSource(meta, options)) {
             return;
         }
 
@@ -650,6 +651,10 @@ export class Html5Exporter extends BaseExporter {
 
             // Check for ELPX download support (looks for exe-package:elp in content)
             const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // Collect asset:// references before preprocessing rewrites them to
+            // {{context_path}}/content/resources/... paths the collector cannot see.
+            const referencedAssetIds = this.getReferencedAssetIds(pages);
 
             // Pre-process pages: add filenames to asset URLs, convert internal links
             pages = await this.preprocessPagesForExport(pages);
@@ -742,7 +747,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 3. Add content.xml (ODE format for re-import) when editable source is enabled.
             // Registered via addFile, so it is automatically listed in the ELPX manifest below.
-            this.addEditableContentXml(pages, meta, addFile);
+            this.addEditableContentXml(pages, meta, addFile, options);
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -855,7 +860,6 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 10. Add project assets
-            const referencedAssetIds = this.getReferencedAssetIds(pages);
             await this.addAssetsToPreviewFiles(files, fileList, referencedAssetIds);
 
             // 11. Generate ELPX manifest file and ensure required libraries if download-source-file is used

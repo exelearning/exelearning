@@ -156,7 +156,7 @@ OIDC_CLIENT_SECRET=your-client-secret
 5) Logout:
 - Discovery provides `end_session_endpoint`; the backend redirects there with `post_logout_redirect_uri` and `id_token_hint`.
 
-If non-administrative users see *"Approval required"* (sign-in error 90095) even though admin consent is granted, check that you are running 4.0.4 or later: earlier versions forced `prompt=consent`, which Entra rejects in tenants where users cannot self-consent.
+If non-administrative users see *"Approval required"* (sign-in error 90095) even though admin consent is granted, check that you are running 4.0.5 or later: earlier versions forced `prompt=consent`, which Entra rejects in tenants where users cannot self-consent.
 
 ### Google (Identity Platform)
 

@@ -13,6 +13,9 @@ import { vi, expect, afterEach, describe, it, beforeEach, beforeAll, afterAll } 
 import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import EditionLifecycle, {
+  setActiveEditionLifecycle,
+} from './app/workarea/project/idevices/content/editionLifecycle.js';
 
 // Get directory path for loading local files (jQuery, etc.)
 const __vitest_setup_filename = fileURLToPath(import.meta.url);
@@ -76,6 +79,21 @@ if (typeof window !== 'undefined') {
     });
   } else {
     globalThis.navigator = window.navigator;
+  }
+
+  // Vitest 5 propagates every assignment on the test global to happy-dom's own
+  // Window. There, localStorage/sessionStorage/CSS are getter-only (assignment
+  // throws) and `document` is writable, so a test fake would replace the
+  // document happy-dom uses internally and break innerHTML/DOMParser for the
+  // rest of the file. Tests swap these wholesale, so keep them as plain
+  // writable properties of the test global, as Vitest 4 did.
+  for (const key of ['document', 'localStorage', 'sessionStorage', 'CSS']) {
+    Object.defineProperty(globalThis, key, {
+      value: globalThis[key],
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
   }
 }
 
@@ -838,7 +856,27 @@ global.loadIdevice = function (filePath) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
+};
+
+/**
+ * Give a loaded edition object the lifecycle it would receive from
+ * `IdeviceNode.initExeDeviceEdition()` in the real workarea.
+ *
+ * Edition scripts register their timers, handlers and disposers through
+ * `this.$lifecycle`, so tests that load a script directly need one too. It is a
+ * real `EditionLifecycle`, not a stub, so a test can close the edition with
+ * `$exeDevice.$lifecycle.destroy()` and assert on what actually happens.
+ *
+ * @param {Object} device
+ * @returns {Object|null} The attached lifecycle.
+ */
+global.attachEditionLifecycle = function (device) {
+  if (!device || typeof device !== 'object') return null;
+  device.$lifecycle = new EditionLifecycle({ device, name: 'test-idevice' });
+  setActiveEditionLifecycle(device.$lifecycle);
+  return device.$lifecycle;
 };
 
 // ============================================================================
