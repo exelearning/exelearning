@@ -2553,17 +2553,25 @@ var $exeDevices = {
                  * has none, and gets the default the page carries in the
                  * content's language.
                  *
+                 * An iDevice whose instructions live inside its main container
+                 * names the element that follows them instead, so the notice
+                 * still sits below the instructions and above the activity.
+                 *
                  * Idempotent: an iDevice that rebuilds its interface gets one
                  * notice, and one whose mark became 5 loses it.
                  *
                  * @param {Object} game The iDevice options object.
+                 * @param {string|Element|jQuery} [before] The element to place the
+                 *   notice before; the main container when absent or not found.
                  * @returns {jQuery|null} The notice, or null when none is shown.
                  */
-                showPassScoreNotice: function (game) {
+                showPassScoreNotice: function (game, before) {
                     if (typeof game !== 'object' || game === null || !game.main) return null;
                     const $main = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
                     if ($main.length === 0) return null;
-                    $main.prev('.exe-pass-score-notice').remove();
+                    const $before = before ? $(before).eq(0) : $();
+                    const $anchor = $before.length ? $before : $main;
+                    $anchor.prev('.exe-pass-score-notice').remove();
 
                     const reportActive = !!game.evaluation && typeof game.evaluationID === 'string' && game.evaluationID.length > 0;
                     if (!(Number(game.isScorm) > 0) && !reportActive) return null;
@@ -2577,7 +2585,7 @@ var $exeDevices = {
 
                     const $notice = $('<p class="exe-pass-score-notice text-danger text-center"></p>')
                         .text(template.replace('%s', String(mark)));
-                    $main.before($notice);
+                    $anchor.before($notice);
                     return $notice;
                 },
 

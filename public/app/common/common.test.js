@@ -434,6 +434,38 @@ describe('common.js $exe helpers', () => {
       expect(document.querySelector('.game-main-class').previousElementSibling.textContent).toBe('Pass at 7');
     });
 
+    describe('for an iDevice whose instructions are inside its main container', () => {
+      beforeEach(() => {
+        document.body.innerHTML =
+          '<div id="game-main"><div class="instructions">Read me</div><div class="activity"></div></div>';
+      });
+
+      it('goes before the element it is given, below the instructions', () => {
+        report().showPassScoreNotice(custom(7), '#game-main > .activity');
+
+        const notice = document.querySelector('.activity').previousElementSibling;
+        expect(notice.textContent).toBe('Pass at 7');
+        expect(notice.previousElementSibling.className).toBe('instructions');
+        expect(notice.parentElement.id).toBe('game-main');
+      });
+
+      it('keeps one notice there when set up again, and drops it at 5', () => {
+        report().showPassScoreNotice(custom(7), '#game-main > .activity');
+        report().showPassScoreNotice(custom(8), '#game-main > .activity');
+        expect(notices()).toHaveLength(1);
+        expect(notices()[0].textContent).toBe('Pass at 8');
+
+        report().showPassScoreNotice(custom(5), '#game-main > .activity');
+        expect(notices()).toHaveLength(0);
+      });
+
+      it('falls back to the main container when that element is not on the page', () => {
+        report().showPassScoreNotice(custom(7), '#game-main > .missing');
+
+        expect(main().previousElementSibling.textContent).toBe('Pass at 7');
+      });
+    });
+
     it.each([
       ['no options', undefined],
       ['no main container', { isScorm: 1 }],
