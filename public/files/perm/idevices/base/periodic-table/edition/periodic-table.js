@@ -102,6 +102,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgAtomicNumber: c_('Atomic number'),
             msgNumberClick: c_('Find the element with the number'),
             msgSymbolClick: c_('Click on this chemical element'),

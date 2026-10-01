@@ -98,6 +98,7 @@ var $periodicTable = {
             const pt = $periodicTable.createInterfacePT(i);
 
             dl.before(pt).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ptGameMinimize-' + i).hide();
             $('#ptGameContainer-' + i).hide();
