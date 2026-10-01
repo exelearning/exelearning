@@ -591,3 +591,72 @@ describe('az-quiz-game iDevice export', () => {
     });
   });
 });
+
+describe('az-quiz-game minimum score notice', () => {
+  let $azquizgame;
+  let mainOnPageWhenAsked;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    global.$azquizgame = undefined;
+    $azquizgame = loadExportIdevice(readFileSync(join(__dirname, 'az-quiz-game.js'), 'utf-8'));
+    mainOnPageWhenAsked = null;
+    global.$exeDevices = {
+      iDevice: {
+        gamification: {
+          helpers: {
+            decrypt: (json) => json,
+            isJsonString: (json) => JSON.parse(json),
+            getTimeToString: () => '04:00',
+            toggleFullscreen: vi.fn(),
+          },
+          media: { extractURLGD: (url) => url, stopSound: vi.fn(), playSound: vi.fn() },
+          scorm: { registerActivity: vi.fn(), addButtonScoreNew: vi.fn(() => '') },
+          observers: { observeResize: vi.fn() },
+          math: { updateLatex: vi.fn(), hasLatex: () => false },
+          report: {
+            updateEvaluationIcon: vi.fn(),
+            showPassScoreNotice: vi.fn((game) => {
+              mainOnPageWhenAsked = document.getElementById(game.main) !== null;
+              return null;
+            }),
+          },
+        },
+      },
+    };
+    const data = {
+      letters: 'A',
+      wordsGame: [{ letter: 'A', word: 'abeja', definition: 'Insecto', type: 0 }],
+      isScorm: 1,
+      passScoreMode: 'custom',
+      passScoreCustom: 7,
+      msgs: { msgPlayStart: 'Play', msgPassScore: 'Pass at %s' },
+    };
+    document.body.innerHTML = `
+      <div class="rosco-IDevice">
+        <div class="rosco-version js-hidden">0</div>
+        <div class="rosco-instructions">Instructions</div>
+        <div class="rosco-DataGame js-hidden">${JSON.stringify(data)}</div>
+      </div>`;
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    delete global.$exeDevices;
+    document.body.innerHTML = '';
+  });
+
+  it('asks for the notice once the main container is on the page', () => {
+    // The rosco draws on a canvas, which happy-dom does not implement.
+    vi.spyOn($azquizgame, 'addEvents').mockImplementation(() => {});
+
+    $azquizgame.loadGame();
+
+    const showPassScoreNotice = global.$exeDevices.iDevice.gamification.report.showPassScoreNotice;
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    expect(showPassScoreNotice).toHaveBeenCalledWith($azquizgame.options[0]);
+    expect($azquizgame.options[0]).toMatchObject({ main: 'roscoMainContainer-0', passScoreCustom: 7 });
+    expect(mainOnPageWhenAsked).toBe(true);
+  });
+});

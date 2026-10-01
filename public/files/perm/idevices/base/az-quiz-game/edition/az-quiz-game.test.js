@@ -850,3 +850,76 @@ describe('az-quiz-game edition lifecycle', () => {
         });
     });
 });
+
+/**
+ * The notice of the minimum score is editable in the Custom texts tab, which the
+ * shared getLanguageTab() builds from ci18n, and save() writes from it.
+ */
+describe('az-quiz-game minimum score text', () => {
+    const DEFAULT_TEXT = 'Minimum score needed to pass this activity: %s';
+    let $exeDevice;
+
+    /** The Custom texts tab as getLanguageTab() renders it: one input per key. */
+    function renderCustomTexts(overrides = {}) {
+        const inputs = Object.keys($exeDevice.ci18n)
+            .map(key => `<input id="ci18n_${key}">`)
+            .join('');
+        document.body.innerHTML = inputs;
+        for (const key of Object.keys($exeDevice.ci18n)) {
+            const value = key in overrides ? overrides[key] : $exeDevice.ci18n[key];
+            document.getElementById(`ci18n_${key}`).value = value;
+        }
+    }
+
+    /** Save with the form's own data stubbed, and read back the stored options. */
+    function saveAndReadMsgs() {
+        vi.spyOn($exeDevice, 'validateData').mockReturnValue({
+            instructions: '',
+            wordsGame: [],
+            evaluation: false,
+            evaluationID: '',
+        });
+        vi.spyOn($exeDevice, 'getIdeviceID').mockReturnValue('idevice-1');
+        const html = $exeDevice.save();
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        return JSON.parse(container.querySelector('.rosco-DataGame').textContent).msgs;
+    }
+
+    beforeEach(() => {
+        global.$ = realEnvironment.$;
+        global.jQuery = realEnvironment.jQuery;
+        global.document = realEnvironment.document;
+        global._ = realEnvironment.translate;
+        global.$exeDevices = {
+            iDevice: { gamification: { helpers: { encrypt: json => json } } },
+        };
+        global.tinymce = { editors: [{}, { getContent: () => '' }] };
+        global.$exeDevice = undefined;
+        $exeDevice = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
+        $exeDevice.refreshTranslations();
+        $exeDevice.msgs = { msgNoSuportBrowser: 'Unsupported browser' };
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete global.tinymce;
+        document.body.innerHTML = '';
+    });
+
+    it('offers the text among the custom texts, with the mark as %s', () => {
+        expect($exeDevice.ci18n.msgPassScore).toBe(DEFAULT_TEXT);
+    });
+
+    it('saves the default text when the author leaves it alone', () => {
+        renderCustomTexts();
+
+        expect(saveAndReadMsgs().msgPassScore).toBe(DEFAULT_TEXT);
+    });
+
+    it('saves the text the author wrote', () => {
+        renderCustomTexts({ msgPassScore: 'Nota mínima para superar la actividad: %s' });
+
+        expect(saveAndReadMsgs().msgPassScore).toBe('Nota mínima para superar la actividad: %s');
+    });
+});

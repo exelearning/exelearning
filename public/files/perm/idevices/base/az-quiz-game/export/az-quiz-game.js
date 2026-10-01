@@ -83,6 +83,7 @@ var $azquizgame = {
 
             const rosco = $azquizgame.createInterfaceRosco(i);
             dl.before(rosco).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(option);
 
             const msg = $azquizgame.options[i].msgs.msgPlayStart;
 

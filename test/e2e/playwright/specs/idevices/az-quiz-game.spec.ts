@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage, gotoWorkarea, editIdevice } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -833,6 +833,61 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const timeDisplay = iframe.locator('[id^="roscoPTime-"]').first();
             const timeText = await timeDisplay.textContent();
             expect(timeText).toContain('1:00');
+        });
+    });
+
+    test.describe('Minimum score notice', () => {
+        /** Set the SCORM mode and the minimum score in the Grading tab of the open form. */
+        async function setGrading(page: Page, mark: string): Promise<void> {
+            await page
+                .locator('.exe-form-tabs a')
+                .filter({ hasText: /^Grading$/ })
+                .click();
+            await page.locator('#eXeGameSCORMAutoSave').check();
+            await page.locator('#eXePassScoreCustom').check();
+            await page.locator('#eXePassScoreValue').fill(mark);
+        }
+
+        test('tells the learner a minimum score other than 5, in the workarea and the preview', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            test.setTimeout(120000);
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+            const projectUuid = await createProject(page, 'AZ Quiz minimum score notice');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addAzQuizGameIdeviceFromPanel(page);
+            await fillWords(page, TEST_DATA.words);
+            await setGrading(page, '5');
+            await saveAzQuizGameIdevice(page);
+
+            // A mark of 5 is the one learners take for granted: no notice.
+            const rosco = page.locator('#node-content .az-quiz-game .rosco-IDevice').first();
+            await expect(rosco.locator('[id^="roscoMainContainer-"]')).toBeVisible();
+            await expect(rosco.locator('.exe-pass-score-notice')).toHaveCount(0);
+
+            // Below the instructions, right above the game, red and centred.
+            const ideviceId = await page.locator('#node-content .idevice_node.az-quiz-game').first().getAttribute('id');
+            await editIdevice(page, ideviceId!);
+            await setGrading(page, '7.5');
+            await saveAzQuizGameIdevice(page);
+            const notice = rosco.locator('.exe-pass-score-notice');
+            await expect(notice).toHaveText('Minimum score needed to pass this activity: 7.5');
+            await expect(notice).toHaveClass(/text-danger/);
+            await expect(notice).toHaveClass(/text-center/);
+            expect(await notice.evaluate(element => element.nextElementSibling?.id)).toBe('roscoMainContainer-0');
+
+            await workarea.save();
+            await page.click('#head-bottom-preview');
+            await expect(page.locator('#previewsidenav')).toBeVisible({ timeout: 15000 });
+            const iframe = page.frameLocator('#preview-iframe');
+            await expect(iframe.locator('.rosco-IDevice .exe-pass-score-notice')).toHaveText(
+                'Minimum score needed to pass this activity: 7.5',
+                { timeout: 15000 },
+            );
         });
     });
 });
