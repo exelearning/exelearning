@@ -79,6 +79,7 @@ var $eXeMathProblems = {
             const mathp = $eXeMathProblems.createInterfaceMathP(i);
 
             dl.before(mathp).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#mthpGameMinimize-' + i).hide();
             $('#mthpGameContainer-' + i).hide();
