@@ -202,6 +202,16 @@ var $scrambledlist = {
             }
         });
 
+        // The instructions are inside the main container, so the notice goes
+        // before whatever follows them: the playable list enableList() builds
+        // in front of the original one. Below the instructions, above the list.
+        $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+            ldata,
+            $('#sl' + ldata.id + ' > .exe-sortableList-instructions')
+                .nextAll(':not(.exe-pass-score-notice)')
+                .first()
+        );
+
         if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
             this.scormFunctions = '../libs/SCOFunctions.js';

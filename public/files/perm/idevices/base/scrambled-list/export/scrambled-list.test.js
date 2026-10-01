@@ -603,6 +603,11 @@ describe('scrambled-list iDevice export', () => {
         hasLatex: () => false,
         updateLatex: () => {},
       };
+      global.$exeDevices.iDevice.gamification.report = Object.assign(
+        {},
+        global.$exeDevices.iDevice.gamification.report,
+        { showPassScoreNotice: () => null }
+      );
 
       $scrambledlist.renderBehaviour({ isScorm: 2 }, 0, 'sl-1');
 
@@ -1063,5 +1068,71 @@ describe('scrambled-list iDevice export', () => {
         expect(feedback.html()).not.toContain('<li>a</li>');
       });
     });
+  });
+});
+
+describe('scrambled-list minimum score notice', () => {
+  let $scrambledlist;
+  let originalSortable;
+  let originalReport;
+  let originalMath;
+
+  const data = {
+    options: ['First', 'Second', 'Third'],
+    instructions: '<p>Put them in order</p>',
+    buttonText: 'Check',
+    rightText: 'Right',
+    wrongText: 'Wrong',
+    afterElement: '',
+    // The progress report alone, so no SCORM session is involved.
+    isScorm: 0,
+    evaluation: true,
+    evaluationID: 'report-1',
+    passScoreMode: 'custom',
+    passScoreCustom: 7,
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    global.$scrambledlist = undefined;
+    $scrambledlist = loadExportIdevice(readFileSync(join(__dirname, 'scrambled-list.js'), 'utf-8'));
+    const gamification = global.$exeDevices.iDevice.gamification;
+    originalSortable = $.fn.sortable;
+    originalReport = gamification.report;
+    originalMath = gamification.math;
+    // jQuery UI is not loaded here; enableList() only needs the call to chain.
+    $.fn.sortable = function () {
+      return this;
+    };
+    gamification.math = { hasLatex: () => false, updateLatex: () => {} };
+    gamification.report = Object.assign({}, originalReport, {
+      showPassScoreNotice: vi.fn(() => null),
+      updateEvaluationIcon: () => {},
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    $.fn.sortable = originalSortable;
+    global.$exeDevices.iDevice.gamification.report = originalReport;
+    global.$exeDevices.iDevice.gamification.math = originalMath;
+    document.body.innerHTML = '';
+  });
+
+  // enableList() builds the playable list in front of the original one, so the
+  // element right after the instructions is the list the learner sorts.
+  it('asks for it right below the instructions, above the playable list', () => {
+    const template = readFileSync(join(__dirname, 'scrambled-list.html'), 'utf-8');
+    document.body.innerHTML = $scrambledlist.renderView(data, 0, template, 'list9');
+
+    $scrambledlist.renderBehaviour(data, 0, 'list9');
+
+    const showPassScoreNotice = global.$exeDevices.iDevice.gamification.report.showPassScoreNotice;
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    const [options, before] = showPassScoreNotice.mock.calls[0];
+    expect(options).toMatchObject({ main: 'sllist9', passScoreCustom: 7 });
+    expect(before[0].classList.contains('exe-sortableList-options')).toBe(true);
+    expect(before.prev().hasClass('exe-sortableList-instructions')).toBe(true);
   });
 });
