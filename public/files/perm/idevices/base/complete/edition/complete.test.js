@@ -226,3 +226,13 @@ describe('default image edition/export dedup', () => {
       });
   });
 });
+
+describe('complete minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'complete.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+  });
+});

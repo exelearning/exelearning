@@ -75,6 +75,7 @@ var $eXeCompleta = {
             $eXeCompleta.options.push(mOption);
             const completa = $eXeCompleta.createInterfaceCompleta(i);
             dl.before(completa).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#cmptGameMinimize-' + i).hide();
             $('#cmptGameContainer-' + i).hide();
 
