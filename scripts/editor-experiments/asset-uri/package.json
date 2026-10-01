@@ -1,0 +1,13 @@
+{
+    "name": "editor-experiment-asset-uri",
+    "private": true,
+    "license": "AGPL-3.0-or-later",
+    "description": "ADR-2467-01 experiment, not production code. Install only in a temporary copy (see ../README.md).",
+    "devDependencies": {
+        "esbuild": "0.28.2",
+        "hugerte": "1.0.14",
+        "playwright": "1.63.0",
+        "prosekit": "0.22.3",
+        "tinymce": "8.9.2"
+    }
+}

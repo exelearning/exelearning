@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 410" width="1300" height="410" role="img" aria-labelledby="t d" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<title id="t">HTML round trip on the fixture corpus</title>
+<desc id="d">Grid of measured retention percentages per editor configuration and feature.</desc>
+<rect width="1300" height="410" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<text x="20" y="30" font-size="17" font-weight="600" fill="#1f2328">HTML round trip on the fixture corpus</text>
+<text x="20" y="48" font-size="12" fill="#57606a">Measured once (Chromium, one set/get per fragment) on 1319 fragments from test/fixtures. Cells: % of fragments</text>
+<text x="20" y="64" font-size="12" fill="#57606a">with the feature that lost none of it; "Identical" and "Same as 5.x" are % of all fragments. Losses only; the configurations</text>
+<text x="20" y="80" font-size="12" fill="#57606a">differ per editor. Not a compatibility verdict: see the ADR's Experiments section before quoting a number.</text>
+<text x="368" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">Identical</text>
+<text x="464" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">Same as 5.x</text>
+<text x="560" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">Elements</text>
+<text x="656" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">Classes</text>
+<text x="752" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">data-*</text>
+<text x="848" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">non-mce data-*</text>
+<text x="944" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">Styles</text>
+<text x="1040" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">iframes</text>
+<text x="1136" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">asset://</text>
+<text x="1232" y="110" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">Comments</text>
+<text x="20" y="140" font-size="13" fill="#1f2328" >TinyMCE 5.10.2, eXe config (baseline)</text>
+<rect x="322" y="122" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="368" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">65.7</text>
+<rect x="418" y="122" width="92" height="26" rx="3" fill="#eaeef2"/>
+<text x="464" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">–</text>
+<rect x="514" y="122" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="560" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.3</text>
+<rect x="610" y="122" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="656" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.3</text>
+<rect x="706" y="122" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="752" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="802" y="122" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="848" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="898" y="122" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="944" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.2</text>
+<rect x="994" y="122" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1040" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1090" y="122" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1136" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.8</text>
+<rect x="1186" y="122" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1232" y="140" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<text x="20" y="170" font-size="13" fill="#1f2328" >TinyMCE 8.9.2, defaults</text>
+<rect x="322" y="152" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="368" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">64.1</text>
+<rect x="418" y="152" width="92" height="26" rx="3" fill="#8cc265"/>
+<text x="464" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">95.9</text>
+<rect x="514" y="152" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="560" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.3</text>
+<rect x="610" y="152" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="656" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="706" y="152" width="92" height="26" rx="3" fill="#e3c34b"/>
+<text x="752" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">83.4</text>
+<rect x="802" y="152" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="848" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="898" y="152" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="944" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.2</text>
+<rect x="994" y="152" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1040" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1090" y="152" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1136" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1186" y="152" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1232" y="170" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<text x="20" y="200" font-size="13" fill="#1f2328" >TinyMCE 8.9.2, relaxed</text>
+<rect x="322" y="182" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="368" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">64.6</text>
+<rect x="418" y="182" width="92" height="26" rx="3" fill="#8cc265"/>
+<text x="464" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">96.9</text>
+<rect x="514" y="182" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="560" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="610" y="182" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="656" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="706" y="182" width="92" height="26" rx="3" fill="#e3c34b"/>
+<text x="752" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">83.4</text>
+<rect x="802" y="182" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="848" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="898" y="182" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="944" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.2</text>
+<rect x="994" y="182" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1040" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1090" y="182" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1136" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1186" y="182" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1232" y="200" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<text x="20" y="230" font-size="13" fill="#1f2328" >TinyMCE 8.9.2, relaxed, no media plugin</text>
+<rect x="322" y="212" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="368" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">65.7</text>
+<rect x="418" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="464" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.2</text>
+<rect x="514" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="560" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="610" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="656" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="706" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="752" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="802" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="848" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="898" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="944" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.2</text>
+<rect x="994" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1040" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1090" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1136" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1186" y="212" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1232" y="230" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<text x="20" y="260" font-size="13" fill="#1f2328" >HugeRTE 1.0.14, defaults</text>
+<rect x="322" y="242" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="368" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">64.1</text>
+<rect x="418" y="242" width="92" height="26" rx="3" fill="#8cc265"/>
+<text x="464" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">96</text>
+<rect x="514" y="242" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="560" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="610" y="242" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="656" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="706" y="242" width="92" height="26" rx="3" fill="#e3c34b"/>
+<text x="752" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">83.4</text>
+<rect x="802" y="242" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="848" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="898" y="242" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="944" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.2</text>
+<rect x="994" y="242" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1040" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1090" y="242" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1136" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1186" y="242" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1232" y="260" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<text x="20" y="290" font-size="13" fill="#1f2328" >HugeRTE 1.0.14, relaxed, no media plugin</text>
+<rect x="322" y="272" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="368" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">65.7</text>
+<rect x="418" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="464" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.2</text>
+<rect x="514" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="560" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="610" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="656" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="706" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="752" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="802" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="848" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="898" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="944" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.2</text>
+<rect x="994" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1040" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1090" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1136" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1186" y="272" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1232" y="290" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<text x="20" y="320" font-size="13" fill="#1f2328" >Squire 2.4.9, no DOMPurify</text>
+<rect x="322" y="302" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="368" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">26.4</text>
+<rect x="418" y="302" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="464" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">29.2</text>
+<rect x="514" y="302" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="560" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">49.1</text>
+<rect x="610" y="302" width="92" height="26" rx="3" fill="#8cc265"/>
+<text x="656" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">96.1</text>
+<rect x="706" y="302" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="752" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.4</text>
+<rect x="802" y="302" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="848" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.3</text>
+<rect x="898" y="302" width="92" height="26" rx="3" fill="#e3c34b"/>
+<text x="944" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">86</text>
+<rect x="994" y="302" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1040" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">100</text>
+<rect x="1090" y="302" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="1136" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">99.8</text>
+<rect x="1186" y="302" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="1232" y="320" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+<text x="20" y="350" font-size="13" fill="#1f2328" >wangEditor-next 6.4.2, stock</text>
+<rect x="322" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="368" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">24.4</text>
+<rect x="418" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="464" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">24.4</text>
+<rect x="514" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="560" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">29.1</text>
+<rect x="610" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="656" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+<rect x="706" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="752" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+<rect x="802" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="848" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+<rect x="898" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="944" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">5.2</text>
+<rect x="994" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="1040" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">1.9</text>
+<rect x="1090" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="1136" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">11.4</text>
+<rect x="1186" y="332" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="1232" y="350" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+<text x="20" y="380" font-size="13" fill="#1f2328" >Tiptap 3.31.3, no preserve layer</text>
+<rect x="322" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="368" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">24.7</text>
+<rect x="418" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="464" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">24.4</text>
+<rect x="514" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="560" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">29</text>
+<rect x="610" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="656" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">1.1</text>
+<rect x="706" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="752" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+<rect x="802" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="848" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+<rect x="898" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="944" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">22.6</text>
+<rect x="994" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="1040" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+<rect x="1090" y="362" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="1136" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">58.4</text>
+<rect x="1186" y="362" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="1232" y="380" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0</text>
+</svg>
