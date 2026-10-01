@@ -78,6 +78,7 @@ var $eXeHiddenImage = {
 
             const hiP = $eXeHiddenImage.createInterfacehiP(i);
             dl.before(hiP).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#hiPGameMinimize-' + i).hide();
             $('#hiPGameContainer-' + i).hide();
 
