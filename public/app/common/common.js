@@ -727,6 +727,14 @@ var $exe = {
 
     // Transform links to audios or videos (with rel^='lightbox') in links to inline content
     // (see prettyPhoto documentation)
+    /**
+     * Whether a lightbox media URL may be used as a player source or download link.
+     * Rejects script-capable schemes (javascript:, vbscript:, data:).
+     */
+    isSafeMediaUrl: function (url) {
+        return typeof url == 'string' && !/^[\s\u0000-\u001f]*(javascript|vbscript|data):/i.test(url);
+    },
+
     setMultimediaGalleries: function () {
         if (typeof ($.prettyPhoto) != 'undefined') {
             var lightboxLinks = $("a[rel^='lightbox']");
@@ -745,12 +753,24 @@ var $exe = {
                 var _ref = ref.toLowerCase();
                 var isAudio = _ref.indexOf(".mp3") != -1;
                 var isVideo = _ref.indexOf(".mp4") != -1 || _ref.indexOf(".flv") != -1 || _ref.indexOf(".ogg") != -1 || _ref.indexOf(".ogv") != -1;
-                if (isAudio || isVideo) {
+                if ((isAudio || isVideo) && $exe.isSafeMediaUrl(ref)) {
                     var id = "media-box-" + i;
                     $(this).attr("href", "#" + id);
-                    var hiddenPlayer = $('<div class="exe-media-box js-hidden" id="' + id + '"></div>');
-                    if (isAudio) hiddenPlayer.html('<div class="exe-media-audio-box"><audio controls="controls" src="' + ref + '" class="exe-media-box-element exe-media-box-audio"><a href="' + ref + '">audio/mpeg</a></audio></div>');
-                    else hiddenPlayer.html('<div class="exe-media-video-box"><video width="480" height="385" controls="controls" class="exe-media-box-element"><source src="' + ref + '" /></video></div>');
+                    // Build with attr()/text() so the href is never parsed as markup
+                    var hiddenPlayer = $('<div class="exe-media-box js-hidden"></div>').attr("id", id);
+                    if (isAudio) {
+                        hiddenPlayer.append($('<div class="exe-media-audio-box"></div>').append(
+                            $('<audio controls="controls" class="exe-media-box-element exe-media-box-audio"></audio>').attr("src", ref).append(
+                                $('<a>audio/mpeg</a>').attr("href", ref)
+                            )
+                        ));
+                    } else {
+                        hiddenPlayer.append($('<div class="exe-media-video-box"></div>').append(
+                            $('<video width="480" height="385" controls="controls" class="exe-media-box-element"></video>').append(
+                                $('<source>').attr("src", ref)
+                            )
+                        ));
+                    }
                     $("body").append(hiddenPlayer);
                     $exe.hasMultimediaGalleries = true;
                 }
@@ -785,14 +805,16 @@ var $exe = {
                                 if (sourceEl.length) src = sourceEl.attr('src');
                             }
                         }
-                        if (src) {
+                        if (src && $exe.isSafeMediaUrl(src)) {
                             if (media.hasClass("exe-media-box-audio")) cont.attr("class", "pp_content_container with-audio");
                             // Extension = last dot-segment of the filename, without query string or fragment
                             var fileName = src.split("/").pop().split("?")[0].split("#")[0];
                             var dotIndex = fileName.lastIndexOf(".");
                             var ext = dotIndex > -1 ? fileName.substring(dotIndex + 1) : undefined;
                             if (typeof ext == 'undefined' || ext == 'undefined' || ext == '') ext = $exe_i18n.download;
-                            $(".pp_details .pp_description").append(' <span class="exe-media-download"><a href="' + src + '" title="' + $exe_i18n.download + '" download>' + ext + '</a></span>');
+                            $(".pp_details .pp_description").append(' ', $('<span class="exe-media-download"></span>').append(
+                                $('<a download></a>').attr({ href: src, title: $exe_i18n.download }).text(ext)
+                            ));
                         } else {
                             // Hide the title at the bottom (we use h2.pp_title instead)
                             block = $(".pp_inline", block);

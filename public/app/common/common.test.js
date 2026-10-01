@@ -587,6 +587,44 @@ describe('common.js $exe helpers', () => {
       expect(global.$exe.hasMultimediaGalleries).toBe(false);
     });
 
+    it('keeps a quote in the media href inside the src attribute', () => {
+      const $a = global.$('<a rel="lightbox">Link</a>').attr('href', 'a.mp3" onerror="window.__pwned=1');
+      document.body.innerHTML = '';
+      global.$('body').append($a);
+      global.$exe.setMultimediaGalleries();
+
+      const audio = document.querySelector('.exe-media-audio-box audio');
+      expect(audio.getAttribute('src')).toBe('a.mp3" onerror="window.__pwned=1');
+      expect(audio.hasAttribute('onerror')).toBe(false);
+      expect(document.querySelector('[onerror]')).toBeNull();
+    });
+
+    it('keeps markup in a video href as text', () => {
+      const $a = global.$('<a rel="lightbox">Link</a>').attr('href', 'v.mp4"><img src=x onerror=alert(1)>');
+      document.body.innerHTML = '';
+      global.$('body').append($a);
+      global.$exe.setMultimediaGalleries();
+
+      expect(document.querySelector('.exe-media-video-box source').getAttribute('src')).toBe('v.mp4"><img src=x onerror=alert(1)>');
+      expect(document.querySelector('.exe-media-box img')).toBeNull();
+    });
+
+    it.each([
+      'javascript:alert(1)//a.mp3',
+      ' JavaScript:alert(1)//a.mp4',
+      'data:text/html,<script>alert(1)</script>.mp3',
+      'vbscript:msgbox(1)//a.mp3',
+    ])('does not build a media box for the unsafe URL %s', (href) => {
+      const $a = global.$('<a rel="lightbox">Link</a>').attr('href', href);
+      document.body.innerHTML = '';
+      global.$('body').append($a);
+      global.$exe.setMultimediaGalleries();
+
+      expect(document.querySelector('.exe-media-box')).toBeNull();
+      expect(document.querySelector('a[rel="lightbox"]').getAttribute('href')).toBe(href);
+      expect(global.$exe.hasMultimediaGalleries).toBe(false);
+    });
+
     describe('changepicturecallback', () => {
       function setupPrettyPhotoDOM(srcValue, extraClass) {
         const cls = 'exe-media-box-element' + (extraClass ? ' ' + extraClass : '');
@@ -610,6 +648,29 @@ describe('common.js $exe helpers', () => {
         const downloadLink = document.querySelector('.exe-media-download a');
         expect(downloadLink).not.toBeNull();
         expect(downloadLink.textContent).toBe('mp3');
+      });
+
+      it('renders the download link href and label as text, not markup', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+        vi.runAllTimers();
+        setupPrettyPhotoDOM('audio/x.<img src=x onerror=alert(1)>');
+        prettyPhotoOptions.changepicturecallback();
+
+        const downloadLink = document.querySelector('.exe-media-download a');
+        expect(downloadLink.getAttribute('href')).toBe('audio/x.<img src=x onerror=alert(1)>');
+        expect(downloadLink.textContent).toBe('<img src=x onerror=alert(1)>');
+        expect(document.querySelector('.pp_description img')).toBeNull();
+      });
+
+      it('adds no download link for a javascript: source', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+        vi.runAllTimers();
+        setupPrettyPhotoDOM('javascript:alert(1)//x.mp3');
+        prettyPhotoOptions.changepicturecallback();
+
+        expect(document.querySelector('.exe-media-download')).toBeNull();
       });
 
       it('falls back to i18n.download when ext is undefined (blob URL without extension)', () => {
