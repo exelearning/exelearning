@@ -977,3 +977,63 @@ describe('trueorfalse iDevice export', () => {
     });
   });
 });
+
+describe('trueorfalse minimum score notice', () => {
+  let $trueorfalse;
+  let sharedNotice;
+
+  beforeEach(() => {
+    global.$trueorfalse = undefined;
+    $trueorfalse = loadExportIdevice(readFileSync(join(__dirname, 'trueorfalse.js'), 'utf-8'));
+    sharedNotice = vi.spyOn($exeDevices.iDevice.gamification.report, 'showPassScoreNotice');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  it('asks for the notice in quiz mode', () => {
+    const options = { id: 'tof-1', isTest: true, isScorm: 1 };
+
+    $trueorfalse.showPassScoreNotice(options);
+
+    expect(sharedNotice).toHaveBeenCalledWith(options);
+  });
+
+  // Outside quiz mode no score is saved and no report is written, so no
+  // minimum score applies to anything.
+  it('shows nothing outside quiz mode', () => {
+    expect($trueorfalse.showPassScoreNotice({ id: 'tof-1', isTest: false, isScorm: 1 })).toBeNull();
+    expect(sharedNotice).not.toHaveBeenCalled();
+  });
+
+  it('asks once its main container is on the page, below the instructions', () => {
+    document.body.innerHTML = `
+      <div class="TOFP-instructions">Instructions</div>
+      <div id="tofPMainContainer-tof-1"><div id="tofPMultimedia-tof-1"></div></div>`;
+    let mainOnPage = null;
+    vi.spyOn($trueorfalse, 'showPassScoreNotice').mockImplementation((data) => {
+      mainOnPage = document.getElementById(data.main) !== null;
+      return null;
+    });
+    vi.spyOn($trueorfalse, 'generateTrueFalseQuizHtml').mockReturnValue('<p>Questions</p>');
+    vi.spyOn($trueorfalse, 'addEvents').mockImplementation(() => {});
+    vi.spyOn($trueorfalse, 'updateLatexInView').mockImplementation(() => {});
+
+    $trueorfalse.renderBehaviour(
+      // The progress report alone: with SCORM on, a page outside a package
+      // registers the activity, which is not what this test is about.
+      { typeGame: 'TrueOrFalse', isTest: true, isScorm: 0, evaluation: true, evaluationID: 'report-1', questionsGame: [], msgs: {} },
+      null,
+      'tof-1'
+    );
+
+    expect($trueorfalse.showPassScoreNotice).toHaveBeenCalledTimes(1);
+    expect($trueorfalse.showPassScoreNotice.mock.calls[0][0]).toMatchObject({
+      main: 'tofPMainContainer-tof-1',
+      isTest: true,
+    });
+    expect(mainOnPage).toBe(true);
+  });
+});

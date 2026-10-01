@@ -198,3 +198,74 @@ test('new true-or-false activities offer a report only in test mode', async ({
     await expect(activity).toBeVisible({ timeout: 30000 });
     await expect(activity.locator('.Games-ReportIconDiv')).toHaveCount(0);
 });
+
+test('true-or-false tells the learner its minimum score, in quiz mode only', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    test.setTimeout(150000);
+    const uuid = await createProject(page, 'True or false minimum score notice');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'trueorfalse');
+    const nodeId = (await page.locator('#node-content .idevice_node.trueorfalse').getAttribute('id'))!;
+    const form = page.locator('#trueorfalseIdeviceForm');
+    const optionsTab = async () => {
+        await form.locator('.exe-form-tabs a').first().click();
+        await form.getByRole('link', { name: 'Options', exact: true }).click();
+    };
+
+    await optionsTab();
+    await page.locator('#tofEIsTest').check();
+    await page.waitForFunction(() => (window as any).tinymce?.get('tofEQuestionEditor')?.initialized);
+    await page.evaluate(() =>
+        (window as any).tinymce.get('tofEQuestionEditor').setContent('<p>The Earth is a planet.</p>'),
+    );
+    await form
+        .locator('.exe-form-tabs a')
+        .filter({ hasText: /^Grading$/ })
+        .click();
+    await page.locator('#eXeProgressReport').check();
+    await page.locator('#eXePassScoreCustom').check();
+    await page.locator('#eXePassScoreValue').fill('7');
+    await saveIdevice(page, nodeId);
+
+    // Below the instructions, right above the activity.
+    const activity = page.locator('#node-content .idevice_node.trueorfalse');
+    const notice = activity.locator('.exe-pass-score-notice');
+    await expect(notice).toHaveText('Minimum score needed to pass this activity: 7');
+    await expect(notice).toHaveClass(/text-danger/);
+    await expect(notice).toHaveClass(/text-center/);
+    expect(await notice.evaluate(element => element.nextElementSibling?.id)).toBe(`tofPMainContainer-${nodeId}`);
+    expect(await notice.evaluate(element => element.previousElementSibling?.className)).toContain('TOFP-instructions');
+
+    // Outside quiz mode nothing judges the mark, so nothing announces it.
+    await editIdevice(page, nodeId);
+    await optionsTab();
+    await page.locator('#tofEIsTest').uncheck();
+    await saveIdevice(page, nodeId);
+    await expect(activity.locator('#tofPMainContainer-' + nodeId)).toBeVisible();
+    await expect(activity.locator('.exe-pass-score-notice')).toHaveCount(0);
+
+    // Saving outside quiz mode also saved the report as off, and without its
+    // identifier, so back in quiz mode the author turns it on and names it again
+    // before anything judges the mark.
+    await editIdevice(page, nodeId);
+    await optionsTab();
+    await page.locator('#tofEIsTest').check();
+    await form
+        .locator('.exe-form-tabs a')
+        .filter({ hasText: /^Grading$/ })
+        .click();
+    await page.locator('#eXeProgressReport').check();
+    await page.locator('#eXeProgressReportID').fill('tof-report');
+    await saveIdevice(page, nodeId);
+    await expect(notice).toHaveText('Minimum score needed to pass this activity: 7');
+
+    expect(await waitForPreviewContent(page, 30000)).toBe(true);
+    await expect(getPreviewFrame(page).locator('.idevice_node.trueorfalse .exe-pass-score-notice')).toHaveText(
+        'Minimum score needed to pass this activity: 7',
+        { timeout: 30000 },
+    );
+});

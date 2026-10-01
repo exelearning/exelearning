@@ -86,6 +86,7 @@ var $trueorfalse = {
 
         $('#tofPMultimedia-' + ldata.id).empty();
         $('#tofPMultimedia-' + ldata.id).append(questionsHtml);
+        $trueorfalse.showPassScoreNotice(ldata);
 
         if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
@@ -107,6 +108,21 @@ var $trueorfalse = {
         $trueorfalse.addEvents(ldata);
 
         $trueorfalse.updateLatexInView(ldata.id);
+    },
+
+    /**
+     * Ask for the notice of the minimum score, in quiz mode only.
+     *
+     * Outside quiz mode nothing judges the mark: no SCORM score can be saved
+     * (see updateConfig) and the editor offers the progress report only in
+     * quiz mode, so a notice there would announce a mark nothing applies.
+     *
+     * @param {Object} data - iDevice options, with its main container on the page
+     * @returns {jQuery|null} The notice, or null when none is shown.
+     */
+    showPassScoreNotice: function (data) {
+        if (!data.isTest) return null;
+        return $exeDevices.iDevice.gamification.report.showPassScoreNotice(data);
     },
 
     /**
