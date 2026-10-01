@@ -1441,6 +1441,12 @@ var $exeDevices = {
                                 weight: Number.isNaN(weight) || weight <= 0 ? 100 : weight,
                                 minimumScore: 0,
                                 maximumScore: 100,
+                                // This activity's own pass mark, the project's
+                                // unless its author customised it. The page is
+                                // judged by the weighted mean of these, so an
+                                // iDevice alone on its page passes in the LMS
+                                // exactly when it passes on screen.
+                                successThreshold: $exeDevices.iDevice.gamification.scorm.getSuccessThreshold(game),
                             },
                             progress || {}
                         )
@@ -1640,30 +1646,82 @@ var $exeDevices = {
                     if (keys.length === 0) {
                         return 0;
                     }
-                    function clamp(num, min, max) {
-                        return Math.max(min, Math.min(num, max));
-                    }
 
                     let sumWeights = 0;
                     let sumWeighted = 0;
                     keys.forEach(key => {
                         const activity = lmsData[key] || {};
-                        const score = clamp(parseFloat(activity.score) || 0, 0, 100);
-                        // Same rule as reportActivity: no usable weight is 100,
-                        // not 1. The two aggregations must stay arithmetically
-                        // identical, so their defaults cannot differ either.
-                        const storedWeight = parseFloat(activity.weighted);
-                        const weight = clamp(
-                            Number.isNaN(storedWeight) || storedWeight <= 0 ? 100 : storedWeight,
-                            1,
-                            100
-                        );
+                        const score = Math.max(0, Math.min(parseFloat(activity.score) || 0, 100));
+                        const weight = $exeDevices.iDevice.gamification.scorm.getLegacyWeight(activity);
                         sumWeighted += score * weight;
                         sumWeights += weight;
                     });
 
-                    // clamp() forces every weight to at least 1, so the sum of
-                    // one or more of them is never zero.
+                    // getLegacyWeight() is at least 1, so the sum of one or
+                    // more weights is never zero.
+                    return Math.round((sumWeighted / sumWeights) * 100) / 100;
+                },
+
+                /**
+                 * The weight of one legacy suspend_data entry, clamped into
+                 * 1-100. Same rule as reportActivity: no usable weight is 100,
+                 * not 1. The aggregations must stay arithmetically identical
+                 * to the registry's, so their defaults cannot differ either.
+                 *
+                 * @param {Object} activity A parseSuspendData() entry.
+                 * @returns {number} A weight in 1-100.
+                 */
+                getLegacyWeight: function (activity) {
+                    const storedWeight = parseFloat(activity.weighted);
+                    const weight = Number.isNaN(storedWeight) || storedWeight <= 0 ? 100 : storedWeight;
+                    return Math.max(1, Math.min(weight, 100));
+                },
+
+                /**
+                 * One activity's pass mark on the 0-100 scale its score is
+                 * reported on: the project's, or its own when its author
+                 * customised it.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @returns {number} A percentage in 0-100.
+                 */
+                getSuccessThreshold: function (game) {
+                    return $exe.passScore.toPercent($exe.passScore.resolve(game));
+                },
+
+                /** Pass mark by page position, for the legacy runtimes (see getFinalThreshold). */
+                _successThresholdsByNumber: {},
+
+                /**
+                 * The page's pass mark for the runtimes that have no registry
+                 * (SCORM 2004): the weighted mean of the activities' own marks,
+                 * over the same entries and with the same weights as
+                 * getFinalScore(), so it must stay arithmetically identical to
+                 * aggregateSuccessThreshold() in exe-scorm12-activities.js. An
+                 * entry whose activity has not registered on this page load
+                 * counts at the project's mark.
+                 *
+                 * @param {Object} lmsData Activities by page position.
+                 * @returns {number} A percentage in 0-100.
+                 */
+                getFinalThreshold: function (lmsData) {
+                    const pageThreshold = $exe.passScore.toPercent();
+                    const keys = lmsData ? Object.keys(lmsData) : [];
+                    if (keys.length === 0) {
+                        return pageThreshold;
+                    }
+                    const thresholds = $exeDevices.iDevice.gamification.scorm._successThresholdsByNumber;
+
+                    let sumWeights = 0;
+                    let sumWeighted = 0;
+                    keys.forEach(key => {
+                        const own = thresholds[key];
+                        const threshold = typeof own === 'number' ? own : pageThreshold;
+                        const weight = $exeDevices.iDevice.gamification.scorm.getLegacyWeight(lmsData[key] || {});
+                        sumWeighted += threshold * weight;
+                        sumWeights += weight;
+                    });
+
                     return Math.round((sumWeighted / sumWeights) * 100) / 100;
                 },
 
@@ -1714,6 +1772,11 @@ var $exeDevices = {
                         } else {
                             // Legacy runtime (SCORM 2004 packages and packages
                             // exported before the SCORM 1.2 runtime rewrite).
+                            // Its suspend_data identifies activities by page
+                            // position, so that is how getFinalThreshold()
+                            // finds this activity's mark.
+                            $exeDevices.iDevice.gamification.scorm._successThresholdsByNumber[game.ideviceNumber] =
+                                $exeDevices.iDevice.gamification.scorm.getSuccessThreshold(game);
                             let suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
 
                             lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
@@ -2252,14 +2315,15 @@ var $exeDevices = {
                         // exported before the SCORM 1.2 runtime rewrite).
                         //
                         // The threshold was a hard-coded 50. It is now the
-                        // project pass score on the aggregate's own 0-100
-                        // scale; a project that never touches the option
-                        // publishes 5, which is 50, so nothing changes for
-                        // content that does not use the feature. There is no
-                        // policy layer here to consult mastery_score, so this
-                        // path applies the author's mark directly.
+                        // weighted mean of the activities' own pass marks, the
+                        // same rule the SCORM 1.2 policy applies; a project
+                        // that never touches the option publishes 5, which is
+                        // 50, so nothing changes for content that does not use
+                        // the feature. There is no policy layer here to consult
+                        // mastery_score, so this path applies the author's
+                        // marks directly.
                         pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                        if (newFinalScore >= $exe.passScore.toPercent()) {
+                        if (newFinalScore >= $exeDevices.iDevice.gamification.scorm.getFinalThreshold(lmsData)) {
                             pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
                         } else {
                             pipwerks.SCORM.set("cmi.core.lesson_status", "failed");

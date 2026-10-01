@@ -2280,8 +2280,31 @@ describe('common.js $exeDevices', () => {
         weight: 3,
         minimumScore: 0,
         maximumScore: 100,
+        // Not customised and no META in this document: the default 5, as a percentage.
+        successThreshold: 50,
         total: 5,
       });
+    });
+
+    it('reportActivity declares the mark the author customised', () => {
+      getScorm().reportActivity({ ideviceId: 'id-8', isScorm: 1, passScoreMode: 'custom', passScoreCustom: 7 });
+
+      expect(registry.register).toHaveBeenCalledWith('id-8', expect.objectContaining({ successThreshold: 70 }));
+    });
+
+    it('reportActivity declares the project mark for an activity that follows it', () => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'exe-pass-score');
+      meta.setAttribute('content', '6');
+      document.head.appendChild(meta);
+
+      try {
+        getScorm().reportActivity({ ideviceId: 'id-9', isScorm: 1, passScoreMode: 'global', passScoreCustom: 9 });
+
+        expect(registry.register).toHaveBeenCalledWith('id-9', expect.objectContaining({ successThreshold: 60 }));
+      } finally {
+        meta.remove();
+      }
     });
 
     it('reportActivity declares a presentation activity as not required', () => {
@@ -2359,6 +2382,35 @@ describe('common.js $exeDevices', () => {
             2: { score: 0, weighted: 100 },
           })
         ).toBe(0.99);
+      });
+
+      describe('getFinalThreshold', () => {
+        afterEach(() => {
+          getScorm()._successThresholdsByNumber = {};
+        });
+
+        it('is the project mark while nothing has reported', () => {
+          // No META in this document: the default 5, which is 50.
+          expect(getScorm().getFinalThreshold({})).toBe(50);
+          expect(getScorm().getFinalThreshold(null)).toBe(50);
+        });
+
+        it('weighs the marks of the entries it aggregates', () => {
+          getScorm()._successThresholdsByNumber = { 1: 70, 2: 30 };
+
+          expect(
+            getScorm().getFinalThreshold({
+              1: { score: 0, weighted: 3 },
+              2: { score: 0, weighted: 1 },
+            })
+          ).toBe(60);
+        });
+
+        it('counts an entry whose activity has not registered at the project mark', () => {
+          getScorm()._successThresholdsByNumber = { 1: 90 };
+
+          expect(getScorm().getFinalThreshold({ 1: { score: 0 }, 2: { score: 0 } })).toBe(70);
+        });
       });
     });
 
@@ -2785,6 +2837,45 @@ describe('common.js $exeDevices', () => {
         expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
       } finally {
         meta.remove();
+      }
+    });
+
+    /**
+     * The report from Moodle, on the path with no policy layer: an activity
+     * customised away from the project's 5 must be judged by its own mark,
+     * which registerActivity() records by page position.
+     */
+    it.each([
+      ['fails below its own mark of 7', 7, 66.7, 'failed'],
+      ['passes at its own mark of 3', 3, 33.3, 'passed'],
+    ])('showFinalScore on the legacy path %s', (_label, mark, score, expected) => {
+      delete window.exeScorm12;
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const node = document.createElement('div');
+      node.className = 'idevice_node';
+      node.id = 'node-legacy';
+      const main = document.createElement('div');
+      main.id = 'game-legacy';
+      node.appendChild(main);
+      document.body.appendChild(node);
+      const game = {
+        main: 'game-legacy',
+        isScorm: 1,
+        weighted: 100,
+        passScoreMode: 'custom',
+        passScoreCustom: mark,
+        msgs: { msgYouScore: 'Score', msgScoreScorm: 'scorm', msgSaveAuto: 'auto', msgPlaySeveralTimes: 'again', msgYouLastScore: 'last', msgActityComply: 'ok' },
+      };
+
+      try {
+        getScorm().registerActivity(game);
+        getScorm().showFinalScore({ [game.ideviceNumber]: { title: 'Q', score, weighted: 100 } }, game);
+
+        expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
+      } finally {
+        node.remove();
+        getScorm()._successThresholdsByNumber = {};
       }
     });
 

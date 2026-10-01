@@ -873,6 +873,284 @@ describe('exe-scorm12-policy', () => {
         });
     });
 
+    describe("activities' own pass marks", () => {
+        const finished = (score, successThreshold, extra = {}) =>
+            Object.assign(
+                { evaluable: true, completionRequired: true, completed: true, score: score, successThreshold },
+                extra
+            );
+
+        function enterWithPageThreshold(percentage, data = {}) {
+            policy.configure({
+                getClient: () => client,
+                getActivities: () => activities,
+                warn: warnSpy,
+                getPageSuccessThreshold: () => percentage,
+            });
+            startSession(Object.assign({ 'cmi.core.lesson_status': 'incomplete' }, data));
+            policy.applyEntryPolicy();
+        }
+
+        it('fails a lone activity below its own mark even when the project mark is lower', () => {
+            // The report from Moodle: a crossword customised to 7 in a project
+            // left at 5, scoring 2 of 3. It used to be judged at 50 and pass.
+            enterWithPageThreshold(50);
+            activities.register('crossword', finished(66.7, 70));
+
+            policy.applyDecidedStatus();
+
+            expect(api.data['cmi.core.lesson_status']).toBe('failed');
+        });
+
+        it('passes a lone activity at its own mark even when the project mark is higher', () => {
+            enterWithPageThreshold(50);
+            activities.register('crossword', finished(33.3, 30));
+
+            policy.applyDecidedStatus();
+
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
+        it('keeps the project mark for activities that declare none', () => {
+            // Content from before activities declared a mark of their own.
+            enterWithPageThreshold(70);
+            activities.register('quiz', finished(66.7, undefined));
+
+            expect(policy.getSuccessThreshold()).toBe(70);
+            expect(policy.decideStatus().status).toBe('failed');
+        });
+
+        it('judges several activities by the weighted mean of their marks', () => {
+            enterWithPageThreshold(50);
+            // Score (3 * 60 + 1 * 80) / 4 = 65 against (3 * 70 + 1 * 30) / 4 = 60.
+            activities.register('hard', finished(60, 70, { weight: 3 }));
+            activities.register('easy', finished(80, 30, { weight: 1 }));
+
+            expect(policy.getSuccessThreshold()).toBe(60);
+            expect(policy.decideStatus()).toMatchObject({ status: 'passed', score: 65 });
+        });
+
+        it('counts an activity with no mark of its own at the project mark', () => {
+            enterWithPageThreshold(50);
+            // Alone, the first would need 90; the second brings the mean to 70.
+            activities.register('strict', finished(80, 90));
+            activities.register('legacy', finished(80, undefined));
+
+            expect(policy.getSuccessThreshold()).toBe(70);
+            expect(policy.decideStatus().status).toBe('passed');
+        });
+
+        it('ignores the marks of activities that are not evaluable', () => {
+            enterWithPageThreshold(50);
+            activities.register('quiz', finished(66.7, 60));
+            activities.register('slides', { evaluable: false, completionRequired: false, successThreshold: 100 });
+
+            expect(policy.getSuccessThreshold()).toBe(60);
+        });
+
+        it('lets the LMS mastery score win over the activities', () => {
+            enterWithPageThreshold(50, { 'cmi.student_data.mastery_score': '40' });
+            activities.register('crossword', finished(66.7, 70));
+
+            expect(policy.getSuccessThreshold()).toBe(40);
+            expect(policy.decideStatus().status).toBe('passed');
+        });
+
+        it('lets an explicit threshold from content win over the activities', () => {
+            enterWithPageThreshold(50);
+            activities.register('crossword', finished(66.7, 30));
+
+            policy.setSuccessThreshold(80);
+            expect(policy.decideStatus().status).toBe('failed');
+
+            policy.setSuccessThreshold(null);
+            expect(policy.decideStatus()).toMatchObject({ status: 'completed', reason: 'no-success-threshold' });
+        });
+
+        it('follows activities that register after the session opened', () => {
+            enterWithPageThreshold(50);
+            activities.register('first', finished(65, 60));
+            expect(policy.decideStatus().status).toBe('passed');
+
+            activities.register('second', finished(65, 80));
+
+            expect(policy.getSuccessThreshold()).toBe(70);
+            expect(policy.decideStatus().status).toBe('failed');
+        });
+
+        it('keeps the page threshold with a registry that cannot aggregate marks', () => {
+            // A host may assemble the layers itself, from a release whose
+            // registry predates activities declaring a mark.
+            const olderRegistry = Object.assign({}, activities);
+            delete olderRegistry.successThreshold;
+            policy.configure({
+                getClient: () => client,
+                getActivities: () => olderRegistry,
+                getPageSuccessThreshold: () => 50,
+            });
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            policy.applyEntryPolicy();
+            activities.register('crossword', finished(66.7, 70));
+
+            expect(policy.getSuccessThreshold()).toBe(50);
+            expect(policy.decideStatus().status).toBe('passed');
+        });
+
+        it('keeps the activity mark across a resumed attempt', () => {
+            // The mark is not stored in cmi.suspend_data: the live registration
+            // declares it, and restoring the stored progress must not drop it.
+            policy.configure({
+                getClient: () => client,
+                getActivities: () => activities,
+                getPageSuccessThreshold: () => 50,
+            });
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.suspend_data': 'exe12/1|crossword;7;2;3;66.7;100;0;100',
+            });
+            activities.register('crossword', { evaluable: true, completionRequired: true, successThreshold: 70 });
+
+            policy.applyEntryPolicy();
+
+            expect(activities.get('crossword')).toMatchObject({ score: 66.7, successThreshold: 70 });
+            expect(policy.decideStatus().status).toBe('failed');
+        });
+
+        // The learner finishes the activity, leaves, comes back within the same
+        // SCORM attempt and plays it again. The stored payload is the one the
+        // first visit wrote, not a hand-written string, so these hold whatever
+        // a record carries.
+        describe('reopened within the same attempt', () => {
+            const declared = (mark) => ({ evaluable: true, completionRequired: true, successThreshold: mark });
+
+            function finishFirstVisit(mark, score) {
+                enterWithPageThreshold(50);
+                activities.register('crossword', finished(score, mark));
+                policy.applyDecidedStatus();
+                policy.persistActivities();
+                return {
+                    'cmi.core.lesson_status': api.data['cmi.core.lesson_status'],
+                    'cmi.core.score.raw': api.data['cmi.core.score.raw'],
+                    'cmi.suspend_data': api.data['cmi.suspend_data'],
+                    // What closing the attempt wrote.
+                    'cmi.core.exit': '',
+                    'cmi.core.entry': 'resume',
+                };
+            }
+
+            // A new page load: every layer starts from nothing.
+            function reloadPage() {
+                resetPipwerks(pipwerks);
+                client.resetDependencies();
+                client.configure({ getPipwerks: () => pipwerks, now: () => 1000, error: vi.fn(), warn: clientWarnSpy });
+                activities.resetDependencies();
+                activities.configure({ warn: vi.fn() });
+                policy.resetDependencies();
+            }
+
+            /**
+             * Reopen the stored attempt with the activity registering on either
+             * side of the entry policy. In an exported page the session opens
+             * first: the registry is still empty when applyEntryPolicy() runs.
+             */
+            function reopen(stored, mark, order) {
+                reloadPage();
+                if (order === 'before') {
+                    activities.register('crossword', declared(mark));
+                }
+                enterWithPageThreshold(50, stored);
+                if (order === 'after') {
+                    // What reportActivity() does after registering.
+                    activities.register('crossword', declared(mark));
+                    policy.reconcilePendingActivities();
+                }
+            }
+
+            describe.each([
+                ['passed', 30, 33.3],
+                ['failed', 70, 66.7],
+            ])('a %s activity with its own mark of %d', (verdict, mark, score) => {
+                it.each(['after', 'before'])(
+                    'returns to incomplete on a restart when it registers %s the session opens',
+                    (order) => {
+                        const stored = finishFirstVisit(mark, score);
+                        expect(stored['cmi.core.lesson_status']).toBe(verdict);
+
+                        reopen(stored, mark, order);
+                        // Coming back alone changes nothing.
+                        expect(api.data['cmi.core.lesson_status']).toBe(verdict);
+
+                        // Playing it again reports 0, unfinished.
+                        activities.update('crossword', { completed: false, score: 0 });
+                        policy.recordActivityOutcome();
+
+                        expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+                        expect(api.data['cmi.core.exit']).toBe('suspend');
+                    }
+                );
+
+                it.each(['after', 'before'])(
+                    'judges the replay by its own mark when it registers %s the session opens',
+                    (order) => {
+                        reopen(finishFirstVisit(mark, score), mark, order);
+                        activities.update('crossword', { completed: false, score: 0 });
+                        policy.recordActivityOutcome();
+
+                        activities.update('crossword', { completed: true, score: mark - 1 });
+                        policy.recordActivityOutcome();
+                        expect(api.data['cmi.core.lesson_status']).toBe('failed');
+
+                        activities.update('crossword', { completed: true, score: mark });
+                        policy.recordActivityOutcome();
+                        expect(api.data['cmi.core.lesson_status']).toBe('passed');
+                    }
+                );
+            });
+
+            it('reopens a page whose activities carry different marks and weights', () => {
+                // Score (3 * 60 + 1 * 40) / 4 = 55 against (3 * 50 + 1 * 90) / 4 = 60:
+                // failed, where the project mark of 50 alone would have passed it.
+                enterWithPageThreshold(50);
+                activities.register('hard', finished(60, 50, { weight: 3 }));
+                activities.register('strict', finished(40, 90, { weight: 1 }));
+                policy.applyDecidedStatus();
+                policy.persistActivities();
+                expect(api.data['cmi.core.lesson_status']).toBe('failed');
+                const stored = {
+                    'cmi.core.lesson_status': 'failed',
+                    'cmi.suspend_data': api.data['cmi.suspend_data'],
+                    'cmi.core.exit': '',
+                };
+
+                reloadPage();
+                enterWithPageThreshold(50, stored);
+                // Only one of the two has registered when the learner restarts it.
+                activities.register('strict', declared(90));
+                activities.update('strict', { completed: false, score: 0 });
+                policy.recordActivityOutcome();
+
+                expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+                expect(api.data['cmi.core.exit']).toBe('suspend');
+            });
+
+            it('still leaves alone a restored status the stored marks do not account for', () => {
+                // Content set "passed" itself; the stored activity, judged by its
+                // own stored mark, would have failed.
+                reloadPage();
+                enterWithPageThreshold(50, {
+                    'cmi.core.lesson_status': 'passed',
+                    'cmi.suspend_data': 'exe12/1|crossword;7;0;3;66.7;100;0;100;70',
+                    'cmi.core.exit': '',
+                });
+                activities.register('crossword', declared(70));
+                activities.update('crossword', { completed: false, score: 0 });
+
+                expect(policy.recordActivityOutcome()).toMatchObject({ reason: 'terminal-status-preserved' });
+                expect(api.data['cmi.core.lesson_status']).toBe('passed');
+            });
+        });
+    });
+
     describe('in-session status re-evaluation', () => {
         function register(id, descriptor) {
             activities.register(id, descriptor);

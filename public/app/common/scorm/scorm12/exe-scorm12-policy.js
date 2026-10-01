@@ -88,6 +88,14 @@
     /** META the exporter writes with the project pass score (a mark out of 10). */
     var PASS_SCORE_META_NAME = 'exe-pass-score';
 
+    /** Where the success threshold in state came from (see thresholdInForce). */
+    var THRESHOLD_SOURCE = {
+        DEFAULT: 'default',
+        PAGE: 'page',
+        LMS: 'lms',
+        CONTENT: 'content',
+    };
+
     var defaultDeps = {
         getClient: function () {
             return global.exeScorm12 && global.exeScorm12.client;
@@ -138,6 +146,10 @@
             // the activity registry (previously the only completion input).
             pageHasScoredActivities: false,
             successThreshold: DEFAULT_SUCCESS_THRESHOLD,
+            // Who set successThreshold: the default or the page leave the
+            // activities' own marks in charge (thresholdInForce), the LMS and
+            // content override them.
+            thresholdSource: THRESHOLD_SOURCE.DEFAULT,
             thresholdResolved: false,
             // Last status this policy itself wrote during this session. A
             // terminal status the policy owns may be corrected when a
@@ -375,6 +387,36 @@
         };
     }
 
+    /**
+     * The success threshold the page is judged by right now.
+     *
+     * Unless the LMS or content set one explicitly, it is the weighted mean of
+     * the activities' own pass marks, each activity that declares none counting
+     * at the page's threshold. It is computed on every decision rather than
+     * resolved once, because activities keep registering after the session
+     * opens. A page whose activities all follow the project gets the project's
+     * mark back, so content that never customises an activity grades as it did.
+     *
+     * Behind a capability check: a host may assemble the layers itself, and a
+     * registry from before activities declared a mark of their own still
+     * leaves the page's threshold in force.
+     *
+     * @returns {number|null} A percentage in 0-100, or null for none.
+     */
+    function thresholdInForce() {
+        if (state.thresholdSource === THRESHOLD_SOURCE.LMS || state.thresholdSource === THRESHOLD_SOURCE.CONTENT) {
+            return state.successThreshold;
+        }
+        var activities = deps.getActivities();
+        if (activities && typeof activities.successThreshold === 'function') {
+            var aggregate = activities.successThreshold(state.successThreshold);
+            if (aggregate !== null) {
+                return aggregate;
+            }
+        }
+        return state.successThreshold;
+    }
+
     var policy = {
         STATUS: STATUS,
         DEFAULT_SUCCESS_THRESHOLD: DEFAULT_SUCCESS_THRESHOLD,
@@ -488,6 +530,14 @@
             // agreeing with a stored value mid-session, which never claims
             // ownership (see applyDecidedStatus) — here the agreement comes
             // from the payload the LMS just handed back.
+            //
+            // The payload must therefore carry everything the verdict was
+            // judged by, each activity's own pass mark included. A game
+            // iDevice opens the session from initGame() before it registers,
+            // so this often runs over a registry that holds nothing but the
+            // restored records: judged by the page's mark instead, a verdict
+            // the activity's own mark decided would not be recognised, and a
+            // restart could never reopen it.
             if (activities && policy.isTerminalStatus(status) && policy.decideStatus().status === status) {
                 state.policySessionStatus = status;
                 // The exit that goes with it is claimed too. A terminal attempt
@@ -567,13 +617,17 @@
          *
          *   1. DEFAULT_SUCCESS_THRESHOLD — 50, the historical eXeLearning mark.
          *   2. The project pass score published by the page, if it has one.
-         *   3. cmi.student_data.mastery_score, if the LMS publishes one.
+         *   3. The weighted mean of the activities' own pass marks, an activity
+         *      that declares none counting at whichever of 1 and 2 is in force.
+         *      Not settled here: the activities keep registering, so
+         *      thresholdInForce() computes it on every decision.
+         *   4. cmi.student_data.mastery_score, if the LMS publishes one.
          *
          * The LMS wins on purpose: mastery_score is what the teacher set on the
          * activity in their own platform, and that is more specific than what
          * the author chose when building the content. The element is optional
          * in SCORM 1.2, so a minimal LMS answering "not implemented" simply
-         * leaves the page value in place — that is not an error.
+         * leaves the content's value in place — that is not an error.
          *
          * A project that never touches the option publishes 5, which is 50 —
          * so packages keep grading exactly as they did before this existed.
@@ -585,16 +639,18 @@
             var page = deps.getPageSuccessThreshold();
             if (page !== null && page >= 0 && page <= 100) {
                 state.successThreshold = page;
+                state.thresholdSource = THRESHOLD_SOURCE.PAGE;
             }
             var mastery = toFiniteNumber(deps.getClient().getOptionalValue(MASTERY_SCORE).value);
             if (mastery !== null && mastery >= 0 && mastery <= 100) {
                 state.successThreshold = mastery;
+                state.thresholdSource = THRESHOLD_SOURCE.LMS;
             }
-            return state.successThreshold;
+            return thresholdInForce();
         },
 
         /**
-         * Override the success threshold.
+         * Override the success threshold, including the activities' own marks.
          *
          * @param {number|null} threshold - Percentage in 0-100, or null to
          * drop the pass/fail distinction (completion only).
@@ -602,6 +658,7 @@
         setSuccessThreshold: function (threshold) {
             if (threshold === null) {
                 state.successThreshold = null;
+                state.thresholdSource = THRESHOLD_SOURCE.CONTENT;
                 return;
             }
             var numeric = toFiniteNumber(threshold);
@@ -610,11 +667,12 @@
                 return;
             }
             state.successThreshold = numeric;
+            state.thresholdSource = THRESHOLD_SOURCE.CONTENT;
         },
 
         /** @returns {number|null} The success threshold currently in force. */
         getSuccessThreshold: function () {
-            return state.successThreshold;
+            return thresholdInForce();
         },
 
         /**
@@ -666,7 +724,7 @@
             if (!inputs.allRequiredComplete) {
                 return { status: STATUS.INCOMPLETE, reason: 'required-activities-pending', score: score };
             }
-            var threshold = state.successThreshold;
+            var threshold = thresholdInForce();
             if (threshold === null || score === null) {
                 return { status: STATUS.COMPLETED, reason: 'no-success-threshold', score: score };
             }

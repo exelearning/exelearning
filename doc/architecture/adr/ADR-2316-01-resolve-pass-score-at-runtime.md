@@ -110,8 +110,22 @@ control the runtime ignored.
 
 - The SCORM page aggregate is a weighted mean, not a per-activity verdict:
   `aggregateScore()` computes `sum(normalizedScore * weight) / sum(weights)` in
-  `public/app/common/scorm/scorm12/exe-scorm12-activities.js`. A per-activity
-  threshold cannot be expressed with the existing page policy.
+  `public/app/common/scorm/scorm12/exe-scorm12-activities.js`. A page verdict
+  that respects each activity's own mark has to aggregate the marks the same
+  way, or the page and its activities answer different questions.
+- Judging the page by the project mark alone contradicted the activities in a
+  real LMS. In Moodle, with the project left at 5, a crossword customised to 7
+  scoring 66.7 was marked passed and one customised to 3 scoring 33.3 failed,
+  while each iDevice's own report said the opposite. Reproduced with the
+  exported package against a Moodle-like API: `$exe.passScore.resolve()` gave 7
+  and 3, and the policy judged both at 50.
+- Keeping the mark out of `cmi.suspend_data` broke restarting a resumed
+  activity. Traced in the exported crossword: `initGame()` opens the session,
+  so `applyEntryPolicy()` runs over an empty registry and the restored record,
+  judged by the page's 50, derived `failed` for a stored `passed` reached at 3.
+  The stored verdict was not recognised as the policy's own, and replaying the
+  activity left `passed` next to a 0, with `cmi.core.exit` still `""`. The
+  weight never had this problem because it is stored with the record.
 - `minimumScore` in the activity registry is **not** a threshold:
   `normalizedScore()` computes
   `((score - minimumScore) / (maximumScore - minimumScore)) * 100`, i.e. the lower
@@ -172,17 +186,43 @@ It travels as a META rather than an inline script for two verifiable reasons:
 EPUB forbids inline scripts by CSP, and the parser sees the tag before
 `libs/common.js` runs.
 
-### 3. SCORM threshold precedence: LMS > project > historical 50
+### 3. SCORM threshold precedence: LMS > activities' marks > project > historical 50
 
 The SCORM 1.2 policy settles its threshold least specific first: the historical
-50, then the mark the page publishes, then `cmi.student_data.mastery_score` if
-the LMS publishes one. **The LMS wins on purpose**: `mastery_score` is what the
-teacher configured on the activity in their own platform, and that is more
-specific than what the author chose when building the content months earlier.
+50, then the mark the page publishes, then the **weighted mean of the
+activities' own marks**, then `cmi.student_data.mastery_score` if the LMS
+publishes one. **The LMS wins on purpose**: `mastery_score` is what the teacher
+configured on the activity in their own platform, and that is more specific than
+what the author chose when building the content months earlier.
 
-This is a page-level verdict over the weighted aggregate, and is not the same
-question as whether one activity was passed — that one is answered per activity,
-on the 0-10 scale, and drives the progress report's icon and message.
+Each activity declares its mark to the registry when it registers
+(`successThreshold`, the resolved 0-10 mark ×10), and the page is judged against
+the mean of those marks over the same activities and with the same weights as
+the aggregate score. An activity that declares none counts at the project mark.
+Three properties follow, and they are why this shape was chosen over requiring
+every activity to pass its own mark:
+
+- A lone activity is judged by its own mark, so the LMS and the iDevice's own
+  verdict agree on a page with one activity.
+- A page whose activities all follow the project is judged by the project's
+  mark, so content that never customises an activity grades as it did.
+- The page passes when `sum(weight × score) ≥ sum(weight × mark)`: an activity
+  above its mark can make up for one below it, exactly as its score already
+  does in the aggregate.
+
+The mean is computed on every decision rather than resolved once, because
+activities keep registering after the session opens. The mark is **stored with
+each record in `cmi.suspend_data`**, as an optional ninth field, for the same
+reason the weight already is: the entry policy recognises its own earlier
+verdict only when the restored registry derives that verdict again, and a game
+iDevice opens the session from `initGame()` before it registers. A live
+declaration still replaces the stored mark, as it does the weight. The field is
+optional and last, so the payload version does not change and an older runtime
+reads the record and ignores the mark.
+
+The first version of this decision judged the page by the project mark alone and
+left the activity's own mark to the progress report. That made the LMS and the
+activity disagree, which is the report in the Evidence above.
 
 ### 4. The domain is 0-10 with one decimal, and 0 is a legitimate value
 
@@ -287,6 +327,8 @@ lower bound of the scale, not a threshold (see Evidence).
 - `metadata-properties.ts` gains a third property type (`number`) alongside
   `string` and `boolean`, holding the domain, the normalisation and the META name.
 - The value is not seeded when a project is created: readers apply the default.
+- Each SCORM 1.2 registry record in `cmi.suspend_data` gains an optional ninth
+  field with the activity's mark (0-100), under the same `exe12/1` version.
 
 ### Path of the value
 
@@ -318,8 +360,12 @@ config-params.ts → API /parameters → ProjectProperties → form
 
 - Progress report and the learner's message: a single comparison in
   `saveEvaluation()`.
-- SCORM 1.2: the policy settles the threshold in three layers.
-- Legacy SCORM: `showFinalScore()` applies the author's mark.
+- SCORM 1.2: `reportActivity()` declares each activity's mark to the registry,
+  `activities.successThreshold()` averages them, and the policy settles the
+  threshold in four layers.
+- Legacy SCORM (2004): `registerActivity()` records each mark by page position
+  and `getFinalThreshold()` averages them with the same weights as
+  `getFinalScore()`; a test pins the two averages against each other.
 
 ### Scope
 
@@ -386,6 +432,15 @@ config-params.ts → API /parameters → ProjectProperties → form
   previewed page and `$exe.passScore.get()` inside the iframe.
 - The claim that nothing changes for existing content is pinned by a test
   asserting that a page publishing no threshold keeps `DEFAULT_SUCCESS_THRESHOLD`.
+- The page verdict is pinned at unit level for a lone customised activity on
+  either side of the project mark, for weighted pages, for activities with no
+  mark of their own, for the LMS and content overrides and across a resumed
+  attempt, with the activity registering on either side of the entry policy.
+  `scorm12-sco-runtime.spec.ts` exports a rubric customised to 8 in a project
+  at 5 and plays it against a strict SCORM 1.2 API: 7.5 is `failed`, clearing
+  it on a second visit reopens the attempt, and 10 is `passed`. A second test
+  does the same with a Relate game, which registers after the session opens;
+  it fails against a runtime that does not store the mark.
 - For `map`, whose six game modes each end differently, a test asserts that all
   of them still report through a single `saveEvaluation` funnel — the property
   that lets the threshold reach every mode without touching the runtime.

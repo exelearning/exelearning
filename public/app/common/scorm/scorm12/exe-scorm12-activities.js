@@ -19,7 +19,8 @@
  * eXeLearning releases before this layer existed, ignores malformed data
  * instead of throwing, and compacts deterministically to stay inside the
  * SCORM 1.2 4096-character limit. Only structural data is stored — activity
- * identifiers, counters, scores and weights — never learner names or answers.
+ * identifiers, counters, scores, weights and pass marks — never learner names
+ * or answers.
  *
  * Copyright (C) 2026 The eXeLearning project contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -164,6 +165,21 @@
     }
 
     /**
+     * Read an activity's own pass mark.
+     *
+     * Out of range is not clamped: 120 is not a demanding 100 but a value
+     * nobody meant, and an activity with no usable mark is judged by the
+     * page's threshold, which is what null hands it to.
+     *
+     * @param {number|string} value - Raw input.
+     * @returns {number|null} A percentage in 0-100, or null.
+     */
+    function toThreshold(value) {
+        var threshold = toNumber(value, null);
+        return threshold !== null && threshold >= 0 && threshold <= 100 ? threshold : null;
+    }
+
+    /**
      * Build a normalised activity record from a caller-supplied descriptor.
      *
      * Every flag is explicit: an activity declares whether it is evaluable and
@@ -211,6 +227,20 @@
             // instead made the two aggregations disagree — 40.4 against 60 for
             // an activity weighed 0 next to one weighed by default.
             weight: weight > 0 ? weight : 100,
+            // The activity's own pass mark, as a percentage of its normalised
+            // score. null when it declares none: a host that predates the
+            // field. Stored with the record, like the weight, because a
+            // restored attempt has to be judged by the mark that judged it:
+            // in an exported page the session opens before any iDevice
+            // registers, and the entry policy recognises its own earlier
+            // verdict only if the restored registry derives it again (see
+            // applyEntryPolicy). A live declaration still replaces it.
+            successThreshold:
+                source.successThreshold === undefined
+                    ? base.successThreshold === undefined
+                        ? null
+                        : base.successThreshold
+                    : toThreshold(source.successThreshold),
         };
     }
 
@@ -285,6 +315,44 @@
     }
 
     /**
+     * Aggregate the evaluable activities' own pass marks into the page's: the
+     * weighted mean of their thresholds, over the same activities and with the
+     * same clamped weights as aggregateScore().
+     *
+     * Same activities and same weights, so the verdict is the one the author
+     * set up: the page passes when sum(w * score) >= sum(w * threshold). A
+     * single activity is judged by its own mark, and a page whose activities
+     * all follow the project is judged by the project's.
+     *
+     * @param {number|null} fallback - Percentage for an activity that declares
+     * no mark of its own: the page's threshold.
+     * @returns {number|null} The threshold, or null when no activity is
+     * evaluable, or when one has no mark and there is no fallback either.
+     */
+    function aggregateSuccessThreshold(fallback) {
+        var pageThreshold = toThreshold(fallback);
+        var weightSum = 0;
+        var weightedTotal = 0;
+        for (var index = 0; index < state.order.length; index += 1) {
+            var activity = state.byId[state.order[index]];
+            if (!activity.evaluable) {
+                continue;
+            }
+            var threshold = activity.successThreshold === null ? pageThreshold : activity.successThreshold;
+            if (threshold === null) {
+                return null;
+            }
+            var weight = clamp(activity.weight, 1, 100);
+            weightedTotal += threshold * weight;
+            weightSum += weight;
+        }
+        if (weightSum === 0) {
+            return null;
+        }
+        return round2(weightedTotal / weightSum);
+    }
+
+    /**
      * Encode a record for the versioned payload.
      *
      * @param {object} activity - Normalised record.
@@ -301,7 +369,7 @@
         if (activity.completed) {
             flags += FLAG_COMPLETED;
         }
-        return [
+        var fields = [
             encodeURIComponent(activity.id),
             String(flags),
             String(activity.answered),
@@ -310,7 +378,14 @@
             String(activity.weight),
             String(activity.minimumScore),
             String(activity.maximumScore),
-        ].join(FIELD_SEPARATOR);
+        ];
+        // Optional and last, so the version does not change: a runtime that
+        // predates it reads the first eight fields and ignores the ninth, and
+        // a record without it is the same record it always was.
+        if (activity.successThreshold !== null) {
+            fields.push(String(activity.successThreshold));
+        }
+        return fields.join(FIELD_SEPARATOR);
     }
 
     /**
@@ -351,6 +426,9 @@
             weight: toNumber(fields[5], 100),
             minimumScore: toNumber(fields[6], 0),
             maximumScore: toNumber(fields[7], 100),
+            // Missing in a record written before activities declared a mark,
+            // which is then judged by the page's threshold, as it was.
+            successThreshold: fields[8] === undefined ? null : fields[8],
         });
         /* eslint-enable no-bitwise */
     }
@@ -436,7 +514,7 @@
          * @param {string} id - Stable activity identifier (an iDevice node id).
          * @param {object} [descriptor] - evaluable, completionRequired,
          * completed, answered, total, score, minimumScore, maximumScore,
-         * weight.
+         * weight, successThreshold.
          * @returns {object|null} The stored record, or null when the id is
          * unusable.
          */
@@ -583,6 +661,22 @@
         },
 
         /**
+         * The pass mark the page's activities add up to: the weighted mean of
+         * their own marks, in the same 0-100 scale and with the same weights as
+         * `summary().score` (see aggregateSuccessThreshold()).
+         *
+         * Not part of summary(), because it needs an input the registry does
+         * not own: the page's threshold, for the activities that declare none.
+         *
+         * @param {number|null} fallback - Percentage in 0-100 for an activity
+         * with no mark of its own.
+         * @returns {number|null} The threshold, or null when there is none.
+         */
+        successThreshold: function (fallback) {
+            return aggregateSuccessThreshold(fallback);
+        },
+
+        /**
          * Serialise the registry into a cmi.suspend_data payload.
          *
          * The result always fits the SCORM 1.2 4096-character limit. When the
@@ -694,7 +788,7 @@
                 var rawRecords = separator === -1 ? [] : body.slice(separator + 1).split(RECORD_SEPARATOR);
                 for (var raw = 0; raw < rawRecords.length; raw += 1) {
                     // A three-field entry is an unclaimed legacy pool record
-                    // (position, score, weight); a full record has eight.
+                    // (position, score, weight); a full record has eight or nine.
                     var fields = rawRecords[raw].split(FIELD_SEPARATOR);
                     if (fields.length === 3) {
                         var poolPosition = toNumber(fields[0], null);
