@@ -56,6 +56,7 @@ var $eXeDragDrop = {
             const dadP = $eXeDragDrop.createInterfaceCards(i);
 
             dl.before(dadP).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#dadPGameContainer-' + i).show();
             $('#dadPGameMinimize-' + i)
                 .css({ cursor: 'pointer' })
