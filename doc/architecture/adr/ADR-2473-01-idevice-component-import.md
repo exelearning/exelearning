@@ -8,7 +8,7 @@ deciders: ["@franmate"]
 reviewers: ["@erseco", "@ignaciogros", "@eXeLearningProject"]
 related:
   prs: [2474]
-  changes: ["ComponentImporter.js", "blockNode.js", "importPolicy.ts", "index.ts"]
+  changes:[]
   adrs: ["ADR-2193-01"]
 supersedes: []
 superseded_by: []
