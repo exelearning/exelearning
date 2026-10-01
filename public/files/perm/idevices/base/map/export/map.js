@@ -100,6 +100,7 @@ var $eXeMapa = {
 
             const mapa = $eXeMapa.createInterfaceMapa(i);
             dl.before(mapa).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $eXeMapa.initElements(i);
 
