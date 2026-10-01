@@ -106,6 +106,48 @@ const createMockFflate = (contentXml, assets = {}) => ({
   }),
 });
 
+// Mock of the shared import-policy surface exposed by the bundled importer
+// (window.ExeImportPolicy). Mirrors the contract of
+// src/shared/import/importPolicy.ts + inspectZipArchive (ElpxImporter.ts):
+// inspectZipArchive walks the central directory without inflating anything,
+// and assertInspectionWithinLimits throws a structured ZipLimitError when a
+// cap is violated.
+const createMockImportPolicy = ({ totalBytes = 1024, inspectThrows = null, componentLimits = null } = {}) => {
+  class MockZipLimitError extends Error {
+    constructor(message, details) {
+      super(message);
+      this.name = 'ZipLimitError';
+      this.details = details;
+    }
+  }
+  const policy = {
+    ZipLimitError: MockZipLimitError,
+    inspectZipArchive: vi.fn(() => {
+      if (inspectThrows) throw inspectThrows;
+      return {
+        entries: [{ name: 'content.xml', size: totalBytes }],
+        totalBytes,
+        entryCount: 1,
+        largestEntry: { name: 'content.xml', size: totalBytes },
+      };
+    }),
+    assertInspectionWithinLimits: vi.fn((inspection, limits) => {
+      if (inspection.totalBytes > limits.maxTotalBytes) {
+        throw new MockZipLimitError('Component file exceeds the maximum total decompressed size.', {
+          kind: 'total-size',
+          archiveLabel: 'Component file',
+          actualValue: inspection.totalBytes,
+          limitValue: limits.maxTotalBytes,
+        });
+      }
+    }),
+  };
+  if (componentLimits) {
+    policy.COMPONENT_IMPORT_LIMITS = componentLimits;
+  }
+  return policy;
+};
+
 // Mock Y.js
 const createMockY = () => {
   class MockYMap {
@@ -508,6 +550,20 @@ describe('ComponentImporter', () => {
       expect(docManager.getDoc().transact).toHaveBeenCalled();
       expect(docManager.getDoc().transact.mock.calls[0][1]).toBe(docManager.getDoc().clientID);
     });
+
+    it('imports successfully when the preflight passes with the policy bundle loaded', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const importer = new ComponentImporter(docManager, null);
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      const policy = createMockImportPolicy();
+      global.window.ExeImportPolicy = policy;
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+      expect(policy.inspectZipArchive).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('size limits', () => {
@@ -570,6 +626,133 @@ describe('ComponentImporter', () => {
       expect(filter({ name: 'b', originalSize: 'not-a-number' })).toBe(true);
       expect(filter(null)).toBe(true);
       expect(violation.error).toBeNull();
+    });
+
+    it('validateZipPreflight returns null when the shared policy bundle is not loaded', () => {
+      global.window.ExeImportPolicy = undefined;
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    it('validateZipPreflight returns null for an inspection within limits', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy();
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    it('validateZipPreflight rejects with the canonical message when the declared total exceeds the limit', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({ totalBytes: 201 * 1024 * 1024 });
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toContain('uncompressed');
+    });
+
+    it('validateZipPreflight also recognises a policy error by instanceof, not only by name', () => {
+      const policy = createMockImportPolicy();
+      // Same class the real bundle exposes, but with a different `name`, so the
+      // check falls through to the instanceof operand of the guard.
+      const instance = new policy.ZipLimitError('too large', { kind: 'total-size' });
+      instance.name = 'CustomLimitError';
+      policy.assertInspectionWithinLimits = vi.fn(() => {
+        throw instance;
+      });
+      global.window.ExeImportPolicy = policy;
+
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toContain('uncompressed');
+    });
+
+    it('validateZipPreflight passes the shared component tier to the policy', () => {
+      const tier = {
+        maxFileBytes: 50 * 1024 * 1024,
+        maxTotalBytes: 200 * 1024 * 1024,
+        maxEntryBytes: 200 * 1024 * 1024,
+        maxEntries: Number.MAX_SAFE_INTEGER,
+      };
+      const policy = createMockImportPolicy({ componentLimits: tier });
+      global.window.ExeImportPolicy = policy;
+      importer().validateZipPreflight(new Uint8Array([1, 2, 3]));
+      expect(policy.assertInspectionWithinLimits.mock.calls[0][1]).toEqual(tier);
+    });
+
+    it('resolveComponentLimits returns the shared tier when the policy bundle exposes it', () => {
+      const tier = {
+        maxFileBytes: 25 * 1024 * 1024,
+        maxTotalBytes: 100 * 1024 * 1024,
+        maxEntryBytes: 100 * 1024 * 1024,
+        maxEntries: Number.MAX_SAFE_INTEGER,
+      };
+      global.window.ExeImportPolicy = createMockImportPolicy({ componentLimits: tier });
+      expect(importer().resolveComponentLimits()).toEqual(tier);
+    });
+
+    it('resolveComponentLimits falls back to the local constants when the tier is not exposed', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy();
+      expect(importer().resolveComponentLimits()).toEqual({
+        maxFileBytes: 50 * 1024 * 1024,
+        maxTotalBytes: 200 * 1024 * 1024,
+        maxEntryBytes: 200 * 1024 * 1024,
+        maxEntries: Number.MAX_SAFE_INTEGER,
+      });
+    });
+
+    it('resolveComponentLimits falls back when the policy bundle is not loaded at all', () => {
+      global.window.ExeImportPolicy = undefined;
+      expect(importer().resolveComponentLimits().maxTotalBytes).toBe(200 * 1024 * 1024);
+    });
+
+    it('resolveComponentLimits falls back when the exposed tier is incomplete', () => {
+      // A tier missing any required field must not be trusted: the documented
+      // degraded-mode fallback applies instead.
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: { maxTotalBytes: 100 * 1024 * 1024 },
+      });
+      const limits = importer().resolveComponentLimits();
+      expect(limits.maxFileBytes).toBe(50 * 1024 * 1024);
+      expect(limits.maxTotalBytes).toBe(200 * 1024 * 1024);
+      expect(limits.maxEntryBytes).toBe(200 * 1024 * 1024);
+    });
+
+    it('validateCompressedSize honours the shared tier when present', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 1 * 1024 * 1024,
+          maxTotalBytes: 200 * 1024 * 1024,
+          maxEntryBytes: 200 * 1024 * 1024,
+          maxEntries: Number.MAX_SAFE_INTEGER,
+        },
+      });
+      expect(importer().validateCompressedSize({ size: 2 * 1024 * 1024 })).toContain('too large');
+      expect(importer().validateCompressedSize({ size: 512 * 1024 })).toBeNull();
+    });
+
+    it('createDeclaredSizeFilter honours the shared tier when present', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 50 * 1024 * 1024,
+          maxTotalBytes: 10 * 1024 * 1024,
+          maxEntryBytes: 10 * 1024 * 1024,
+          maxEntries: Number.MAX_SAFE_INTEGER,
+        },
+      });
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'a', originalSize: 6 * 1024 * 1024 })).toBe(true);
+      expect(filter({ name: 'b', originalSize: 6 * 1024 * 1024 })).toBe(false);
+      expect(violation.error).toContain('uncompressed');
+    });
+
+    it('validateUncompressedSize honours the shared tier when present', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 50 * 1024 * 1024,
+          maxTotalBytes: 10 * 1024 * 1024,
+          maxEntryBytes: 10 * 1024 * 1024,
+          maxEntries: Number.MAX_SAFE_INTEGER,
+        },
+      });
+      const zip = { a: { byteLength: 11 * 1024 * 1024 } };
+      expect(importer().validateUncompressedSize(zip)).toContain('uncompressed');
+    });
+
+    it('validateZipPreflight degrades to null when the inspection throws a non-policy error', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({ inspectThrows: new Error('bad zip') });
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
     });
   });
 
@@ -638,6 +821,80 @@ describe('ComponentImporter', () => {
       expect(typeof passedFilter).toBe('function');
       expect(result.success).toBe(false);
       expect(result.error).toContain('uncompressed');
+    });
+
+    it('preflight rejects bomb metadata before the archive is extracted at all (importComponent)', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const importer = new ComponentImporter(docManager, null);
+
+      // Honest small ZIP, then forge small.txt's declared size to 201 MiB
+      // (same forging as the test above).
+      const zipBytes = new Uint8Array(
+        realFflate.zipSync({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'small.txt': new TextEncoder().encode('x'),
+        })
+      );
+      const forged = new Uint8Array(zipBytes);
+      const view = new DataView(forged.buffer);
+      const decoder = new TextDecoder();
+      for (let i = 0; i < forged.length - 4; i++) {
+        if (view.getUint32(i, true) !== 0x02014b50) continue;
+        const nameLen = view.getUint16(i + 28, true);
+        const name = decoder.decode(forged.subarray(i + 46, i + 46 + nameLen));
+        if (name === 'small.txt') {
+          view.setUint32(i + 24, 201 * 1024 * 1024, true);
+        }
+      }
+
+      // Faithful mock of the shared policy: inspectZipArchive walks the real
+      // central directory through fflate's filter without inflating anything
+      // (the same mechanism the production bundle uses in ElpxImporter.ts).
+      class MockZipLimitError extends Error {
+        constructor(message, details) {
+          super(message);
+          this.name = 'ZipLimitError';
+          this.details = details;
+        }
+      }
+      global.window.ExeImportPolicy = {
+        ZipLimitError: MockZipLimitError,
+        inspectZipArchive: (buffer) => {
+          const entries = [];
+          let totalBytes = 0;
+          let largestEntry = null;
+          realFflate.unzipSync(buffer, {
+            filter: (info) => {
+              entries.push({ name: info.name, size: info.originalSize });
+              totalBytes += info.originalSize;
+              if (largestEntry === null || info.originalSize > largestEntry.size) {
+                largestEntry = { name: info.name, size: info.originalSize };
+              }
+              return false; // Never inflate — metadata only.
+            },
+          });
+          return { entries, totalBytes, entryCount: entries.length, largestEntry };
+        },
+        assertInspectionWithinLimits: (inspection, limits) => {
+          if (inspection.totalBytes > limits.maxTotalBytes) {
+            throw new MockZipLimitError('Component file exceeds the maximum total decompressed size.', {
+              kind: 'total-size',
+            });
+          }
+        },
+      };
+
+      // Extraction goes through window.fflate: when the preflight rejects,
+      // the extraction unzipSync must never be invoked.
+      const unzipSpy = vi.fn((data, options) => realFflate.unzipSync(data, options));
+      global.window.fflate = { unzipSync: unzipSpy };
+
+      const file = new File([forged], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+      expect(unzipSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -1689,6 +1946,89 @@ describe('ComponentImporter', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('too large');
+      expect(file.arrayBuffer).not.toHaveBeenCalled();
+    });
+
+    it('rejects via the preflight before extracting when the policy bundle is loaded', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      const unzipSpy = vi.fn(() => ({
+        'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+      }));
+      global.window.fflate = { unzipSync: unzipSpy };
+      global.window.ExeImportPolicy = createMockImportPolicy({ totalBytes: 201 * 1024 * 1024 });
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+      expect(unzipSpy).not.toHaveBeenCalled();
+    });
+
+    it('imports successfully when the preflight passes with the policy bundle loaded', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      const policy = createMockImportPolicy();
+      global.window.ExeImportPolicy = policy;
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(policy.inspectZipArchive).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls through to unzipSync when the preflight inspection fails on a malformed ZIP', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      // A malformed archive is not a policy violation: the preflight must not
+      // swallow it, and unzipSync must still report the specific invalid-ZIP
+      // error instead of a generic one.
+      const policy = createMockImportPolicy({ inspectThrows: new Error('invalid central directory') });
+      global.window.ExeImportPolicy = policy;
+      global.window.fflate = {
+        unzipSync: () => {
+          throw new Error('unexpected end of data');
+        },
+      };
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid ZIP file');
+      expect(policy.inspectZipArchive).toHaveBeenCalledTimes(1);
+    });
+
+    it('honours the shared tier compressed-file cap end to end', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 1 * 1024 * 1024,
+          maxTotalBytes: 200 * 1024 * 1024,
+          maxEntryBytes: 200 * 1024 * 1024,
+          maxEntries: Number.MAX_SAFE_INTEGER,
+        },
+      });
+
+      const file = {
+        name: 'tier-limited.idevice',
+        size: 2 * 1024 * 1024,
+        arrayBuffer: vi.fn(),
+      };
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      // The message reports the tier's cap, proving the value was not the fallback.
+      expect(result.error).toContain('Maximum allowed is 1 MB');
       expect(file.arrayBuffer).not.toHaveBeenCalled();
     });
 

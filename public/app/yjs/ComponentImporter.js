@@ -17,21 +17,35 @@
  * Maximum size (compressed) accepted for a .idevice/.block ZIP file. Rejecting
  * oversized files before reading them into memory protects the browser from
  * memory exhaustion (see "decompression bomb" / zip-bomb hardening).
+ *
+ * DEGRADED-MODE FALLBACK: the primary source of this value is the shared
+ * COMPONENT_IMPORT_LIMITS tier in src/shared/import/importPolicy.ts, exposed
+ * by the importers bundle as window.ExeImportPolicy (see resolveComponentLimits).
+ * This constant only applies when that bundle is not loaded — keep in sync.
  */
 const MAX_COMPONENT_FILE_BYTES = 50 * 1024 * 1024; // 50 MiB
 
 /**
  * Maximum total size (uncompressed) accepted across all ZIP entries. Enforced
- * in two layers:
- * 1. BEFORE inflation, on the declared uncompressed size of each entry, via
+ * in three layers:
+ * 1. BEFORE any inflation, on the declared cumulative size read from the
+ *    central directory (validateZipPreflight), reusing the shared
+ *    import-policy machinery exposed by the bundled importer
+ *    (window.ExeImportPolicy, see #2193).
+ * 2. DURING extraction, on the declared uncompressed size of each entry, via
  *    the unzipSync filter (see createDeclaredSizeFilter). fflate allocates the
  *    output buffer at that declared size and never grows past it, so skipping
  *    entries whose cumulative total exceeds the limit bounds the memory used
  *    by unzipSync itself — a heavily-compressed ZIP is rejected before it can
  *    inflate, instead of after.
- * 2. AFTER decompression, on the actual byte lengths (validateUncompressedSize),
+ * 3. AFTER decompression, on the actual byte lengths (validateUncompressedSize),
  *    as a backstop for archives that lie in their central directory (a forged
  *    small declared size only yields truncated, memory-bounded output).
+ *
+ * DEGRADED-MODE FALLBACK: the primary source of this value is the shared
+ * COMPONENT_IMPORT_LIMITS tier in src/shared/import/importPolicy.ts, exposed
+ * by the importers bundle as window.ExeImportPolicy (see resolveComponentLimits).
+ * This constant only applies when that bundle is not loaded — keep in sync.
  */
 const MAX_COMPONENT_UNCOMPRESSED_BYTES = 200 * 1024 * 1024; // 200 MiB
 
@@ -80,6 +94,13 @@ class ComponentImporter {
       // Load ZIP - convert File to ArrayBuffer then to Uint8Array
       const arrayBuffer = await file.arrayBuffer();
       const uint8Data = new Uint8Array(arrayBuffer);
+
+      // Preflight: inspect the central directory (declared metadata only, no
+      // inflation) and reject an over-limit archive before unzipping anything.
+      const preflightError = this.validateZipPreflight(uint8Data);
+      if (preflightError) {
+        return { success: false, error: preflightError };
+      }
 
       // Use sync decompression. The filter runs BEFORE each entry is inflated
       // and receives its declared uncompressed size, so entries that would
@@ -234,15 +255,23 @@ class ComponentImporter {
         return { success: false, error: 'fflate library not loaded' };
       }
 
-      // Load ZIP. The filter runs BEFORE each entry is inflated and receives
+      // Load ZIP. The preflight inspects the central directory (no inflation)
+      // first; the filter then runs BEFORE each entry is inflated and receives
       // its declared uncompressed size, so entries that would push the
       // cumulative total past the limit are skipped (never decompressed, never
       // allocated) instead of inflating first.
       const arrayBuffer = await file.arrayBuffer();
+      const uint8Data = new Uint8Array(arrayBuffer);
+
+      const preflightError = this.validateZipPreflight(uint8Data);
+      if (preflightError) {
+        return { success: false, error: preflightError };
+      }
+
       let zip;
       let declaredSizeViolation = { error: null };
       try {
-        zip = fflateLib.unzipSync(new Uint8Array(arrayBuffer), {
+        zip = fflateLib.unzipSync(uint8Data, {
           filter: this.createDeclaredSizeFilter(declaredSizeViolation),
         });
       } catch (e) {
@@ -743,22 +772,90 @@ class ComponentImporter {
   }
 
   /**
+   * Resolve the component-scoped import limits (ADR-2473-01: a per-component
+   * budget is not a per-project budget). The primary source is
+   * COMPONENT_IMPORT_LIMITS, exported by the shared import policy
+   * (src/shared/import/importPolicy.ts) and exposed by the bundled importer as
+   * window.ExeImportPolicy — one source of truth shared with the ELPX tiers.
+   * The local constants above are only a documented fallback for the degraded
+   * mode where the policy bundle is not loaded; keep them in sync.
+   *
+   * @returns {{maxFileBytes: number, maxTotalBytes: number, maxEntryBytes: number, maxEntries: number}}
+   */
+  resolveComponentLimits() {
+    const policy = window.ExeImportPolicy;
+    const tier = policy && policy.COMPONENT_IMPORT_LIMITS;
+    if (tier && typeof tier === 'object'
+        && typeof tier.maxFileBytes === 'number'
+        && typeof tier.maxTotalBytes === 'number'
+        && typeof tier.maxEntryBytes === 'number'
+        && Number.isInteger(tier.maxEntries)) {
+      return tier;
+    }
+    return {
+      maxFileBytes: MAX_COMPONENT_FILE_BYTES,
+      maxTotalBytes: MAX_COMPONENT_UNCOMPRESSED_BYTES,
+      maxEntryBytes: MAX_COMPONENT_UNCOMPRESSED_BYTES,
+      maxEntries: Number.MAX_SAFE_INTEGER,
+    };
+  }
+
+  /**
    * Validate the compressed size of a component file, returning an error
-   * message when the file exceeds MAX_COMPONENT_FILE_BYTES, or null otherwise.
+   * message when the file exceeds the tier's maxFileBytes, or null otherwise.
    *
    * @param {File} file
    * @returns {string|null}
    */
   validateCompressedSize(file) {
-    if (typeof file.size === 'number' && file.size > MAX_COMPONENT_FILE_BYTES) {
-      return `Component file is too large (${Math.round(file.size / (1024 * 1024))} MB). Maximum allowed is ${MAX_COMPONENT_FILE_BYTES / (1024 * 1024)} MB.`;
+    const { maxFileBytes } = this.resolveComponentLimits();
+    if (typeof file.size === 'number' && file.size > maxFileBytes) {
+      return `Component file is too large (${Math.round(file.size / (1024 * 1024))} MB). Maximum allowed is ${maxFileBytes / (1024 * 1024)} MB.`;
+    }
+    return null;
+  }
+
+  /**
+   * Preflight a component ZIP by inspecting its central directory — declared
+   * metadata only, no entry is inflated. Reuses the shared import-policy
+   * machinery exposed by the bundled importer (window.ExeImportPolicy, see
+   * #2193) so the limits logic lives in one place. The limits come from
+   * resolveComponentLimits() — the shared COMPONENT_IMPORT_LIMITS tier, which
+   * deliberately introduces no caps beyond the cumulative one the extraction
+   * filter and the post-inflation backstop already enforce; per-entry and
+   * entry-count caps remain follow-up work (ADR-2473-01).
+   *
+   * Degrades gracefully when the shared policy bundle is not loaded: it
+   * returns null and the extraction filter plus the backstop still enforce
+   * the same cumulative cap.
+   *
+   * @param {Uint8Array} uint8Data - Raw ZIP bytes
+   * @returns {string|null} Error message when the preflight rejects, null otherwise
+   */
+  validateZipPreflight(uint8Data) {
+    const policy = window.ExeImportPolicy;
+    if (!policy
+        || typeof policy.inspectZipArchive !== 'function'
+        || typeof policy.assertInspectionWithinLimits !== 'function') {
+      return null;
+    }
+    const limits = this.resolveComponentLimits();
+    try {
+      const inspection = policy.inspectZipArchive(uint8Data, 'Component file');
+      policy.assertInspectionWithinLimits(inspection, limits, 'Component file');
+    } catch (e) {
+      if (e && (e.name === 'ZipLimitError' || (policy.ZipLimitError && e instanceof policy.ZipLimitError))) {
+        return `Component file expands beyond the allowed size (${limits.maxTotalBytes / (1024 * 1024)} MB uncompressed).`;
+      }
+      // Inspection failed for another reason (e.g. malformed central
+      // directory): fall through and let unzipSync report the specific error.
     }
     return null;
   }
 
   /**
    * Validate the total uncompressed size of a decompressed ZIP, returning an
-   * error message when the cumulative bytes exceed MAX_COMPONENT_UNCOMPRESSED_BYTES,
+   * error message when the cumulative bytes exceed the tier's maxTotalBytes,
    * or null otherwise. Backstop against decompression bombs whose central
    * directory under-reports entry sizes.
    *
@@ -766,12 +863,13 @@ class ComponentImporter {
    * @returns {string|null}
    */
   validateUncompressedSize(zip) {
+    const { maxTotalBytes } = this.resolveComponentLimits();
     let totalBytes = 0;
     for (const entry of Object.values(zip)) {
       if (entry && typeof entry.byteLength === 'number') {
         totalBytes += entry.byteLength;
-        if (totalBytes > MAX_COMPONENT_UNCOMPRESSED_BYTES) {
-          return `Component file expands beyond the allowed size (${MAX_COMPONENT_UNCOMPRESSED_BYTES / (1024 * 1024)} MB uncompressed).`;
+        if (totalBytes > maxTotalBytes) {
+          return `Component file expands beyond the allowed size (${maxTotalBytes / (1024 * 1024)} MB uncompressed).`;
         }
       }
     }
@@ -795,6 +893,7 @@ class ComponentImporter {
    * @returns {function(Object): boolean} unzipSync filter
    */
   createDeclaredSizeFilter(violation) {
+    const { maxTotalBytes } = this.resolveComponentLimits();
     let totalBytes = 0;
     return (info) => {
       if (violation.error) {
@@ -805,8 +904,8 @@ class ComponentImporter {
           ? info.originalSize
           : 0;
       totalBytes += declaredBytes;
-      if (totalBytes > MAX_COMPONENT_UNCOMPRESSED_BYTES) {
-        violation.error = `Component file expands beyond the allowed size (${MAX_COMPONENT_UNCOMPRESSED_BYTES / (1024 * 1024)} MB uncompressed).`;
+      if (totalBytes > maxTotalBytes) {
+        violation.error = `Component file expands beyond the allowed size (${maxTotalBytes / (1024 * 1024)} MB uncompressed).`;
         return false;
       }
       return true;
