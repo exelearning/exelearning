@@ -307,6 +307,14 @@ var $interactivevideo = {
                 $interactivevideo.isInExe
             );
         }
+        // Above the whole video and below the author's text before it, the
+        // same place as in every other iDevice. `mOptions` is `{}` until
+        // getOptions() runs, hence the check for its main container.
+        if ($interactivevideo.mOptions && $interactivevideo.mOptions.main) {
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+                $interactivevideo.mOptions
+            );
+        }
 
         // console.log(typeof top.interactiveVideoEditor.activityToSave);
         // Only show "no slides" message if there's truly no content at all

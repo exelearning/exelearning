@@ -358,7 +358,7 @@ describe('interactive-video iDevice export', () => {
         ...previousScorm,
         addButtonScoreNew: vi.fn(() => ''),
       };
-      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon, showPassScoreNotice: vi.fn(() => null) };
       document.body.innerHTML = `
         <article>
           <header><h1 class="box-title">Interactive video</h1></header>
@@ -1382,5 +1382,96 @@ describe('interactive-video iDevice export', () => {
       expect(link.getAttribute('href')).toBe('#activity-slide');
       expect(link.nextElementSibling).toBe(questionBox());
     });
+  });
+});
+
+describe('interactive-video minimum score notice', () => {
+  let $interactivevideo;
+  let previousScorm;
+  let previousReport;
+  let previousIsInExe;
+  let playerWhenAsked;
+
+  beforeEach(() => {
+    global.$interactivevideo = undefined;
+    global.InteractiveVideo = undefined;
+    // Loaded under a stub, as the main suite does, so the file's own
+    // $(function () {...}) bootstrap never runs behind the test's back.
+    global.$ = () => ({ html: () => {}, eq: () => ({ attr: () => '' }), length: 0 });
+    global.$.fn = {};
+    $interactivevideo = loadExportIdevice(readFileSync(join(__dirname, 'interactive-video.js'), 'utf-8'));
+    global.$ = jquery;
+    window.$ = jquery;
+    previousScorm = $exeDevices.iDevice.gamification.scorm;
+    previousReport = $exeDevices.iDevice.gamification.report;
+    previousIsInExe = eXe.app.isInExe;
+    eXe.app.isInExe = vi.fn(() => false);
+    $exeDevices.iDevice.gamification.scorm = { ...previousScorm, addButtonScoreNew: vi.fn(() => '') };
+    playerWhenAsked = null;
+    $exeDevices.iDevice.gamification.report = {
+      updateEvaluationIcon: vi.fn(),
+      showPassScoreNotice: vi.fn(() => {
+        playerWhenAsked = document.getElementById('activity-wrapper') !== null;
+        return null;
+      }),
+    };
+    // What the editor saves: the author's text before the video, then the video.
+    document.body.innerHTML = `
+      <article>
+        <header><h1 class="box-title">Interactive video</h1></header>
+        <div id="interactive-video-1" class="idevice_node interactive-video">
+          <div class="exe-interactive-video-content-before"><p>Watch it</p></div>
+          <div class="game-evaluation-ids js-hidden"></div>
+          <div class="exe-interactive-video"></div>
+        </div>
+      </article>
+    `;
+  });
+
+  afterEach(() => {
+    eXe.app.isInExe = previousIsInExe;
+    $exeDevices.iDevice.gamification.scorm = previousScorm;
+    $exeDevices.iDevice.gamification.report = previousReport;
+    document.body.innerHTML = '';
+    delete global.$interactivevideo;
+    delete global.InteractiveVideo;
+    delete global.$;
+  });
+
+  it('asks for it above the whole video once the player is built', () => {
+    global.InteractiveVideo = {
+      ideviceID: 'interactive-video-1',
+      scorm: { isScorm: 1, textButtonScorm: 'Save score' },
+      passScoreMode: 'custom',
+      passScoreCustom: 7,
+      slides: [],
+      i18n: $interactivevideo.i18n,
+    };
+
+    $interactivevideo.enable();
+
+    const showPassScoreNotice = $exeDevices.iDevice.gamification.report.showPassScoreNotice;
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    // The video's main container, which the author's text before it precedes.
+    expect(showPassScoreNotice).toHaveBeenCalledWith(
+      expect.objectContaining({ main: '.exe-interactive-video', isScorm: 1, passScoreCustom: 7 })
+    );
+    expect(playerWhenAsked).toBe(true);
+  });
+
+  // This iDevice keeps its custom texts in InteractiveVideo.i18n, not in msgs.
+  it('hands it the custom texts the author saved', () => {
+    global.InteractiveVideo = {
+      ideviceID: 'interactive-video-1',
+      scorm: { isScorm: 1, textButtonScorm: 'Save score' },
+      slides: [],
+      i18n: { ...$interactivevideo.i18n, msgPassScore: 'Nota mínima: %s' },
+    };
+
+    $interactivevideo.enable();
+
+    expect($exeDevices.iDevice.gamification.report.showPassScoreNotice).toHaveBeenCalledWith(
+      expect.objectContaining({ msgs: expect.objectContaining({ msgPassScore: 'Nota mínima: %s' }) })
+    );
   });
 });
