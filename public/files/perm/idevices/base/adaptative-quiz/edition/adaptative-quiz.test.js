@@ -2112,3 +2112,13 @@ describe('adaptative-quiz edition', () => {
         });
     });
 });
+
+describe('adaptative-quiz minimum score text', () => {
+    it('offers the notice of the minimum score among the custom texts', () => {
+        global.$exeDevice = undefined;
+        const device = global.loadIdevice(EDITION_SRC);
+        device.refreshTranslations();
+
+        expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});

@@ -1987,3 +1987,66 @@ describe('adaptative-quiz export', () => {
         });
     });
 });
+
+describe('adaptative-quiz minimum score notice', () => {
+    let adq;
+    const data = (overrides = {}) =>
+        Object.assign(
+            {
+                eXeFormInstructions: '<p>Instructions</p>',
+                questionsGame: [
+                    {
+                        type: 0,
+                        typeSelect: 0,
+                        question: 'Question',
+                        options: [{ text: '1' }, { text: '2' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                    },
+                ],
+                numRound: 1,
+                initialLevel: 1,
+                // The progress report alone, so no SCORM session is involved.
+                isScorm: 0,
+                evaluation: true,
+                evaluationID: 'report-1',
+                passScoreMode: 'custom',
+                passScoreCustom: 7,
+                msgs: { msgPassScore: 'Pass at %s' },
+            },
+            overrides,
+        );
+
+    function render(id, options) {
+        const template = readFileSync(join(__dirname, 'adaptative-quiz.html'), 'utf-8');
+        document.body.innerHTML = adq.renderView(options, false, template, id);
+        adq.renderBehaviour(options, false, id);
+    }
+
+    beforeEach(() => {
+        if (global.eXe && global.eXe.app && !global.eXe.app.isInExe) {
+            global.eXe.app.isInExe = () => false;
+        }
+        global.$exeDevices = realExeDevices;
+        adq = loadExport();
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('shows its own mark between the instructions and the main container', () => {
+        render('aq-notice', data());
+
+        const notice = document.querySelector('.exe-pass-score-notice');
+        expect(notice.textContent).toBe('Pass at 7');
+        expect(notice.nextElementSibling.id).toBe('adaptativeQuizMainContainer-aq-notice');
+        expect(notice.previousElementSibling.className).toBe('adaptative-quiz-instructions');
+    });
+
+    it('shows nothing at the 5 a learner takes for granted', () => {
+        render('aq-five', data({ passScoreCustom: 5 }));
+
+        expect(document.querySelector('.exe-pass-score-notice')).toBeNull();
+    });
+});
