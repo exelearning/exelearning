@@ -375,3 +375,13 @@ describe('quick-questions edition: lifecycle teardown (#2293)', () => {
         });
     });
 });
+
+describe('quick-questions minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'quick-questions.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+  });
+});
