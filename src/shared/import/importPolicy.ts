@@ -85,6 +85,35 @@ export const DESKTOP_ZIP_LIMITS: ZipDecompressionLimits = {
  */
 export const DESKTOP_CONFIRM_ENTRY_BYTES: number = CONSERVATIVE_ZIP_LIMITS.maxEntryBytes;
 
+/**
+ * Component-scoped limits for .idevice/.block import (`ComponentImporter`).
+ *
+ * A per-component budget is NOT a per-project budget (ADR-2473-01): "Import
+ * content" is a repeatable, per-click action inside an already-open,
+ * collaboratively synced Yjs document, unlike the once-per-session
+ * whole-project import. The cumulative cap therefore keeps the historical
+ * component value (200 MiB) instead of inheriting the project tiers above,
+ * and no separate per-entry / entry-count cap is introduced (maxEntryBytes
+ * equals the total cap; maxEntries is maximal) — those remain follow-up work.
+ */
+export interface ComponentImportLimits extends ZipDecompressionLimits {
+    /** Maximum compressed size of the .idevice/.block file itself, checked before the file is read into memory. */
+    maxFileBytes: number;
+}
+
+/**
+ * Limits for .idevice/.block component import. Kept deliberately separate
+ * from {@link CONSERVATIVE_ZIP_LIMITS} / {@link DESKTOP_ZIP_LIMITS}: the
+ * project tiers apply to whole-project ELP/ELPX import only, and neither side
+ * may silently change because the other did.
+ */
+export const COMPONENT_IMPORT_LIMITS: ComponentImportLimits = {
+    maxFileBytes: 50 * MiB, // compressed, pre-read
+    maxTotalBytes: 200 * MiB, // cumulative uncompressed (declared and actual)
+    maxEntryBytes: 200 * MiB, // equals the total cap: no additional per-entry constraint (ADR-2473-01)
+    maxEntries: Number.MAX_SAFE_INTEGER, // no entry-count cap (ADR-2473-01)
+};
+
 /** Runtimes that select an import policy. Everything that is not the Electron
  * desktop app ("hosted") shares the conservative policy. */
 export type ImportRuntime = 'desktop' | 'hosted';
