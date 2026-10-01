@@ -66,6 +66,7 @@ var $guess = {
 
             const adivina = $guess.createInterfaceAdivina(i);
             dl.before(adivina).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#adivinaGameMinimize-' + i).hide();
             $('#adivinaGameContainer-' + i).hide();
