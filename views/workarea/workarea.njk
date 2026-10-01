@@ -55,8 +55,8 @@
             version: "{{ version }}",
             expires: "{{ expires }}",
             extension: "{{ extension }}",
-            user: `{{ user | dump | safe }}`,
-            config: `{{ config | dump | safe }}`,
+            user: '{{ user | jsonScript | safe }}',
+            config: '{{ config | jsonScript | safe }}',
             projectId: {% if projectId %}"{{ projectId }}"{% else %}null{% endif %}
         }
     </script>

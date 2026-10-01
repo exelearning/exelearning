@@ -4,6 +4,7 @@
  * Requires ROLE_ADMIN for all routes
  */
 import { Elysia, t } from 'elysia';
+import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
@@ -960,7 +961,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     };
 
                     const impersonatedToken = await jwtPlugin.sign(impersonatedPayload);
-                    const secure = process.env.NODE_ENV === 'production';
+                    const secure = isProductionEnv();
                     const sevenDays = 7 * 24 * 60 * 60;
 
                     cookie.impersonator_auth.set({
