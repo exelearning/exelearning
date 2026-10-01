@@ -224,6 +224,12 @@ var $form = {
         const questionsHtml = $form.getHtmlFormView(ldata.questionsData, ldata);
         $('#form-questions-' + ldata.id).empty();
         $('#form-questions-' + ldata.id).append(questionsHtml);
+        // The instructions are inside the main container, so the notice goes
+        // before what follows them: below the instructions, above the form.
+        $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+            ldata,
+            '#frmMainContainer-' + ldata.id + ' > .FRMP-GameScoreBoard'
+        );
         const bindBehaviour = () => {
             $form.setBehaviourButtonResetQuestions(ldata);
             $form.setBehaviourButtonCheckQuestions(ldata);

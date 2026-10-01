@@ -1054,3 +1054,64 @@ describe('form iDevice export', () => {
     });
   });
 });
+
+describe('form minimum score notice', () => {
+  const ANCHOR = '#frmMainContainer-f3 > .FRMP-GameScoreBoard';
+  let $form;
+
+  beforeEach(() => {
+    global.$form = undefined;
+    $form = loadExportIdevice(readFileSync(join(__dirname, 'form.js'), 'utf-8'));
+    eXe.app.isInExe = vi.fn(() => false);
+    eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  // The instructions live inside the main container here, so the notice is
+  // placed before what follows them rather than before the container.
+  it('places it below the instructions, inside the main container', () => {
+    document.body.innerHTML = $form.renderView(
+      { id: 'f3', ideviceId: 'f3', eXeFormInstructions: '<p>Instructions</p>', time: 0, questionsData: [], msgs: {} },
+      0,
+      '{content}',
+      'f3'
+    );
+
+    const anchor = document.querySelector(ANCHOR);
+    expect(anchor.previousElementSibling.className).toBe('form-instructions');
+    expect(anchor.parentElement.id).toBe('frmMainContainer-f3');
+  });
+
+  it('asks for the notice there once the questions are on the page', () => {
+    document.body.innerHTML = '<div id="f3"><div id="form-questions-f3"></div></div>';
+    const showPassScoreNotice = vi.spyOn($exeDevices.iDevice.gamification.report, 'showPassScoreNotice');
+    for (const name of [
+      'setBehaviourButtonResetQuestions',
+      'setBehaviourButtonCheckQuestions',
+      'setBehaviourButtonSendScore',
+      'setBehaviourButtonShowAnswers',
+      'setBehaviourOptions',
+      'hideScore',
+      'setBehaviourTest',
+      'addEventsSlideShow',
+    ]) {
+      $form[name] = () => {};
+    }
+
+    $form.renderBehaviour(
+      { id: 'f3', passScoreMode: 'custom', passScoreCustom: 7, questionsData: [{ question: 'q', options: [], typeQuestion: 'text' }] },
+      0,
+      'f3'
+    );
+
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    expect(showPassScoreNotice).toHaveBeenCalledWith(
+      expect.objectContaining({ main: 'frmMainContainer-f3', passScoreCustom: 7 }),
+      ANCHOR
+    );
+  });
+});
