@@ -78,6 +78,7 @@ var $eXeClasifica = {
 
             const clasifica = $eXeClasifica.createInterfaceClasifica(i);
             dl.before(clasifica).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#clasificaGameMinimize-' + i)
                 .css('cursor', 'pointer')
