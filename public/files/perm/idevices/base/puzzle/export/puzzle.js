@@ -133,6 +133,7 @@ var $eXePuzzle = {
 
             const pzl = $eXePuzzle.createInterfacePuzzle(i);
             dl.before(pzl).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#pzlGameMinimize-' + i).hide();
             $('#pzlGameContainer-' + i).hide();
             if (mOption.showMinimize) {
