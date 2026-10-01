@@ -49,7 +49,8 @@ $exe_i18n = {
     "publicDomain": c_("Public domain"),
     "attachment": c_("Attachment"),
     "noFilesAttached": c_("No files attached."),
-    "fileUnavailable": c_("File unavailable")
+    "fileUnavailable": c_("File unavailable"),
+    "passScoreNotice": c_("Minimum score needed to pass this activity: %s")
 };
 // The following line should only be used if the ELP contains a hangman game:
 $exe_i18n.exeGames = {
@@ -73,8 +74,7 @@ $exe_i18n.exeGames = {
     "confirmReload": c_("Reload game?"),
     "clickOnPlay": c_("Click Play to start"),
     "clickOnOtherWord": c_("Click Other word to continue"),
-    "az": c_("abcdefghijklmnopqrstuvwxyz"),
-    "passScoreNotice": c_("Minimum score needed to pass this activity: %s")
+    "az": c_("abcdefghijklmnopqrstuvwxyz")
 };
 
 // Export for Node.js/CommonJS (tests)
