@@ -2538,6 +2538,49 @@ var $exeDevices = {
                     }
                 },
 
+                /**
+                 * Tell the learner the mark this activity is passed at, when it
+                 * is not the 5 they take for granted.
+                 *
+                 * Only while something judges the mark: SCORM saving, or the
+                 * progress report under the same condition saveEvaluation()
+                 * applies. The mark is the one resolve() gives that verdict, and
+                 * it is shown as stored, so 7.5 reads 7.5. Placed right before
+                 * the iDevice's main container, which is below its instructions.
+                 *
+                 * The text is the iDevice's own custom text, editable in its
+                 * Custom texts tab. An iDevice saved before that text existed
+                 * has none, and gets the default the page carries in the
+                 * content's language.
+                 *
+                 * Idempotent: an iDevice that rebuilds its interface gets one
+                 * notice, and one whose mark became 5 loses it.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @returns {jQuery|null} The notice, or null when none is shown.
+                 */
+                showPassScoreNotice: function (game) {
+                    if (typeof game !== 'object' || game === null || !game.main) return null;
+                    const $main = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
+                    if ($main.length === 0) return null;
+                    $main.prev('.exe-pass-score-notice').remove();
+
+                    const reportActive = !!game.evaluation && typeof game.evaluationID === 'string' && game.evaluationID.length > 0;
+                    if (!(Number(game.isScorm) > 0) && !reportActive) return null;
+                    const mark = $exe.passScore.resolve(game);
+                    if (mark === 5) return null;
+
+                    const custom = game.msgs && game.msgs.msgPassScore;
+                    const fallback = typeof $exe_i18n !== 'undefined' && $exe_i18n ? $exe_i18n.passScoreNotice : '';
+                    const template = custom || fallback;
+                    if (!template) return null;
+
+                    const $notice = $('<p class="exe-pass-score-notice text-danger text-center"></p>')
+                        .text(template.replace('%s', String(mark)));
+                    $main.before($notice);
+                    return $notice;
+                },
+
                 getDataStorage: function (id) {
                     return $exeDevices.iDevice.gamification.helpers.isJsonString(localStorage.getItem('dataEvaluation-' + id));
                 },

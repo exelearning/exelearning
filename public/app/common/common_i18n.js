@@ -73,7 +73,8 @@ $exe_i18n.exeGames = {
     "confirmReload": c_("Reload game?"),
     "clickOnPlay": c_("Click Play to start"),
     "clickOnOtherWord": c_("Click Other word to continue"),
-    "az": c_("abcdefghijklmnopqrstuvwxyz")
+    "az": c_("abcdefghijklmnopqrstuvwxyz"),
+    "passScoreNotice": c_("Minimum score needed to pass this activity: %s")
 };
 
 // Export for Node.js/CommonJS (tests)

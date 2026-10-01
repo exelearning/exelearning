@@ -1384,6 +1384,7 @@ const mockGamificationReport = {
   getNodeIdevice: vi.fn(() => ''),
   getNameIdevice: vi.fn(() => ''),
   saveEvaluation: vi.fn(),
+  showPassScoreNotice: vi.fn(() => null),
 };
 
 global.$exeDevices = {

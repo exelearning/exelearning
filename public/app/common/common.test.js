@@ -277,6 +277,173 @@ describe('common.js $exe helpers', () => {
     });
   });
 
+  describe('report.showPassScoreNotice', () => {
+    const report = () => global.$exeDevices.iDevice.gamification.report;
+    const game = (overrides = {}) =>
+      Object.assign(
+        { main: 'game-main', isScorm: 1, evaluation: false, evaluationID: '', msgs: { msgPassScore: 'Pass at %s' } },
+        overrides
+      );
+    const custom = (mark, overrides = {}) =>
+      game(Object.assign({ passScoreMode: 'custom', passScoreCustom: mark }, overrides));
+    const setMeta = (content) => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'exe-pass-score');
+      meta.setAttribute('content', content);
+      document.head.appendChild(meta);
+    };
+    const main = () => document.getElementById('game-main');
+    const notices = () => document.querySelectorAll('.exe-pass-score-notice');
+
+    beforeEach(() => {
+      document.body.innerHTML =
+        '<div class="activity"><div class="instructions">Read me</div><div id="game-main"></div></div>';
+    });
+
+    afterEach(() => {
+      document.head.querySelectorAll('meta[name="exe-pass-score"]').forEach((meta) => meta.remove());
+    });
+
+    it('shows a customised mark between the instructions and the main container', () => {
+      expect(report().showPassScoreNotice(custom(7))).not.toBeNull();
+
+      const notice = main().previousElementSibling;
+      expect(notice.classList.contains('exe-pass-score-notice')).toBe(true);
+      expect(notice.previousElementSibling.className).toBe('instructions');
+      expect(notice.textContent).toBe('Pass at 7');
+    });
+
+    it('is red and centred with Bootstrap', () => {
+      const notice = report().showPassScoreNotice(custom(7))[0];
+
+      expect(notice.classList.contains('text-danger')).toBe(true);
+      expect(notice.classList.contains('text-center')).toBe(true);
+    });
+
+    it('shows the project mark of an activity that follows it', () => {
+      setMeta('7');
+
+      report().showPassScoreNotice(game({ passScoreMode: 'global', passScoreCustom: 3 }));
+
+      expect(main().previousElementSibling.textContent).toBe('Pass at 7');
+    });
+
+    it('shows a mark with a decimal as it is stored', () => {
+      report().showPassScoreNotice(custom(7.5));
+
+      expect(main().previousElementSibling.textContent).toBe('Pass at 7.5');
+    });
+
+    it('shows a mark of 0', () => {
+      report().showPassScoreNotice(custom(0));
+
+      expect(main().previousElementSibling.textContent).toBe('Pass at 0');
+    });
+
+    // A learner takes 5 for granted, so saying it adds nothing.
+    it.each([
+      ['the project 5 it follows', () => game()],
+      ['its own 5 in a project at 5', () => custom(5)],
+      [
+        'its own 5 in a project at 7',
+        () => {
+          setMeta('7');
+          return custom(5);
+        },
+      ],
+    ])('shows nothing for %s', (_label, build) => {
+      expect(report().showPassScoreNotice(build())).toBeNull();
+      expect(notices()).toHaveLength(0);
+    });
+
+    it('shows nothing while neither SCORM nor the progress report judges the mark', () => {
+      expect(report().showPassScoreNotice(custom(7, { isScorm: 0 }))).toBeNull();
+      expect(notices()).toHaveLength(0);
+    });
+
+    it.each([1, 2])('shows it in SCORM mode %d', (isScorm) => {
+      expect(report().showPassScoreNotice(custom(7, { isScorm }))).not.toBeNull();
+    });
+
+    it('shows it for the progress report alone', () => {
+      report().showPassScoreNotice(custom(7, { isScorm: 0, evaluation: true, evaluationID: 'report-1' }));
+
+      expect(main().previousElementSibling.textContent).toBe('Pass at 7');
+    });
+
+    it('needs a report identifier, as saveEvaluation() does', () => {
+      expect(report().showPassScoreNotice(custom(7, { isScorm: 0, evaluation: true, evaluationID: '' }))).toBeNull();
+    });
+
+    it('falls back to the default text for an iDevice saved before it had one', () => {
+      global.$exe_i18n.passScoreNotice = 'Default %s';
+
+      report().showPassScoreNotice(custom(7, { msgs: { msgPlayStart: 'Play' } }));
+
+      expect(main().previousElementSibling.textContent).toBe('Default 7');
+    });
+
+    it('falls back to the default text when the custom one was left empty', () => {
+      global.$exe_i18n.passScoreNotice = 'Default %s';
+
+      report().showPassScoreNotice(custom(7, { msgs: { msgPassScore: '' } }));
+
+      expect(main().previousElementSibling.textContent).toBe('Default 7');
+    });
+
+    it('shows nothing when there is no text to show', () => {
+      expect(report().showPassScoreNotice(custom(7, { msgs: undefined }))).toBeNull();
+    });
+
+    it('writes the custom text as text, not markup', () => {
+      report().showPassScoreNotice(custom(7, { msgs: { msgPassScore: '<b>%s</b>' } }));
+
+      expect(main().previousElementSibling.textContent).toBe('<b>7</b>');
+      expect(document.querySelector('.exe-pass-score-notice b')).toBeNull();
+    });
+
+    it('keeps one notice when the interface is set up again', () => {
+      report().showPassScoreNotice(custom(7));
+      report().showPassScoreNotice(custom(8));
+
+      expect(notices()).toHaveLength(1);
+      expect(notices()[0].textContent).toBe('Pass at 8');
+    });
+
+    it('drops the notice once the mark is 5', () => {
+      report().showPassScoreNotice(custom(7));
+      report().showPassScoreNotice(custom(5));
+
+      expect(notices()).toHaveLength(0);
+    });
+
+    it('leaves alone a notice that belongs to another activity', () => {
+      document.body.innerHTML =
+        '<div><p class="exe-pass-score-notice">Other</p><div class="other"></div><div id="game-main"></div></div>';
+
+      report().showPassScoreNotice(custom(7));
+
+      expect(notices()).toHaveLength(2);
+    });
+
+    it('finds a main container given by class', () => {
+      document.body.innerHTML = '<div class="game-main-class"></div>';
+
+      report().showPassScoreNotice(custom(7, { main: '.game-main-class' }));
+
+      expect(document.querySelector('.game-main-class').previousElementSibling.textContent).toBe('Pass at 7');
+    });
+
+    it.each([
+      ['no options', undefined],
+      ['no main container', { isScorm: 1 }],
+      ['a main container missing from the page', { main: 'not-here', isScorm: 1 }],
+    ])('does nothing with %s', (_label, options) => {
+      expect(report().showPassScoreNotice(options)).toBeNull();
+      expect(notices()).toHaveLength(0);
+    });
+  });
+
   describe('$exe.passScore', () => {
     const setMeta = (content) => {
       const meta = document.createElement('meta');
