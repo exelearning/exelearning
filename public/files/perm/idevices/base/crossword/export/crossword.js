@@ -1771,6 +1771,7 @@ var $eXeCrucigrama = {
             const ccgm = $eXeCrucigrama.createInterfaceCrucigrama(i);
 
             dl.before(ccgm).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ccgmGameMinimize-' + i).hide();
             $('#ccgmGameContainer-' + i).hide();
