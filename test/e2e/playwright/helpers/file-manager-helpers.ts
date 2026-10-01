@@ -775,14 +775,13 @@ export async function insertFileIntoEditor(page: Page, filename: string): Promis
     // Wait for file manager to close
     await page.locator('#modalFileManager').waitFor({ state: 'hidden', timeout: 5000 });
 
-    // Fill alt text if dialog appears
-    const altTextField = page
-        .locator('.tox-dialog .tox-form__group')
-        .filter({ has: page.locator('label:text-matches("alternativ", "i")') })
-        .locator('.tox-textfield');
-
-    if (await altTextField.isVisible().catch(() => false)) {
-        await altTextField.fill('Test image');
+    // Fill alt text if the dialog exposes it. The field lives in the "Accessibility"
+    // section; target the input immediately following the "Alternative text" label so
+    // the locator stays unambiguous regardless of how the section is grouped/boxed.
+    const altLabel = page.locator('.tox-dialog label.tox-label', { hasText: /alternativ/i }).first();
+    if (await altLabel.isVisible().catch(() => false)) {
+        const altInput = altLabel.locator('xpath=following::input[contains(@class,"tox-textfield")][1]');
+        await altInput.fill('Test image').catch(() => {});
     }
 
     // Click Save in TinyMCE dialog
@@ -794,6 +793,21 @@ export async function insertFileIntoEditor(page: Page, filename: string): Promis
             .catch(() => false)
     ) {
         await saveBtn.first().click();
+    }
+
+    // The editor may ask to confirm inserting an image with no alternative text
+    // ("continue without an Image Description?"). Proceed so insertion completes.
+    const confirmYes = page.locator('.tox-dialog .tox-button:has-text("Yes"), .tox-dialog .tox-button:has-text("Sí")');
+    if (
+        await confirmYes
+            .first()
+            .isVisible()
+            .catch(() => false)
+    ) {
+        await confirmYes
+            .first()
+            .click()
+            .catch(() => {});
     }
 
     await page.waitForFunction(

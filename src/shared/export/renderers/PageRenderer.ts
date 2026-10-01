@@ -67,6 +67,14 @@ export class PageRenderer {
     }
 
     /**
+     * Configure the centralized asset metadata used to bake image captions into exported
+     * pages. Delegates to the underlying IdeviceRenderer (call once before rendering).
+     */
+    setAssetCaptionMetadataMap(map: Map<string, import('../interfaces').AssetExportMetadata> | null): void {
+        this.ideviceRenderer.setAssetCaptionMetadataMap(map);
+    }
+
+    /**
      * Build the HTML <title> value for a page.
      * Index page uses the project title alone. Inner pages use
      * "Page title | Project title" (falling back to the project title

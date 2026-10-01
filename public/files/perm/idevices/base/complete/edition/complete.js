@@ -251,7 +251,7 @@ var $exeDevice = {
                                 </span>                            
                                 <div class="d-flex align-items-center gap-2 flex-nowrap d-none" id="cmptbackground1">
                                     <label for="cmptEURLBack" class="mb-0">${_('URL')}: </label>
-                                    <input type="text" class="exe-file-picker CMPT-EURLImage form-control me-0" id="cmptEURLBack"/>
+                                    <input type="text" class="exe-file-picker CMPT-EURLImage form-control me-0" id="cmptEURLBack" data-author-target="#cmptAuthorBack"/>
                                     <a href="#" id="cmptEPlayBack" class="CMPT-ENavigationButton CMPTEPlayVideo" title="${_('Show')}">
                                         <img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CMPT-EButtonImage " />
                                     </a>
