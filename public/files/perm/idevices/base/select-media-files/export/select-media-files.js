@@ -93,6 +93,7 @@ var $eXeSeleccionaMedias = {
             const slcmp = $eXeSeleccionaMedias.createInterfaceSelecciona(i);
 
             dl.before(slcmp).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#slcmpGameMinimize-' + i).show();
             $('#slcmpGameContainer-' + i).show();
