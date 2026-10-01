@@ -136,6 +136,7 @@ var $eXe3Dmol = {
             $eXe3Dmol.options.push(mOption);
             const interfaceHtml = $eXe3Dmol.createInterface(i);
             dl.before(interfaceHtml).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#dmolpGameMinimize-' + i).hide();
             $('#dmolpGameContainer-' + i).hide();
