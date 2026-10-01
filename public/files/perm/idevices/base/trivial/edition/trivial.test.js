@@ -486,3 +486,13 @@ describe('trivial iDevice edition lifecycle', () => {
         });
     });
 });
+
+describe('trivial minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'trivial.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+  });
+});
