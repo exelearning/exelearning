@@ -77,6 +77,7 @@ var $eXeIdentifica = {
 
             const idf = $eXeIdentifica.createInterfaceIndetify(i);
             dl.before(idf).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#idfGameMinimize-' + i).hide();
             $('#idfGameContainer-' + i).hide();
 
