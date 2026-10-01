@@ -1242,6 +1242,13 @@ class YjsProjectBridge {
     }
 
     this._pageReloadTimer = setTimeout(async () => {
+      // Check again: the user may have opened an editor during the debounce, and
+      // the reload would then save that half-initialised edition (#2434).
+      if (this.hasLocalIdeviceInEdition()) {
+        this._deferredPageReloadId = pageId;
+        Logger.log('[YjsProjectBridge] Page reload deferred until the local iDevice edition ends');
+        return;
+      }
       Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
       const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
         `.nav-element[nav-id="${pageId}"]`
@@ -1520,7 +1527,7 @@ class YjsProjectBridge {
         return;
       }
 
-      await idevicesEngine.updateRemoteIdeviceContent(componentData);
+      await idevicesEngine.updateRemoteIdeviceContent(componentData, pageId);
     } catch (e) {
       console.error('[YjsProjectBridge] Error updating remote component:', e);
     }

@@ -5205,18 +5205,26 @@ var $eXeMapa = {
                 }
             }
             clearInterval(mOptions.timeUpdateInterval);
-            mOptions.timeUpdateInterval = setInterval(function () {
-                let $node = $('#mapaMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this map's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first map takes the same ones: a
+            // clock that looked its map up by id each second found that map and
+            // went on driving its video, pausing it at this one's end point.
+            const container = document.getElementById(
+                'mapaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.timeUpdateInterval);
+                    clearInterval(clock);
                     return;
                 }
                 $eXeMapa.updateTimerDisplayLocal(instance);
             }, 1000);
+            mOptions.timeUpdateInterval = clock;
             $('#mapaVideoLocal-' + instance).show();
             return;
         }
