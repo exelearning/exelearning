@@ -124,6 +124,7 @@ var $eXeEC = {
             $eXeEC.options.push(mOption);
             const interfaceHtml = $eXeEC.createInterface(i);
             dl.before(interfaceHtml).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#elcpGameMinimize-' + i).hide();
             $('#elcpGameContainer-' + i).hide();
