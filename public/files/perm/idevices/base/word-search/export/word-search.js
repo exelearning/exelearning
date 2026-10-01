@@ -106,6 +106,7 @@ var $eXeSopa = {
             const sopa = $eXeSopa.createInterfaceSopa(i);
 
             dl.before(sopa).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             const $container = $('#sopaMainContainer-' + i);
             $container.find('#sopaGameMinimize-' + i).hide();
