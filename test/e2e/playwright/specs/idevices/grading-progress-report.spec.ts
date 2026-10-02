@@ -149,6 +149,63 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
     await expect(reportRow.locator('.IFPP-IdiviceIconPass')).toBeVisible();
 });
 
+test('scrambled-list shows the learner their score outside the editor', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    test.setTimeout(120000);
+    const uuid = await createProject(page, 'Scrambled list progress report');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    const stamp = Date.now();
+    await page.evaluate(
+        ({ ideviceId, evaluationID }) => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const pageId = bridge.documentManager.getNavigation().get(0).get('id');
+            const blockId =
+                bridge.structureBinding.getBlocks(pageId)?.[0]?.id ??
+                bridge.structureBinding.createBlock(pageId, 'Content');
+            // The editor stores the component id in the properties on save
+            // (IdeviceNode), and the export renders the list's ids from it.
+            bridge.structureBinding.createComponent(pageId, blockId, 'scrambled-list', {
+                id: ideviceId,
+                htmlContent: '',
+                jsonProperties: {
+                    ideviceId,
+                    instructions: '<p>Put them in order</p>',
+                    options: ['First', 'Second', 'Third'],
+                    buttonText: 'Check',
+                    rightText: 'Right!',
+                    wrongText: 'Sorry',
+                    evaluation: true,
+                    evaluationID,
+                },
+            });
+        },
+        { ideviceId: `idevice-scrambled-${stamp}`, evaluationID: `scrambled-${stamp}` },
+    );
+
+    // The preview runs the same markup as an exported package. The icon used
+    // to be looked for in a container only the editor has, so outside it the
+    // learner never saw their score.
+    expect(await waitForPreviewContent(page, 30000)).toBe(true);
+    const activity = getPreviewFrame(page).locator('.idevice_node.scrambled-list');
+    await activity.waitFor({ state: 'visible', timeout: 30000 });
+    const icon = activity.locator('.Games-ReportIconDiv');
+    await expect(icon).toContainText('Incomplete activity');
+
+    await activity.locator('#exe-sortableList-0').evaluate(list => {
+        const items = [...list.children] as HTMLElement[];
+        items
+            .sort((a, b) => Number(a.dataset.origIndex) - Number(b.dataset.origIndex))
+            .forEach(item => list.appendChild(item));
+    });
+    await activity.locator('.exe-sortableList-check-0').click();
+
+    await expect(icon).toContainText('10.00');
+    await expect(icon.locator('img')).toHaveAttribute('src', /exequexthits\.svg$/);
+});
+
 test('new true-or-false activities offer a report only in test mode', async ({
     authenticatedPage: page,
     createProject,

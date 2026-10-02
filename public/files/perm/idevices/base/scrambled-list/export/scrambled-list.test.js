@@ -136,7 +136,11 @@ describe('scrambled-list iDevice export', () => {
   });
 
   describe('updateConfig', () => {
-    it('targets the scrambled-list iDevice body for report icons', () => {
+    // The progress report puts its icon, and the anchor it links to, in
+    // $('#' + main).closest('.' + idevice). `idevice` used to name a class only
+    // the editor gives the iDevice body, so in an exported package closest()
+    // found nothing and the learner never saw their score.
+    it('places the report icon inside the exported activity', () => {
       const previousIsInExe = eXe.app.isInExe;
       eXe.app.isInExe = vi.fn(() => false);
 
@@ -148,18 +152,24 @@ describe('scrambled-list iDevice export', () => {
       `;
 
       try {
-        const result = $scrambledlist.updateConfig(
-          {
-            id: 'scrambled-1',
-            attemptsNumber: 1,
-            pendingAttempts: 1,
-            msgs: $scrambledlist.getMessages(),
-          },
-          'scrambled-1',
-        );
+        const data = {
+          id: 'scrambled-1',
+          options: ['a', 'b'],
+          attemptsNumber: 1,
+          pendingAttempts: 1,
+          msgs: $scrambledlist.getMessages(),
+        };
+        const template = readFileSync(join(__dirname, 'scrambled-list.html'), 'utf-8');
+        $('#scrambled-1').html($scrambledlist.renderView(data, 0, template, 'scrambled-1'));
 
-        expect(result.idevice).toBe('scrambled-listIdevice');
+        const result = $scrambledlist.updateConfig(data, 'scrambled-1');
+        const $container = $('#' + result.main).closest('.' + result.idevice);
+
         expect(result.main).toBe('slscrambled-1');
+        expect($container).toHaveLength(1);
+        // Inside the activity, not on the node: in the editor the node also
+        // holds the iDevice's action buttons.
+        expect($container.attr('id')).toBe(result.main);
       } finally {
         eXe.app.isInExe = previousIsInExe;
       }
@@ -947,6 +957,32 @@ describe('scrambled-list iDevice export', () => {
         expect(html).toContain('data-orig-index="1"');
         // Rendered math survives in the option AND the feedback text.
         expect((html.match(/exe-math-rendered/g) || []).length).toBeGreaterThanOrEqual(2);
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+      }
+    });
+
+    // The export runtime renders an activity that has no saved HTML without
+    // passing an id (exe_export.renderWithTemplate). The list used to come out
+    // as #slundefined, so nothing that looks for the activity by its id --
+    // the report icon among them -- could find it.
+    it('ids the list after the stored iDevice when the runtime passes no id', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+      document.body.innerHTML = `
+        <article><header><h1 class="box-title">SL</h1></header>
+          <div id="sl-2" class="idevice_node scrambled-list" data-idevice-path="/idevices/scrambled-list/"></div>
+        </article>`;
+
+      try {
+        const data = { ideviceId: 'sl-2', options: ['a', 'b'], msgs: $scrambledlist.getMessages() };
+        const realTemplate = readFileSync(join(__dirname, 'scrambled-list.html'), 'utf-8');
+        $('#sl-2').html($scrambledlist.renderView(data, 0, realTemplate));
+
+        const { main } = $scrambledlist.updateConfig(data);
+        expect(main).toBe('slsl-2');
+        expect($('#' + main)).toHaveLength(1);
+        expect($('#' + main + ' .game-evaluation-ids').attr('data-id')).toBe('sl-2');
       } finally {
         eXe.app.isInExe = previousIsInExe;
       }

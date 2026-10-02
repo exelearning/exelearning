@@ -58,7 +58,11 @@ var $scrambledlist = {
         } else {
             html = html.replace('{scorm}', false);
         }
-        html = html.replace('{idList}', ideviceId);
+        // ldata.id, not the ideviceId argument: the export runtime renders an
+        // activity without saved HTML with no argument at all (exe_export), and
+        // the list then became #slundefined while updateConfig, which falls
+        // back to the stored ideviceId, looked for the activity elsewhere.
+        html = html.replace('{idList}', ldata.id);
         html = html.replace('{instructions}', ldata.instructions);
         html = html.replace('{optionsText}', optionsText);
         if (
@@ -95,7 +99,7 @@ var $scrambledlist = {
         );
         html = html.replace('{afterElement}', ldata.afterElement);
         html = html.replace('{evaluationID}', ldata.evaluationID);
-        html = html.replace('{ideviceID}', ideviceId);
+        html = html.replace('{ideviceID}', ldata.id);
         html = html.replace('{evaluation}', ldata.evaluation);
         return html;
     },
@@ -163,7 +167,12 @@ var $scrambledlist = {
         data.scorerp = 0;
         data.main = 'sl' + data.id;
 
-        data.idevice = 'scrambled-listIdevice';
+        // The container the progress report icon and its anchor go into, found
+        // with closest() from `main`. It was 'scrambled-listIdevice', a class
+        // only the editor adds to the iDevice body: in an exported package
+        // nothing carried it, so the learner never saw their score there.
+        // The activity's own wrapper is `main` itself, in both places.
+        data.idevice = 'exe-sortableList';
 
         return data;
     },
