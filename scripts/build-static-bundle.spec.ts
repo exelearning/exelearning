@@ -11,6 +11,7 @@ import {
     parseXlfContent,
     parseIdeviceConfig,
     processNjkTemplateContent,
+    generateModalsHtml,
     buildApiParameters,
     generatePwaManifestContent,
     generateServiceWorkerContent,
@@ -583,6 +584,18 @@ describe('processNjkTemplateContent', () => {
         const content = `<div data-tooltip="{{ 'Help text' | trans }}">Help</div>`;
         const result = processNjkTemplateContent(content, 'v1.0.0');
         expect(result).toBe('<div data-tooltip="Help text">Help</div>');
+    });
+});
+
+// =============================================================================
+// generateModalsHtml tests
+// =============================================================================
+
+describe('generateModalsHtml', () => {
+    it('should include Connect MCP modal markup', () => {
+        const modalsHtml = generateModalsHtml();
+        expect(modalsHtml).toContain('id="modalConnectMcp"');
+        expect(modalsHtml).toContain('id="button-open-webmcp-widget"');
     });
 });
 
