@@ -4494,6 +4494,34 @@ describe('common.js $exeDevices', () => {
       const timeParts = parts[1].split(':');
       expect(timeParts.length).toBe(3);
     });
+
+    // showEvaluationIcon builds its image from the iDevice's own export folder:
+    // exequextsq.svg until there is a mark, then exequextrerrors.svg or
+    // exequexthits.svg. interactive-video shipped only the first, so once the
+    // learner had a score the icon was a broken image.
+    describe('every iDevice that reports ships the icons showEvaluationIcon asks for', () => {
+      const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
+      const ICONS = ['exequextsq.svg', 'exequextrerrors.svg', 'exequexthits.svg'];
+      const reporters = readdirSync(IDEVICES_DIR)
+        .map((name) => ({ name, dir: join(IDEVICES_DIR, name, 'export') }))
+        .filter(({ name, dir }) => existsSync(join(dir, `${name}.js`)))
+        .filter(({ name, dir }) =>
+          /gamification\.report\.(saveEvaluation|updateEvaluationIcon|showEvaluationIcon)\(/.test(
+            readFileSync(join(dir, `${name}.js`), 'utf-8')
+          )
+        );
+
+      it('finds the iDevices that report', () => {
+        // A guard rail for the scan: a rename that matched nothing would leave
+        // every assertion below vacuously green.
+        expect(reporters.length).toBeGreaterThan(30);
+      });
+
+      it.each(reporters.map(({ name }) => name))('%s', (name) => {
+        const { dir } = reporters.find((reporter) => reporter.name === name);
+        expect(ICONS.filter((icon) => !existsSync(join(dir, icon)))).toEqual([]);
+      });
+    });
   });
 
   describe('gamification.math', () => {
