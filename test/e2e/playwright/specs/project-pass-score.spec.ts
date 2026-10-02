@@ -119,63 +119,74 @@ test.describe('Project pass score', () => {
         await expect(field).toHaveValue('10');
     });
 
-    test('updates inherited notices after a collaborator changes the mark without resetting answers', async ({
-        authenticatedPage: page,
-        secondAuthenticatedPage: peer,
-        createProject,
-        getShareUrl,
-        joinSharedProject,
-    }, testInfo) => {
-        skipInStaticMode(test, testInfo, 'Requires WebSocket project sharing');
-        test.setTimeout(120000);
-        const uuid = await createProject(page, 'Live pass score notice');
-        await gotoWorkarea(page, uuid);
-        await waitForAppReady(page);
-        await selectFirstPage(page);
-        await addIdevice(page, 'rubric');
-        await page.locator('#ri_CreateNewRubric').click();
-        const rubric = page.locator('#node-content .idevice_node.rubric');
-        const rubricId = (await rubric.getAttribute('id'))!;
-        await page
-            .locator('.exe-form-tabs a')
-            .filter({ hasText: /^Grading$/ })
-            .click();
-        await page.locator('#eXeProgressReport').check();
-        await saveIdevice(page, rubricId);
+    test.describe('with a collaborator', () => {
+        // Project sharing needs the server's WebSocket rooms, which a static
+        // build does not have. The skip has to run in a hook: the second
+        // client's fixture is set up before the test body, and in a static
+        // build it waits for a workarea that never comes.
+        test.beforeEach(async ({}, testInfo) => {
+            skipInStaticMode(test, testInfo, 'Requires WebSocket project sharing');
+        });
 
-        await joinSharedProject(peer, await getShareUrl(page));
-        await waitForYjsSync(page);
-        await waitForYjsSync(peer);
-        await openExportOptions(peer);
-        const field = peer.locator('input[property="pp_passScore"]');
-        await expect(field).toHaveValue('5');
-        const notice = rubric.locator('.exe-pass-score-notice');
-        await expect(notice).toHaveCount(0);
+        test('updates inherited notices after a collaborator changes the mark without resetting answers', async ({
+            authenticatedPage: page,
+            secondAuthenticatedPage: peer,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            test.setTimeout(120000);
+            const uuid = await createProject(page, 'Live pass score notice');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            await selectFirstPage(page);
+            await addIdevice(page, 'rubric');
+            await page.locator('#ri_CreateNewRubric').click();
+            const rubric = page.locator('#node-content .idevice_node.rubric');
+            const rubricId = (await rubric.getAttribute('id'))!;
+            await page
+                .locator('.exe-form-tabs a')
+                .filter({ hasText: /^Grading$/ })
+                .click();
+            await page.locator('#eXeProgressReport').check();
+            await saveIdevice(page, rubricId);
 
-        const answer = rubric.locator('tbody input[type="checkbox"]').first();
-        await answer.check();
-        const originalActivity = await rubric.elementHandle();
-        const readProgress = () =>
-            page.evaluate(id => {
-                const game = (window as any).$rubric.options.find((data: any) => data.scormGame?.main === id).scormGame;
-                return { score: game.scorerp, started: game.gameStarted, completed: game.gameOver };
-            }, rubricId);
-        const progress = await readProgress();
+            await joinSharedProject(peer, await getShareUrl(page));
+            await waitForYjsSync(page);
+            await waitForYjsSync(peer);
+            await openExportOptions(peer);
+            const field = peer.locator('input[property="pp_passScore"]');
+            await expect(field).toHaveValue('5');
+            const notice = rubric.locator('.exe-pass-score-notice');
+            await expect(notice).toHaveCount(0);
 
-        for (const mark of [3, 9, 5, 7.5]) {
-            await field.fill(String(mark));
-            await field.blur();
-            await expect.poll(() => readStoredPassScore(page)).toBe(mark);
-            if (mark === 5) {
-                await expect(notice).toHaveCount(0);
-            } else {
-                await expect(notice).toHaveText(`Minimum score needed to pass this activity: ${mark}`);
-                await expect(notice).toHaveCount(1);
+            const answer = rubric.locator('tbody input[type="checkbox"]').first();
+            await answer.check();
+            const originalActivity = await rubric.elementHandle();
+            const readProgress = () =>
+                page.evaluate(id => {
+                    const game = (window as any).$rubric.options.find(
+                        (data: any) => data.scormGame?.main === id,
+                    ).scormGame;
+                    return { score: game.scorerp, started: game.gameStarted, completed: game.gameOver };
+                }, rubricId);
+            const progress = await readProgress();
+
+            for (const mark of [3, 9, 5, 7.5]) {
+                await field.fill(String(mark));
+                await field.blur();
+                await expect.poll(() => readStoredPassScore(page)).toBe(mark);
+                if (mark === 5) {
+                    await expect(notice).toHaveCount(0);
+                } else {
+                    await expect(notice).toHaveText(`Minimum score needed to pass this activity: ${mark}`);
+                    await expect(notice).toHaveCount(1);
+                }
+                await expect(answer).toBeChecked();
+                expect(await originalActivity!.evaluate(element => element.isConnected)).toBe(true);
+                expect(await readProgress()).toEqual(progress);
             }
-            await expect(answer).toBeChecked();
-            expect(await originalActivity!.evaluate(element => element.isConnected)).toBe(true);
-            expect(await readProgress()).toEqual(progress);
-        }
-        await originalActivity!.dispose();
+            await originalActivity!.dispose();
+        });
     });
 });
