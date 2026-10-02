@@ -272,6 +272,31 @@ describe('geogebra-activity iDevice (edition)', () => {
         global.tinymce.editors = previousEditors;
       }
     });
+
+    // Like every other text this iDevice shows the learner: translated when it
+    // is saved, and kept in the positional list the export reads.
+    it('save() appends the minimum score notice to the evaluation messages', () => {
+      document.body.innerHTML = buildSaveDom({ width: '', height: '' });
+
+      const previousEditors = global.tinymce.editors;
+      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+
+      try {
+        const container = document.createElement('div');
+        container.innerHTML = $exeDevice.save();
+        const messages = container
+          .querySelector('.auto-geogebra-messages-evaluation')
+          .textContent.split(',')
+          .map(message => unescape(message));
+
+        // Last, after the save button's caption, so older content keeps its positions.
+        expect(messages).toHaveLength(5);
+        expect(messages[3]).toBe('Save score');
+        expect(messages[4]).toBe('Minimum score needed to pass this activity: %s');
+      } finally {
+        global.tinymce.editors = previousEditors;
+      }
+    });
   });
 
   /**

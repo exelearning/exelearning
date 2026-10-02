@@ -623,6 +623,9 @@ var $exeDevice = {
             escape(c_('Activity: Not passed. Score: %s')) +
             ',' +
             escape(c_('Save score')) +
+            ',' +
+            // Last, so content saved before it keeps its positions.
+            escape(c_('Minimum score needed to pass this activity: %s')) +
             '</div>';
         divContent +=
             '<div class="auto-geogebra-messages-scorm">' +

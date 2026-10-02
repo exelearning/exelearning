@@ -208,7 +208,7 @@ describe('geogebra-activity iDevice (export)', () => {
       capturedParams.push(parameters);
       this.inject = vi.fn();
     });
-    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn(), showPassScoreNotice: vi.fn(() => null) };
 
     document.body.innerHTML = `
       <div class="idevice_body geogebra-activityIdevice">
@@ -247,7 +247,7 @@ describe('geogebra-activity iDevice (export)', () => {
       capturedParams.push(parameters);
       this.inject = vi.fn();
     });
-    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn(), showPassScoreNotice: vi.fn(() => null) };
 
     document.body.innerHTML = `
       <div class="idevice_body geogebra-activityIdevice">
@@ -357,7 +357,7 @@ describe('geogebra-activity iDevice (export)', () => {
     global.GGBApplet = vi.fn(function () {
       this.inject = vi.fn();
     });
-    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon, showPassScoreNotice: vi.fn(() => null) };
 
     document.body.innerHTML = `
       <div class="idevice_body geogebra-activityIdevice">
@@ -546,7 +546,7 @@ describe('geogebra-activity iDevice (export)', () => {
         captured.push(parameters);
         this.inject = vi.fn();
       });
-      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn(), showPassScoreNotice: vi.fn(() => null) };
       document.body.innerHTML = `
         <div class="idevice_body geogebra-activityIdevice">
           <div id="geogebra-1" class="idevice_node geogebra-activity">
@@ -723,5 +723,95 @@ describe('geogebra-activity iDevice (export)', () => {
 
       expect(reported).toEqual([]);
     });
+  });
+});
+
+describe('geogebra-activity minimum score notice', () => {
+  let $geogebraactivity;
+  let previous;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    global.$geogebraactivity = undefined;
+    $geogebraactivity = loadExportIdevice(readFileSync(join(__dirname, 'geogebra-activity.js'), 'utf-8'));
+    const gamification = $exeDevices.iDevice.gamification;
+    previous = {
+      report: gamification.report,
+      registerActivity: gamification.scorm.registerActivity,
+      GGBApplet: global.GGBApplet,
+    };
+    gamification.report = { updateEvaluationIcon: vi.fn(), showPassScoreNotice: vi.fn(() => null) };
+    gamification.scorm.registerActivity = vi.fn();
+    global.GGBApplet = vi.fn(function () {
+      this.inject = vi.fn();
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    const gamification = $exeDevices.iDevice.gamification;
+    gamification.report = previous.report;
+    gamification.scorm.registerActivity = previous.registerActivity;
+    global.GGBApplet = previous.GGBApplet;
+    document.body.innerHTML = '';
+  });
+
+  it('reads its text from the fifth evaluation message, like the rest of its texts', () => {
+    const messages = ['Incomplete', 'Passed', 'Not passed', 'Save score', 'Nota mínima: %s'];
+    document.body.innerHTML = `
+      <div class="auto-geogebra auto-geogebra-VgHhQXCC">
+        <div class="auto-geogebra-messages-evaluation">${messages.map(message => escape(message)).join(',')}</div>
+      </div>`;
+    $geogebraactivity.activities = $('.auto-geogebra');
+    $geogebraactivity.indicator.start();
+
+    expect($geogebraactivity.getOptions('VgHhQXCC0', 100, [], '').msgs.msgPassScore).toBe('Nota mínima: %s');
+  });
+
+  it('has no text of its own for content saved with four messages', () => {
+    $geogebraactivity.messages = ['Incomplete', 'Passed', 'Not passed', 'Save score'];
+
+    // No literal: the shared runtime then uses the page's text.
+    expect($geogebraactivity.getOptions('a0', 100, [], '').msgs.msgPassScore).toBeUndefined();
+  });
+
+  function addActivity(classes) {
+    document.body.innerHTML = `
+      <div class="idevice_body geogebra-activityIdevice">
+        <div id="geogebra-1" class="idevice_node geogebra-activity">
+          <div class="auto-geogebra-instructions">Build it</div>
+          <div class="auto-geogebra-wrapper"><div class="${classes}"></div></div>
+        </div>
+      </div>`;
+    const activity = document.querySelector('.auto-geogebra');
+    $geogebraactivity.addActivity(activity, 'VgHhQXCC', activity.className.split(' '), 0);
+    return $exeDevices.iDevice.gamification.report.showPassScoreNotice;
+  }
+
+  it('asks below the instructions, before the applet wrapper, when score saving is on', () => {
+    const notice = addActivity('auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-scorm auto-geogebra-pass-score-7');
+
+    expect(notice).toHaveBeenCalledTimes(1);
+    const [game, before] = notice.mock.calls[0];
+    expect(game).toMatchObject({ isScorm: 2, passScoreMode: 'custom', passScoreCustom: 7, main: 'auto-geogebra-VgHhQXCC0' });
+    expect(before[0].className).toBe('auto-geogebra-wrapper');
+    expect(before.prev().hasClass('auto-geogebra-instructions')).toBe(true);
+  });
+
+  // getOptions() marks every applet isScorm 2; the notice must not take that
+  // for the author turning score saving on.
+  it('tells the shared runtime nothing judges the mark while saving and the report are off', () => {
+    const notice = addActivity('auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-pass-score-7');
+
+    expect(notice.mock.calls[0][0]).toMatchObject({ isScorm: 0, evaluation: false, evaluationID: '' });
+  });
+
+  it('passes the progress report on when it is on', () => {
+    const notice = addActivity(
+      'auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-ideviceid-geogebra-1 auto-geogebra-evaluation-id-report-1 auto-geogebra-pass-score-7'
+    );
+
+    expect(notice.mock.calls[0][0]).toMatchObject({ isScorm: 0, evaluation: true, evaluationID: 'report-1' });
   });
 });

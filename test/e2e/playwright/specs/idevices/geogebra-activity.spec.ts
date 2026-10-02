@@ -162,3 +162,44 @@ test.describe('GeoGebra Activity iDevice — display sizing (#2029)', () => {
         await page.unroute(GEOGEBRA_SCRIPT_PATTERN);
     });
 });
+
+test.describe('GeoGebra Activity iDevice — minimum score notice', () => {
+    test('tells the learner a customised minimum score above the applet', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+        const page = authenticatedPage;
+        await page.route(GEOGEBRA_SCRIPT_PATTERN, async route => {
+            await route.fulfill({ status: 200, contentType: 'application/javascript', body: MOCK_GGB_APPLET_SCRIPT });
+        });
+
+        const projectUuid = await createProject(page, 'GeoGebra minimum score notice');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        const ideviceId = await addGeogebraIdevice(page);
+        await editIdevice(page, ideviceId);
+        await openGeneralSettings(page, ideviceId);
+        await page.locator(`#${ideviceId} #geogebraActivityURL`).fill('VgHhQXCC');
+        await page
+            .locator(`#${ideviceId} .exe-form-tabs a`)
+            .filter({ hasText: /^Grading$/ })
+            .click();
+        // The save button is the only way this activity reports.
+        await page.locator('#eXeGameSCORMButtonSave').check();
+        await page.locator('#eXePassScoreCustom').check();
+        await page.locator('#eXePassScoreValue').fill('7');
+        await saveIdevice(page, ideviceId);
+
+        expect(await waitForPreviewContent(page, 20000)).toBe(true);
+        const frame = getPreviewFrame(page);
+        await frame.locator('[data-mock-geogebra-applet]').first().waitFor({ state: 'attached', timeout: 15000 });
+        // Like the rest of its texts: translated when saved, not edited.
+        const notice = frame.locator('.idevice_node.geogebra-activity .exe-pass-score-notice');
+        await expect(notice).toHaveText('Minimum score needed to pass this activity: 7');
+        expect(await notice.evaluate(element => element.nextElementSibling?.className)).toBe('auto-geogebra-wrapper');
+
+        await page.unroute(GEOGEBRA_SCRIPT_PATTERN);
+    });
+});

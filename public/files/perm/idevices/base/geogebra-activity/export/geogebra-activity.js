@@ -445,6 +445,12 @@ var $geogebraactivity = {
             }
         }
 
+        $geogebraactivity.showPassScoreNotice(
+            options,
+            c.length > 2 && c[2] == 'auto-geogebra-scorm',
+            !!(ideviceID && evaluationID && evaluationID.length > 4)
+        );
+
         setTimeout(function () {
             if (options.evaluation) {
                 $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
@@ -455,6 +461,35 @@ var $geogebraactivity = {
                 $geogebraactivity.removeEvaluationIcon(options);
             }
         }, 500);
+    },
+
+    /**
+     * Ask for the notice of the minimum score for one applet.
+     *
+     * getOptions() marks every applet isScorm 2, because the save button is the
+     * only way it can report. Whether the author turned saving on is the
+     * `auto-geogebra-scorm` class, and the progress report needs its
+     * identifier, so the shared runtime is handed what the activity really
+     * does rather than what getOptions() assumes.
+     *
+     * Placed before the applet's wrapper, which scrolls sideways with a wide
+     * construction: below the instructions, above the applet.
+     *
+     * @param {Object} options The applet's options (see getOptions).
+     * @param {boolean} saving Whether the author turned score saving on.
+     * @param {boolean} reporting Whether the progress report is on.
+     * @returns {jQuery|null} The notice, or null when none is shown.
+     */
+    showPassScoreNotice: function (options, saving, reporting) {
+        const judged = Object.assign({}, options, {
+            isScorm: saving ? 2 : 0,
+            evaluation: reporting,
+            evaluationID: reporting ? options.evaluationID : '',
+        });
+        return $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+            judged,
+            $('#' + options.main).parent('.auto-geogebra-wrapper')
+        );
     },
     removeEvaluationIcon: function (options) {
         if (!options || !options.main || !options.idevice) return;
@@ -565,6 +600,11 @@ var $geogebraactivity = {
                     typeof messagesScorm[1] != 'undefined'
                         ? messagesScorm[1]
                         : 'Your score',
+                // [4] of the evaluation list, appended after the save button's
+                // caption. Content saved before it has four entries, and no
+                // literal here: the shared runtime then uses the page's own
+                // text, in the content language.
+                msgPassScore: messagesEval[4],
             },
         };
         return options;
