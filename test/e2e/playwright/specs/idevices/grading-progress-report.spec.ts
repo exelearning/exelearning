@@ -84,6 +84,11 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
     await page.locator('#eXePassScoreCustom').check();
     await page.locator('#eXePassScoreValue').fill('8');
     await saveIdevice(page, rubricId);
+    // The mark is not the 5 a learner takes for granted, so it is announced
+    // right above the table.
+    const notice = rubric.locator('.exe-pass-score-notice');
+    await expect(notice).toHaveText('Minimum score needed to pass this activity: 8');
+    expect(await notice.evaluate(element => element.nextElementSibling?.className)).toBe('exe-rubrics-table-slot');
     await expect(rubric.locator('.Games-ReportIconDiv')).toBeVisible();
     await expect
         .poll(() =>
@@ -106,6 +111,9 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
     const frame = getPreviewFrame(page);
     const previewRubric = frame.locator('.idevice_node.rubric');
     await previewRubric.waitFor({ state: 'visible', timeout: 30000 });
+    await expect(previewRubric.locator('.exe-pass-score-notice')).toHaveText(
+        'Minimum score needed to pass this activity: 8',
+    );
     const previewRows = previewRubric.locator('tbody tr');
     await expect(previewRows.first().locator('input[type="checkbox"]').nth(1)).toBeVisible();
     for (let index = 0; index < (await previewRows.count()); index++) {

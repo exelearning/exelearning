@@ -51,6 +51,7 @@ var $exeDevice = {
         msgUncompletedActivity: c_('Incomplete activity'),
         msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
         msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+        msgPassScore: c_('Minimum score needed to pass this activity: %s'),
         msgActityComply: c_('You have already done this activity.'),
         msgPlaySeveralTimes: c_(
             'You can do this activity as many times as you want'

@@ -76,6 +76,7 @@ var $rubric = {
             self.addEvents(data.table, data.strings);
             self.initScorm(data);
             self.initProgressReport(data);
+            self.showPassScoreNotice(data);
         });
     },
 
@@ -361,8 +362,13 @@ var $rubric = {
         var strings = $.extend({}, this.ci18n);
         if (!data || typeof data !== 'object' || !data.i18n || typeof data.i18n !== 'object') return strings;
 
+        // Texts the saved data may carry with no English default above. Without
+        // one, the shared runtime uses the page's text in the content language,
+        // which a literal here would hide.
+        var withoutDefault = ['msgPassScore'];
         Object.keys(data.i18n).forEach(function (key) {
-            if (Object.prototype.hasOwnProperty.call(strings, key) && typeof data.i18n[key] === 'string') {
+            var known = Object.prototype.hasOwnProperty.call(strings, key) || withoutDefault.indexOf(key) !== -1;
+            if (known && typeof data.i18n[key] === 'string') {
                 strings[key] = data.i18n[key];
             }
         });
@@ -1530,8 +1536,29 @@ var $rubric = {
                 msgUnsuccessfulActivity: strings.msgUnsuccessfulActivity || 'Activity: Not passed. Score: %s',
                 msgActityComply: strings.msgActityComply || 'You have already done this activity.',
                 msgPlaySeveralTimes: strings.msgPlaySeveralTimes || 'You can do this activity as many times as you want',
+                // No literal: without the author's text the shared runtime
+                // uses the page's own, in the content language.
+                msgPassScore: strings.msgPassScore,
             },
         };
+    },
+
+    /**
+     * Tell the learner the minimum score, right above the table.
+     *
+     * The rubric has no main container of its own above its activity, so the
+     * notice goes before the table's slot: below the instructions and the
+     * learner's details, above the criteria. `scormGame` exists only when SCORM
+     * or the progress report is on, which is when anything judges the mark.
+     *
+     * @param {Object} data The activity options.
+     * @returns {jQuery|null} The notice, or null when none is shown.
+     */
+    showPassScoreNotice: function (data) {
+        if (!data || !data.scormGame) return null;
+        var $slot = $(data.table).closest('.exe-rubrics-table-slot');
+        if ($slot.length !== 1) return null;
+        return $exeDevices.iDevice.gamification.report.showPassScoreNotice(data.scormGame, $slot);
     },
 
     /**
