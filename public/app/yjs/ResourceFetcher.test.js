@@ -2907,6 +2907,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         expect(result.has('a.css')).toBe(true);
         expect(result.get('a.css').type).toBe('text/css');
         expect(result.get('b.js').type).toBe('application/javascript');
+        expect(result.incomplete).toBeUndefined();
       });
 
       it('assembleBundleFromLoose skips files that fail to fetch', async () => {
@@ -2924,6 +2925,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         expect(result.size).toBe(1);
         expect(result.has('a.css')).toBe(true);
         expect(result.has('missing.css')).toBe(false);
+        expect(result.incomplete).toBe(true);
       });
 
       it('assembleBundleFromLoose returns an empty Map for no entries', async () => {

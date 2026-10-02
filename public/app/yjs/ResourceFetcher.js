@@ -494,6 +494,11 @@ class ResourceFetcher {
         files.set(result.t, result.blob);
       }
     }
+    // Flag a partial bundle so ResourceCache.set() does not persist it: a
+    // transient or host-side failure must not stick for the whole version.
+    if (results.includes(null)) {
+      files.incomplete = true;
+    }
     return files;
   }
 
