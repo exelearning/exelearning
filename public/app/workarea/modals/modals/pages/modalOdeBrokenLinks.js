@@ -87,7 +87,7 @@ export default class ModalOdeBrokenLinks extends Modal {
         // Error cell
         const errorTd = document.createElement('td');
         errorTd.className = 'link-error';
-        errorTd.textContent = link.error || '';
+        errorTd.textContent = this.describeError(link.status, link.error);
         tr.appendChild(errorTd);
 
         // Count cell
@@ -157,11 +157,27 @@ export default class ModalOdeBrokenLinks extends Modal {
                 return `<span class="text-success" title="${_('Valid')}">&#10003;</span>`;
             case 'broken':
                 return `<span class="text-danger" title="${error || _('Error')}">&#10007;</span>`;
+            case 'unavailable':
+                return `<span class="text-info-emphasis" title="${_('Server unavailable')}">&#8635;</span>`;
             case 'unknown':
                 return `<span class="text-warning-emphasis" title="${error || _('Requires manual review')}">&#9888;</span>`;
             default:
                 return '';
         }
+    }
+
+    /**
+     * Text for the Error column. A server that timed out, rate limited us or
+     * failed says nothing about the link itself, so explain it (#2502).
+     * @param {string} status
+     * @param {string|null} error
+     * @returns {string}
+     */
+    describeError(status, error) {
+        if (status !== 'unavailable' || !error) return error || '';
+        if (error === 'Timeout') return `${error}: ${_('the server took too long to respond, try again later')}`;
+        if (error === '429') return `${error}: ${_('too many requests to this site, try again later')}`;
+        return `${error}: ${_('server error, try again later')}`;
     }
 
     /**
@@ -175,6 +191,8 @@ export default class ModalOdeBrokenLinks extends Modal {
                 return _('Valid');
             case 'broken':
                 return _('Broken');
+            case 'unavailable':
+                return _('Server unavailable');
             case 'unknown':
                 return _('Requires manual review');
             default:
@@ -230,6 +248,9 @@ export default class ModalOdeBrokenLinks extends Modal {
             <p class="validation-legend small text-muted mb-2">
                 <span class="text-success">&#10003;</span> ${_('Valid')} &middot;
                 <span class="text-danger">&#10007;</span> ${_('Broken')} &middot;
+                <span class="text-info-emphasis">&#8635;</span> ${_('Server unavailable')}
+                &mdash; ${_('the site did not answer in time or was busy; the link may still work, try again later.')}
+                &middot;
                 <span class="text-warning-emphasis">&#9888;</span> ${_('Requires manual review')}
                 &mdash; ${_('the status of these links could not be checked automatically; open them to confirm.')}
                 <br>
@@ -267,17 +288,27 @@ export default class ModalOdeBrokenLinks extends Modal {
                 progressText.textContent =
                     unknown > 0 ? `${_('Links listed')}: ${unknown} ${_('to review manually')}` : _('Links listed');
             } else {
+                const unavailable = stats.unavailable || 0;
                 const summary = [
                     stats.broken > 0 ? `${stats.broken} ${_('broken')}` : _('No broken links'),
+                    unavailable > 0 ? `${unavailable} ${_('unavailable')}` : '',
                     unknown > 0 ? `${unknown} ${_('to review')}` : '',
                 ]
                     .filter(Boolean)
                     .join(', ');
                 progressText.textContent = `${_('Complete')}: ${summary}`;
             }
-            progressText.classList.remove('text-muted', 'text-danger', 'text-warning-emphasis', 'text-success');
+            progressText.classList.remove(
+                'text-muted',
+                'text-danger',
+                'text-info-emphasis',
+                'text-warning-emphasis',
+                'text-success'
+            );
             if (stats.broken > 0) {
                 progressText.classList.add('text-danger');
+            } else if (stats.unavailable > 0) {
+                progressText.classList.add('text-info-emphasis');
             } else if (unknown > 0) {
                 progressText.classList.add('text-warning-emphasis');
             } else {
@@ -307,16 +338,18 @@ export default class ModalOdeBrokenLinks extends Modal {
         // Update error cell
         const errorCell = row.querySelector('.link-error');
         if (errorCell) {
-            errorCell.textContent = error || '';
+            errorCell.textContent = this.describeError(status, error);
         }
 
         // Visual indicator: red for broken links, amber for inconclusive checks.
         // In browser-limited flavors every external link ends up unknown, so the
         // amber highlight carries no information and turns the whole table yellow
         // on top of the already amber notice: the ⚠ icon is marker enough there.
-        row.classList.remove('table-danger', 'table-warning');
+        row.classList.remove('table-danger', 'table-info', 'table-warning');
         if (status === 'broken') {
             row.classList.add('table-danger');
+        } else if (status === 'unavailable') {
+            row.classList.add('table-info');
         } else if (status === 'unknown' && !this.linkManager?.isBrowserLimited?.()) {
             row.classList.add('table-warning');
         }
@@ -497,7 +530,7 @@ export default class ModalOdeBrokenLinks extends Modal {
         }
 
         const rowsToExport = table.querySelectorAll(
-            'tbody tr[data-status="broken"], tbody tr[data-status="unknown"]'
+            'tbody tr[data-status="broken"], tbody tr[data-status="unavailable"], tbody tr[data-status="unknown"]'
         );
         if (rowsToExport.length === 0) {
             eXeLearning.app.toasts.createToast({

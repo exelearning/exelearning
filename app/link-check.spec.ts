@@ -231,7 +231,7 @@ describe('link-check', () => {
             });
         });
 
-        it('reports Timeout when the request times out and no fallback is available', async () => {
+        it('reports a timeout as unavailable, not broken (#2502)', async () => {
             const abortError = new Error('Aborted');
             abortError.name = 'AbortError';
             const fetchImpl = mock(async () => {
@@ -240,7 +240,17 @@ describe('link-check', () => {
 
             const result = await checkExternalLink('https://slow.example.com', { fetchImpl });
 
-            expect(result).toEqual({ status: 'broken', error: 'Timeout' });
+            expect(result).toEqual({ status: 'unavailable', error: 'Timeout' });
+        });
+
+        it('reports server errors and rate limiting as unavailable, not broken (#2502)', async () => {
+            for (const status of [500, 502, 503, 429]) {
+                const fetchImpl = mock(async () => response(status, 'https://example.com/'));
+
+                const result = await checkExternalLink('https://example.com', { fetchImpl });
+
+                expect(result).toEqual({ status: 'unavailable', error: String(status) });
+            }
         });
 
         it('maps DNS failures to a readable message', async () => {

@@ -40,7 +40,11 @@ export interface IdeviceContent {
 export interface ValidationResult {
     id: string;
     url: string;
-    status: 'valid' | 'broken';
+    /**
+     * 'unavailable': the server did not give a usable answer (timeout, rate
+     * limiting, 5xx). That says nothing about whether the link exists.
+     */
+    status: 'valid' | 'broken' | 'unavailable';
     error: string | null;
 }
 
@@ -180,6 +184,17 @@ export function classifyHttpStatus(status: number): string | null {
     return String(status);
 }
 
+/**
+ * True for failures caused by the remote server being slow, overloaded or
+ * rate limiting us (timeout, 429, 5xx) rather than by the link being wrong:
+ * the resource may well exist, so it must not be reported as broken (#2502).
+ */
+export function isTransientLinkError(error: string | null): boolean {
+    if (!error) return false;
+    if (error === 'Timeout' || error === '429') return true;
+    return /^5\d\d$/.test(error);
+}
+
 export interface ValidateLinkOptions {
     filesDir: string;
     timeout?: number;
@@ -302,33 +317,109 @@ export async function validateLinkWithResult(
     link: ExtractedLink,
     options: ValidateLinkOptions,
 ): Promise<ValidationResult> {
-    const error = await validateLink(link.url, options);
-    return {
-        id: link.id,
-        url: link.url,
-        status: error ? 'broken' : 'valid',
-        error,
-    };
+    return toResult(link, await validateLink(link.url, options));
+}
+
+function hostKey(url: string): string {
+    try {
+        return new URL(url.startsWith('//') ? `https:${url}` : url).host;
+    } catch {
+        return url;
+    }
+}
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export interface ValidateLinksStreamOptions extends ValidateLinkOptions {
+    /** Maximum number of hosts checked at the same time. */
+    batchSize?: number;
+    /** Pause between two requests to the same host. */
+    hostDelayMs?: number;
+    /** Pause before the single retry of a timeout/429/5xx answer. */
+    retryDelayMs?: number;
 }
 
 /**
- * Validate multiple links in batches
- * Yields results as they complete
+ * Validate multiple links, yielding results as they complete.
+ *
+ * Polite to remote hosts (#2502): an OER often links dozens of pages of the
+ * same site (image banks, video platforms), and firing them all at once makes
+ * the site time out or rate limit us. So each URL is checked once, each host
+ * gets one request at a time with a pause in between, up to `batchSize` hosts
+ * run in parallel, and a transient failure is retried once after a pause.
  */
 export async function* validateLinksStream(
     links: ExtractedLink[],
-    options: ValidateLinkOptions & { batchSize?: number },
+    options: ValidateLinksStreamOptions,
 ): AsyncGenerator<ValidationResult> {
-    const { batchSize = 5, ...validateOptions } = options;
+    const { batchSize = 5, hostDelayMs = 500, retryDelayMs = 2000, ...validateOptions } = options;
 
-    for (let i = 0; i < links.length; i += batchSize) {
-        const batch = links.slice(i, i + batchSize);
-        const results = await Promise.all(batch.map(link => validateLinkWithResult(link, validateOptions)));
-
-        for (const result of results) {
-            yield result;
-        }
+    // host -> url -> links sharing that url
+    const hosts = new Map<string, Map<string, ExtractedLink[]>>();
+    for (const link of links) {
+        const byUrl = hosts.get(hostKey(link.url)) ?? new Map<string, ExtractedLink[]>();
+        hosts.set(hostKey(link.url), byUrl);
+        byUrl.set(link.url, [...(byUrl.get(link.url) ?? []), link]);
     }
+
+    const ready: ValidationResult[] = [];
+    let wake: (() => void) | null = null;
+    const emit = (results: ValidationResult[]) => {
+        ready.push(...results);
+        wake?.();
+    };
+
+    const checkHost = async (byUrl: Map<string, ExtractedLink[]>) => {
+        let first = true;
+        for (const [url, sameUrl] of byUrl) {
+            if (!first && hostDelayMs > 0) await sleep(hostDelayMs);
+            first = false;
+            let error = await validateLink(url, validateOptions);
+            if (isTransientLinkError(error)) {
+                await sleep(retryDelayMs);
+                error = await validateLink(url, validateOptions);
+            }
+            emit(sameUrl.map(link => toResult(link, error)));
+        }
+    };
+
+    const queue = [...hosts.values()];
+    let running = 0;
+    const startNext = () => {
+        while (running < batchSize && queue.length > 0) {
+            running++;
+            void checkHost(queue.shift() as Map<string, ExtractedLink[]>).finally(() => {
+                running--;
+                startNext();
+                wake?.();
+            });
+        }
+    };
+    startNext();
+
+    try {
+        while (running > 0 || ready.length > 0) {
+            if (ready.length === 0) {
+                await new Promise<void>(resolve => {
+                    wake = resolve;
+                });
+                wake = null;
+            }
+            while (ready.length > 0) yield ready.shift() as ValidationResult;
+        }
+    } finally {
+        // Consumer gone (client cancelled): do not start any more hosts.
+        queue.length = 0;
+    }
+}
+
+function toResult(link: ExtractedLink, error: string | null): ValidationResult {
+    return {
+        id: link.id,
+        url: link.url,
+        status: !error ? 'valid' : isTransientLinkError(error) ? 'unavailable' : 'broken',
+        error,
+    };
 }
 
 /**

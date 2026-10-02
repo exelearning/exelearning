@@ -8,7 +8,10 @@
 import SSEClient from '../../rest/SSEClient.js';
 
 /**
- * @typedef {'pending' | 'validating' | 'valid' | 'broken' | 'unknown'} LinkStatus
+ * @typedef {'pending' | 'validating' | 'valid' | 'broken' | 'unavailable' | 'unknown'} LinkStatus
+ *
+ * 'unavailable' means the server timed out, rate limited the check (429) or
+ * failed (5xx): the link may well exist, it just could not be confirmed now.
  *
  * 'unknown' means the check was inconclusive (typically client-side validation,
  * where cross-origin responses are opaque) and the link needs a manual review.
@@ -33,6 +36,7 @@ import SSEClient from '../../rest/SSEClient.js';
  * @property {number} validated - Number of validated links
  * @property {number} valid - Number of valid links
  * @property {number} broken - Number of broken links
+ * @property {number} unavailable - Number of links whose server did not answer properly
  * @property {number} unknown - Number of links needing a manual review
  * @property {number} pending - Number of pending links
  */
@@ -330,6 +334,7 @@ export default class LinkValidationManager {
     getStats() {
         let valid = 0;
         let broken = 0;
+        let unavailable = 0;
         let unknown = 0;
         let pending = 0;
 
@@ -340,6 +345,9 @@ export default class LinkValidationManager {
                     break;
                 case 'broken':
                     broken++;
+                    break;
+                case 'unavailable':
+                    unavailable++;
                     break;
                 case 'unknown':
                     unknown++;
@@ -352,9 +360,9 @@ export default class LinkValidationManager {
         }
 
         const total = this.links.size;
-        const validated = valid + broken + unknown;
+        const validated = valid + broken + unavailable + unknown;
 
-        return { total, validated, valid, broken, unknown, pending };
+        return { total, validated, valid, broken, unavailable, unknown, pending };
     }
 
     /**
