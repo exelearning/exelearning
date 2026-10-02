@@ -327,10 +327,16 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
     await page.locator('#eXeProgressReportID').fill('tof-report');
     await saveIdevice(page, nodeId);
     await expect(notice).toHaveText('Minimum score needed to pass this activity: 7');
+    // The learner's result goes inside the activity. Its icon used to be looked
+    // for in a container only the editor has, so only the editor showed it.
+    const resultIcon = '.exe-trueorfalse-container > .Games-ReportIconDiv';
+    await expect(activity.locator(resultIcon)).toContainText('Incomplete activity');
 
     expect(await waitForPreviewContent(page, 30000)).toBe(true);
-    await expect(getPreviewFrame(page).locator('.idevice_node.trueorfalse .exe-pass-score-notice')).toHaveText(
+    const previewActivity = getPreviewFrame(page).locator('.idevice_node.trueorfalse');
+    await expect(previewActivity.locator('.exe-pass-score-notice')).toHaveText(
         'Minimum score needed to pass this activity: 7',
         { timeout: 30000 },
     );
+    await expect(previewActivity.locator(resultIcon)).toContainText('Incomplete activity');
 });

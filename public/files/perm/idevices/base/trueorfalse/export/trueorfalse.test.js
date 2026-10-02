@@ -258,13 +258,26 @@ describe('trueorfalse iDevice export', () => {
   });
 
   describe('addEvents', () => {
-    it('targets the trueorfalse iDevice body for report icons', () => {
+    // The progress report puts its icon, and the anchor it links to, in
+    // $('#' + main).closest('.' + idevice). addEvents used to set idevice to
+    // 'trueorfalseIdevice', a class only the editor gives the iDevice body, so
+    // in the preview and in an exported package the learner never saw a result.
+    it.each([
+      ['an exported package', '<div class="idevice_node trueorfalse" id="tof-1">', '</div>'],
+      [
+        'the editor',
+        '<div class="idevice_node trueorfalse"><div class="idevice_body trueorfalseIdevice" id="tof-1">',
+        '</div></div>',
+      ],
+    ])('places the report icon inside the activity in %s', (_where, open, close) => {
       const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousIsInExe = eXe.app.isInExe;
       const updateEvaluationIcon = vi.fn();
       $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+      eXe.app.isInExe = vi.fn(() => false);
 
       document.body.innerHTML = `
-        <div class="idevice_body trueorfalseIdevice" id="tof-1">
+        ${open}
           <div class="exe-trueorfalse-container">
             <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
               <div id="tofPGameContainer-tof-1"></div>
@@ -274,32 +287,35 @@ describe('trueorfalse iDevice export', () => {
               <input id="tofPSendScore-tof-1" />
             </div>
           </div>
-        </div>
+        ${close}
       `;
 
-      const options = {
-        id: 'tof-1',
-        idevicePath: '/idevices/trueorfalse/',
-        msgs: { tofPStartGame: 'Start' },
-        textButtonScorm: 'Send',
-        tofPTime: '0',
-        isScorm: 0,
-        showSlider: false,
-        isTest: true,
-        time: 0,
-        evaluation: true,
-        evaluationID: 'eval-1',
-        isInExe: false,
-      };
-
       try {
+        const options = $trueorfalse.updateConfig(
+          {
+            questionsGame: [],
+            textButtonScorm: 'Send',
+            tofPTime: '0',
+            isScorm: 0,
+            showSlider: false,
+            isTest: true,
+            time: 0,
+            evaluation: true,
+            evaluationID: 'eval-1',
+          },
+          'tof-1'
+        );
         $trueorfalse.addEvents(options);
+
+        expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
+        const [game] = updateEvaluationIcon.mock.calls[0];
+        const $container = $('#' + game.main).closest('.' + game.idevice);
+        expect($container).toHaveLength(1);
+        expect($container.hasClass('exe-trueorfalse-container')).toBe(true);
       } finally {
         $exeDevices.iDevice.gamification.report = previousReport;
+        eXe.app.isInExe = previousIsInExe;
       }
-
-      expect(options.idevice).toBe('trueorfalseIdevice');
-      expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
     });
 
     // The learner's press is what publishes the grade in manual mode, so the

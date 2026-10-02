@@ -183,7 +183,13 @@ var $trueorfalse = {
             : $('.idevice_node.trueorfalse').eq(0).attr('data-idevice-path');
         data.id = ideviceId ?? data.ideviceId;
         data.main = 'tofPMainContainer-' + data.id;
-        data.idevice = 'idevice_node';
+        // The container the progress report icon and its anchor go into, found
+        // with closest() from `main`: the activity's own wrapper, which exists in
+        // the editor, the preview and an exported package alike. addEvents used
+        // to overwrite it with 'trueorfalseIdevice', a class only the editor adds
+        // to the iDevice body, so outside the editor the learner never saw their
+        // result.
+        data.idevice = 'exe-trueorfalse-container';
         data.title = 'Verdadero o falso';
 
         const $idevice = $('#' + data.id);
@@ -734,7 +740,6 @@ var $trueorfalse = {
         mOptions.active = 0;
         mOptions.scorep = 0;
         mOptions.main = `tofPMainContainer-${instance}`;
-        mOptions.idevice = 'trueorfalseIdevice';
 
         // The shared addButtonScoreNew emits the save button for isScorm 2
         // alone, already visible and carrying the author's caption, so there is
