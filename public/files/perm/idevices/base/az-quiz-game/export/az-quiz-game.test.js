@@ -616,8 +616,9 @@ describe('az-quiz-game minimum score notice', () => {
           math: { updateLatex: vi.fn(), hasLatex: () => false },
           report: {
             updateEvaluationIcon: vi.fn(),
-            showPassScoreNotice: vi.fn((game) => {
-              mainOnPageWhenAsked = document.getElementById(game.main) !== null;
+            showPassScoreNotice: vi.fn((game, before) => {
+              mainOnPageWhenAsked =
+                document.getElementById(game.main) !== null && document.querySelector(before) !== null;
               return null;
             }),
           },
@@ -655,8 +656,16 @@ describe('az-quiz-game minimum score notice', () => {
 
     const showPassScoreNotice = global.$exeDevices.iDevice.gamification.report.showPassScoreNotice;
     expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
-    expect(showPassScoreNotice).toHaveBeenCalledWith($azquizgame.options[0]);
+    // Before .rosco-Main, whose scoreboard is positioned at its top: inside
+    // it, the scoreboard would sit on the notice.
+    expect(showPassScoreNotice).toHaveBeenCalledWith($azquizgame.options[0], '#roscoMain-0');
     expect($azquizgame.options[0]).toMatchObject({ main: 'roscoMainContainer-0', passScoreCustom: 7 });
     expect(mainOnPageWhenAsked).toBe(true);
+  });
+
+  it('leaves room between the notice and the scoreboard', () => {
+    const css = readFileSync(join(__dirname, 'az-quiz-game.css'), 'utf-8');
+
+    expect(css).toMatch(/\.exe-pass-score-notice \+ \.rosco-Main\s*\{[^}]*margin-top:\s*1em/);
   });
 });

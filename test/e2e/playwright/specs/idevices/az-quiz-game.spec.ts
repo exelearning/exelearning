@@ -878,7 +878,11 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await expect(notice).toHaveText('Minimum score needed to pass this activity: 7.5');
             await expect(notice).toHaveClass(/text-danger/);
             await expect(notice).toHaveClass(/text-center/);
-            expect(await notice.evaluate(element => element.nextElementSibling?.id)).toBe('roscoMainContainer-0');
+            expect(await notice.evaluate(element => element.nextElementSibling?.id)).toBe('roscoMain-0');
+            // The scoreboard is positioned at the top of the game: it must sit below the notice.
+            const noticeBox = await notice.boundingBox();
+            const boardBox = await rosco.locator('.rosco-GameScoreBoard').first().boundingBox();
+            expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(boardBox!.y);
 
             await workarea.save();
             await page.click('#head-bottom-preview');

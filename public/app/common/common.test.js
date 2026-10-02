@@ -417,6 +417,69 @@ describe('common.js $exe helpers', () => {
       expect(notices()).toHaveLength(0);
     });
 
+    it('refreshes inherited marks, including transitions to and from 5, without changing custom marks', () => {
+      document.body.innerHTML += '<div id="custom-main"></div><div id="ungraded-main"></div>';
+      setMeta('5');
+      report().showPassScoreNotice(game());
+      report().showPassScoreNotice(custom(7, { main: 'custom-main' }));
+      report().showPassScoreNotice(game({ main: 'ungraded-main', isScorm: 0 }));
+      const customNotice = document.getElementById('custom-main').previousElementSibling;
+
+      for (const mark of [3, 9, 5, 0]) {
+        document.head.querySelector('meta[name="exe-pass-score"]').content = String(mark);
+        report().refreshPassScoreNotices();
+
+        expect(notices()).toHaveLength(mark === 5 ? 1 : 2);
+        if (mark !== 5) expect(main().previousElementSibling.textContent).toBe(`Pass at ${mark}`);
+        expect(document.getElementById('custom-main').previousElementSibling).toBe(customNotice);
+        expect(customNotice.textContent).toBe('Pass at 7');
+      }
+    });
+
+    it('refreshes an internal anchor without rebuilding or resetting the activity', () => {
+      document.body.innerHTML =
+        '<div id="game-main"><div class="instructions">Read me</div><div class="activity"><input value="answer"></div></div>';
+      setMeta('3');
+      const options = game({ scorerp: 6, gameStarted: true, gameOver: false });
+      const savedOptions = JSON.stringify(options);
+      const activity = document.querySelector('.activity');
+      const input = activity.querySelector('input');
+      input.value = 'Answer in progress';
+      input.focus();
+      report().showPassScoreNotice(options, activity);
+
+      document.head.querySelector('meta[name="exe-pass-score"]').content = '9';
+      report().refreshPassScoreNotices();
+      report().refreshPassScoreNotices();
+
+      expect(notices()).toHaveLength(1);
+      expect(activity.previousElementSibling.textContent).toBe('Pass at 9');
+      expect(activity.previousElementSibling.previousElementSibling.className).toBe('instructions');
+      expect(document.querySelector('.activity')).toBe(activity);
+      expect(document.activeElement).toBe(input);
+      expect(input.value).toBe('Answer in progress');
+      expect(JSON.stringify(options)).toBe(savedOptions);
+    });
+
+    it('ignores removed activities and replaces the saved options when an anchor is reused', () => {
+      setMeta('3');
+      report().showPassScoreNotice(game());
+      const oldMain = main();
+      oldMain.parentElement.remove();
+      document.body.innerHTML = '<div id="game-main"></div>';
+      report().refreshPassScoreNotices();
+      expect(notices()).toHaveLength(0);
+
+      report().showPassScoreNotice(game());
+      report().showPassScoreNotice(game({ msgs: { msgPassScore: 'New text: %s' } }));
+      document.head.querySelector('meta[name="exe-pass-score"]').content = '9';
+      report().refreshPassScoreNotices();
+
+      expect(notices()).toHaveLength(1);
+      expect(main().previousElementSibling.textContent).toBe('New text: 9');
+      expect(oldMain.previousElementSibling.textContent).toBe('Pass at 3');
+    });
+
     it('leaves alone a notice that belongs to another activity', () => {
       document.body.innerHTML =
         '<div><p class="exe-pass-score-notice">Other</p><div class="other"></div><div id="game-main"></div></div>';

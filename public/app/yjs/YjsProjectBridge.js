@@ -1620,6 +1620,17 @@ class YjsProjectBridge {
       const isRemote = transaction.origin === 'remote';
       Logger.log('[YjsProjectBridge] Metadata changed, remote:', isRemote);
 
+      // This only refreshes notices, so it is safe during editing and undo/redo:
+      // the activity DOM, answers and scores must not be rebuilt or reset.
+      if (event.keysChanged.has('passScore')) {
+        try {
+          window.$exeDevices?.iDevice?.gamification?.report?.refreshPassScoreNotices?.();
+        } catch (error) {
+          // A notice that fails to refresh must not stop the metadata sync below.
+          console.error('[YjsProjectBridge] Error refreshing pass score notices:', error);
+        }
+      }
+
       // During undo/redo, skip structure updates to prevent form recreation cascade
       // The undo/redo methods handle UI sync directly via forceTitleSync()
       if (this.isUndoRedoInProgress) {

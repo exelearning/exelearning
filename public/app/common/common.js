@@ -2573,6 +2573,11 @@ var $exeDevices = {
                     const $anchor = $before.length ? $before : $main;
                     $anchor.prev('.exe-pass-score-notice').remove();
 
+                    // Keep the options on the live anchor, including at 5 when
+                    // there is no notice yet. Removed activities then need no
+                    // registry cleanup, and an internal anchor keeps its place.
+                    $anchor.attr('data-exe-pass-score-anchor', '').data('exePassScoreGame', game);
+
                     const reportActive = !!game.evaluation && typeof game.evaluationID === 'string' && game.evaluationID.length > 0;
                     if (!(Number(game.isScorm) > 0) && !reportActive) return null;
                     const mark = $exe.passScore.resolve(game);
@@ -2587,6 +2592,16 @@ var $exeDevices = {
                         .text(template.replace('%s', String(mark)));
                     $anchor.before($notice);
                     return $notice;
+                },
+
+                /** Refresh inherited marks without rebuilding activities or sending scores. */
+                refreshPassScoreNotices: function () {
+                    $('[data-exe-pass-score-anchor]').each(function () {
+                        const game = $(this).data('exePassScoreGame');
+                        if (game && game.passScoreMode !== 'custom') {
+                            $exeDevices.iDevice.gamification.report.showPassScoreNotice(game, this);
+                        }
+                    });
                 },
 
                 getDataStorage: function (id) {

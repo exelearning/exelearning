@@ -3880,6 +3880,65 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('pass score notice metadata updates', () => {
+    let metadata;
+    let refreshNotices;
+    let originalDevices;
+
+    beforeEach(() => {
+      originalDevices = window.$exeDevices;
+      metadata = new window.Y.Doc().getMap('metadata');
+      bridge.documentManager = { getMetadata: () => metadata };
+      bridge.updateUndoRedoButtons = mock(() => {});
+      bridge.syncMetadataToLegacy = mock(() => {});
+      refreshNotices = mock(() => {});
+      window.$exeDevices = {
+        iDevice: { gamification: { report: { refreshPassScoreNotices: refreshNotices } } },
+      };
+      bridge.setupMetadataObserver();
+    });
+
+    afterEach(() => {
+      metadata.doc.destroy();
+      window.$exeDevices = originalDevices;
+    });
+
+    it.each(['remote', 'local', 'undo'])('refreshes notices on %s pass score changes', (origin) => {
+      bridge.isUndoRedoInProgress = origin === 'undo';
+      metadata.doc.transact(() => metadata.set('passScore', 9), origin);
+
+      expect(refreshNotices).toHaveBeenCalledTimes(1);
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('ignores unrelated metadata changes', () => {
+      metadata.set('description', 'Updated description');
+
+      expect(refreshNotices).not.toHaveBeenCalled();
+    });
+
+    it('handles a pass score change before the activity runtime has loaded', () => {
+      delete window.$exeDevices;
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('keeps syncing the metadata when a notice fails to refresh', () => {
+      const failure = new Error('notice failed');
+      refreshNotices.mockImplementation(() => {
+        throw failure;
+      });
+      bridge.app = { project: { properties: {} } };
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+
+      expect(console.error).toHaveBeenCalledWith('[YjsProjectBridge] Error refreshing pass score notices:', failure);
+      expect(bridge.syncMetadataToLegacy).toHaveBeenCalled();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+  });
+
   describe('syncMetadataToLegacy', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
