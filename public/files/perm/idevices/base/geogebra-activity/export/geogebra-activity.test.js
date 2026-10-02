@@ -141,12 +141,20 @@ describe('geogebra-activity iDevice (export)', () => {
     expect(document.querySelector('.auto-geogebra-title')).not.toBeNull();
   });
 
-  it('targets the GeoGebra iDevice body for report icons', () => {
+  // The progress report puts its icon, and the anchor it links to, in
+  // $('#' + main).closest('.' + idevice). `idevice` used to name a class only
+  // the editor gives the iDevice body, so in the preview and in an exported
+  // package the learner never saw a result.
+  it.each([
+    ['an exported package', '', ''],
+    ['the editor', '<div class="idevice_body geogebra-activityIdevice">', '</div>'],
+  ])('places the report icon around its own applet in %s', (_where, open, close) => {
     document.body.innerHTML = `
-      <div class="idevice_body geogebra-activityIdevice">
-        <div id="geogebra-1" class="idevice_node geogebra-activity">
-          <div id="auto-geogebra-VgHhQXCC0"></div>
-        </div>
+      <div id="geogebra-1" class="idevice_node geogebra-activity">
+        ${open}
+          <div class="auto-geogebra-wrapper"><div id="auto-geogebra-VgHhQXCC0"></div></div>
+          <div class="auto-geogebra-wrapper"><div id="auto-geogebra-VgHhQXCC1"></div></div>
+        ${close}
       </div>
     `;
 
@@ -156,10 +164,13 @@ describe('geogebra-activity iDevice (export)', () => {
       [],
       'evaluation-1',
     );
+    const $container = $('#' + options.main).closest('.' + options.idevice);
 
     expect(options.id).toBe('geogebra-1');
     expect(options.main).toBe('auto-geogebra-VgHhQXCC0');
-    expect(options.idevice).toBe('geogebra-activityIdevice');
+    // The wrapper of this applet, not the second one's.
+    expect($container).toHaveLength(1);
+    expect($container.children('#auto-geogebra-VgHhQXCC0')).toHaveLength(1);
   });
 
   it('does not enable report icons when the saved evaluation id is disabled', () => {
@@ -359,14 +370,22 @@ describe('geogebra-activity iDevice (export)', () => {
     });
     $exeDevices.iDevice.gamification.report = { updateEvaluationIcon, showPassScoreNotice: vi.fn(() => null) };
 
+    // Each applet's icon and anchor live in the wrapper the runtime puts around
+    // it. The second applet still reports, so its icon has to survive.
     document.body.innerHTML = `
-      <div class="idevice_body geogebra-activityIdevice">
-        <div id="ac-geogebra-1"></div>
-        <div class="Games-ReportIconDiv"></div>
-        <div id="geogebra-1" class="idevice_node geogebra-activity">
-          <div
-            class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-evaluation-id-0 auto-geogebra-ideviceid-geogebra-1"
-          ></div>
+      <div id="geogebra-1" class="idevice_node geogebra-activity">
+        <div class="idevice_body geogebra-activityIdevice">
+          <div class="auto-geogebra-wrapper">
+            <div id="ac-geogebra-1"></div>
+            <div class="Games-ReportIconDiv stale"></div>
+            <div
+              class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-evaluation-id-0 auto-geogebra-ideviceid-geogebra-1"
+            ></div>
+          </div>
+          <div class="auto-geogebra-wrapper">
+            <div class="Games-ReportIconDiv other"></div>
+            <div id="auto-geogebra-OtherApplet0"></div>
+          </div>
         </div>
       </div>
     `;
@@ -382,8 +401,9 @@ describe('geogebra-activity iDevice (export)', () => {
       vi.runAllTimers();
 
       expect(updateEvaluationIcon).not.toHaveBeenCalled();
-      expect(document.querySelector('.Games-ReportIconDiv')).toBeNull();
+      expect(document.querySelector('.Games-ReportIconDiv.stale')).toBeNull();
       expect(document.getElementById('ac-geogebra-1')).toBeNull();
+      expect(document.querySelector('.Games-ReportIconDiv.other')).not.toBeNull();
     } finally {
       vi.useRealTimers();
       global.GGBApplet = previousGGBApplet;

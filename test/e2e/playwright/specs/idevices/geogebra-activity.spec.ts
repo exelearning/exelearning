@@ -203,3 +203,45 @@ test.describe('GeoGebra Activity iDevice — minimum score notice', () => {
         await page.unroute(GEOGEBRA_SCRIPT_PATTERN);
     });
 });
+
+test.describe('GeoGebra Activity iDevice — progress report', () => {
+    test('shows the learner their result outside the editor', async ({ authenticatedPage, createProject }) => {
+        test.setTimeout(120000);
+        const page = authenticatedPage;
+        await page.route(GEOGEBRA_SCRIPT_PATTERN, async route => {
+            await route.fulfill({ status: 200, contentType: 'application/javascript', body: MOCK_GGB_APPLET_SCRIPT });
+        });
+
+        const projectUuid = await createProject(page, 'GeoGebra progress report');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        const ideviceId = await addGeogebraIdevice(page);
+        await editIdevice(page, ideviceId);
+        await openGeneralSettings(page, ideviceId);
+        await page.locator(`#${ideviceId} #geogebraActivityURL`).fill('VgHhQXCC');
+        await page
+            .locator(`#${ideviceId} .exe-form-tabs a`)
+            .filter({ hasText: /^Grading$/ })
+            .click();
+        await page.locator('#eXeProgressReport').check();
+        await saveIdevice(page, ideviceId);
+
+        // Each applet's result goes in the wrapper around it. The icon used to
+        // be looked for in a container only the editor has, so only the editor
+        // showed it.
+        const resultIcon = '.auto-geogebra-wrapper > .Games-ReportIconDiv';
+        await expect(page.locator(`#${ideviceId} ${resultIcon}`)).toContainText('Incomplete activity', {
+            timeout: 15000,
+        });
+
+        expect(await waitForPreviewContent(page, 20000)).toBe(true);
+        const frame = getPreviewFrame(page);
+        await frame.locator('[data-mock-geogebra-applet]').first().waitFor({ state: 'attached', timeout: 15000 });
+        await expect(frame.locator(`.idevice_node.geogebra-activity ${resultIcon}`)).toContainText(
+            'Incomplete activity',
+        );
+
+        await page.unroute(GEOGEBRA_SCRIPT_PATTERN);
+    });
+});

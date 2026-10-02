@@ -539,7 +539,12 @@ var $geogebraactivity = {
             passScoreMode: passScore?.passScoreMode ?? 'global',
             passScoreCustom: passScore?.passScoreCustom ?? null,
             isInExe: this.isInExe,
-            idevice: 'geogebra-activityIdevice',
+            // The container the progress report icon and its anchor go into,
+            // found with closest() from `main`: the wrapper the runtime puts
+            // around each applet, so every applet shows its own result. It was
+            // 'geogebra-activityIdevice', a class only the editor adds to the
+            // iDevice body, so outside the editor no result was shown.
+            idevice: 'auto-geogebra-wrapper',
             idevicePath: this.idevicePath,
             textButtonScorm: $geogebraactivity.messages[3],
             isScorm: 2,
