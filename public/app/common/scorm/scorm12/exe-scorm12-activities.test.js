@@ -400,6 +400,77 @@ describe('exe-scorm12-activities', () => {
         });
     });
 
+    // The stricter way a page can be judged: every activity at its own mark,
+    // so the others cannot make up for one that falls short.
+    describe('activities below their own pass mark', () => {
+        it('lists none when every activity reaches its own mark', () => {
+            activities.register('a', { evaluable: true, score: 30, successThreshold: 30 });
+            activities.register('b', { evaluable: true, score: 90, successThreshold: 80 });
+
+            expect(activities.unmetThresholds(50)).toEqual([]);
+        });
+
+        it('lists the activity the weighted mean would let the others make up for', () => {
+            activities.register('a', { evaluable: true, weight: 50, score: 0, successThreshold: 50 });
+            activities.register('b', { evaluable: true, weight: 25, score: 100, successThreshold: 30 });
+            activities.register('c', { evaluable: true, weight: 25, score: 100, successThreshold: 50 });
+
+            // The weighted mean passes the page: 50 against 45.
+            expect(activities.summary().score).toBe(50);
+            expect(activities.successThreshold(50)).toBe(45);
+            expect(activities.unmetThresholds(50)).toEqual(['a']);
+        });
+
+        it('judges an activity with no mark of its own by the fallback', () => {
+            activities.register('a', { evaluable: true, score: 40 });
+
+            expect(activities.unmetThresholds(50)).toEqual(['a']);
+            expect(activities.unmetThresholds(40)).toEqual([]);
+        });
+
+        it('counts an activity with no score yet as 0', () => {
+            activities.register('a', { evaluable: true, successThreshold: 0 });
+            activities.register('b', { evaluable: true, successThreshold: 10 });
+
+            expect(activities.unmetThresholds(50)).toEqual(['b']);
+        });
+
+        it('judges each score on its own bounds', () => {
+            activities.register('a', { evaluable: true, minimumScore: 0, maximumScore: 10, score: 6, successThreshold: 60 });
+
+            expect(activities.unmetThresholds(50)).toEqual([]);
+        });
+
+        it('passes an activity exactly at its mark', () => {
+            // Normalising 57 out of 100 gives 56.99999999999999: without
+            // rounding, a learner who scored exactly the 5.7 their activity
+            // asks for would pass on screen and fail the page.
+            activities.register('a', { evaluable: true, score: 57, successThreshold: 57 });
+
+            expect(activities.unmetThresholds(50)).toEqual([]);
+        });
+
+        it('leaves out activities that are not evaluable', () => {
+            activities.register('a', { evaluable: true, score: 60, successThreshold: 60 });
+            activities.register('slides', { evaluable: false, score: 0, successThreshold: 100 });
+
+            expect(activities.unmetThresholds(50)).toEqual([]);
+        });
+
+        it('cannot judge an activity with no mark when there is no fallback', () => {
+            activities.register('a', { evaluable: true, score: 100, successThreshold: 60 });
+            activities.register('b', { evaluable: true, score: 100 });
+
+            expect(activities.unmetThresholds(null)).toBeNull();
+        });
+
+        it('judges restored records by the marks stored with them', () => {
+            activities.load('exe12/1|a;7;3;3;40;100;0;100;30|b;7;3;3;40;100;0;100;50');
+
+            expect(activities.unmetThresholds(50)).toEqual(['b']);
+        });
+    });
+
     describe('cmi.suspend_data serialisation', () => {
         it('round-trips through the versioned payload', () => {
             activities.register('quiz-1', {

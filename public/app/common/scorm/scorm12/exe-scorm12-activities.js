@@ -353,6 +353,43 @@
     }
 
     /**
+     * The evaluable activities whose score falls short of their own pass mark.
+     *
+     * This is the stricter of the two ways a page can be judged: it passes
+     * only when every activity reaches its own mark, so one activity below it
+     * cannot be made up for by the others (aggregateSuccessThreshold() lets it).
+     * Same activities, same normalised scores and same fallback as the
+     * weighted mean, and both sides are rounded to two decimals so the page
+     * and each activity's own verdict cannot disagree at the exact mark.
+     *
+     * @param {number|null} fallback - Percentage for an activity that declares
+     * no mark of its own: the page's threshold.
+     * @returns {string[]|null} The ids below their mark, in page order — empty
+     * when every activity reaches its own — or null when one has no mark and
+     * there is no fallback either.
+     */
+    function unmetSuccessThresholds(fallback) {
+        var pageThreshold = toThreshold(fallback);
+        var unmet = [];
+        for (var index = 0; index < state.order.length; index += 1) {
+            var activity = state.byId[state.order[index]];
+            if (!activity.evaluable) {
+                continue;
+            }
+            var threshold = activity.successThreshold === null ? pageThreshold : activity.successThreshold;
+            if (threshold === null) {
+                return null;
+            }
+            // An activity with no score yet counts as 0, as it does in
+            // aggregateScore().
+            if (round2(normalizedScore(activity)) < round2(threshold)) {
+                unmet.push(activity.id);
+            }
+        }
+        return unmet;
+    }
+
+    /**
      * Encode a record for the versioned payload.
      *
      * @param {object} activity - Normalised record.
@@ -674,6 +711,20 @@
          */
         successThreshold: function (fallback) {
             return aggregateSuccessThreshold(fallback);
+        },
+
+        /**
+         * The activities that fall short of their own pass mark (see
+         * unmetSuccessThresholds()). Not part of summary() for the same reason
+         * as successThreshold(): it needs the page's threshold as a fallback.
+         *
+         * @param {number|null} fallback - Percentage in 0-100 for an activity
+         * with no mark of its own.
+         * @returns {string[]|null} Ids below their mark, or null when one has
+         * no mark and there is no fallback.
+         */
+        unmetThresholds: function (fallback) {
+            return unmetSuccessThresholds(fallback);
         },
 
         /**

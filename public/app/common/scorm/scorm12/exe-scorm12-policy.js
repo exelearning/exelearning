@@ -88,6 +88,13 @@
     /** META the exporter writes with the project pass score (a mark out of 10). */
     var PASS_SCORE_META_NAME = 'exe-pass-score';
 
+    /**
+     * META the exporter writes, with "true", when the author requires every
+     * activity on the page to reach its own pass mark. Absent means the page
+     * is judged by the weighted mean of the marks.
+     */
+    var PASS_SCORE_EVERY_ACTIVITY_META_NAME = 'exe-pass-score-every-activity';
+
     /** Where the success threshold in state came from (see thresholdInForce). */
     var THRESHOLD_SOURCE = {
         DEFAULT: 'default',
@@ -135,6 +142,20 @@
             // The author writes a mark out of 10; the policy judges the
             // aggregate out of 100.
             return mark * 10;
+        },
+        /**
+         * Whether the page requires every activity to reach its own pass mark.
+         * Read straight from the META for the same reason as
+         * getPageSuccessThreshold().
+         *
+         * @returns {boolean} True only when the page declares it.
+         */
+        getPassScoreEveryActivity: function () {
+            if (!global.document || !global.document.querySelector) {
+                return false;
+            }
+            var meta = global.document.querySelector('meta[name="' + PASS_SCORE_EVERY_ACTIVITY_META_NAME + '"]');
+            return !!meta && meta.getAttribute('content') === 'true';
         },
     };
 
@@ -415,6 +436,33 @@
             }
         }
         return state.successThreshold;
+    }
+
+    /**
+     * The activities below their own pass mark, when the page is judged by
+     * them one by one rather than by the weighted mean.
+     *
+     * That is the author's choice, published by the page. Like the mean, it
+     * gives way to an explicit threshold: the LMS's mastery_score (which
+     * Moodle with masteryoverride applies to the aggregate at LMSFinish
+     * anyway) and one set by content both keep judging the aggregate.
+     *
+     * @returns {string[]|null} Ids below their mark — empty when every
+     * activity reaches its own — or null when the page is not judged this
+     * way, or the registry cannot answer.
+     */
+    function unmetOwnThresholds() {
+        if (state.thresholdSource === THRESHOLD_SOURCE.LMS || state.thresholdSource === THRESHOLD_SOURCE.CONTENT) {
+            return null;
+        }
+        if (typeof deps.getPassScoreEveryActivity !== 'function' || !deps.getPassScoreEveryActivity()) {
+            return null;
+        }
+        var activities = deps.getActivities();
+        if (!activities || typeof activities.unmetThresholds !== 'function') {
+            return null;
+        }
+        return activities.unmetThresholds(state.successThreshold);
     }
 
     var policy = {
@@ -704,6 +752,12 @@
          * | all required complete, aggregate >= threshold       | passed     |
          * | all required complete, aggregate < threshold        | failed     |
          *
+         * When the page requires every activity to reach its own pass mark
+         * (see unmetOwnThresholds), the last two rows read instead: passed
+         * when none falls short of its mark, failed when one does. An
+         * explicit threshold from the LMS or from content still judges the
+         * aggregate, as above.
+         *
          * Presentation-only and exploration activities register with
          * `completionRequired: false`, so they never hold a page at
          * "incomplete" — they are not evaluable and nothing is inferred from
@@ -723,6 +777,14 @@
             }
             if (!inputs.allRequiredComplete) {
                 return { status: STATUS.INCOMPLETE, reason: 'required-activities-pending', score: score };
+            }
+            var unmet = unmetOwnThresholds();
+            if (unmet !== null) {
+                return {
+                    status: unmet.length === 0 ? STATUS.PASSED : STATUS.FAILED,
+                    reason: 'own-marks-evaluated',
+                    score: score,
+                };
             }
             var threshold = thresholdInForce();
             if (threshold === null || score === null) {
