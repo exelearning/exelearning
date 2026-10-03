@@ -154,10 +154,15 @@ control the runtime ignored.
   converts to 0-10 to report has no reason to be configured on another scale.
 - `rubric` made no call to `gamification.report` at all before this change,
   which is why it never appeared in a learner's progress report.
+- The weighted mean lets one activity make up for another, and that is visible
+  in a real package. A page with three scoring activities was marked `passed`
+  with its true/false activity at 0, because the other two lifted the mean of
+  the scores above the mean of the marks. Reproduced by playing the exported
+  package against a simulated SCORM 1.2 API.
 
 ## Decision
 
-We adopt **option 2**. The ten decisions below are listed in order of
+We adopt **option 2**. The eleven decisions below are listed in order of
 importance: the first five constrain the file format and the behaviour of
 already-published content; the rest follow from them and could be revisited
 without touching the first five.
@@ -209,6 +214,9 @@ every activity to pass its own mark:
 - The page passes when `sum(weight × score) ≥ sum(weight × mark)`: an activity
   above its mark can make up for one below it, exactly as its score already
   does in the aggregate.
+
+That is the default, not the only rule: an author who needs every activity to
+pass its own mark turns on a project option (decision 11).
 
 The mean is computed on every decision rather than resolved once, because
 activities keep registering after the session opens. The mark is **stored with
@@ -318,6 +326,48 @@ learner who finished but did not pass with a page stuck at `incomplete`.
 For the same reason **`minimumScore` was left alone**: despite the name it is the
 lower bound of the scale, not a threshold (see Evidence).
 
+### 11. The author can require every activity to reach its own mark
+
+Decision 3 lets a high mark make up for a low one, and some pages must not
+allow it: a well-done crossword should not pass a page whose safety quiz was
+failed. A project option, **off by default**, changes the page verdict:
+`passScoreEveryActivity`, stored as `pp_passScoreEveryActivity`. Once every
+required activity is complete, the page passes only when each evaluable activity
+reaches its own mark, or the project mark if it declares none. Both sides are
+rounded to two decimals, as the activity's own report compares them, so the
+page and the activity agree at the exact boundary.
+
+It is an option rather than a change to decision 3 because both readings are
+legitimate, and because existing projects and published packages must grade as
+they did (see Decision drivers). The page publishes it as a second META, written
+only when the option is on:
+
+```html
+<meta name="exe-pass-score-every-activity" content="true">
+```
+
+A page without that META grades exactly as decision 3 describes. That covers
+every package exported before the option existed and every project that leaves
+it off.
+
+- **Only the status changes.** The score sent to the LMS is still the weighted
+  mean of decision 3.
+- **The LMS and content still win.** When the LMS publishes `mastery_score`, or
+  content sets a threshold with `setSuccessThreshold()`, the page is judged by
+  its aggregate against that value, as before. That threshold is a mark for the
+  whole page, and Moodle applies `masteryoverride` at `LMSFinish` anyway.
+- **Nothing new is stored.** The rule needs each activity's score and mark, and
+  both are already in its record in `cmi.suspend_data` (decision 3). A resumed
+  attempt therefore derives the same verdict, and the entry policy recognises
+  it as its own.
+- **Legacy SCORM (2004)** has no registry, so `common.js` judges the activities
+  it knows by page position. An activity that has not reported keeps the page
+  `incomplete` rather than `failed`: the legacy path writes a 0 for every
+  activity as it registers, which under this rule would fail the page before
+  the learner had touched it. The legacy format cannot tell a 0 restored from an
+  earlier visit apart from that placeholder, so such an activity reads as
+  pending until it reports again.
+
 ## Changes introduced
 
 ### Storage and format
@@ -329,6 +379,10 @@ lower bound of the scale, not a threshold (see Evidence).
 - The value is not seeded when a project is created: readers apply the default.
 - Each SCORM 1.2 registry record in `cmi.suspend_data` gains an optional ninth
   field with the activity's mark (0-100), under the same `exe12/1` version.
+- `Y.Map('metadata').passScoreEveryActivity`, a boolean that defaults to
+  `false`; it travels as `<odeProperty>pp_passScoreEveryActivity</odeProperty>`
+  and, when `true`, as `<meta name="exe-pass-score-every-activity">`. An ELP
+  without it imports as `false`.
 
 ### Path of the value
 
@@ -345,10 +399,16 @@ config-params.ts → API /parameters → ProjectProperties → form
                     ElpxImporter / xml-parser → back into the Y.Map
 ```
 
+`passScoreEveryActivity` follows the same path. `PageRenderer` writes its META
+only when the value is `true`.
+
 ### Interface
 
 - A new `number` field type in the project properties form, with `min`/`max`/`step`
   declared in the property definition.
+- A checkbox under the minimum score in Export options, "Every SCORM activity on
+  a page must reach its own minimum score", whose help text explains the
+  weighted mean that applies while it is unchecked.
 - The **Grading** tab, with three sections headed alike.
 - Four collapsible help notes written from what the runtime does: what each of
   the three SCORM modes implies, and that the weight is a proportion between
@@ -366,6 +426,12 @@ config-params.ts → API /parameters → ProjectProperties → form
 - Legacy SCORM (2004): `registerActivity()` records each mark by page position
   and `getFinalThreshold()` averages them with the same weights as
   `getFinalScore()`; a test pins the two averages against each other.
+- With every activity at its own mark (decision 11): in SCORM 1.2,
+  `activities.unmetThresholds()` lists the activities below their mark, and
+  `decideStatus()` answers with the reason `own-marks-evaluated`. On the legacy
+  path, `getEveryActivityVerdict()` answers `incomplete`, `failed` or `passed`
+  in `showFinalScore()`. Both read the META, the first directly and the second
+  through `$exe.passScore.requiresEveryActivity()`.
 
 ### Scope
 
@@ -399,6 +465,8 @@ config-params.ts → API /parameters → ProjectProperties → form
 - A saved iDevice is no longer self-describing: reading its stored data does not
   tell you the mark it will be judged by.
 - Any change to `getTab` reaches all 35 tabs at once.
+- Two page verdicts exist, chosen per project, so the same scores can pass a
+  page in one course and fail it in another.
 
 ### Neutral
 
@@ -421,6 +489,10 @@ config-params.ts → API /parameters → ProjectProperties → form
   files with a `<script>` tag on every open, so a module-level `const` breaks the
   second edition with "Identifier has already been declared". It happened during
   this work; a test now pins the rule.
+- **A runtime older than the every-activity META.** Such a runtime ignores the
+  META and grades by the weighted mean. That includes any host that plays
+  packages with its own copy of the SCORM 1.2 runtime, such as the eXeLearning
+  Moodle plugin, until that copy is updated.
 
 ## Validation
 
@@ -444,11 +516,22 @@ config-params.ts → API /parameters → ProjectProperties → form
 - For `map`, whose six game modes each end differently, a test asserts that all
   of them still report through a single `saveEvaluation` funnel — the property
   that lets the threshold reach every mode without touching the runtime.
+- Decision 11 is pinned at unit level in the registry, the SCORM 1.2 policy and
+  the legacy path. Those tests cover a high mark making up for a low one, every
+  activity at its mark, the two-decimal boundary, the LMS and content
+  overrides, a pending activity and a resumed attempt. Without the META, the
+  existing tests keep the weighted mean. `project-pass-score.spec.ts` checks the
+  checkbox and finds the META in the preview. `scorm12-sco-runtime.spec.ts`
+  exports with the option on and gives one activity 70 against a mark of 80 and
+  another 100 against 40: the mean (85 against 60) would pass, but the page is
+  `failed`. A new attempt with 80 is `passed`.
 
 ## Follow-up work
 
 - Verify in a real Moodle that a project mark is overridden by an activity-level
   `mastery_score`, asserted at unit level only so far.
+- Verify decision 11 in a real Moodle. So far it has been tried only against
+  simulated SCORM 1.2 and SCORM 2004 APIs.
 
 ## References
 
@@ -458,6 +541,6 @@ config-params.ts → API /parameters → ProjectProperties → form
 - `public/app/common/scorm/scorm12/exe-scorm12-policy.js` — `resolveSuccessThreshold()`
 - `src/shared/export/metadata-properties.ts` — domain, normalisation, META name
 - `src/shared/export/renderers/PageRenderer.ts` — where the META is emitted
-- `doc/elpx-format/metadata.md` — the `pp_passScore` property
+- `doc/elpx-format/metadata.md` — the `pp_passScore` and `pp_passScoreEveryActivity` properties
 - [ADR-2209-01](ADR-2209-01-scorm12-runtime-rewrite.md) — the SCORM 1.2 runtime
 - [ADR-2209-02](ADR-2209-02-scorm12-activity-completion-registry.md) — its activity registry

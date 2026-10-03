@@ -511,6 +511,7 @@ scorm.activities.summary();   // { total, evaluable, required, requiredCompleted
                               //   hasRequired, allRequiredComplete, answered,
                               //   questions, score }
 scorm.activities.successThreshold(50); // the page's pass mark (§9.1)
+scorm.activities.unmetThresholds(50);  // ids below their own mark (§9.1)
 ```
 
 Registration is idempotent: re-registering an id updates the declaration and
@@ -542,6 +543,7 @@ completion and success collapse onto `cmi.core.lesson_status`:
 | All required complete, no success threshold in force | `completed` | `""` |
 | All required complete, aggregate ≥ threshold | `passed` | `""` |
 | All required complete, aggregate < threshold | `failed` | `""` |
+| All required complete, the page requires every activity at its own mark, no LMS or content threshold | `passed` if none is below its mark, `failed` otherwise | `""` |
 
 The table is the status the runtime *reports*. When it becomes visible in the
 LMS is decided by the commit points in §7 — see §6.1: a page open and untouched
@@ -683,6 +685,23 @@ still reads `not attempted`.
   this, and
   `policy.setSuccessThreshold(null)` disables the pass/fail distinction
   entirely, leaving completion only.
+- **A page can require every activity to reach its own mark** instead of the
+  mean. The page asks for it with
+  `<meta name="exe-pass-score-every-activity" content="true">`, which the
+  exporter writes only when the project option `pp_passScoreEveryActivity` is
+  on. The policy then judges each evaluable activity against its own
+  `successThreshold`, or the page's threshold when it declares none: `passed` when
+  `activities.unmetThresholds()` is empty, `failed` otherwise, with the reason
+  `own-marks-evaluated`. Both sides are rounded to two decimals, so the page
+  agrees with the activity's own report at the boundary. An activity with no
+  score counts as 0, as it does in the aggregate. The rule applies only when the
+  threshold comes from the activities or the page. With `mastery_score` from the
+  LMS, or a threshold set by `setSuccessThreshold()`, the aggregate is judged
+  against that value as above. The score written to `cmi.core.score.raw` does
+  not change, and nothing new is stored: the marks already travel in
+  `cmi.suspend_data` (§9.2). Without the META the mean decides, so earlier
+  packages grade as before. `getSuccessThreshold()` still answers the mean, as
+  information: with the rule in force it is not what decides the page.
 - The **exit policy** never downgrades: a terminal status (`passed`,
   `completed`, `failed`) already recorded is preserved.
 - The **in-session re-evaluation** (`policy.recordActivityOutcome()`, called by
