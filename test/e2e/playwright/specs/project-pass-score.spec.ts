@@ -15,6 +15,7 @@ import { waitForAppReady, gotoWorkarea, selectFirstPage, addIdevice, saveIdevice
  */
 
 const PASS_SCORE_META = 'meta[name="exe-pass-score"]';
+const EVERY_ACTIVITY_META = 'meta[name="exe-pass-score-every-activity"]';
 
 /**
  * Open the project properties panel on the Export options tab.
@@ -30,13 +31,20 @@ async function openExportOptions(page: import('@playwright/test').Page): Promise
 }
 
 /**
+ * Read a project property stored in the live Y.Doc.
+ */
+function readStoredMetadata(page: import('@playwright/test').Page, key: string): Promise<unknown> {
+    return page.evaluate(metadataKey => {
+        const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+        return bridge.getDocumentManager().getMetadata().get(metadataKey);
+    }, key);
+}
+
+/**
  * Read the pass score stored in the live Y.Doc.
  */
 function readStoredPassScore(page: import('@playwright/test').Page): Promise<unknown> {
-    return page.evaluate(() => {
-        const bridge = (window as any).eXeLearning.app.project._yjsBridge;
-        return bridge.getDocumentManager().getMetadata().get('passScore');
-    });
+    return readStoredMetadata(page, 'passScore');
 }
 
 test.describe('Project pass score', () => {
@@ -117,6 +125,43 @@ test.describe('Project pass score', () => {
         // The field is repainted from the stored value, so the author sees what
         // was actually kept rather than the 42 they typed.
         await expect(field).toHaveValue('10');
+    });
+
+    test('the every-activity rule is off by default and, once checked, reaches the previewed page', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Pass Score Every Activity');
+
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await openExportOptions(page);
+
+        const checkbox = page.locator('input[property="pp_passScoreEveryActivity"]');
+        await checkbox.scrollIntoViewIfNeeded({ timeout: 10000 });
+        // Off by default, so an existing course keeps the weighted-mean rule.
+        await expect(checkbox).not.toBeChecked();
+
+        // The checkbox is drawn as a toggle; click what the author sees.
+        await page.locator('.toggle-item').filter({ has: checkbox }).first().click();
+        await expect(checkbox).toBeChecked();
+        await expect.poll(() => readStoredMetadata(page, 'passScoreEveryActivity'), { timeout: 10000 }).toBe('true');
+
+        await page.click('#head-bottom-preview');
+        await page.locator('#previewsidenav').waitFor({ state: 'visible', timeout: 15000 });
+
+        const previewMeta = page.frameLocator('#preview-iframe').locator(EVERY_ACTIVITY_META);
+        await previewMeta.waitFor({ state: 'attached', timeout: 30000 });
+        await expect(previewMeta).toHaveAttribute('content', 'true');
+
+        // $exe.passScore reads that META, so the runtime accessor agrees with it.
+        const runtimeValue = await page
+            .frameLocator('#preview-iframe')
+            .locator('body')
+            .evaluate(() => (window as any).$exe.passScore.requiresEveryActivity());
+        expect(runtimeValue).toBe(true);
     });
 
     test.describe('with a collaborator', () => {

@@ -490,6 +490,99 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         }
     });
 
+    test('fails a page whose high mark makes up for a low one when every activity must reach its own', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(180000);
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'SCORM 1.2 every activity at its own mark');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await addTextIdeviceWithContent(page, '<p>Every-activity pass rule check.</p>');
+        // The checkbox itself is covered in project-pass-score.spec.ts.
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('passScoreEveryActivity', 'true');
+        });
+
+        const download = await exportScorm12(page);
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scorm12-every-activity-'));
+        const zipPath = path.join(tmpDir, download.suggestedFilename());
+        await download.saveAs(zipPath);
+        const zip = unzipSync(new Uint8Array(fs.readFileSync(zipPath)));
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+
+        expect(Buffer.from(zip['index.html']).toString('utf8')).toContain(
+            '<meta name="exe-pass-score-every-activity" content="true">',
+        );
+
+        await page.route(`${ORIGIN}/**`, async route => {
+            const url = new URL(route.request().url());
+            const pathname = decodeURIComponent(url.pathname);
+            if (pathname === '/lms.html') {
+                await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: harnessPage() });
+                return;
+            }
+            const key = pathname.replace(/^\/package\//, '');
+            const bytes = zip[key];
+            if (bytes) {
+                await route.fulfill({ status: 200, contentType: exportContentType(key), body: Buffer.from(bytes) });
+            } else {
+                await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${key}` });
+            }
+        });
+
+        /** Open a fresh attempt, finish both activities with these scores and exit. */
+        async function attempt(firstScore: number): Promise<Record<string, string>> {
+            await page.goto(`${ORIGIN}/lms.html`);
+            await page.waitForFunction(
+                () => (window as any).__scorm.calls.some((call: any) => call.method === 'LMSInitialize'),
+                null,
+                { timeout: 30000 },
+            );
+            await page.evaluate(score => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                const activities = sco.scorm.activities;
+                activities.register('act-1', { evaluable: true, completionRequired: true, successThreshold: 80 });
+                activities.register('act-2', { evaluable: true, completionRequired: true, successThreshold: 40 });
+                activities.update('act-1', { completed: true, score });
+                activities.update('act-2', { completed: true, score: 100 });
+            }, firstScore);
+            return page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                sco.dispatchEvent(new sco.PageTransitionEvent('pagehide', { persisted: false }));
+                return (window as any).__scorm.data;
+            });
+        }
+
+        try {
+            // ---- 70 against a mark of 80, made up for by 100 against 40 ------
+            const compensated = await attempt(70);
+            // The weighted mean would pass the page (85 against 60)...
+            const mean = await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                return {
+                    score: sco.scorm.activities.summary().score,
+                    threshold: sco.scorm.activities.successThreshold(50),
+                    unmet: sco.scorm.activities.unmetThresholds(50),
+                };
+            });
+            expect(mean).toEqual({ score: 85, threshold: 60, unmet: ['act-1'] });
+            // ...but the first activity is below its own mark.
+            expect(compensated['cmi.core.lesson_status']).toBe('failed');
+
+            // ---- A new attempt where each activity reaches its own mark -----
+            const reached = await attempt(80);
+            expect(reached['cmi.core.lesson_status']).toBe('passed');
+
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+        } finally {
+            await page.unroute(`${ORIGIN}/**`);
+        }
+    });
+
     test('drives real exported iDevices through the common.js bridge', async ({ authenticatedPage, createProject }) => {
         test.setTimeout(180000);
         const page = authenticatedPage;
