@@ -170,6 +170,9 @@
 *   Package: scorm-again
     *   Copyright: Jonathan Putney
     *   License: MIT
+*   Package: sirenaapp
+    *   Copyright: Juan José de Haro
+    *   License: AGPL-3.0-or-later
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0

@@ -9,6 +9,7 @@ describe('Translations Command', () => {
     const testDir = path.join(process.cwd(), 'test', 'temp', 'translations-test');
     const testTranslationsDir = path.join(testDir, 'translations');
     const generatedSourceDir = path.join(testDir, 'public', 'app', 'common', 'edicuatex');
+    const sirenaGeneratedDir = path.join(testDir, 'public', 'app', 'common', 'sirena');
     const originalCwd = process.cwd;
 
     beforeEach(async () => {
@@ -19,6 +20,7 @@ describe('Translations Command', () => {
         // depends on are present, so the missing-generated guard stays out of the way.
         // Tests that exercise the guard remove this directory themselves.
         await fs.ensureDir(generatedSourceDir);
+        await fs.ensureDir(sirenaGeneratedDir);
 
         // Create sample XLF file
         const sampleXlf = `<?xml version="1.0" encoding="UTF-8"?>
@@ -839,6 +841,18 @@ describe('Translations Command', () => {
             expect(problems[0].kind).toBe('missing');
             expect(problems[0].source.path).toBe('public/app/common/edicuatex');
             expect(problems[0].source.regenerateWith).toBe('make vendor-edicuatex');
+        });
+
+        it('should report the Sirena tree when it is not on disk', async () => {
+            const { findUntrustedGeneratedSources } = await import('./translations');
+
+            await fs.remove(sirenaGeneratedDir);
+            const problems = findUntrustedGeneratedSources(testDir);
+
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('missing');
+            expect(problems[0].source.path).toBe('public/app/common/sirena');
+            expect(problems[0].source.regenerateWith).toBe('make vendor-sirena');
         });
 
         it('should report nothing when every generated tree is on disk', async () => {

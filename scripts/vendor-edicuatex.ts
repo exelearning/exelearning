@@ -20,11 +20,25 @@
  *
  * --check verifies a build rather than a checkout: it catches a tree left stale by an
  * interrupted build, which is why the Dockerfile runs it as a build assertion.
+ *
+ * The planning, copying and drift detection are shared with scripts/vendor-sirena.ts
+ * and live in scripts/vendor-package.ts; this file only says what EdiCuaTeX ships.
  */
 
-import { createHash } from 'node:crypto';
-import fs from 'node:fs';
 import path from 'node:path';
+import {
+    type CliIo,
+    buildVendorPlan as buildPackagePlan,
+    detectDrift,
+    resolvePaths as resolvePackagePaths,
+    run as runPackage,
+    type VendorDrift,
+    type VendoredPackage,
+    type VendorPlanEntry,
+    writeVendoredTree,
+} from './vendor-package';
+
+export { type CliIo, detectDrift, type VendorDrift, type VendorPlanEntry, writeVendoredTree };
 
 /**
  * Directories copied wholesale from the package.
@@ -48,130 +62,29 @@ const VENDORED_DIRECTORIES = ['css', 'icons', 'js', 'lang', 'menus'] as const;
  */
 const VENDORED_FILES = ['index.html', 'favicon.svg', 'LICENSE.txt'] as const;
 
-export interface VendorPlanEntry {
-    /** Path relative to the vendored root, using POSIX separators. */
-    relativePath: string;
-    /** Absolute path of the source file inside node_modules. */
-    sourcePath: string;
-}
-
-function listFilesRecursively(root: string, prefix = ''): string[] {
-    const entries = fs.readdirSync(path.join(root, prefix), { withFileTypes: true });
-    const files: string[] = [];
-    for (const entry of entries) {
-        const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
-        if (entry.isDirectory()) {
-            files.push(...listFilesRecursively(root, relativePath));
-        } else {
-            files.push(relativePath);
-        }
-    }
-    return files.sort();
-}
+export const EDICUATEX: VendoredPackage = {
+    packageName: 'edicuatex',
+    targetDirectory: 'edicuatex',
+    directories: VENDORED_DIRECTORIES,
+    files: VENDORED_FILES,
+    regenerateWith: 'make vendor-edicuatex',
+};
 
 /**
  * Builds the list of files the vendored tree must contain, sorted by path.
  * Pure -- takes the package root, touches nothing else.
  */
 export function buildVendorPlan(packageRoot: string): VendorPlanEntry[] {
-    const entries: VendorPlanEntry[] = [];
-
-    for (const file of VENDORED_FILES) {
-        entries.push({ relativePath: file, sourcePath: path.join(packageRoot, file) });
-    }
-
-    for (const directory of VENDORED_DIRECTORIES) {
-        for (const file of listFilesRecursively(path.join(packageRoot, directory))) {
-            const relativePath = `${directory}/${file}`;
-            entries.push({ relativePath, sourcePath: path.join(packageRoot, directory, ...file.split('/')) });
-        }
-    }
-
-    return entries.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-}
-
-function sha256(filePath: string): string {
-    return createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
-}
-
-export interface VendorDrift {
-    missing: string[];
-    extra: string[];
-    changed: string[];
-}
-
-/** Compares the vendored tree against the plan without writing anything. */
-export function detectDrift(plan: VendorPlanEntry[], targetRoot: string): VendorDrift {
-    const expected = new Map(plan.map((entry) => [entry.relativePath, entry.sourcePath]));
-    const actual = fs.existsSync(targetRoot) ? new Set(listFilesRecursively(targetRoot)) : new Set<string>();
-
-    const missing: string[] = [];
-    const changed: string[] = [];
-    for (const [relativePath, sourcePath] of expected) {
-        if (!actual.has(relativePath)) {
-            missing.push(relativePath);
-        } else if (sha256(sourcePath) !== sha256(path.join(targetRoot, ...relativePath.split('/')))) {
-            changed.push(relativePath);
-        }
-    }
-    const extra = [...actual].filter((relativePath) => !expected.has(relativePath)).sort();
-
-    return { missing: missing.sort(), extra, changed: changed.sort() };
-}
-
-/** Writes the plan to disk, removing anything the plan does not list. */
-export function writeVendoredTree(plan: VendorPlanEntry[], targetRoot: string): void {
-    fs.rmSync(targetRoot, { recursive: true, force: true });
-    for (const entry of plan) {
-        const destination = path.join(targetRoot, ...entry.relativePath.split('/'));
-        fs.mkdirSync(path.dirname(destination), { recursive: true });
-        fs.copyFileSync(entry.sourcePath, destination);
-    }
+    return buildPackagePlan(EDICUATEX, packageRoot);
 }
 
 export function resolvePaths(repoRoot: string): { packageRoot: string; targetRoot: string } {
-    return {
-        packageRoot: path.join(repoRoot, 'node_modules', 'edicuatex'),
-        targetRoot: path.join(repoRoot, 'public', 'app', 'common', 'edicuatex'),
-    };
+    return resolvePackagePaths(EDICUATEX, repoRoot);
 }
-
-export interface CliIo {
-    log: (message: string) => void;
-    error: (message: string) => void;
-}
-
-const consoleIo: CliIo = { log: (m) => console.log(m), error: (m) => console.error(m) };
 
 /** Runs the command and returns the process exit code. */
-export function run(argv: string[], repoRoot: string, io: CliIo = consoleIo): number {
-    const { packageRoot, targetRoot } = resolvePaths(repoRoot);
-
-    if (!fs.existsSync(packageRoot)) {
-        io.error('node_modules/edicuatex is missing. Run `make deps` first.');
-        return 1;
-    }
-
-    const version = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version;
-    const plan = buildVendorPlan(packageRoot);
-
-    if (argv.includes('--check')) {
-        const drift = detectDrift(plan, targetRoot);
-        if (drift.missing.length + drift.extra.length + drift.changed.length === 0) {
-            io.log(`public/app/common/edicuatex is in sync with edicuatex@${version} (${plan.length} files).`);
-            return 0;
-        }
-        io.error(`public/app/common/edicuatex has drifted from edicuatex@${version}:`);
-        for (const file of drift.missing) io.error(`  missing  ${file}`);
-        for (const file of drift.extra) io.error(`  extra    ${file}`);
-        for (const file of drift.changed) io.error(`  changed  ${file}`);
-        io.error('\nRun `make vendor-edicuatex` to regenerate the tree.');
-        return 1;
-    }
-
-    writeVendoredTree(plan, targetRoot);
-    io.log(`Vendored edicuatex@${version} into public/app/common/edicuatex (${plan.length} files).`);
-    return 0;
+export function run(argv: string[], repoRoot: string, io?: CliIo): number {
+    return runPackage(EDICUATEX, argv, repoRoot, io);
 }
 
 if (import.meta.main) {

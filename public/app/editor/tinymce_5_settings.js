@@ -48,6 +48,8 @@ var $exeTinyMCE = {
     language: 'all', // We set all so we can use eXe's i18n mechanism in all.js,
     edicuatex_url: '/app/common/edicuatex/index.html',
     edicuatex_mathjax_url: '/app/common/exe_math/tex-mml-svg.js',
+    // Sirena, the Mermaid diagram editor the exemermaid button opens
+    sirena_url: '/app/common/sirena/index.html',
     getTemplates: function () {
         return [
             {
@@ -338,6 +340,9 @@ var $exeTinyMCE = {
             edicuatex_mathjax_url: (eXeLearning.config?.isStaticMode || eXeLearning.config?.isOfflineInstallation)
                 ? './app/common/exe_math/tex-mml-svg.js'
                 : this.getAssetURL(this.edicuatex_mathjax_url),
+            sirena_url: (eXeLearning.config?.isStaticMode || eXeLearning.config?.isOfflineInstallation)
+                ? './app/common/sirena/index.html'
+                : this.getAssetURL(this.sirena_url),
 
             // Images
             image_advtab: true,

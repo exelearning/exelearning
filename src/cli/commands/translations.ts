@@ -14,7 +14,9 @@
 import { parseArgs, getString, getBoolean, hasHelp } from '../utils/args';
 import { success, error, warning, info, colors, EXIT_CODES } from '../utils/output';
 import { LOCALES } from '../../services/translation';
-import { buildVendorPlan, detectDrift, resolvePaths } from '../../../scripts/vendor-edicuatex';
+import { EDICUATEX } from '../../../scripts/vendor-edicuatex';
+import { inspectVendoredTree } from '../../../scripts/vendor-package';
+import { SIRENA } from '../../../scripts/vendor-sirena';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Glob } from 'bun';
@@ -66,48 +68,6 @@ export interface GeneratedSourceProblem {
 }
 
 /**
- * Compares the vendored EdiCuaTeX tree against what `vendor-edicuatex` would write.
- *
- * Reuses the vendoring script's own plan rather than a second list that could disagree
- * with it: the script already knows which files belong in the tree, and `--check` is the
- * build assertion built on that knowledge.
- */
-function inspectEdicuatexTree(cwd: string): { complete: boolean; detail: string } | null {
-    const { packageRoot, targetRoot } = resolvePaths(cwd);
-    if (!fs.existsSync(packageRoot)) {
-        return null;
-    }
-
-    // `buildVendorPlan` walks the package's own directories, so a half-written
-    // `node_modules/edicuatex` -- an interrupted `bun install` -- makes it throw. The tree on
-    // disk is then whatever the previous version left, and no comparison can say whether it
-    // still matches. That is a *problem*, not an absence of one: `--remove-obsolete` would
-    // scan a stale `lang/en.js` and delete every string only the newer package carries. It is
-    // reported as `incomplete` rather than swallowed, which warns on `--extract-only` and
-    // `translations:sort` (neither of which fails on a warning) and blocks the deletion.
-    let drift: ReturnType<typeof detectDrift>;
-    try {
-        drift = detectDrift(buildVendorPlan(packageRoot), targetRoot);
-    } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        return { complete: false, detail: `the pinned package could not be read (${reason})` };
-    }
-
-    // A file that exists with different content hides strings just as effectively as one that
-    // was never written: an older `lang/en.js` is scanned without complaint and the keys only
-    // the newer one carries look obsolete. `extra` is deliberately not a trust problem -- a
-    // leftover file can only add keys to the scan, never hide one.
-    const unusable = [...drift.missing, ...drift.changed].sort();
-    if (unusable.length === 0) {
-        return { complete: true, detail: 'in sync with the pinned edicuatex package' };
-    }
-
-    const sample = unusable.slice(0, 3).join(', ');
-    const rest = unusable.length > 3 ? `, and ${unusable.length - 3} more` : '';
-    return { complete: false, detail: `${unusable.length} file(s) out of sync: ${sample}${rest}` };
-}
-
-/**
  * Generated source trees the extraction depends on.
  *
  * These are scanned like any other source (they sit under `public/app/`), but they are
@@ -130,7 +90,13 @@ export const GENERATED_SOURCE_DIRS: GeneratedSource[] = [
         path: 'public/app/common/edicuatex',
         regenerateWith: 'make vendor-edicuatex',
         reason: 'holds the EdiCuaTeX equation editor strings, vendored from the pinned edicuatex package',
-        inspect: inspectEdicuatexTree,
+        inspect: cwd => inspectVendoredTree(EDICUATEX, cwd),
+    },
+    {
+        path: 'public/app/common/sirena',
+        regenerateWith: 'make vendor-sirena',
+        reason: 'holds the Sirena diagram editor strings, vendored from the pinned sirenaapp package',
+        inspect: cwd => inspectVendoredTree(SIRENA, cwd),
     },
 ];
 
@@ -672,11 +638,11 @@ ${colors.cyan('Extraction:')}
   - public/files/perm/idevices/**/*.js
 
 ${colors.cyan('Generated sources:')}
-  public/app/common/edicuatex is vendored from the pinned edicuatex package by
-  build:all and is gitignored, so a checkout that has not been built does not have
-  it. The tree is also compared against what vendor-edicuatex would write, so a
-  half-written one is caught too. Extraction warns in either case;
-  --remove-obsolete refuses to run.
+  public/app/common/edicuatex and public/app/common/sirena are vendored from their
+  pinned packages (edicuatex, sirenaapp) by build:all and are gitignored, so a
+  checkout that has not been built does not have them. Each tree is also compared
+  against what its vendor script would write, so a half-written one is caught too.
+  Extraction warns in either case; --remove-obsolete refuses to run.
 
 ${colors.cyan('Cleanup:')}
   - Replaces <target>__...</target> with <target></target>

@@ -449,6 +449,54 @@ describe('TinyMCE 5 Settings', () => {
       });
     });
 
+    describe('sirena URL', () => {
+      let originalLocation;
+
+      beforeEach(() => {
+        originalLocation = window.location;
+      });
+
+      afterEach(() => {
+        delete window.location;
+        window.location = originalLocation;
+        globalThis.eXeLearning.config.isStaticMode = false;
+        globalThis.eXeLearning.config.isOfflineInstallation = false;
+      });
+
+      it('uses getAssetURL for sirena in server mode', () => {
+        globalThis.eXeLearning.config.isStaticMode = false;
+        globalThis.eXeLearning.config.isOfflineInstallation = false;
+
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        expect(config.sirena_url).toBe('http://localhost/exelearning/v3.0.0/app/common/sirena/index.html');
+      });
+
+      it('uses a relative path (./app/...) in static mode, next to EdiCuaTeX', () => {
+        globalThis.eXeLearning.config.isStaticMode = true;
+        delete window.location;
+        window.location = { pathname: '/dist/static/index.html' };
+
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        expect(config.sirena_url).toBe('./app/common/sirena/index.html');
+        expect(config.edicuatex_url).toBe('./app/common/edicuatex/index.html');
+      });
+
+      it('uses a relative path (./app/...) for an offline installation', () => {
+        globalThis.eXeLearning.config.isOfflineInstallation = true;
+        delete window.location;
+        window.location = { pathname: '/web/exelearning/v1/index.html' };
+
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        expect(config.sirena_url).toBe('./app/common/sirena/index.html');
+      });
+    });
+
     describe('edicuatex URLs', () => {
       let originalLocation;
 

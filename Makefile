@@ -321,22 +321,23 @@ tmp-cleanup: check-bun
 
 # Extract new translation keys (does not clean or remove anything)
 # Usage: make translations [LOCALE=es]
-# Depends on vendor-edicuatex: the vendored tree is gitignored and only exists after a
-# build, and the extraction scans it for the equation editor strings.
+# Depends on vendor-edicuatex and vendor-sirena: the vendored trees are gitignored and
+# only exist after a build, and the extraction scans them for the equation and diagram
+# editor strings.
 .PHONY: translations
-translations: check-bun vendor-edicuatex
+translations: check-bun vendor-edicuatex vendor-sirena
 	@$(CLI) translations --extract-only $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Clean and remove obsolete translation strings (destructive: removes trans-units not found in source)
 # Usage: make translations-cleanup [LOCALE=es]
 .PHONY: translations-cleanup
-translations-cleanup: check-bun vendor-edicuatex
+translations-cleanup: check-bun vendor-edicuatex vendor-sirena
 	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Reorder trans-units in XLF files to match the order in messages.en.xlf
 # Usage: make translations-sort [LOCALE=es]
 .PHONY: translations-sort
-translations-sort: check-bun vendor-edicuatex
+translations-sort: check-bun vendor-edicuatex vendor-sirena
 	@$(CLI) translations:sort $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Add CDATA to <target> elements that need it and normalise indentation
@@ -477,6 +478,12 @@ vendor-mathjax: check-bun
 .PHONY: vendor-edicuatex
 vendor-edicuatex: check-bun
 	bun run scripts/vendor-edicuatex.ts
+
+# Regenerate public/app/common/sirena/ from the pinned `sirenaapp` package, the Mermaid
+# diagram editor the TinyMCE Mermaid button opens. Same scheme as vendor-edicuatex.
+.PHONY: vendor-sirena
+vendor-sirena: check-bun
+	bun run scripts/vendor-sirena.ts
 
 # Print the architecture record index, derived from document frontmatter.
 # Deliberately not a committed file: it would conflict on every concurrent branch.

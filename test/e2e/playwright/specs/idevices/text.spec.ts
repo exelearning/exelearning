@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
+import type { FrameLocator, Page } from '@playwright/test';
 import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import { addTextIdevice } from '../../helpers/workarea-helpers';
@@ -425,6 +426,35 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('TinyMCE Mermaid Diagram (exemermaid)', () => {
+        /**
+         * The Sirena editor inside the TinyMCE window, once it has detected eXe and
+         * loaded the code it is going to edit: filling it earlier would be overwritten.
+         */
+        async function openedSirena(page: Page): Promise<FrameLocator> {
+            const sirena = page.frameLocator('.tox-dialog iframe');
+            await expect(sirena.locator('body.exe')).toBeAttached({ timeout: 15000 });
+            await expect(sirena.locator('#canvas svg').first()).toBeAttached({ timeout: 15000 });
+            return sirena;
+        }
+
+        /**
+         * Replaces the code in Sirena's editor the way a person does: click, select
+         * all, type. In Firefox neither locator.fill() nor keyboard.insertText()
+         * reaches a textarea inside the window's frame; typed keys do.
+         */
+        async function writeInSirena(page: Page, sirena: FrameLocator, code: string): Promise<void> {
+            const editor = sirena.locator('#editor');
+            // Right after the window loads, TinyMCE may still move the focus to it:
+            // click until the editor really holds the focus, as a person would.
+            await expect(async () => {
+                await editor.click();
+                await expect(editor).toBeFocused({ timeout: 1000 });
+            }).toPass({ timeout: 10000 });
+            await page.keyboard.press('ControlOrMeta+A');
+            await page.keyboard.type(code);
+            await expect(editor).toHaveValue(code);
+        }
+
         test('should insert mermaid diagram and render correctly in editor and preview', async ({
             authenticatedPage,
             createProject,
@@ -486,32 +516,32 @@ test.describe('Text iDevice', () => {
             await expect(mermaidButton).toBeVisible({ timeout: 10000 });
             await mermaidButton.click();
 
-            // Wait for the mermaid TinyMCE dialog to appear
+            // The button opens Sirena, the vendored diagram editor, in a TinyMCE window
             const dialog = page.locator('.tox-dialog');
             await expect(dialog).toBeVisible({ timeout: 10000 });
+            await expect(dialog.locator('.tox-dialog__title')).toContainText('Sirena', { timeout: 5000 });
+            const sirena = await openedSirena(page);
 
-            // Verify the dialog title contains "Mermaid"
-            const dialogTitle = dialog.locator('.tox-dialog__title');
-            await expect(dialogTitle).toContainText(/Mermaid/i, { timeout: 5000 });
-
-            // Find the textarea and enter mermaid code
-            // The textarea has name="htmlSource"
             const mermaidCode = `graph TD
     A[Start] --> B{Is it working?}
     B -->|Yes| C[Great!]
     B -->|No| D[Debug]
     D --> B`;
 
-            const textarea = dialog.locator('textarea');
-            await expect(textarea).toBeVisible({ timeout: 5000 });
-            await textarea.fill(mermaidCode);
+            await writeInSirena(page, sirena, mermaidCode);
+            // An optional maximum width travels with the diagram, as in the former dialog
+            await sirena.locator('#exe-ancho').fill('600px');
+            await sirena.locator('#exe-insertar').click();
 
-            // Click Save button to insert the mermaid code
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
-            await saveDialogBtn.click();
-
-            // Wait for dialog to close
+            // Insert closes the window
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+            const insertedHtml = await page.evaluate(() => (window as any).tinymce.activeEditor.getContent());
+            expect(insertedHtml).toContain('<pre class="mermaid" style="max-width: 600px;">');
+            expect(insertedHtml).toContain('A[Start] --&gt; B{Is it working?}');
+            // Sirena does not add a header of its own: the layout engine is left to
+            // eXe's Mermaid configuration, as for every other diagram
+            expect(insertedHtml).not.toContain('%%{init');
 
             // Save the iDevice to exit edit mode - wait for button to be visible first
             const saveBtn = block.locator('.btn-save-idevice');
@@ -687,11 +717,9 @@ test.describe('Text iDevice', () => {
             const initialCode = `graph LR
     A[Initial] --> B[Diagram]`;
 
-            const textarea = dialog.locator('textarea');
-            await textarea.fill(initialCode);
-
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
-            await saveDialogBtn.click();
+            const sirena = await openedSirena(page);
+            await writeInSirena(page, sirena, initialCode);
+            await sirena.locator('#exe-insertar').click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
             // Now select the mermaid block in TinyMCE and click mermaid button again to update
@@ -713,21 +741,24 @@ test.describe('Text iDevice', () => {
             const updateDialog = page.locator('.tox-dialog');
             await expect(updateDialog).toBeVisible({ timeout: 10000 });
 
-            // The textarea should contain the existing code
-            const updateTextarea = updateDialog.locator('textarea');
-            const existingCode = await updateTextarea.inputValue();
-            expect(existingCode).toContain('Initial');
+            // Sirena opens with the code of the diagram under the cursor
+            const updateSirena = await openedSirena(page);
+            await expect(updateSirena.locator('#editor')).toHaveValue(/Initial/);
 
             // Update with new code
             const updatedCode = `graph TB
     A[Updated] --> B[Diagram]
     B --> C[Works!]`;
 
-            await updateTextarea.fill(updatedCode);
-
-            const updateSaveBtn = updateDialog.locator('button').filter({ hasText: /Save|Guardar/i });
-            await updateSaveBtn.click();
+            await writeInSirena(page, updateSirena, updatedCode);
+            await updateSirena.locator('#exe-insertar').click();
             await expect(updateDialog).not.toBeVisible({ timeout: 5000 });
+
+            // The diagram is replaced in place, not added next to the old one
+            const blocks = await page.evaluate(
+                () => (window as any).tinymce.activeEditor.getBody().querySelectorAll('pre.mermaid').length,
+            );
+            expect(blocks).toBe(1);
 
             // Save the iDevice
             const saveBtn = block.locator('.btn-save-idevice');
@@ -817,11 +848,9 @@ test.describe('Text iDevice', () => {
             const mermaidCode = `graph TD
     A[Pre-render Test] --> B[SVG Output]`;
 
-            const textarea = dialog.locator('textarea');
-            await textarea.fill(mermaidCode);
-
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
-            await saveDialogBtn.click();
+            const sirena = await openedSirena(page);
+            await writeInSirena(page, sirena, mermaidCode);
+            await sirena.locator('#exe-insertar').click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
             // Save the iDevice
@@ -968,11 +997,9 @@ test.describe('Text iDevice', () => {
             await mermaidButton.click();
             const dialog = page.locator('.tox-dialog');
             await expect(dialog).toBeVisible({ timeout: 10000 });
-            await dialog.locator('textarea').fill('graph LR\n    A[Style Test] --> B[Node]');
-            await dialog
-                .locator('button')
-                .filter({ hasText: /Save|Guardar/i })
-                .click();
+            const sirena = await openedSirena(page);
+            await writeInSirena(page, sirena, 'graph LR\n    A[Style Test] --> B[Node]');
+            await sirena.locator('#exe-insertar').click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
             // Wait for the <pre class="mermaid"> to exist in the editor body, then inject
@@ -997,16 +1024,13 @@ test.describe('Text iDevice', () => {
                 await page.waitForTimeout(300);
             }
 
-            // Re-open the dialog and set max-width — this exercises the update branch.
-            // TinyMCE 5 does not emit HTML name= attributes; max-width is the first <input>.
+            // Re-open Sirena and set max-width — this exercises the update branch.
             await mermaidButton.click();
             const updateDialog = page.locator('.tox-dialog');
             await expect(updateDialog).toBeVisible({ timeout: 10000 });
-            await updateDialog.locator('input').first().fill('600px');
-            await updateDialog
-                .locator('button')
-                .filter({ hasText: /Save|Guardar/i })
-                .click();
+            const updateSirena = await openedSirena(page);
+            await updateSirena.locator('#exe-ancho').fill('600px');
+            await updateSirena.locator('#exe-insertar').click();
             await expect(updateDialog).not.toBeVisible({ timeout: 5000 });
 
             // Both the newly set max-width and the pre-existing color must be present
