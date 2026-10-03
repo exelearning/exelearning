@@ -232,6 +232,23 @@ var $exe = {
         MIN: 0,
         MAX: 10,
         META_NAME: 'exe-pass-score',
+        EVERY_ACTIVITY_META_NAME: 'exe-pass-score-every-activity',
+
+        /**
+         * Whether the page requires every activity to reach its own pass mark,
+         * rather than the weighted mean of the marks. Only an exported page
+         * can say so: it decides the SCORM verdict, which the editor never
+         * computes.
+         *
+         * Mirrors getPassScoreEveryActivity() in the SCORM 1.2 runtime
+         * (exe-scorm12-policy.js), which reads the same META on its own.
+         *
+         * @returns {boolean} True only when the page declares it.
+         */
+        requiresEveryActivity: function () {
+            var meta = document.querySelector('meta[name="' + $exe.passScore.EVERY_ACTIVITY_META_NAME + '"]');
+            return !!meta && meta.getAttribute("content") === "true";
+        },
 
         /**
          * Clamp a value into the 0-10 one-decimal domain.
@@ -1725,6 +1742,63 @@ var $exeDevices = {
                     return Math.round((sumWeighted / sumWeights) * 100) / 100;
                 },
 
+                /** Page positions that sent a score during this page load (legacy runtimes). */
+                _reportedNumbers: {},
+
+                /**
+                 * The page's status for the runtimes that have no registry
+                 * (SCORM 2004), when the author requires every activity to
+                 * reach its own mark: passed when all of them do, failed when
+                 * one falls short, and incomplete while one has not sent a
+                 * score — the SCORM 1.2 policy waits for them the same way.
+                 *
+                 * This format has no completion flag, and registerActivity()
+                 * seeds every activity with a stored 0, so a stored 0 cannot
+                 * tell "not answered" from "scored zero". An activity counts as
+                 * answered when it reported on this page load or its stored
+                 * score is above 0. A 0 earned on an earlier visit therefore
+                 * reads as pending until the activity is played again: the page
+                 * is not passed either way, and it is never passed by mistake.
+                 *
+                 * Same comparison as unmetThresholds() in the registry, rounded
+                 * to two decimals, with the project's mark for an activity that
+                 * has not registered on this page load.
+                 *
+                 * @param {Object} lmsData Activities by page position.
+                 * @returns {string} "passed", "failed" or "incomplete".
+                 */
+                getEveryActivityVerdict: function (lmsData) {
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    const data = lmsData || {};
+                    const pageThreshold = $exe.passScore.toPercent();
+                    const numbers = Object.keys(scorm._successThresholdsByNumber);
+                    Object.keys(data).forEach(key => {
+                        if (numbers.indexOf(key) === -1) numbers.push(key);
+                    });
+                    if (numbers.length === 0) {
+                        return 'incomplete';
+                    }
+                    let pending = false;
+                    let below = false;
+                    numbers.forEach(key => {
+                        const entry = data[key];
+                        const score = entry ? Math.max(0, Math.min(parseFloat(entry.score) || 0, 100)) : 0;
+                        if (!scorm._reportedNumbers[key] && !(score > 0)) {
+                            pending = true;
+                            return;
+                        }
+                        const own = scorm._successThresholdsByNumber[key];
+                        const threshold = typeof own === 'number' ? own : pageThreshold;
+                        if (Math.round(score * 100) / 100 < Math.round(threshold * 100) / 100) {
+                            below = true;
+                        }
+                    });
+                    if (pending) {
+                        return 'incomplete';
+                    }
+                    return below ? 'failed' : 'passed';
+                },
+
                 registerActivity: function (game) {
                     if (typeof game !== 'object' || game === null) return;
 
@@ -2212,6 +2286,9 @@ var $exeDevices = {
                         weighted: game.weighted
                     };
                     lmsData[game.ideviceNumber] = updatedData;
+                    // What getEveryActivityVerdict() reads as "answered": the
+                    // stored line cannot tell this score from the seeded 0.
+                    $exeDevices.iDevice.gamification.scorm._reportedNumbers[game.ideviceNumber] = true;
 
                     const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
 
@@ -2322,8 +2399,18 @@ var $exeDevices = {
                         // the feature. There is no policy layer here to consult
                         // mastery_score, so this path applies the author's
                         // marks directly.
+                        //
+                        // The author may instead require every activity to
+                        // reach its own mark; the page then also waits for the
+                        // ones that have not sent a score yet, as the SCORM 1.2
+                        // policy does.
                         pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                        if (newFinalScore >= $exeDevices.iDevice.gamification.scorm.getFinalThreshold(lmsData)) {
+                        if ($exe.passScore.requiresEveryActivity()) {
+                            pipwerks.SCORM.set(
+                                "cmi.core.lesson_status",
+                                $exeDevices.iDevice.gamification.scorm.getEveryActivityVerdict(lmsData)
+                            );
+                        } else if (newFinalScore >= $exeDevices.iDevice.gamification.scorm.getFinalThreshold(lmsData)) {
                             pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
                         } else {
                             pipwerks.SCORM.set("cmi.core.lesson_status", "failed");

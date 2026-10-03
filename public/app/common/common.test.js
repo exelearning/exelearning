@@ -566,6 +566,37 @@ describe('common.js $exe helpers', () => {
       delete global.eXeLearning;
     });
 
+    describe('requiresEveryActivity', () => {
+      const setEveryActivityMeta = (content) => {
+        const meta = document.createElement('meta');
+        meta.setAttribute('name', 'exe-pass-score-every-activity');
+        meta.setAttribute('content', content);
+        document.head.appendChild(meta);
+      };
+
+      afterEach(() => {
+        document.head
+          .querySelectorAll('meta[name="exe-pass-score-every-activity"]')
+          .forEach((meta) => meta.remove());
+      });
+
+      it('is required when the page says "true"', () => {
+        setEveryActivityMeta('true');
+
+        expect(global.$exe.passScore.requiresEveryActivity()).toBe(true);
+      });
+
+      it('is not required with any other value', () => {
+        setEveryActivityMeta('false');
+
+        expect(global.$exe.passScore.requiresEveryActivity()).toBe(false);
+      });
+
+      it('is not required when the page says nothing, as every page did before', () => {
+        expect(global.$exe.passScore.requiresEveryActivity()).toBe(false);
+      });
+    });
+
     describe('normalize', () => {
       it('keeps a value already inside the domain', () => {
         expect(global.$exe.passScore.normalize(7.5)).toBe(7.5);
@@ -2674,6 +2705,74 @@ describe('common.js $exeDevices', () => {
           expect(getScorm().getFinalThreshold({ 1: { score: 0 }, 2: { score: 0 } })).toBe(70);
         });
       });
+
+      // When the author requires every activity to reach its own mark.
+      describe('getEveryActivityVerdict', () => {
+        afterEach(() => {
+          getScorm()._successThresholdsByNumber = {};
+          getScorm()._reportedNumbers = {};
+        });
+
+        it('passes when every activity reaches its own mark', () => {
+          getScorm()._successThresholdsByNumber = { 1: 30, 2: 80 };
+          getScorm()._reportedNumbers = { 1: true, 2: true };
+
+          expect(getScorm().getEveryActivityVerdict({ 1: { score: 30 }, 2: { score: 90 } })).toBe('passed');
+        });
+
+        it('fails when one falls short, though the weighted mean would pass the page', () => {
+          getScorm()._successThresholdsByNumber = { 1: 50, 2: 30 };
+          getScorm()._reportedNumbers = { 1: true, 2: true };
+          const lmsData = { 1: { score: 0, weighted: 50 }, 2: { score: 100, weighted: 50 } };
+
+          expect(getScorm().getFinalScore(lmsData)).toBeGreaterThanOrEqual(getScorm().getFinalThreshold(lmsData));
+          expect(getScorm().getEveryActivityVerdict(lmsData)).toBe('failed');
+        });
+
+        it('waits for an activity that has not sent a score', () => {
+          // registerActivity() seeds every activity with a stored 0.
+          getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
+          getScorm()._reportedNumbers = { 1: true };
+
+          expect(getScorm().getEveryActivityVerdict({ 1: { score: 100 }, 2: { score: 0 } })).toBe('incomplete');
+        });
+
+        it('fails a 0 the learner has just earned', () => {
+          getScorm()._successThresholdsByNumber = { 1: 50 };
+          getScorm()._reportedNumbers = { 1: true };
+
+          expect(getScorm().getEveryActivityVerdict({ 1: { score: 0 } })).toBe('failed');
+        });
+
+        it('counts a stored score from an earlier visit as answered', () => {
+          getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
+          getScorm()._reportedNumbers = { 2: true };
+
+          expect(getScorm().getEveryActivityVerdict({ 1: { score: 60 }, 2: { score: 70 } })).toBe('passed');
+        });
+
+        it('judges an entry whose activity has not registered by the project mark', () => {
+          // No META in this document: the default 5, which is 50.
+          getScorm()._reportedNumbers = { 3: true };
+
+          expect(getScorm().getEveryActivityVerdict({ 3: { score: 40 } })).toBe('failed');
+          expect(getScorm().getEveryActivityVerdict({ 3: { score: 50 } })).toBe('passed');
+        });
+
+        it('passes an activity at its mark that floating point left a hair below', () => {
+          getScorm()._successThresholdsByNumber = { 1: 57 };
+          getScorm()._reportedNumbers = { 1: true };
+          const score = 0.57 * 100;
+          expect(score).toBeLessThan(57);
+
+          expect(getScorm().getEveryActivityVerdict({ 1: { score } })).toBe('passed');
+        });
+
+        it('has nothing to pass while no activity is known', () => {
+          expect(getScorm().getEveryActivityVerdict({})).toBe('incomplete');
+          expect(getScorm().getEveryActivityVerdict(null)).toBe('incomplete');
+        });
+      });
     });
 
     // 100, not 1: it is the default the editor writes, and 28 of the 35 game
@@ -3139,6 +3238,54 @@ describe('common.js $exeDevices', () => {
         node.remove();
         getScorm()._successThresholdsByNumber = {};
       }
+    });
+
+    describe('on the legacy path, when the page requires every activity to reach its own mark', () => {
+      let meta;
+
+      beforeEach(() => {
+        delete window.exeScorm12;
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'exe-pass-score-every-activity');
+        meta.setAttribute('content', 'true');
+        document.head.appendChild(meta);
+      });
+
+      afterEach(() => {
+        meta.remove();
+        getScorm()._successThresholdsByNumber = {};
+        getScorm()._reportedNumbers = {};
+      });
+
+      it('showFinalScore fails the page when one activity falls short, though the mean passes', () => {
+        const set = vi.fn(() => true);
+        global.pipwerks = { SCORM: { get: () => '', set } };
+        getScorm()._successThresholdsByNumber = { 1: 50, 2: 30 };
+        getScorm()._reportedNumbers = { 1: true, 2: true };
+        const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+        getScorm().showFinalScore(
+          { 1: { title: 'A', score: 0, weighted: 50 }, 2: { title: 'B', score: 100, weighted: 50 } },
+          game
+        );
+
+        // 50 against a mean mark of 40 would pass.
+        expect(set).toHaveBeenCalledWith('cmi.core.score.raw', 50);
+        expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+      });
+
+      it('updateActivity counts the activity that reported as answered', () => {
+        const set = vi.fn(() => true);
+        global.pipwerks = { SCORM: { get: () => '', set } };
+        getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
+        const game = { ideviceNumber: 2, title: 'B', scorerp: 6, weighted: 100, msgs: { msgYouScore: 'Score' } };
+
+        getScorm().updateActivity(game, { 1: { title: 'A', score: 0, weighted: 100 } }, true);
+
+        expect(getScorm()._reportedNumbers[2]).toBe(true);
+        // The first activity still has only the 0 registerActivity seeded.
+        expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+      });
     });
 
     it('showFinalScore publishes no score for a page the learner never answered', () => {
