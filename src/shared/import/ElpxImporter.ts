@@ -1052,10 +1052,11 @@ export class ElpxImporter {
         metadata.set('addAccessibilityToolbar', legacyMeta.pp_addAccessibilityToolbar);
         metadata.set('exportSource', legacyMeta.exportSource);
 
-        // Legacy files don't have addMathJax, globalFont or passScore - use defaults
+        // Legacy files don't have addMathJax, globalFont or the pass score options - use defaults
         metadata.set('addMathJax', false);
         metadata.set('globalFont', 'default');
         metadata.set('passScore', PASS_SCORE_DEFAULT);
+        metadata.set('passScoreEveryActivity', false);
 
         metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
         metadata.set('footer', legacyMeta.footer);
@@ -1282,6 +1283,7 @@ export class ElpxImporter {
             // normalizePassScore turns a missing or unparseable value into the
             // default, so no separate fallback is needed here.
             passScore: normalizePassScore(this.getMetadataProperty(odeProperties, 'pp_passScore')),
+            passScoreEveryActivity: this.getBooleanMetadataProperty(odeProperties, 'pp_passScoreEveryActivity', false),
         };
     }
 
@@ -1306,6 +1308,7 @@ export class ElpxImporter {
         metadata.set('addMathJax', values.addMathJax);
         metadata.set('globalFont', values.globalFont);
         metadata.set('passScore', values.passScore);
+        metadata.set('passScoreEveryActivity', values.passScoreEveryActivity);
         metadata.set('extraHeadContent', values.extraHeadContent);
         metadata.set('footer', values.footer);
         // Screenshot (optional, extracted from archive root)

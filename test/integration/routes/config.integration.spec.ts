@@ -192,7 +192,7 @@ describe('Config Routes Integration', () => {
             });
         });
 
-        it('should have exactly 16 project properties including the minimum pass score', async () => {
+        it('should have exactly 17 project properties including the minimum pass score rules', async () => {
             const response = await configRoutes.handle(
                 new Request('http://localhost/api/parameter-management/parameters/data/list'),
             );
@@ -201,7 +201,7 @@ describe('Config Routes Integration', () => {
             const nestedConfig = data.odeProjectSyncPropertiesConfig as Record<string, Record<string, unknown>>;
             const config = flattenProperties(nestedConfig);
 
-            expect(Object.keys(config).length).toBe(16);
+            expect(Object.keys(config).length).toBe(17);
             expect(config.pp_passScore).toMatchObject({
                 value: 5,
                 type: 'number',
@@ -209,6 +209,7 @@ describe('Config Routes Integration', () => {
                 max: 10,
                 step: 0.1,
             });
+            expect(config.pp_passScoreEveryActivity).toMatchObject({ value: 'false', type: 'checkbox' });
         });
 
         it('should have groups attribute on all properties for collapsible sections', async () => {

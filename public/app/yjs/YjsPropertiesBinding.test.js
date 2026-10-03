@@ -258,6 +258,24 @@ describe('YjsPropertiesBinding', () => {
       expect(binding.mapMetadataKeyToProperty('passScore')).toBe('pp_passScore');
     });
 
+    it('maps the every-activity rule checkbox to its metadata key', () => {
+      expect(binding.mapPropertyToMetadataKey('pp_passScoreEveryActivity')).toBe('passScoreEveryActivity');
+      expect(binding.mapMetadataKeyToProperty('passScoreEveryActivity')).toBe('pp_passScoreEveryActivity');
+    });
+
+    it('stores the every-activity rule like any other checkbox', () => {
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = true;
+
+      binding.updateYjsFromInput(input, 'passScoreEveryActivity', 'checkbox');
+      expect(binding.metadata.get('passScoreEveryActivity')).toBe('true');
+
+      input.checked = false;
+      binding.updateInputFromYjs(input, 'passScoreEveryActivity', 'checkbox');
+      expect(input.checked).toBe(true);
+    });
+
     it('stores a number, not the string the DOM hands back', () => {
       binding.updateYjsFromInput(createPassScoreInput('7.5'), 'passScore', 'number');
 

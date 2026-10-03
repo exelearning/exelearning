@@ -403,6 +403,14 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 category: 'properties',
                 groups: { export: GROUPS_TITLE.export },
             },
+            pp_passScoreEveryActivity: {
+                title: `${TRANS_PREFIX}Every SCORM activity on a page must reach its own minimum score`,
+                help: `${TRANS_PREFIX}A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.`,
+                value: 'false',
+                type: 'checkbox',
+                category: 'properties',
+                groups: { export: GROUPS_TITLE.export },
+            },
             pp_extraHeadContent: {
                 title: `${TRANS_PREFIX}HEAD`,
                 help: `${TRANS_PREFIX}HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...`,

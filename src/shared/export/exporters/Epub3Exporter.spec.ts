@@ -365,6 +365,15 @@ describe('Epub3Exporter', () => {
             expect(indexXhtml).toContain('name="exe-pass-score"');
             expect(indexXhtml).toContain('content="7.5"');
         });
+
+        it('publishes the every-activity rule only when the project asks for it', async () => {
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.get('EPUB/index.xhtml') as string).toContain('name="exe-pass-score-every-activity"');
+        });
     });
 
     describe('Basic Properties', () => {

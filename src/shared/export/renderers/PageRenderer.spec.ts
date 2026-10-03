@@ -98,6 +98,39 @@ describe('PageRenderer', () => {
             });
         });
 
+        describe('every-activity pass rule META', () => {
+            const META = '<meta name="exe-pass-score-every-activity" content="true">';
+
+            it('should publish it when the author requires every activity to reach its own mark', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScoreEveryActivity: true });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain(`<meta name="exe-pass-score" content="5">\n${META}\n`);
+            });
+
+            it.each([
+                ['off', false],
+                ['never set', undefined],
+            ])('should leave it out when the option is %s, so the page keeps the weighted mean', (_label, value) => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScoreEveryActivity: value });
+
+                const html = renderer.render(page, options);
+
+                expect(html).not.toContain('exe-pass-score-every-activity');
+            });
+
+            it('should publish it on single-page exports too', () => {
+                const on = renderer.renderSinglePage([createTestPage()], { passScoreEveryActivity: true });
+                const off = renderer.renderSinglePage([createTestPage()], {});
+
+                expect(on).toContain(META);
+                expect(off).not.toContain('exe-pass-score-every-activity');
+            });
+        });
+
         it('should render index page <title> as project title only', () => {
             const page = createTestPage({ title: 'Home' });
             const options = createDefaultOptions({ allPages: [page], isIndex: true });

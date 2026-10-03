@@ -91,6 +91,34 @@ describe('buildConfigParams', () => {
         });
     });
 
+    describe('pp_passScoreEveryActivity project property', () => {
+        const properties = () =>
+            buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES })
+                .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties;
+        const everyActivity = () => properties().pp_passScoreEveryActivity;
+
+        it('is a checkbox, unchecked by default so pages keep the weighted mean', () => {
+            expect(everyActivity()).toBeDefined();
+            expect(everyActivity().type).toBe('checkbox');
+            expect(everyActivity().value).toBe('false');
+        });
+
+        it('sits right after the minimum score, in the export options group', () => {
+            const keys = Object.keys(properties());
+            expect(keys.indexOf('pp_passScoreEveryActivity')).toBe(keys.indexOf('pp_passScore') + 1);
+            expect(Object.keys(everyActivity().groups)).toEqual(['export']);
+        });
+
+        it('carries the translation prefix on its user-facing strings', () => {
+            const T = 'TRANSLATABLE_TEXT:';
+            const prefixed = buildConfigParams({ TRANS_PREFIX: T, LICENSES, PACKAGE_LOCALES, LOCALES })
+                .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties.pp_passScoreEveryActivity;
+
+            expect(prefixed.title).toBe(`${T}Every SCORM activity on a page must reach its own minimum score`);
+            expect(prefixed.help.startsWith(T)).toBe(true);
+        });
+    });
+
     describe('defaultTheme preference', () => {
         it('exposes defaultTheme as a select between defaultLicense and defaultAI', () => {
             const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });

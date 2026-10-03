@@ -514,6 +514,7 @@ export class Html5Exporter extends BaseExporter {
             // Project-wide pass score, published to the page as a META so iDevices
             // resolve it at runtime instead of carrying a copy of their own.
             passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes

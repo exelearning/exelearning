@@ -21,6 +21,7 @@ import {
     buildPropertyKeyMap,
     normalizePassScore,
     PASS_SCORE_DEFAULT,
+    PASS_SCORE_EVERY_ACTIVITY_META_NAME,
     PASS_SCORE_MAX,
     PASS_SCORE_META_NAME,
     PASS_SCORE_MIN,
@@ -55,6 +56,7 @@ describe('metadata-properties', () => {
             expect(exportKeys).toContain('exportSource');
             expect(exportKeys).toContain('globalFont');
             expect(exportKeys).toContain('passScore');
+            expect(exportKeys).toContain('passScoreEveryActivity');
         });
 
         it('contains all expected content properties', () => {
@@ -381,6 +383,35 @@ describe('metadata-properties', () => {
 
         it('names the META tag exported pages carry', () => {
             expect(PASS_SCORE_META_NAME).toBe('exe-pass-score');
+        });
+
+        describe('every activity at its own mark', () => {
+            it('is a boolean export property with the pp_ prefix, off by default', () => {
+                const config = getPropertyConfig('passScoreEveryActivity');
+                expect(config?.xmlKey).toBe('pp_passScoreEveryActivity');
+                expect(config?.type).toBe('boolean');
+                expect(config?.category).toBe('export');
+                expect(config?.defaultValue).toBe(false);
+                expect(isBooleanProperty('passScoreEveryActivity')).toBe(true);
+            });
+
+            it('travels to XML and back', () => {
+                expect(isExcludedFromXml('passScoreEveryActivity')).toBe(false);
+                expect(valueToXmlString('passScoreEveryActivity', true)).toBe('true');
+                expect(valueToXmlString('passScoreEveryActivity', false)).toBe('false');
+                expect(getInternalKeyForXmlKey('pp_passScoreEveryActivity')).toBe('passScoreEveryActivity');
+                expect(parsePropertyValue('passScoreEveryActivity', 'true')).toBe(true);
+                expect(parsePropertyValue('passScoreEveryActivity', 'false')).toBe(false);
+            });
+
+            it('is off for a project that never stored it', () => {
+                expect(parsePropertyValue('passScoreEveryActivity', undefined)).toBe(false);
+            });
+
+            it('names the META tag the SCORM runtimes read', () => {
+                // Read by exe-scorm12-policy.js and $exe.passScore.requiresEveryActivity().
+                expect(PASS_SCORE_EVERY_ACTIVITY_META_NAME).toBe('exe-pass-score-every-activity');
+            });
         });
 
         describe('normalizePassScore', () => {

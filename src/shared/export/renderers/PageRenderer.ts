@@ -28,7 +28,7 @@ import {
     formatShortLicenseText,
 } from '../constants';
 import { trans } from '../../../services/translation';
-import { PASS_SCORE_META_NAME, normalizePassScore } from '../metadata-properties';
+import { PASS_SCORE_EVERY_ACTIVITY_META_NAME, PASS_SCORE_META_NAME, normalizePassScore } from '../metadata-properties';
 import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 
 /**
@@ -124,6 +124,7 @@ export class PageRenderer {
             addAccessibilityToolbar = false,
             addMathJax = false,
             passScore,
+            passScoreEveryActivity = false,
             // Custom head content
             extraHeadContent = '',
             // SCORM-specific options
@@ -214,7 +215,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, passScore, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, passScore, passScoreEveryActivity, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -256,6 +257,7 @@ ${madeWithExeHtml}
         version?: string;
         isEpub?: boolean;
         passScore?: number;
+        passScoreEveryActivity?: boolean;
     }): string {
         const {
             pageTitle,
@@ -277,6 +279,7 @@ ${madeWithExeHtml}
             version,
             isEpub = false,
             passScore,
+            passScoreEveryActivity = false,
         } = options;
 
         // Meta tags
@@ -288,7 +291,7 @@ ${madeWithExeHtml}
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="${PASS_SCORE_META_NAME}" content="${normalizePassScore(passScore)}">
-${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
+${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
 
         // Favicon
         head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
@@ -1233,6 +1236,18 @@ ${userFooterHtml}</div></footer>`;
     }
 
     /**
+     * META telling the SCORM runtimes to pass a page only when every activity
+     * reaches its own mark. Written only when the author asked for it: a page
+     * without it is judged by the weighted mean of the marks, as every page was
+     * before the option existed.
+     * @param enabled - The project's passScoreEveryActivity option
+     * @returns The META tag and a line break, or an empty string
+     */
+    renderPassScoreEveryActivityMeta(enabled?: boolean): string {
+        return enabled ? `<meta name="${PASS_SCORE_EVERY_ACTIVITY_META_NAME}" content="true">\n` : '';
+    }
+
+    /**
      * Render a single-page HTML document with all pages
      * @param allPages - All pages in the project
      * @param options - Rendering options
@@ -1256,6 +1271,7 @@ ${userFooterHtml}</div></footer>`;
             addMathJax?: boolean;
             addAccessibilityToolbar?: boolean;
             passScore?: number;
+            passScoreEveryActivity?: boolean;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
@@ -1281,6 +1297,7 @@ ${userFooterHtml}</div></footer>`;
             addMathJax = false,
             addAccessibilityToolbar = false,
             passScore,
+            passScoreEveryActivity = false,
             navLabels,
             materialIconDataUris,
         } = options;
@@ -1360,7 +1377,7 @@ ${sectionContent}
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="${PASS_SCORE_META_NAME}" content="${normalizePassScore(passScore)}">
-<title>${this.escapeHtml(projectTitle)}</title>
+${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}<title>${this.escapeHtml(projectTitle)}</title>
 ${this.renderFavicon('', faviconPath, faviconType)}
 <script>document.querySelector("html").classList.add("js");</script>
 <script src="libs/jquery/jquery.min.js"> </script>

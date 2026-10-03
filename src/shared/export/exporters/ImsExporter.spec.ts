@@ -491,6 +491,16 @@ describe('ImsExporter', () => {
             expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
         });
 
+        it('should publish the every-activity pass rule only when the project asks for it', () => {
+            const off = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+            const on = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(off).not.toContain('exe-pass-score-every-activity');
+            expect(on).toContain('<meta name="exe-pass-score-every-activity" content="true">');
+        });
+
         it('should NOT include made-with-eXe link when addExeLink is false', () => {
             document = new MockDocument({ addExeLink: false }, samplePages);
             exporter = new ImsExporter(document, resources, assets, zip);

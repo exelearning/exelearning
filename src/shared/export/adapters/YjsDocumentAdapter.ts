@@ -113,6 +113,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             // Never seeded on project creation (see YjsDocumentManager.initializeDocument),
             // so the default lives here rather than in the document.
             passScore: normalizePassScore(meta.get('passScore')),
+            passScoreEveryActivity: this.parseBoolean(meta.get('passScoreEveryActivity'), false),
 
             // Custom content
             extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,

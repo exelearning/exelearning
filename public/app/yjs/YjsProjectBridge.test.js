@@ -4074,6 +4074,23 @@ describe('YjsProjectBridge', () => {
       expect(mockInput.checked).toBe(true);
     });
 
+    it('updates the every-activity pass rule checkbox from its metadata key', () => {
+      const mockInput = {
+        getAttribute: (attr) => attr === 'property' ? 'pp_passScoreEveryActivity' : 'checkbox',
+        type: 'checkbox',
+        checked: false,
+        value: '',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+      bridge.documentManager.getMetadata = () => ({
+        get: (key) => key === 'passScoreEveryActivity' ? 'true' : undefined,
+      });
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.checked).toBe(true);
+    });
+
     it('updates text inputs', () => {
       const mockInput = {
         getAttribute: (attr) => {

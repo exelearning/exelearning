@@ -69,6 +69,7 @@ export interface ExportMetadata {
     exportSource?: boolean; // Include content.xml for re-editing
     globalFont?: string; // Global font for accessibility
     passScore?: number; // Project-wide mark out of 10 an activity needs to be passed
+    passScoreEveryActivity?: boolean; // Pass a SCORM page only when every activity reaches its own mark
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>
@@ -670,6 +671,11 @@ export interface PageRenderOptions {
     addMathJax?: boolean;
     /** Project-wide pass score (0-10). Published to the page so iDevices can read it at runtime. */
     passScore?: number;
+    /**
+     * Pass a SCORM page only when every activity reaches its own mark. Published
+     * to the page only when true, so the SCORM runtimes can read it.
+     */
+    passScoreEveryActivity?: boolean;
 
     // Custom head content
     extraHeadContent?: string;

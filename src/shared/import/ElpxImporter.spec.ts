@@ -1465,10 +1465,11 @@ describe('ElpxImporter - Legacy Format', () => {
             await importer.importFromBuffer(new Uint8Array(elpBuffer));
 
             const metadata = ydoc.getMap('metadata');
-            // Legacy files should have default addMathJax, globalFont and passScore
+            // Legacy files should have default addMathJax, globalFont and pass score options
             expect(metadata.get('addMathJax')).toBe(false);
             expect(metadata.get('globalFont')).toBe('default');
             expect(metadata.get('passScore')).toBe(5);
+            expect(metadata.get('passScoreEveryActivity')).toBe(false);
             // Should have language
             expect(metadata.get('language')).toBeTruthy();
 
@@ -3952,19 +3953,21 @@ ${passScoreProperty}
 </odeNavStructures>
 </ode>`;
 
-    const importPassScore = async (passScoreProperty: string): Promise<unknown> => {
+    const importMetadata = async (property: string, key: string): Promise<unknown> => {
         const ydoc = new Y.Doc();
         const importer = new ElpxImporter(ydoc, null, silentLogger);
 
         await importer.importFromZipContents(
-            { 'content.xml': new TextEncoder().encode(buildContentXml(passScoreProperty)) },
+            { 'content.xml': new TextEncoder().encode(buildContentXml(property)) },
             { clearExisting: true },
         );
 
-        const value = ydoc.getMap('metadata').get('passScore');
+        const value = ydoc.getMap('metadata').get(key);
         ydoc.destroy();
         return value;
     };
+    const importPassScore = (property: string) => importMetadata(property, 'passScore');
+    const importEveryActivity = (property: string) => importMetadata(property, 'passScoreEveryActivity');
 
     it('reads pp_passScore as a number', async () => {
         expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>7.5</value></odeProperty>')).toBe(
@@ -3986,5 +3989,20 @@ ${passScoreProperty}
 
     it('falls back to the default when the stored value is not a number', async () => {
         expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>abc</value></odeProperty>')).toBe(5);
+    });
+
+    it.each([
+        ['true', true],
+        ['false', false],
+    ])('reads pp_passScoreEveryActivity "%s"', async (stored, expected) => {
+        expect(
+            await importEveryActivity(
+                `  <odeProperty><key>pp_passScoreEveryActivity</key><value>${stored}</value></odeProperty>`,
+            ),
+        ).toBe(expected);
+    });
+
+    it('leaves the every-activity rule off when the file predates it', async () => {
+        expect(await importEveryActivity('')).toBe(false);
     });
 });

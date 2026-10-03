@@ -2090,6 +2090,7 @@ class YjsProjectBridge {
       'pp_addMathJax': 'addMathJax',
       'pp_globalFont': 'globalFont',
       'pp_passScore': 'passScore',
+      'pp_passScoreEveryActivity': 'passScoreEveryActivity',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',

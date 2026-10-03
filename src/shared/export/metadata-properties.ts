@@ -61,6 +61,17 @@ export const PASS_SCORE_STEP = 0.1;
 export const PASS_SCORE_META_NAME = 'exe-pass-score';
 
 /**
+ * Name of the META tag a page carries, with "true", when the author requires
+ * every SCORM activity on it to reach its own pass mark instead of judging the
+ * page by the weighted mean of the marks. Written only when the option is on, so
+ * a page without it grades exactly as before. Read by the SCORM 1.2 policy
+ * (public/app/common/scorm/scorm12/exe-scorm12-policy.js) and by
+ * `$exe.passScore.requiresEveryActivity()` in common.js -- change all three
+ * together.
+ */
+export const PASS_SCORE_EVERY_ACTIVITY_META_NAME = 'exe-pass-score-every-activity';
+
+/**
  * Clamp an authored pass score into the 0-10 one-decimal domain.
  *
  * Anything that is not a finite number -- a missing property, an empty input,
@@ -235,6 +246,13 @@ export const METADATA_PROPERTIES: MetadataPropertyConfig[] = [
         xmlKey: 'pp_passScore',
         type: 'number',
         defaultValue: PASS_SCORE_DEFAULT,
+        category: 'export',
+    },
+    {
+        key: 'passScoreEveryActivity',
+        xmlKey: 'pp_passScoreEveryActivity',
+        type: 'boolean',
+        defaultValue: false,
         category: 'export',
     },
 

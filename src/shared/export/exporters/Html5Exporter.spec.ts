@@ -506,6 +506,16 @@ describe('Html5Exporter', () => {
 
             expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
         });
+
+        it('should publish the every-activity pass rule only when the project asks for it', () => {
+            const off = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const on = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(off).not.toContain('exe-pass-score-every-activity');
+            expect(on).toContain('<meta name="exe-pass-score-every-activity" content="true">');
+        });
     });
 
     describe('Page Link Generation', () => {

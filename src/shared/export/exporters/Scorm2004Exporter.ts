@@ -471,6 +471,7 @@ export class Scorm2004Exporter extends Html5Exporter {
             // Project-wide pass score, published to the page as a META so iDevices
             // resolve it at runtime instead of carrying a copy of their own.
             passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
             // Accessibility toolbar (exe_atools) when enabled in project properties (#1978)
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             totalPages: allPages.length,

@@ -230,6 +230,26 @@ describe('YjsDocumentAdapter', () => {
             });
         });
 
+        describe('passScoreEveryActivity', () => {
+            it.each([
+                ['the string the properties form stores', 'true', true],
+                ['a boolean', true, true],
+                ['"false"', 'false', false],
+            ])('should read %s', (_label, stored, expected) => {
+                manager = new MockYjsDocumentManager({ passScoreEveryActivity: stored });
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScoreEveryActivity).toBe(expected);
+            });
+
+            it('should be off when the project never set it', () => {
+                manager = new MockYjsDocumentManager({});
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScoreEveryActivity).toBe(false);
+            });
+        });
+
         it('should fall back to APP_VERSION env var when neither yjs field nor window are set', () => {
             const originalAppVersion = process.env.APP_VERSION;
             process.env.APP_VERSION = 'v9.9.9-test';

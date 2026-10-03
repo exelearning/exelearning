@@ -950,6 +950,22 @@ describe('xml-parser', () => {
             const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.addExeLink).toBe(true);
         });
+
+        it('should parse the every-activity pass rule', () => {
+            const xml = `
+                <ode>
+                    <odeProperties>
+                        <odeProperty>
+                            <key>pp_passScoreEveryActivity</key>
+                            <value>true</value>
+                        </odeProperty>
+                    </odeProperties>
+                    <odeNavStructures></odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            expect((result.meta as Record<string, unknown>).passScoreEveryActivity).toBe(true);
+        });
     });
 
     describe('number property parsing', () => {
