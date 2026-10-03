@@ -15693,6 +15693,1186 @@
         <source>To save the score, the activity needs at least one question.</source>
         <target>~Puntuazioa gordetzeko, jarduerak gutxienez galdera bat behar du.</target>
       </trans-unit>
+      <trans-unit id="23tstw8" resname="Free Mermaid diagram editor">
+        <source>Free Mermaid diagram editor</source>
+        <target>Mermaid diagramen editore librea</target>
+      </trans-unit>
+      <trans-unit id="datwsik" resname="Diagram">
+        <source>Diagram</source>
+        <target>Diagrama</target>
+      </trans-unit>
+      <trans-unit id="46tkt5p" resname="Choose an example">
+        <source>Choose an example</source>
+        <target>Aukeratu adibide bat</target>
+      </trans-unit>
+      <trans-unit id="nyxckz9" resname="The current diagram will be erased. Continue?">
+        <source>The current diagram will be erased. Continue?</source>
+        <target>Uneko diagrama ezabatuko da. Jarraitu nahi duzu?</target>
+      </trans-unit>
+      <trans-unit id="szgx3oq" resname="Open a file (.mmd, .md, .txt)">
+        <source>Open a file (.mmd, .md, .txt)</source>
+        <target>Ireki fitxategi bat (.mmd, .md, .txt)</target>
+      </trans-unit>
+      <trans-unit id="43n3n4w" resname="Save as a .mmd file">
+        <source>Save as a .mmd file</source>
+        <target>Gorde .mmd fitxategi gisa</target>
+      </trans-unit>
+      <trans-unit id="hgnjv87" resname="Copy the code">
+        <source>Copy the code</source>
+        <target>Kopiatu kodea</target>
+      </trans-unit>
+      <trans-unit id="a8a4wzg" resname="Download the diagram as SVG">
+        <source>Download the diagram as SVG</source>
+        <target>Deskargatu diagrama SVG formatuan</target>
+      </trans-unit>
+      <trans-unit id="ki2zqbr" resname="Download the diagram as PNG">
+        <source>Download the diagram as PNG</source>
+        <target>Deskargatu diagrama PNG formatuan</target>
+      </trans-unit>
+      <trans-unit id="bzgdmgk" resname="Copy the diagram as an image">
+        <source>Copy the diagram as an image</source>
+        <target>Kopiatu diagrama irudi gisa</target>
+      </trans-unit>
+      <trans-unit id="3rci02q" resname="Share the diagram">
+        <source>Share the diagram</source>
+        <target>Partekatu diagrama</target>
+      </trans-unit>
+      <trans-unit id="26ztph5" resname="Link to the editor">
+        <source>Link to the editor</source>
+        <target>Editorerako esteka</target>
+      </trans-unit>
+      <trans-unit id="9kxxumt" resname="Opens in Sirena with the code in view, ready to keep editing">
+        <source>Opens in Sirena with the code in view, ready to keep editing</source>
+        <target>Sirenan irekitzen da, kodea ikusgai, editatzen jarraitzeko</target>
+      </trans-unit>
+      <trans-unit id="n2467jp" resname="Full-screen link">
+        <source>Full-screen link</source>
+        <target>Pantaila osorako esteka</target>
+      </trans-unit>
+      <trans-unit id="29raj9o" resname="Opens the diagram alone, filling the whole window">
+        <source>Opens the diagram alone, filling the whole window</source>
+        <target>Diagrama bakarrik irekitzen da, leiho osoa hartuta</target>
+      </trans-unit>
+      <trans-unit id="dtfjje0" resname="Embed code">
+        <source>Embed code</source>
+        <target>Txertatzeko kodea</target>
+      </trans-unit>
+      <trans-unit id="e7fdku2" resname="A frame ready to paste into any web page: a blog, a personal site or a teaching resource">
+        <source>A frame ready to paste into any web page: a blog, a personal site or a teaching resource</source>
+        <target>Edozein web-orritan itsasteko prest dagoen markoa: blog bat, norberaren weba edo ikasmaterial bat</target>
+      </trans-unit>
+      <trans-unit id="xp4jxhk" resname="Embed code copied to the clipboard">
+        <source>Embed code copied to the clipboard</source>
+        <target>Txertatzeko kodea arbelera kopiatu da</target>
+      </trans-unit>
+      <trans-unit id="cykyzm9" resname="Edit in Sirena">
+        <source>Edit in Sirena</source>
+        <target>Editatu Sirenan</target>
+      </trans-unit>
+      <trans-unit id="9cyjcal" resname="Title and description for accessibility">
+        <source>Title and description for accessibility</source>
+        <target>Irisgarritasunerako izenburua eta deskribapena</target>
+      </trans-unit>
+      <trans-unit id="kgx5hxd" resname="Diagram title and description">
+        <source>Diagram title and description</source>
+        <target>Diagramaren izenburua eta deskribapena</target>
+      </trans-unit>
+      <trans-unit id="cn9mq0o" resname="They are stored inside the diagram and read out by screen readers. Worth adding to any material that gets published.">
+        <source>They are stored inside the diagram and read out by screen readers. Worth adding to any material that gets published.</source>
+        <target>Diagramaren barruan gordetzen dira eta pantaila-irakurgailuek irakurtzen dituzte. Komeni da argitaratzen den material guztian jartzea.</target>
+      </trans-unit>
+      <trans-unit id="m9jvylr" resname="Syntax for this diagram">
+        <source>Syntax for this diagram</source>
+        <target>Diagrama honen sintaxia</target>
+      </trans-unit>
+      <trans-unit id="1bkm08x" resname="Clicking a snippet inserts it into the editor.">
+        <source>Clicking a snippet inserts it into the editor.</source>
+        <target>Zati bat sakatzean, editorean txertatzen da.</target>
+      </trans-unit>
+      <trans-unit id="0pex9im" resname="For this diagram type, the syntax is in the Mermaid reference.">
+        <source>For this diagram type, the syntax is in the Mermaid reference.</source>
+        <target>Diagrama mota honetarako, sintaxia Mermaid-en erreferentzian dago.</target>
+      </trans-unit>
+      <trans-unit id="kdc30l5" resname="Download the diagram">
+        <source>Download the diagram</source>
+        <target>Deskargatu diagrama</target>
+      </trans-unit>
+      <trans-unit id="xsxixl1" resname="Print or save as PDF">
+        <source>Print or save as PDF</source>
+        <target>Inprimatu edo PDF gisa gorde</target>
+      </trans-unit>
+      <trans-unit id="u84ifjm" resname="There is no diagram to print.">
+        <source>There is no diagram to print.</source>
+        <target>Ez dago inprimatzeko diagramarik.</target>
+      </trans-unit>
+      <trans-unit id="g892a2c" resname="PNG image">
+        <source>PNG image</source>
+        <target>PNG irudia</target>
+      </trans-unit>
+      <trans-unit id="kcq06jo" resname="To insert into a document or a presentation">
+        <source>To insert into a document or a presentation</source>
+        <target>Dokumentu batean edo aurkezpen batean txertatzeko</target>
+      </trans-unit>
+      <trans-unit id="xjnjwl8" resname="SVG image">
+        <source>SVG image</source>
+        <target>SVG irudia</target>
+      </trans-unit>
+      <trans-unit id="17plwwn" resname="Vector: scales without losing quality and can be edited">
+        <source>Vector: scales without losing quality and can be edited</source>
+        <target>Bektoriala: kalitatea galdu gabe handitzen da eta edita daiteke</target>
+      </trans-unit>
+      <trans-unit id="2b8eu0x" resname="HTML page">
+        <source>HTML page</source>
+        <target>HTML orria</target>
+      </trans-unit>
+      <trans-unit id="1z7dmcr" resname="The diagram on its own, ready to open in a browser">
+        <source>The diagram on its own, ready to open in a browser</source>
+        <target>Diagrama bakarrik, nabigatzailean irekitzeko prest</target>
+      </trans-unit>
+      <trans-unit id="9zn15ae" resname=".mmd source">
+        <source>.mmd source</source>
+        <target>.mmd kodea</target>
+      </trans-unit>
+      <trans-unit id="7ir9vwm" resname="The diagram text, to keep editing it here">
+        <source>The diagram text, to keep editing it here</source>
+        <target>Diagramaren testua, hemen editatzen jarraitzeko</target>
+      </trans-unit>
+      <trans-unit id="mpyvio2" resname="PNG resolution">
+        <source>PNG resolution</source>
+        <target>PNGaren bereizmena</target>
+      </trans-unit>
+      <trans-unit id="44mz4ty" resname="1× (screen size)">
+        <source>1× (screen size)</source>
+        <target>1× (pantailako tamaina)</target>
+      </trans-unit>
+      <trans-unit id="e1ca63i" resname="2× (sharp)">
+        <source>2× (sharp)</source>
+        <target>2× (garbia)</target>
+      </trans-unit>
+      <trans-unit id="lz0skhz" resname="4× (for large prints)">
+        <source>4× (for large prints)</source>
+        <target>4× (handi inprimatzeko)</target>
+      </trans-unit>
+      <trans-unit id="q7ewbf4" resname="PNG background">
+        <source>PNG background</source>
+        <target>PNGaren atzeko planoa</target>
+      </trans-unit>
+      <trans-unit id="jz11cpv" resname="The editor one">
+        <source>The editor one</source>
+        <target>Editorearena</target>
+      </trans-unit>
+      <trans-unit id="cpg5hzp" resname="Transparent">
+        <source>Transparent</source>
+        <target>Gardena</target>
+      </trans-unit>
+      <trans-unit id="umbp9rr" resname="It also applies to the copy as image button.">
+        <source>It also applies to the copy as image button.</source>
+        <target>Irudi gisa kopiatzeko botoiari ere aplikatzen zaio.</target>
+      </trans-unit>
+      <trans-unit id="2m3kukj" resname="Stroke style">
+        <source>Stroke style</source>
+        <target>Trazuaren estiloa</target>
+      </trans-unit>
+      <trans-unit id="34k38ei" resname="Classic">
+        <source>Classic</source>
+        <target>Klasikoa</target>
+      </trans-unit>
+      <trans-unit id="k4po2ee" resname="Hand drawn">
+        <source>Hand drawn</source>
+        <target>Eskuz marraztua</target>
+      </trans-unit>
+      <trans-unit id="2a5hf8w" resname="Modern">
+        <source>Modern</source>
+        <target>Modernoa</target>
+      </trans-unit>
+      <trans-unit id="7el9c67" resname="Text size">
+        <source>Text size</source>
+        <target>Testuaren tamaina</target>
+      </trans-unit>
+      <trans-unit id="u4lf2dh" resname="Typography">
+        <source>Typography</source>
+        <target>Tipografia</target>
+      </trans-unit>
+      <trans-unit id="x1dhldw" resname="Small">
+        <source>Small</source>
+        <target>Txikia</target>
+      </trans-unit>
+      <trans-unit id="hppf45f" resname="Normal">
+        <source>Normal</source>
+        <target>Normala</target>
+      </trans-unit>
+      <trans-unit id="tmmt49h" resname="Large">
+        <source>Large</source>
+        <target>Handia</target>
+      </trans-unit>
+      <trans-unit id="544x4hz" resname="Very large">
+        <source>Very large</source>
+        <target>Oso handia</target>
+      </trans-unit>
+      <trans-unit id="a4m2rv2" resname="Main colour">
+        <source>Main colour</source>
+        <target>Kolore nagusia</target>
+      </trans-unit>
+      <trans-unit id="qjg6dvg" resname="Theme colours">
+        <source>Theme colours</source>
+        <target>Gaiaren koloreak</target>
+      </trans-unit>
+      <trans-unit id="dg37kvh" resname="Grey">
+        <source>Grey</source>
+        <target>Grisa</target>
+      </trans-unit>
+      <trans-unit id="01tuyt8" resname="Black and white">
+        <source>Black and white</source>
+        <target>Zuri-beltza</target>
+      </trans-unit>
+      <trans-unit id="ru5695v" resname="Custom colour…">
+        <source>Custom colour…</source>
+        <target>Kolore propioa…</target>
+      </trans-unit>
+      <trans-unit id="afb07sg" resname="Lines">
+        <source>Lines</source>
+        <target>Marrak</target>
+      </trans-unit>
+      <trans-unit id="ibqu6p9" resname="Arrow label background">
+        <source>Arrow label background</source>
+        <target>Gezi-etiketen atzealdea</target>
+      </trans-unit>
+      <trans-unit id="4cfyfcy" resname="Changing the fill adjusts border, lines, text and label background on its own until they are set by hand.">
+        <source>Changing the fill adjusts border, lines, text and label background on its own until they are set by hand.</source>
+        <target>Betegarria aldatzean, ertza, marrak, testua eta etiketen hondoa bakarrik doitzen dira ukitzen ez diren bitartean.</target>
+      </trans-unit>
+      <trans-unit id="l367rrw" resname="%% Concept map: every link carries a verb, for example A[Water] -- is found as --&gt; B[Three states]">
+        <source>%% Concept map: every link carries a verb, for example A[Water] -- is found as --&gt; B[Three states]</source>
+        <target>%% Kontzeptu-mapa: lotura bakoitzak aditz bat darama, adibidez A[Ura] -- egoera hauetan agertzen da --&gt; B[Hiru egoera]</target>
+      </trans-unit>
+      <trans-unit id="82uid1e" resname="Colours of the element and of the label background">
+        <source>Colours of the element and of the label background</source>
+        <target>Elementuaren eta etiketen hondoaren koloreak</target>
+      </trans-unit>
+      <trans-unit id="qta6qhs" resname="Theme">
+        <source>Theme</source>
+        <target>Gaia</target>
+      </trans-unit>
+      <trans-unit id="fr06d5h" resname="Theme: the colours of the whole diagram">
+        <source>Theme: the colours of the whole diagram</source>
+        <target>Gaia: diagrama osoaren koloreak</target>
+      </trans-unit>
+      <trans-unit id="x94nhie" resname="Remove colours set by hand">
+        <source>Remove colours set by hand</source>
+        <target>Eskuz jarritako koloreak kendu</target>
+      </trans-unit>
+      <trans-unit id="ppg4hz1" resname="The diagram has colours given to boxes, arrows, labels or slices, which show on top of the theme. If this box is ticked, they are removed when a theme is chosen; otherwise, they are kept.">
+        <source>The diagram has colours given to boxes, arrows, labels or slices, which show on top of the theme. If this box is ticked, they are removed when a theme is chosen; otherwise, they are kept.</source>
+        <target>Diagramak kutxei, geziei, etiketei edo sektoreei emandako koloreak ditu, eta gaiaren gainetik ikusten dira. Lauki hau markatzen bada, gai bat aukeratzean kentzen dira; bestela, mantendu egiten dira.</target>
+      </trans-unit>
+      <trans-unit id="t4vrbb8" resname="Whole diagram">
+        <source>Whole diagram</source>
+        <target>Diagrama osoa</target>
+      </trans-unit>
+      <trans-unit id="qsqsar5" resname="Whole box">
+        <source>Whole box</source>
+        <target>Kutxa osoa</target>
+      </trans-unit>
+      <trans-unit id="sbsot0l" resname="Text only">
+        <source>Text only</source>
+        <target>Testua bakarrik</target>
+      </trans-unit>
+      <trans-unit id="ix14a6o" resname="Border only">
+        <source>Border only</source>
+        <target>Ertza bakarrik</target>
+      </trans-unit>
+      <trans-unit id="6rp80qu" resname="Other size">
+        <source>Other size</source>
+        <target>Beste tamaina bat</target>
+      </trans-unit>
+      <trans-unit id="nrq96qw" resname="Font">
+        <source>Font</source>
+        <target>Letra mota</target>
+      </trans-unit>
+      <trans-unit id="fngwljb" resname="Serif">
+        <source>Serif</source>
+        <target>Serifduna</target>
+      </trans-unit>
+      <trans-unit id="228mb03" resname="Handwritten">
+        <source>Handwritten</source>
+        <target>Eskuz idatzia</target>
+      </trans-unit>
+      <trans-unit id="fcr64hk" resname="Box width">
+        <source>Box width</source>
+        <target>Kutxen zabalera</target>
+      </trans-unit>
+      <trans-unit id="b6907ny" resname="Narrow">
+        <source>Narrow</source>
+        <target>Estua</target>
+      </trans-unit>
+      <trans-unit id="5dmtjor" resname="Wide">
+        <source>Wide</source>
+        <target>Zabala</target>
+      </trans-unit>
+      <trans-unit id="v93hmql" resname="Very wide">
+        <source>Very wide</source>
+        <target>Oso zabala</target>
+      </trans-unit>
+      <trans-unit id="6vmaqgj" resname="Other width">
+        <source>Other width</source>
+        <target>Beste zabalera bat</target>
+      </trans-unit>
+      <trans-unit id="kxnb9id" resname="Layout engine">
+        <source>Layout engine</source>
+        <target>Banaketa-motorra</target>
+      </trans-unit>
+      <trans-unit id="bb76c5x" resname="Merge arrows going to the same place">
+        <source>Merge arrows going to the same place</source>
+        <target>Leku berera doazen geziak batu</target>
+      </trans-unit>
+      <trans-unit id="xgkwrbh" resname="This diagram type does not accept an accessible title or description: they are kept as a comment in the code and do not reach screen readers.">
+        <source>This diagram type does not accept an accessible title or description: they are kept as a comment in the code and do not reach screen readers.</source>
+        <target>Diagrama mota honek ez du titulu eta deskribapen irisgarririk onartzen: kodean iruzkin gisa gordetzen dira, eta ez dira pantaila-irakurlera iristen.</target>
+      </trans-unit>
+      <trans-unit id="zuhry1q" resname="ELK layered">
+        <source>ELK layered</source>
+        <target>ELK geruzaka</target>
+      </trans-unit>
+      <trans-unit id="5354bwd" resname="The default: right-angled arrows and elements in levels">
+        <source>The default: right-angled arrows and elements in levels</source>
+        <target>Lehenetsia: geziak angelu zuzenean eta elementuak mailaka</target>
+      </trans-unit>
+      <trans-unit id="xpnwebn" resname="Dagre">
+        <source>Dagre</source>
+        <target>Dagre</target>
+      </trans-unit>
+      <trans-unit id="o7646hi" resname="The classic one: supports line shape and spacing">
+        <source>The classic one: supports line shape and spacing</source>
+        <target>Klasikoa: lerroen forma eta tartea onartzen ditu</target>
+      </trans-unit>
+      <trans-unit id="h8cq4np" resname="ELK tree">
+        <source>ELK tree</source>
+        <target>ELK zuhaitza</target>
+      </trans-unit>
+      <trans-unit id="y8tbna2" resname="For hierarchies, like an organisation chart">
+        <source>For hierarchies, like an organisation chart</source>
+        <target>Hierarkietarako, organigrama bat bezala</target>
+      </trans-unit>
+      <trans-unit id="srctjfu" resname="ELK radial">
+        <source>ELK radial</source>
+        <target>ELK erradiala</target>
+      </trans-unit>
+      <trans-unit id="tg3gl2d" resname="In rings around the first element">
+        <source>In rings around the first element</source>
+        <target>Lehen elementuaren inguruko eraztunetan</target>
+      </trans-unit>
+      <trans-unit id="lq7vwi7" resname="ELK stress">
+        <source>ELK stress</source>
+        <target>ELK tentsioz</target>
+      </trans-unit>
+      <trans-unit id="q0myysk" resname="Spreads by distances, with no direction">
+        <source>Spreads by distances, with no direction</source>
+        <target>Distantzien arabera banatzen du, norabiderik gabe</target>
+      </trans-unit>
+      <trans-unit id="jbf62w5" resname="ELK force">
+        <source>ELK force</source>
+        <target>ELK indarrez</target>
+      </trans-unit>
+      <trans-unit id="2lkk84o" resname="Like magnets pushing apart, with no direction">
+        <source>Like magnets pushing apart, with no direction</source>
+        <target>Elkar aldaratzen duten imanak bezala, norabiderik gabe</target>
+      </trans-unit>
+      <trans-unit id="cdxvbo8" resname="ELK no overlaps">
+        <source>ELK no overlaps</source>
+        <target>ELK gainjartzerik gabe</target>
+      </trans-unit>
+      <trans-unit id="0i0jvux" resname="Separates what overlaps, changing as little as possible">
+        <source>Separates what overlaps, changing as little as possible</source>
+        <target>Gainjartzen dena bereizten du, ahalik eta gutxien aldatuz</target>
+      </trans-unit>
+      <trans-unit id="bckfj1k" resname="ELK boxes">
+        <source>ELK boxes</source>
+        <target>ELK kutxetan</target>
+      </trans-unit>
+      <trans-unit id="20zeyml" resname="In rows, ignoring the arrows">
+        <source>In rows, ignoring the arrows</source>
+        <target>Errenkadetan, geziak kontuan hartu gabe</target>
+      </trans-unit>
+      <trans-unit id="b11zfm6" resname="ELK packed">
+        <source>ELK packed</source>
+        <target>ELK paketatua</target>
+      </trans-unit>
+      <trans-unit id="edq58m7" resname="In a compact rectangle, ignoring the arrows">
+        <source>In a compact rectangle, ignoring the arrows</source>
+        <target>Laukizuzen trinko batean, geziak kontuan hartu gabe</target>
+      </trans-unit>
+      <trans-unit id="wh44sad" resname="ELK by parts">
+        <source>ELK by parts</source>
+        <target>ELK zatika</target>
+      </trans-unit>
+      <trans-unit id="yguwvjf" resname="Places unconnected parts separately">
+        <source>Places unconnected parts separately</source>
+        <target>Konektatuta ez dauden zatiak aparte jartzen ditu</target>
+      </trans-unit>
+      <trans-unit id="euhh2mt" resname="Undo (Ctrl+Z)">
+        <source>Undo (Ctrl+Z)</source>
+        <target>Desegin (Ctrl+Z)</target>
+      </trans-unit>
+      <trans-unit id="uhj32aa" resname="Redo (Ctrl+Y)">
+        <source>Redo (Ctrl+Y)</source>
+        <target>Berregin (Ctrl+Y)</target>
+      </trans-unit>
+      <trans-unit id="ff83kw5" resname="The arrow">
+        <source>The arrow</source>
+        <target>Gezia</target>
+      </trans-unit>
+      <trans-unit id="pun9x08" resname="Colour the arrow on this line:">
+        <source>Colour the arrow on this line:</source>
+        <target>Lerro honetako gezia koloreztatu:</target>
+      </trans-unit>
+      <trans-unit id="vs82179" resname="All lines">
+        <source>All lines</source>
+        <target>Lerro guztiak</target>
+      </trans-unit>
+      <trans-unit id="c8ckaxa" resname="Arrow thickness">
+        <source>Arrow thickness</source>
+        <target>Gezien lodiera</target>
+      </trans-unit>
+      <trans-unit id="wdzi1k0" resname="Line type">
+        <source>Line type</source>
+        <target>Lerro mota</target>
+      </trans-unit>
+      <trans-unit id="7q7iqnp" resname="Arrow heads">
+        <source>Arrow heads</source>
+        <target>Puntak</target>
+      </trans-unit>
+      <trans-unit id="r85wk1l" resname="Dash-dot">
+        <source>Dash-dot</source>
+        <target>Marra eta puntua</target>
+      </trans-unit>
+      <trans-unit id="nvue0lj" resname="Thick">
+        <source>Thick</source>
+        <target>Lodia</target>
+      </trans-unit>
+      <trans-unit id="rp3wjp5" resname="Invisible">
+        <source>Invisible</source>
+        <target>Ikusezina</target>
+      </trans-unit>
+      <trans-unit id="fickoj4" resname="Arrow at both ends">
+        <source>Arrow at both ends</source>
+        <target>Gezia bi muturretan</target>
+      </trans-unit>
+      <trans-unit id="f59f49h" resname="Circle at both ends">
+        <source>Circle at both ends</source>
+        <target>Zirkulua bi muturretan</target>
+      </trans-unit>
+      <trans-unit id="hy4pqxn" resname="Cross at both ends">
+        <source>Cross at both ends</source>
+        <target>Gurutzea bi muturretan</target>
+      </trans-unit>
+      <trans-unit id="lp54b63" resname="Border thickness">
+        <source>Border thickness</source>
+        <target>Ertzen lodiera</target>
+      </trans-unit>
+      <trans-unit id="i0apqwr" resname="Other thickness">
+        <source>Other thickness</source>
+        <target>Beste lodiera bat</target>
+      </trans-unit>
+      <trans-unit id="fpos10o" resname="Thin">
+        <source>Thin</source>
+        <target>Mehea</target>
+      </trans-unit>
+      <trans-unit id="hqhmhk3" resname="Very thick">
+        <source>Very thick</source>
+        <target>Oso lodia</target>
+      </trans-unit>
+      <trans-unit id="bo2n3f3" resname="At the cursor">
+        <source>At the cursor</source>
+        <target>Kurtsorea dagoen lekuan</target>
+      </trans-unit>
+      <trans-unit id="u041vfi" resname="Thickness of the arrow on this line:">
+        <source>Thickness of the arrow on this line:</source>
+        <target>Lerro honetako geziaren lodiera:</target>
+      </trans-unit>
+      <trans-unit id="tjioisw" resname="Border thickness of the element">
+        <source>Border thickness of the element</source>
+        <target>Elementuaren ertzaren lodiera</target>
+      </trans-unit>
+      <trans-unit id="xypwad9" resname="The border">
+        <source>The border</source>
+        <target>Ertza</target>
+      </trans-unit>
+      <trans-unit id="ej2jwjh" resname="Place the cursor on the line of an arrow or an element.">
+        <source>Place the cursor on the line of an arrow or an element.</source>
+        <target>Jarri kurtsorea gezi baten edo elementu baten lerroan.</target>
+      </trans-unit>
+      <trans-unit id="61s4bux" resname="This box">
+        <source>This box</source>
+        <target>Kutxa hau</target>
+      </trans-unit>
+      <trans-unit id="duz2k06" resname="All boxes">
+        <source>All boxes</source>
+        <target>Kutxa guztiak</target>
+      </trans-unit>
+      <trans-unit id="9iptr7l" resname="Changes the boxes that carry the general shape ({n} of {m}); those changed one by one are kept.">
+        <source>Changes the boxes that carry the general shape ({n} of {m}); those changed one by one are kept.</source>
+        <target>Forma orokorra duten kutxak aldatzen ditu ({n} / {m}); banan-banan aldatutakoak errespetatzen dira.</target>
+      </trans-unit>
+      <trans-unit id="wf7jl72" resname="No box carries the general shape; those changed one by one are kept.">
+        <source>No box carries the general shape; those changed one by one are kept.</source>
+        <target>Kutxa bakar batek ere ez du forma orokorra; banan-banan aldatutakoak errespetatzen dira.</target>
+      </trans-unit>
+      <trans-unit id="ndgsjr2" resname="Boxes: shape and width">
+        <source>Boxes: shape and width</source>
+        <target>Kutxak: forma eta zabalera</target>
+      </trans-unit>
+      <trans-unit id="i2zlizq" resname="Box shape">
+        <source>Box shape</source>
+        <target>Kutxen forma</target>
+      </trans-unit>
+      <trans-unit id="2vfh0hd" resname="Of the box at the cursor, or of all of them">
+        <source>Of the box at the cursor, or of all of them</source>
+        <target>Kurtsorea dagoen kutxarena, edo guztiena</target>
+      </trans-unit>
+      <trans-unit id="farkqq2" resname="Where a long text is broken into several lines">
+        <source>Where a long text is broken into several lines</source>
+        <target>Testu luze bat zenbait lerrotan mozten den puntua</target>
+      </trans-unit>
+      <trans-unit id="yfhdn6n" resname="Shape of the element">
+        <source>Shape of the element</source>
+        <target>Elementuaren forma</target>
+      </trans-unit>
+      <trans-unit id="xafjuju" resname="Place the cursor on the line of an element and press the button again.">
+        <source>Place the cursor on the line of an element and press the button again.</source>
+        <target>Jarri kurtsorea elementu baten lerroan eta sakatu berriro botoia.</target>
+      </trans-unit>
+      <trans-unit id="shnsmeu" resname="Arrow text">
+        <source>Arrow text</source>
+        <target>Geziaren testua</target>
+      </trans-unit>
+      <trans-unit id="7bhclk2" resname="Remove the text colour">
+        <source>Remove the text colour</source>
+        <target>Testuaren kolorea kendu</target>
+      </trans-unit>
+      <trans-unit id="9rodhyb" resname="Arrow properties">
+        <source>Arrow properties</source>
+        <target>Geziaren propietateak</target>
+      </trans-unit>
+      <trans-unit id="av3kcre" resname="In flowcharts and concept maps:">
+        <source>In flowcharts and concept maps:</source>
+        <target>Fluxu-diagrametan eta kontzeptu-mapetan:</target>
+      </trans-unit>
+      <trans-unit id="8usevyq" resname="Right-click a box, an arrow or the background: change its format.">
+        <source>Right-click a box, an arrow or the background: change its format.</source>
+        <target>Eskuineko botoia kutxa, gezi edo hondo baten gainean: haren formatua aldatzen du.</target>
+      </trans-unit>
+      <trans-unit id="2iu2s8y" resname="Double-click: edit the text.">
+        <source>Double-click: edit the text.</source>
+        <target>Klik bikoitza: testua editatzen du.</target>
+      </trans-unit>
+      <trans-unit id="40gn1cc" resname="Long press a box, an arrow or the background: change its format.">
+        <source>Long press a box, an arrow or the background: change its format.</source>
+        <target>Luze sakatu kutxa, gezi edo hondo baten gainean: haren formatua aldatzen du.</target>
+      </trans-unit>
+      <trans-unit id="7mtboqg" resname="Double tap: edit the text.">
+        <source>Double tap: edit the text.</source>
+        <target>Sakatze bikoitza: testua editatzen du.</target>
+      </trans-unit>
+      <trans-unit id="7efeaeb" resname="Close the notice">
+        <source>Close the notice</source>
+        <target>Oharra itxi</target>
+      </trans-unit>
+      <trans-unit id="j9ytk9i" resname="Do not show again">
+        <source>Do not show again</source>
+        <target>Ez erakutsi berriro</target>
+      </trans-unit>
+      <trans-unit id="jqtsxqh" resname="Width of the code panel">
+        <source>Width of the code panel</source>
+        <target>Kode-panelaren zabalera</target>
+      </trans-unit>
+      <trans-unit id="vn8rpk3" resname="Bold and italic cannot be used in a text that contains a formula.">
+        <source>Bold and italic cannot be used in a text that contains a formula.</source>
+        <target>Lodia eta etzana ezin dira erabili formula bat daukan testu batean.</target>
+      </trans-unit>
+      <trans-unit id="ubompoe" resname="Line break inside the text">
+        <source>Line break inside the text</source>
+        <target>Lerro-jauzia testuaren barruan</target>
+      </trans-unit>
+      <trans-unit id="6embv1f" resname="Write the text">
+        <source>Write the text</source>
+        <target>Testua idatzi</target>
+      </trans-unit>
+      <trans-unit id="8a82vaf" resname="Delete the box">
+        <source>Delete the box</source>
+        <target>Kutxa ezabatu</target>
+      </trans-unit>
+      <trans-unit id="a2if30x" resname="Add a box inside">
+        <source>Add a box inside</source>
+        <target>Kutxa bat gehitu barruan</target>
+      </trans-unit>
+      <trans-unit id="rk8m0vb" resname="Tree item">
+        <source>Tree item</source>
+        <target>Zuhaitzaren elementua</target>
+      </trans-unit>
+      <trans-unit id="i4e1oju" resname="Remove the highlight">
+        <source>Remove the highlight</source>
+        <target>Nabarmentzea kendu</target>
+      </trans-unit>
+      <trans-unit id="jf6reyh" resname="Whole block">
+        <source>Whole block</source>
+        <target>Bloke osoa</target>
+      </trans-unit>
+      <trans-unit id="n1a3lgm" resname="Title only">
+        <source>Title only</source>
+        <target>Izenburua bakarrik</target>
+      </trans-unit>
+      <trans-unit id="55rk1q2" resname="Border type">
+        <source>Border type</source>
+        <target>Ertz mota</target>
+      </trans-unit>
+      <trans-unit id="g7i2ocx" resname="All blocks">
+        <source>All blocks</source>
+        <target>Bloke guztiak</target>
+      </trans-unit>
+      <trans-unit id="vw4ukrp" resname="New block, with the boxes on the selected lines">
+        <source>New block, with the boxes on the selected lines</source>
+        <target>Bloke berria, hautatutako lerroetako kutxekin</target>
+      </trans-unit>
+      <trans-unit id="5kra6ex" resname="Groups the boxes of the cursor line or the selection">
+        <source>Groups the boxes of the cursor line or the selection</source>
+        <target>Kurtsorearen lerroko edo hautapeneko kutxak taldekatzen ditu</target>
+      </trans-unit>
+      <trans-unit id="otsk5jn" resname="Put into a new block">
+        <source>Put into a new block</source>
+        <target>Bloke berri batean sartu</target>
+      </trans-unit>
+      <trans-unit id="esp9den" resname="Move to “{b}”">
+        <source>Move to “{b}”</source>
+        <target>«{b}» blokera eraman</target>
+      </trans-unit>
+      <trans-unit id="brj5q4u" resname="Take out of “{b}”">
+        <source>Take out of “{b}”</source>
+        <target>«{b}» bloketik atera</target>
+      </trans-unit>
+      <trans-unit id="fldfy28" resname="Write the title">
+        <source>Write the title</source>
+        <target>Izenburua idatzi</target>
+      </trans-unit>
+      <trans-unit id="apr1cia" resname="Dissolve the block (the boxes stay)">
+        <source>Dissolve the block (the boxes stay)</source>
+        <target>Blokea desegin (kutxak geratzen dira)</target>
+      </trans-unit>
+      <trans-unit id="zc3mou9" resname="The diagram’s">
+        <source>The diagram’s</source>
+        <target>Diagramarena</target>
+      </trans-unit>
+      <trans-unit id="del6cpx" resname="Add a link">
+        <source>Add a link</source>
+        <target>Esteka bat jarri</target>
+      </trans-unit>
+      <trans-unit id="ikx76jf" resname="Change the link">
+        <source>Change the link</source>
+        <target>Esteka aldatu</target>
+      </trans-unit>
+      <trans-unit id="bfmscok" resname="Box link">
+        <source>Box link</source>
+        <target>Kutxaren esteka</target>
+      </trans-unit>
+      <trans-unit id="ssxjbti" resname="Clicking the box opens this address in a new tab. In the editor it opens with Ctrl and click, so a plain click still moves and edits.">
+        <source>Clicking the box opens this address in a new tab. In the editor it opens with Ctrl and click, so a plain click still moves and edits.</source>
+        <target>Kutxa sakatzean helbide hau fitxa berri batean irekitzen da. Editorean Ctrl eta klik eginda irekitzen da, klik arruntak mugitzeko eta editatzeko balio dezan.</target>
+      </trans-unit>
+      <trans-unit id="a2bfjik" resname="Address">
+        <source>Address</source>
+        <target>Helbidea</target>
+      </trans-unit>
+      <trans-unit id="bdkatu9" resname="Tooltip text (optional)">
+        <source>Tooltip text (optional)</source>
+        <target>Testu gainerakorra (aukerakoa)</target>
+      </trans-unit>
+      <trans-unit id="qpotvaa" resname="Remove the link">
+        <source>Remove the link</source>
+        <target>Esteka kendu</target>
+      </trans-unit>
+      <trans-unit id="n3odemd" resname="Ctrl and click opens the link.">
+        <source>Ctrl and click opens the link.</source>
+        <target>Ctrl eta klik eginda esteka irekitzen da.</target>
+      </trans-unit>
+      <trans-unit id="7zi1wz4" resname="Delete the arrow">
+        <source>Delete the arrow</source>
+        <target>Gezia ezabatu</target>
+      </trans-unit>
+      <trans-unit id="6a0ek7k" resname="Drag to draw an arrow">
+        <source>Drag to draw an arrow</source>
+        <target>Arrastatu gezi bat marrazteko</target>
+      </trans-unit>
+      <trans-unit id="wj4t9tk" resname="Add a box">
+        <source>Add a box</source>
+        <target>Kutxa bat gehitu</target>
+      </trans-unit>
+      <trans-unit id="tme4595" resname="Add a connected box">
+        <source>Add a connected box</source>
+        <target>Konektatutako kutxa bat gehitu</target>
+      </trans-unit>
+      <trans-unit id="vz156cr" resname="The formula was placed in a new box.">
+        <source>The formula was placed in a new box.</source>
+        <target>Formula kutxa berri batean jarri da.</target>
+      </trans-unit>
+      <trans-unit id="f6vtsyf" resname="Maths formula (opens the Edicuatex editor)">
+        <source>Maths formula (opens the Edicuatex editor)</source>
+        <target>Formula matematikoa (Edicuatex editorea irekitzen du)</target>
+      </trans-unit>
+      <trans-unit id="8xbrr6f" resname="The browser blocked the formula editor window.">
+        <source>The browser blocked the formula editor window.</source>
+        <target>Nabigatzaileak formulen editorearen leihoa blokeatu du.</target>
+      </trans-unit>
+      <trans-unit id="s5szxj7" resname="Diagram type">
+        <source>Diagram type</source>
+        <target>Diagrama mota</target>
+      </trans-unit>
+      <trans-unit id="pxsq4zs" resname="Colour of the element at the cursor">
+        <source>Colour of the element at the cursor</source>
+        <target>Kurtsorea dagoen elementuaren kolorea</target>
+      </trans-unit>
+      <trans-unit id="too5lud" resname="Place the cursor on the line of an element (a box, a state…) and press the button again.">
+        <source>Place the cursor on the line of an element (a box, a state…) and press the button again.</source>
+        <target>Jarri kurtsorea elementu baten lerroan (kutxa bat, egoera bat…) eta sakatu berriro botoia.</target>
+      </trans-unit>
+      <trans-unit id="25vnzv3" resname="Colour the element">
+        <source>Colour the element</source>
+        <target>Elementua koloreztatu</target>
+      </trans-unit>
+      <trans-unit id="q7truob" resname="Colour the elements">
+        <source>Colour the elements</source>
+        <target>Elementuak koloreztatu</target>
+      </trans-unit>
+      <trans-unit id="eatkmte" resname="Another colour…">
+        <source>Another colour…</source>
+        <target>Beste kolore bat…</target>
+      </trans-unit>
+      <trans-unit id="svf7uno" resname="Remove the colour">
+        <source>Remove the colour</source>
+        <target>Kolorea kendu</target>
+      </trans-unit>
+      <trans-unit id="vbv7t0y" resname="Clear formatting">
+        <source>Clear formatting</source>
+        <target>Formatua garbitu</target>
+      </trans-unit>
+      <trans-unit id="jwwm5rg" resname="Clear formatting: remove colours, styles, stroke, typography and widths (bold and italic text are kept)">
+        <source>Clear formatting: remove colours, styles, stroke, typography and widths (bold and italic text are kept)</source>
+        <target>Formatua garbitu: koloreak, estiloak, trazua, tipografia eta lodierak kendu (testuaren letra lodia eta etzana mantentzen dira)</target>
+      </trans-unit>
+      <trans-unit id="kpsj5uc" resname="Direction">
+        <source>Direction</source>
+        <target>Norabidea</target>
+      </trans-unit>
+      <trans-unit id="78czwa3" resname="Top to bottom">
+        <source>Top to bottom</source>
+        <target>Goitik behera</target>
+      </trans-unit>
+      <trans-unit id="g2k0ua2" resname="Bottom to top">
+        <source>Bottom to top</source>
+        <target>Behetik gora</target>
+      </trans-unit>
+      <trans-unit id="ld4nwb9" resname="Left to right">
+        <source>Left to right</source>
+        <target>Ezkerretik eskuinera</target>
+      </trans-unit>
+      <trans-unit id="u92f79q" resname="Right to left">
+        <source>Right to left</source>
+        <target>Eskuinetik ezkerrera</target>
+      </trans-unit>
+      <trans-unit id="xjfbbxq" resname="Number the messages">
+        <source>Number the messages</source>
+        <target>Zenbakitu mezuak</target>
+      </trans-unit>
+      <trans-unit id="k2zaop2" resname="Sequence">
+        <source>Sequence</source>
+        <target>Sekuentzia</target>
+      </trans-unit>
+      <trans-unit id="lwa90qp" resname="Repeat the participants below">
+        <source>Repeat the participants below</source>
+        <target>Parte-hartzaileak behean errepikatu</target>
+      </trans-unit>
+      <trans-unit id="whgb0jt" resname="Wrap long messages">
+        <source>Wrap long messages</source>
+        <target>Mezu luzeak zatitu</target>
+      </trans-unit>
+      <trans-unit id="3xmyt8r" resname="Chart">
+        <source>Chart</source>
+        <target>Grafikoa</target>
+      </trans-unit>
+      <trans-unit id="68jtwhq" resname="Orientation">
+        <source>Orientation</source>
+        <target>Orientazioa</target>
+      </trans-unit>
+      <trans-unit id="7afpfa0" resname="Vertical">
+        <source>Vertical</source>
+        <target>Bertikala</target>
+      </trans-unit>
+      <trans-unit id="knxootl" resname="Horizontal">
+        <source>Horizontal</source>
+        <target>Horizontala</target>
+      </trans-unit>
+      <trans-unit id="xvczcgu" resname="Show the values">
+        <source>Show the values</source>
+        <target>Erakutsi balioak</target>
+      </trans-unit>
+      <trans-unit id="yxwgds8" resname="Sectors">
+        <source>Sectors</source>
+        <target>Sektoreak</target>
+      </trans-unit>
+      <trans-unit id="5b225dg" resname="Ring">
+        <source>Ring</source>
+        <target>Eraztuna</target>
+      </trans-unit>
+      <trans-unit id="jj6kiyh" resname="No ring">
+        <source>No ring</source>
+        <target>Eraztunik gabe</target>
+      </trans-unit>
+      <trans-unit id="0jxm4jb" resname="Legend">
+        <source>Legend</source>
+        <target>Legenda</target>
+      </trans-unit>
+      <trans-unit id="a0x0l8s" resname="On the right">
+        <source>On the right</source>
+        <target>Eskuinean</target>
+      </trans-unit>
+      <trans-unit id="y5tbqxq" resname="On the left">
+        <source>On the left</source>
+        <target>Ezkerrean</target>
+      </trans-unit>
+      <trans-unit id="qx4x2t6" resname="Above">
+        <source>Above</source>
+        <target>Goian</target>
+      </trans-unit>
+      <trans-unit id="bofoxsc" resname="Below">
+        <source>Below</source>
+        <target>Behean</target>
+      </trans-unit>
+      <trans-unit id="0mj9noo" resname="Colour of each sector">
+        <source>Colour of each sector</source>
+        <target>Sektore bakoitzaren kolorea</target>
+      </trans-unit>
+      <trans-unit id="tcxy55b" resname="Back to the default colours">
+        <source>Back to the default colours</source>
+        <target>Serieko koloreetara itzuli</target>
+      </trans-unit>
+      <trans-unit id="c41ct3u" resname="Calendar">
+        <source>Calendar</source>
+        <target>Egutegia</target>
+      </trans-unit>
+      <trans-unit id="47g3mq7" resname="Axis dates">
+        <source>Axis dates</source>
+        <target>Ardatzeko datak</target>
+      </trans-unit>
+      <trans-unit id="3qjqg87" resname="Other format">
+        <source>Other format</source>
+        <target>Beste formatu bat</target>
+      </trans-unit>
+      <trans-unit id="e7l7wb2" resname="%d day, %m month, %Y four-digit year, %y two-digit.">
+        <source>%d day, %m month, %Y four-digit year, %y two-digit.</source>
+        <target>%d eguna, %m hila, %Y urtea lau zifrarekin, %y birekin.</target>
+      </trans-unit>
+      <trans-unit id="7h59nwy" resname="As Mermaid (2026-01-07)">
+        <source>As Mermaid (2026-01-07)</source>
+        <target>Mermaid bezala (2026-01-07)</target>
+      </trans-unit>
+      <trans-unit id="9omf4q3" resname="Day/month (07/01)">
+        <source>Day/month (07/01)</source>
+        <target>Eguna/hila (07/01)</target>
+      </trans-unit>
+      <trans-unit id="92e8he3" resname="Day/month/year (07/01/2026)">
+        <source>Day/month/year (07/01/2026)</source>
+        <target>Eguna/hila/urtea (07/01/2026)</target>
+      </trans-unit>
+      <trans-unit id="on48m85" resname="Short day/month/year (07/01/26)">
+        <source>Short day/month/year (07/01/26)</source>
+        <target>Eguna/hila/urtea laburra (07/01/26)</target>
+      </trans-unit>
+      <trans-unit id="irevyrc" resname="Axis ticks">
+        <source>Axis ticks</source>
+        <target>Ardatzeko markak</target>
+      </trans-unit>
+      <trans-unit id="ckhotze" resname="Automatic">
+        <source>Automatic</source>
+        <target>Automatikoak</target>
+      </trans-unit>
+      <trans-unit id="6gm59y9" resname="Every day">
+        <source>Every day</source>
+        <target>Egunero</target>
+      </trans-unit>
+      <trans-unit id="wdkns23" resname="Every week">
+        <source>Every week</source>
+        <target>Astero</target>
+      </trans-unit>
+      <trans-unit id="dmdavcj" resname="Every two weeks">
+        <source>Every two weeks</source>
+        <target>Bi astean behin</target>
+      </trans-unit>
+      <trans-unit id="3embh09" resname="Every month">
+        <source>Every month</source>
+        <target>Hilero</target>
+      </trans-unit>
+      <trans-unit id="475kv8h" resname="The week starts on">
+        <source>The week starts on</source>
+        <target>Astea honetan hasten da</target>
+      </trans-unit>
+      <trans-unit id="4wiaq82" resname="Sunday (as Mermaid)">
+        <source>Sunday (as Mermaid)</source>
+        <target>Igandea (Mermaid bezala)</target>
+      </trans-unit>
+      <trans-unit id="o5djgbe" resname="Monday">
+        <source>Monday</source>
+        <target>Astelehena</target>
+      </trans-unit>
+      <trans-unit id="5kmc80q" resname="Skip the weekends">
+        <source>Skip the weekends</source>
+        <target>Asteburuak saltatu</target>
+      </trans-unit>
+      <trans-unit id="sqx2zjc" resname="My saved diagrams">
+        <source>My saved diagrams</source>
+        <target>Nire diagrama gordeak</target>
+      </trans-unit>
+      <trans-unit id="fql7847" resname="My diagrams">
+        <source>My diagrams</source>
+        <target>Nire diagramak</target>
+      </trans-unit>
+      <trans-unit id="oh7xunt" resname="They are kept in this browser, on this computer. They never leave it or reach any server.">
+        <source>They are kept in this browser, on this computer. They never leave it or reach any server.</source>
+        <target>Nabigatzaile honetan gordetzen dira, ekipo honetan. Ez dira hemendik ateratzen ez eta zerbitzarietara bidaltzen.</target>
+      </trans-unit>
+      <trans-unit id="dlfj8mi" resname="No diagrams saved yet.">
+        <source>No diagrams saved yet.</source>
+        <target>Oraindik ez dago diagramarik gordeta.</target>
+      </trans-unit>
+      <trans-unit id="gvst8pq" resname="Maximum saved diagrams">
+        <source>Maximum saved diagrams</source>
+        <target>Gordetako diagramen gehienekoa</target>
+      </trans-unit>
+      <trans-unit id="z7sak27" resname="On reaching the maximum, the oldest ones are deleted, counting from when they were last modified.">
+        <source>On reaching the maximum, the oldest ones are deleted, counting from when they were last modified.</source>
+        <target>Gehienekora iristean zaharrenak ezabatzen dira, azkenekoz aldatu ziren unetik kontatuta.</target>
+      </trans-unit>
+      <trans-unit id="ivltkw4" resname="The oldest diagrams were deleted to stay within the maximum.">
+        <source>The oldest diagrams were deleted to stay within the maximum.</source>
+        <target>Diagrama zaharrenak ezabatu dira gehienekoa ez gainditzeko.</target>
+      </trans-unit>
+      <trans-unit id="jfqw6le" resname="The oldest diagrams will be deleted, leaving {n}. Continue?">
+        <source>The oldest diagrams will be deleted, leaving {n}. Continue?</source>
+        <target>Diagrama zaharrenak ezabatuko dira {n} gelditu arte. Jarraitu?</target>
+      </trans-unit>
+      <trans-unit id="zd0xday" resname="The backup is a file with every saved diagram. It serves to move them to another browser or to recover them if this browser data is cleared.">
+        <source>The backup is a file with every saved diagram. It serves to move them to another browser or to recover them if this browser data is cleared.</source>
+        <target>Segurtasun-kopia gordetako diagrama guztiak dituen fitxategi bat da. Beste nabigatzaile batera eramateko balio du, edo nabigatzaile honetako datuak ezabatzen badira berreskuratzeko.</target>
+      </trans-unit>
+      <trans-unit id="ptyagg1" resname="Export backup">
+        <source>Export backup</source>
+        <target>Kopia esportatu</target>
+      </trans-unit>
+      <trans-unit id="ghsm6pd" resname="Import backup">
+        <source>Import backup</source>
+        <target>Kopia inportatu</target>
+      </trans-unit>
+      <trans-unit id="37vp6w1" resname="There is no diagram to export.">
+        <source>There is no diagram to export.</source>
+        <target>Ez dago esportatzeko diagramarik.</target>
+      </trans-unit>
+      <trans-unit id="poaidf8" resname="The file is not a Sirena backup.">
+        <source>The file is not a Sirena backup.</source>
+        <target>Fitxategia ez da Sirenaren kopia bat.</target>
+      </trans-unit>
+      <trans-unit id="naq52o5" resname="Diagrams added: {n}">
+        <source>Diagrams added: {n}</source>
+        <target>Gehitutako diagramak: {n}</target>
+      </trans-unit>
+      <trans-unit id="doicbn9" resname="Only text files (.mmd, .md, .txt) and .json backups can be opened.">
+        <source>Only text files (.mmd, .md, .txt) and .json backups can be opened.</source>
+        <target>Testu-fitxategiak (.mmd, .md, .txt) eta .json kopiak baino ezin dira ireki.</target>
+      </trans-unit>
+      <trans-unit id="0t0xac1" resname="Could not save in this browser.">
+        <source>Could not save in this browser.</source>
+        <target>Ezin izan da nabigatzaile honetan gorde.</target>
+      </trans-unit>
+      <trans-unit id="prbpqbb" resname="Rename the diagram">
+        <source>Rename the diagram</source>
+        <target>Aldatu diagramaren izena</target>
+      </trans-unit>
+      <trans-unit id="vxfm99p" resname="Mark this diagram">
+        <source>Mark this diagram</source>
+        <target>Diagrama hau markatu</target>
+      </trans-unit>
+      <trans-unit id="9q6ti1h" resname="Delete the marked ones">
+        <source>Delete the marked ones</source>
+        <target>Markatutakoak ezabatu</target>
+      </trans-unit>
+      <trans-unit id="xpyit7n" resname="Delete the {n} marked diagrams? This cannot be undone.">
+        <source>Delete the {n} marked diagrams? This cannot be undone.</source>
+        <target>Markatutako {n} diagramak ezabatu? Ezin da desegin.</target>
+      </trans-unit>
+      <trans-unit id="r7n5zhg" resname="Delete “{nombre}”? This cannot be undone.">
+        <source>Delete “{nombre}”? This cannot be undone.</source>
+        <target>«{nombre}» ezabatu? Ezin da desegin.</target>
+      </trans-unit>
+      <trans-unit id="o1vmw2j" resname="New diagram">
+        <source>New diagram</source>
+        <target>Diagrama berria</target>
+      </trans-unit>
+      <trans-unit id="zlnewft" resname="Line shape">
+        <source>Line shape</source>
+        <target>Marren forma</target>
+      </trans-unit>
+      <trans-unit id="9gvfxje" resname="Curved">
+        <source>Curved</source>
+        <target>Kurbatuak</target>
+      </trans-unit>
+      <trans-unit id="vjnc3f6" resname="Straight">
+        <source>Straight</source>
+        <target>Zuzenak</target>
+      </trans-unit>
+      <trans-unit id="1569und" resname="Stepped">
+        <source>Stepped</source>
+        <target>Mailakatuak</target>
+      </trans-unit>
+      <trans-unit id="ptik4hm" resname="Spacing">
+        <source>Spacing</source>
+        <target>Tartea</target>
+      </trans-unit>
+      <trans-unit id="z3xmj16" resname="Compact">
+        <source>Compact</source>
+        <target>Trinkoa</target>
+      </trans-unit>
+      <trans-unit id="4v58edy" resname="Drawing margins">
+        <source>Drawing margins</source>
+        <target>Marrazkiaren marjinak</target>
+      </trans-unit>
+      <trans-unit id="5cxtzd4" resname="Tight">
+        <source>Tight</source>
+        <target>Estuak</target>
+      </trans-unit>
+      <trans-unit id="wmmwsed" resname="Diagram appearance">
+        <source>Diagram appearance</source>
+        <target>Diagramaren itxura</target>
+      </trans-unit>
+      <trans-unit id="0qu708v" resname="Light or dark mode">
+        <source>Light or dark mode</source>
+        <target>Modu argia edo iluna</target>
+      </trans-unit>
+      <trans-unit id="b5vzh2t" resname="Zoom in">
+        <source>Zoom in</source>
+        <target>Handitu</target>
+      </trans-unit>
+      <trans-unit id="wtthbqb" resname="Fit to the available space">
+        <source>Fit to the available space</source>
+        <target>Doitu erabilgarri dagoen tokira</target>
+      </trans-unit>
+      <trans-unit id="psbwciv" resname="Zoom out">
+        <source>Zoom out</source>
+        <target>Txikitu</target>
+      </trans-unit>
+      <trans-unit id="pvw0dli" resname="Back to 100 %">
+        <source>Back to 100 %</source>
+        <target>Itzuli %100era</target>
+      </trans-unit>
+      <trans-unit id="nbfij54" resname="Diagram code">
+        <source>Diagram code</source>
+        <target>Diagramaren kodea</target>
+      </trans-unit>
+      <trans-unit id="y55a7tp" resname="Copied">
+        <source>Copied</source>
+        <target>Kopiatuta</target>
+      </trans-unit>
+      <trans-unit id="d3ezlzr" resname="Link copied to the clipboard">
+        <source>Link copied to the clipboard</source>
+        <target>Esteka arbelera kopiatu da</target>
+      </trans-unit>
+      <trans-unit id="pzq1ge4" resname="Image copied to the clipboard">
+        <source>Image copied to the clipboard</source>
+        <target>Irudia arbelera kopiatu da</target>
+      </trans-unit>
+      <trans-unit id="pvk4okw" resname="Copying was not possible">
+        <source>Copying was not possible</source>
+        <target>Ezin izan da kopiatu</target>
+      </trans-unit>
+      <trans-unit id="0qewn5x" resname="The diagram has an error">
+        <source>The diagram has an error</source>
+        <target>Diagramak errore bat du</target>
+      </trans-unit>
+      <trans-unit id="ad1g80r" resname="Write the diagram code or choose an example.">
+        <source>Write the diagram code or choose an example.</source>
+        <target>Idatzi diagramaren kodea edo aukeratu adibide bat.</target>
+      </trans-unit>
+      <trans-unit id="xb1kmp2" resname="Rendering…">
+        <source>Rendering…</source>
+        <target>Marrazten…</target>
+      </trans-unit>
+      <trans-unit id="tpy0a8k" resname="Neutral">
+        <source>Neutral</source>
+        <target>Neutroa</target>
+      </trans-unit>
+      <trans-unit id="o6fci4r" resname="Forest">
+        <source>Forest</source>
+        <target>Basoa</target>
+      </trans-unit>
+      <trans-unit id="b25j2q5" resname="Base">
+        <source>Base</source>
+        <target>Oinarria</target>
+      </trans-unit>
+      <trans-unit id="rn3d1aq" resname="Diagrams generated with">
+        <source>Diagrams generated with</source>
+        <target>Diagramak honekin sortuak:</target>
+      </trans-unit>
+      <trans-unit id="2ce58s9" resname="How it works">
+        <source>How it works</source>
+        <target>Nola dabilen</target>
+      </trans-unit>
+      <trans-unit id="roa0knf" resname="The diagram is written as text in the left panel and the drawing appears on the right. Everything runs in the browser itself: the diagram is not sent to any server.">
+        <source>The diagram is written as text in the left panel and the drawing appears on the right. Everything runs in the browser itself: the diagram is not sent to any server.</source>
+        <target>Diagrama testu gisa idazten da ezkerreko panelean eta marrazkia eskuinean agertzen da. Dena nabigatzailean bertan prozesatzen da: diagrama ez da inongo zerbitzarira bidaltzen.</target>
+      </trans-unit>
+      <trans-unit id="a34itkq" resname="The share button builds an address that carries the compressed diagram inside, so it can be shared without uploading it anywhere. The link can open in the editor or full screen, with the diagram alone, and the code to embed it in another page is available too.">
+        <source>The share button builds an address that carries the compressed diagram inside, so it can be shared without uploading it anywhere. The link can open in the editor or full screen, with the diagram alone, and the code to embed it in another page is available too.</source>
+        <target>Partekatzeko botoiak diagrama konprimituta daraman helbide bat sortzen du, beraz, inora igo gabe parteka daiteke. Esteka editorean edo pantaila osoan ireki daiteke, diagrama bakarrik, eta beste orri batean txertatzeko kodea ere lor daiteke.</target>
+      </trans-unit>
+      <trans-unit id="2s0lcdp" resname="Mermaid syntax reference">
+        <source>Mermaid syntax reference</source>
+        <target>Mermaid sintaxiaren erreferentzia</target>
+      </trans-unit>
+      <trans-unit id="ifp6w8r" resname="Credits and licences">
+        <source>Credits and licences</source>
+        <target>Kredituak eta lizentziak</target>
+      </trans-unit>
+      <trans-unit id="qggevgw" resname="Credits, licences and AI use">
+        <source>Credits, licences and AI use</source>
+        <target>Kredituak, lizentziak eta AAren erabilera</target>
+      </trans-unit>
+      <trans-unit id="ybtr27m" resname="Sirena is by Juan José de Haro, with the code under AGPL v3 and the content under CC BY-SA 4.0. It draws the diagrams with Mermaid, by Knut Sveidqvist and contributors (MIT), which bundles other free libraries, among them D3 (ISC), ELK (EPL 2.0 or GPL 3.0), KaTeX (MIT), Cytoscape (MIT) and DOMPurify (MPL 2.0 or Apache 2.0). The icons are from Lucide (ISC).">
+        <source>Sirena is by Juan José de Haro, with the code under AGPL v3 and the content under CC BY-SA 4.0. It draws the diagrams with Mermaid, by Knut Sveidqvist and contributors (MIT), which bundles other free libraries, among them D3 (ISC), ELK (EPL 2.0 or GPL 3.0), KaTeX (MIT), Cytoscape (MIT) and DOMPurify (MPL 2.0 or Apache 2.0). The icons are from Lucide (ISC).</source>
+        <target>Sirena Juan José de Harorena da; kodea AGPL v3 lizentziapean dago eta edukiak CC BY-SA 4.0 lizentziapean. Diagramak Mermaid-ekin marrazten ditu (Knut Sveidqvist eta laguntzaileak, MIT), eta Mermaid-ek beste liburutegi libre batzuk ditu barruan, besteak beste D3 (ISC), ELK (EPL 2.0 edo GPL 3.0), KaTeX (MIT), Cytoscape (MIT) eta DOMPurify (MPL 2.0 edo Apache 2.0). Ikonoak Luciderenak dira (ISC).</target>
+      </trans-unit>
+      <trans-unit id="04yizer" resname="All libraries and their licences">
+        <source>All libraries and their licences</source>
+        <target>Liburutegi guztiak eta haien lizentziak</target>
+      </trans-unit>
+      <trans-unit id="y5sxm2y" resname="Sirena was programmed with the help of AI (Claude), in ">
+        <source>Sirena was programmed with the help of AI (Claude), in </source>
+        <target>Sirena AAren laguntzaz programatu da (Claude), </target>
+      </trans-unit>
+      <trans-unit id="m2r9ncj" resname="co-creation, level 4 of MIAE">
+        <source>co-creation, level 4 of MIAE</source>
+        <target>elkarrekin sortuz, MIAEren 4. mailan</target>
+      </trans-unit>
+      <trans-unit id="1lrkop9" resname=": the author decided the design and the features, and tested the program many times, in different situations, to find errors and things to improve.">
+        <source>: the author decided the design and the features, and tested the program many times, in different situations, to find errors and things to improve.</source>
+        <target>: egileak erabaki ditu diseinua eta funtzioak, eta programa askotan probatu du, egoera desberdinetan, akatsak eta hobetu beharrekoak aurkitzeko.</target>
+      </trans-unit>
+      <trans-unit id="2g922uu" resname="The link contains a diagram that could not be read.">
+        <source>The link contains a diagram that could not be read.</source>
+        <target>Estekak irakurri ezin izan den diagrama bat dauka.</target>
+      </trans-unit>
+      <trans-unit id="ryd0h83" resname="Limits the size of the diagram on the page. Left empty, the diagram takes the available width.">
+        <source>Limits the size of the diagram on the page. Left empty, the diagram takes the available width.</source>
+        <target>Diagramak orrian duen tamaina mugatzen du. Hutsik utziz gero, diagramak zabalera erabilgarri osoa hartzen du.</target>
+      </trans-unit>
+      <trans-unit id="9fwspv0" resname="There is nothing to insert: the code is empty.">
+        <source>There is nothing to insert: the code is empty.</source>
+        <target>Ez dago ezer txertatzeko: kodea hutsik dago.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
