@@ -3526,6 +3526,183 @@ describe('common.js $exeDevices', () => {
       });
     });
 
+    describe('the page minimum score, beside the score', () => {
+      const FINISHED = 2;
+      const game = { main: 'unused', msgs: { msgYouScore: 'Score' } };
+      // Two activities stored by registerActivity(), at marks of 8 and 4.
+      const twoActivities = '1. "A"; Score: 0%; Weight: 100%.\t2. "B"; Score: 0%; Weight: 100%';
+      let metas = [];
+      let previousI18n;
+      const addMeta = (name, content) => {
+        const meta = document.createElement('meta');
+        meta.setAttribute('name', name);
+        meta.setAttribute('content', content);
+        document.head.appendChild(meta);
+        metas.push(meta);
+      };
+      const scorm2004 = (values = {}) => {
+        const lms = Object.assign({ 'cmi.suspend_data': '' }, values);
+        global.pipwerks = {
+          SCORM: { version: '2004', get: key => (key in lms ? lms[key] : ''), set: vi.fn(() => true) },
+        };
+      };
+      const label = () => document.getElementById('eXeScoreNodePassScore');
+      const shown = () => (label().classList.contains('d-none') ? null : label().textContent);
+
+      beforeEach(() => {
+        delete window.exeScorm12;
+        previousI18n = global.$exe_i18n;
+        global.$exe_i18n = Object.assign({}, previousI18n, {
+          pagePassScore: 'Minimum score to pass: %s',
+          pagePassEveryActivity: 'Each activity must reach its minimum score',
+        });
+        document.body.innerHTML = '<div class="page-content"></div>';
+      });
+
+      afterEach(() => {
+        metas.forEach(meta => meta.remove());
+        metas = [];
+        global.$exe_i18n = previousI18n;
+        delete window.exeScorm12;
+        getScorm()._successThresholdsByNumber = {};
+        document.body.innerHTML = '';
+      });
+
+      it('draws it before the score, on the same 0-100 scale', () => {
+        scorm2004({ 'cmi.suspend_data': twoActivities });
+        getScorm()._successThresholdsByNumber = { 1: 80, 2: 40 };
+
+        getScorm().createScoreScormHtml(game);
+
+        expect(shown()).toBe('Minimum score to pass: 60/100');
+        expect(label().nextElementSibling.id).toBe('eXeScoreNodeScore');
+      });
+
+      it('says each activity must reach its own when the author requires it', () => {
+        addMeta('exe-pass-score-every-activity', 'true');
+        scorm2004({ 'cmi.suspend_data': twoActivities });
+        getScorm()._successThresholdsByNumber = { 1: 80, 2: 40 };
+
+        getScorm().createScoreScormHtml(game);
+
+        expect(shown()).toBe('Each activity must reach its minimum score');
+      });
+
+      it('adds it to a score node drawn without one', () => {
+        scorm2004();
+        document.body.innerHTML =
+          '<div class="page-content"><div id="exeScoreNode"><div id="eXeScoreNodeScore"></div></div></div>';
+
+        getScorm().createScoreScormHtml(game);
+
+        // No activity stored yet: the project mark, 5 by default.
+        expect(shown()).toBe('Minimum score to pass: 50/100');
+        expect(label().nextElementSibling.id).toBe('eXeScoreNodeScore');
+      });
+
+      it('follows each report', () => {
+        scorm2004();
+        getScorm().createScoreScormHtml(game);
+        getScorm()._successThresholdsByNumber = { 1: 70 };
+
+        getScorm().showFinalScore({ 1: { title: 'A', score: 90, weighted: 100, state: FINISHED } }, game);
+
+        expect(shown()).toBe('Minimum score to pass: 70/100');
+      });
+
+      it('shows the SCORM 1.2 policy rule, which decides the page', () => {
+        scorm2004();
+        getScorm().createScoreScormHtml(game);
+        const policy = { setScoreDetailed: vi.fn(), getPassRule: () => ({ everyActivity: false, threshold: 45.5 }) };
+        window.exeScorm12 = { policy };
+
+        getScorm().showPagePassScore();
+        expect(shown()).toBe('Minimum score to pass: 45.5/100');
+
+        policy.getPassRule = () => ({ everyActivity: true, threshold: 45.5 });
+        getScorm().showPagePassScore();
+        expect(shown()).toBe('Each activity must reach its minimum score');
+
+        // A host runtime from before getPassRule().
+        delete policy.getPassRule;
+        policy.getSuccessThreshold = () => 40;
+        getScorm().showPagePassScore();
+        expect(shown()).toBe('Minimum score to pass: 40/100');
+
+        delete policy.getSuccessThreshold;
+        getScorm().showPagePassScore();
+        expect(shown()).toBeNull();
+      });
+
+      it('hides it when nothing decides a pass, or the page has no text for it', () => {
+        scorm2004();
+        getScorm().createScoreScormHtml(game);
+        window.exeScorm12 = {
+          policy: { setScoreDetailed: vi.fn(), getPassRule: () => ({ everyActivity: false, threshold: null }) },
+        };
+        getScorm().showPagePassScore();
+        expect(shown()).toBeNull();
+
+        delete window.exeScorm12;
+        global.$exe_i18n = Object.assign({}, previousI18n, { pagePassScore: undefined });
+        getScorm().showPagePassScore();
+        expect(shown()).toBeNull();
+
+        delete global.pipwerks;
+        expect(getScorm().getPagePassRule()).toBeNull();
+      });
+
+      describe('a pass mark set by a SCORM 2004 LMS', () => {
+        it.each([
+          ['0.7', 70],
+          ['1', 100],
+          ['-0.2', 0],
+          ['0.555', 55.5],
+          ['', null],
+          ['abc', null],
+          ['1.5', null],
+        ])('reads cmi.scaled_passing_score %j as %s', (value, expected) => {
+          scorm2004({ 'cmi.scaled_passing_score': value });
+          expect(getScorm().getLmsPassingScore()).toBe(expected);
+        });
+
+        it('is not read from SCORM 1.2, or when the wrapper fails', () => {
+          global.pipwerks = { SCORM: { version: '1.2', get: () => '0.7' } };
+          expect(getScorm().getLmsPassingScore()).toBeNull();
+
+          global.pipwerks = {
+            SCORM: {
+              version: '2004',
+              get: () => {
+                throw new Error('not initialised');
+              },
+            },
+          };
+          expect(getScorm().getLmsPassingScore()).toBeNull();
+        });
+
+        it.each([
+          ['0.7', 'passed', 70],
+          ['0.9', 'failed', 90],
+        ])('at %s, judges the page score under either rule and shows on the label', (passing, verdict, mark) => {
+          addMeta('exe-pass-score-every-activity', 'true');
+          scorm2004({ 'cmi.scaled_passing_score': passing });
+          getScorm()._successThresholdsByNumber = { 1: 80, 2: 40 };
+          // 70 is below its own 80, so every activity would fail the page;
+          // the mean of the marks, 60, would pass the score of 85.
+          const lmsData = {
+            1: { score: 70, weighted: 100, state: FINISHED },
+            2: { score: 100, weighted: 100, state: FINISHED },
+          };
+
+          expect(getScorm().getLegacyVerdict(lmsData)).toMatchObject({ completion: 'completed', success: verdict });
+
+          getScorm().createScoreScormHtml(game);
+          expect(shown()).toBe(`Minimum score to pass: ${mark}/100`);
+        });
+      });
+    });
+
     it('showFinalScore publishes no score for a page the learner never answered', () => {
       // score.raw cannot express "no answer", and Moodle promotes an incomplete
       // status to completed as soon as any score.raw exists, so a merely-visited

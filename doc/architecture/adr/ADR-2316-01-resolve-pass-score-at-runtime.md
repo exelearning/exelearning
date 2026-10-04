@@ -396,7 +396,11 @@ apart ([ADR-2209-02](ADR-2209-02-scorm12-activity-completion-registry.md)):
   and the exit is `suspend`.
 - **Whether the page is passed.** Once every activity is finished, the page is
   `completed`, and `passed` or `failed` by the weighted mean of decision 3, or by
-  each activity's own mark under decision 11.
+  each activity's own mark under decision 11. A `cmi.scaled_passing_score` set
+  by the LMS judges the page's score instead, under either rule, as
+  `mastery_score` does in SCORM 1.2 (decision 3). `cmi.score.scaled` is not
+  written: with both set, the LMS works out `success_status` itself when the
+  session ends, and would mark `failed` a page that is still incomplete.
 
 The states travel in a separate, versioned line at the end of the payload,
 `exe-state/1:1=2,2=0` (page position and state), with the existing `.\t`
@@ -457,6 +461,13 @@ only when the value is `true`.
 - A checkbox under the minimum score in Export options, "Each SCORM activity
   must reach its minimum score", whose help text explains the
   weighted mean that applies while it is unchecked.
+- In SCORM exports, a label before the page's score shows the minimum score to
+  pass the page, on the same 0-100 scale ("Minimum score to pass: 60/100"), or
+  says that each activity must reach its own when that rule decides the page.
+  It shows whatever decides the status: the LMS's threshold when it sets one,
+  otherwise the activities' marks and the project mark. `showPagePassScore()`
+  in `common.js` draws it, and the SCORM 1.2 policy answers through
+  `getPassRule()`.
 - The **Grading** tab, with three sections headed alike.
 - Four collapsible help notes written from what the runtime does: what each of
   the three SCORM modes implies, and that the weight is a proportion between
@@ -592,6 +603,11 @@ only when the value is `true`.
   below that API: with the option, it reopens a submitted 0 at a mark of 0;
   without it, an unanswered page stays `incomplete` with exit `suspend`, and a
   finished one is judged by the mean.
+- The page's minimum score label is pinned at unit level for both runtimes, the
+  LMS threshold (`mastery_score`, `cmi.scaled_passing_score`), the every-activity
+  rule and a page with no text for it. The SCORM 2004 contract checks that a
+  `cmi.scaled_passing_score` judges the page under either rule. Both runtime
+  specs find the label before the score in an exported package.
 
 ## Follow-up work
 

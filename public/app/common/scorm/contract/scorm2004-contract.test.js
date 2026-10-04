@@ -8,15 +8,20 @@ import { Scorm2004API } from 'scorm-again/scorm2004';
 const source = path => readFileSync(path, 'utf8');
 const sessions = [];
 
-function openSession({ enabled = true, stored = '', completion = 'unknown', success = 'unknown' } = {}) {
+function openSession({ enabled = true, stored = '', completion = 'unknown', success = 'unknown', passing = '' } = {}) {
     const page = new Window({
         url: 'https://scorm.test/',
         settings: { disableCSSFileLoading: true, disableJavaScriptFileLoading: true },
     });
     if (enabled) page.document.head.innerHTML = '<meta name="exe-pass-score-every-activity" content="true">';
-    page.document.body.innerHTML = '<div id="eXeScoreNodeScore"></div>';
+    page.document.body.innerHTML = '<div class="page-content"></div>';
     const api = new Scorm2004API({ autocommit: false, lmsCommitUrl: false, logLevel: 5, strict_errors: true });
-    api.loadFromFlattenedJSON({ 'cmi.suspend_data': stored, 'cmi.completion_status': completion, 'cmi.success_status': success });
+    api.loadFromFlattenedJSON({
+        'cmi.suspend_data': stored,
+        'cmi.completion_status': completion,
+        'cmi.success_status': success,
+        'cmi.scaled_passing_score': passing,
+    });
     const calls = [];
     for (const name of ['SetValue', 'GetValue']) {
         const original = api[name].bind(api);
@@ -30,6 +35,9 @@ function openSession({ enabled = true, stored = '', completion = 'unknown', succ
     page.eval(source('public/app/common/scorm/SCORM_API_wrapper.js'));
     page.pipwerks.debug.isActive = false;
     page.eval(source('public/libs/jquery/jquery.min.js'));
+    // The exported page's texts, untranslated.
+    page.c_ = text => text;
+    page.eval(source('public/app/common/common_i18n.js'));
     page.eval(source('public/app/common/common.js'));
     page.eval(source('public/app/common/scorm/SCOFunctions.js'));
     page.loadPage();
@@ -156,6 +164,37 @@ describe('SCORM 2004 contract with the exported runtime', () => {
         expect(stored(session)).toMatchObject({ completion: 'incomplete', success: 'unknown' });
         report(session, second, 80);
         expect(stored(session)).toMatchObject({ completion: 'completed', success: 'passed', raw: '70' });
+    });
+
+    it.each([
+        [false, 'Minimum score to pass: 60/100'],
+        [true, 'Each activity must reach its minimum score'],
+    ])('shows the minimum score before the score (every activity=%s)', (enabled, text) => {
+        const session = openSession({ enabled });
+        register(session, [8, 4]);
+        const label = session.page.document.getElementById('eXeScoreNodePassScore');
+        expect(label.textContent).toBe(text);
+        expect(label.classList.contains('d-none')).toBe(false);
+        expect(label.nextElementSibling.id).toBe('eXeScoreNodeScore');
+    });
+
+    it.each([
+        ['0.7', 'passed'],
+        ['0.9', 'failed'],
+    ])('lets a passing score of %s set by the LMS judge the page, under either rule', (passing, verdict) => {
+        // 70 against its own 8 would fail every activity; the mean of the
+        // marks, 60, would pass the score of 85.
+        for (const enabled of [false, true]) {
+            const session = openSession({ enabled, passing });
+            const [first, second] = register(session, [8, 4]);
+            expect(session.page.document.getElementById('eXeScoreNodePassScore').textContent).toBe(
+                `Minimum score to pass: ${passing === '0.7' ? 70 : 90}/100`,
+            );
+            report(session, first, 70);
+            report(session, second, 100);
+            session.page.unloadPage();
+            expect(stored(session)).toMatchObject({ completion: 'completed', success: verdict, raw: '85' });
+        }
     });
 
     it('completes an informational page even when the option is enabled', () => {

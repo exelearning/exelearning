@@ -702,6 +702,9 @@ still reads `not attempted`.
   `cmi.suspend_data` (§9.2). Without the META the mean decides, so earlier
   packages grade as before. `getSuccessThreshold()` still answers the mean, as
   information: with the rule in force it is not what decides the page.
+  `policy.getPassRule()` answers which rule does, `{ everyActivity, threshold }`,
+  with the same choice as `decideStatus()`. `common.js` reads it for the label
+  that shows the page's minimum score before its score.
 - The **exit policy** never downgrades: a terminal status (`passed`,
   `completed`, `failed`) already recorded is preserved.
 - The **in-session re-evaluation** (`policy.recordActivityOutcome()`, called by

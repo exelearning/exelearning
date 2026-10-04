@@ -1563,9 +1563,15 @@ var $exeDevices = {
                         }
                     }
 
+                    // The page's minimum score sits before the score itself, on
+                    // the same 0-100 scale; showPagePassScore() fills it in.
+                    const passScoreLabelHtml =
+                        '<div id="eXeScoreNodePassScore" class="border border-success text-success d-inline-block px-2 py-1 me-2 d-none"></div>';
+
                     if ($exeScoreNode.length === 0) {
                         const newScoreNodeHtml = `
                                     <div id="exeScoreNode" class="text-end p-2">
+                                        ${passScoreLabelHtml}
                                         <div id="eXeScoreNodeScore" class="bg-success text-white d-inline-block px-2 py-1">
                                             ${game.msgs.msgYouScore}: ${initialScore}/100
                                         </div>
@@ -1583,7 +1589,11 @@ var $exeDevices = {
                         }
                     } else {
                         $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${initialScore}/100`);
+                        if ($("#eXeScoreNodePassScore").length === 0) {
+                            $("#eXeScoreNodeScore").before(passScoreLabelHtml);
+                        }
                     }
+                    $exeDevices.iDevice.gamification.scorm.showPagePassScore();
                 },
 
                 updateScormNew: function (game, lmsData) {
@@ -1781,7 +1791,9 @@ var $exeDevices = {
                  * weighted mean of decision 3 of ADR-2316-01, or, when the
                  * author requires it, only if every activity reaches its own
                  * mark: the same comparison as unmetThresholds() in the
-                 * registry, rounded to two decimals.
+                 * registry, rounded to two decimals. A threshold the LMS
+                 * publishes (getLmsPassingScore) judges the page's score
+                 * instead, under either rule.
                  *
                  * The activities judged are the ones registered on this page
                  * load, plus any entry that carries a state: the runtime only
@@ -1813,7 +1825,12 @@ var $exeDevices = {
                         return { completion: 'incomplete', success: 'unknown', scored: scored };
                     }
                     let passed;
-                    if ($exe.passScore.requiresEveryActivity()) {
+                    const lmsThreshold = scorm.getLmsPassingScore();
+                    if (lmsThreshold !== null) {
+                        // The LMS wins, as mastery_score does in SCORM 1.2:
+                        // its threshold is for the page's score.
+                        passed = scorm.getFinalScore(data) >= lmsThreshold;
+                    } else if ($exe.passScore.requiresEveryActivity()) {
                         const pageThreshold = $exe.passScore.toPercent();
                         passed = numbers.every(key => {
                             const score = Math.max(0, Math.min(parseFloat(data[key].score) || 0, 100));
@@ -1843,6 +1860,92 @@ var $exeDevices = {
                             verdict.completion === 'incomplete' ? 'incomplete' : verdict.success
                         );
                     }
+                },
+
+                /**
+                 * The pass mark the LMS sets for this SCO on the legacy path:
+                 * SCORM 2004's cmi.scaled_passing_score (-1 to 1), as a
+                 * percentage. The SCORM 1.2 runtime reads mastery_score in its
+                 * own policy.
+                 *
+                 * cmi.score.scaled is not written alongside, on purpose: with
+                 * both set, the LMS works out success_status by itself when the
+                 * session ends, and would mark failed a page still incomplete.
+                 * The verdict here compares the same score with the same mark.
+                 *
+                 * @returns {number|null} A percentage in 0-100, or null when the
+                 *   LMS sets none.
+                 */
+                getLmsPassingScore: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || pipwerks.SCORM.version !== '2004') {
+                        return null;
+                    }
+                    let value;
+                    try {
+                        value = pipwerks.SCORM.get('cmi.scaled_passing_score');
+                    } catch (e) {
+                        return null;
+                    }
+                    if (value === null || value === undefined || String(value).trim() === '') return null;
+                    const scaled = parseFloat(value);
+                    if (!Number.isFinite(scaled) || scaled < -1 || scaled > 1) return null;
+                    return Math.round(Math.max(0, scaled) * 10000) / 100;
+                },
+
+                /**
+                 * How the page is passed, for the label beside its score: every
+                 * activity at its own mark, or the page's score against a
+                 * threshold. It asks whatever decides the status, so the two
+                 * agree: the SCORM 1.2 policy, or getLegacyVerdict().
+                 *
+                 * @param {Object} [lmsData] Activities by page position (legacy
+                 *   path); read from cmi.suspend_data when not given.
+                 * @returns {{everyActivity: boolean, threshold: number|null}|null}
+                 *   The threshold is a percentage in 0-100; null when nothing
+                 *   decides a pass here.
+                 */
+                getPagePassRule: function (lmsData) {
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
+                    const policy = runtime && runtime.policy;
+                    if (policy && typeof policy.setScoreDetailed === 'function') {
+                        if (typeof policy.getPassRule === 'function') return policy.getPassRule();
+                        // A host runtime from before getPassRule().
+                        if (typeof policy.getSuccessThreshold === 'function') {
+                            return { everyActivity: false, threshold: policy.getSuccessThreshold() };
+                        }
+                        return null;
+                    }
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) return null;
+                    const lmsThreshold = scorm.getLmsPassingScore();
+                    if (lmsThreshold !== null) return { everyActivity: false, threshold: lmsThreshold };
+                    if ($exe.passScore.requiresEveryActivity()) return { everyActivity: true, threshold: null };
+                    const data = lmsData || scorm.parseSuspendData(pipwerks.SCORM.get('cmi.suspend_data') || '');
+                    return { everyActivity: false, threshold: scorm.getFinalThreshold(data) };
+                },
+
+                /**
+                 * Write the page's minimum score into the label beside its
+                 * score (createScoreScormHtml), on the same 0-100 scale, or say
+                 * that each activity must reach its own. Hidden when nothing
+                 * decides a pass, or when the page carries no text for it
+                 * ($exe_i18n, as the iDevices' own notice).
+                 *
+                 * @param {Object} [lmsData] See getPagePassRule().
+                 */
+                showPagePassScore: function (lmsData) {
+                    const $label = $('#eXeScoreNodePassScore');
+                    if ($label.length === 0) return;
+                    const rule = $exeDevices.iDevice.gamification.scorm.getPagePassRule(lmsData);
+                    const i18n = typeof $exe_i18n !== 'undefined' && $exe_i18n ? $exe_i18n : {};
+                    let text = '';
+                    if (rule && rule.everyActivity) {
+                        text = i18n.pagePassEveryActivity || '';
+                    } else if (rule && typeof rule.threshold === 'number' && Number.isFinite(rule.threshold)) {
+                        const mark = `${Math.round(rule.threshold * 100) / 100}/100`;
+                        text = (i18n.pagePassScore || '').replace('%s', mark);
+                    }
+                    $label.text(text).toggleClass('d-none', text === '');
                 },
 
                 registerActivity: function (game) {
@@ -2492,6 +2595,11 @@ var $exeDevices = {
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
+                    // Each registration may change the activities' marks, and
+                    // so the page's minimum score.
+                    $exeDevices.iDevice.gamification.scorm.showPagePassScore(
+                        $exeDevices.iDevice.gamification.scorm.getActivityRegistry() ? undefined : lmsData
+                    );
 
                 },
             },

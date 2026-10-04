@@ -1236,6 +1236,34 @@ describe('exe-scorm12-policy', () => {
                 expect(policy.decideStatus()).toMatchObject({ status: 'passed', reason: 'threshold-evaluated' });
             });
 
+            describe('the rule it tells content', () => {
+                it('is every activity at its own mark, until content sets a threshold or drops it', () => {
+                    enterRequiringEveryActivity(50);
+                    registerMadeUpFor();
+                    expect(policy.getPassRule()).toEqual({ everyActivity: true, threshold: 45 });
+
+                    policy.setSuccessThreshold(40);
+                    expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold: 40 });
+
+                    policy.setSuccessThreshold(null);
+                    expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold: null });
+                });
+
+                it('is the LMS mastery score when the LMS publishes one', () => {
+                    enterRequiringEveryActivity(50, { 'cmi.student_data.mastery_score': '40' });
+                    registerMadeUpFor();
+
+                    expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold: 40 });
+                });
+
+                it('is the weighted mean of the marks when the page does not require every activity', () => {
+                    enterWithPageThreshold(50);
+                    registerMadeUpFor();
+
+                    expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold: 45 });
+                });
+            });
+
             it('passes once the activity that fell short is retried above its mark', () => {
                 enterRequiringEveryActivity(50);
                 registerMadeUpFor();

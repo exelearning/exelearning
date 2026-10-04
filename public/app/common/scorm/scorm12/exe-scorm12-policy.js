@@ -724,6 +724,18 @@
         },
 
         /**
+         * How the page is passed, for content that tells the learner: every
+         * activity at its own mark, or the aggregate against a threshold. The
+         * same choice decideStatus() makes, so the two never disagree.
+         *
+         * @returns {{everyActivity: boolean, threshold: number|null}} The
+         * threshold is a percentage in 0-100, or null when there is none.
+         */
+        getPassRule: function () {
+            return { everyActivity: unmetOwnThresholds() !== null, threshold: thresholdInForce() };
+        },
+
+        /**
          * Record whether the current page contains activities that save a
          * SCORM score. Fallback signal for pages whose iDevices never register
          * with the activity registry.

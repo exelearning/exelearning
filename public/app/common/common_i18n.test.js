@@ -64,4 +64,11 @@ describe('common_i18n.js', () => {
     expect(globalThis.$exe_i18n.passScoreNotice).toBe('Minimum score needed to pass this activity: %s');
     expect(globalThis.$exe_i18n.exeGames).not.toHaveProperty('passScoreNotice');
   });
+
+  // showPagePassScore() in common.js reads these for the label beside a
+  // SCORM page's score.
+  it('carries the texts of the page minimum score label', () => {
+    expect(globalThis.$exe_i18n.pagePassScore).toBe('Minimum score to pass: %s');
+    expect(globalThis.$exe_i18n.pagePassEveryActivity).toBe('Each activity must reach its minimum score');
+  });
 });

@@ -681,6 +681,13 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             });
             expect(nodeIds).toHaveLength(2);
 
+            // The page's minimum score sits before its score: both activities
+            // follow the project's 5, which is 50 on the score's 0-100 scale.
+            const passScoreLabel = page.frameLocator('#sco').locator('#exeScoreNode > #eXeScoreNodePassScore');
+            await expect(passScoreLabel).toBeVisible();
+            await expect(passScoreLabel).toContainText('50/100');
+            await expect(passScoreLabel.locator('+ #eXeScoreNodeScore')).toBeVisible();
+
             // Two required activities pending: the page must stay incomplete.
             expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe(
                 'incomplete',

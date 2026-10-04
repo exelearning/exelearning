@@ -50,7 +50,9 @@ $exe_i18n = {
     "attachment": c_("Attachment"),
     "noFilesAttached": c_("No files attached."),
     "fileUnavailable": c_("File unavailable"),
-    "passScoreNotice": c_("Minimum score needed to pass this activity: %s")
+    "passScoreNotice": c_("Minimum score needed to pass this activity: %s"),
+    "pagePassScore": c_("Minimum score to pass: %s"),
+    "pagePassEveryActivity": c_("Each activity must reach its minimum score")
 };
 // The following line should only be used if the ELP contains a hangman game:
 $exe_i18n.exeGames = {

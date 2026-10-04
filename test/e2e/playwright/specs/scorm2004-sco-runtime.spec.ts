@@ -126,6 +126,11 @@ async function finishAndLeave(page: Page, scores: number[]): Promise<void> {
         }, scores);
 }
 
+/** The page's minimum score, drawn before its score. */
+function passScoreLabel(page: Page) {
+    return page.frameLocator('#sco').locator('#exeScoreNode > #eXeScoreNodePassScore');
+}
+
 async function leave(page: Page): Promise<void> {
     await page
         .frameLocator('#sco')
@@ -161,6 +166,8 @@ test.describe('SCORM 2004 exported SCO runtime', () => {
         await serve(page, await exportScorm2004(page, true));
         try {
             await open(page, [0, 5]);
+            await expect(passScoreLabel(page)).toBeVisible();
+            await expect(passScoreLabel(page)).toHaveText('Each activity must reach its minimum score');
             expect(await storedStatus(page)).toMatchObject({
                 completion: 'incomplete',
                 success: 'unknown',
@@ -194,6 +201,9 @@ test.describe('SCORM 2004 exported SCO runtime', () => {
         await serve(page, await exportScorm2004(page, false));
         try {
             await open(page, [8, 4]);
+            // The weighted mean of the marks, 8 and 4, on the score's scale.
+            await expect(passScoreLabel(page)).toBeVisible();
+            await expect(passScoreLabel(page)).toContainText('60/100');
             await leave(page);
             const left = await storedStatus(page);
             expect(left).toMatchObject({
