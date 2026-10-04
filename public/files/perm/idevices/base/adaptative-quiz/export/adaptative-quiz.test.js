@@ -1531,6 +1531,12 @@ describe('adaptative-quiz export', () => {
             adq.options[id].roundCount = 2;
             adq.saveProgress(id);
             expect(parseFloat(store['cmi.core.score.raw'])).toBe(100);
+            // A score is not the end of the game: the page waits for it.
+            expect(store['cmi.core.lesson_status']).toBe('incomplete');
+
+            // endGame() reports again once the game is over.
+            adq.options[id].gameOver = true;
+            adq.saveProgress(id);
             expect(store['cmi.core.lesson_status']).toBe('passed');
 
             // The "below the activity" element shows the latest score (0-10 scale).

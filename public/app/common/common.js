@@ -1247,8 +1247,8 @@ var $exeDevices = {
                             scorm.SetScoreMax(100);
                             scorm.SetScoreMin(0);
                         } else {
-                            scorm.set("cmi.core.score.max", "100");
-                            scorm.set("cmi.core.score.min", "0");
+                            scorm.set(scorm.version === '2004' ? 'cmi.score.max' : 'cmi.core.score.max', "100");
+                            scorm.set(scorm.version === '2004' ? 'cmi.score.min' : 'cmi.core.score.min', "0");
                         }
                     } else {
                         console.warn("La inicialización SCORM devolvió false o scorm no está definido");
@@ -1332,13 +1332,13 @@ var $exeDevices = {
                     if (typeof scormgame.SetScoreMax === 'function') {
                         scormgame.SetScoreMax(100);
                     } else if (typeof scormgame.set === 'function') {
-                        scormgame.set('cmi.core.score.max', '100');
+                        scormgame.set(scormgame.version === '2004' ? 'cmi.score.max' : 'cmi.core.score.max', '100');
                     }
 
                     if (typeof scormgame.SetScoreMin === 'function') {
                         scormgame.SetScoreMin(0);
                     } else if (typeof scormgame.set === 'function') {
-                        scormgame.set('cmi.core.score.min', '0');
+                        scormgame.set(scormgame.version === '2004' ? 'cmi.score.min' : 'cmi.core.score.min', '0');
                     }
 
                     return {
@@ -1376,7 +1376,7 @@ var $exeDevices = {
                         return 0;
                     }
 
-                    const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
+                    const rawScore = pipwerks.SCORM.get(pipwerks.SCORM.version === '2004' ? 'cmi.score.raw' : 'cmi.core.score.raw');
                     return parseFloat(rawScore) || 0;
                 },
 
@@ -1541,7 +1541,7 @@ var $exeDevices = {
                     let initialScore = 0;
                     
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
-                        const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
+                        const rawScore = pipwerks.SCORM.get(pipwerks.SCORM.version === '2004' ? 'cmi.score.raw' : 'cmi.core.score.raw');
                         if (rawScore && rawScore !== "" && rawScore !== "0") {
                             initialScore = parseFloat(rawScore) || 0;
                         } else {
@@ -1742,61 +1742,107 @@ var $exeDevices = {
                     return Math.round((sumWeighted / sumWeights) * 100) / 100;
                 },
 
-                /** Page positions that sent a score during this page load (legacy runtimes). */
-                _reportedNumbers: {},
+                /**
+                 * Progress of an activity in the legacy suspend_data, stored
+                 * in its `state`: registered with no score yet, scored but not
+                 * finished, or finished (see convertToLineFormat).
+                 */
+                ACTIVITY_PENDING: 0,
+                ACTIVITY_SCORED: 1,
+                ACTIVITY_FINISHED: 2,
+
+                /**
+                 * An entry's progress. Entries written before the state was
+                 * stored have none: a positive score shows the activity was
+                 * played, so it counts as finished, while a 0 cannot be told
+                 * apart from the one registerActivity() seeds and stays pending.
+                 *
+                 * @param {Object} [entry] One activity of the parsed suspend_data.
+                 * @returns {number} One of the ACTIVITY_* states.
+                 */
+                getActivityState: function (entry) {
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    if (!entry) return scorm.ACTIVITY_PENDING;
+                    if ([scorm.ACTIVITY_PENDING, scorm.ACTIVITY_SCORED, scorm.ACTIVITY_FINISHED].includes(entry.state)) {
+                        return entry.state;
+                    }
+                    return parseFloat(entry.score) > 0 ? scorm.ACTIVITY_FINISHED : scorm.ACTIVITY_PENDING;
+                },
 
                 /**
                  * The page's status for the runtimes that have no registry
-                 * (SCORM 2004), when the author requires every activity to
-                 * reach its own mark: passed when all of them do, failed when
-                 * one falls short, and incomplete while one has not sent a
-                 * score — the SCORM 1.2 policy waits for them the same way.
+                 * (SCORM 2004), keeping apart the three things the SCORM 1.2
+                 * policy keeps apart: whether there is a score, whether the
+                 * activities are finished, and whether the page is passed.
                  *
-                 * This format has no completion flag, and registerActivity()
-                 * seeds every activity with a stored 0, so a stored 0 cannot
-                 * tell "not answered" from "scored zero". An activity counts as
-                 * answered when it reported on this page load or its stored
-                 * score is above 0. A 0 earned on an earlier visit therefore
-                 * reads as pending until the activity is played again: the page
-                 * is not passed either way, and it is never passed by mistake.
+                 * The page is incomplete while an activity has not finished,
+                 * whatever its score, so a page opened and left is not reported
+                 * as completed. Once all of them have, it is passed by the
+                 * weighted mean of decision 3 of ADR-2316-01, or, when the
+                 * author requires it, only if every activity reaches its own
+                 * mark: the same comparison as unmetThresholds() in the
+                 * registry, rounded to two decimals.
                  *
-                 * Same comparison as unmetThresholds() in the registry, rounded
-                 * to two decimals, with the project's mark for an activity that
-                 * has not registered on this page load.
+                 * The activities judged are the ones registered on this page
+                 * load, plus any entry that carries a state: the runtime only
+                 * writes one for an activity it tracks, so it is pending work
+                 * whose iDevice has not registered yet. A stateless entry that
+                 * did not register is a leftover from an older runtime, which
+                 * seeded every registered iDevice, and does not hold the page
+                 * back. An activity cannot report without registering: its page
+                 * position comes from registerActivity().
                  *
                  * @param {Object} lmsData Activities by page position.
-                 * @returns {string} "passed", "failed" or "incomplete".
+                 * @returns {{completion: string, success: string, scored: boolean}|null}
+                 *   The SCORM 2004 completion and success statuses, and whether
+                 *   any activity has a score to publish; null with no activities.
                  */
-                getEveryActivityVerdict: function (lmsData) {
+                getLegacyVerdict: function (lmsData) {
                     const scorm = $exeDevices.iDevice.gamification.scorm;
                     const data = lmsData || {};
-                    const pageThreshold = $exe.passScore.toPercent();
-                    const numbers = Object.keys(scorm._successThresholdsByNumber);
+                    const thresholds = scorm._successThresholdsByNumber;
+                    const numbers = Object.keys(thresholds);
                     Object.keys(data).forEach(key => {
-                        if (numbers.indexOf(key) === -1) numbers.push(key);
+                        if (numbers.indexOf(key) === -1 && typeof data[key].state === 'number') numbers.push(key);
                     });
                     if (numbers.length === 0) {
-                        return 'incomplete';
+                        return null;
                     }
-                    let pending = false;
-                    let below = false;
-                    numbers.forEach(key => {
-                        const entry = data[key];
-                        const score = entry ? Math.max(0, Math.min(parseFloat(entry.score) || 0, 100)) : 0;
-                        if (!scorm._reportedNumbers[key] && !(score > 0)) {
-                            pending = true;
-                            return;
-                        }
-                        const own = scorm._successThresholdsByNumber[key];
-                        const threshold = typeof own === 'number' ? own : pageThreshold;
-                        if (Math.round(score * 100) / 100 < Math.round(threshold * 100) / 100) {
-                            below = true;
-                        }
-                    });
-                    if (pending) {
-                        return 'incomplete';
+                    const scored = Object.keys(data).some(key => scorm.getActivityState(data[key]) !== scorm.ACTIVITY_PENDING);
+                    if (numbers.some(key => scorm.getActivityState(data[key]) !== scorm.ACTIVITY_FINISHED)) {
+                        return { completion: 'incomplete', success: 'unknown', scored: scored };
                     }
-                    return below ? 'failed' : 'passed';
+                    let passed;
+                    if ($exe.passScore.requiresEveryActivity()) {
+                        const pageThreshold = $exe.passScore.toPercent();
+                        passed = numbers.every(key => {
+                            const score = Math.max(0, Math.min(parseFloat(data[key].score) || 0, 100));
+                            const own = thresholds[key];
+                            const threshold = typeof own === 'number' ? own : pageThreshold;
+                            return Math.round(score * 100) / 100 >= Math.round(threshold * 100) / 100;
+                        });
+                    } else {
+                        passed = scorm.getFinalScore(data) >= scorm.getFinalThreshold(data);
+                    }
+                    return { completion: 'completed', success: passed ? 'passed' : 'failed', scored: scored };
+                },
+
+                /**
+                 * Write a getLegacyVerdict() result with the connected LMS's
+                 * data model. SCORM 1.2 has a single element for both.
+                 *
+                 * @param {{completion: string, success: string}} verdict
+                 */
+                setLegacyStatus: function (verdict) {
+                    if (pipwerks.SCORM.version === '2004') {
+                        pipwerks.SCORM.set('cmi.completion_status', verdict.completion);
+                        pipwerks.SCORM.set('cmi.success_status', verdict.success);
+                    } else {
+                        pipwerks.SCORM.set(
+                            'cmi.core.lesson_status',
+                            verdict.completion === 'incomplete' ? 'incomplete' : verdict.success
+                        );
+                    }
                 },
 
                 registerActivity: function (game) {
@@ -1848,9 +1894,15 @@ var $exeDevices = {
                             // exported before the SCORM 1.2 runtime rewrite).
                             // Its suspend_data identifies activities by page
                             // position, so that is how getFinalThreshold()
-                            // finds this activity's mark.
-                            $exeDevices.iDevice.gamification.scorm._successThresholdsByNumber[game.ideviceNumber] =
-                                $exeDevices.iDevice.gamification.scorm.getSuccessThreshold(game);
+                            // finds this activity's mark. Only an activity
+                            // that sends a score is tracked, as the registry
+                            // tracks only evaluable ones: another would keep
+                            // the page pending for ever (getLegacyVerdict).
+                            const evaluable = Number(game.isScorm) > 0;
+                            if (evaluable) {
+                                $exeDevices.iDevice.gamification.scorm._successThresholdsByNumber[game.ideviceNumber] =
+                                    $exeDevices.iDevice.gamification.scorm.getSuccessThreshold(game);
+                            }
                             let suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
 
                             lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
@@ -1862,11 +1914,12 @@ var $exeDevices = {
                                 if (totalScore > 0) {
                                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
                                 }
-                            } else {
+                            } else if (evaluable) {
                                 lmsData[game.ideviceNumber] = {
                                     title: game.title,
                                     score: 0,
-                                    weighted: game.weighted
+                                    weighted: game.weighted,
+                                    state: $exeDevices.iDevice.gamification.scorm.ACTIVITY_PENDING
                                 };
 
                                 const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
@@ -1879,7 +1932,7 @@ var $exeDevices = {
                 },
 
                 convertToLineFormat: function (obj, game) {
-                    return Object.keys(obj).map(key => {
+                    const lines = Object.keys(obj).map(key => {
                         const item = obj[key];
                         const num = parseInt(key, 10);
                         const title = item.title || "";
@@ -1889,7 +1942,15 @@ var $exeDevices = {
                         const msgWeight = game.msgs.msgWeight ?? "Peso";
 
                         return `${num}. "${title}"; ${msgScore}: ${score}%; ${msgWeight}: ${weight}%`;
-                    }).join('.\t');
+                    });
+                    // A separate, versioned line leaves every score line readable
+                    // by older runtimes, whose parser ignores unknown lines. An
+                    // entry without a state keeps none: rewriting an old
+                    // payload must not make up its history (getActivityState).
+                    const states = Object.keys(obj).filter(key => typeof obj[key].state === 'number')
+                        .map(key => `${parseInt(key, 10)}=${obj[key].state}`);
+                    if (states.length) lines.push(`exe-state/1:${states.join(',')}`);
+                    return lines.join('.\t');
                 },
 
                 parseActivity: function (line) {
@@ -1931,6 +1992,15 @@ var $exeDevices = {
                                 weighted: parseFloat(weighted)
                             };
                         }
+                    });
+
+                    lines.forEach(line => {
+                        const match = /^exe-state\/1:([\d=,]+)$/.exec(line.trim());
+                        if (!match) return;
+                        match[1].split(',').forEach(item => {
+                            const entry = /^(\d+)=([0-2])$/.exec(item);
+                            if (entry && obj[entry[1]]) obj[entry[1]].state = parseInt(entry[2], 10);
+                        });
                     });
 
                     return obj;
@@ -2192,7 +2262,7 @@ var $exeDevices = {
                 readLessonStatus: function () {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) return '';
                     try {
-                        return pipwerks.SCORM.get('cmi.core.lesson_status') || '';
+                        return pipwerks.SCORM.get(pipwerks.SCORM.version === '2004' ? 'cmi.success_status' : 'cmi.core.lesson_status') || '';
                     } catch (e) {
                         return '';
                     }
@@ -2280,15 +2350,16 @@ var $exeDevices = {
 
                     // Legacy runtime (SCORM 2004 packages and packages
                     // exported before the SCORM 1.2 runtime rewrite).
-                    const updatedData = {
+                    // The latest report decides the state, as in the registry:
+                    // a replay that reports `completed: false` reopens the page
+                    // until the activity is finished again.
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    lmsData[game.ideviceNumber] = {
                         title: game.title,
                         score: game.scorerp * 10,
-                        weighted: game.weighted
+                        weighted: game.weighted,
+                        state: completed === true ? scorm.ACTIVITY_FINISHED : scorm.ACTIVITY_SCORED
                     };
-                    lmsData[game.ideviceNumber] = updatedData;
-                    // What getEveryActivityVerdict() reads as "answered": the
-                    // stored line cannot tell this score from the seeded 0.
-                    $exeDevices.iDevice.gamification.scorm._reportedNumbers[game.ideviceNumber] = true;
 
                     const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
 
@@ -2401,19 +2472,22 @@ var $exeDevices = {
                         // marks directly.
                         //
                         // The author may instead require every activity to
-                        // reach its own mark; the page then also waits for the
-                        // ones that have not sent a score yet, as the SCORM 1.2
-                        // policy does.
-                        pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                        if ($exe.passScore.requiresEveryActivity()) {
-                            pipwerks.SCORM.set(
-                                "cmi.core.lesson_status",
-                                $exeDevices.iDevice.gamification.scorm.getEveryActivityVerdict(lmsData)
-                            );
-                        } else if (newFinalScore >= $exeDevices.iDevice.gamification.scorm.getFinalThreshold(lmsData)) {
-                            pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
-                        } else {
-                            pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
+                        // reach its own mark. Either way the page is judged
+                        // only once its activities are finished, as the SCORM
+                        // 1.2 policy does (getLegacyVerdict). This also runs
+                        // when an iDevice registers, so a page opened and left
+                        // reports incomplete, never completed.
+                        //
+                        // No score is published before any activity has one:
+                        // a 0 would read as "scored zero", the case the SCORM
+                        // 1.2 branch above guards against as well.
+                        const scorm = $exeDevices.iDevice.gamification.scorm;
+                        const verdict = scorm.getLegacyVerdict(lmsData);
+                        if (verdict && verdict.scored) {
+                            pipwerks.SCORM.set(pipwerks.SCORM.version === '2004' ? 'cmi.score.raw' : 'cmi.core.score.raw', newFinalScore);
+                        }
+                        if (verdict) {
+                            scorm.setLegacyStatus(verdict);
                         }
                     }
 

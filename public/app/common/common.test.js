@@ -1372,11 +1372,16 @@ describe('common.js $exe helpers', () => {
 
   describe('$exe.isIE edge cases', () => {
     it('returns IE version for Trident', () => {
+      const originalUserAgent = navigator.userAgent;
       Object.defineProperty(navigator, 'userAgent', {
         value: 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)',
         configurable: true,
       });
-      expect(global.$exe.isIE()).toBe(10);
+      try {
+        expect(global.$exe.isIE()).toBe(10);
+      } finally {
+        Object.defineProperty(navigator, 'userAgent', { value: originalUserAgent, configurable: true });
+      }
     });
   });
 
@@ -1810,6 +1815,22 @@ describe('common.js $exeDevices', () => {
       expect(mockGame.enable).not.toHaveBeenCalled();
     });
 
+    it.each(['1.2', '2004'])('initializes score bounds using the %s data model', version => {
+      document.body.className = 'exe-scorm';
+      document.body.innerHTML = '<div class="test-IDevice"></div>';
+      const previous = global.scorm;
+      const api = { version, init: vi.fn(() => true), set: vi.fn() };
+      global.scorm = api;
+      try {
+        getInitGame()(mockGame, 'TestGame', 'testgame', 'test-IDevice');
+        const prefix = version === '2004' ? 'cmi.score' : 'cmi.core.score';
+        expect(api.set.mock.calls).toEqual([[`${prefix}.max`, '100'], [`${prefix}.min`, '0']]);
+        expect(mockGame.enable).toHaveBeenCalledOnce();
+      } finally {
+        global.scorm = previous;
+      }
+    });
+
     it('finds all activities matching the ideviceClass', () => {
       document.body.innerHTML = `
         <div class="test-IDevice">Activity 1</div>
@@ -2238,15 +2259,15 @@ describe('common.js $exeDevices', () => {
       expect(api.SetScoreMin).toHaveBeenCalledWith(0);
     });
 
-    it('bindSession writes the bounds through the data model when the setters are absent', () => {
+    it.each(['1.2', '2004'])('bindSession writes %s bounds when the setters are absent', version => {
       const scorm = getScorm();
       const set = vi.fn();
-      const api = { init: vi.fn(), set };
+      const api = { version, init: vi.fn(), set };
 
       scorm.bindSession(api);
 
-      expect(set).toHaveBeenCalledWith('cmi.core.score.max', '100');
-      expect(set).toHaveBeenCalledWith('cmi.core.score.min', '0');
+      const prefix = version === '2004' ? 'cmi.score' : 'cmi.core.score';
+      expect(set.mock.calls).toEqual([[`${prefix}.max`, '100'], [`${prefix}.min`, '0']]);
     });
 
     it('bindSession answers defaults when there is no wrapper at all', () => {
@@ -2706,71 +2727,146 @@ describe('common.js $exeDevices', () => {
         });
       });
 
-      // When the author requires every activity to reach its own mark.
-      describe('getEveryActivityVerdict', () => {
+      // The page's status on the legacy path, under either pass rule.
+      describe('getLegacyVerdict', () => {
+        const [PENDING, SCORED, FINISHED] = [0, 1, 2];
+        const completed = success => ({ completion: 'completed', success, scored: true });
+        const incomplete = scored => ({ completion: 'incomplete', success: 'unknown', scored });
+        let meta;
+        const requireEveryActivity = () => {
+          meta = document.createElement('meta');
+          meta.setAttribute('name', 'exe-pass-score-every-activity');
+          meta.setAttribute('content', 'true');
+          document.head.appendChild(meta);
+        };
+
         afterEach(() => {
+          meta?.remove();
+          meta = undefined;
           getScorm()._successThresholdsByNumber = {};
-          getScorm()._reportedNumbers = {};
+        });
+
+        it('judges a finished page by the weighted mean, or by each mark when the author asks', () => {
+          getScorm()._successThresholdsByNumber = { 1: 50, 2: 30 };
+          const lmsData = {
+            1: { score: 0, weighted: 50, state: FINISHED },
+            2: { score: 100, weighted: 50, state: FINISHED },
+          };
+          expect(getScorm().getFinalScore(lmsData)).toBeGreaterThanOrEqual(getScorm().getFinalThreshold(lmsData));
+
+          expect(getScorm().getLegacyVerdict(lmsData)).toEqual(completed('passed'));
+          requireEveryActivity();
+          expect(getScorm().getLegacyVerdict(lmsData)).toEqual(completed('failed'));
         });
 
         it('passes when every activity reaches its own mark', () => {
+          requireEveryActivity();
           getScorm()._successThresholdsByNumber = { 1: 30, 2: 80 };
-          getScorm()._reportedNumbers = { 1: true, 2: true };
 
-          expect(getScorm().getEveryActivityVerdict({ 1: { score: 30 }, 2: { score: 90 } })).toBe('passed');
+          expect(
+            getScorm().getLegacyVerdict({ 1: { score: 30, state: FINISHED }, 2: { score: 90, state: FINISHED } })
+          ).toEqual(completed('passed'));
         });
 
-        it('fails when one falls short, though the weighted mean would pass the page', () => {
-          getScorm()._successThresholdsByNumber = { 1: 50, 2: 30 };
-          getScorm()._reportedNumbers = { 1: true, 2: true };
-          const lmsData = { 1: { score: 0, weighted: 50 }, 2: { score: 100, weighted: 50 } };
-
-          expect(getScorm().getFinalScore(lmsData)).toBeGreaterThanOrEqual(getScorm().getFinalThreshold(lmsData));
-          expect(getScorm().getEveryActivityVerdict(lmsData)).toBe('failed');
-        });
-
-        it('waits for an activity that has not sent a score', () => {
-          // registerActivity() seeds every activity with a stored 0.
+        it.each([false, true])('keeps the page incomplete while an activity has not finished (every activity: %s)', every => {
+          if (every) requireEveryActivity();
           getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
-          getScorm()._reportedNumbers = { 1: true };
 
-          expect(getScorm().getEveryActivityVerdict({ 1: { score: 100 }, 2: { score: 0 } })).toBe('incomplete');
+          // Opened and left: registerActivity() seeds each with a pending 0.
+          expect(getScorm().getLegacyVerdict({ 1: { score: 0, state: PENDING }, 2: { score: 0, state: PENDING } }))
+            .toEqual(incomplete(false));
+          // One of two answered.
+          expect(getScorm().getLegacyVerdict({ 1: { score: 100, state: FINISHED }, 2: { score: 0, state: PENDING } }))
+            .toEqual(incomplete(true));
+          // Both sent a score, but one has not finished: a score is not a hand-in.
+          expect(getScorm().getLegacyVerdict({ 1: { score: 100, state: FINISHED }, 2: { score: 90, state: SCORED } }))
+            .toEqual(incomplete(true));
         });
 
-        it('fails a 0 the learner has just earned', () => {
+        it('fails a 0 the learner has just earned, and passes it at a mark of 0', () => {
+          requireEveryActivity();
           getScorm()._successThresholdsByNumber = { 1: 50 };
-          getScorm()._reportedNumbers = { 1: true };
+          expect(getScorm().getLegacyVerdict({ 1: { score: 0, state: FINISHED } })).toEqual(completed('failed'));
 
-          expect(getScorm().getEveryActivityVerdict({ 1: { score: 0 } })).toBe('failed');
+          getScorm()._successThresholdsByNumber = { 1: 0 };
+          expect(getScorm().getLegacyVerdict({ 1: { score: 0, state: FINISHED } })).toEqual(completed('passed'));
         });
 
-        it('counts a stored score from an earlier visit as answered', () => {
+        it('counts a positive score stored before states as finished, and a stateless 0 as pending', () => {
           getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
-          getScorm()._reportedNumbers = { 2: true };
 
-          expect(getScorm().getEveryActivityVerdict({ 1: { score: 60 }, 2: { score: 70 } })).toBe('passed');
+          expect(getScorm().getLegacyVerdict({ 1: { score: 60 }, 2: { score: 70 } })).toEqual(completed('passed'));
+          expect(getScorm().getLegacyVerdict({ 1: { score: 60 }, 2: { score: 0 } })).toEqual(incomplete(true));
         });
 
-        it('judges an entry whose activity has not registered by the project mark', () => {
-          // No META in this document: the default 5, which is 50.
-          getScorm()._reportedNumbers = { 3: true };
+        it('judges pending work whose activity has not registered yet by the project mark', () => {
+          requireEveryActivity();
+          // No exe-pass-score META in this document: the default 5, which is 50.
+          expect(getScorm().getLegacyVerdict({ 3: { score: 40, state: FINISHED } })).toEqual(completed('failed'));
+          expect(getScorm().getLegacyVerdict({ 3: { score: 50, state: FINISHED } })).toEqual(completed('passed'));
+          expect(getScorm().getLegacyVerdict({ 3: { score: 0, state: PENDING } })).toEqual(incomplete(false));
+        });
 
-          expect(getScorm().getEveryActivityVerdict({ 3: { score: 40 } })).toBe('failed');
-          expect(getScorm().getEveryActivityVerdict({ 3: { score: 50 } })).toBe('passed');
+        it('does not hold the page back for a stateless leftover that did not register', () => {
+          getScorm()._successThresholdsByNumber = { 1: 50 };
+          const lmsData = { 1: { score: 80, state: FINISHED }, 7: { score: 0 } };
+
+          // It still counts in the mean, like every stored entry in
+          // getFinalScore(): the verdict and the published score agree.
+          expect(getScorm().getLegacyVerdict(lmsData)).toEqual(completed('failed'));
+          requireEveryActivity();
+          expect(getScorm().getLegacyVerdict(lmsData)).toEqual(completed('passed'));
         });
 
         it('passes an activity at its mark that floating point left a hair below', () => {
+          requireEveryActivity();
           getScorm()._successThresholdsByNumber = { 1: 57 };
-          getScorm()._reportedNumbers = { 1: true };
           const score = 0.57 * 100;
           expect(score).toBeLessThan(57);
 
-          expect(getScorm().getEveryActivityVerdict({ 1: { score } })).toBe('passed');
+          expect(getScorm().getLegacyVerdict({ 1: { score, state: FINISHED } })).toEqual(completed('passed'));
         });
 
-        it('has nothing to pass while no activity is known', () => {
-          expect(getScorm().getEveryActivityVerdict({})).toBe('incomplete');
-          expect(getScorm().getEveryActivityVerdict(null)).toBe('incomplete');
+        it('has nothing to judge while no activity is known', () => {
+          expect(getScorm().getLegacyVerdict({})).toBeNull();
+          expect(getScorm().getLegacyVerdict(null)).toBeNull();
+          expect(getScorm().getLegacyVerdict({ 7: { score: 0 } })).toBeNull();
+        });
+      });
+
+      describe('the activity state in cmi.suspend_data', () => {
+        const game = { msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+
+        it('round-trips every state and keeps the score lines readable by the old parser', () => {
+          const scorm = getScorm();
+          const data = {
+            1: { title: 'Pending', score: 0, weighted: 100, state: 0 },
+            2: { title: 'Scored', score: 40, weighted: 100, state: 1 },
+            3: { title: 'Finished', score: 0, weighted: 100, state: 2 },
+          };
+          const saved = scorm.convertToLineFormat(data, game);
+
+          expect(saved.endsWith('.\texe-state/1:1=0,2=1,3=2')).toBe(true);
+          expect(scorm.parseSuspendData(saved)).toEqual(data);
+          const oldRecords = saved.split('.\t').map(line => scorm.parseActivity(line)).filter(Boolean);
+          expect(oldRecords.map(record => record.score)).toEqual([0, 40, 0]);
+        });
+
+        it('does not invent a state for an old payload', () => {
+          const scorm = getScorm();
+          const old = '1. "Old activity"; Score: 0%; Weight: 100%';
+          const parsed = scorm.parseSuspendData(old);
+
+          expect(parsed[1].state).toBeUndefined();
+          expect(scorm.convertToLineFormat(parsed, game)).toBe(old);
+        });
+
+        it('ignores unknown, malformed and orphaned state lines', () => {
+          const scorm = getScorm();
+          const score = '1. "Old activity"; Score: 0%; Weight: 100%';
+          for (const suffix of ['exe-state/2:1=2', 'exe-state/1:1=x', 'exe-state/1:1=3', 'exe-state/1:99=2']) {
+            expect(scorm.parseSuspendData(`${score}.\t${suffix}`)).toEqual(scorm.parseSuspendData(score));
+          }
         });
       });
     });
@@ -3168,7 +3264,7 @@ describe('common.js $exeDevices', () => {
       global.pipwerks = { SCORM: { get: () => '', set } };
       const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
 
-      getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1 } }, game);
+      getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1, state: 2 } }, game);
 
       expect(set).toHaveBeenCalledWith('cmi.core.score.raw', score);
       expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
@@ -3193,7 +3289,7 @@ describe('common.js $exeDevices', () => {
       const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
 
       try {
-        getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1 } }, game);
+        getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1, state: 2 } }, game);
 
         expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
       } finally {
@@ -3240,32 +3336,147 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    describe('on the legacy path, when the page requires every activity to reach its own mark', () => {
+    describe('on the legacy path, the page is judged once its activities are finished', () => {
+      const [PENDING, SCORED, FINISHED] = [0, 1, 2];
       let meta;
-
-      beforeEach(() => {
-        delete window.exeScorm12;
+      const requireEveryActivity = () => {
         meta = document.createElement('meta');
         meta.setAttribute('name', 'exe-pass-score-every-activity');
         meta.setAttribute('content', 'true');
         document.head.appendChild(meta);
+      };
+      /** A SCORM 2004 wrapper that keeps the suspend_data it is given. */
+      const scorm2004 = () => {
+        const lms = { 'cmi.suspend_data': '' };
+        const set = vi.fn((key, value) => {
+          lms[key] = value;
+          return true;
+        });
+        global.pipwerks = { SCORM: { version: '2004', get: key => lms[key] || '', set } };
+        return { lms, set };
+      };
+      const playable = (id, mark, isScorm = 1) => {
+        const node = document.createElement('article');
+        node.className = 'idevice_node';
+        node.id = id;
+        node.innerHTML = `<div id="${id}-game"></div>`;
+        document.body.appendChild(node);
+        return {
+          main: `${id}-game`, isScorm, weighted: 100, passScoreMode: 'custom', passScoreCustom: mark,
+          msgs: { msgYouScore: 'Score', msgScore: 'Score', msgWeight: 'Weight' },
+        };
+      };
+      const report = (game, score, completed) => {
+        game.scorerp = score;
+        const stored = global.pipwerks.SCORM.get('cmi.suspend_data');
+        getScorm().updateActivity(game, getScorm().parseSuspendData(stored), completed);
+      };
+
+      beforeEach(() => {
+        delete window.exeScorm12;
+        document.body.innerHTML = '';
       });
 
       afterEach(() => {
-        meta.remove();
+        meta?.remove();
+        meta = undefined;
         getScorm()._successThresholdsByNumber = {};
-        getScorm()._reportedNumbers = {};
+      });
+
+      it.each([false, true])('reports a page opened and left as incomplete, with no score (every activity: %s)', every => {
+        if (every) requireEveryActivity();
+        const { lms, set } = scorm2004();
+
+        getScorm().registerActivity(playable('first', 8));
+        getScorm().registerActivity(playable('second', 4));
+
+        expect(lms['cmi.completion_status']).toBe('incomplete');
+        expect(lms['cmi.success_status']).toBe('unknown');
+        expect(set.mock.calls.some(([key]) => key === 'cmi.score.raw')).toBe(false);
+        expect(set.mock.calls.some(([key]) => key.startsWith('cmi.core.'))).toBe(false);
+      });
+
+      it.each([
+        [false, 'passed'],
+        [true, 'failed'],
+      ])('judges the page once both activities finish (every activity: %s)', (every, verdict) => {
+        if (every) requireEveryActivity();
+        const { lms } = scorm2004();
+        const first = playable('first', 8);
+        const second = playable('second', 4);
+        getScorm().registerActivity(first);
+        getScorm().registerActivity(second);
+
+        report(first, 7, true);
+        expect(lms['cmi.completion_status']).toBe('incomplete');
+        expect(lms['cmi.score.raw']).toBe(35);
+
+        // 85 against a mean mark of 60 passes; 7 against its own 8 does not.
+        report(second, 10, true);
+        expect(lms['cmi.completion_status']).toBe('completed');
+        expect(lms['cmi.success_status']).toBe(verdict);
+        expect(lms['cmi.score.raw']).toBe(85);
+      });
+
+      it('keeps an activity that sent a score without finishing pending, and reopens on a replay', () => {
+        const { lms } = scorm2004();
+        const game = playable('only', 5);
+        getScorm().registerActivity(game);
+
+        // A manual send in the middle of the game: a score is not a hand-in.
+        report(game, 9, false);
+        expect(getScorm().parseSuspendData(lms['cmi.suspend_data'])[1].state).toBe(SCORED);
+        expect(lms['cmi.completion_status']).toBe('incomplete');
+
+        report(game, 9, true);
+        expect(lms['cmi.completion_status']).toBe('completed');
+        expect(lms['cmi.success_status']).toBe('passed');
+
+        // The latest report decides, as in the registry.
+        report(game, 2, false);
+        expect(lms['cmi.completion_status']).toBe('incomplete');
+        expect(lms['cmi.success_status']).toBe('unknown');
+      });
+
+      it('registers a zero as pending and keeps a submitted zero after a resume', () => {
+        requireEveryActivity();
+        const { lms } = scorm2004();
+        const game = playable('zero', 0);
+
+        getScorm().registerActivity(game);
+        expect(getScorm().parseSuspendData(lms['cmi.suspend_data'])[1]).toMatchObject({ score: 0, state: PENDING });
+
+        report(game, 0, true);
+        getScorm().registerActivity(game);
+        expect(getScorm().parseSuspendData(lms['cmi.suspend_data'])[1]).toMatchObject({ score: 0, state: FINISHED });
+        expect(lms['cmi.completion_status']).toBe('completed');
+        expect(lms['cmi.success_status']).toBe('passed');
+      });
+
+      it('does not track an activity that sends no score', () => {
+        const { lms, set } = scorm2004();
+
+        getScorm().registerActivity(playable('presentation', 5, 0));
+
+        expect(getScorm()._successThresholdsByNumber).toEqual({});
+        expect(lms['cmi.suspend_data']).toBe('');
+        expect(set.mock.calls.some(([key]) => key.startsWith('cmi.completion') || key.startsWith('cmi.success'))).toBe(
+          false
+        );
       });
 
       it('showFinalScore fails the page when one activity falls short, though the mean passes', () => {
+        requireEveryActivity();
         const set = vi.fn(() => true);
         global.pipwerks = { SCORM: { get: () => '', set } };
         getScorm()._successThresholdsByNumber = { 1: 50, 2: 30 };
-        getScorm()._reportedNumbers = { 1: true, 2: true };
         const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
 
         getScorm().showFinalScore(
-          { 1: { title: 'A', score: 0, weighted: 50 }, 2: { title: 'B', score: 100, weighted: 50 } },
+          {
+            1: { title: 'A', score: 0, weighted: 50, state: FINISHED },
+            2: { title: 'B', score: 100, weighted: 50, state: FINISHED },
+          },
           game
         );
 
@@ -3274,17 +3485,44 @@ describe('common.js $exeDevices', () => {
         expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
       });
 
-      it('updateActivity counts the activity that reported as answered', () => {
+      it('updateActivity stores the activity that finished, and SCORM 1.2 reads pending as incomplete', () => {
         const set = vi.fn(() => true);
         global.pipwerks = { SCORM: { get: () => '', set } };
         getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
         const game = { ideviceNumber: 2, title: 'B', scorerp: 6, weighted: 100, msgs: { msgYouScore: 'Score' } };
 
-        getScorm().updateActivity(game, { 1: { title: 'A', score: 0, weighted: 100 } }, true);
+        getScorm().updateActivity(game, { 1: { title: 'A', score: 0, weighted: 100, state: PENDING } }, true);
 
-        expect(getScorm()._reportedNumbers[2]).toBe(true);
+        const saved = set.mock.calls.find(([key]) => key === 'cmi.suspend_data')[1];
+        expect(getScorm().parseSuspendData(saved)[2].state).toBe(FINISHED);
         // The first activity still has only the 0 registerActivity seeded.
         expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+      });
+
+      it.each([
+        [{ score: 100, state: FINISHED }, 'completed', 'passed', true],
+        [{ score: 0, state: FINISHED }, 'completed', 'failed', true],
+        [{ score: 40, state: SCORED }, 'incomplete', 'unknown', true],
+        [{ score: 0, state: PENDING }, 'incomplete', 'unknown', false],
+      ])('publishes the SCORM 2004 verdict %s through its own data model', (record, completion, success, scored) => {
+        const set = vi.fn(() => true);
+        global.pipwerks = { SCORM: { version: '2004', get: () => '', set } };
+        getScorm()._successThresholdsByNumber = { 1: 50 };
+        getScorm().showFinalScore({ 1: record }, { msgs: { msgYouScore: 'Score' } });
+        expect(set.mock.calls.some(([key]) => key === 'cmi.score.raw')).toBe(scored);
+        if (scored) expect(set).toHaveBeenCalledWith('cmi.score.raw', record.score);
+        expect(set).toHaveBeenCalledWith('cmi.completion_status', completion);
+        expect(set).toHaveBeenCalledWith('cmi.success_status', success);
+        expect(set.mock.calls.some(([key]) => key.startsWith('cmi.core.'))).toBe(false);
+      });
+
+      it('reads the SCORM 2004 score and success state for the score display', () => {
+        const get = vi.fn(key => ({ 'cmi.score.raw': '75', 'cmi.success_status': 'passed' })[key] || '');
+        global.pipwerks = { SCORM: { version: '2004', get } };
+        expect(getScorm().getTotalScore()).toBe(75);
+        expect(getScorm().readLessonStatus()).toBe('passed');
+        getScorm().createScoreScormHtml({ main: 'unused', msgs: { msgYouScore: 'Score' } });
+        expect(get.mock.calls.some(([key]) => key.startsWith('cmi.core.'))).toBe(false);
       });
     });
 
@@ -3343,7 +3581,7 @@ describe('common.js $exeDevices', () => {
       global.pipwerks = { SCORM: { get: () => '', set } };
       const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
 
-      expect(() => getScorm().showFinalScore({ 1: { title: 'Q', score: 90, weighted: 1 } }, game)).not.toThrow();
+      expect(() => getScorm().showFinalScore({ 1: { title: 'Q', score: 90, weighted: 1, state: 2 } }, game)).not.toThrow();
 
       expect(set).toHaveBeenCalledWith('cmi.core.score.raw', 90);
       expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
@@ -3903,8 +4141,8 @@ describe('common.js $exeDevices', () => {
 
       getScorm().updateActivity(game(), lmsData, true);
 
-      expect(lmsData[1]).toEqual({ title: 'Quiz', score: 90, weighted: 1 });
-      expect(api.data['cmi.suspend_data']).toBe('1. "Quiz"; Score: 90%; Weight: 1%');
+      expect(lmsData[1]).toEqual({ title: 'Quiz', score: 90, weighted: 1, state: 2 });
+      expect(api.data['cmi.suspend_data']).toBe('1. "Quiz"; Score: 90%; Weight: 1%.\texe-state/1:1=2');
       expect(api.data['cmi.core.score.raw']).toBe('90');
       expect(api.data['cmi.core.lesson_status']).toBe('passed');
       // The legacy path needs the same commit as the runtime one, and for the
@@ -3913,7 +4151,7 @@ describe('common.js $exeDevices', () => {
     });
 
     it('showFinalScore parses the legacy cmi.suspend_data when given no lmsData and there is no registry', () => {
-      api.data['cmi.suspend_data'] = '1. "Quiz"; Score: 40%; Weight: 1%';
+      api.data['cmi.suspend_data'] = '1. "Quiz"; Score: 40%; Weight: 1%.\texe-state/1:1=2';
       delete window.exeScorm12;
       window.pipwerks = loadLegacyWrapper();
       expect(window.pipwerks.SCORM.init()).toBe(true);
@@ -4673,6 +4911,22 @@ describe('common.js $exeDevices', () => {
 
   describe('gamification.math', () => {
     const getMath = () => global.$exeDevices.iDevice.gamification.math;
+    let originalMathJax;
+
+    beforeEach(() => {
+      originalMathJax = global.MathJax;
+      // These tests exercise the caller, not loading the real MathJax engine.
+      // Otherwise happy-dom's synthetic script load starts a readiness poll
+      // that survives the test environment and throws after window is removed.
+      global.MathJax = { typesetPromise: vi.fn().mockResolvedValue(undefined) };
+    });
+
+    afterEach(async () => {
+      await Promise.resolve();
+      global.MathJax = originalMathJax;
+      getMath()._loading = false;
+      getMath()._callbacks = [];
+    });
 
     it('hasLatex detects LaTeX syntax', () => {
       const math = getMath();
@@ -4756,10 +5010,18 @@ describe('common.js $exeDevices', () => {
       expect(() => math.updateLatex(element)).not.toThrow();
     });
 
-    it('updateLatex handles deferred option', () => {
+    it('updateLatex handles deferred option', async () => {
       const math = getMath();
       document.body.innerHTML = '<div class="math-content">\\(x^2\\)</div>';
-      expect(() => math.updateLatex('.math-content', { defer: true })).not.toThrow();
+      vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+      try {
+        math.updateLatex('.math-content', { defer: true });
+        expect(global.MathJax.typesetPromise).not.toHaveBeenCalled();
+        await vi.runAllTimersAsync();
+        expect(global.MathJax.typesetPromise).toHaveBeenCalledWith([document.querySelector('.math-content')]);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('engineConfig has expected structure', () => {

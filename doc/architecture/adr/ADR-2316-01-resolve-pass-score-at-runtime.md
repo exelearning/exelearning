@@ -162,7 +162,7 @@ control the runtime ignored.
 
 ## Decision
 
-We adopt **option 2**. The eleven decisions below are listed in order of
+We adopt **option 2**. The twelve decisions below are listed in order of
 importance: the first five constrain the file format and the behaviour of
 already-published content; the rest follow from them and could be revisited
 without touching the first five.
@@ -356,17 +356,63 @@ it off.
   content sets a threshold with `setSuccessThreshold()`, the page is judged by
   its aggregate against that value, as before. That threshold is a mark for the
   whole page, and Moodle applies `masteryoverride` at `LMSFinish` anyway.
-- **Nothing new is stored.** The rule needs each activity's score and mark, and
+- **SCORM 1.2 stores nothing new.** The rule needs each activity's score and mark, and
   both are already in its record in `cmi.suspend_data` (decision 3). A resumed
   attempt therefore derives the same verdict, and the entry policy recognises
   it as its own.
 - **Legacy SCORM (2004)** has no registry, so `common.js` judges the activities
-  it knows by page position. An activity that has not reported keeps the page
-  `incomplete` rather than `failed`: the legacy path writes a 0 for every
-  activity as it registers, which under this rule would fail the page before
-  the learner had touched it. The legacy format cannot tell a 0 restored from an
-  earlier visit apart from that placeholder, so such an activity reads as
-  pending until it reports again.
+  it knows by page position, through the activity states of decision 12. The
+  page is judged only once every activity is finished, so the 0 the legacy path
+  writes for each activity as it registers never fails a page the learner has
+  not touched. A submitted 0 stays finished after a resume, including when its
+  mark is 0.
+
+### 12. SCORM 2004 judges a page only once its activities are finished
+
+SCORM 2004 packages use the legacy runtime, which has no registry. Until this
+change it wrote SCORM 1.2 element names (`cmi.core.lesson_status`,
+`cmi.core.score.raw`) to the SCORM 2004 API, which rejects them, so nothing it
+decided reached the LMS. What did reach it came from the exit: the exported page
+calls `unloadPage()` with no argument from its body attributes, before
+`exe_export.js` can pass `isSCORM`, and that call marked any page that was not
+yet terminal `completed` and `passed`, answered or not.
+
+Writing valid element names alone made it wrong in another way. The legacy path
+judged the page every time an iDevice registered, counting the 0 it seeds for
+each activity as a score. A page opened and left became `completed` and `failed`
+with a score of 0, and `quit()` then ended the attempt with `cmi.exit = normal`.
+
+The legacy path therefore keeps apart the three things the SCORM 1.2 policy keeps
+apart ([ADR-2209-02](ADR-2209-02-scorm12-activity-completion-registry.md)):
+
+- **Whether there is a score.** `cmi.score.raw` is written only once an activity
+  has sent one.
+- **Whether the activities are finished.** Each activity is pending (registered,
+  no score), scored, or finished. Only the bridge's `completed: true`, sent when
+  the game is over, finishes it. A score sent from the button in the middle of a
+  game does not, as in the SCORM 1.2 runtime contract (§9.1), and the latest
+  report decides, so a replay that reports `completed: false` reopens the page.
+  While an activity is not finished, the page is `incomplete` and `unknown`,
+  and the exit is `suspend`.
+- **Whether the page is passed.** Once every activity is finished, the page is
+  `completed`, and `passed` or `failed` by the weighted mean of decision 3, or by
+  each activity's own mark under decision 11.
+
+The states travel in a separate, versioned line at the end of the payload,
+`exe-state/1:1=2,2=0` (page position and state), with the existing `.\t`
+separator. The score lines do not change, and an older runtime ignores the
+line. A payload written before it has no states. A positive score then counts
+as finished, because the activity was played. A 0 cannot be told apart from the
+placeholder, so it stays pending until the activity reports again. Rewriting
+such a payload does not make up states for it.
+
+Only activities that send a score (`isScorm > 0`) are tracked, as the registry
+tracks only evaluable ones. Any other activity would keep the page pending for
+ever. Entry and exit (`SCOFunctions.js`) decide from the same stored states under
+either rule, so the argument-less exit no longer completes an unfinished page.
+At entry, the verdict the LMS holds is kept until an iDevice registers, because
+the activities' own marks are not known before that. A page with no activities
+keeps the view-only rule and is completed by being viewed.
 
 ## Changes introduced
 
@@ -383,6 +429,8 @@ it off.
   `false`; it travels as `<odeProperty>pp_passScoreEveryActivity</odeProperty>`
   and, when `true`, as `<meta name="exe-pass-score-every-activity">`. An ELP
   without it imports as `false`.
+- The legacy line format of `cmi.suspend_data` (SCORM 2004) gains a last line,
+  `exe-state/1:`, with each activity's state: pending, scored or finished.
 
 ### Path of the value
 
@@ -429,9 +477,13 @@ only when the value is `true`.
 - With every activity at its own mark (decision 11): in SCORM 1.2,
   `activities.unmetThresholds()` lists the activities below their mark, and
   `decideStatus()` answers with the reason `own-marks-evaluated`. On the legacy
-  path, `getEveryActivityVerdict()` answers `incomplete`, `failed` or `passed`
-  in `showFinalScore()`. Both read the META, the first directly and the second
-  through `$exe.passScore.requiresEveryActivity()`.
+  path, `getLegacyVerdict()` applies it once the activities are finished
+  (decision 12). Both read the META, the first directly and the second through
+  `$exe.passScore.requiresEveryActivity()`.
+- SCORM 2004 status under either rule (decision 12): `getLegacyVerdict()` in
+  `common.js` decides the completion and success statuses from the activity
+  states, `setLegacyStatus()` writes them with the SCORM 2004 element names, and
+  `showFinalScore()`, `loadPage()` and `unloadPage()` all go through it.
 
 ### Scope
 
@@ -457,6 +509,8 @@ only when the value is `true`.
 - The absence of data is meaningful, so none of the three persistence shapes
   needed a migration.
 - Three hand-written numbers and one control that did nothing are gone.
+- SCORM 2004 packages report a status the LMS accepts, and a page is completed
+  only when its activities are finished.
 
 ### Negative
 
@@ -467,6 +521,9 @@ only when the value is `true`.
 - Any change to `getTab` reaches all 35 tabs at once.
 - Two page verdicts exist, chosen per project, so the same scores can pass a
   page in one course and fail it in another.
+- A SCORM 2004 page that used to end `completed` and `passed` on leaving now
+  stays `incomplete` until its activities are finished. An activity stored as a
+  0 by an older runtime has to be played again before the page can complete.
 
 ### Neutral
 
@@ -525,13 +582,27 @@ only when the value is `true`.
   exports with the option on and gives one activity 70 against a mark of 80 and
   another 100 against 40: the mean (85 against 60) would pass, but the page is
   `failed`. A new attempt with 80 is `passed`.
+- `scorm2004-contract.test.js` runs the shipped legacy scripts against
+  `scorm-again`'s independent SCORM 2004 API, rejecting invalid data-model writes,
+  and leaves through the argument-less `unloadPage()` the exported page calls.
+  Under both rules it covers a page opened and left, a half-answered page,
+  scores sent without finishing, a finished page, a restored 0 at a mark of 0, a
+  payload from an older runtime and an informational page.
+  `scorm2004-sco-runtime.spec.ts` exports from the editor and plays the package
+  below that API: with the option, it reopens a submitted 0 at a mark of 0;
+  without it, an unanswered page stays `incomplete` with exit `suspend`, and a
+  finished one is judged by the mean.
 
 ## Follow-up work
 
 - Verify in a real Moodle that a project mark is overridden by an activity-level
   `mastery_score`, asserted at unit level only so far.
-- Verify decision 11 in a real Moodle. So far it has been tried only against
-  simulated SCORM 1.2 and SCORM 2004 APIs.
+- Verify decisions 11 and 12 in a real Moodle. So far they have been tried only
+  against simulated SCORM 1.2 and SCORM 2004 APIs.
+- The exported SCORM 2004 page still calls `unloadPage()` with no argument
+  before `exe_export.js` can pass `isSCORM`. Decision 12 makes the argument
+  irrelevant for pages with activities; removing the body attributes was left
+  out of this change.
 
 ## References
 
