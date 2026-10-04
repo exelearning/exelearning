@@ -454,8 +454,8 @@ only when the value is `true`.
 
 - A new `number` field type in the project properties form, with `min`/`max`/`step`
   declared in the property definition.
-- A checkbox under the minimum score in Export options, "Every SCORM activity on
-  a page must reach its own minimum score", whose help text explains the
+- A checkbox under the minimum score in Export options, "Each SCORM activity
+  must reach its minimum score", whose help text explains the
   weighted mean that applies while it is unchecked.
 - The **Grading** tab, with three sections headed alike.
 - Four collapsible help notes written from what the runtime does: what each of

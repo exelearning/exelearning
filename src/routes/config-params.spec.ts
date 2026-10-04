@@ -114,7 +114,7 @@ describe('buildConfigParams', () => {
             const prefixed = buildConfigParams({ TRANS_PREFIX: T, LICENSES, PACKAGE_LOCALES, LOCALES })
                 .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties.pp_passScoreEveryActivity;
 
-            expect(prefixed.title).toBe(`${T}Every SCORM activity on a page must reach its own minimum score`);
+            expect(prefixed.title).toBe(`${T}Each SCORM activity must reach its minimum score`);
             expect(prefixed.help.startsWith(T)).toBe(true);
         });
     });

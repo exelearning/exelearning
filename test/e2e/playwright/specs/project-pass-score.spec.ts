@@ -144,6 +144,15 @@ test.describe('Project pass score', () => {
         // Off by default, so an existing course keeps the weighted-mean rule.
         await expect(checkbox).not.toBeChecked();
 
+        // Its help icon sits beside the label, on the same line, like the
+        // other export toggles (assets/styles/pages/_properties.scss).
+        const row = page.locator('.property-row[property="pp_passScoreEveryActivity"]');
+        const label = (await row.locator('label').boundingBox())!;
+        const icon = (await row.locator('.form-help-exe-icon').boundingBox())!;
+        expect(icon.y + icon.height / 2).toBeGreaterThan(label.y);
+        expect(icon.y + icon.height / 2).toBeLessThan(label.y + label.height);
+        expect(icon.x).toBeGreaterThan(label.x + label.width - 4);
+
         // The checkbox is drawn as a toggle; click what the author sees.
         await page.locator('.toggle-item').filter({ has: checkbox }).first().click();
         await expect(checkbox).toBeChecked();

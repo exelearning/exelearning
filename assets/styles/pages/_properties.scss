@@ -251,7 +251,8 @@
                 &[property="pp_addPagination"],
                 &[property="pp_addSearchBox"],
                 &[property="pp_addAccessibilityToolbar"],
-                &[property="pp_addMathJax"] {
+                &[property="pp_addMathJax"],
+                &[property="pp_passScoreEveryActivity"] {
                     display: flex;
                     flex-direction: row;
                     justify-content: flex-start;
