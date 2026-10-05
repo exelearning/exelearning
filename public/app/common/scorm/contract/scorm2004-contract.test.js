@@ -197,6 +197,19 @@ describe('SCORM 2004 contract with the exported runtime', () => {
         }
     });
 
+    it.each([false, true])('does not pass 45 against a passing score of 0.45004 (every activity=%s)', enabled => {
+        const session = openSession({ enabled, passing: '0.45004' });
+        const [first, second] = register(session, [0, 0]);
+        // The label never shows less than the mark: 45 would read as enough.
+        expect(session.page.document.getElementById('eXeScoreNodePassScore').textContent).toBe(
+            'Minimum score to pass: 45.01/100',
+        );
+        report(session, first, 0);
+        report(session, second, 90);
+        session.page.unloadPage();
+        expect(stored(session)).toMatchObject({ completion: 'completed', success: 'failed', raw: '45' });
+    });
+
     it('completes an informational page even when the option is enabled', () => {
         const session = openSession();
         session.page.unloadPage();

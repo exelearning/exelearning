@@ -3658,6 +3658,12 @@ describe('common.js $exeDevices', () => {
           ['1', 100],
           ['-0.2', 0],
           ['0.555', 55.5],
+          // Every decimal the data model allows (real(10,7)) is kept: rounding
+          // it would let a lower score pass.
+          ['0.45004', 45.004],
+          ['0.4500001', 45.00001],
+          // Without floating-point noise: 0.56 * 100 is 56.00000000000001.
+          ['0.56', 56],
           ['', null],
           ['abc', null],
           ['1.5', null],
@@ -3700,6 +3706,44 @@ describe('common.js $exeDevices', () => {
           getScorm().createScoreScormHtml(game);
           expect(shown()).toBe(`Minimum score to pass: ${mark}/100`);
         });
+
+        it.each([false, true])('does not pass a score just below a fractional mark (every activity: %s)', every => {
+          if (every) addMeta('exe-pass-score-every-activity', 'true');
+          scorm2004({ 'cmi.scaled_passing_score': '0.45004' });
+          getScorm()._successThresholdsByNumber = { 1: 50 };
+
+          expect(getScorm().getLegacyVerdict({ 1: { score: 45, state: FINISHED } })).toMatchObject({
+            success: 'failed',
+          });
+          expect(getScorm().getLegacyVerdict({ 1: { score: 45.01, state: FINISHED } })).toMatchObject({
+            success: 'passed',
+          });
+          expect(getScorm().getLegacyVerdict({ 1: { score: 56, state: FINISHED } })).toMatchObject({
+            success: 'passed',
+          });
+        });
+      });
+
+      // Scores are kept to two decimals, so the lowest one that passes is the
+      // threshold rounded up: rounded down, the label would show a score that
+      // fails as enough.
+      it.each([
+        [45.004, '45.01'],
+        [45.00001, '45.01'],
+        [56.00000000000001, '56'],
+        [28.999999999999996, '29'],
+        [56.67, '56.67'],
+        [0, '0'],
+      ])('never shows less than the threshold %s (shows %s)', (threshold, text) => {
+        scorm2004();
+        getScorm().createScoreScormHtml(game);
+        window.exeScorm12 = {
+          policy: { setScoreDetailed: vi.fn(), getPassRule: () => ({ everyActivity: false, threshold }) },
+        };
+
+        getScorm().showPagePassScore();
+
+        expect(shown()).toBe(`Minimum score to pass: ${text}/100`);
       });
     });
 

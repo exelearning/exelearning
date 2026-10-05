@@ -467,7 +467,9 @@ only when the value is `true`.
   It shows whatever decides the status: the LMS's threshold when it sets one,
   otherwise the activities' marks and the project mark. `showPagePassScore()`
   in `common.js` draws it, and the SCORM 1.2 policy answers through
-  `getPassRule()`.
+  `getPassRule()`. Scores are kept to two decimals, so the label rounds the
+  threshold up to the lowest score that passes (45.004 shows as 45.01). The
+  verdict keeps every decimal the LMS gives.
 - The **Grading** tab, with three sections headed alike.
 - Four collapsible help notes written from what the runtime does: what each of
   the three SCORM modes implies, and that the weight is a proportion between

@@ -1889,7 +1889,11 @@ var $exeDevices = {
                     if (value === null || value === undefined || String(value).trim() === '') return null;
                     const scaled = parseFloat(value);
                     if (!Number.isFinite(scaled) || scaled < -1 || scaled > 1) return null;
-                    return Math.round(Math.max(0, scaled) * 10000) / 100;
+                    // Every decimal the element can hold (real(10,7), so five
+                    // as a percentage) is kept: rounding it to two would let a
+                    // score of 45 pass a mark of 45.004. Rounding at that
+                    // precision only drops floating-point noise (0.56 * 100).
+                    return Math.round(Math.max(0, scaled) * 1e7) / 1e5;
                 },
 
                 /**
@@ -1942,8 +1946,13 @@ var $exeDevices = {
                     if (rule && rule.everyActivity) {
                         text = i18n.pagePassEveryActivity || '';
                     } else if (rule && typeof rule.threshold === 'number' && Number.isFinite(rule.threshold)) {
-                        const mark = `${Math.round(rule.threshold * 100) / 100}/100`;
-                        text = (i18n.pagePassScore || '').replace('%s', mark);
+                        // Scores are kept to two decimals, so the lowest one
+                        // that passes is the threshold rounded up, never down:
+                        // 45.004 shows as 45.01, not as a 45 that fails. The
+                        // first rounding drops floating-point noise, which
+                        // would otherwise turn 56 into 56.01.
+                        const hundredths = Math.ceil(Math.round(rule.threshold * 1e5) / 1e3);
+                        text = (i18n.pagePassScore || '').replace('%s', `${hundredths / 100}/100`);
                     }
                     $label.text(text).toggleClass('d-none', text === '');
                 },
