@@ -3730,10 +3730,20 @@ describe('common.js $exeDevices', () => {
       it.each([
         [45.004, '45.01'],
         [45.00001, '45.01'],
-        [56.00000000000001, '56'],
+        [45.000001, '45.01'],
+        [45.00000000000001, '45.01'],
+        // This is an actual policy threshold above 56, not noise introduced
+        // while formatting it: the policy rejects a score of exactly 56.
+        [56.00000000000001, '56.01'],
+        [56, '56'],
         [28.999999999999996, '29'],
+        // Scaling an exact hundredth can itself introduce floating-point noise.
+        [0.29, '0.29'],
+        [0.07, '0.07'],
         [56.67, '56.67'],
+        [Number.MIN_VALUE, '0.01'],
         [0, '0'],
+        [100, '100'],
       ])('never shows less than the threshold %s (shows %s)', (threshold, text) => {
         scorm2004();
         getScorm().createScoreScormHtml(game);
@@ -3744,6 +3754,7 @@ describe('common.js $exeDevices', () => {
         getScorm().showPagePassScore();
 
         expect(shown()).toBe(`Minimum score to pass: ${text}/100`);
+        expect(Number(text)).toBeGreaterThanOrEqual(threshold);
       });
     });
 

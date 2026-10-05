@@ -1256,12 +1256,19 @@ describe('exe-scorm12-policy', () => {
                     expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold: 40 });
                 });
 
-                it('keeps every decimal of a mastery score, so 45 does not pass 45.004', () => {
-                    enterRequiringEveryActivity(50, { 'cmi.student_data.mastery_score': '45.004' });
-                    activities.register('only', finished(45, 50));
+                it.each([
+                    [45.004, 45, 45.01],
+                    [45.000001, 45, 45.01],
+                    [56.00000000000001, 56, 56.01],
+                ])('keeps every decimal of a mastery score of %s', (threshold, below, passing) => {
+                    enterRequiringEveryActivity(50, { 'cmi.student_data.mastery_score': String(threshold) });
+                    activities.register('only', finished(below, 50));
 
-                    expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold: 45.004 });
+                    expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold });
                     expect(policy.decideStatus()).toMatchObject({ status: 'failed', reason: 'threshold-evaluated' });
+
+                    activities.update('only', { score: passing });
+                    expect(policy.decideStatus()).toMatchObject({ status: 'passed', reason: 'threshold-evaluated' });
                 });
 
                 it('is the weighted mean of the marks when the page does not require every activity', () => {

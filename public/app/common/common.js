@@ -1948,11 +1948,16 @@ var $exeDevices = {
                     } else if (rule && typeof rule.threshold === 'number' && Number.isFinite(rule.threshold)) {
                         // Scores are kept to two decimals, so the lowest one
                         // that passes is the threshold rounded up, never down:
-                        // 45.004 shows as 45.01, not as a 45 that fails. The
-                        // first rounding drops floating-point noise, which
-                        // would otherwise turn 56 into 56.01.
-                        const hundredths = Math.ceil(Math.round(rule.threshold * 1e5) / 1e3);
-                        text = (i18n.pagePassScore || '').replace('%s', `${hundredths / 100}/100`);
+                        // 45.000001 shows as 45.01, not as a 45 that fails.
+                        // Compare a candidate with the full threshold instead
+                        // of truncating its decimals. The comparison also
+                        // absorbs floating-point noise in the scaling: 0.07 *
+                        // 100 is 7.000000000000001, which a plain ceil would
+                        // show as 0.08.
+                        const hundredths = Math.floor(rule.threshold * 100);
+                        const candidate = hundredths / 100;
+                        const minimum = candidate >= rule.threshold ? candidate : (hundredths + 1) / 100;
+                        text = (i18n.pagePassScore || '').replace('%s', `${minimum}/100`);
                     }
                     $label.text(text).toggleClass('d-none', text === '');
                 },

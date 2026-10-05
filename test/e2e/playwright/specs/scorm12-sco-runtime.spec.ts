@@ -751,6 +751,35 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe('60');
             expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe('passed');
 
+            // An explicit threshold keeps all its decimals. The minimum shown
+            // must itself pass, even when the threshold has more than five.
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                sco.exeScorm12.policy.setSuccessThreshold(45.000001);
+            });
+            // sendScoreNew keeps two decimals on the 0-10 activity scale.
+            // Weights 90/10 make marks 4.50/4.51 aggregate to exactly 45.01.
+            for (const [secondMark, score, status] of [
+                [4.5, 45, 'failed'],
+                [4.51, 45.01, 'passed'],
+            ] as const) {
+                await page.evaluate(mark => {
+                    const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                    sco.__bridgeGames[0].weighted = 90;
+                    sco.__bridgeGames[0].scorerp = 4.5;
+                    sco.__bridgeGames[1].weighted = 10;
+                    sco.__bridgeGames[1].scorerp = mark;
+                    for (const game of sco.__bridgeGames) {
+                        sco.$exeDevices.iDevice.gamification.scorm.sendScoreNew(game.isScorm === 1, game);
+                    }
+                }, secondMark);
+                await expect(passScoreLabel).toHaveText('Minimum score to pass: 45.01/100');
+                expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe(
+                    String(score),
+                );
+                expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe(status);
+            }
+
             // ---- Exit: one finish, a normal end ------------------------------
             await page.evaluate(() => {
                 const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
