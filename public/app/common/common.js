@@ -1802,7 +1802,10 @@ var $exeDevices = {
                  * did not register is a leftover from an older runtime, which
                  * seeded every registered iDevice, and does not hold the page
                  * back. An activity cannot report without registering: its page
-                 * position comes from registerActivity().
+                 * position comes from registerActivity(). Until every activity
+                 * has registered, one still missing counts at the project's
+                 * mark (getFinalThreshold), so the verdict is provisional while
+                 * the page loads; ADR-2316-01 accepts that risk.
                  *
                  * @param {Object} lmsData Activities by page position.
                  * @returns {{completion: string, success: string, scored: boolean}|null}

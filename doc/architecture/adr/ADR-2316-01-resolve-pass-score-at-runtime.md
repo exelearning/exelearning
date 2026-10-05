@@ -415,7 +415,10 @@ tracks only evaluable ones. Any other activity would keep the page pending for
 ever. Entry and exit (`SCOFunctions.js`) decide from the same stored states under
 either rule, so the argument-less exit no longer completes an unfinished page.
 At entry, the verdict the LMS holds is kept until an iDevice registers, because
-the activities' own marks are not known before that. A page with no activities
+the activities' own marks are not known before that. It waits for the first one
+only: until every activity has registered, a finished one still missing counts
+at the project's mark, so the verdict written in between is provisional and is
+corrected as the rest register (see Risks). A page with no activities
 keeps the view-only rule and is completed by being viewed.
 
 ## Changes introduced
@@ -563,6 +566,15 @@ only when the value is `true`.
   META and grades by the weighted mean. That includes any host that plays
   packages with its own copy of the SCORM 1.2 runtime, such as the eXeLearning
   Moodle plugin, until that copy is updated.
+- **A provisional SCORM 2004 verdict while the page loads** (decision 12). On a
+  revisit, the page is judged again as each iDevice registers, and an activity
+  finished in an earlier session counts at the project's mark until its own
+  registers. With marks of 3 and 9, scores of 40 and 60 and a project at 5, the
+  first registration writes `passed` ((30+50)/2 = 40 against 50) and the second
+  corrects it to `failed` ((30+90)/2 = 60). The wrong verdict stays if the
+  learner leaves in between, or if an iDevice never registers. Accepted: the
+  window is narrow, and SCORM 2004 is being phased out, so no more legacy logic
+  is added for it.
 
 ## Validation
 
