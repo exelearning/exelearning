@@ -13,7 +13,12 @@
  * the mermaid npm package with jsdom for DOM virtualization.
  */
 
-import { JSDOM } from 'jsdom';
+// Type only: jsdom is loaded in initialize(). Imported statically, jsdom
+// (CommonJS) runs while the server's module graph is still loading, and since
+// Bun 1.4 its require('parse5') fails when that graph also imports the ESM
+// parse5, as the worksheet code does ("require() async module is
+// unsupported"), so the server does not start.
+import type { JSDOM } from 'jsdom';
 import type { MermaidPreRenderResult, ServerMermaidPreRendererInterface } from './interfaces';
 
 // Detection pattern for mermaid diagrams
@@ -70,7 +75,8 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         }
 
         // Create jsdom with required features for mermaid
-        this.dom = new JSDOM(
+        const jsdom = await import('jsdom');
+        this.dom = new jsdom.JSDOM(
             '<!DOCTYPE html><html><head></head><body><div id="mermaid-container"></div></body></html>',
             {
                 runScripts: 'dangerously',

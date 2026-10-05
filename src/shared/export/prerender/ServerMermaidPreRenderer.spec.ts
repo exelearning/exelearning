@@ -8,14 +8,19 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import * as path from 'path';
 import { ServerMermaidPreRenderer } from './ServerMermaidPreRenderer';
 
 describe('ServerMermaidPreRenderer', () => {
     let renderer: ServerMermaidPreRenderer;
 
-    beforeAll(() => {
+    // initialize() imports jsdom and mermaid, which can take several seconds on
+    // a cold or busy machine: pay for it once here rather than inside the first
+    // preRender test's timeout.
+    beforeAll(async () => {
         renderer = new ServerMermaidPreRenderer();
-    });
+        await renderer.initialize();
+    }, 60_000);
 
     afterAll(() => {
         // Clean up resources
@@ -163,5 +168,26 @@ describe('ServerMermaidPreRenderer', () => {
 
             newRenderer.destroy();
         });
+    });
+
+    describe('module loading', () => {
+        // In a fresh process: this file has already loaded jsdom, and only the
+        // order of a first load reproduces the failure. The server imports the
+        // pre-renderers before the worksheet code that imports the ESM parse5.
+        it('loads before a module that imports the ESM parse5', () => {
+            const result = Bun.spawnSync({
+                cmd: [
+                    process.execPath,
+                    '-e',
+                    "import './src/shared/export/prerender/ServerMermaidPreRenderer.ts';" +
+                        "import './src/shared/export/worksheet/sanitizeHtml.ts';",
+                ],
+                cwd: path.resolve(import.meta.dir, '../../../..'),
+                stderr: 'pipe',
+            });
+
+            expect(result.stderr.toString()).not.toContain('require() async module');
+            expect(result.exitCode).toBe(0);
+        }, 30_000);
     });
 });
