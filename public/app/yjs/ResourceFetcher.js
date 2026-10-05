@@ -1139,6 +1139,11 @@ class ResourceFetcher {
       }
       filtered.set(filePath, blob);
     }
+    // Keep the assembleBundleFromLoose() flag so ResourceCache.set() still
+    // skips a partial static bundle.
+    if (libFiles.incomplete) {
+      filtered.incomplete = true;
+    }
     return filtered;
   }
 
