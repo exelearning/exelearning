@@ -376,25 +376,36 @@ var $exeDevice = {
     // Load the saved values in the form fields
     loadPreviousValues: function () {
         var originalHTML = this.idevicePreviousData;
-        // Change the content type when selecting a UDL icon from the Style
-        $('#activeIdevice .js-show-icon-panel-button').click(function () {
-            $('#iconiDevice').on('load', function () {
-                var src = this.src;
-                src = src.split('/');
-                src = src[src.length - 1];
-                src = src.replace('icon_', '');
-                if (src.indexOf('udl_eng_') == 0) {
-                    $('#udlContentType-engagement').prop('checked', true);
-                    $exeDevice.setActiveType('engagement');
-                } else if (src.indexOf('udl_rep_') == 0) {
-                    $('#udlContentType-representation').prop('checked', true);
-                    $exeDevice.setActiveType('representation');
-                } else if (src.indexOf('udl_exp_') == 0) {
-                    $('#udlContentType-expression').prop('checked', true);
-                    $exeDevice.setActiveType('expression');
-                }
-            });
-        });
+        var self = this;
+        // Change the content type when selecting a UDL icon from the Style.
+        // Both the icon-panel button and the icon itself belong to the node
+        // chrome around the form, not to the form, so the centralized teardown
+        // of the form subtree would never reach these handlers.
+        this.$lifecycle.on(
+            '#activeIdevice .js-show-icon-panel-button',
+            'click',
+            function () {
+                self.$lifecycle.on('#iconiDevice', 'load', function (event) {
+                    var src = event.currentTarget.src;
+                    src = src.split('/');
+                    src = src[src.length - 1];
+                    src = src.replace('icon_', '');
+                    if (src.indexOf('udl_eng_') == 0) {
+                        $('#udlContentType-engagement').prop('checked', true);
+                        this.setActiveType('engagement');
+                    } else if (src.indexOf('udl_rep_') == 0) {
+                        $('#udlContentType-representation').prop(
+                            'checked',
+                            true
+                        );
+                        this.setActiveType('representation');
+                    } else if (src.indexOf('udl_exp_') == 0) {
+                        $('#udlContentType-expression').prop('checked', true);
+                        this.setActiveType('expression');
+                    }
+                });
+            }
+        );
         //var originalHTML = field.val();
         var blocks; // JSON (we'll transform the original HTML into a JSON object)
         if (originalHTML != '') {

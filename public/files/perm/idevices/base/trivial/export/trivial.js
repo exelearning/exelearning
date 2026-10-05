@@ -77,7 +77,7 @@ var $eXeTrivial = {
     saveDataStorage: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
 
-        if (typeof mOptions.trivialID == 'undefined') return;
+        if (!mOptions.storageKey) return;
 
         const data = {
             trivialID: mOptions.trivialID,
@@ -91,10 +91,7 @@ var $eXeTrivial = {
             direccion: mOptions.direccion,
             contadorJuego: mOptions.contadorJuego,
         };
-        localStorage.setItem(
-            'dataTrivial-' + mOptions.trivialID,
-            JSON.stringify(data)
-        );
+        localStorage.setItem(mOptions.storageKey, JSON.stringify(data));
     },
 
     reloadGame: function (dataTrivial, instance) {
@@ -121,6 +118,22 @@ var $eXeTrivial = {
         }
     },
 
+    /**
+     * Where a board keeps its game: under its own component's id.
+     *
+     * The id in the board's data travels with it when the iDevice is
+     * duplicated, so two copies read and wrote the same entry and each resumed
+     * the other's game. The component's id is its own, in the editor and once
+     * exported. Without one there is nowhere safe to keep it, and nothing is.
+     *
+     * @param {Element} activity - The board's element
+     * @returns {string} The key, or '' when the board belongs to no component
+     */
+    storageKeyOf: function (activity) {
+        const nodeId = $(activity).closest('.idevice_node').attr('id');
+        return nodeId ? 'dataTrivial-' + nodeId : '';
+    },
+
     loadGame: function () {
         $eXeTrivial.options = [];
         $eXeTrivial.activities.each(function (i) {
@@ -134,6 +147,7 @@ var $eXeTrivial = {
             mOption.idevicePath = $eXeTrivial.idevicePath;
             mOption.main = 'trivialMainContainer-' + i;
             mOption.idevice = 'trivial-IDevice';
+            mOption.storageKey = $eXeTrivial.storageKeyOf(this);
 
             for (let j = 0; j < mOption.numeroTemas; j++) {
                 mOption.activesQuestions.push(-1);
@@ -706,7 +720,7 @@ var $eXeTrivial = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        localStorage.removeItem('dataTrivial-' + mOptions.trivialID);
+        if (mOptions.storageKey) localStorage.removeItem(mOptions.storageKey);
 
         mOptions.contadorJuego = 0;
 
@@ -753,6 +767,43 @@ var $eXeTrivial = {
         }
         $eXeTrivial.loadGameBoard(instance);
     },
+    /**
+     * Whether a timer's game is still on the page, and the page is not being
+     * edited.
+     *
+     * A timer holds the element its game had when it started, not the
+     * element's id. The editor never reloads the document between pages and
+     * ids are numbered by position, so the next page's first game takes the
+     * same ones: a timer that looked its game up by id found that game and ran
+     * it, and the game clock and the video clock, which never looked at all,
+     * ran for ever.
+     *
+     * @param {Element|null} container - The game's element when the timer started
+     * @returns {boolean}
+     */
+    isClockLive: function (container) {
+        const $content = $('#node-content');
+        return (
+            !!container?.isConnected &&
+            !($content.length && $content.attr('mode') === 'edition')
+        );
+    },
+
+    // The feedback delay belongs to this board, just like its question clock.
+    // All answer paths must stop when the board or its options are replaced.
+    scheduleQuestionAnswer: function (correct, instance, delay) {
+        const mOptions = $eXeTrivial.options[instance],
+            board = document.getElementById('trivialMainContainer-' + instance);
+        setTimeout(() => {
+            if (
+                $eXeTrivial.options[instance] === mOptions &&
+                $eXeTrivial.isClockLive(board)
+            ) {
+                $eXeTrivial.questionAnswer(correct, instance);
+            }
+        }, delay);
+    },
+
     continueGame: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
         mOptions.numeroJugadores = mOptions.gamers.length;
@@ -781,10 +832,18 @@ var $eXeTrivial = {
         $('#trivialDado-' + instance).show();
         $eXeTrivial.changePlayer(instance, true);
 
-        mOptions.relojJuego = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const gameClock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(gameClock);
+                return;
+            }
             mOptions.contadorJuego++;
             $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance);
         }, 1000);
+        mOptions.relojJuego = gameClock;
         setTimeout(function () {
             if (mOptions.numeroJugadores === 1) {
                 $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
@@ -834,10 +893,18 @@ var $eXeTrivial = {
         );
         $eXeTrivial.changePlayer(instance, false);
 
-        mOptions.relojJuego = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const gameClock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(gameClock);
+                return;
+            }
             mOptions.contadorJuego++;
             $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance);
         }, 1000);
+        mOptions.relojJuego = gameClock;
 
         mOptions.gameStarted = true;
         // After gameStarted, never before: sendScoreNew ignores a game that
@@ -1176,13 +1243,20 @@ var $eXeTrivial = {
             contador = 0;
 
         mOptions.valorDado = valor;
-        mOptions.contadorDado = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const dice = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(dice);
+                return;
+            }
             if (mOptions.gameStarted && contador < pos.length) {
                 contador++;
                 image =
                     $eXeTrivial.idevicePath + 'tvlpt' + pos[contador] + '.png';
                 if (contador == pos.length - 1) {
-                    clearInterval(mOptions.contadorDado);
+                    clearInterval(dice);
                     $eXeTrivial.showTargetPositions(
                         mOptions.valorDado,
                         instance
@@ -1196,6 +1270,7 @@ var $eXeTrivial = {
                 });
             }
         }, 150);
+        mOptions.contadorDado = dice;
     },
 
     showTargetPositions: function (vd, instance) {
@@ -1341,14 +1416,12 @@ var $eXeTrivial = {
 
         $eXeTrivial.showQuestion(ntema, active, instance);
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#trivialMainContainer-' + instance);
-            let $content = $('#node-content');
-            if (
-                !$node.length ||
-                ($content.length && $content.attr('mode') === 'edition')
-            ) {
-                clearInterval(mOptions.counterClock);
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(clock);
                 return;
             }
             if (mOptions.activeCounter) {
@@ -1377,14 +1450,13 @@ var $eXeTrivial = {
                     const ts = mOptions.showSolution
                         ? mOptions.timeShowSolution * 1000
                         : 3000;
-                    clearInterval(mOptions.counterClock);
-                    setTimeout(function () {
-                        $eXeTrivial.questionAnswer(false, instance);
-                    }, ts);
+                    clearInterval(clock);
+                    $eXeTrivial.scheduleQuestionAnswer(false, instance, ts);
                     return;
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
     },
 
     showGameMessage: function (mensaje, time, type, instance) {
@@ -1861,9 +1933,17 @@ var $eXeTrivial = {
                 }
             }
             clearInterval(mOptions.timeUpdateInterval);
-            mOptions.timeUpdateInterval = setInterval(function () {
+            const board = document.getElementById(
+                'trivialMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$eXeTrivial.isClockLive(board)) {
+                    clearInterval(clock);
+                    return;
+                }
                 $eXeTrivial.updateTimerDisplayLocal(instance);
             }, 1000);
+            mOptions.timeUpdateInterval = clock;
             return;
         }
         if (
@@ -2385,8 +2465,8 @@ var $eXeTrivial = {
             $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
-        if (typeof mOptions.trivialID != 'undefined') {
-            const dataTrivial = $eXeTrivial.getDataStorage(mOptions.trivialID);
+        if (mOptions.storageKey) {
+            const dataTrivial = $eXeTrivial.getDataStorage(mOptions.storageKey);
             if (dataTrivial) {
                 if (dataTrivial) {
                     if (
@@ -2417,9 +2497,9 @@ var $eXeTrivial = {
         }
     },
 
-    getDataStorage: function (id) {
+    getDataStorage: function (key) {
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataTrivial-' + id)
+            localStorage.getItem(key)
         );
     },
 
@@ -3112,9 +3192,7 @@ var $eXeTrivial = {
         const ts = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 3000;
-        setTimeout(function () {
-            $eXeTrivial.questionAnswer(correct, instance);
-        }, ts);
+        $eXeTrivial.scheduleQuestionAnswer(correct, instance, ts);
         $eXeTrivial.saveDataStorage(instance);
     },
 
@@ -3160,9 +3238,7 @@ var $eXeTrivial = {
         const ts = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 3000;
-        setTimeout(function () {
-            $eXeTrivial.questionAnswer(value, instance);
-        }, ts);
+        $eXeTrivial.scheduleQuestionAnswer(value, instance, ts);
         $eXeTrivial.saveDataStorage(instance);
     },
 

@@ -1604,21 +1604,29 @@ var $periodicTable = {
                 .show();
             $('#ptPTime-' + instance).show();
             mOptions.counter = mOptions.time * 60;
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#ptMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'ptMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (mOptions.gameStarted) {
                     mOptions.counter--;
                     $periodicTable.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
-                        clearInterval(mOptions.counterClock);
+                        clearInterval(clock);
                         // Time is up, so the attempt ends. This used to call
                         // checkAnswers(), which does not exist anywhere in this
                         // iDevice: the timer threw a TypeError instead, so the
@@ -1639,6 +1647,7 @@ var $periodicTable = {
                     }
                 }
             }, 1000);
+            mOptions.counterClock = clock;
             $periodicTable.updateTime(mOptions.time * 60, instance);
         }
         if ($periodicTable.isMobileDevice()) {

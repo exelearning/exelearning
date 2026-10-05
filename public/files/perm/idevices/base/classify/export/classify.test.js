@@ -645,5 +645,53 @@ describe('classify iDevice export', () => {
 
       expect($eXeClasifica.options[0].gameOver).toBe(false);
     });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. The clock used to find that game by id and run it, counting
+    // down on its display and ending it when its own time ran out.
+    describe('the clock of a timed game', () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+        setupStart({ time: 1, isScorm: 0 });
+        vi.spyOn($eXeClasifica, 'uptateTime').mockImplementation(() => {});
+        vi.spyOn($eXeClasifica, 'gameOver').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('counts down on its own game', () => {
+        $eXeClasifica.startGame(0);
+
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeClasifica.uptateTime).toHaveBeenLastCalledWith(57, 0);
+      });
+
+      it('ends its own game when the time runs out', () => {
+        $eXeClasifica.startGame(0);
+
+        vi.advanceTimersByTime(60000);
+
+        expect($eXeClasifica.gameOver).toHaveBeenCalledWith(0);
+      });
+
+      it("leaves the next page's game alone, though it takes the same ids", () => {
+        $eXeClasifica.startGame(0);
+        vi.advanceTimersByTime(1000);
+
+        // The author moves to another page, whose first game is numbered the same.
+        document.body.innerHTML = '<div id="clasificaMainContainer-0"></div>';
+        $eXeClasifica.options[0] = { time: 4, counter: 240, gameStarted: true };
+        $eXeClasifica.uptateTime.mockClear();
+        vi.advanceTimersByTime(120000);
+
+        expect($eXeClasifica.uptateTime).not.toHaveBeenCalled();
+        expect($eXeClasifica.gameOver).not.toHaveBeenCalled();
+        expect($eXeClasifica.options[0].counter).toBe(240);
+      });
+    });
   });
 });

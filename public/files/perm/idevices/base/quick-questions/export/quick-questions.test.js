@@ -215,4 +215,108 @@ describe('quick-questions iDevice export', () => {
             expect($quickquestions.options[0].gameOver).toBe(false);
         });
     });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. Each clock used to find that game by id and run it — the game
+    // clock counting down on its display and moving it on to the next
+    // question, the video clocks driving its player.
+    describe('the clocks of a game', () => {
+        const instance = 0;
+
+        /** The author moves to another page, whose first game is numbered the same. */
+        function moveToNextPage(options) {
+            document.body.innerHTML = `<div id="quextMainContainer-${instance}"></div>`;
+            $quickquestions.options[instance] = options;
+        }
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `<div id="quextMainContainer-${instance}"></div>`;
+            $quickquestions.options = [
+                {
+                    gameStarted: false,
+                    numberQuestions: 1,
+                    numberLives: 3,
+                    localPlayer: { play: vi.fn() },
+                    localPlayerIntro: { play: vi.fn() },
+                },
+            ];
+            for (const method of [
+                'updateLives',
+                'uptateTime',
+                'updateSoundVideo',
+                'saveScormScore',
+                'newQuestion',
+                'drawSolution',
+                'updateTimerDisplayLocal',
+                'updateTimerDisplayLocalIntro',
+            ]) {
+                vi.spyOn($quickquestions, method).mockImplementation(() => {});
+            }
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        /** Start the game and put its first question on the clock, as newQuestion does. */
+        function startGame() {
+            $quickquestions.startGame(instance);
+            Object.assign($quickquestions.options[instance], { activeCounter: true, counter: 30 });
+        }
+
+        it('counts down on its own game', () => {
+            startGame();
+
+            vi.advanceTimersByTime(3000);
+
+            expect($quickquestions.uptateTime).toHaveBeenLastCalledWith(27, instance);
+        });
+
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            startGame();
+            vi.advanceTimersByTime(1000);
+
+            moveToNextPage({ gameStarted: true, activeCounter: true, counter: 30 });
+            $quickquestions.uptateTime.mockClear();
+            $quickquestions.newQuestion.mockClear();
+            vi.advanceTimersByTime(60000);
+
+            expect($quickquestions.uptateTime).not.toHaveBeenCalled();
+            expect($quickquestions.newQuestion).not.toHaveBeenCalled();
+            expect($quickquestions.options[instance].counter).toBe(30);
+        });
+
+        it("stops following a question's video once its game leaves the page", () => {
+            $quickquestions.startVideo('clip.mp4', 0, 10, instance, 1);
+            vi.advanceTimersByTime(1000);
+            expect($quickquestions.updateTimerDisplayLocal).toHaveBeenCalledTimes(1);
+
+            moveToNextPage({ localPlayer: { play: vi.fn() } });
+            vi.advanceTimersByTime(5000);
+
+            expect($quickquestions.updateTimerDisplayLocal).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops following the introduction video once its game leaves the page', () => {
+            $quickquestions.startVideoIntro('intro.mp4', 0, 10, instance, 1);
+            vi.advanceTimersByTime(1000);
+            expect($quickquestions.updateTimerDisplayLocalIntro).toHaveBeenCalledTimes(1);
+
+            moveToNextPage({ localPlayerIntro: { play: vi.fn() } });
+            vi.advanceTimersByTime(5000);
+
+            expect($quickquestions.updateTimerDisplayLocalIntro).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops while the page is being edited', () => {
+            startGame();
+            document.body.insertAdjacentHTML('beforeend', '<div id="node-content" mode="edition"></div>');
+
+            vi.advanceTimersByTime(3000);
+
+            expect($quickquestions.uptateTime).not.toHaveBeenCalledWith(29, instance);
+        });
+    });
 });

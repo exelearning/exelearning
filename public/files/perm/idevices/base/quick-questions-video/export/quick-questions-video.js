@@ -1428,14 +1428,22 @@ var $quickquestionsvideo = {
             mOptions.questionsGame[i].answerScore = -1;
         }
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#vquextMainContainer-' + instance);
-            let $content = $('#node-content');
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // drove it, stopping its video at this one's questions and counting
+        // down on its display.
+        const container = document.getElementById(
+            'vquextMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
             let timeVideo = 0;
@@ -1589,6 +1597,7 @@ var $quickquestionsvideo = {
                     break;
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $quickquestionsvideo.uptateTime(0, instance);
 

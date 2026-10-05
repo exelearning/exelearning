@@ -413,4 +413,56 @@ describe('hidden-image iDevice export', () => {
       expect($eXeHiddenImage.options[0].gameOver).toBe(false);
     });
   });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and answering its question when its own time ran out.
+  describe('the clock of a game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="hiPMainContainer-${instance}"></div>`;
+      $eXeHiddenImage.options = [{ gameStarted: false, numberQuestions: 1, msgs: { msgEndTime: '' } }];
+      for (const method of ['uptateTime', 'saveEvaluation', 'newQuestion', 'answerQuestion', 'showMessage']) {
+        vi.spyOn($eXeHiddenImage, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    /** Start the game and put its first question on the clock, as newQuestion does. */
+    function startGame() {
+      $eXeHiddenImage.startGame(instance);
+      Object.assign($eXeHiddenImage.options[instance], { activeCounter: true, counter: 30 });
+    }
+
+    it('counts down on its own game', () => {
+      startGame();
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeHiddenImage.uptateTime).toHaveBeenLastCalledWith(27, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      startGame();
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="hiPMainContainer-${instance}"></div>`;
+      $eXeHiddenImage.options[instance] = { gameStarted: true, activeCounter: true, counter: 30 };
+      $eXeHiddenImage.uptateTime.mockClear();
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeHiddenImage.uptateTime).not.toHaveBeenCalled();
+      expect($eXeHiddenImage.answerQuestion).not.toHaveBeenCalled();
+      expect($eXeHiddenImage.options[instance].counter).toBe(30);
+    });
+  });
 });

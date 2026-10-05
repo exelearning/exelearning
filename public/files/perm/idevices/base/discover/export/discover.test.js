@@ -498,7 +498,15 @@ describe('discover iDevice export', () => {
       vi.spyOn($eXeDescubre, 'saveEvaluation').mockImplementation(() => {});
     }
 
+    // The last group ends the game from a timeout. Left real, it went off
+    // during whichever test ran next, against that test's game.
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
     afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
       document.body.innerHTML = '';
       vi.restoreAllMocks();
     });
@@ -933,6 +941,61 @@ describe('discover iDevice export', () => {
           expect(Number.isFinite($eXeDescubre.getScore(0))).toBe(true);
         }
       });
+    });
+  });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and ending it when its own time ran out.
+  describe('the clock of a timed game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="descubreMainContainer-${instance}"></div>`;
+      $eXeDescubre.options = [{ gameStarted: false, time: 1, gameMode: 0, attempts: 0, msgs: { mgsGameStart: '' } }];
+      vi.spyOn($eXeDescubre, 'getCardsLevels').mockImplementation(() => []);
+      for (const method of ['addCards', 'showMessage', 'initCards', 'uptateTime', 'gameOver', 'saveScormScore']) {
+        vi.spyOn($eXeDescubre, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeDescubre.startGame(instance, 0);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeDescubre.uptateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('ends its own game when the time runs out', () => {
+      $eXeDescubre.startGame(instance, 0);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeDescubre.gameOver).toHaveBeenCalledWith(2, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeDescubre.startGame(instance, 0);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="descubreMainContainer-${instance}"></div>`;
+      $eXeDescubre.options[instance] = { gameStarted: true, counter: 240, time: 4 };
+      $eXeDescubre.uptateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeDescubre.uptateTime).not.toHaveBeenCalled();
+      expect($eXeDescubre.gameOver).not.toHaveBeenCalled();
+      expect($eXeDescubre.options[instance].counter).toBe(240);
     });
   });
 });
