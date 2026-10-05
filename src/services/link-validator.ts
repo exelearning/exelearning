@@ -347,6 +347,7 @@ export interface ValidateLinksStreamOptions extends ValidateLinkOptions {
  * the site time out or rate limit us. So each URL is checked once, each host
  * gets one request at a time with a pause in between, up to `batchSize` hosts
  * run in parallel, and a transient failure is retried once after a pause.
+ * A host that times out even after the retry is not requested again.
  */
 export async function* validateLinksStream(
     links: ExtractedLink[],
@@ -369,16 +370,29 @@ export async function* validateLinksStream(
         wake?.();
     };
 
+    // Set when the consumer goes away (client cancelled): hosts already running
+    // stop before their next request.
+    let cancelled = false;
+
+    const checkUrl = async (url: string): Promise<string | null> => {
+        const error = await validateLink(url, validateOptions);
+        if (!isTransientLinkError(error)) return error;
+        await sleep(retryDelayMs);
+        return cancelled ? error : validateLink(url, validateOptions);
+    };
+
     const checkHost = async (byUrl: Map<string, ExtractedLink[]>) => {
         let first = true;
+        // A host that still times out after the retry is down or overloaded,
+        // and each further URL would cost two more timeouts: report the rest
+        // of its URLs as timed out without requesting them.
+        let hostDown = false;
         for (const [url, sameUrl] of byUrl) {
-            if (!first && hostDelayMs > 0) await sleep(hostDelayMs);
+            if (!first && !hostDown && hostDelayMs > 0) await sleep(hostDelayMs);
             first = false;
-            let error = await validateLink(url, validateOptions);
-            if (isTransientLinkError(error)) {
-                await sleep(retryDelayMs);
-                error = await validateLink(url, validateOptions);
-            }
+            if (cancelled) return;
+            const error = hostDown ? 'Timeout' : await checkUrl(url);
+            hostDown = error === 'Timeout';
             emit(sameUrl.map(link => toResult(link, error)));
         }
     };
@@ -408,8 +422,10 @@ export async function* validateLinksStream(
             while (ready.length > 0) yield ready.shift() as ValidationResult;
         }
     } finally {
-        // Consumer gone (client cancelled): do not start any more hosts.
+        // Consumer gone (client cancelled): do not start any more hosts, and
+        // stop the running ones before their next request.
         queue.length = 0;
+        cancelled = true;
     }
 }
 

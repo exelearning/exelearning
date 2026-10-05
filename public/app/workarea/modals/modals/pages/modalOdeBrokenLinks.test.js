@@ -297,6 +297,19 @@ describe('ModalOdeBrokenLinks', () => {
             const html = modal.createLegendHtml();
             expect(html).toContain('some sites answer 200');
         });
+
+        it('should explain an unavailable server where links are checked (#2502)', () => {
+            const html = modal.createLegendHtml();
+            expect(html).toContain('Server unavailable');
+            expect(html).toContain('the link may still work');
+        });
+
+        it('should not mention an unavailable server where no link can be checked', () => {
+            modal.linkManager = { isBrowserLimited: () => true };
+            const html = modal.createLegendHtml();
+            expect(html).not.toContain('Server unavailable');
+            expect(html).toContain('Requires manual review');
+        });
     });
 
     describe('browser-limited relabelling', () => {

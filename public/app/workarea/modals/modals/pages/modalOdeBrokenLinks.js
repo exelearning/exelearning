@@ -244,13 +244,18 @@ export default class ModalOdeBrokenLinks extends Modal {
      * @returns {string}
      */
     createLegendHtml() {
+        // Browser-limited flavors never request external links, so no server
+        // can turn out to be unavailable there
+        const unavailable = this.linkManager?.isBrowserLimited?.()
+            ? ''
+            : `<span class="text-info-emphasis">&#8635;</span> ${_('Server unavailable')}
+                &mdash; ${_('the site did not answer in time or was busy; the link may still work, try again later.')}
+                &middot;`;
         return `
             <p class="validation-legend small text-muted mb-2">
                 <span class="text-success">&#10003;</span> ${_('Valid')} &middot;
                 <span class="text-danger">&#10007;</span> ${_('Broken')} &middot;
-                <span class="text-info-emphasis">&#8635;</span> ${_('Server unavailable')}
-                &mdash; ${_('the site did not answer in time or was busy; the link may still work, try again later.')}
-                &middot;
+                ${unavailable}
                 <span class="text-warning-emphasis">&#9888;</span> ${_('Requires manual review')}
                 &mdash; ${_('the status of these links could not be checked automatically; open them to confirm.')}
                 <br>
