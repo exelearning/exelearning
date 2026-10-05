@@ -514,6 +514,10 @@ only when the value is `true`.
   `showEvaluationIcon` needs, which it lacked.
 - Removed along the way: `form`'s dead dropdown, and `getGamificationTab()`,
   which called two helpers that do not exist and which no iDevice ever invoked.
+- The legacy SCORM quiz's `passRate` (0-100), which the importer copied into
+  that dropdown's field, now imports as the `form` activity's own mark
+  (`passRate / 10`). 50, eXe 2.x's default, cannot be told apart from a choice
+  and is left to inherit the project's mark, as is a missing or invalid rate.
 
 ## Consequences
 

@@ -9,11 +9,12 @@
  * - exe.engine.quiztestidevice.QuizTestIdevice
  *
  * Extracts:
- * - passRate -> dropdownPassRate
+ * - passRate (0-100) -> passScoreMode/passScoreCustom (0-10), except the default 50
  * - questions list with TestQuestion instances
  * - Each question has options (AnswerOption instances)
  */
 
+import { normalizePassScore } from '../../export/metadata-properties';
 import { BaseLegacyHandler } from './BaseLegacyHandler';
 import type { IdeviceHandlerContext, FeedbackResult } from './IdeviceHandler';
 
@@ -65,7 +66,7 @@ export class ScormTestHandler extends BaseLegacyHandler {
     }
 
     /**
-     * Extract properties including questionsData, dropdownPassRate, etc.
+     * Extract properties including questionsData and the activity's own minimum score.
      * Follows Symfony's OdeOldXmlScormTestIdevice.php pattern.
      */
     extractProperties(dict: Element, _ideviceId?: string): Record<string, unknown> {
@@ -89,13 +90,29 @@ export class ScormTestHandler extends BaseLegacyHandler {
             },
         };
 
-        // Extract passRate -> dropdownPassRate
-        const passRate = this.findDictStringValue(dict, 'passRate');
-        if (passRate) {
-            props.dropdownPassRate = passRate;
-        }
+        Object.assign(props, this.extractPassScore(dict));
 
         return props;
+    }
+
+    /**
+     * The quiz's pass rate (a percentage) as the form iDevice's own minimum
+     * score, on the 0-10 scale of $exe.passScore.resolve().
+     *
+     * 50 was the legacy default and cannot be told apart from an author's
+     * choice, so it is left to inherit the project's mark, as are a missing or
+     * invalid rate. Storing it as a custom 5 would stop the activity following
+     * the project when its mark changes.
+     *
+     * @param dict - Dictionary element of the ScormTestIdevice
+     * @returns passScoreMode and passScoreCustom, or nothing to inherit
+     */
+    private extractPassScore(dict: Element): Record<string, unknown> {
+        const passRate = Number.parseFloat(this.findDictStringValue(dict, 'passRate') ?? '');
+        if (!Number.isFinite(passRate) || passRate < 0 || passRate > 100 || passRate === 50) {
+            return {};
+        }
+        return { passScoreMode: 'custom', passScoreCustom: normalizePassScore(passRate / 10) };
     }
 
     /**
