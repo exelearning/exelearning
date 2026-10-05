@@ -525,6 +525,46 @@ describe('exe-scorm12-policy', () => {
                     document.head.querySelectorAll('meta[data-test-meta]').forEach((meta) => meta.remove());
                 }
             });
+
+            it.each(['', 'invalid', 'Infinity', '-1', '11'])(
+                'keeps the historical default for an invalid META mark of "%s"', (content) => {
+                    const meta = document.createElement('meta');
+                    meta.name = 'exe-pass-score';
+                    meta.content = content;
+                    document.head.appendChild(meta);
+                    try {
+                        startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+                        policy.applyEntryPolicy();
+
+                        expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold: 50 });
+                        activities.register('quiz', {
+                            evaluable: true, completionRequired: true, completed: true, score: 50,
+                        });
+                        policy.applyDecidedStatus();
+                        expect(api.data['cmi.core.lesson_status']).toBe('passed');
+                    } finally {
+                        meta.remove();
+                    }
+                }
+            );
+
+            it.each([undefined, {}])('uses the default grading rule with a limited DOM (%s)', (limitedDocument) => {
+                vi.stubGlobal('document', limitedDocument);
+                startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+                policy.applyEntryPolicy();
+
+                expect(policy.getPassRule()).toEqual({ everyActivity: false, threshold: 50 });
+                activities.register('low', {
+                    evaluable: true, completionRequired: true, completed: true, score: 40,
+                });
+                activities.register('high', {
+                    evaluable: true, completionRequired: true, completed: true, score: 60,
+                });
+                policy.applyDecidedStatus();
+                expect(api.data['cmi.core.lesson_status']).toBe('passed');
+            });
         });
     });
 

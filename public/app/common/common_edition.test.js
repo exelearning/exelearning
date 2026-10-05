@@ -547,6 +547,23 @@ describe('common_edition.js', () => {
         expect(passScore().getContents()).toContain('>5</span>');
       });
 
+      it.each([
+        ['7.56', 7.6],
+        [-2, 0],
+        [42, 10],
+        [0, 0],
+        ['invalid', 5],
+        [Infinity, 5],
+      ])('round-trips a custom mark of %s without the shared helper as %s', (stored, expected) => {
+        delete globalThis.$exe;
+        mountHtml();
+
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: stored });
+
+        expect(document.getElementById('eXePassScoreValue').value).toBe(String(expected));
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'custom', passScoreCustom: expected });
+      });
+
       it('defaults to the global mode for an iDevice that has never been saved', () => {
         mountHtml();
         passScore().setValues();
