@@ -1190,18 +1190,54 @@ var $rubric = {
     },
 
     ensureHtml2Canvas: function (onReady, onError) {
-        if (window.html2canvas) {
+        this.loadLocalScript(
+            'html2canvas.js',
+            'html2canvas-loader',
+            function () {
+                return !!window.html2canvas;
+            },
+            onReady,
+            onError
+        );
+    },
+
+    /**
+     * Candidate URLs for a file shipped in this iDevice's export folder.
+     * Only local paths: the workarea, the preview and exported packages
+     * must never pull executable code from a remote server.
+     */
+    getLocalScriptSources: function (fileName) {
+        var sources = [];
+        var installedPath = '';
+        try {
+            installedPath =
+                window.eXe && eXe.app && eXe.app.isInExe && eXe.app.isInExe()
+                    ? eXe.app.getIdeviceInstalledExportPath('rubric')
+                    : $('.idevice_node.rubric').eq(0).attr('data-idevice-path');
+        } catch (_) {
+            installedPath = '';
+        }
+        if (installedPath) sources.push(installedPath + fileName);
+        sources.push(
+            '/files/perm/idevices/base/rubric/export/' + fileName,
+            'idevices/rubric/' + fileName,
+            '../idevices/rubric/' + fileName
+        );
+        return sources;
+    },
+
+    loadLocalScript: function (fileName, scriptId, isReady, onReady, onError) {
+        if (isReady()) {
             onReady && onReady();
             return;
         }
 
-        var scriptId = 'html2canvas-loader';
         var existing = document.getElementById(scriptId);
         if (existing) {
             var tries = 0;
             var iv = setInterval(function () {
                 tries++;
-                if (window.html2canvas) {
+                if (isReady()) {
                     clearInterval(iv);
                     onReady && onReady();
                 } else if (tries > 50) {
@@ -1212,12 +1248,7 @@ var $rubric = {
             return;
         }
 
-        var sources = [
-            '/files/perm/idevices/base/rubric/export/html2canvas.js',
-            'idevices/rubric/html2canvas.js',
-            '../idevices/rubric/html2canvas.js',
-            'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
-        ];
+        var sources = this.getLocalScriptSources(fileName);
 
         var tryLoad = function (idx) {
             if (idx >= sources.length) {

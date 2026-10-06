@@ -1459,4 +1459,35 @@ describe('rubric iDevice SCORM integration', () => {
         expect($rubric.normalizeWeight(NaN)).toBe(100);
       });
     });
+
+    describe('local script loading', () => {
+      afterEach(() => {
+        delete window.html2canvas;
+        document.getElementById('html2canvas-loader')?.remove();
+        document.body.innerHTML = '';
+      });
+
+      it('only offers local candidate URLs, preferring the installed iDevice path', () => {
+        document.body.innerHTML = '<div class="idevice_node rubric" data-idevice-path="idevices/rubric/"></div>';
+        const sources = $rubric.getLocalScriptSources('html2canvas.js');
+        expect(sources[0]).toBe('idevices/rubric/html2canvas.js');
+        sources.forEach(src => expect(src).not.toMatch(/^https?:/));
+      });
+
+      it('ensureHtml2Canvas reports an error after the last local candidate fails', () => {
+        const appended = [];
+        const spy = vi.spyOn(document.head, 'appendChild').mockImplementation(el => {
+          appended.push(el);
+          return el;
+        });
+        const onError = vi.fn();
+        $rubric.ensureHtml2Canvas(vi.fn(), onError);
+        for (let i = 0; i < 3; i++) {
+          expect(appended[i].getAttribute('src')).not.toMatch(/^https?:/);
+          appended[i].onerror();
+        }
+        expect(onError).toHaveBeenCalledTimes(1);
+        spy.mockRestore();
+      });
+    });
 });
