@@ -27,6 +27,7 @@ import type {
 
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
 import { getLicenseUrl } from '../constants';
+import { normalizePassScore } from '../metadata-properties';
 
 // Declare the global eXeLearning object for browser context
 declare global {
@@ -109,6 +110,10 @@ export class YjsDocumentAdapter implements ExportDocument {
             addMathJax: this.parseBoolean(meta.get('addMathJax'), false),
             exportSource: this.parseBoolean(meta.get('exportSource'), true), // Default: true
             globalFont: (meta.get('globalFont') as string) || 'default',
+            // Never seeded on project creation (see YjsDocumentManager.initializeDocument),
+            // so the default lives here rather than in the document.
+            passScore: normalizePassScore(meta.get('passScore')),
+            passScoreEveryActivity: this.parseBoolean(meta.get('passScoreEveryActivity'), false),
 
             // Custom content
             extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,

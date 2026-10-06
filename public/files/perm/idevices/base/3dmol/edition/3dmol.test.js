@@ -36,6 +36,49 @@ describe('3dmol iDevice edition', () => {
         document.body.innerHTML = '';
     });
 
+    describe('progress report help', () => {
+        let previousGamification;
+        let previousLearning;
+
+        beforeEach(() => {
+            previousGamification = global.$exeDevicesEdition.iDevice.gamification;
+            previousLearning = global.eXeLearning;
+            const { progressBar, itinerary } =
+                require('../../../../../../app/common/common_edition.js').iDevice.gamification;
+            global.$exeDevicesEdition.iDevice.gamification = { ...previousGamification, progressBar, itinerary };
+            global.eXeLearning = { app: { project: { odeId: 'report-id' } } };
+            document.body.innerHTML = `<div id="dMoleIdeviceForm">${progressBar.getContents('/idevice/')}</div>`;
+            dmol.addEvents();
+        });
+
+        afterEach(() => {
+            $(document).off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk');
+            document.body.innerHTML = '';
+            global.$exeDevicesEdition.iDevice.gamification = previousGamification;
+            global.eXeLearning = previousLearning;
+        });
+
+        it.each([
+            ['link', '#eXeProgressReportHelpLnk', false],
+            ['icon', '#eXeProgressReportHelpLnk img', false],
+            ['link', '#eXeProgressReportHelpLnk', true],
+            ['icon', '#eXeProgressReportHelpLnk img', true],
+        ])('toggles help through the %s (%s), reporting enabled=%s', (_target, selector, enabled) => {
+            const checkbox = $('#eXeProgressReport').prop('checked', enabled).trigger('change');
+            const identifier = $('#eXeProgressReportID');
+            const note = $('#eXeProgressReportHelp');
+
+            expect(note.hasClass('d-none')).toBe(true);
+            $(selector).trigger('click');
+            expect(note.hasClass('d-none')).toBe(false);
+            $(selector).trigger('click');
+            expect(note.hasClass('d-none')).toBe(true);
+            expect(checkbox.prop('checked')).toBe(enabled);
+            expect(identifier.prop('disabled')).toBe(!enabled);
+            expect(identifier.val()).toBe('report-id');
+        });
+    });
+
     describe('getModelFormatByName', () => {
         it('maps extensions to formats and rejects unknown ones', () => {
             expect(dmol.getModelFormatByName('a.pdb')).toBe('pdb');
@@ -300,6 +343,50 @@ describe('3dmol iDevice edition', () => {
             expect(ok).toBe(true);
             expect(dmol.selectsGame[0].author).toBe('');
             expect(dmol.selectsGame[0].alt).toBe('');
+        });
+    });
+
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(join(__dirname, '3dmol.js'), 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            expect(source).toContain('passScoreMode: game.passScoreMode');
+            expect(source).toContain('passScoreCustom: game.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            expect(source).toContain('passScoreMode: passScore.passScoreMode');
+            expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
         });
     });
 
@@ -690,5 +777,15 @@ describe('3dmol iDevice edition', () => {
                 await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.any(String), failure));
             });
         });
+    });
+});
+
+describe('3dmol minimum score text', () => {
+    it('offers the notice of the minimum score among the custom texts', () => {
+        global.$exeDevice = undefined;
+        const device = global.loadIdevice(join(__dirname, '3dmol.js'));
+        device.refreshTranslations();
+
+        expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
     });
 });
