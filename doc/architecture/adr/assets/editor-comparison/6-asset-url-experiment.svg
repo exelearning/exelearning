@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 628 214" width="628" height="214" role="img" aria-labelledby="t d" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<title id="t">asset:// experiment: checks passed</title>
+<desc id="d">Grid of measured passed/total checks per editor with the hooks described in the ADR.</desc>
+<rect width="628" height="214" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<text x="20" y="30" font-size="17" font-weight="600" fill="#1f2328">asset:// experiment: checks passed</text>
+<text x="20" y="48" font-size="12" fill="#57606a">Measured once in Chromium: 6 asset:// elements, synchronous in-memory cache, stock dialogs only.</text>
+<text x="20" y="64" font-size="12" fill="#57606a">eXe's exeimage/exemedia dialogs, asynchronous resolution, Firefox and WebKit were not tested.</text>
+<text x="368" y="94" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">asset:// checks</text>
+<text x="464" y="94" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">HTML fidelity</text>
+<text x="560" y="94" font-size="12" fill="#1f2328" text-anchor="middle" font-weight="600">No asset:// fetch</text>
+<text x="20" y="124" font-size="13" fill="#1f2328" >TinyMCE 8.9.2 + 6 hooks</text>
+<rect x="322" y="106" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="368" y="124" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">22/22</text>
+<rect x="418" y="106" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="464" y="124" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">1/2</text>
+<rect x="514" y="106" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="560" y="124" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0/1</text>
+<text x="20" y="154" font-size="13" fill="#1f2328" >HugeRTE 1.0.14 + 6 hooks</text>
+<rect x="322" y="136" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="368" y="154" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">22/22</text>
+<rect x="418" y="136" width="92" height="26" rx="3" fill="#f0883e"/>
+<text x="464" y="154" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">1/2</text>
+<rect x="514" y="136" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="560" y="154" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">1/1</text>
+<text x="20" y="184" font-size="13" fill="#1f2328" >ProseKit 0.22.3 + 4 hooks</text>
+<rect x="322" y="166" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="368" y="184" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">21/21</text>
+<rect x="418" y="166" width="92" height="26" rx="3" fill="#d73a49"/>
+<text x="464" y="184" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">0/2</text>
+<rect x="514" y="166" width="92" height="26" rx="3" fill="#2da44e"/>
+<text x="560" y="184" font-size="13" fill="#1f2328" text-anchor="middle" font-weight="600">1/1</text>
+</svg>
