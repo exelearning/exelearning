@@ -1,16 +1,16 @@
 /**
- * Tests for 008_asset_metadata migration
+ * Tests for 010_asset_metadata migration
  * Verifies the centralized metadata columns are added to the assets table and
  * that existing rows remain valid (additive, nullable, no defaults).
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Kysely, sql } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
-import { up, down } from './008_asset_metadata';
+import { up, down } from './010_asset_metadata';
 
 const NEW_COLUMNS = ['description', 'title', 'license', 'author', 'author_url', 'source_url'];
 
-describe('008_asset_metadata migration', () => {
+describe('010_asset_metadata migration', () => {
     let db: Kysely<any>;
 
     beforeEach(async () => {

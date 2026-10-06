@@ -71,6 +71,8 @@ interface ProjectsTable {
     owner_id: number;
     status: string; // 'active' | 'inactive' | 'archived'
     visibility: string; // 'public' | 'private'
+    public_view_id: string | null; // Opaque id for public viewer URLs (distinct from uuid)
+    public_view_enabled: number; // 0/1 flag: public read-only viewer link enabled (independent of visibility)
     language: string | null;
     author: string | null;
     license: string | null;
@@ -97,7 +99,7 @@ interface AssetsTable {
     component_id: string | null;
     content_hash: string | null;
     folder_path: string; // Relative folder path: "" = root, "website/css" = nested
-    // Centralized, reusable asset-level metadata (see migration 008). All optional;
+    // Centralized, reusable asset-level metadata (see migration 010). All optional;
     // null means "no metadata set" and is treated as empty everywhere. These are the
     // values that must not be re-entered on each insertion; per-instance values
     // (alt text, accessibility title, caption heading/notes) are NOT stored here.
