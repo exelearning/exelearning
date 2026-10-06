@@ -683,4 +683,100 @@ describe('3dmol iDevice export', () => {
             expect($(`#dmolpOverErrors-${instance}`).html()).toBe('Errors: 1');
         });
     });
+
+    /**
+     * The end-of-attempt colour was a fixed 2, the pass colour, so every
+     * attempt closed green -- including one the progress report beside it
+     * called failed. There was no literal threshold to scan for, which is why
+     * only a behavioural test protects this.
+     */
+    describe('the end-of-attempt colour follows the pass mark', () => {
+        const attempt = (scoreGame, passScoreMode, passScoreCustom) => {
+            dmol.options[0] = {
+                activityMode: 'test',
+                scoreGame,
+                scoreTotal: 10,
+                passScoreMode,
+                passScoreCustom,
+            };
+            return dmol.getVerdictColor(0);
+        };
+
+        it('passes six out of ten on the project mark of 5', () => {
+            expect(attempt(6, 'global')).toBe(2);
+        });
+
+        it('fails the same attempt when the author set the mark at 8', () => {
+            expect(attempt(6, 'custom', 8)).toBe(1);
+        });
+
+        it('no longer paints an empty attempt in the pass colour', () => {
+            expect(attempt(0, 'global')).toBe(1);
+        });
+    });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. The clock used to find that game by id and run it, counting
+    // down on its display and moving it on to the next question.
+    describe('the clock of a game', () => {
+        const instance = 0;
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `<div id="dmolpMainContainer-${instance}"></div>`;
+            dmol.options = [{ gameStarted: false, isScorm: 0, numberQuestions: 1, selectsGame: [{}] }];
+            for (const method of ['setModelStyleControlVisibility', 'updateTime', 'newQuestion', 'drawSolution']) {
+                vi.spyOn(dmol, method).mockImplementation(() => {});
+            }
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+        });
+
+        /** Start the game and put its first question on the clock, as newQuestion does. */
+        function startGame() {
+            dmol.startGame(instance);
+            Object.assign(dmol.options[instance], { activeCounter: true, counter: 30 });
+        }
+
+        it('counts down on its own game', () => {
+            startGame();
+
+            vi.advanceTimersByTime(3000);
+
+            expect(dmol.updateTime).toHaveBeenLastCalledWith(27, instance);
+        });
+
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            startGame();
+            vi.advanceTimersByTime(1000);
+
+            // The author moves to another page, whose first game is numbered the same.
+            document.body.innerHTML = `<div id="dmolpMainContainer-${instance}"></div>`;
+            dmol.options[instance] = { gameStarted: true, activeCounter: true, counter: 30, selectsGame: [] };
+            dmol.updateTime.mockClear();
+            dmol.newQuestion.mockClear();
+            vi.advanceTimersByTime(60000);
+
+            expect(dmol.updateTime).not.toHaveBeenCalled();
+            expect(dmol.newQuestion).not.toHaveBeenCalled();
+            expect(dmol.options[instance].counter).toBe(30);
+        });
+    });
+});
+
+describe('3dmol minimum score notice', () => {
+    it('asks for the notice right after its interface replaces the stored data', () => {
+        const source = readFileSync(join(__dirname, '3dmol.js'), 'utf-8');
+        const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+        // The main container comes with the interface, so from that line on the
+        // notice can go right before it, below the instructions.
+        expect(loadGame).toMatch(
+            /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+        );
+    });
 });

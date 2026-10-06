@@ -337,6 +337,21 @@ export class ElpxExporter extends Html5Exporter {
                 idevices: usedIdevices.length,
             });
 
+            // 1.8.5 Add global font files (if selected). The generated pages reference
+            // fonts/global/<font>/…, so the package must ship them to render outside the editor.
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[ElpxExporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
             // 1.9 Add project assets
             await this.addAssetsToZipWithResourcePath(fileList);
 

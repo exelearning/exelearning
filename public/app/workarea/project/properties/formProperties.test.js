@@ -449,6 +449,48 @@ describe('FormProperties', () => {
             expect(row.getAttribute('duplicate')).toBe('3');
         });
 
+        it('should lay a number property out stacked, like every other field', () => {
+            // An inline layout was tried and dropped: the label reads "Minimum
+            // score to pass the activity" once translated, which is longer than
+            // anything beside it, and it left the two-character box stranded
+            // halfway across its column.
+            const formProperties = new FormProperties(mockProperties);
+            const property = {
+                type: 'number',
+                value: 5,
+                min: 0,
+                max: 10,
+                step: 0.1,
+                title: 'Minimum score to pass the activity',
+                help: 'Mark out of 10.',
+                category: { properties: 'Properties' },
+            };
+
+            const row = formProperties.makeRowElement('passScore', property);
+
+            // Label and help on one line, the control on the next, which is how
+            // the select beside it behaves.
+            const header = row.querySelector('.header-container');
+            expect(header.querySelector('label')).not.toBe(null);
+            expect(header.querySelector('.exe-form-help')).not.toBe(null);
+            expect(header.querySelector('.property-value')).toBe(null);
+
+            const control = row.querySelector('.content-field > .property-value');
+            expect(control).not.toBe(null);
+            expect(control.getAttribute('type')).toBe('number');
+        });
+
+        it('should keep a text property stacked, label above the control', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const property = { ...mockProperties.properties.titleNode };
+
+            const row = formProperties.makeRowElement('titleNode', property);
+
+            // Label line and control line are separate elements.
+            expect(row.querySelector('.header-container > .property-value')).toBe(null);
+            expect(row.querySelector('.content-field > .property-value')).not.toBe(null);
+        });
+
     });
 
     describe('makeRowElementLabel', () => {
@@ -491,6 +533,61 @@ describe('FormProperties', () => {
             expect(element.tagName).toBe('INPUT');
             expect(element.value).toBe('Test Value');
             expect(element.classList.contains('form-control')).toBe(true);
+        });
+
+        it('should create number input element carrying its declared domain', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const property = {
+                type: 'number',
+                value: 5,
+                min: 0,
+                max: 10,
+                step: 0.1,
+                id: 'testId',
+            };
+
+            const element = formProperties.makeRowValueElement(
+                'test-id',
+                'testName',
+                property
+            );
+
+            expect(element.tagName).toBe('INPUT');
+            expect(element.getAttribute('type')).toBe('number');
+            expect(element.value).toBe('5');
+            expect(element.getAttribute('min')).toBe('0');
+            expect(element.getAttribute('max')).toBe('10');
+            expect(element.getAttribute('step')).toBe('0.1');
+            expect(element.classList.contains('form-control')).toBe(true);
+            expect(element.classList.contains('exe-number-field')).toBe(true);
+        });
+
+        it('should create number input without bounds when the property declares none', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const property = { type: 'number', value: 3, id: 'testId' };
+
+            const element = formProperties.makeRowValueElement(
+                'test-id',
+                'testName',
+                property
+            );
+
+            expect(element.hasAttribute('min')).toBe(false);
+            expect(element.hasAttribute('max')).toBe(false);
+            expect(element.hasAttribute('step')).toBe(false);
+        });
+
+        it('should accept zero as a lower bound rather than dropping it', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const property = { type: 'number', value: 5, min: 0, id: 'testId' };
+
+            const element = formProperties.makeRowValueElement(
+                'test-id',
+                'testName',
+                property
+            );
+
+            expect(element.getAttribute('min')).toBe('0');
         });
 
         it('should create checkbox input element', () => {

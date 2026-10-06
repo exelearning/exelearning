@@ -12,7 +12,7 @@
 
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,7 +30,7 @@ function loadExportIdevice(code) {
   modifiedCode = modifiedCode.replace(/var\s+mejsFullScreen;/, 'global.mejsFullScreen = undefined;');
 
   // eslint-disable-next-line no-eval
-  (0, eval)(modifiedCode);
+  (0, eval)(`${modifiedCode}\n//# sourceURL=${pathToFileURL(join(__dirname, 'interactive-video.js')).href}`);
   return global.$interactivevideo;
 }
 
@@ -285,6 +285,47 @@ describe('interactive-video iDevice export', () => {
       expect(options.evaluationID).toBe('progress-1');
     });
 
+    /**
+     * getOptions builds its object field by field instead of passing the saved
+     * JSON along, so anything it forgets to list never reaches the runtime --
+     * the same shape of bug the weighted comment above records. The pass score
+     * has to survive that funnel for a customised mark to mean anything.
+     */
+    describe('pass score', () => {
+      const optionsFor = (extra) => {
+        document.body.innerHTML = `
+          <article>
+            <header><h1 class="box-title">Interactive video</h1></header>
+            <div id="interactive-video-1" class="idevice_node interactive-video">
+              <div class="exe-interactive-video"></div>
+            </div>
+          </article>
+        `;
+        return $interactivevideo.getOptions({
+          ideviceID: 'interactive-video-1',
+          evaluation: true,
+          evaluationID: 'progress-1',
+          scorm: { isScorm: 0, textButtonScorm: 'Save score' },
+          i18n: $interactivevideo.i18n,
+          ...extra,
+        });
+      };
+
+      it('carries a customised mark through to the options', () => {
+        const options = optionsFor({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+
+        expect(options.passScoreMode).toBe('custom');
+        expect(options.passScoreCustom).toBe(7.5);
+      });
+
+      it('leaves an activity saved before the option existed on the project value', () => {
+        const options = optionsFor({});
+
+        // resolve() reads anything other than 'custom' as "follow the project".
+        expect(options.passScoreMode).toBeUndefined();
+      });
+    });
+
     it('falls back to the exported iDevice node when no iDevice body wrapper exists', () => {
       document.body.innerHTML = `
         <article>
@@ -317,7 +358,7 @@ describe('interactive-video iDevice export', () => {
         ...previousScorm,
         addButtonScoreNew: vi.fn(() => ''),
       };
-      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon, showPassScoreNotice: vi.fn(() => null) };
       document.body.innerHTML = `
         <article>
           <header><h1 class="box-title">Interactive video</h1></header>
@@ -1261,5 +1302,391 @@ describe('interactive-video iDevice export', () => {
         vi.useRealTimers();
       }
     });
+  });
+  describe('YouTube tracking lifecycle', () => {
+    let events;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      global.$ = jquery;
+      window.$ = jquery;
+      global.InteractiveVideo = { slides: [] };
+      global.YT = {
+        Player: vi.fn(function (_id, options) {
+          events = options.events;
+          this.getCurrentTime = vi.fn(() => 5);
+        }),
+      };
+      $interactivevideo.type = 'youtube';
+      vi.spyOn($interactivevideo, 'track').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'checkSlides').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'complete').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'showYoutubeFallback').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      // The video on the page: its tracking only runs while it is there.
+      document.body.innerHTML = '<div id="activity"><div id="player"></div></div>';
+      $interactivevideo.ready();
+    });
+
+    afterEach(() => {
+      $interactivevideo.observersDisconnect();
+      delete global.YT;
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    // The editor never reloads the document: the next page brings its own
+    // #activity, and this one's video is gone from it.
+    it('stops tracking once its video has left the page, and ignores its late events', () => {
+      events.onStateChange({ data: 1 });
+      document.body.innerHTML = '<div id="activity"><div id="player"></div></div>';
+
+      vi.advanceTimersByTime(500);
+      events.onStateChange({ data: 1 });
+      vi.advanceTimersByTime(1000);
+
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.youtubeCounter).toBeNull();
+      expect($interactivevideo.youtubeSession).toBeNull();
+    });
+
+    it('stops tracking while the page is being edited', () => {
+      events.onStateChange({ data: 1 });
+      document.body.insertAdjacentHTML('beforeend', '<div id="node-content" mode="edition"></div>');
+
+      vi.advanceTimersByTime(500);
+
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps one poller through repeated play, pause, buffering and ended events', () => {
+      events.onReady();
+      expect($interactivevideo.complete).toHaveBeenCalledOnce();
+      for (const data of [1, 2, 3, 1, 0, 1]) events.onStateChange({ data });
+      expect(vi.getTimerCount()).toBe(1);
+      vi.advanceTimersByTime(1500);
+      expect($interactivevideo.track).toHaveBeenCalledTimes(3);
+      expect($interactivevideo.track).toHaveBeenLastCalledWith(5);
+      expect($interactivevideo.checkSlides).toHaveBeenCalledTimes(6);
+      expect($interactivevideo.hasPlayed).toBe(true);
+    });
+
+    it('continues tracking seeks while paused', () => {
+      events.onStateChange({ data: 2 });
+      $interactivevideo.player.getCurrentTime.mockReturnValue(12);
+      vi.advanceTimersByTime(500);
+      expect($interactivevideo.track).toHaveBeenCalledWith(12);
+    });
+
+    it.each([null, {}])('stops polling if the player becomes unavailable: %s', player => {
+      $interactivevideo.player = player;
+      events.onStateChange({ data: 1 });
+      vi.advanceTimersByTime(500);
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.youtubeCounter).toBeNull();
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+    });
+
+    it('does not drive a replacement player with the previous timer', () => {
+      events.onStateChange({ data: 1 });
+      $interactivevideo.player = { getCurrentTime: vi.fn(() => 20) };
+      vi.advanceTimersByTime(500);
+      expect($interactivevideo.player.getCurrentTime).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps callbacks bound to their runtime when the global changes', () => {
+      const other = { track: vi.fn(), youtubeCounter: null };
+      global.$interactivevideo = other;
+      events.onStateChange({ data: 1 });
+      vi.advanceTimersByTime(500);
+      expect($interactivevideo.track).toHaveBeenCalledOnce();
+      expect(other.track).not.toHaveBeenCalled();
+      expect(other.youtubeCounter).toBeNull();
+    });
+
+    it('cancels timers even without document data and ignores late player events', () => {
+      events.onStateChange({ data: 1 });
+      $interactivevideo.localCounter = setInterval(() => {}, 500);
+      global.InteractiveVideo = undefined;
+      $interactivevideo.observersDisconnect();
+      $interactivevideo.observersDisconnect();
+      events.onStateChange({ data: 1 });
+      events.onReady();
+      events.onError({ data: 150 });
+      vi.advanceTimersByTime(1000);
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect($interactivevideo.complete).not.toHaveBeenCalled();
+      expect($interactivevideo.showYoutubeFallback).not.toHaveBeenCalled();
+    });
+
+    it('starts a fresh session without reviving callbacks from the previous player', () => {
+      const oldEvents = events;
+      oldEvents.onStateChange({ data: 1 });
+      $interactivevideo.ready();
+      expect(vi.getTimerCount()).toBe(0);
+      oldEvents.onStateChange({ data: 1 });
+      oldEvents.onReady();
+      oldEvents.onError({ data: 150 });
+      expect(vi.getTimerCount()).toBe(0);
+      events.onStateChange({ data: 1 });
+      vi.advanceTimersByTime(500);
+      expect($interactivevideo.track).toHaveBeenCalledOnce();
+    });
+
+    it.each([2, 5, 100, 101, 150, 153])('stops polling on YouTube error %s', data => {
+      events.onStateChange({ data: 1 });
+      events.onError({ data });
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.youtubeCounter).toBeNull();
+      expect($interactivevideo.showYoutubeFallback).toHaveBeenCalledTimes([101, 150, 153].includes(data) ? 1 : 0);
+    });
+
+    it('cleans up its own runtime when the editor changes mode', async () => {
+      const node = document.createElement('div');
+      $interactivevideo.observeMutations(node);
+      events.onStateChange({ data: 1 });
+      global.$interactivevideo = {};
+      node.setAttribute('mode', 'edition');
+      await vi.waitFor(() => expect($interactivevideo.youtubeCounter).toBeNull());
+      expect($interactivevideo.observers.size).toBe(0);
+      events.onStateChange({ data: 1 });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
+  describe('local video tracking', () => {
+    const at = (video, seconds) =>
+      Object.defineProperty(video, 'currentTime', { value: seconds, writable: true, configurable: true });
+    const load = (extension, player) => {
+      document.body.innerHTML = `<div id="activity"><div id="player">${player}</div></div>`;
+      $interactivevideo.type = 'local';
+      $interactivevideo.extension = extension;
+      $interactivevideo.mediaElementVideo = jquery('#player video');
+      $interactivevideo.ready();
+    };
+    const video = () => document.querySelector('#player video');
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      global.$ = jquery;
+      window.$ = jquery;
+      global.InteractiveVideo = { slides: [] };
+      vi.spyOn($interactivevideo, 'track').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'checkSlides').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'complete').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      $interactivevideo.observersDisconnect();
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    it('keeps one timer through pauses and resumes', () => {
+      load('mp4', '<video></video>');
+      at(video(), 7);
+
+      for (let i = 0; i < 3; i++) video().dispatchEvent(new Event('playing'));
+      vi.advanceTimersByTime(500);
+
+      expect(vi.getTimerCount()).toBe(1);
+      expect($interactivevideo.track).toHaveBeenCalledExactlyOnceWith(7);
+      expect($interactivevideo.checkSlides).toHaveBeenCalledTimes(3);
+    });
+
+    it("reads its own video, not the one the next page's copy takes over", () => {
+      load('mp4', '<video></video>');
+      at(video(), 7);
+      video().dispatchEvent(new Event('playing'));
+
+      const next = document.createElement('video');
+      at(next, 42);
+      $interactivevideo.mediaElementVideo = jquery(next);
+      vi.advanceTimersByTime(500);
+
+      expect($interactivevideo.track).toHaveBeenCalledExactlyOnceWith(7);
+    });
+
+    it('stops once its video has left the page', () => {
+      load('mp4', '<video></video>');
+      video().dispatchEvent(new Event('playing'));
+      document.body.innerHTML = '<div id="activity"><div id="player"><video></video></div></div>';
+
+      vi.advanceTimersByTime(1000);
+
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.localCounter).toBeNull();
+    });
+
+    it('stops when the editor cleans up', () => {
+      load('mp4', '<video></video>');
+      video().dispatchEvent(new Event('playing'));
+
+      $interactivevideo.observersDisconnect();
+
+      expect(vi.getTimerCount()).toBe(0);
+      expect($interactivevideo.localCounter).toBeNull();
+    });
+
+    it("reads an flv video's time from its own display", () => {
+      load('flv', '<span class="mejs-currenttime">00:07</span>');
+
+      vi.advanceTimersByTime(500);
+
+      expect($interactivevideo.track).toHaveBeenCalledExactlyOnceWith(7);
+    });
+
+    it('stops an flv video with no time display', () => {
+      load('flv', '');
+
+      vi.advanceTimersByTime(500);
+
+      expect($interactivevideo.track).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
+  // In the editor the iDevices menu gives each iDevice's button its type name
+  // as id, and the menu comes before the page: the Slide iDevice's button is
+  // `#slide`. The player's question box used to have that same id.
+  describe('where a question is shown', () => {
+    const menuButton = () => document.querySelector('.idevice_item#slide');
+    const questionBox = () => document.querySelector('#activity #activity-slide');
+
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      global.InteractiveVideo = { i18n: { slide: 'Slide' }, slides: [] };
+      document.body.innerHTML = `
+        <div id="list_menu_idevices"><div id="slide" class="idevice_item draggable">Slide</div></div>
+        <div id="node-content">
+          <div id="activity-wrapper"><div id="activity">
+            <div id="player"></div><div id="activity-slide"></div>
+          </div></div>
+        </div>`;
+      vi.spyOn($interactivevideo, 'isFullScreen').mockReturnValue(false);
+      vi.spyOn($interactivevideo.controls, 'pause').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      document.body.className = '';
+      vi.restoreAllMocks();
+    });
+
+    it('writes the question into the player, not into the Slide iDevice button', () => {
+      $interactivevideo.slide.show({ type: 'text', text: '<p>1+1 =</p>', startTime: 5 }, 0);
+
+      expect(questionBox().className).toBe('text');
+      expect(questionBox().innerHTML).toContain('1+1 =');
+      expect(menuButton().className).toBe('idevice_item draggable');
+      expect(menuButton().textContent).toBe('Slide');
+    });
+
+    it("points the screen reader's link at the player's question", () => {
+      $interactivevideo.slide.show({ type: 'text', text: '<p>1+1 =</p>', startTime: 5 }, 0);
+
+      const link = document.getElementById('slide-link');
+      expect(link.getAttribute('href')).toBe('#activity-slide');
+      expect(link.nextElementSibling).toBe(questionBox());
+    });
+  });
+});
+
+describe('interactive-video minimum score notice', () => {
+  let $interactivevideo;
+  let previousScorm;
+  let previousReport;
+  let previousIsInExe;
+  let playerWhenAsked;
+
+  beforeEach(() => {
+    global.$interactivevideo = undefined;
+    global.InteractiveVideo = undefined;
+    // Loaded under a stub, as the main suite does, so the file's own
+    // $(function () {...}) bootstrap never runs behind the test's back.
+    global.$ = () => ({ html: () => {}, eq: () => ({ attr: () => '' }), length: 0 });
+    global.$.fn = {};
+    $interactivevideo = loadExportIdevice(readFileSync(join(__dirname, 'interactive-video.js'), 'utf-8'));
+    global.$ = jquery;
+    window.$ = jquery;
+    previousScorm = $exeDevices.iDevice.gamification.scorm;
+    previousReport = $exeDevices.iDevice.gamification.report;
+    previousIsInExe = eXe.app.isInExe;
+    eXe.app.isInExe = vi.fn(() => false);
+    $exeDevices.iDevice.gamification.scorm = { ...previousScorm, addButtonScoreNew: vi.fn(() => '') };
+    playerWhenAsked = null;
+    $exeDevices.iDevice.gamification.report = {
+      updateEvaluationIcon: vi.fn(),
+      showPassScoreNotice: vi.fn(() => {
+        playerWhenAsked = document.getElementById('activity-wrapper') !== null;
+        return null;
+      }),
+    };
+    // What the editor saves: the author's text before the video, then the video.
+    document.body.innerHTML = `
+      <article>
+        <header><h1 class="box-title">Interactive video</h1></header>
+        <div id="interactive-video-1" class="idevice_node interactive-video">
+          <div class="exe-interactive-video-content-before"><p>Watch it</p></div>
+          <div class="game-evaluation-ids js-hidden"></div>
+          <div class="exe-interactive-video"></div>
+        </div>
+      </article>
+    `;
+  });
+
+  afterEach(() => {
+    eXe.app.isInExe = previousIsInExe;
+    $exeDevices.iDevice.gamification.scorm = previousScorm;
+    $exeDevices.iDevice.gamification.report = previousReport;
+    document.body.innerHTML = '';
+    delete global.$interactivevideo;
+    delete global.InteractiveVideo;
+    delete global.$;
+  });
+
+  it('asks for it above the whole video once the player is built', () => {
+    global.InteractiveVideo = {
+      ideviceID: 'interactive-video-1',
+      scorm: { isScorm: 1, textButtonScorm: 'Save score' },
+      passScoreMode: 'custom',
+      passScoreCustom: 7,
+      slides: [],
+      i18n: $interactivevideo.i18n,
+    };
+
+    $interactivevideo.enable();
+
+    const showPassScoreNotice = $exeDevices.iDevice.gamification.report.showPassScoreNotice;
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    // The video's main container, which the author's text before it precedes.
+    expect(showPassScoreNotice).toHaveBeenCalledWith(
+      expect.objectContaining({ main: '.exe-interactive-video', isScorm: 1, passScoreCustom: 7 })
+    );
+    expect(playerWhenAsked).toBe(true);
+  });
+
+  // This iDevice keeps its custom texts in InteractiveVideo.i18n, not in msgs.
+  it('hands it the custom texts the author saved', () => {
+    global.InteractiveVideo = {
+      ideviceID: 'interactive-video-1',
+      scorm: { isScorm: 1, textButtonScorm: 'Save score' },
+      slides: [],
+      i18n: { ...$interactivevideo.i18n, msgPassScore: 'Nota mínima: %s' },
+    };
+
+    $interactivevideo.enable();
+
+    expect($exeDevices.iDevice.gamification.report.showPassScoreNotice).toHaveBeenCalledWith(
+      expect.objectContaining({ msgs: expect.objectContaining({ msgPassScore: 'Nota mínima: %s' }) })
+    );
   });
 });

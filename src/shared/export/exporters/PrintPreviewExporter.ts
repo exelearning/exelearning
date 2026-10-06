@@ -154,6 +154,8 @@ export class PrintPreviewExporter {
                 license: meta.license || '',
                 addExeLink: meta.addExeLink ?? true,
                 userFooterContent: meta.footer || '',
+                passScore: meta.passScore,
+                passScoreEveryActivity: meta.passScoreEveryActivity,
                 version, // From browser context
                 assetExportPathMap: this.assetExportPathMap || undefined,
                 materialIconDataUris,
