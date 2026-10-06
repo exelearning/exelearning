@@ -3534,11 +3534,13 @@ class YjsProjectBridge {
             const saveBufferStartElapsed = trace
               ? Math.round(this.getElpxExportDebugNow() - trace.startedMs)
               : 0;
-            this.logElpxExportPhase('bridge:electron:save-buffer:start', {
+            // The Electron phases below are derived from this one reading, so the starts
+            // use it too: a second read could be a millisecond later and shorten them.
+            this.appendElpxExportPhaseEntry('bridge:electron:save-buffer:start', saveBufferStartElapsed, {
               filename: exportFilename,
               bytes: uint8Array.byteLength,
             }, trace);
-            this.logElpxExportPhase('bridge:electron:dialog:start', {
+            this.appendElpxExportPhaseEntry('bridge:electron:dialog:start', saveBufferStartElapsed, {
               filename: exportFilename,
             }, trace);
             // saveBuffer returns false when the user cancels the OS save dialog
