@@ -15693,6 +15693,1222 @@
         <source>To save the score, the activity needs at least one question.</source>
         <target>~Por konservi la poentaron, la aktiveco bezonas almenaŭ unu demandon.</target>
       </trans-unit>
+      <trans-unit id="oqwug6a" resname="Free Mermaid diagram editor">
+        <source>Free Mermaid diagram editor</source>
+        <target>~Libera redaktilo de Mermaid-diagramoj</target>
+      </trans-unit>
+      <trans-unit id="inde9vs" resname="Diagram">
+        <source>Diagram</source>
+        <target>~Diagramo</target>
+      </trans-unit>
+      <trans-unit id="ywx6w45" resname="Choose an example">
+        <source>Choose an example</source>
+        <target>~Elekti ekzemplon</target>
+      </trans-unit>
+      <trans-unit id="vt8cv2b" resname="The current diagram will be erased. Continue?">
+        <source>The current diagram will be erased. Continue?</source>
+        <target>~La nuna diagramo estos forviŝita. Ĉu daŭrigi?</target>
+      </trans-unit>
+      <trans-unit id="25ftu2p" resname="Open a file (.mmd, .md, .txt)">
+        <source>Open a file (.mmd, .md, .txt)</source>
+        <target>~Malfermi dosieron (.mmd, .md, .txt)</target>
+      </trans-unit>
+      <trans-unit id="xxipvel" resname="Save as a .mmd file">
+        <source>Save as a .mmd file</source>
+        <target>~Konservi kiel .mmd-dosieron</target>
+      </trans-unit>
+      <trans-unit id="6lpmuv0" resname="Copy the code">
+        <source>Copy the code</source>
+        <target>~Kopii la kodon</target>
+      </trans-unit>
+      <trans-unit id="fz8bwcb" resname="Download the diagram as SVG">
+        <source>Download the diagram as SVG</source>
+        <target>~Elŝuti la diagramon kiel SVG</target>
+      </trans-unit>
+      <trans-unit id="gpq9c4o" resname="Download the diagram as PNG">
+        <source>Download the diagram as PNG</source>
+        <target>~Elŝuti la diagramon kiel PNG</target>
+      </trans-unit>
+      <trans-unit id="rgxk9q9" resname="Copy the diagram as an image">
+        <source>Copy the diagram as an image</source>
+        <target>~Kopii la diagramon kiel bildon</target>
+      </trans-unit>
+      <trans-unit id="wxt1yq0" resname="Share the diagram">
+        <source>Share the diagram</source>
+        <target>~Kunhavigi la diagramon</target>
+      </trans-unit>
+      <trans-unit id="qhb92lp" resname="Link to the editor">
+        <source>Link to the editor</source>
+        <target>~Ligilo al la redaktilo</target>
+      </trans-unit>
+      <trans-unit id="mwai2a0" resname="Opens in Sirena with the code in view, ready to keep editing">
+        <source>Opens in Sirena with the code in view, ready to keep editing</source>
+        <target>~Malfermiĝas en Sirena kun la kodo videbla, preta por plu redakti</target>
+      </trans-unit>
+      <trans-unit id="m539auy" resname="Full-screen link">
+        <source>Full-screen link</source>
+        <target>~Tutekrana ligilo</target>
+      </trans-unit>
+      <trans-unit id="ucdlgjf" resname="Opens the diagram alone, filling the whole window">
+        <source>Opens the diagram alone, filling the whole window</source>
+        <target>~Malfermas nur la diagramon, en la tuta fenestro</target>
+      </trans-unit>
+      <trans-unit id="t6k5je3" resname="Embed code">
+        <source>Embed code</source>
+        <target>~Enkorpiga kodo</target>
+      </trans-unit>
+      <trans-unit id="h98q1wt" resname="A frame ready to paste into any web page: a blog, a personal site or a teaching resource">
+        <source>A frame ready to paste into any web page: a blog, a personal site or a teaching resource</source>
+        <target>~Kadro preta por alglui en ajnan retpaĝon: blogon, personan retejon aŭ instruan rimedon</target>
+      </trans-unit>
+      <trans-unit id="6w2fju1" resname="Embed code copied to the clipboard">
+        <source>Embed code copied to the clipboard</source>
+        <target>~Enkorpiga kodo kopiita al la tondujo</target>
+      </trans-unit>
+      <trans-unit id="iga3q3u" resname="Edit in Sirena">
+        <source>Edit in Sirena</source>
+        <target>~Redakti en Sirena</target>
+      </trans-unit>
+      <trans-unit id="jhmftgw" resname="Title and description for accessibility">
+        <source>Title and description for accessibility</source>
+        <target>~Titolo kaj priskribo por alirebleco</target>
+      </trans-unit>
+      <trans-unit id="83m4jz4" resname="Diagram title and description">
+        <source>Diagram title and description</source>
+        <target>~Titolo kaj priskribo de la diagramo</target>
+      </trans-unit>
+      <trans-unit id="zud3u3d" resname="They are stored inside the diagram and read out by screen readers. Worth adding to any material that gets published.">
+        <source>They are stored inside the diagram and read out by screen readers. Worth adding to any material that gets published.</source>
+        <target>~Ili estas konservataj en la diagramo kaj legataj de ekranlegiloj. Indas aldoni ilin al ĉiu publikigata materialo.</target>
+      </trans-unit>
+      <trans-unit id="atp46k0" resname="Syntax for this diagram">
+        <source>Syntax for this diagram</source>
+        <target>~Sintakso de ĉi tiu diagramo</target>
+      </trans-unit>
+      <trans-unit id="x9uq7yt" resname="Clicking a snippet inserts it into the editor.">
+        <source>Clicking a snippet inserts it into the editor.</source>
+        <target>~Klako sur fragmento enmetas ĝin en la redaktilon.</target>
+      </trans-unit>
+      <trans-unit id="dofo791" resname="For this diagram type, the syntax is in the Mermaid reference.">
+        <source>For this diagram type, the syntax is in the Mermaid reference.</source>
+        <target>~Por ĉi tiu speco de diagramo, la sintakso estas en la referenco de Mermaid.</target>
+      </trans-unit>
+      <trans-unit id="1cz7tqd" resname="Download the diagram">
+        <source>Download the diagram</source>
+        <target>~Elŝuti la diagramon</target>
+      </trans-unit>
+      <trans-unit id="mnfo7gg" resname="Print or save as PDF">
+        <source>Print or save as PDF</source>
+        <target>~Presi aŭ konservi kiel PDF</target>
+      </trans-unit>
+      <trans-unit id="okcnriy" resname="There is no diagram to print.">
+        <source>There is no diagram to print.</source>
+        <target>~Ne estas diagramo por presi.</target>
+      </trans-unit>
+      <trans-unit id="d8xltah" resname="PNG image">
+        <source>PNG image</source>
+        <target>~PNG-bildo</target>
+      </trans-unit>
+      <trans-unit id="0n8amzh" resname="To insert into a document or a presentation">
+        <source>To insert into a document or a presentation</source>
+        <target>~Por enmeti en dokumenton aŭ prezentaĵon</target>
+      </trans-unit>
+      <trans-unit id="8849a4k" resname="SVG image">
+        <source>SVG image</source>
+        <target>~SVG-bildo</target>
+      </trans-unit>
+      <trans-unit id="rk0dent" resname="Vector: scales without losing quality and can be edited">
+        <source>Vector: scales without losing quality and can be edited</source>
+        <target>~Vektora: pligrandiĝas sen perdi kvaliton kaj estas redaktebla</target>
+      </trans-unit>
+      <trans-unit id="ux004q4" resname="HTML page">
+        <source>HTML page</source>
+        <target>~HTML-paĝo</target>
+      </trans-unit>
+      <trans-unit id="v0l3uc2" resname="The diagram on its own, ready to open in a browser">
+        <source>The diagram on its own, ready to open in a browser</source>
+        <target>~Nur la diagramo, preta por malfermi en retumilo</target>
+      </trans-unit>
+      <trans-unit id="wm3g5hk" resname=".mmd source">
+        <source>.mmd source</source>
+        <target>~.mmd-fonto</target>
+      </trans-unit>
+      <trans-unit id="k6rc8tv" resname="The diagram text, to keep editing it here">
+        <source>The diagram text, to keep editing it here</source>
+        <target>~La teksto de la diagramo, por plu redakti ĝin ĉi tie</target>
+      </trans-unit>
+      <trans-unit id="g3c2p3o" resname="PNG resolution">
+        <source>PNG resolution</source>
+        <target>~Distingivo de la PNG</target>
+      </trans-unit>
+      <trans-unit id="ajust6o" resname="1× (screen size)">
+        <source>1× (screen size)</source>
+        <target>~1× (ekrana grandeco)</target>
+      </trans-unit>
+      <trans-unit id="1eqt7rz" resname="2× (sharp)">
+        <source>2× (sharp)</source>
+        <target>~2× (akra)</target>
+      </trans-unit>
+      <trans-unit id="xz4jjg7" resname="4× (for large prints)">
+        <source>4× (for large prints)</source>
+        <target>~4× (por grandaj presaĵoj)</target>
+      </trans-unit>
+      <trans-unit id="uwls6ud" resname="PNG background">
+        <source>PNG background</source>
+        <target>~Fono de la PNG</target>
+      </trans-unit>
+      <trans-unit id="piccf5h" resname="The editor one">
+        <source>The editor one</source>
+        <target>~Tiu de la redaktilo</target>
+      </trans-unit>
+      <trans-unit id="5rq27tw" resname="Transparent">
+        <source>Transparent</source>
+        <target>~Travidebla</target>
+      </trans-unit>
+      <trans-unit id="vty6z4q" resname="It also applies to the copy as image button.">
+        <source>It also applies to the copy as image button.</source>
+        <target>~Validas ankaŭ por la butono por kopii kiel bildon.</target>
+      </trans-unit>
+      <trans-unit id="tfsjipe" resname="Stroke style">
+        <source>Stroke style</source>
+        <target>~Stilo de la streko</target>
+      </trans-unit>
+      <trans-unit id="9fm6guf" resname="Classic">
+        <source>Classic</source>
+        <target>~Klasika</target>
+      </trans-unit>
+      <trans-unit id="j2jecb3" resname="Hand drawn">
+        <source>Hand drawn</source>
+        <target>~Mandesegnita</target>
+      </trans-unit>
+      <trans-unit id="2e9abt2" resname="Modern">
+        <source>Modern</source>
+        <target>~Moderna</target>
+      </trans-unit>
+      <trans-unit id="cxezpzw" resname="Text size">
+        <source>Text size</source>
+        <target>~Tekstograndeco</target>
+      </trans-unit>
+      <trans-unit id="2q4v4qf" resname="Typography">
+        <source>Typography</source>
+        <target>~Tipografio</target>
+      </trans-unit>
+      <trans-unit id="rko2qmi" resname="Small">
+        <source>Small</source>
+        <target>~Malgranda</target>
+      </trans-unit>
+      <trans-unit id="qb95orn" resname="Normal">
+        <source>Normal</source>
+        <target>~Normala</target>
+      </trans-unit>
+      <trans-unit id="alvupar" resname="Large">
+        <source>Large</source>
+        <target>~Granda</target>
+      </trans-unit>
+      <trans-unit id="d5pnrvi" resname="Very large">
+        <source>Very large</source>
+        <target>~Tre granda</target>
+      </trans-unit>
+      <trans-unit id="c9dfsyi" resname="Main colour">
+        <source>Main colour</source>
+        <target>~Ĉefa koloro</target>
+      </trans-unit>
+      <trans-unit id="0ol4s9l" resname="Theme colours">
+        <source>Theme colours</source>
+        <target>~Koloroj de la temo</target>
+      </trans-unit>
+      <trans-unit id="vbkwmk9" resname="Grey">
+        <source>Grey</source>
+        <target>~Griza</target>
+      </trans-unit>
+      <trans-unit id="dctmy41" resname="Black and white">
+        <source>Black and white</source>
+        <target>~Nigra-blanka</target>
+      </trans-unit>
+      <trans-unit id="fy2pq9v" resname="Custom colour…">
+        <source>Custom colour…</source>
+        <target>~Propra koloro…</target>
+      </trans-unit>
+      <trans-unit id="i2oax0y" resname="Lines">
+        <source>Lines</source>
+        <target>~Linioj</target>
+      </trans-unit>
+      <trans-unit id="zl92j1h" resname="Arrow label background">
+        <source>Arrow label background</source>
+        <target>~Fono de la sagetikedoj</target>
+      </trans-unit>
+      <trans-unit id="fn1d9zp" resname="Changing the fill adjusts border, lines, text and label background on its own until they are set by hand.">
+        <source>Changing the fill adjusts border, lines, text and label background on its own until they are set by hand.</source>
+        <target>~Ŝanĝi la plenigon aŭtomate alĝustigas la randon, liniojn, tekston kaj fonon de la etikedoj, dum ili ne estas agorditaj permane.</target>
+      </trans-unit>
+      <trans-unit id="4jwgv11" resname="%% Concept map: every link carries a verb, for example A[Water] -- is found as --&gt; B[Three states]">
+        <source>%% Concept map: every link carries a verb, for example A[Water] -- is found as --&gt; B[Three states]</source>
+        <target>~%% Konceptmapo: ĉiu ligo portas verbon, ekzemple A[Akvo] -- troviĝas kiel --&gt; B[Tri statoj]</target>
+      </trans-unit>
+      <trans-unit id="3654wf5" resname="Colours of the element and of the label background">
+        <source>Colours of the element and of the label background</source>
+        <target>~Koloroj de la elemento kaj de la etikeda fono</target>
+      </trans-unit>
+      <trans-unit id="dh7v5by" resname="Theme">
+        <source>Theme</source>
+        <target>~Etoso</target>
+      </trans-unit>
+      <trans-unit id="rzo02st" resname="Theme: the colours of the whole diagram">
+        <source>Theme: the colours of the whole diagram</source>
+        <target>~Etoso: la koloroj de la tuta diagramo</target>
+      </trans-unit>
+      <trans-unit id="yf92a53" resname="Remove colours set by hand">
+        <source>Remove colours set by hand</source>
+        <target>~Forigi mane metitajn kolorojn</target>
+      </trans-unit>
+      <trans-unit id="dudq4ty" resname="The diagram has colours given to boxes, arrows, labels or slices, which show on top of the theme. If this box is ticked, they are removed when a theme is chosen; otherwise, they are kept.">
+        <source>The diagram has colours given to boxes, arrows, labels or slices, which show on top of the theme. If this box is ticked, they are removed when a theme is chosen; otherwise, they are kept.</source>
+        <target>~La diagramo havas kolorojn donitajn al skatoloj, sagoj, etikedoj aŭ sektoroj, kiuj montriĝas super la temo. Se ĉi tiu markobutono estas markita, ili foriĝas kiam oni elektas temon; alie, ili restas.</target>
+      </trans-unit>
+      <trans-unit id="9zaicjr" resname="Whole diagram">
+        <source>Whole diagram</source>
+        <target>~Tuta diagramo</target>
+      </trans-unit>
+      <trans-unit id="7whfsvn" resname="Whole box">
+        <source>Whole box</source>
+        <target>~Tuta skatolo</target>
+      </trans-unit>
+      <trans-unit id="rpbz3ah" resname="Text only">
+        <source>Text only</source>
+        <target>~Nur la teksto</target>
+      </trans-unit>
+      <trans-unit id="qklhz9m" resname="Border only">
+        <source>Border only</source>
+        <target>~Nur la rando</target>
+      </trans-unit>
+      <trans-unit id="nhx5kh9" resname="Other size">
+        <source>Other size</source>
+        <target>~Alia grandeco</target>
+      </trans-unit>
+      <trans-unit id="dufgp3c" resname="Font">
+        <source>Font</source>
+        <target>~Tiparo</target>
+      </trans-unit>
+      <trans-unit id="18ukukw" resname="Serif">
+        <source>Serif</source>
+        <target>~Kun serifoj</target>
+      </trans-unit>
+      <trans-unit id="03st5tk" resname="Handwritten">
+        <source>Handwritten</source>
+        <target>~Manskribita</target>
+      </trans-unit>
+      <trans-unit id="htonahi" resname="Box width">
+        <source>Box width</source>
+        <target>~Larĝo de la skatoloj</target>
+      </trans-unit>
+      <trans-unit id="gllh81i" resname="Narrow">
+        <source>Narrow</source>
+        <target>~Mallarĝa</target>
+      </trans-unit>
+      <trans-unit id="f4jn5f9" resname="Wide">
+        <source>Wide</source>
+        <target>~Larĝa</target>
+      </trans-unit>
+      <trans-unit id="gi0ybfl" resname="Very wide">
+        <source>Very wide</source>
+        <target>~Tre larĝa</target>
+      </trans-unit>
+      <trans-unit id="5aexyks" resname="Other width">
+        <source>Other width</source>
+        <target>~Alia larĝo</target>
+      </trans-unit>
+      <trans-unit id="mem4cuu" resname="Layout engine">
+        <source>Layout engine</source>
+        <target>~Aranĝa motoro</target>
+      </trans-unit>
+      <trans-unit id="l5xlac0" resname="Merge arrows going to the same place">
+        <source>Merge arrows going to the same place</source>
+        <target>~Kunigi la sagojn, kiuj iras al la sama loko</target>
+      </trans-unit>
+      <trans-unit id="hy0ga7s" resname="This diagram type does not accept an accessible title or description: they are kept as a comment in the code and do not reach screen readers.">
+        <source>This diagram type does not accept an accessible title or description: they are kept as a comment in the code and do not reach screen readers.</source>
+        <target>~Ĉi tiu speco de diagramo ne akceptas alireblan titolon nek priskribon: ili restas kiel komento en la kodo kaj ne atingas ekranlegilojn.</target>
+      </trans-unit>
+      <trans-unit id="67l4wpb" resname="ELK layered">
+        <source>ELK layered</source>
+        <target>~ELK laŭtavola</target>
+      </trans-unit>
+      <trans-unit id="qb5sapk" resname="The default: right-angled arrows and elements in levels">
+        <source>The default: right-angled arrows and elements in levels</source>
+        <target>~La defaŭlta: ortangulaj sagoj kaj elementoj laŭ niveloj</target>
+      </trans-unit>
+      <trans-unit id="z77e2vn" resname="Dagre">
+        <source>Dagre</source>
+        <target>~Dagre</target>
+      </trans-unit>
+      <trans-unit id="9zvv4a7" resname="The classic one: supports line shape and spacing">
+        <source>The classic one: supports line shape and spacing</source>
+        <target>~La klasika: subtenas linioformon kaj interspacojn</target>
+      </trans-unit>
+      <trans-unit id="0aes8ci" resname="ELK tree">
+        <source>ELK tree</source>
+        <target>~ELK arbo</target>
+      </trans-unit>
+      <trans-unit id="f85oyuv" resname="For hierarchies, like an organisation chart">
+        <source>For hierarchies, like an organisation chart</source>
+        <target>~Por hierarkioj, kiel organizodiagramo</target>
+      </trans-unit>
+      <trans-unit id="h389x1f" resname="ELK radial">
+        <source>ELK radial</source>
+        <target>~ELK radiala</target>
+      </trans-unit>
+      <trans-unit id="k2pekv0" resname="In rings around the first element">
+        <source>In rings around the first element</source>
+        <target>~En ringoj ĉirkaŭ la unua elemento</target>
+      </trans-unit>
+      <trans-unit id="4bb94gd" resname="ELK stress">
+        <source>ELK stress</source>
+        <target>~ELK streĉo</target>
+      </trans-unit>
+      <trans-unit id="wlwuf0r" resname="Spreads by distances, with no direction">
+        <source>Spreads by distances, with no direction</source>
+        <target>~Disdonas laŭ distancoj, sen direkto</target>
+      </trans-unit>
+      <trans-unit id="ae3i5nw" resname="ELK force">
+        <source>ELK force</source>
+        <target>~ELK forto</target>
+      </trans-unit>
+      <trans-unit id="00ky5h6" resname="Like magnets pushing apart, with no direction">
+        <source>Like magnets pushing apart, with no direction</source>
+        <target>~Kiel magnetoj, kiuj forpuŝas sin, sen direkto</target>
+      </trans-unit>
+      <trans-unit id="2kkpib0" resname="ELK no overlaps">
+        <source>ELK no overlaps</source>
+        <target>~ELK sen interkovroj</target>
+      </trans-unit>
+      <trans-unit id="lkam857" resname="Separates what overlaps, changing as little as possible">
+        <source>Separates what overlaps, changing as little as possible</source>
+        <target>~Apartigas tion, kio interkovriĝas, ŝanĝante kiel eble plej malmulte</target>
+      </trans-unit>
+      <trans-unit id="fwnhtlb" resname="ELK boxes">
+        <source>ELK boxes</source>
+        <target>~ELK skatoloj</target>
+      </trans-unit>
+      <trans-unit id="d71kt0o" resname="In rows, ignoring the arrows">
+        <source>In rows, ignoring the arrows</source>
+        <target>~En vicoj, sen konsideri la sagojn</target>
+      </trans-unit>
+      <trans-unit id="50k2gfn" resname="ELK packed">
+        <source>ELK packed</source>
+        <target>~ELK kompakta</target>
+      </trans-unit>
+      <trans-unit id="vg5279t" resname="In a compact rectangle, ignoring the arrows">
+        <source>In a compact rectangle, ignoring the arrows</source>
+        <target>~En kompakta rektangulo, sen konsideri la sagojn</target>
+      </trans-unit>
+      <trans-unit id="2j660xd" resname="ELK by parts">
+        <source>ELK by parts</source>
+        <target>~ELK laŭpartoj</target>
+      </trans-unit>
+      <trans-unit id="k2o4tr3" resname="Places unconnected parts separately">
+        <source>Places unconnected parts separately</source>
+        <target>~Metas aparte la nekonektitajn partojn</target>
+      </trans-unit>
+      <trans-unit id="sza1qap" resname="Undo (Ctrl+Z)">
+        <source>Undo (Ctrl+Z)</source>
+        <target>~Malfari (Ctrl+Z)</target>
+      </trans-unit>
+      <trans-unit id="umlfour" resname="Redo (Ctrl+Y)">
+        <source>Redo (Ctrl+Y)</source>
+        <target>~Refari (Ctrl+Y)</target>
+      </trans-unit>
+      <trans-unit id="uied1qv" resname="The arrow">
+        <source>The arrow</source>
+        <target>~La sago</target>
+      </trans-unit>
+      <trans-unit id="0qvhbya" resname="Colour the arrow on this line:">
+        <source>Colour the arrow on this line:</source>
+        <target>~Kolorigi la sagon de ĉi tiu linio:</target>
+      </trans-unit>
+      <trans-unit id="q16674l" resname="All lines">
+        <source>All lines</source>
+        <target>~Ĉiuj linioj</target>
+      </trans-unit>
+      <trans-unit id="xyjvck6" resname="Arrow thickness">
+        <source>Arrow thickness</source>
+        <target>~Dikeco de la sagoj</target>
+      </trans-unit>
+      <trans-unit id="ku9pf2q" resname="Line type">
+        <source>Line type</source>
+        <target>~Speco de linio</target>
+      </trans-unit>
+      <trans-unit id="8h0v8n3" resname="Arrow heads">
+        <source>Arrow heads</source>
+        <target>~Sagopintoj</target>
+      </trans-unit>
+      <trans-unit id="1gk6lam" resname="Dash-dot">
+        <source>Dash-dot</source>
+        <target>~Streko-punkto</target>
+      </trans-unit>
+      <trans-unit id="y7x6rda" resname="Thick">
+        <source>Thick</source>
+        <target>~Dika</target>
+      </trans-unit>
+      <trans-unit id="7z0buq9" resname="Invisible">
+        <source>Invisible</source>
+        <target>~Nevidebla</target>
+      </trans-unit>
+      <trans-unit id="5cv8l8g" resname="Arrow at both ends">
+        <source>Arrow at both ends</source>
+        <target>~Sago ĉe ambaŭ finoj</target>
+      </trans-unit>
+      <trans-unit id="a800c73" resname="Circle at both ends">
+        <source>Circle at both ends</source>
+        <target>~Cirklo ĉe ambaŭ finoj</target>
+      </trans-unit>
+      <trans-unit id="z5hqc40" resname="Cross at both ends">
+        <source>Cross at both ends</source>
+        <target>~Kruco ĉe ambaŭ finoj</target>
+      </trans-unit>
+      <trans-unit id="jvw6njf" resname="Border thickness">
+        <source>Border thickness</source>
+        <target>~Dikeco de la rando</target>
+      </trans-unit>
+      <trans-unit id="xm0eh23" resname="Other thickness">
+        <source>Other thickness</source>
+        <target>~Alia dikeco</target>
+      </trans-unit>
+      <trans-unit id="geqlyky" resname="Thin">
+        <source>Thin</source>
+        <target>~Maldika</target>
+      </trans-unit>
+      <trans-unit id="eiy36rc" resname="Very thick">
+        <source>Very thick</source>
+        <target>~Tre dika</target>
+      </trans-unit>
+      <trans-unit id="ebnfzu7" resname="At the cursor">
+        <source>At the cursor</source>
+        <target>~Ĉe la kursoro</target>
+      </trans-unit>
+      <trans-unit id="wlv6tfd" resname="Thickness of the arrow on this line:">
+        <source>Thickness of the arrow on this line:</source>
+        <target>~Dikeco de la sago de ĉi tiu linio:</target>
+      </trans-unit>
+      <trans-unit id="8cg0k1w" resname="Border thickness of the element">
+        <source>Border thickness of the element</source>
+        <target>~Dikeco de la rando de la elemento</target>
+      </trans-unit>
+      <trans-unit id="5bl99rf" resname="The border">
+        <source>The border</source>
+        <target>~La rando</target>
+      </trans-unit>
+      <trans-unit id="um4mvmv" resname="Place the cursor on the line of an arrow or an element.">
+        <source>Place the cursor on the line of an arrow or an element.</source>
+        <target>~Metu la kursoron sur la linion de sago aŭ de elemento.</target>
+      </trans-unit>
+      <trans-unit id="s62s5oz" resname="This box">
+        <source>This box</source>
+        <target>~Ĉi tiu skatolo</target>
+      </trans-unit>
+      <trans-unit id="92s5sbu" resname="All boxes">
+        <source>All boxes</source>
+        <target>~Ĉiuj skatoloj</target>
+      </trans-unit>
+      <trans-unit id="q3qda7r" resname="Changes the boxes that carry the general shape ({n} of {m}); those changed one by one are kept.">
+        <source>Changes the boxes that carry the general shape ({n} of {m}); those changed one by one are kept.</source>
+        <target>~Ŝanĝas la skatolojn kun la ĝenerala formo ({n} el {m}); tiuj ŝanĝitaj unuope restas.</target>
+      </trans-unit>
+      <trans-unit id="2hyrv4g" resname="No box carries the general shape; those changed one by one are kept.">
+        <source>No box carries the general shape; those changed one by one are kept.</source>
+        <target>~Neniu skatolo havas la ĝeneralan formon; tiuj ŝanĝitaj unuope restas.</target>
+      </trans-unit>
+      <trans-unit id="34fcw9x" resname="Boxes: shape and width">
+        <source>Boxes: shape and width</source>
+        <target>~Skatoloj: formo kaj larĝo</target>
+      </trans-unit>
+      <trans-unit id="ar1befj" resname="Box shape">
+        <source>Box shape</source>
+        <target>~Formo de la skatolo</target>
+      </trans-unit>
+      <trans-unit id="xx1ow6g" resname="Of the box at the cursor, or of all of them">
+        <source>Of the box at the cursor, or of all of them</source>
+        <target>~De la skatolo ĉe la kursoro, aŭ de ĉiuj</target>
+      </trans-unit>
+      <trans-unit id="cd95z1f" resname="Where a long text is broken into several lines">
+        <source>Where a long text is broken into several lines</source>
+        <target>~Kie longa teksto estas dividita en plurajn liniojn</target>
+      </trans-unit>
+      <trans-unit id="4y5ke2g" resname="Shape of the element">
+        <source>Shape of the element</source>
+        <target>~Formo de la elemento</target>
+      </trans-unit>
+      <trans-unit id="g2p030k" resname="Place the cursor on the line of an element and press the button again.">
+        <source>Place the cursor on the line of an element and press the button again.</source>
+        <target>~Metu la kursoron sur la linion de elemento kaj denove premu la butonon.</target>
+      </trans-unit>
+      <trans-unit id="brqh94v" resname="Arrow text">
+        <source>Arrow text</source>
+        <target>~Teksto de la sago</target>
+      </trans-unit>
+      <trans-unit id="u4kiyqk" resname="Remove the text colour">
+        <source>Remove the text colour</source>
+        <target>~Forigi la koloron de la teksto</target>
+      </trans-unit>
+      <trans-unit id="ub6pzjx" resname="Arrow properties">
+        <source>Arrow properties</source>
+        <target>~Ecoj de la sago</target>
+      </trans-unit>
+      <trans-unit id="3hqq3hg" resname="In flowcharts and concept maps:">
+        <source>In flowcharts and concept maps:</source>
+        <target>~En fluskemoj kaj konceptomapoj:</target>
+      </trans-unit>
+      <trans-unit id="ltma2vp" resname="Right-click a box, an arrow or the background: change its format.">
+        <source>Right-click a box, an arrow or the background: change its format.</source>
+        <target>~Dekstra klako sur skatolo, sago aŭ la fono: ŝanĝi ĝian formaton.</target>
+      </trans-unit>
+      <trans-unit id="zqf7wip" resname="Double-click: edit the text.">
+        <source>Double-click: edit the text.</source>
+        <target>~Duobla klako: redakti la tekston.</target>
+      </trans-unit>
+      <trans-unit id="pw9hlrt" resname="Long press a box, an arrow or the background: change its format.">
+        <source>Long press a box, an arrow or the background: change its format.</source>
+        <target>~Longe premi skatolon, sagon aŭ la fonon: ŝanĝi ĝian formaton.</target>
+      </trans-unit>
+      <trans-unit id="8j6k69r" resname="Double tap: edit the text.">
+        <source>Double tap: edit the text.</source>
+        <target>~Duobla tuŝeto: redakti la tekston.</target>
+      </trans-unit>
+      <trans-unit id="l0no2rv" resname="Close the notice">
+        <source>Close the notice</source>
+        <target>~Fermi la avizon</target>
+      </trans-unit>
+      <trans-unit id="4et3kn8" resname="Do not show again">
+        <source>Do not show again</source>
+        <target>~Ne plu montri</target>
+      </trans-unit>
+      <trans-unit id="t5ojkg7" resname="Width of the code panel">
+        <source>Width of the code panel</source>
+        <target>~Larĝo de la koda panelo</target>
+      </trans-unit>
+      <trans-unit id="vm5rai6" resname="Bold and italic cannot be used in a text that contains a formula.">
+        <source>Bold and italic cannot be used in a text that contains a formula.</source>
+        <target>~Grasa kaj kursiva ne uzeblas en teksto kun formulo.</target>
+      </trans-unit>
+      <trans-unit id="819lyng" resname="Line break inside the text">
+        <source>Line break inside the text</source>
+        <target>~Linisalto en la teksto</target>
+      </trans-unit>
+      <trans-unit id="s3s7w2p" resname="Write the text">
+        <source>Write the text</source>
+        <target>~Skribi la tekston</target>
+      </trans-unit>
+      <trans-unit id="9eem2km" resname="Delete the box">
+        <source>Delete the box</source>
+        <target>~Forigi la skatolon</target>
+      </trans-unit>
+      <trans-unit id="ap5dit7" resname="Add a box inside">
+        <source>Add a box inside</source>
+        <target>~Aldoni skatolon interne</target>
+      </trans-unit>
+      <trans-unit id="gzpr0a3" resname="Tree item">
+        <source>Tree item</source>
+        <target>~Ero de la arbo</target>
+      </trans-unit>
+      <trans-unit id="v04rxp0" resname="Remove the highlight">
+        <source>Remove the highlight</source>
+        <target>~Forigi la emfazon</target>
+      </trans-unit>
+      <trans-unit id="om4r1pc" resname="Whole block">
+        <source>Whole block</source>
+        <target>~Tuta bloko</target>
+      </trans-unit>
+      <trans-unit id="1wwnqtv" resname="Title only">
+        <source>Title only</source>
+        <target>~Nur la titolo</target>
+      </trans-unit>
+      <trans-unit id="6vp4htv" resname="Border type">
+        <source>Border type</source>
+        <target>~Speco de rando</target>
+      </trans-unit>
+      <trans-unit id="0js46y1" resname="All blocks">
+        <source>All blocks</source>
+        <target>~Ĉiuj blokoj</target>
+      </trans-unit>
+      <trans-unit id="nguz9zz" resname="New block, with the boxes on the selected lines">
+        <source>New block, with the boxes on the selected lines</source>
+        <target>~Nova bloko kun la skatoloj de la elektitaj linioj</target>
+      </trans-unit>
+      <trans-unit id="22d1o07" resname="Groups the boxes of the cursor line or the selection">
+        <source>Groups the boxes of the cursor line or the selection</source>
+        <target>~Grupigas la skatolojn de la kursora linio aŭ de la elekto</target>
+      </trans-unit>
+      <trans-unit id="xkkrqaq" resname="Put into a new block">
+        <source>Put into a new block</source>
+        <target>~Meti en novan blokon</target>
+      </trans-unit>
+      <trans-unit id="nz3wox5" resname="Move to “{b}”">
+        <source>Move to “{b}”</source>
+        <target>~Movi al “{b}”</target>
+      </trans-unit>
+      <trans-unit id="bjl2qa1" resname="Take out of “{b}”">
+        <source>Take out of “{b}”</source>
+        <target>~Elpreni el “{b}”</target>
+      </trans-unit>
+      <trans-unit id="urw338n" resname="Write the title">
+        <source>Write the title</source>
+        <target>~Skribi la titolon</target>
+      </trans-unit>
+      <trans-unit id="959l0de" resname="Dissolve the block (the boxes stay)">
+        <source>Dissolve the block (the boxes stay)</source>
+        <target>~Malfari la blokon (la skatoloj restas)</target>
+      </trans-unit>
+      <trans-unit id="648xp9s" resname="The diagram’s">
+        <source>The diagram’s</source>
+        <target>~Tiu de la diagramo</target>
+      </trans-unit>
+      <trans-unit id="7svn3g5" resname="Add a link">
+        <source>Add a link</source>
+        <target>~Aldoni ligilon</target>
+      </trans-unit>
+      <trans-unit id="juwt79r" resname="Change the link">
+        <source>Change the link</source>
+        <target>~Ŝanĝi la ligilon</target>
+      </trans-unit>
+      <trans-unit id="yn722bj" resname="Box link">
+        <source>Box link</source>
+        <target>~Ligilo de la skatolo</target>
+      </trans-unit>
+      <trans-unit id="huszj99" resname="Clicking the box opens this address in a new tab. In the editor it opens with Ctrl and click, so a plain click still moves and edits.">
+        <source>Clicking the box opens this address in a new tab. In the editor it opens with Ctrl and click, so a plain click still moves and edits.</source>
+        <target>~Klako sur la skatolo malfermas ĉi tiun adreson en nova langeto. En la redaktilo ĝi malfermiĝas per Ctrl kaj klako, por ke simpla klako daŭre movu kaj redaktu.</target>
+      </trans-unit>
+      <trans-unit id="ikq4zyh" resname="Address">
+        <source>Address</source>
+        <target>~Adreso</target>
+      </trans-unit>
+      <trans-unit id="ekr2te4" resname="Tooltip text (optional)">
+        <source>Tooltip text (optional)</source>
+        <target>~Ŝpruchelpa teksto (nedeviga)</target>
+      </trans-unit>
+      <trans-unit id="d85td91" resname="Remove the link">
+        <source>Remove the link</source>
+        <target>~Forigi la ligilon</target>
+      </trans-unit>
+      <trans-unit id="uk1mo5y" resname="Ctrl and click opens the link.">
+        <source>Ctrl and click opens the link.</source>
+        <target>~Ctrl kaj klako malfermas la ligilon.</target>
+      </trans-unit>
+      <trans-unit id="890v3wi" resname="Delete the arrow">
+        <source>Delete the arrow</source>
+        <target>~Forigi la sagon</target>
+      </trans-unit>
+      <trans-unit id="uel70jv" resname="Drag to draw an arrow">
+        <source>Drag to draw an arrow</source>
+        <target>~Trenu por desegni sagon</target>
+      </trans-unit>
+      <trans-unit id="5rwafta" resname="Add a box">
+        <source>Add a box</source>
+        <target>~Aldoni skatolon</target>
+      </trans-unit>
+      <trans-unit id="6yehkzw" resname="Add a connected box">
+        <source>Add a connected box</source>
+        <target>~Aldoni konektitan skatolon</target>
+      </trans-unit>
+      <trans-unit id="rfr8e2h" resname="The formula was placed in a new box.">
+        <source>The formula was placed in a new box.</source>
+        <target>~La formulo estis metita en novan skatolon.</target>
+      </trans-unit>
+      <trans-unit id="7zsv3iq" resname="Maths formula (opens the Edicuatex editor)">
+        <source>Maths formula (opens the Edicuatex editor)</source>
+        <target>~Matematika formulo (malfermas la redaktilon Edicuatex)</target>
+      </trans-unit>
+      <trans-unit id="5wpes88" resname="The browser blocked the formula editor window.">
+        <source>The browser blocked the formula editor window.</source>
+        <target>~La retumilo blokis la fenestron de la formula redaktilo.</target>
+      </trans-unit>
+      <trans-unit id="0tgvrhn" resname="Diagram type">
+        <source>Diagram type</source>
+        <target>~Speco de diagramo</target>
+      </trans-unit>
+      <trans-unit id="hyznz1j" resname="Colour of the element at the cursor">
+        <source>Colour of the element at the cursor</source>
+        <target>~Koloro de la elemento ĉe la kursoro</target>
+      </trans-unit>
+      <trans-unit id="17r5bm9" resname="Place the cursor on the line of an element (a box, a state…) and press the button again.">
+        <source>Place the cursor on the line of an element (a box, a state…) and press the button again.</source>
+        <target>~Metu la kursoron sur la linion de elemento (skatolo, stato…) kaj denove premu la butonon.</target>
+      </trans-unit>
+      <trans-unit id="ag8dg92" resname="Colour the element">
+        <source>Colour the element</source>
+        <target>~Kolorigi la elementon</target>
+      </trans-unit>
+      <trans-unit id="0jba3yv" resname="Colour the elements">
+        <source>Colour the elements</source>
+        <target>~Kolorigi la elementojn</target>
+      </trans-unit>
+      <trans-unit id="81q8iwb" resname="Another colour…">
+        <source>Another colour…</source>
+        <target>~Alia koloro…</target>
+      </trans-unit>
+      <trans-unit id="th0rf6d" resname="Remove the colour">
+        <source>Remove the colour</source>
+        <target>~Forigi la koloron</target>
+      </trans-unit>
+      <trans-unit id="vjen49b" resname="Clear formatting">
+        <source>Clear formatting</source>
+        <target>~Forigi la formatadon</target>
+      </trans-unit>
+      <trans-unit id="kx9nv8g" resname="Clear formatting: remove colours, styles, stroke, typography and widths (bold and italic text are kept)">
+        <source>Clear formatting: remove colours, styles, stroke, typography and widths (bold and italic text are kept)</source>
+        <target>~Forigi la formatadon: forigas kolorojn, stilojn, strekon, tipografion kaj larĝojn (grasa kaj kursiva teksto restas)</target>
+      </trans-unit>
+      <trans-unit id="iu5qahw" resname="Direction">
+        <source>Direction</source>
+        <target>~Direkto</target>
+      </trans-unit>
+      <trans-unit id="yuvavb1" resname="Top to bottom">
+        <source>Top to bottom</source>
+        <target>~De supre malsupren</target>
+      </trans-unit>
+      <trans-unit id="hh7kvy3" resname="Bottom to top">
+        <source>Bottom to top</source>
+        <target>~De malsupre supren</target>
+      </trans-unit>
+      <trans-unit id="lobcbf7" resname="Left to right">
+        <source>Left to right</source>
+        <target>~De maldekstre dekstren</target>
+      </trans-unit>
+      <trans-unit id="cn5zvys" resname="Right to left">
+        <source>Right to left</source>
+        <target>~De dekstre maldekstren</target>
+      </trans-unit>
+      <trans-unit id="9h1fzzd" resname="Number the messages">
+        <source>Number the messages</source>
+        <target>~Numeri la mesaĝojn</target>
+      </trans-unit>
+      <trans-unit id="pklryf6" resname="Sequence">
+        <source>Sequence</source>
+        <target>~Sinsekvo</target>
+      </trans-unit>
+      <trans-unit id="nxgpn6l" resname="Repeat the participants below">
+        <source>Repeat the participants below</source>
+        <target>~Ripeti la partoprenantojn malsupre</target>
+      </trans-unit>
+      <trans-unit id="8tkzu2s" resname="Wrap long messages">
+        <source>Wrap long messages</source>
+        <target>~Dividi longajn mesaĝojn en liniojn</target>
+      </trans-unit>
+      <trans-unit id="hdmbb2v" resname="Chart">
+        <source>Chart</source>
+        <target>~Grafikaĵo</target>
+      </trans-unit>
+      <trans-unit id="6syn7w1" resname="Orientation">
+        <source>Orientation</source>
+        <target>~Orientiĝo</target>
+      </trans-unit>
+      <trans-unit id="q1847w7" resname="Vertical">
+        <source>Vertical</source>
+        <target>~Vertikala</target>
+      </trans-unit>
+      <trans-unit id="9xqq2xj" resname="Horizontal">
+        <source>Horizontal</source>
+        <target>~Horizontala</target>
+      </trans-unit>
+      <trans-unit id="t6q9s1j" resname="Show the values">
+        <source>Show the values</source>
+        <target>~Montri la valorojn</target>
+      </trans-unit>
+      <trans-unit id="8rk1os5" resname="Sectors">
+        <source>Sectors</source>
+        <target>~Sektoroj</target>
+      </trans-unit>
+      <trans-unit id="z1a540g" resname="Ring">
+        <source>Ring</source>
+        <target>~Ringo</target>
+      </trans-unit>
+      <trans-unit id="myvf842" resname="No ring">
+        <source>No ring</source>
+        <target>~Sen ringo</target>
+      </trans-unit>
+      <trans-unit id="40f8b9g" resname="Legend">
+        <source>Legend</source>
+        <target>~Klarigo</target>
+      </trans-unit>
+      <trans-unit id="jbntr7p" resname="On the right">
+        <source>On the right</source>
+        <target>~Dekstre</target>
+      </trans-unit>
+      <trans-unit id="g8buhsm" resname="On the left">
+        <source>On the left</source>
+        <target>~Maldekstre</target>
+      </trans-unit>
+      <trans-unit id="lkgi2z8" resname="Above">
+        <source>Above</source>
+        <target>~Supre</target>
+      </trans-unit>
+      <trans-unit id="u4usd4i" resname="Below">
+        <source>Below</source>
+        <target>~Malsupre</target>
+      </trans-unit>
+      <trans-unit id="r7l87h5" resname="Colour of each sector">
+        <source>Colour of each sector</source>
+        <target>~Koloro de ĉiu sektoro</target>
+      </trans-unit>
+      <trans-unit id="wnqyouo" resname="Back to the default colours">
+        <source>Back to the default colours</source>
+        <target>~Reveni al la defaŭltaj koloroj</target>
+      </trans-unit>
+      <trans-unit id="rexgs7a" resname="Calendar">
+        <source>Calendar</source>
+        <target>~Kalendaro</target>
+      </trans-unit>
+      <trans-unit id="hyoyxhv" resname="Axis dates">
+        <source>Axis dates</source>
+        <target>~Datoj de la akso</target>
+      </trans-unit>
+      <trans-unit id="xtrj574" resname="Other format">
+        <source>Other format</source>
+        <target>~Alia formato</target>
+      </trans-unit>
+      <trans-unit id="d54tmns" resname="%d day, %m month, %Y four-digit year, %y two-digit.">
+        <source>%d day, %m month, %Y four-digit year, %y two-digit.</source>
+        <target>~%d tago, %m monato, %Y jaro per kvar ciferoj, %y per du.</target>
+      </trans-unit>
+      <trans-unit id="xv1tceu" resname="As Mermaid (2026-01-07)">
+        <source>As Mermaid (2026-01-07)</source>
+        <target>~Kiel Mermaid (2026-01-07)</target>
+      </trans-unit>
+      <trans-unit id="a7xknj6" resname="Day/month (07/01)">
+        <source>Day/month (07/01)</source>
+        <target>~Tago/monato (07/01)</target>
+      </trans-unit>
+      <trans-unit id="7yf4pt9" resname="Day/month/year (07/01/2026)">
+        <source>Day/month/year (07/01/2026)</source>
+        <target>~Tago/monato/jaro (07/01/2026)</target>
+      </trans-unit>
+      <trans-unit id="vmd9luv" resname="Short day/month/year (07/01/26)">
+        <source>Short day/month/year (07/01/26)</source>
+        <target>~Mallonga tago/monato/jaro (07/01/26)</target>
+      </trans-unit>
+      <trans-unit id="f6grp4e" resname="Axis ticks">
+        <source>Axis ticks</source>
+        <target>~Streketoj de la akso</target>
+      </trans-unit>
+      <trans-unit id="4pey54x" resname="Automatic">
+        <source>Automatic</source>
+        <target>~Aŭtomata</target>
+      </trans-unit>
+      <trans-unit id="ebv8mo0" resname="Every day">
+        <source>Every day</source>
+        <target>~Ĉiutage</target>
+      </trans-unit>
+      <trans-unit id="fv50a7m" resname="Every week">
+        <source>Every week</source>
+        <target>~Ĉiusemajne</target>
+      </trans-unit>
+      <trans-unit id="xn8l49x" resname="Every two weeks">
+        <source>Every two weeks</source>
+        <target>~Ĉiun duan semajnon</target>
+      </trans-unit>
+      <trans-unit id="7s8w0c7" resname="Every month">
+        <source>Every month</source>
+        <target>~Ĉiumonate</target>
+      </trans-unit>
+      <trans-unit id="e61556g" resname="The week starts on">
+        <source>The week starts on</source>
+        <target>~La semajno komenciĝas je</target>
+      </trans-unit>
+      <trans-unit id="226ylmo" resname="Sunday (as Mermaid)">
+        <source>Sunday (as Mermaid)</source>
+        <target>~Dimanĉo (kiel Mermaid)</target>
+      </trans-unit>
+      <trans-unit id="thx1yjo" resname="Monday">
+        <source>Monday</source>
+        <target>~Lundo</target>
+      </trans-unit>
+      <trans-unit id="104h433" resname="Skip the weekends">
+        <source>Skip the weekends</source>
+        <target>~Preterlasi la semajnfinojn</target>
+      </trans-unit>
+      <trans-unit id="kto8cx5" resname="My saved diagrams">
+        <source>My saved diagrams</source>
+        <target>~Miaj konservitaj diagramoj</target>
+      </trans-unit>
+      <trans-unit id="u2lmdjj" resname="My diagrams">
+        <source>My diagrams</source>
+        <target>~Miaj diagramoj</target>
+      </trans-unit>
+      <trans-unit id="mcwtix7" resname="They are kept in this browser, on this computer. They never leave it or reach any server.">
+        <source>They are kept in this browser, on this computer. They never leave it or reach any server.</source>
+        <target>~Ili restas en ĉi tiu retumilo, en ĉi tiu komputilo. Ili neniam eliras el ĝi nek atingas iun servilon.</target>
+      </trans-unit>
+      <trans-unit id="hdnbakx" resname="No diagrams saved yet.">
+        <source>No diagrams saved yet.</source>
+        <target>~Ankoraŭ neniu konservita diagramo.</target>
+      </trans-unit>
+      <trans-unit id="ohci1i7" resname="Maximum saved diagrams">
+        <source>Maximum saved diagrams</source>
+        <target>~Maksimumo de konservitaj diagramoj</target>
+      </trans-unit>
+      <trans-unit id="3lvwvfz" resname="On reaching the maximum, the oldest ones are deleted, counting from when they were last modified.">
+        <source>On reaching the maximum, the oldest ones are deleted, counting from when they were last modified.</source>
+        <target>~Atinginte la maksimumon, la plej malnovaj estas forigitaj, kalkulante ekde ilia lasta modifo.</target>
+      </trans-unit>
+      <trans-unit id="6saktsd" resname="The oldest diagrams were deleted to stay within the maximum.">
+        <source>The oldest diagrams were deleted to stay within the maximum.</source>
+        <target>~La plej malnovaj diagramoj estis forigitaj por resti ene de la maksimumo.</target>
+      </trans-unit>
+      <trans-unit id="4vfviwg" resname="The oldest diagrams will be deleted, leaving {n}. Continue?">
+        <source>The oldest diagrams will be deleted, leaving {n}. Continue?</source>
+        <target>~La plej malnovaj diagramoj estos forigitaj kaj restos {n}. Ĉu daŭrigi?</target>
+      </trans-unit>
+      <trans-unit id="zvbrn04" resname="The backup is a file with every saved diagram. It serves to move them to another browser or to recover them if this browser data is cleared.">
+        <source>The backup is a file with every saved diagram. It serves to move them to another browser or to recover them if this browser data is cleared.</source>
+        <target>~La sekurkopio estas dosiero kun ĉiuj konservitaj diagramoj. Ĝi utilas por transloki ilin al alia retumilo aŭ por reakiri ilin, se la datumoj de ĉi tiu retumilo estas forviŝitaj.</target>
+      </trans-unit>
+      <trans-unit id="ha6im21" resname="Export backup">
+        <source>Export backup</source>
+        <target>~Eksporti sekurkopion</target>
+      </trans-unit>
+      <trans-unit id="7jhe3m3" resname="Import backup">
+        <source>Import backup</source>
+        <target>~Importi sekurkopion</target>
+      </trans-unit>
+      <trans-unit id="zhp2xe4" resname="There is no diagram to export.">
+        <source>There is no diagram to export.</source>
+        <target>~Ne estas diagramo por eksporti.</target>
+      </trans-unit>
+      <trans-unit id="3pnzrqm" resname="The file is not a Sirena backup.">
+        <source>The file is not a Sirena backup.</source>
+        <target>~La dosiero ne estas sekurkopio de Sirena.</target>
+      </trans-unit>
+      <trans-unit id="s1mlgvw" resname="Diagrams added: {n}">
+        <source>Diagrams added: {n}</source>
+        <target>~Aldonitaj diagramoj: {n}</target>
+      </trans-unit>
+      <trans-unit id="qy06ilb" resname="Only text files (.mmd, .md, .txt) and .json backups can be opened.">
+        <source>Only text files (.mmd, .md, .txt) and .json backups can be opened.</source>
+        <target>~Nur tekstaj dosieroj (.mmd, .md, .txt) kaj .json-sekurkopioj malfermeblas.</target>
+      </trans-unit>
+      <trans-unit id="51caqwz" resname="Could not save in this browser.">
+        <source>Could not save in this browser.</source>
+        <target>~Ne eblis konservi en ĉi tiu retumilo.</target>
+      </trans-unit>
+      <trans-unit id="hn4v77h" resname="Rename the diagram">
+        <source>Rename the diagram</source>
+        <target>~Renomi la diagramon</target>
+      </trans-unit>
+      <trans-unit id="z2k6lbl" resname="Mark this diagram">
+        <source>Mark this diagram</source>
+        <target>~Marki ĉi tiun diagramon</target>
+      </trans-unit>
+      <trans-unit id="id6uk43" resname="Delete the marked ones">
+        <source>Delete the marked ones</source>
+        <target>~Forigi la markitajn</target>
+      </trans-unit>
+      <trans-unit id="a2w8eet" resname="Delete the {n} marked diagrams? This cannot be undone.">
+        <source>Delete the {n} marked diagrams? This cannot be undone.</source>
+        <target>~Ĉu forigi la {n} markitajn diagramojn? Tio ne estas malfarebla.</target>
+      </trans-unit>
+      <trans-unit id="vz0hisp" resname="Delete “{nombre}”? This cannot be undone.">
+        <source>Delete “{nombre}”? This cannot be undone.</source>
+        <target>~Ĉu forigi “{nombre}”? Tio ne estas malfarebla.</target>
+      </trans-unit>
+      <trans-unit id="uynj9ol" resname="New diagram">
+        <source>New diagram</source>
+        <target>~Nova diagramo</target>
+      </trans-unit>
+      <trans-unit id="qn020w9" resname="Line shape">
+        <source>Line shape</source>
+        <target>~Formo de la linioj</target>
+      </trans-unit>
+      <trans-unit id="njnx2gm" resname="Curved">
+        <source>Curved</source>
+        <target>~Kurbaj</target>
+      </trans-unit>
+      <trans-unit id="jd36shn" resname="Straight">
+        <source>Straight</source>
+        <target>~Rektaj</target>
+      </trans-unit>
+      <trans-unit id="xx60id3" resname="Stepped">
+        <source>Stepped</source>
+        <target>~Ŝtupaj</target>
+      </trans-unit>
+      <trans-unit id="hkfnp7l" resname="Spacing">
+        <source>Spacing</source>
+        <target>~Interspaco</target>
+      </trans-unit>
+      <trans-unit id="2ow6297" resname="Compact">
+        <source>Compact</source>
+        <target>~Kompakta</target>
+      </trans-unit>
+      <trans-unit id="clkqxqe" resname="Drawing margins">
+        <source>Drawing margins</source>
+        <target>~Marĝenoj de la desegnaĵo</target>
+      </trans-unit>
+      <trans-unit id="dpjvgza" resname="Tight">
+        <source>Tight</source>
+        <target>~Mallarĝaj</target>
+      </trans-unit>
+      <trans-unit id="lybqtu9" resname="Diagram appearance">
+        <source>Diagram appearance</source>
+        <target>~Aspekto de la diagramo</target>
+      </trans-unit>
+      <trans-unit id="9zosg6o" resname="Light or dark mode">
+        <source>Light or dark mode</source>
+        <target>~Hela aŭ malhela reĝimo</target>
+      </trans-unit>
+      <trans-unit id="luxqgug" resname="Zoom in">
+        <source>Zoom in</source>
+        <target>~Zomi</target>
+      </trans-unit>
+      <trans-unit id="6647tlo" resname="Fit to the available space">
+        <source>Fit to the available space</source>
+        <target>~Adapti al la disponebla spaco</target>
+      </trans-unit>
+      <trans-unit id="w2mxaw1" resname="Zoom out">
+        <source>Zoom out</source>
+        <target>~Malzomi</target>
+      </trans-unit>
+      <trans-unit id="g5pwyhn" resname="Back to 100 %">
+        <source>Back to 100 %</source>
+        <target>~Reveni al 100 %</target>
+      </trans-unit>
+      <trans-unit id="vrz4lsf" resname="Diagram code">
+        <source>Diagram code</source>
+        <target>~Kodo de la diagramo</target>
+      </trans-unit>
+      <trans-unit id="8d20zzw" resname="Copied">
+        <source>Copied</source>
+        <target>~Kopiita</target>
+      </trans-unit>
+      <trans-unit id="fj5yfu7" resname="Link copied to the clipboard">
+        <source>Link copied to the clipboard</source>
+        <target>~Ligilo kopiita al la tondujo</target>
+      </trans-unit>
+      <trans-unit id="dyqc5lr" resname="Image copied to the clipboard">
+        <source>Image copied to the clipboard</source>
+        <target>~Bildo kopiita al la tondujo</target>
+      </trans-unit>
+      <trans-unit id="fab3f4x" resname="Copying was not possible">
+        <source>Copying was not possible</source>
+        <target>~Ne eblis kopii</target>
+      </trans-unit>
+      <trans-unit id="joe1ya2" resname="The diagram has an error">
+        <source>The diagram has an error</source>
+        <target>~La diagramo havas eraron</target>
+      </trans-unit>
+      <trans-unit id="yo92c90" resname="Write the diagram code or choose an example.">
+        <source>Write the diagram code or choose an example.</source>
+        <target>~Skribu la kodon de la diagramo aŭ elektu ekzemplon.</target>
+      </trans-unit>
+      <trans-unit id="1tr8puv" resname="Rendering…">
+        <source>Rendering…</source>
+        <target>~Desegnante…</target>
+      </trans-unit>
+      <trans-unit id="s17gjl2" resname="Neutral">
+        <source>Neutral</source>
+        <target>~Neŭtrala</target>
+      </trans-unit>
+      <trans-unit id="q8tr03j" resname="Forest">
+        <source>Forest</source>
+        <target>~Arbaro</target>
+      </trans-unit>
+      <trans-unit id="nyypb27" resname="Base">
+        <source>Base</source>
+        <target>~Bazo</target>
+      </trans-unit>
+      <trans-unit id="1a5k13e" resname="Diagrams generated with">
+        <source>Diagrams generated with</source>
+        <target>~Diagramoj generitaj per</target>
+      </trans-unit>
+      <trans-unit id="1zxkx04" resname="How it works">
+        <source>How it works</source>
+        <target>~Kiel ĝi funkcias</target>
+      </trans-unit>
+      <trans-unit id="bdrdmu8" resname="The diagram is written as text in the left panel and the drawing appears on the right. Everything runs in the browser itself: the diagram is not sent to any server.">
+        <source>The diagram is written as text in the left panel and the drawing appears on the right. Everything runs in the browser itself: the diagram is not sent to any server.</source>
+        <target>~La diagramo estas skribata kiel teksto en la maldekstra panelo, kaj la desegnaĵo aperas dekstre. Ĉio okazas en la retumilo mem: la diagramo ne estas sendata al iu servilo.</target>
+      </trans-unit>
+      <trans-unit id="wvjddgg" resname="The share button builds an address that carries the compressed diagram inside, so it can be shared without uploading it anywhere. The link can open in the editor or full screen, with the diagram alone, and the code to embed it in another page is available too.">
+        <source>The share button builds an address that carries the compressed diagram inside, so it can be shared without uploading it anywhere. The link can open in the editor or full screen, with the diagram alone, and the code to embed it in another page is available too.</source>
+        <target>~La kunhaviga butono kreas adreson, kiu enhavas la kunpremitan diagramon, tiel ke ĝi estas kunhavigebla sen alŝuti ĝin ien. La ligilo povas malfermiĝi en la redaktilo aŭ tutekrane, kun nur la diagramo, kaj disponeblas ankaŭ la kodo por enkorpigi ĝin en alian paĝon.</target>
+      </trans-unit>
+      <trans-unit id="gyg587d" resname="Mermaid syntax reference">
+        <source>Mermaid syntax reference</source>
+        <target>~Referenco de la Mermaid-sintakso</target>
+      </trans-unit>
+      <trans-unit id="vchxpq9" resname="Credits and licences">
+        <source>Credits and licences</source>
+        <target>~Kreditoj kaj permesiloj</target>
+      </trans-unit>
+      <trans-unit id="1w6pecd" resname="Credits, licences and AI use">
+        <source>Credits, licences and AI use</source>
+        <target>~Kreditoj, permesiloj kaj uzo de AI</target>
+      </trans-unit>
+      <trans-unit id="92diqii" resname="Sirena is by Juan José de Haro, with the code under AGPL v3 and the content under CC BY-SA 4.0. It draws the diagrams with Mermaid, by Knut Sveidqvist and contributors (MIT), which bundles other free libraries, among them D3 (ISC), ELK (EPL 2.0 or GPL 3.0), KaTeX (MIT), Cytoscape (MIT) and DOMPurify (MPL 2.0 or Apache 2.0). The icons are from Lucide (ISC).">
+        <source>Sirena is by Juan José de Haro, with the code under AGPL v3 and the content under CC BY-SA 4.0. It draws the diagrams with Mermaid, by Knut Sveidqvist and contributors (MIT), which bundles other free libraries, among them D3 (ISC), ELK (EPL 2.0 or GPL 3.0), KaTeX (MIT), Cytoscape (MIT) and DOMPurify (MPL 2.0 or Apache 2.0). The icons are from Lucide (ISC).</source>
+        <target>~Sirena estas verko de Juan José de Haro, kun la kodo laŭ AGPL v3 kaj la enhavo laŭ CC BY-SA 4.0. Ĝi desegnas la diagramojn per Mermaid, de Knut Sveidqvist kaj kontribuantoj (MIT), kiu inkluzivas aliajn liberajn bibliotekojn, inter ili D3 (ISC), ELK (EPL 2.0 aŭ GPL 3.0), KaTeX (MIT), Cytoscape (MIT) kaj DOMPurify (MPL 2.0 aŭ Apache 2.0). La piktogramoj estas de Lucide (ISC).</target>
+      </trans-unit>
+      <trans-unit id="z1xue2a" resname="All libraries and their licences">
+        <source>All libraries and their licences</source>
+        <target>~Ĉiuj bibliotekoj kaj iliaj permesiloj</target>
+      </trans-unit>
+      <trans-unit id="cq6uc5v" resname="Sirena was programmed with the help of AI (Claude), in ">
+        <source>Sirena was programmed with the help of AI (Claude), in </source>
+        <target>~Sirena estis programita helpe de AI (Claude), en </target>
+      </trans-unit>
+      <trans-unit id="pep7tsa" resname="co-creation, level 4 of MIAE">
+        <source>co-creation, level 4 of MIAE</source>
+        <target>~kunkreado, nivelo 4 de MIAE</target>
+      </trans-unit>
+      <trans-unit id="b1h9u5s" resname=": the author decided the design and the features, and tested the program many times, in different situations, to find errors and things to improve.">
+        <source>: the author decided the design and the features, and tested the program many times, in different situations, to find errors and things to improve.</source>
+        <target>~: la aŭtoro decidis la dezajnon kaj la funkciojn, kaj multfoje testis la programon, en diversaj situacioj, por trovi erarojn kaj plibonigeblaĵojn.</target>
+      </trans-unit>
+      <trans-unit id="iv1yg5s" resname="The link contains a diagram that could not be read.">
+        <source>The link contains a diagram that could not be read.</source>
+        <target>~La ligilo enhavas diagramon, kiu ne legeblis.</target>
+      </trans-unit>
+      <trans-unit id="dn24zo8" resname="Limits the size of the diagram on the page. Left empty, the diagram takes the available width.">
+        <source>Limits the size of the diagram on the page. Left empty, the diagram takes the available width.</source>
+        <target>~Limigas la grandecon de la diagramo en la paĝo. Se ĝi restas malplena, la diagramo okupas la disponeblan larĝon.</target>
+      </trans-unit>
+      <trans-unit id="2zmdevo" resname="There is nothing to insert: the code is empty.">
+        <source>There is nothing to insert: the code is empty.</source>
+        <target>~Estas nenio por enmeti: la kodo estas malplena.</target>
+      </trans-unit>
+      <trans-unit id="rwivu67" resname="Branch thickness">
+        <source>Branch thickness</source>
+        <target>~Dikeco de la branĉoj</target>
+      </trans-unit>
+      <trans-unit id="fwt8lbj" resname="Changes the shape of all {n} boxes in the map.">
+        <source>Changes the shape of all {n} boxes in the map.</source>
+        <target>~Ŝanĝas la formon de ĉiuj {n} skatoloj de la mapo.</target>
+      </trans-unit>
+      <trans-unit id="1tayhmu" resname="Branch colour">
+        <source>Branch colour</source>
+        <target>~Koloro de la branĉo</target>
+      </trans-unit>
+      <trans-unit id="a5az3zw" resname="Add a branch">
+        <source>Add a branch</source>
+        <target>~Aldoni branĉon</target>
+      </trans-unit>
+      <trans-unit id="mmnmmug" resname="New idea">
+        <source>New idea</source>
+        <target>~Nova ideo</target>
+      </trans-unit>
+      <trans-unit id="factzme" resname="The default shape does not allow brackets or braces: the box becomes a square.">
+        <source>The default shape does not allow brackets or braces: the box becomes a square.</source>
+        <target>~La defaŭlta formo ne permesas krampojn: la skatolo fariĝas kvadrato.</target>
+      </trans-unit>
+      <trans-unit id="osi8toi" resname="Centre colour">
+        <source>Centre colour</source>
+        <target>~Koloro de la centro</target>
+      </trans-unit>
+      <trans-unit id="612ebld" resname="Branch">
+        <source>Branch</source>
+        <target>~Branĉo</target>
+      </trans-unit>
+      <trans-unit id="39u5hbw" resname="The default shape does not allow brackets or braces in the text">
+        <source>The default shape does not allow brackets or braces in the text</source>
+        <target>~La defaŭlta formo ne permesas krampojn en la teksto</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
