@@ -148,3 +148,9 @@ public/** -executable
 # (no line-ending normalization; see THIRD-PARTY-NOTICES.md)
 # ---------------------------------------------------------------------
 public/app/common/scorm/scorm12/vendor/** -text
+
+# Agent tooling is not part of downloadable source distributions.
+/.agents export-ignore
+/.claude export-ignore
+/AGENTS.md export-ignore
+/CLAUDE.md export-ignore

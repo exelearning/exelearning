@@ -310,6 +310,10 @@ export interface OdeMetadata {
     addMathJax: boolean;
     /** Global font family (default: 'default') */
     globalFont: string;
+    /** Project-wide mark out of 10 an activity needs to be passed (default: 5) */
+    passScore: number;
+    /** Pass a SCORM page only when every activity reaches its own mark (default: false) */
+    passScoreEveryActivity: boolean;
     /** Project screenshot/thumbnail as base64 data URL (optional) */
     screenshot?: string;
     /** Stable ODE identifier preserved from <odeResources><odeId> (optional) */

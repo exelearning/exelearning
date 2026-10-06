@@ -222,4 +222,84 @@ describe('relate iDevice export', () => {
             expect($eXeRelaciona.sendScore).toHaveBeenCalledWith(true, 0);
         });
     });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. The clock looked its game up once, before starting, so it never
+    // stopped: it counted down on the next page's game and ended it when its
+    // own time ran out.
+    describe('the clock of a timed game', () => {
+        const instance = 0;
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `<div id="rlcMainContainer-${instance}"></div>`;
+            $eXeRelaciona.options = [{ gameStarted: false, type: 2, time: 1 }];
+            for (const method of ['ajustarCanvas', 'updateTime', 'gameOver', 'saveScormScore']) {
+                vi.spyOn($eXeRelaciona, method).mockImplementation(() => {});
+            }
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        it('counts down on its own game', () => {
+            $eXeRelaciona.startGame(instance);
+
+            vi.advanceTimersByTime(3000);
+
+            expect($eXeRelaciona.updateTime).toHaveBeenLastCalledWith(57, instance);
+        });
+
+        it('ends its own game when the time runs out', () => {
+            $eXeRelaciona.startGame(instance);
+
+            vi.advanceTimersByTime(60000);
+
+            expect($eXeRelaciona.gameOver).toHaveBeenCalledWith(instance);
+        });
+
+        it('stops once its game leaves the page', () => {
+            $eXeRelaciona.startGame(instance);
+            vi.advanceTimersByTime(1000);
+
+            document.body.innerHTML = '';
+            $eXeRelaciona.updateTime.mockClear();
+            vi.advanceTimersByTime(5000);
+
+            expect($eXeRelaciona.updateTime).not.toHaveBeenCalled();
+            expect(vi.getTimerCount()).toBe(0);
+        });
+
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            $eXeRelaciona.startGame(instance);
+            vi.advanceTimersByTime(1000);
+
+            // The author moves to another page, whose first game is numbered the same.
+            document.body.innerHTML = `<div id="rlcMainContainer-${instance}"></div>`;
+            $eXeRelaciona.options[instance] = { gameStarted: true, counter: 240, type: 2, time: 4 };
+            $eXeRelaciona.updateTime.mockClear();
+            vi.advanceTimersByTime(120000);
+
+            expect($eXeRelaciona.updateTime).not.toHaveBeenCalled();
+            expect($eXeRelaciona.gameOver).not.toHaveBeenCalled();
+            expect($eXeRelaciona.options[instance].counter).toBe(240);
+        });
+    });
+});
+
+describe('relate minimum score notice', () => {
+    it('asks for the notice right after its interface replaces the stored data', () => {
+        const source = readFileSync(join(__dirname, 'relate.js'), 'utf-8');
+        const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+        // The main container comes with the interface, so from that line on the
+        // notice can go right before it, below the instructions.
+        expect(loadGame).toMatch(
+            /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+        );
+    });
 });

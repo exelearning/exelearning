@@ -560,4 +560,104 @@ describe('map iDevice export — completion signal', () => {
             expect(calls).toHaveLength(0);
         });
     });
+
+    /**
+     * The map is the one iDevice with several game modes, and each of them ends
+     * through its own path. What makes the pass score work here without any
+     * runtime change is that every one of those paths reports through the same
+     * saveEvaluation(instance), which reads the threshold from the options it
+     * was given. So the guarantee worth pinning is the funnel itself: if a mode
+     * ever grew its own reporting call, it would silently escape the threshold.
+     */
+    describe('pass score reaches every game mode', () => {
+        it('routes every mode through the single saveEvaluation funnel', () => {
+            const source = readFileSync(join(__dirname, 'map.js'), 'utf-8');
+
+            // One definition, many callers -- one place that resolves the mark.
+            const definitions = source.match(/saveEvaluation: function/g) ?? [];
+            const callers = source.match(/\$eXeMapa\.saveEvaluation\(instance\)/g) ?? [];
+
+            expect(definitions).toHaveLength(1);
+            expect(callers.length).toBeGreaterThan(1);
+
+            // And exactly one call reaches the shared report helper: no mode
+            // reports behind the funnel's back, where the mark is resolved.
+            const reportCalls = source.match(/gamification\.report\.saveEvaluation\(/g) ?? [];
+            expect(reportCalls).toHaveLength(1);
+        });
+
+        it('hands the stored options to the report, so the mark travels with them', () => {
+            const source = readFileSync(join(__dirname, 'map.js'), 'utf-8');
+            const funnel = source.slice(source.indexOf('saveEvaluation: function'));
+
+            expect(funnel).toContain('gamification.report.saveEvaluation(');
+            expect(funnel).toContain('mOptions');
+        });
+    });
+});
+
+// The editor never reloads the document between pages, and a map's ids are
+// numbered by position: the next page's first map takes the ids this one had.
+// The clock following a point's local video used to find that map by id and go
+// on driving its player, pausing it at this one's end point.
+describe('map iDevice export — the clock of a local video', () => {
+    const instance = 0;
+    let $eXeMapa;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        global.$eXeMapa = undefined;
+        $eXeMapa = loadExport();
+        document.body.innerHTML = `<div id="mapaMainContainer-${instance}"></div>`;
+        $eXeMapa.options = [{ localPlayer: { play: vi.fn() } }];
+        vi.spyOn($eXeMapa, 'updateTimerDisplayLocal').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        document.body.innerHTML = '';
+    });
+
+    it('follows its own video', () => {
+        $eXeMapa.startVideo('clip.mp4', 0, 10, instance, 1);
+
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeMapa.updateTimerDisplayLocal).toHaveBeenCalledTimes(3);
+    });
+
+    it("stops once its map leaves the page, leaving the next page's video alone", () => {
+        $eXeMapa.startVideo('clip.mp4', 0, 10, instance, 1);
+        vi.advanceTimersByTime(1000);
+
+        // The author moves to another page, whose first map is numbered the same.
+        document.body.innerHTML = `<div id="mapaMainContainer-${instance}"></div>`;
+        $eXeMapa.options[instance] = { localPlayer: { play: vi.fn() } };
+        vi.advanceTimersByTime(5000);
+
+        expect($eXeMapa.updateTimerDisplayLocal).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops while the page is being edited', () => {
+        $eXeMapa.startVideo('clip.mp4', 0, 10, instance, 1);
+        document.body.insertAdjacentHTML('beforeend', '<div id="node-content" mode="edition"></div>');
+
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeMapa.updateTimerDisplayLocal).not.toHaveBeenCalled();
+    });
+});
+
+describe('map minimum score notice', () => {
+    it('asks for the notice right after its interface replaces the stored data', () => {
+        const source = readFileSync(join(__dirname, 'map.js'), 'utf-8');
+        const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+        // The main container comes with the interface, so from that line on the
+        // notice can go right before it, below the instructions.
+        expect(loadGame).toMatch(
+            /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+        );
+    });
 });

@@ -450,4 +450,118 @@ describe('dragdrop iDevice export', () => {
       expect($.fn.droppable).toHaveBeenCalled();
     });
   });
+
+  /**
+   * showScoreGame picks the colour of the message the learner reads. It used to
+   * compare against a literal 5, which contradicted the progress report sitting
+   * on the same page -- the report called a 6 out of 10 "not passed" against a
+   * mark of 8 while this message painted it green.
+   *
+   * Colour 2 is the pass colour, 1 the fail colour; showMessage is where they
+   * are turned into a style, so that is what is observed.
+   */
+  describe('the message colour follows the pass mark', () => {
+    const instance = 0;
+
+    const play = (passScoreMode, passScoreCustom) => {
+      const showMessage = vi.spyOn($eXeDragDrop, 'showMessage').mockImplementation(() => {});
+      $eXeDragDrop.options[instance] = {
+        hits: 6,
+        errors: 4,
+        numberCards: 10,
+        realNumberCards: 10,
+        cardsGame: new Array(10),
+        passScoreMode,
+        passScoreCustom,
+        itinerary: { showClue: false },
+        msgs: { msgEndGameM: '%s' },
+      };
+      document.body.innerHTML = `<div id="dadPRepeatActivity-${instance}"></div>`;
+      $eXeDragDrop.showScoreGame(instance);
+      return showMessage.mock.calls[0][0];
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('passes a 6 on the project mark of 5', () => {
+      expect(play('global')).toBe(2);
+    });
+
+    it('fails the same 6 when the author set the mark at 8', () => {
+      expect(play('custom', 8)).toBe(1);
+    });
+
+    it('passes the same 6 when the author set the mark at 4.5', () => {
+      expect(play('custom', 4.5)).toBe(2);
+    });
+  });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and ending it when its own time ran out.
+  describe('the clock of a timed game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="dadPMainContainer-${instance}"></div>`;
+      $eXeDragDrop.options = [{ gameStarted: false, type: 2, time: 1 }];
+      for (const method of ['updateTime', 'gameOver', 'initializeDragAndDrop']) {
+        vi.spyOn($eXeDragDrop, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeDragDrop.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeDragDrop.updateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('ends its own game when the time runs out', () => {
+      $eXeDragDrop.startGame(instance);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeDragDrop.gameOver).toHaveBeenCalledWith(instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeDragDrop.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="dadPMainContainer-${instance}"></div>`;
+      $eXeDragDrop.options[instance] = { gameStarted: true, counter: 240 };
+      $eXeDragDrop.updateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeDragDrop.updateTime).not.toHaveBeenCalled();
+      expect($eXeDragDrop.gameOver).not.toHaveBeenCalled();
+      expect($eXeDragDrop.options[instance].counter).toBe(240);
+    });
+  });
+});
+
+describe('dragdrop minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'dragdrop.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
+  });
 });
