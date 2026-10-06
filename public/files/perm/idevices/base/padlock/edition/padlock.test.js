@@ -152,4 +152,51 @@ describe('padlock iDevice', () => {
       expect(typeof $exeDevice.getIdeviceID).toBe('function');
     });
   });
+
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(join(__dirname, 'padlock.js'), 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            // This iDevice restores from `dataGame`, not `game`.
+            expect(source).toContain('passScoreMode: dataGame.passScoreMode');
+            expect(source).toContain('passScoreCustom: dataGame.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            // It parks the values on  before writing them out.
+            expect(source).toContain('$exeDevice.passScoreMode = passScore.passScoreMode');
+            expect(source).toContain('passScoreMode: $exeDevice.passScoreMode');
+            expect(source).toContain('passScoreCustom: $exeDevice.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
 });

@@ -514,6 +514,10 @@ export class Html5Exporter extends BaseExporter {
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             addMathJax: meta.addMathJax === true,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes
@@ -651,6 +655,10 @@ export class Html5Exporter extends BaseExporter {
 
             // Check for ELPX download support (looks for exe-package:elp in content)
             const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // Collect asset:// references before preprocessing rewrites them to
+            // {{context_path}}/content/resources/... paths the collector cannot see.
+            const referencedAssetIds = this.getReferencedAssetIds(pages);
 
             // Pre-process pages: add filenames to asset URLs, convert internal links
             pages = await this.preprocessPagesForExport(pages);
@@ -859,7 +867,6 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 10. Add project assets
-            const referencedAssetIds = this.getReferencedAssetIds(pages);
             await this.addAssetsToPreviewFiles(files, fileList, referencedAssetIds);
 
             // 11. Generate ELPX manifest file and ensure required libraries if download-source-file is used

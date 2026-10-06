@@ -85,6 +85,23 @@ var $eXe3Dmol = {
         $eXe3Dmol.previousScore = mOptions.previousScore;
     },
 
+    /**
+     * The colour the end-of-attempt message is painted in: 2 when the learner
+     * passed, 1 when they did not.
+     *
+     * It used to be a fixed 2. Every attempt closed in the pass colour, a
+     * perfect one and an empty one alike, while the progress report beside it
+     * told the learner the opposite. Judged on getScoreRP, which is the very
+     * mark sent to the report and to the LMS.
+     *
+     * @param {number} instance Index of the activity on the page.
+     * @returns {number} An index into the colour table showMessage paints with.
+     */
+    getVerdictColor: function (instance) {
+        const mOptions = $eXe3Dmol.options[instance];
+        return $eXe3Dmol.getScoreRP(instance) >= $exe.passScore.resolve(mOptions) ? 2 : 1;
+    },
+
     getShowScoreRP: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
         const total = mOptions.selectsGame.length;
@@ -119,6 +136,7 @@ var $eXe3Dmol = {
             $eXe3Dmol.options.push(mOption);
             const interfaceHtml = $eXe3Dmol.createInterface(i);
             dl.before(interfaceHtml).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#dmolpGameMinimize-' + i).hide();
             $('#dmolpGameContainer-' + i).hide();
@@ -1486,7 +1504,7 @@ var $eXe3Dmol = {
             $gamerOver = $(`#dmolpGamerOver-${instance}`);
 
         let message = '',
-            messageColor = 2;
+            messageColor = $eXe3Dmol.getVerdictColor(instance);
 
         $histGame.hide();
         $overPoint.show();
@@ -1519,6 +1537,10 @@ var $eXe3Dmol = {
                 }
                 break;
             case 2:
+                // Not an outcome: the learner is still exploring the model, and
+                // the score panel is hidden. Neutral, so it is not read as a
+                // verdict on an attempt that has not finished.
+                messageColor = 0;
                 message = msgs.msgInformationLooking;
                 $overPoint.hide();
                 $overHits.hide();
@@ -1594,17 +1616,25 @@ var $eXe3Dmol = {
             question.answerScore = -1;
         });
 
-        mOptions.counterClock = setInterval(() => {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and moving it on to the next
+        // question when its own time ran out.
+        const container = document.getElementById(
+            'dmolpMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#dmolpMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXe3Dmol.updateTime(mOptions.counter, instance);
 
@@ -1647,6 +1677,7 @@ var $eXe3Dmol = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $eXe3Dmol.updateTime(0, instance);
         $(`#dmolpGamerOver-${instance}`).hide();
@@ -1697,7 +1728,11 @@ var $eXe3Dmol = {
         $exeDevices.iDevice.gamification.media.stopSound();
 
         const message = mOptions.msgs.msgAllQuestions;
-        $eXe3Dmol.showMessage(2, message, instance);
+        $eXe3Dmol.showMessage(
+            $eXe3Dmol.getVerdictColor(instance),
+            message,
+            instance
+        );
         $eXe3Dmol.showScoreGame(type, instance);
         $eXe3Dmol.clearQuestions(instance);
         $eXe3Dmol.updateTime(0, instance);

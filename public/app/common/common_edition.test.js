@@ -1,4 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Setup globals needed BEFORE the script is loaded
 globalThis._ = vi.fn((key) => key);
@@ -417,6 +419,321 @@ describe('common_edition.js', () => {
         globalThis.$(checkbox).trigger('change');
         expect(input.value).toBe('KEEPME');
         expect(input.disabled).toBe(true);
+      });
+    });
+
+    /**
+     * Extracted when the Grading tab needed its sixth collapsible note: the
+     * alternative was six copies of the same anchor, the same inline sizing and
+     * the same delegated handler.
+     */
+    describe('help', () => {
+      const help = () => globalThis.$exeDevicesEdition.iDevice.gamification.help;
+
+      it('builds an icon pointing at its note', () => {
+        const icon = help().icon('someHelp', '/idevice/path/');
+
+        expect(icon).toContain('id="someHelpLnk"');
+        expect(icon).toContain('href="#someHelp"');
+        expect(icon).toContain('/idevice/path/quextIEHelp.png');
+      });
+
+      it('renders no icon without a path, rather than one pointing at nothing', () => {
+        expect(help().icon('someHelp')).toBe('');
+        expect(help().icon('someHelp', '')).toBe('');
+      });
+
+      it('builds a note closed, with the last paragraph flush to the bottom', () => {
+        const note = help().note('someHelp', ['first', 'second']);
+
+        expect(note).toContain('id="someHelp"');
+        expect(note).toContain('d-none');
+        expect(note).toContain('<p class="mb-2">first</p>');
+        expect(note).toContain('<p class="mb-0">second</p>');
+      });
+
+      it('gives a single paragraph no trailing margin either', () => {
+        expect(help().note('someHelp', ['only'])).toContain('<p class="mb-0">only</p>');
+      });
+
+      it('toggles the note from its icon', () => {
+        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
+        help().bind('someHelp');
+        const note = document.getElementById('someHelp');
+
+        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
+        expect(note.classList.contains('d-none')).toBe(false);
+        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
+        expect(note.classList.contains('d-none')).toBe(true);
+      });
+
+      it('survives being bound again on every re-render', () => {
+        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
+        help().bind('someHelp');
+        help().bind('someHelp');
+        help().bind('someHelp');
+
+        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
+
+        // Stacked handlers would flip the note once each and leave it closed.
+        expect(document.getElementById('someHelp').classList.contains('d-none')).toBe(false);
+      });
+
+      it('does not let the link navigate', () => {
+        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
+        help().bind('someHelp');
+        const event = globalThis.$.Event('click');
+
+        globalThis.$(document.getElementById('someHelpLnk')).trigger(event);
+
+        expect(event.isDefaultPrevented()).toBe(true);
+      });
+    });
+
+    describe('passScore', () => {
+      const passScore = () => globalThis.$exeDevicesEdition.iDevice.gamification.passScore;
+
+      const mountHtml = () => {
+        document.body.innerHTML = passScore().getContents();
+      };
+
+      // common.js is not loaded here, so $exe stands in for it. The real one
+      // reads the META in an exported page and the Y.Doc in the editor.
+      const setGlobalValue = (value) => {
+        globalThis.$exe = {
+          passScore: {
+            get: () => value,
+            normalize: (raw) => {
+              const parsed = parseFloat(raw);
+              if (!isFinite(parsed)) return 5;
+              return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+            },
+          },
+        };
+      };
+
+      beforeEach(() => setGlobalValue(5));
+      afterEach(() => {
+        delete globalThis.$exe;
+      });
+
+      it('getContents renders the label, both radios and the hidden custom input', () => {
+        const html = passScore().getContents();
+        expect(html).toContain('Minimum score to pass the activity');
+        expect(html).toContain('id="eXePassScoreGlobal"');
+        expect(html).toContain('id="eXePassScoreCustom"');
+        expect(html).toContain('id="eXePassScoreGlobalValue"');
+        expect(html).toContain('id="eXePassScoreCustomOptions"');
+        expect(html).toContain('Global value');
+        expect(html).toContain('Customize');
+        // The custom input is only revealed once the author asks for it.
+        expect(html).toMatch(/id="eXePassScoreCustomOptions"[^>]*d-none/);
+      });
+
+      it('getContents declares the same 0-10 one-decimal domain as the project property', () => {
+        const html = passScore().getContents();
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?min="0"/);
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?max="10"/);
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?step="0.1"/);
+      });
+
+      it('getContents shows the project value next to the global radio', () => {
+        setGlobalValue(7.5);
+        expect(passScore().getContents()).toContain('>7.5</span>');
+      });
+
+      it('getContents falls back to 5 when $exe is not available', () => {
+        delete globalThis.$exe;
+        expect(passScore().getContents()).toContain('>5</span>');
+      });
+
+      it.each([
+        ['7.56', 7.6],
+        [-2, 0],
+        [42, 10],
+        [0, 0],
+        ['invalid', 5],
+        [Infinity, 5],
+      ])('round-trips a custom mark of %s without the shared helper as %s', (stored, expected) => {
+        delete globalThis.$exe;
+        mountHtml();
+
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: stored });
+
+        expect(document.getElementById('eXePassScoreValue').value).toBe(String(expected));
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'custom', passScoreCustom: expected });
+      });
+
+      it('defaults to the global mode for an iDevice that has never been saved', () => {
+        mountHtml();
+        passScore().setValues();
+
+        expect(document.getElementById('eXePassScoreGlobal').checked).toBe(true);
+        expect(document.getElementById('eXePassScoreCustom').checked).toBe(false);
+        expect(document.getElementById('eXePassScoreCustomOptions').classList.contains('d-none')).toBe(true);
+      });
+
+      it('setValues restores a customised iDevice and reveals its value', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+
+        expect(document.getElementById('eXePassScoreCustom').checked).toBe(true);
+        expect(document.getElementById('eXePassScoreValue').value).toBe('7.5');
+        expect(document.getElementById('eXePassScoreCustomOptions').classList.contains('d-none')).toBe(false);
+      });
+
+      it('setValues repaints the global number from the project, not from the saved iDevice', () => {
+        mountHtml();
+        // The project moved to 8 after this iDevice was last saved.
+        setGlobalValue(8);
+        passScore().setValues({ passScoreMode: 'global', passScoreCustom: 3 });
+
+        expect(document.getElementById('eXePassScoreGlobalValue').textContent).toBe('8');
+      });
+
+      it('setValues seeds the custom input with the project value when there is none stored', () => {
+        setGlobalValue(7.5);
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'global' });
+
+        expect(document.getElementById('eXePassScoreValue').value).toBe('7.5');
+      });
+
+      it('getValues reports the global mode without inventing a stored value', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'global' });
+
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'global', passScoreCustom: 5 });
+      });
+
+      it('getValues reports the customised mark', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+      });
+
+      it('getValues clamps a mark typed outside the domain', () => {
+        mountHtml();
+        document.getElementById('eXePassScoreCustom').checked = true;
+        document.getElementById('eXePassScoreValue').value = '42';
+
+        expect(passScore().getValues().passScoreCustom).toBe(10);
+      });
+
+      it('addEvents reveals and hides the custom input with the radios', () => {
+        mountHtml();
+        passScore().addEvents();
+        const options = document.getElementById('eXePassScoreCustomOptions');
+        const custom = document.getElementById('eXePassScoreCustom');
+        const global = document.getElementById('eXePassScoreGlobal');
+
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+        expect(options.classList.contains('d-none')).toBe(false);
+
+        global.checked = true;
+        globalThis.$(global).trigger('change');
+        expect(options.classList.contains('d-none')).toBe(true);
+      });
+
+      it('addEvents keeps the typed mark when switching back and forth', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+        const custom = document.getElementById('eXePassScoreCustom');
+        const global = document.getElementById('eXePassScoreGlobal');
+
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+        input.value = '7.5';
+        global.checked = true;
+        globalThis.$(global).trigger('change');
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+
+        expect(input.value).toBe('7.5');
+      });
+
+      it('addEvents repaints a field left empty on blur with the mark that will be saved', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+
+        input.value = '';
+        globalThis.$(input).trigger('blur');
+
+        expect(input.value).toBe('5');
+      });
+
+      it('addEvents repaints an out-of-range field on blur', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+
+        input.value = '42';
+        globalThis.$(input).trigger('blur');
+
+        expect(input.value).toBe('10');
+      });
+
+      /**
+       * The two modes behave differently in a way the radio labels cannot
+       * convey: one follows the project for the life of the content, the other
+       * breaks away from it. The help note says so, like the progress report's.
+       */
+      describe('help note', () => {
+        const mountWithPath = () => {
+          document.body.innerHTML = passScore().getContents('/idevice/path/');
+        };
+
+        it('explains both modes', () => {
+          const html = passScore().getContents('/idevice/path/');
+
+          expect(html).toContain('Global value: the activity uses the mark set in the project properties');
+          expect(html).toContain('Customize: the activity uses its own mark');
+        });
+
+        it('shows the help icon from the iDevice assets', () => {
+          const html = passScore().getContents('/idevice/path/');
+
+          expect(html).toContain('id="eXePassScoreHelpLnk"');
+          expect(html).toContain('/idevice/path/quextIEHelp.png');
+        });
+
+        it('leaves the icon out when the iDevice passes no path', () => {
+          // Better no icon than one pointing at nothing.
+          const html = passScore().getContents();
+
+          expect(html).not.toContain('eXePassScoreHelpLnk');
+          expect(html).toContain('eXePassScoreHelp');
+        });
+
+        it('starts hidden and toggles on click', () => {
+          mountWithPath();
+          passScore().addEvents();
+          const help = document.getElementById('eXePassScoreHelp');
+          const link = document.getElementById('eXePassScoreHelpLnk');
+
+          expect(help.classList.contains('d-none')).toBe(true);
+          globalThis.$(link).trigger('click');
+          expect(help.classList.contains('d-none')).toBe(false);
+          globalThis.$(link).trigger('click');
+          expect(help.classList.contains('d-none')).toBe(true);
+        });
+
+        it('keeps one handler across re-renders', () => {
+          // addEvents runs on every render; a direct handler would stack up and
+          // the note would flip once per copy, i.e. appear not to toggle.
+          mountWithPath();
+          passScore().addEvents();
+          passScore().addEvents();
+          passScore().addEvents();
+
+          globalThis.$(document.getElementById('eXePassScoreHelpLnk')).trigger('click');
+
+          expect(document.getElementById('eXePassScoreHelp').classList.contains('d-none')).toBe(false);
+        });
       });
     });
   });
@@ -843,14 +1160,214 @@ describe('common_edition.js', () => {
     });
 
     it('getTab with hidebutton applies d-none class to button block', () => {
-      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(true);
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(null, {
+        hidebutton: true,
+      });
       expect(result).toContain('id="eXeGameSCORMblock"');
       expect(result).toContain('d-none');
     });
 
     it('getTab with onlybutton changes message', () => {
-      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(false, true);
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(null, {
+        onlybutton: true,
+      });
       expect(result).toContain('Save the score');
+    });
+
+    /**
+     * The tab used to be the SCORM tab, with the pass score and the progress
+     * report sitting loose in each iDevice's general options. It is now the
+     * Grading tab and composes all three, so the layout is decided once
+     * rather than thirty-four times.
+     */
+    describe('Grading tab', () => {
+      const getTab = (...args) =>
+        globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(...args);
+
+      it('is titled Grading, not SCORM', () => {
+        // Not "Evaluation": the iDevice menu already has an "Assessment and
+        // tracking" category, and this tab is narrower than either -- it is
+        // about the mark and what becomes of it.
+        expect(getTab()).toContain('title="Grading"');
+      });
+
+      it('keeps SCORM as a section inside it', () => {
+        const result = getTab();
+        expect(result).toContain('exe-evaluation-section-title');
+        expect(result).toContain('>SCORM<');
+      });
+
+      it('renders the three blocks in order: SCORM, progress report, pass score', () => {
+        const result = getTab('/idevice/path/');
+
+        const scormAt = result.indexOf('eXeGameSCORMNoSave');
+        const reportAt = result.indexOf('eXeProgressReport');
+        const passScoreAt = result.indexOf('eXePassScoreGlobal');
+
+        expect(scormAt).toBeGreaterThan(-1);
+        expect(reportAt).toBeGreaterThan(scormAt);
+        expect(passScoreAt).toBeGreaterThan(reportAt);
+      });
+
+      it('heads all three sections the same way', () => {
+        const result = getTab('/idevice/path/');
+        const headings = result.match(/class="exe-evaluation-section-title"/g) ?? [];
+
+        // The pass score used to be introduced by a plain paragraph, which read
+        // as a stray label next to two headed sections.
+        expect(headings).toHaveLength(3);
+        expect(result).toContain('>SCORM<');
+        expect(result).toContain('>Progress report<');
+        expect(result).toContain('>Minimum score to pass the activity<');
+      });
+
+      it('leaves the progress report out when the iDevice passes no path', () => {
+        // The report needs the iDevice's own asset path for its help icon, so
+        // an iDevice that does not offer one does not get the section either.
+        const result = getTab();
+
+        expect(result).not.toContain('eXeProgressReport');
+        expect(result).not.toContain('>Progress report<');
+      });
+
+      /**
+       * The weight is a relative share, not a percentage of anything: the
+       * registry computes the page score as sum(score * weight) / sum(weights)
+       * (exe-scorm12-activities.js, aggregateScore). Nothing on screen says so,
+       * and an author reading "%" next to a field naturally assumes otherwise.
+       */
+      describe('weight help note', () => {
+        const mountTab = () => {
+          document.body.innerHTML = getTab('/idevice/path/');
+        };
+
+        it('explains that what counts is the proportion between weights', () => {
+          const result = getTab('/idevice/path/');
+
+          expect(result).toContain('proportion between the weights');
+          expect(result).toContain('count 40%, 40% and 20%');
+          expect(result).toContain('left out of the calculation');
+        });
+
+        it('puts the icon to the right of the weight field', () => {
+          const result = getTab('/idevice/path/');
+          const fieldAt = result.indexOf('id="eXeGameSCORMWeight"');
+          const iconAt = result.indexOf('id="eXeGameSCORMWeightHelpLnk"');
+
+          expect(iconAt).toBeGreaterThan(fieldAt);
+          expect(result).toContain('/idevice/path/quextIEHelp.png');
+        });
+
+        it('starts hidden and toggles on click', () => {
+          mountTab();
+          globalThis.$exeDevicesEdition.iDevice.gamification.scorm.addEvents();
+          const help = document.getElementById('eXeGameSCORMWeightHelp');
+          const link = document.getElementById('eXeGameSCORMWeightHelpLnk');
+
+          expect(help.classList.contains('d-none')).toBe(true);
+          globalThis.$(link).trigger('click');
+          expect(help.classList.contains('d-none')).toBe(false);
+          globalThis.$(link).trigger('click');
+          expect(help.classList.contains('d-none')).toBe(true);
+        });
+
+        it('is hidden along with the weight field when the score is not saved', () => {
+          // The note lives outside the weight row, so an open note would
+          // otherwise survive the control it explains.
+          mountTab();
+          globalThis.$exeDevicesEdition.iDevice.gamification.scorm.addEvents();
+          globalThis.$(document.getElementById('eXeGameSCORMWeightHelpLnk')).trigger('click');
+          expect(document.getElementById('eXeGameSCORMWeightHelp').classList.contains('d-none')).toBe(false);
+
+          const noSave = document.getElementById('eXeGameSCORMNoSave');
+          noSave.checked = true;
+          globalThis.$(noSave).trigger('change');
+
+          expect(document.getElementById('eXeGameSCORMPercentaje').classList.contains('d-none')).toBe(true);
+          expect(document.getElementById('eXeGameSCORMWeightHelp').classList.contains('d-none')).toBe(true);
+        });
+      });
+
+      /**
+       * The three modes differ in ways the labels cannot carry: whether the
+       * learner has to press anything, what happens if they leave halfway, and
+       * whether "do not save" also switches off the progress report (it does
+       * not -- that one is local to the browser).
+       */
+      describe('mode help notes', () => {
+        const ids = [
+          'eXeGameSCORMNoSaveHelp',
+          'eXeGameSCORMAutoSaveHelp',
+          'eXeGameSCORMButtonSaveHelp',
+        ];
+
+        it('gives every mode an icon beside its radio', () => {
+          const result = getTab('/idevice/path/');
+
+          for (const id of ids) {
+            expect(result).toContain(`id="${id}Lnk"`);
+            expect(result).toContain(`id="${id}"`);
+          }
+        });
+
+        it('places each icon after the radio it explains', () => {
+          const result = getTab('/idevice/path/');
+
+          expect(result.indexOf('eXeGameSCORMNoSaveHelpLnk')).toBeGreaterThan(
+            result.indexOf('id="eXeGameSCORMNoSave"'),
+          );
+          expect(result.indexOf('eXeGameSCORMAutoSaveHelpLnk')).toBeGreaterThan(
+            result.indexOf('id="eXeGameSCORMAutoSave"'),
+          );
+          expect(result.indexOf('eXeGameSCORMButtonSaveHelpLnk')).toBeGreaterThan(
+            result.indexOf('id="eXeGameSCORMButtonSave"'),
+          );
+        });
+
+        it('says what each mode actually does', () => {
+          const result = getTab('/idevice/path/');
+
+          expect(result).toContain('sends no score to the LMS');
+          // "Do not save" is about the LMS only; the progress report is local.
+          expect(result).toContain('kept in the learner');
+          expect(result).toContain('reports its score by itself');
+          expect(result).toContain('leaves halfway still has the work done so far recorded');
+          expect(result).toContain('Nothing reaches the LMS until the learner presses the button');
+          expect(result).toContain('does not close the activity');
+        });
+
+        it('toggles each note independently', () => {
+          document.body.innerHTML = getTab('/idevice/path/');
+          globalThis.$exeDevicesEdition.iDevice.gamification.scorm.addEvents();
+
+          globalThis.$(document.getElementById('eXeGameSCORMAutoSaveHelpLnk')).trigger('click');
+
+          expect(document.getElementById('eXeGameSCORMAutoSaveHelp').classList.contains('d-none')).toBe(false);
+          expect(document.getElementById('eXeGameSCORMNoSaveHelp').classList.contains('d-none')).toBe(true);
+          expect(document.getElementById('eXeGameSCORMButtonSaveHelp').classList.contains('d-none')).toBe(true);
+        });
+
+        it('keeps the mode notes open when the author switches mode', () => {
+          // Unlike the weight note, these explain options that stay on screen:
+          // the author is comparing them, so switching must not close them.
+          document.body.innerHTML = getTab('/idevice/path/');
+          globalThis.$exeDevicesEdition.iDevice.gamification.scorm.addEvents();
+          globalThis.$(document.getElementById('eXeGameSCORMNoSaveHelpLnk')).trigger('click');
+
+          const auto = document.getElementById('eXeGameSCORMAutoSave');
+          auto.checked = true;
+          globalThis.$(auto).trigger('change');
+
+          expect(document.getElementById('eXeGameSCORMNoSaveHelp').classList.contains('d-none')).toBe(false);
+        });
+      });
+
+      it('offers the pass score to every iDevice, with no opt-out', () => {
+        // Every scoring activity is judged on the same 0-10 scale, so that a
+        // page mixing several of them grades them alike.
+        expect(getTab()).toContain('eXePassScoreGlobal');
+        expect(getTab('/idevice/path/')).toContain('eXePassScoreGlobal');
+      });
     });
 
     it('setValues handles isScorm=1', () => {
@@ -2554,6 +3071,52 @@ describe('common_edition.js', () => {
   });
 
   /**
+   * progressBar.getValues() has two return shapes: the values, or `false` after
+   * it has warned about a report identifier shorter than five characters. Every
+   * caller has to honour the second one.
+   *
+   * Reading `.evaluation` off `false` yields undefined instead of throwing, so a
+   * caller that forgets carries on and saves the activity with the report
+   * silently switched off -- the author sees the warning, presses save, and the
+   * form accepts it. That is exactly what happened to two iDevices when their
+   * forms moved to this shared block, and nothing failed to tell us.
+   *
+   * Scanning the callers is the only check that covers all of them at once, and
+   * the only one that catches the next iDevice to adopt the block.
+   */
+  describe('progress report guard across every iDevice', () => {
+    const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
+
+    const callers = readdirSync(IDEVICES_DIR)
+      .map((name) => ({ name, dir: join(IDEVICES_DIR, name, 'edition') }))
+      .filter(({ dir }) => existsSync(dir))
+      .flatMap(({ name, dir }) =>
+        readdirSync(dir)
+          .filter((file) => file.endsWith('.js') && !file.endsWith('.test.js'))
+          .map((file) => ({ name, source: readFileSync(join(dir, file), 'utf-8') }))
+      )
+      .filter(({ source }) => source.includes('gamification.progressBar.getValues()'));
+
+    it('finds the iDevices that read the shared progress report', () => {
+      // A guard rail for the scan itself: a rename that made the filter match
+      // nothing would leave every assertion below vacuously green.
+      expect(callers.length).toBeGreaterThan(30);
+    });
+
+    it.each(callers.map(({ name }) => name))('%s rejects an invalid report identifier', (name) => {
+      const { source } = callers.find((caller) => caller.name === name);
+      // The iDevices do not agree on a name for the result -- most call it
+      // `progressBar`, interactive-video calls it `progressBarValues` -- so the
+      // guard is looked up by whatever each one assigned it to.
+      const assignment = source.match(
+        /(\w+)\s*=\s*\$exeDevicesEdition\.iDevice\.gamification\.progressBar\.getValues\(\)/
+      );
+      expect(assignment).not.toBeNull();
+      expect(source).toMatch(new RegExp(`if\\s*\\(!${assignment[1]}\\)\\s*return false;`));
+    });
+  });
+
+  /**
    * These helpers create resources that live outside the edition form —
    * handlers on `document` and `window`, timers, object URLs, audio and a
    * microphone stream. They belong to the edition that created them, which
@@ -2642,6 +3205,52 @@ describe('common_edition.js', () => {
     });
 
     describe('document handlers', () => {
+      const gradingHelpIds = [
+        'eXePassScoreHelp',
+        'eXeGameSCORMNoSaveHelp',
+        'eXeGameSCORMAutoSaveHelp',
+        'eXeGameSCORMButtonSaveHelp',
+        'eXeGameSCORMWeightHelp',
+      ];
+
+      afterEach(() => {
+        gradingHelpIds.forEach(id => $(document).off('click.' + id));
+        $(document).off('click.gradingHelpProbe');
+      });
+
+      it.each(gradingHelpIds)('releases %s on close and rebinds it for the next edition', id => {
+        const help = iDevice().gamification.help;
+        document.body.innerHTML = help.icon(id, '/idevice/') + help.note(id, ['Help text']);
+        const link = $('#' + id + 'Lnk');
+        const note = $('#' + id);
+        const unrelated = vi.fn();
+        $(document).on('click.gradingHelpProbe', '#' + id + 'Lnk', unrelated);
+
+        openEdition();
+        // A re-render must leave just one toggle.
+        help.bind(id);
+        help.bind(id);
+        const event = $.Event('click');
+        link.trigger(event);
+        expect(event.isDefaultPrevented()).toBe(true);
+        expect(note.hasClass('d-none')).toBe(false);
+
+        closeEdition();
+        link.trigger('click');
+        expect(note.hasClass('d-none')).toBe(false);
+        expect(unrelated).toHaveBeenCalledTimes(2);
+
+        openEdition();
+        help.bind(id);
+        link.trigger('click');
+        expect(note.hasClass('d-none')).toBe(true);
+
+        closeEdition();
+        link.trigger('click');
+        expect(note.hasClass('d-none')).toBe(true);
+        expect(unrelated).toHaveBeenCalledTimes(4);
+      });
+
       it('drops the progress-report help toggle and keeps unrelated document handlers', () => {
         document.body.innerHTML = iDevice().gamification.progressBar.getContents('/themes/example/');
         const unrelated = vi.fn();

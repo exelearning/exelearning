@@ -37,6 +37,7 @@ describe('exe-scorm12-activities', () => {
                 minimumScore: 0,
                 maximumScore: 100,
                 weight: 3,
+                successThreshold: null,
             });
         });
 
@@ -58,6 +59,8 @@ describe('exe-scorm12-activities', () => {
                 maximumScore: 100,
                 // No usable weight means 100, as in common.js and the editor.
                 weight: 100,
+                // No mark of its own: the page's threshold judges it.
+                successThreshold: null,
             });
         });
 
@@ -246,6 +249,225 @@ describe('exe-scorm12-activities', () => {
             activities.register('b', { evaluable: true, answered: 1, total: 3 });
 
             expect(activities.summary()).toMatchObject({ answered: 3, questions: 8 });
+        });
+    });
+
+    describe('pass marks', () => {
+        it('stores the mark an activity declares', () => {
+            expect(activities.register('a', { evaluable: true, successThreshold: 70 }).successThreshold).toBe(70);
+            expect(activities.register('b', { evaluable: true, successThreshold: '35' }).successThreshold).toBe(35);
+            expect(activities.register('c', { evaluable: true, successThreshold: 0 }).successThreshold).toBe(0);
+        });
+
+        it.each([
+            ['above 100', 120],
+            ['below 0', -1],
+            ['not a number', 'seven'],
+            ['null', null],
+        ])('reads a mark %s as none', (_label, value) => {
+            expect(activities.register('a', { evaluable: true, successThreshold: value }).successThreshold).toBeNull();
+        });
+
+        it('keeps the declared mark when a report does not repeat it', () => {
+            activities.register('a', { evaluable: true, successThreshold: 70 });
+
+            expect(activities.update('a', { completed: true, score: 80 }).successThreshold).toBe(70);
+        });
+
+        it('judges a lone activity by its own mark', () => {
+            activities.register('a', { evaluable: true, successThreshold: 70 });
+
+            expect(activities.successThreshold(50)).toBe(70);
+        });
+
+        it('returns the fallback when no activity declares a mark', () => {
+            activities.register('a', { evaluable: true });
+            activities.register('b', { evaluable: true });
+
+            expect(activities.successThreshold(50)).toBe(50);
+        });
+
+        it('weighs each mark like the score it judges', () => {
+            activities.register('a', { evaluable: true, weight: 3, successThreshold: 70 });
+            activities.register('b', { evaluable: true, weight: 1, successThreshold: 30 });
+
+            expect(activities.successThreshold(50)).toBe(60);
+        });
+
+        it('counts an activity with no mark at the fallback', () => {
+            activities.register('a', { evaluable: true, successThreshold: 90 });
+            activities.register('b', { evaluable: true });
+
+            expect(activities.successThreshold(50)).toBe(70);
+        });
+
+        it('clamps the weights exactly as the aggregate score does', () => {
+            activities.register('a', { evaluable: true, weight: 500, score: 100, successThreshold: 100 });
+            activities.register('b', { evaluable: true, weight: 0.5, score: 0, successThreshold: 0 });
+
+            // 500 counts as 100 and 0.5 as 1, in both aggregates.
+            expect(activities.summary().score).toBe(99.01);
+            expect(activities.successThreshold(50)).toBe(99.01);
+        });
+
+        it('leaves out activities that are not evaluable', () => {
+            activities.register('a', { evaluable: true, successThreshold: 60 });
+            activities.register('slides', { evaluable: false, successThreshold: 100 });
+
+            expect(activities.successThreshold(50)).toBe(60);
+        });
+
+        it('has no mark when nothing is evaluable', () => {
+            activities.register('slides', { evaluable: false, successThreshold: 100 });
+
+            expect(activities.successThreshold(50)).toBeNull();
+        });
+
+        it('has no mark when an activity declares none and there is no fallback', () => {
+            activities.register('a', { evaluable: true, successThreshold: 60 });
+            activities.register('b', { evaluable: true });
+
+            expect(activities.successThreshold(null)).toBeNull();
+        });
+
+        it('needs no fallback when every activity declares a mark', () => {
+            activities.register('a', { evaluable: true, successThreshold: 60 });
+
+            expect(activities.successThreshold(null)).toBe(60);
+        });
+
+        it('stores the mark as an optional ninth field', () => {
+            activities.register('quiz', { evaluable: true, completionRequired: true, score: 40, successThreshold: 70 });
+
+            expect(activities.serialize()).toBe('exe12/1|quiz;3;0;0;40;100;0;100;70');
+        });
+
+        it('stores a record with no mark exactly as before', () => {
+            activities.register('quiz', { evaluable: true, completionRequired: true, score: 40 });
+
+            expect(activities.serialize()).toBe('exe12/1|quiz;3;0;0;40;100;0;100');
+        });
+
+        it('restores the mark a stored record was judged by', () => {
+            // In an exported page the session opens before any iDevice
+            // registers, so this is what the entry policy judges by.
+            activities.load('exe12/1|quiz;7;3;3;33.3;100;0;100;30');
+
+            expect(activities.get('quiz')).toMatchObject({ completed: true, score: 33.3, successThreshold: 30 });
+            expect(activities.successThreshold(50)).toBe(30);
+        });
+
+        it('restores a record written before activities declared a mark', () => {
+            activities.load('exe12/1|quiz;7;3;3;66.7;100;0;100');
+
+            expect(activities.get('quiz').successThreshold).toBeNull();
+            expect(activities.successThreshold(50)).toBe(50);
+        });
+
+        it('reads an unusable stored mark as none', () => {
+            activities.load('exe12/1|quiz;7;3;3;66.7;100;0;100;abc');
+
+            expect(activities.get('quiz').successThreshold).toBeNull();
+        });
+
+        it('keeps the live mark when restoring stored progress', () => {
+            activities.register('quiz', { evaluable: true, completionRequired: true, successThreshold: 70 });
+
+            // The author changed the mark since the attempt was stored: the
+            // content in front of the learner decides, as with the weight.
+            activities.load('exe12/1|quiz;7;3;3;66.7;100;0;100;30');
+
+            expect(activities.get('quiz')).toMatchObject({ completed: true, score: 66.7, successThreshold: 70 });
+        });
+
+        it('takes the live mark of an activity that registers after its progress was restored', () => {
+            activities.load('exe12/1|quiz;7;3;3;66.7;100;0;100;30');
+            expect(activities.get('quiz').successThreshold).toBe(30);
+
+            activities.register('quiz', { evaluable: true, completionRequired: true, successThreshold: 70 });
+
+            expect(activities.get('quiz')).toMatchObject({ score: 66.7, successThreshold: 70 });
+        });
+
+        it('round-trips the mark through the payload', () => {
+            activities.register('quiz', { evaluable: true, completionRequired: true, score: 40, successThreshold: 35 });
+            const payload = activities.serialize();
+
+            activities.clear();
+            activities.load(payload);
+
+            expect(activities.get('quiz').successThreshold).toBe(35);
+        });
+    });
+
+    // The stricter way a page can be judged: every activity at its own mark,
+    // so the others cannot make up for one that falls short.
+    describe('activities below their own pass mark', () => {
+        it('lists none when every activity reaches its own mark', () => {
+            activities.register('a', { evaluable: true, score: 30, successThreshold: 30 });
+            activities.register('b', { evaluable: true, score: 90, successThreshold: 80 });
+
+            expect(activities.unmetThresholds(50)).toEqual([]);
+        });
+
+        it('lists the activity the weighted mean would let the others make up for', () => {
+            activities.register('a', { evaluable: true, weight: 50, score: 0, successThreshold: 50 });
+            activities.register('b', { evaluable: true, weight: 25, score: 100, successThreshold: 30 });
+            activities.register('c', { evaluable: true, weight: 25, score: 100, successThreshold: 50 });
+
+            // The weighted mean passes the page: 50 against 45.
+            expect(activities.summary().score).toBe(50);
+            expect(activities.successThreshold(50)).toBe(45);
+            expect(activities.unmetThresholds(50)).toEqual(['a']);
+        });
+
+        it('judges an activity with no mark of its own by the fallback', () => {
+            activities.register('a', { evaluable: true, score: 40 });
+
+            expect(activities.unmetThresholds(50)).toEqual(['a']);
+            expect(activities.unmetThresholds(40)).toEqual([]);
+        });
+
+        it('counts an activity with no score yet as 0', () => {
+            activities.register('a', { evaluable: true, successThreshold: 0 });
+            activities.register('b', { evaluable: true, successThreshold: 10 });
+
+            expect(activities.unmetThresholds(50)).toEqual(['b']);
+        });
+
+        it('judges each score on its own bounds', () => {
+            activities.register('a', { evaluable: true, minimumScore: 0, maximumScore: 10, score: 6, successThreshold: 60 });
+
+            expect(activities.unmetThresholds(50)).toEqual([]);
+        });
+
+        it('passes an activity exactly at its mark', () => {
+            // Normalising 57 out of 100 gives 56.99999999999999: without
+            // rounding, a learner who scored exactly the 5.7 their activity
+            // asks for would pass on screen and fail the page.
+            activities.register('a', { evaluable: true, score: 57, successThreshold: 57 });
+
+            expect(activities.unmetThresholds(50)).toEqual([]);
+        });
+
+        it('leaves out activities that are not evaluable', () => {
+            activities.register('a', { evaluable: true, score: 60, successThreshold: 60 });
+            activities.register('slides', { evaluable: false, score: 0, successThreshold: 100 });
+
+            expect(activities.unmetThresholds(50)).toEqual([]);
+        });
+
+        it('cannot judge an activity with no mark when there is no fallback', () => {
+            activities.register('a', { evaluable: true, score: 100, successThreshold: 60 });
+            activities.register('b', { evaluable: true, score: 100 });
+
+            expect(activities.unmetThresholds(null)).toBeNull();
+        });
+
+        it('judges restored records by the marks stored with them', () => {
+            activities.load('exe12/1|a;7;3;3;40;100;0;100;30|b;7;3;3;40;100;0;100;50');
+
+            expect(activities.unmetThresholds(50)).toEqual(['b']);
         });
     });
 
@@ -615,6 +837,61 @@ describe('exe-scorm12-activities', () => {
             const lmsData = givenBoth(entries);
 
             expect(activities.summary().score).toBe(getFinalScore(lmsData));
+        });
+    });
+
+    // The same invariant for the page's pass mark: the registry decides it for
+    // SCORM 1.2 and getFinalThreshold() for SCORM 2004. If they drift, the same
+    // activities pass in one package and fail in the other.
+    describe('agrees with getFinalThreshold() in common.js', () => {
+        // Both read the project mark when an activity declares none; with no
+        // META in this document that is the default 5, which is 50.
+        const PROJECT_MARK = 50;
+        let scorm;
+
+        beforeEach(() => {
+            require('../../common.js');
+            delete global.window.exeScorm12;
+            scorm = global.$exeDevices.iDevice.gamification.scorm;
+            scorm._successThresholdsByNumber = {};
+        });
+
+        afterEach(() => {
+            scorm._successThresholdsByNumber = {};
+        });
+
+        /**
+         * @param {Array<{mark?: number, weight?: number}>} entries
+         * @returns {object} the lmsData the legacy aggregation reads
+         */
+        function givenBoth(entries) {
+            const lmsData = {};
+            entries.forEach((entry, index) => {
+                const descriptor = { evaluable: true, score: 50 };
+                if (entry.weight !== undefined) {
+                    descriptor.weight = entry.weight;
+                }
+                if (entry.mark !== undefined) {
+                    descriptor.successThreshold = entry.mark;
+                    scorm._successThresholdsByNumber[index + 1] = entry.mark;
+                }
+                activities.register('a' + index, descriptor);
+                lmsData[index + 1] = { score: 50, weighted: entry.weight };
+            });
+            return lmsData;
+        }
+
+        it.each([
+            ['a single customised activity', [{ mark: 70 }]],
+            ['no customised activity', [{}, {}]],
+            ['different weights', [{ mark: 70, weight: 3 }, { mark: 30, weight: 1 }]],
+            ['a customised activity next to one that is not', [{ mark: 90 }, {}]],
+            ['a weight above the ceiling', [{ mark: 100, weight: 500 }, { mark: 0, weight: 0.5 }]],
+            ['a weight of zero', [{ mark: 80, weight: 0 }, { mark: 40 }]],
+        ])('matches on %s', (_label, entries) => {
+            const lmsData = givenBoth(entries);
+
+            expect(activities.successThreshold(PROJECT_MARK)).toBe(scorm.getFinalThreshold(lmsData));
         });
     });
 });

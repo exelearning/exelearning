@@ -19,6 +19,13 @@ import {
     buildXmlKeyToInternalKeyMap,
     buildInternalKeyToXmlKeyMap,
     buildPropertyKeyMap,
+    normalizePassScore,
+    PASS_SCORE_DEFAULT,
+    PASS_SCORE_EVERY_ACTIVITY_META_NAME,
+    PASS_SCORE_MAX,
+    PASS_SCORE_META_NAME,
+    PASS_SCORE_MIN,
+    PASS_SCORE_STEP,
     type MetadataPropertyConfig,
 } from './metadata-properties';
 
@@ -48,6 +55,8 @@ describe('metadata-properties', () => {
             expect(exportKeys).toContain('addMathJax');
             expect(exportKeys).toContain('exportSource');
             expect(exportKeys).toContain('globalFont');
+            expect(exportKeys).toContain('passScore');
+            expect(exportKeys).toContain('passScoreEveryActivity');
         });
 
         it('contains all expected content properties', () => {
@@ -294,6 +303,24 @@ describe('metadata-properties', () => {
             });
         });
 
+        describe('for number properties', () => {
+            it('returns numeric values unchanged', () => {
+                expect(parsePropertyValue('passScore', 7.5)).toBe(7.5);
+                expect(parsePropertyValue('passScore', 0)).toBe(0);
+            });
+
+            it('parses numeric strings', () => {
+                expect(parsePropertyValue('passScore', '7.5')).toBe(7.5);
+            });
+
+            it('returns the default for missing or unparseable values', () => {
+                expect(parsePropertyValue('passScore', undefined)).toBe(PASS_SCORE_DEFAULT);
+                expect(parsePropertyValue('passScore', null)).toBe(PASS_SCORE_DEFAULT);
+                expect(parsePropertyValue('passScore', '')).toBe(PASS_SCORE_DEFAULT);
+                expect(parsePropertyValue('passScore', 'abc')).toBe(PASS_SCORE_DEFAULT);
+            });
+        });
+
         describe('for unknown properties', () => {
             it('treats as string', () => {
                 expect(parsePropertyValue('unknown', 'value')).toBe('value');
@@ -320,6 +347,102 @@ describe('metadata-properties', () => {
         it('handles null/undefined', () => {
             expect(valueToXmlString('title', null)).toBe('');
             expect(valueToXmlString('title', undefined)).toBe('');
+        });
+
+        it('serializes number properties without quotes or padding', () => {
+            expect(valueToXmlString('passScore', 7.5)).toBe('7.5');
+            expect(valueToXmlString('passScore', 0)).toBe('0');
+        });
+
+        it('falls back to the default for an unparseable number', () => {
+            expect(valueToXmlString('passScore', 'abc')).toBe(String(PASS_SCORE_DEFAULT));
+        });
+    });
+
+    describe('pass score', () => {
+        it('is registered as an export property with the pp_ prefix', () => {
+            const config = getPropertyConfig('passScore');
+            expect(config).toBeDefined();
+            expect(config?.xmlKey).toBe('pp_passScore');
+            expect(config?.type).toBe('number');
+            expect(config?.category).toBe('export');
+            expect(config?.defaultValue).toBe(PASS_SCORE_DEFAULT);
+        });
+
+        it('travels to XML (it is not an internal property)', () => {
+            expect(isExcludedFromXml('passScore')).toBe(false);
+            expect(getExportableProperties().map(p => p.key)).toContain('passScore');
+        });
+
+        it('declares a 0-10 domain with one decimal', () => {
+            expect(PASS_SCORE_MIN).toBe(0);
+            expect(PASS_SCORE_MAX).toBe(10);
+            expect(PASS_SCORE_STEP).toBe(0.1);
+            expect(PASS_SCORE_DEFAULT).toBe(5);
+        });
+
+        it('names the META tag exported pages carry', () => {
+            expect(PASS_SCORE_META_NAME).toBe('exe-pass-score');
+        });
+
+        describe('every activity at its own mark', () => {
+            it('is a boolean export property with the pp_ prefix, off by default', () => {
+                const config = getPropertyConfig('passScoreEveryActivity');
+                expect(config?.xmlKey).toBe('pp_passScoreEveryActivity');
+                expect(config?.type).toBe('boolean');
+                expect(config?.category).toBe('export');
+                expect(config?.defaultValue).toBe(false);
+                expect(isBooleanProperty('passScoreEveryActivity')).toBe(true);
+            });
+
+            it('travels to XML and back', () => {
+                expect(isExcludedFromXml('passScoreEveryActivity')).toBe(false);
+                expect(valueToXmlString('passScoreEveryActivity', true)).toBe('true');
+                expect(valueToXmlString('passScoreEveryActivity', false)).toBe('false');
+                expect(getInternalKeyForXmlKey('pp_passScoreEveryActivity')).toBe('passScoreEveryActivity');
+                expect(parsePropertyValue('passScoreEveryActivity', 'true')).toBe(true);
+                expect(parsePropertyValue('passScoreEveryActivity', 'false')).toBe(false);
+            });
+
+            it('is off for a project that never stored it', () => {
+                expect(parsePropertyValue('passScoreEveryActivity', undefined)).toBe(false);
+            });
+
+            it('names the META tag the SCORM runtimes read', () => {
+                // Read by exe-scorm12-policy.js and $exe.passScore.requiresEveryActivity().
+                expect(PASS_SCORE_EVERY_ACTIVITY_META_NAME).toBe('exe-pass-score-every-activity');
+            });
+        });
+
+        describe('normalizePassScore', () => {
+            it('keeps a value already inside the domain', () => {
+                expect(normalizePassScore(7.5)).toBe(7.5);
+                expect(normalizePassScore('7.5')).toBe(7.5);
+            });
+
+            it('keeps zero, which means "any mark passes"', () => {
+                expect(normalizePassScore(0)).toBe(0);
+                expect(normalizePassScore('0')).toBe(0);
+            });
+
+            it('clamps values outside 0-10', () => {
+                expect(normalizePassScore(12)).toBe(10);
+                expect(normalizePassScore(-3)).toBe(0);
+            });
+
+            it('rounds to a single decimal', () => {
+                expect(normalizePassScore(7.55)).toBe(7.6);
+                expect(normalizePassScore(7.44)).toBe(7.4);
+            });
+
+            it('falls back to the default rather than to zero', () => {
+                expect(normalizePassScore(undefined)).toBe(PASS_SCORE_DEFAULT);
+                expect(normalizePassScore(null)).toBe(PASS_SCORE_DEFAULT);
+                expect(normalizePassScore('')).toBe(PASS_SCORE_DEFAULT);
+                expect(normalizePassScore('abc')).toBe(PASS_SCORE_DEFAULT);
+                expect(normalizePassScore(Number.NaN)).toBe(PASS_SCORE_DEFAULT);
+                expect(normalizePassScore(Number.POSITIVE_INFINITY)).toBe(PASS_SCORE_DEFAULT);
+            });
         });
     });
 

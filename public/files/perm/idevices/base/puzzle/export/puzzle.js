@@ -133,6 +133,7 @@ var $eXePuzzle = {
 
             const pzl = $eXePuzzle.createInterfacePuzzle(i);
             dl.before(pzl).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#pzlGameMinimize-' + i).hide();
             $('#pzlGameContainer-' + i).hide();
             if (mOption.showMinimize) {
@@ -594,14 +595,21 @@ var $eXePuzzle = {
             if (!$eXePuzzle.isMobile()) $('#pzlImgTime-' + instance).show();
             mOptions.counter = 0;
             clearInterval(mOptions.counterClock);
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#pzlMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this puzzle's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first puzzle takes the same ones: a
+            // clock that looked its puzzle up by id each second found that one
+            // and went on counting on its display.
+            const container = document.getElementById(
+                'pzlMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 const isvisible = $('#pzlCubierta-' + instance).is(':visible');
@@ -610,6 +618,7 @@ var $eXePuzzle = {
                     $eXePuzzle.uptateTime(mOptions.counter, instance);
                 }
             }, 1000);
+            mOptions.counterClock = clock;
         }
 
         if (q.showAttemps) {
@@ -844,11 +853,16 @@ var $eXePuzzle = {
 
         const ns = $eXePuzzle.generateRandomArray(z);
         let counter = 0;
+        // Bound to this puzzle's element, not to its id: in the editor the next
+        // page's first puzzle takes the same ids, and the animation would go on
+        // to reveal that one and show its completed window.
+        const container = document.getElementById(
+            'pzlMainContainer-' + instance
+        );
         const counterClock = setInterval(() => {
-            let $node = $('#pzlMainContainer-' + instance);
-            let $content = $('#node-content');
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
                 clearInterval(counterClock);
@@ -1980,7 +1994,8 @@ var $eXePuzzle = {
 
         if (end) {
             $pzlMessage.hide();
-            let endColor = mOptions.score >= 6 ? 2 : 1;
+            let endColor =
+                mOptions.score >= $exe.passScore.resolve(mOptions) ? 2 : 1;
             $('#pzlMesasgeEnd-' + instance)
                 .html(message)
                 .css({ color: colors[endColor] });
