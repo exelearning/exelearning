@@ -12,7 +12,7 @@ reviewers:
 related:
   prs: [2171, 2512]
   changes: [2511-idevice-runtime-contract]
-  adrs: [ADR-2511-01]
+  adrs: [ADR-2510-01, ADR-2511-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -32,8 +32,8 @@ applied from three places, each with its own list:
 - **`$exe.init()`** (`public/app/common/common.js:324` @ `b6c2556c6`) runs once,
   page-wide, on an exported page.
 - **`$exeExport.afterIdeviceRendered(node)`** (`exe_export.js:513`) re-runs `$exeFX`
-  for a JSON iDevice rendered later (#2170). PR #2512 adds the lightbox and dialog
-  sizes there. Its `ADR-2510-01` decides that this hook is the single place where
+  for a JSON iDevice rendered later (#2170). PR #2512 added the lightbox and dialog
+  sizes there. Its [ADR-2510-01](ADR-2510-01-apply-shared-enhancements-after-idevice-render.md) decides that this hook is the single place where
   shared enhancements reach a rendered iDevice, and that enhancements take a context
   and are idempotent.
 - **`loadLegacyExeFunctionalitiesExport()`**, defined twice, identically
@@ -97,7 +97,7 @@ accepts a context and is idempotent.
 
 ## Evidence
 
-- `exe_export.js:513-520` and PR #2512's diff of the same function.
+- `exe_export.js:513-520`, and the lightbox and dialog-size calls PR #2512 added to the same function.
 - `ideviceNode.js:3638-3651` and `idevicesEngine.js:2818-2831`: identical method
   bodies.
 - `views/workarea/workarea.njk:31-35`: the workarea loads `common.js`, not
@@ -160,7 +160,6 @@ We will adopt **Option 3**, extending `ADR-2510-01`:
 
 ## Follow-up work
 
-- Add `ADR-2510-01` to `related.adrs` once PR #2512 is merged.
 - The migration order of the enhancements is in
   [tasks](../changes/2511-idevice-runtime-contract/tasks.md), step 2.
 

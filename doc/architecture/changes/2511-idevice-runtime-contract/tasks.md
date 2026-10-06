@@ -21,9 +21,8 @@ iDevice, or one group of iDevices sharing a helper, at a time.
 
 - [ ] Review this change directory and ADR-2511-01, ADR-2511-02 and ADR-2511-03.
       Then move the change to `accepted` and the ADRs to `Accepted`.
-- [ ] Merge PR #2512 (#2510). Add `ADR-2510-01` to `related_adrs` here and to
-      `related.adrs` in ADR-2511-02. `architecture-check` rejects references to ADRs
-      that are not on `main`.
+- [x] Merge PR #2512 (#2510). Add `ADR-2510-01` to `related_adrs` here and to
+      `related.adrs` in ADR-2511-02.
 
 ### 1. Runtime core (no iDevice changes)
 
@@ -121,10 +120,11 @@ no leaks):
 
 ## Progress
 
-- 2026-10-06: contract, design, research and ADRs drafted for review.
+- 2026-10-06: contract, design, research and ADRs drafted for review. PR #2512
+  merged; `ADR-2510-01` linked.
 
 ## References
 
 - Issues #2170, #2197, #2271, #2293, #2428, #2434, #2510, #2511
 - PRs #2171, #2301, #2512
-- ADR-2293-01, ADR-2492-01, ADR-2511-01, ADR-2511-02, ADR-2511-03
+- ADR-2293-01, ADR-2492-01, ADR-2510-01, ADR-2511-01, ADR-2511-02, ADR-2511-03

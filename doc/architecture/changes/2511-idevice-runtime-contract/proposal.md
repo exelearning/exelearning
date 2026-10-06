@@ -11,6 +11,7 @@ reviewers:
 implementation_prs: []
 related_adrs:
   - ADR-2293-01
+  - ADR-2510-01
   - ADR-2492-01
   - ADR-2511-01
   - ADR-2511-02
@@ -114,6 +115,5 @@ Durable decisions:
 - [ADR-2511-02](../../adr/ADR-2511-02-share-one-enhancement-step-between-editor-and-export.md) — one enhancement step in `common.js`, shared by both hosts.
 - [ADR-2511-03](../../adr/ADR-2511-03-own-exported-idevice-resources-with-a-shared-lifecycle.md) — export-side teardown through a shared resource lifecycle.
 
-`ADR-2510-01` (PR #2512, not yet merged) decides that `afterIdeviceRendered()` is
-where shared enhancements reach a rendered iDevice. ADR-2511-02 builds on it. It will
-be added to `related_adrs` once #2512 is merged.
+[ADR-2510-01](../../adr/ADR-2510-01-apply-shared-enhancements-after-idevice-render.md) (PR #2512) decides that `afterIdeviceRendered()` is where
+shared enhancements reach a rendered iDevice. ADR-2511-02 builds on it.

@@ -103,8 +103,8 @@ All 37 start themselves page-wide from `$(function () { $x.init(); })`, for exam
 | Enhancement | Accepts a context | Idempotent | Notes |
 |---|---|---|---|
 | `$exeFX.init(root)` | yes (#2170) | ids from a monotonic counter; an accordion already rebuilt is only re-enabled (`exe_effects.js:251-258`) | Audit the other effect types for handler re-binding. |
-| `$exe.setMultimediaGalleries()` | with PR #2512 | with #2512 (first free `media-box-N`; prettyPhoto `unbind` then `bind`) | |
-| `$exe.setModalWindowContentSize()` | with PR #2512 | yes | |
+| `$exe.setMultimediaGalleries()` | yes, since PR #2512 | yes, since #2512 (first free `media-box-N`; prettyPhoto `unbind` then `bind`) | |
+| `$exe.setModalWindowContentSize()` | yes, since PR #2512 | yes | |
 | `$exe.dl.init()` | no | **no**: `exe-dl-` + page index (`common.js:1070`) | Same defect class as the media boxes. |
 | `a.exe-enlarge` icons in `$exe.init()` | no | yes (only adds the icon when the link has a single child) | |
 | `$exe.setIframesProperties()` | no | yes (class guard) | |
@@ -119,7 +119,8 @@ Who calls them today:
 
 - **Exported page**: `$exe.init()` once (`exe_export.js:92`). `$exeFX`, `$exeGames`,
   `$exeHighlighter` and `$exeABCmusic` start themselves on DOM ready, outside eXe.
-  `afterIdeviceRendered()` re-runs `$exeFX`, plus the lightbox with #2512.
+  `afterIdeviceRendered()` re-runs `$exeFX`, and since #2512 the lightbox and
+  dialog sizes.
 - **Editor**: two identical `loadLegacyExeFunctionalitiesExport()` methods
   (`ideviceNode.js:3638`, `idevicesEngine.js:2818`) run all of them page-wide after
   each save and page load. `exe_export.js` is not loaded in the workarea, so the

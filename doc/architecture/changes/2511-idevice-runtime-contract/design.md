@@ -39,8 +39,8 @@ Problems with this flow:
 - No phase is wrapped in `try`. An exception stops every later instance of that type
   in the same `forEach`.
 - `ideviceId` is never passed as an argument; it only arrives as `data.ideviceId`.
-- `afterIdeviceRendered()` only runs `$exeFX.init(node)`. PR #2512 adds the
-  lightbox and dialog-size helpers.
+- `afterIdeviceRendered()` only runs `$exeFX.init(node)` at `b6c2556c6`. PR #2512
+  has since added the lightbox and dialog-size helpers.
 - Print, search highlighting and the `post-js` class wait a fixed 200 ms
   (`delayLoadingPageTime`).
 
@@ -275,6 +275,6 @@ case.
 | Decision | ADR |
 |---|---|
 | One render lifecycle per instance, run by one implementation for both hosts and ending in a DOM event | [ADR-2511-01](../../adr/ADR-2511-01-run-every-idevice-instance-through-one-render-lifecycle.md) |
-| One enhancement step in `common.js`'s runtime, shared by both hosts; enhancements take a context and are idempotent | [ADR-2511-02](../../adr/ADR-2511-02-share-one-enhancement-step-between-editor-and-export.md), building on `ADR-2510-01` (PR #2512) |
+| One enhancement step in `common.js`'s runtime, shared by both hosts; enhancements take a context and are idempotent | [ADR-2511-02](../../adr/ADR-2511-02-share-one-enhancement-step-between-editor-and-export.md), building on [ADR-2510-01](../../adr/ADR-2510-01-apply-shared-enhancements-after-idevice-render.md) |
 | Export-side teardown through a resource lifecycle shared with editions | [ADR-2511-03](../../adr/ADR-2511-03-own-exported-idevice-resources-with-a-shared-lifecycle.md), the counterpart of [ADR-2293-01](../../adr/ADR-2293-01-own-idevice-edition-resources-with-an-explicit-lifecycle.md) |
 | Saved state keyed by component id | [ADR-2492-01](../../adr/ADR-2492-01-keep-saved-idevice-games-under-their-component-id.md), generalized by R2.2 |
