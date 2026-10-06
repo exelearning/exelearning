@@ -150,3 +150,6 @@ test/e2e/moodle/plugins/*
 !/test/load/results/.gitkeep
 /test/load/data/*
 !/test/load/data/.gitkeep
+
+# external-media build: --check writes here transiently
+/public/app/common/exe_external_media/dist.check/

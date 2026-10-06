@@ -45,6 +45,7 @@ make test-integration
 make test-e2e              # Chromium; Firefox has its own target
 make test-e2e-static       # static/embedding/export changes
 make test-coverage         # test-unit + test-frontend with coverage
+make bench-preview         # three-way preview refresh benchmark (main vs filtered vs opaque)
 make architecture-check
 ```
 
@@ -105,6 +106,7 @@ Read only the skill matching the work, then its relevant references. All paths a
 | `i18n`, `xlf-translate` | Source localization; separately requested catalog translations |
 | `mkdocs-nav`, `changelog` | Published documentation navigation and release-note drafts |
 | `github-actions-hardening` | Workflow changes and Actions trust boundaries |
+| `external-media-report` | Verifying the shared external-media bundle across the five host plugins, or diagnosing an embed/video that misbehaves in one |
 | `playwright-cli` | Interactive browser inspection; use `e2e-test` for committed specs |
 
 For durable decisions or significant cross-cutting changes, read
@@ -118,6 +120,7 @@ Contributor-facing architecture records stay outside published MkDocs navigation
 [version control](doc/development/version-control.md), [environment and `.env`](doc/development/environment.md),
 [internationalization](doc/development/internationalization.md), [real-time/Yjs](doc/development/real-time.md),
 [REST API v1](doc/development/rest-api.md), [embedding](doc/development/embedding.md),
+[external-media evidence harness](doc/development/external-media-report/README.md),
 [profiling](doc/development/profiling.md), [styles/themes](doc/development/styles.md),
 [conventions](doc/conventions.md), [architecture](doc/architecture.md) and
 [ADRs](doc/architecture/adr/README.md).

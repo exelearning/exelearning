@@ -506,6 +506,41 @@ export interface ExportOptions {
      * A plain author-driven export never sets it.
      */
     forceEditableSource?: boolean;
+
+    /** Preview-only policy for author-controlled HTML. Never used by saved exports. */
+    previewContentPolicy?: PreviewContentPolicy;
+}
+
+export type PreviewContentContext =
+    | 'component-html'
+    | 'component-property'
+    | 'custom-head'
+    | 'custom-footer'
+    | 'custom-styles'
+    | 'unclassified-metadata';
+
+export interface PreviewContentPolicyResult {
+    html: string;
+    activeContentFound: boolean;
+    categories: string[];
+    actions: string[];
+}
+
+export interface PreviewContentPolicy {
+    prepare(html: string, context: PreviewContentContext): PreviewContentPolicyResult;
+    /**
+     * Screen author CSS (rendered raw inside `<style>`) for markup breakouts
+     * (`</style>`). Optional for backward compatibility; when absent the
+     * adapter applies its own fail-closed screening.
+     */
+    prepareStyle?(css: string): PreviewContentPolicyResult;
+}
+
+export interface PreviewContentReport {
+    activeContentFound: boolean;
+    categories: string[];
+    actions: string[];
+    contexts: PreviewContentContext[];
 }
 
 /**

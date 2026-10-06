@@ -240,6 +240,27 @@ describe('ModalPrintPreview', () => {
             expect(calls.length).toBeGreaterThan(0);
             expect(calls[0][3]).toBe(assetManager);
         });
+
+        it('passes a previewContentPolicy and reports active content to the preview panel', async () => {
+            const update = vi.fn();
+            eXeLearning.app.project._yjsBridge.documentManager = { projectId: 'print-project' };
+            eXeLearning.app.interface = {
+                previewButton: { getPanel: () => ({ _updateActiveContentIndicator: update }) },
+            };
+            window.generatePrintPreview = vi.fn().mockResolvedValue({
+                success: true,
+                html: '<html><body>Print</body></html>',
+                activeContentReport: { blocked: 2 },
+            });
+
+            await modal.generatePreview();
+
+            const options = window.generatePrintPreview.mock.calls[0][2];
+            expect(options.previewContentPolicy).toEqual(
+                expect.objectContaining({ prepare: expect.any(Function), prepareStyle: expect.any(Function) }),
+            );
+            expect(update).toHaveBeenCalledWith({ blocked: 2 });
+        });
     });
 
     describe('print', () => {
