@@ -38,7 +38,7 @@ import type {
     ScormSettings,
     VideoSource,
 } from './types';
-import { isRecord, newDocument, SCHEMA_VERSION } from './types';
+import { coercePassScoreCustom, coercePassScoreMode, isRecord, newDocument, SCHEMA_VERSION } from './types';
 
 export { SCHEMA_VERSION };
 
@@ -264,6 +264,8 @@ export function normalizeV2(input: InteractiveVideoDocumentV2 | Record<string, u
     doc.video = coerceVideo(record.video);
     doc.completion = coerceCompletion(record.completion);
     doc.scorm = coerceScorm(record.scorm);
+    doc.passScoreMode = coercePassScoreMode(record.passScoreMode);
+    doc.passScoreCustom = coercePassScoreCustom(record.passScoreCustom);
     // `contentBefore`/`contentAfter` are intentionally NOT part of the model:
     // the importer converts them into sibling Text iDevices in the same block
     // (see src/shared/import), so surrounding content is authored as ordinary

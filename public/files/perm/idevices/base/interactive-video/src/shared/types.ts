@@ -225,6 +225,25 @@ export type InteractionType = Interaction['type'];
 
 export type CompletionMode = 'none' | 'watch' | 'answerRequired' | 'scoreThreshold';
 
+/** Project mark, or this activity's own mark. Same vocabulary as `$exe.passScore`. */
+export type PassScoreMode = 'global' | 'custom';
+
+export function coercePassScoreMode(value: unknown): PassScoreMode {
+    return value === 'custom' ? 'custom' : 'global';
+}
+
+/**
+ * A pass mark on the shared 0–10 scale. Anything missing or unparseable
+ * inherits 5, which is the project default and shows no notice.
+ */
+export function coercePassScoreCustom(value: unknown): number {
+    const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
+    if (!Number.isFinite(parsed)) {
+        return 5;
+    }
+    return Math.min(10, Math.max(0, parsed));
+}
+
 export interface CompletionSettings {
     mode: CompletionMode;
     requiredScore: number | null;
@@ -252,6 +271,12 @@ export interface InteractiveVideoDocumentV2 {
     interactions: Interaction[];
     completion: CompletionSettings;
     scorm: ScormSettings;
+    /**
+     * The shared Grading-tab mark. `global` follows the project; `custom` uses
+     * `passScoreCustom` (0–10). Older documents omit both and inherit 5.
+     */
+    passScoreMode: PassScoreMode;
+    passScoreCustom: number;
     meta: DocumentMetadata;
     /** Author overrides for learner-facing strings, by ci18n key. */
     customTexts: Record<string, string>;
@@ -274,6 +299,8 @@ export function newDocument(): InteractiveVideoDocumentV2 {
         interactions: [],
         completion: { mode: 'none', requiredScore: null },
         scorm: { enabled: false, weight: 100, repeatActivity: true, showResults: true },
+        passScoreMode: 'global',
+        passScoreCustom: 5,
         meta: { legacy: {} },
         customTexts: {},
     };

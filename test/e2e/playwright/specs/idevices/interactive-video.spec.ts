@@ -24,7 +24,7 @@ import {
  * The editor is now a single inline form with exactly three tabs — "General
  * settings" (holding the before-text, a collapsed "Options" fieldset and an
  * open "Video" fieldset that holds both the single source field and the
- * "Interactions" authoring surface, then the after-text), "SCORM" and "Custom
+ * "Interactions" authoring surface, then the after-text), "Grading" and "Custom
  * texts". Everything interaction-related lives on the
  * default-active first tab, so no tab hopping is needed. There is no detached
  * iframe / full-screen editor popup and no Video/Interactions/Behaviour/Preview
@@ -61,7 +61,7 @@ test.describe('Interactive Video iDevice (reworked inline editor)', () => {
         const form = page.locator('#interactiveVideoIdeviceForm');
         await expect(form).toBeVisible();
 
-        // Exactly three tabs: General settings, Custom texts, SCORM.
+        // Exactly three tabs: General settings, Grading, Custom texts.
         await expect(form.locator('.exe-form-tab')).toHaveCount(3);
         await expect(page.locator('#interactiveVideoIdeviceFormTabs > li')).toHaveCount(3);
 

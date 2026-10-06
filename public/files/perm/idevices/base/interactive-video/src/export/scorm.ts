@@ -21,6 +21,13 @@ function gamificationScorm(): GamificationScorm | null {
     return $exeDevices.iDevice.gamification?.scorm ?? null;
 }
 
+function gamificationReport(): { showPassScoreNotice?: (game: Record<string, unknown>) => unknown } | null {
+    if (typeof $exeDevices === 'undefined' || !$exeDevices?.iDevice) {
+        return null;
+    }
+    return $exeDevices.iDevice.gamification?.report ?? null;
+}
+
 /**
  * The tracking payload the shared gamification layer expects.
  *
@@ -55,6 +62,8 @@ export function trackingOptions(instance: RuntimeInstance): Record<string, unkno
         textButtonScorm: t('Save score'),
         evaluation: !!legacy.evaluation,
         evaluationID: legacy.evaluationID || '',
+        passScoreMode: doc.passScoreMode === 'custom' ? 'custom' : 'global',
+        passScoreCustom: doc.passScoreCustom,
         userName: '',
         previousScore: '',
         gameStarted: false,
@@ -83,9 +92,27 @@ export function trackingOptions(instance: RuntimeInstance): Record<string, unkno
             msgSuccessfulActivity: t('Activity: Passed. Score: %s', 'msgSuccessfulActivity'),
             msgUnsuccessfulActivity: t('Activity: Not passed. Score: %s', 'msgUnsuccessfulActivity'),
             msgTypeGame: t('Interactive video', 'msgTypeGame'),
+            msgPassScore: t('Minimum score needed to pass this activity: %s', 'msgPassScore'),
         },
     };
     return instance.tracking;
+}
+
+/**
+ * Show the shared minimum-score notice under the instructions. The mark comes
+ * from this activity when the author customised it, and from the project
+ * otherwise. A missing report layer must not stop the video.
+ */
+export function showPassScoreNotice(instance: RuntimeInstance): void {
+    const report = gamificationReport();
+    if (!report || typeof report.showPassScoreNotice !== 'function') {
+        return;
+    }
+    try {
+        report.showPassScoreNotice(trackingOptions(instance));
+    } catch {
+        /* The notice is best-effort; the activity must keep working. */
+    }
 }
 
 /**

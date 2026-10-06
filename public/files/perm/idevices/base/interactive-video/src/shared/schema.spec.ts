@@ -77,6 +77,25 @@ describe('hydrateDocument — input shapes', () => {
         expect(doc.interactions).toHaveLength(1);
     });
 
+    it('keeps a custom pass score and inherits the project mark otherwise', () => {
+        const custom = okDocument({ schemaVersion: 2, passScoreMode: 'custom', passScoreCustom: 7.5 });
+        expect(custom.passScoreMode).toBe('custom');
+        expect(custom.passScoreCustom).toBe(7.5);
+
+        const inherited = okDocument({ schemaVersion: 2 });
+        expect(inherited.passScoreMode).toBe('global');
+        expect(inherited.passScoreCustom).toBe(5);
+
+        expect(okDocument({ schemaVersion: 2, passScoreCustom: 15 }).passScoreCustom).toBe(10);
+        expect(okDocument({ schemaVersion: 2, passScoreCustom: 'nope' }).passScoreCustom).toBe(5);
+    });
+
+    it('carries a legacy activity pass score into the v2 document', () => {
+        const doc = okDocument({ slides: [], passScoreMode: 'custom', passScoreCustom: 8 });
+        expect(doc.passScoreMode).toBe('custom');
+        expect(doc.passScoreCustom).toBe(8);
+    });
+
     it('accepts a stored v2 document and normalizes it field by field', () => {
         const stored = safeParseJson(fixture('schema-v2/minimal.json'));
         const doc = okDocument(stored);

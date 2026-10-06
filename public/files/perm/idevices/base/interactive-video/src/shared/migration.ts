@@ -22,7 +22,7 @@ import type {
     MatchPair,
     NoteInteraction,
 } from './types';
-import { isRecord, newDocument } from './types';
+import { coercePassScoreCustom, coercePassScoreMode, isRecord, newDocument } from './types';
 import { normalizeVideoSource } from './video-source';
 
 /** Legacy top-level fields preserved verbatim under `meta.legacy`. */
@@ -308,6 +308,13 @@ export function migrateLegacyToV2(input: unknown, videoUrl?: string): Interactiv
     doc.scorm.weight = isFinite(weight) ? weight : 100;
     if (typeof oldScorm.repeatActivity === 'boolean') {
         doc.scorm.repeatActivity = oldScorm.repeatActivity;
+    }
+
+    // The pre-refactor editor stored the shared Grading-tab mark on the
+    // activity itself. Keep it, so a custom threshold is not reset to 5.
+    if (old.passScoreMode !== undefined || old.passScoreCustom !== undefined) {
+        doc.passScoreMode = coercePassScoreMode(old.passScoreMode);
+        doc.passScoreCustom = coercePassScoreCustom(old.passScoreCustom);
     }
 
     for (const key of LEGACY_TOP_LEVEL_KEYS) {

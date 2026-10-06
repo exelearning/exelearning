@@ -113,7 +113,7 @@ describe('the Interactive Video edition device', () => {
                 expect(tabTitles()).not.toContain(title);
             }
             expect(harness.stubs.getLanguageTab).toHaveBeenCalled();
-            expect(harness.stubs.scormGetTab).toHaveBeenCalled();
+            expect(harness.stubs.scormGetTab).toHaveBeenCalledWith('/path/');
             // No detached editor.
             expect(document.querySelector('.modal-fullscreen')).toBeNull();
         });
@@ -124,10 +124,11 @@ describe('the Interactive Video edition device', () => {
             expect(precedes(banner, document.querySelector('.exe-form-tab'))).toBe(true);
         });
 
-        it('wires the shared tab, SCORM and progress-report helpers', () => {
+        it('wires the shared tab, SCORM, progress-report and pass-score helpers', () => {
             expect(harness.stubs.tabsInit).toHaveBeenCalledWith('interactiveVideoIdeviceForm');
             expect(harness.stubs.scormInit).toHaveBeenCalled();
             expect(harness.stubs.progressAddEvents).toHaveBeenCalled();
+            expect(harness.stubs.passScoreAddEvents).toHaveBeenCalled();
         });
 
         it('offers no Content before/after fields (sibling Text iDevices own that role)', () => {
@@ -190,6 +191,18 @@ describe('the Interactive Video edition device', () => {
     });
 
     describe('hydrating the stored document', () => {
+        it('restores a custom pass score into the shared Grading control', () => {
+            device.init(
+                element,
+                v2Document({ passScoreMode: 'custom', passScoreCustom: 8 }),
+                '/path/',
+            );
+            expect(harness.stubs.passScoreSetValues).toHaveBeenCalledWith({
+                passScoreMode: 'custom',
+                passScoreCustom: 8,
+            });
+        });
+
         it('reopens a schema-v2 document as it was saved', () => {
             device.init(
                 element,
@@ -404,14 +417,17 @@ describe('the Interactive Video edition device', () => {
             expect(doc.completion).toEqual({ mode: 'none', requiredScore: null });
         });
 
-        it('takes the SCORM and progress-report values from the shared tabs', () => {
+        it('takes the SCORM, progress-report and pass-score values from the shared tabs', () => {
             setSource(YOUTUBE_URL);
             harness.values.scorm = { isScorm: 1, textButtonScorm: 'Guardar', repeatActivity: false, weighted: 50 };
             harness.values.progress = { evaluation: true, evaluationID: 'ABC12' };
+            harness.values.passScore = { passScoreMode: 'custom', passScoreCustom: 7 };
             const doc = saved();
             expect(doc.scorm).toMatchObject({ enabled: true, weight: 50, repeatActivity: false });
             expect(doc.customTexts.textButtonScorm).toBe('Guardar');
             expect(doc.meta.legacy).toMatchObject({ evaluation: true, evaluationID: 'ABC12' });
+            expect(doc.passScoreMode).toBe('custom');
+            expect(doc.passScoreCustom).toBe(7);
         });
 
         it('survives shared tabs that report nothing', () => {

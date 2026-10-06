@@ -72,6 +72,8 @@
         "repeatActivity": true,
         "showResults": true
     },
+    "passScoreMode": "global",
+    "passScoreCustom": 5,
     "meta": {
         "legacy": {}
     },

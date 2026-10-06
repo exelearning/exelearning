@@ -9,14 +9,14 @@
  * then vanished without a word.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { normalizeV2 } from '../shared/schema';
 import type { InteractiveVideoDocumentV2 } from '../shared/types';
 import type { RuntimeInstance } from './instance';
 import { makeTranslator } from './renderer';
 import { createInteractiveVideoRuntime, type InteractiveVideoRuntime } from './runtime';
 import { updateScore } from './scoring';
-import { registerTracking, reportScore, trackingOptions } from './scorm';
+import { registerTracking, reportScore, showPassScoreNotice, trackingOptions } from './scorm';
 
 const TEMPLATE = '<div class="exe-interactive-video-container">{content}</div>';
 
@@ -39,7 +39,14 @@ interface ScormStub {
 }
 
 interface TestGlobal {
-    $exeDevices?: { iDevice?: { gamification?: { scorm?: Partial<ScormStub> } } };
+    $exeDevices?: {
+        iDevice?: {
+            gamification?: {
+                scorm?: Partial<ScormStub>;
+                report?: { showPassScoreNotice?: (game: Record<string, unknown>) => unknown };
+            };
+        };
+    };
 }
 
 const testGlobal = globalThis as unknown as TestGlobal;
@@ -147,10 +154,44 @@ describe('trackingOptions', () => {
         expect(options.msgs).toMatchObject({ msgYouScore: 'Tu puntuación' });
     });
 
+    it('carries the Grading-tab mark the shared notice and SCORM layer read', () => {
+        const options = trackingOptions(
+            stubInstance(
+                makeDoc({
+                    passScoreMode: 'custom',
+                    passScoreCustom: 7,
+                    customTexts: { msgPassScore: 'Nota mínima: %s' },
+                }),
+            ),
+        );
+        expect(options.passScoreMode).toBe('custom');
+        expect(options.passScoreCustom).toBe(7);
+        expect(options.msgs).toMatchObject({ msgPassScore: 'Nota mínima: %s' });
+    });
+
     it('is built once and then reused', () => {
         const instance = stubInstance(makeDoc());
         const first = trackingOptions(instance);
         expect(trackingOptions(instance)).toBe(first);
+    });
+});
+
+describe('showPassScoreNotice', () => {
+    afterEach(() => {
+        delete testGlobal.$exeDevices;
+    });
+
+    it('is a no-op when the page has no report layer', () => {
+        expect(() => showPassScoreNotice(stubInstance(makeDoc()))).not.toThrow();
+    });
+
+    it('asks the shared layer with this activity\'s mark', () => {
+        const show = vi.fn();
+        testGlobal.$exeDevices = { iDevice: { gamification: { report: { showPassScoreNotice: show } } } };
+        showPassScoreNotice(stubInstance(makeDoc({ passScoreMode: 'custom', passScoreCustom: 7 })));
+        expect(show).toHaveBeenCalledWith(
+            expect.objectContaining({ main: 'exe-iv-iv1', passScoreMode: 'custom', passScoreCustom: 7 }),
+        );
     });
 });
 

@@ -170,8 +170,9 @@ describe('the General settings markup', () => {
         expect(document.getElementById('ivEditPreview')?.getAttribute('aria-live')).toBe('polite');
     });
 
-    it('inserts the shared progress-report contents into the Options fieldset', () => {
-        expect(harness.stubs.progressGetContents).toHaveBeenCalledWith(state.idevicePath);
+    it('leaves the progress report to the shared Grading tab', () => {
+        // Rendering it here as well as inside scorm.getTab would show it twice.
+        expect(harness.stubs.progressGetContents).not.toHaveBeenCalled();
     });
 
     it('explains the completion mode through a quext-style help link', () => {

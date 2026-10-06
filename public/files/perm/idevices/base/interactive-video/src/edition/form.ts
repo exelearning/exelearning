@@ -167,16 +167,14 @@ export function interactionsSectionHtml(): string {
 }
 
 /**
- * The collapsed "Options" fieldset: behaviour/scoring, the progress report and
- * the subtitle tracks. Uses the standard `exe-fieldset exe-fieldset-closed`
+ * The collapsed "Options" fieldset: behaviour/scoring and the subtitle tracks.
+ * The pass score and the progress report live in the shared Grading tab
+ * (`scorm.getTab`), so rendering them here would show each control twice.
+ * Uses the standard `exe-fieldset exe-fieldset-closed`
  * markup so the central legend-collapse wiring in common_edition.js applies.
  */
 export function optionsFieldsetHtml(state: EditionState): string {
     const t = tr;
-    const edition = typeof $exeDevicesEdition !== 'undefined' ? $exeDevicesEdition?.iDevice : null;
-    const progress = edition?.gamification.progressBar?.getContents
-        ? edition.gamification.progressBar.getContents(state.idevicePath)
-        : '';
     return (
         '<fieldset class="exe-fieldset exe-fieldset-closed"><legend><a href="#">' +
         t('Options') +
@@ -227,7 +225,6 @@ export function optionsFieldsetHtml(state: EditionState): string {
         '<div class="exe-form-group exe-form-check"><input type="checkbox" id="ivScoreNIA"><label for="ivScoreNIA">' +
         t('Score non-interactive activities') +
         '</label></div>' +
-        progress +
         // Subtitles / captions for the native <video> (library file, direct
         // media URL or Mediateca). SRT assets are converted to WebVTT at
         // export by the shared subtitle pipeline (issue #2035).

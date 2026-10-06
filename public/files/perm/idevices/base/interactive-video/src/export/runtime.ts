@@ -25,7 +25,7 @@ import type { RuntimeInstance } from './instance';
 import { advance, bindContinue } from './interaction-queue';
 import { makeTranslator, renderInteractionBodyHtml, renderViewHtml, resolveProviders } from './renderer';
 import { refreshResults, updateScore } from './scoring';
-import { registerTracking } from './scorm';
+import { registerTracking, showPassScoreNotice } from './scorm';
 
 const BASE_ID = 'interactivevideo';
 const DEFAULT_TEMPLATE = '<div class="exe-interactive-video-container">{content}</div>';
@@ -331,6 +331,7 @@ export function createInteractiveVideoRuntime(): InteractiveVideoRuntime {
             const instance = createInstance(doc, id, root as HTMLElement);
             instances[id] = instance;
             registerTracking(instance);
+            showPassScoreNotice(instance);
             instance.start();
             showCoverOpener(instance);
             return true;

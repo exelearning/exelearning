@@ -79,6 +79,9 @@ declare var $exeDevices:
                       registerActivity?: (game: Record<string, unknown>) => void;
                       sendScoreNew?: (auto: boolean, game: Record<string, unknown>) => void;
                   };
+                  report?: {
+                      showPassScoreNotice?: (game: Record<string, unknown>) => unknown;
+                  };
               };
           };
       }
@@ -95,7 +98,10 @@ declare var $exeDevicesEdition:
               };
               gamification: {
                   scorm: {
-                      getTab?: () => string;
+                      getTab?: (
+                          path?: string,
+                          options?: { hidebutton?: boolean; onlybutton?: boolean; hideautosave?: boolean },
+                      ) => string;
                       init?: () => void;
                       setValues?: (
                           isScorm: number,
@@ -119,6 +125,11 @@ declare var $exeDevicesEdition:
                       addEvents?: () => void;
                       setValues?: (values: { evaluation?: unknown; evaluationID?: unknown }) => void;
                       getValues?: () => { evaluation?: unknown; evaluationID?: unknown } | null;
+                  };
+                  passScore?: {
+                      addEvents?: () => void;
+                      setValues?: (values: { passScoreMode?: unknown; passScoreCustom?: unknown }) => void;
+                      getValues?: () => { passScoreMode?: unknown; passScoreCustom?: unknown } | null;
                   };
               };
           };

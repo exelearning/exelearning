@@ -34,10 +34,16 @@ interface ProgressStubValues {
     evaluationID: unknown;
 }
 
+interface PassScoreStubValues {
+    passScoreMode: 'global' | 'custom';
+    passScoreCustom: number;
+}
+
 /** The mutable values the shared-tab stubs report back to the editor. */
 export interface EditionStubValues {
     scorm: ScormStubValues;
     progress: ProgressStubValues | null;
+    passScore: PassScoreStubValues;
     /** The ci18n maps handed to the Custom-texts tab, newest last. */
     languageTabArgs: Array<Record<string, string>>;
 }
@@ -58,6 +64,9 @@ export interface EditionHarness {
         progressAddEvents: Mock;
         progressGetValues: Mock;
         progressSetValues: Mock;
+        passScoreAddEvents: Mock;
+        passScoreGetValues: Mock;
+        passScoreSetValues: Mock;
         /** `$exeTinyMCE.init`, attaching the REAL TinyMCE to the body field. */
         tinyMceInit: Mock;
     };
@@ -84,11 +93,13 @@ export function installEditionHarness(): EditionHarness {
         gamificationCommon: layer.gamification.common,
         scorm: layer.gamification.scorm,
         progressBar: layer.gamification.progressBar,
+        passScore: layer.gamification.passScore,
         exeTinyMce: $exeTinyMCE,
     };
     const values: EditionStubValues = {
         scorm: { isScorm: 0, textButtonScorm: 'Save', repeatActivity: true, weighted: 100 },
         progress: { evaluation: false, evaluationID: '' },
+        passScore: { passScoreMode: 'global', passScoreCustom: 5 },
         languageTabArgs: [],
     };
     const stubs: EditionHarness['stubs'] = {
@@ -111,6 +122,9 @@ export function installEditionHarness(): EditionHarness {
         progressAddEvents: vi.fn(),
         progressGetValues: vi.fn(() => values.progress),
         progressSetValues: vi.fn(),
+        passScoreAddEvents: vi.fn(),
+        passScoreGetValues: vi.fn(() => values.passScore),
+        passScoreSetValues: vi.fn(),
         tinyMceInit: installSharedTinyMce(),
     };
 
@@ -138,6 +152,15 @@ export function installEditionHarness(): EditionHarness {
         getValues: stubs.progressGetValues as unknown as () => ProgressStubValues | null,
         setValues: stubs.progressSetValues as unknown as (v: { evaluation?: unknown; evaluationID?: unknown }) => void,
     };
+    layer.gamification.passScore = {
+        ...previous.passScore,
+        addEvents: stubs.passScoreAddEvents as unknown as () => void,
+        getValues: stubs.passScoreGetValues as unknown as () => PassScoreStubValues | null,
+        setValues: stubs.passScoreSetValues as unknown as (v: {
+            passScoreMode?: unknown;
+            passScoreCustom?: unknown;
+        }) => void,
+    };
 
     return {
         values,
@@ -148,6 +171,7 @@ export function installEditionHarness(): EditionHarness {
             layer.gamification.common = previous.gamificationCommon;
             layer.gamification.scorm = previous.scorm;
             layer.gamification.progressBar = previous.progressBar;
+            layer.gamification.passScore = previous.passScore;
             $exeTinyMCE = previous.exeTinyMce;
             clearFakeProviders();
             document.body.innerHTML = '';

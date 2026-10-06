@@ -287,6 +287,11 @@ var $geogebraactivity = {
         let evaluationID = '';
         let ideviceID = '';
         let weighted = 100;
+        // Written only when the author customised the mark (see the edition
+        // code), so no class means "follow the project" -- which is also how
+        // content saved before this option existed reads.
+        let passScoreMode = 'global';
+        let passScoreCustom = null;
         for (let i = 0; i < c.length; i++) {
             let currentClass = c[i];
             if (currentClass.indexOf('language-') == 0) {
@@ -317,6 +322,13 @@ var $geogebraactivity = {
             } else if (currentClass.indexOf('auto-geogebra-weight-') == 0) {
                 weighted = currentClass.replace('auto-geogebra-weight-', '');
                 weighted = parseInt(weighted);
+            } else if (
+                currentClass.indexOf('auto-geogebra-pass-score-') == 0
+            ) {
+                passScoreMode = 'custom';
+                passScoreCustom = parseFloat(
+                    currentClass.replace('auto-geogebra-pass-score-', '')
+                );
             }
         }
 
@@ -380,7 +392,8 @@ var $geogebraactivity = {
             sfx,
             weighted,
             $geogebraactivity.messagesScorm,
-            evaluationID
+            evaluationID,
+            { passScoreMode, passScoreCustom }
         );
         if (
             (c.length > 2 && c[2] == 'auto-geogebra-scorm') ||
@@ -432,6 +445,12 @@ var $geogebraactivity = {
             }
         }
 
+        $geogebraactivity.showPassScoreNotice(
+            options,
+            c.length > 2 && c[2] == 'auto-geogebra-scorm',
+            !!(ideviceID && evaluationID && evaluationID.length > 4)
+        );
+
         setTimeout(function () {
             if (options.evaluation) {
                 $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
@@ -442,6 +461,35 @@ var $geogebraactivity = {
                 $geogebraactivity.removeEvaluationIcon(options);
             }
         }, 500);
+    },
+
+    /**
+     * Ask for the notice of the minimum score for one applet.
+     *
+     * getOptions() marks every applet isScorm 2, because the save button is the
+     * only way it can report. Whether the author turned saving on is the
+     * `auto-geogebra-scorm` class, and the progress report needs its
+     * identifier, so the shared runtime is handed what the activity really
+     * does rather than what getOptions() assumes.
+     *
+     * Placed before the applet's wrapper, which scrolls sideways with a wide
+     * construction: below the instructions, above the applet.
+     *
+     * @param {Object} options The applet's options (see getOptions).
+     * @param {boolean} saving Whether the author turned score saving on.
+     * @param {boolean} reporting Whether the progress report is on.
+     * @returns {jQuery|null} The notice, or null when none is shown.
+     */
+    showPassScoreNotice: function (options, saving, reporting) {
+        const judged = Object.assign({}, options, {
+            isScorm: saving ? 2 : 0,
+            evaluation: reporting,
+            evaluationID: reporting ? options.evaluationID : '',
+        });
+        return $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+            judged,
+            $('#' + options.main).parent('.auto-geogebra-wrapper')
+        );
     },
     removeEvaluationIcon: function (options) {
         if (!options || !options.main || !options.idevice) return;
@@ -466,7 +514,12 @@ var $geogebraactivity = {
         return ideviceid;
     },
 
-    getOptions: function (sfx, weighted, messagesScorm, evaluationID) {
+    /**
+     * @param {Object} [passScore] `{ passScoreMode, passScoreCustom }` parsed
+     * from the markup. Omitted by callers that have no markup to read, which
+     * leaves the activity following the project.
+     */
+    getOptions: function (sfx, weighted, messagesScorm, evaluationID, passScore) {
         evaluationID = evaluationID && evaluationID !== '0' ? evaluationID : '';
         let messages = $geogebraactivity.messages;
         let messagesEval = [];
@@ -483,8 +536,15 @@ var $geogebraactivity = {
             weighted: weighted ?? 100,
             evaluation: evaluationID.length !== 0,
             evaluationID: evaluationID,
+            passScoreMode: passScore?.passScoreMode ?? 'global',
+            passScoreCustom: passScore?.passScoreCustom ?? null,
             isInExe: this.isInExe,
-            idevice: 'geogebra-activityIdevice',
+            // The container the progress report icon and its anchor go into,
+            // found with closest() from `main`: the wrapper the runtime puts
+            // around each applet, so every applet shows its own result. It was
+            // 'geogebra-activityIdevice', a class only the editor adds to the
+            // iDevice body, so outside the editor no result was shown.
+            idevice: 'auto-geogebra-wrapper',
             idevicePath: this.idevicePath,
             textButtonScorm: $geogebraactivity.messages[3],
             isScorm: 2,
@@ -545,6 +605,11 @@ var $geogebraactivity = {
                     typeof messagesScorm[1] != 'undefined'
                         ? messagesScorm[1]
                         : 'Your score',
+                // [4] of the evaluation list, appended after the save button's
+                // caption. Content saved before it has four entries, and no
+                // literal here: the shared runtime then uses the page's own
+                // text, in the content language.
+                msgPassScore: messagesEval[4],
             },
         };
         return options;

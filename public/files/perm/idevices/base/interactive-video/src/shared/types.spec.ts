@@ -9,6 +9,8 @@ describe('newDocument', () => {
         expect(doc.video.provider).toBe('local');
         expect(doc.completion).toEqual({ mode: 'none', requiredScore: null });
         expect(doc.scorm).toEqual({ enabled: false, weight: 100, repeatActivity: true, showResults: true });
+        expect(doc.passScoreMode).toBe('global');
+        expect(doc.passScoreCustom).toBe(5);
         expect(doc.meta.legacy).toEqual({});
         expect(doc.customTexts).toEqual({});
     });

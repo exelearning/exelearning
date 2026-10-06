@@ -78,6 +78,7 @@ function buildCi18n(): Record<string, string> {
         msgSuccessfulActivity: c('Activity: Passed. Score: %s'),
         msgUnsuccessfulActivity: c('Activity: Not passed. Score: %s'),
         msgTypeGame: c('Interactive video'),
+        msgPassScore: c('Minimum score needed to pass this activity: %s'),
     };
 }
 
@@ -202,6 +203,12 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
                 evaluationID: legacy.evaluationID,
             });
         }
+        if (edition?.gamification.passScore?.setValues) {
+            edition.gamification.passScore.setValues({
+                passScoreMode: doc.passScoreMode,
+                passScoreCustom: doc.passScoreCustom,
+            });
+        }
         if (edition?.gamification.common.setLanguageTabValues && doc.customTexts) {
             edition.gamification.common.setLanguageTabValues(doc.customTexts);
         }
@@ -230,7 +237,7 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
             tabGeneralSettingsHtml(state) +
             // Tab order matches the sibling quiz iDevices: General settings →
             // SCORM → Custom texts.
-            (edition?.gamification.scorm.getTab ? edition.gamification.scorm.getTab() : '') +
+            (edition?.gamification.scorm.getTab ? edition.gamification.scorm.getTab(state.idevicePath) : '') +
             (edition?.gamification.common.getLanguageTab
                 ? edition.gamification.common.getLanguageTab(state.ci18n)
                 : '') +
@@ -245,6 +252,9 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
         }
         if (edition?.gamification.progressBar?.addEvents) {
             edition.gamification.progressBar.addEvents();
+        }
+        if (edition?.gamification.passScore?.addEvents) {
+            edition.gamification.passScore.addEvents();
         }
         // The workarea auto-wires .exe-file-picker inputs to the File Manager
         // (ideviceNode.legacyExeIdevicesFilePicker), injecting a single
@@ -307,6 +317,16 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
         if (progressValues) {
             doc.meta.legacy.evaluation = progressValues.evaluation;
             doc.meta.legacy.evaluationID = progressValues.evaluationID;
+        }
+        const passScoreValues = edition?.gamification.passScore?.getValues
+            ? edition.gamification.passScore.getValues()
+            : null;
+        if (passScoreValues) {
+            doc.passScoreMode = passScoreValues.passScoreMode === 'custom' ? 'custom' : 'global';
+            const custom = Number(passScoreValues.passScoreCustom);
+            if (Number.isFinite(custom)) {
+                doc.passScoreCustom = custom;
+            }
         }
 
         // Custom texts (author overrides for learner strings).
