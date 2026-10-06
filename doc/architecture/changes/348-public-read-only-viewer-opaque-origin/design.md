@@ -177,7 +177,8 @@ is `${public_view_id}:${getDocumentVersion()}`.
   the cache correct after compaction.
 - The authenticated export API is unchanged and still owner-gated; there is
   intentionally **no** public bulk ZIP endpoint (`src/routes/api/v1/export.ts`).
-- Rollback: disable the feature by leaving `public_view_enabled = 0`; `down()`
+- Rollback: disable the feature site-wide with `PUBLIC_VIEW_ENABLED=false` (the default) or
+  the `/admin` > Sharing toggle, or per project by leaving `public_view_enabled = 0`; `down()`
   migrations drop the columns/index.
 
 ## Security and privacy

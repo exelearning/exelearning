@@ -385,7 +385,7 @@ describe('ModalShare', () => {
     });
 
     it('shows link + regenerate controls when enabled with a publicViewId', () => {
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-xyz' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-xyz' };
 
       modal.renderPublicViewSection();
 
@@ -396,7 +396,7 @@ describe('ModalShare', () => {
     });
 
     it('hides the public link controls when disabled', () => {
-      modal.projectData = { publicViewEnabled: false, publicViewId: 'pub-xyz' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: false, publicViewId: 'pub-xyz' };
 
       modal.renderPublicViewSection();
 
@@ -405,16 +405,44 @@ describe('ModalShare', () => {
     });
 
     it('hides the public link controls when enabled but no publicViewId exists', () => {
-      modal.projectData = { publicViewEnabled: true };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true };
 
       modal.renderPublicViewSection();
 
       expect(modal.publicLinkSection.classList.contains('d-none')).toBe(true);
     });
 
+    it('shows the card when the site allows public links', () => {
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: false };
+
+      modal.renderPublicViewSection();
+
+      expect(modal.publicViewSection.classList.contains('d-none')).toBe(false);
+    });
+
+    it('hides the whole card when the site has public links disabled', () => {
+      modal.projectData = { publicViewAvailable: false, publicViewEnabled: true, publicViewId: 'pub-xyz' };
+      modal.publicLinkSection.classList.remove('d-none');
+      modal.publicRegenerateConfirm.classList.remove('d-none');
+
+      modal.renderPublicViewSection();
+
+      expect(modal.publicViewSection.classList.contains('d-none')).toBe(true);
+      expect(modal.publicLinkSection.classList.contains('d-none')).toBe(true);
+      expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(true);
+    });
+
+    it('hides the whole card when the server does not report availability', () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-xyz' };
+
+      modal.renderPublicViewSection();
+
+      expect(modal.publicViewSection.classList.contains('d-none')).toBe(true);
+    });
+
     it('disables the select for non-owners', () => {
       modal.currentUserIsOwner = false;
-      modal.projectData = { publicViewEnabled: false };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: false };
 
       modal.renderPublicViewSection();
 
@@ -432,7 +460,7 @@ describe('ModalShare', () => {
     });
 
     it('enables the public link and stores the returned publicViewId', async () => {
-      modal.projectData = { publicViewEnabled: false };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: false };
 
       await modal.handlePublicViewChange('enabled');
 
@@ -444,7 +472,7 @@ describe('ModalShare', () => {
     });
 
     it('disables the public link', async () => {
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
       window.eXeLearning.app.api.updatePublicViewAccess = vi
         .fn()
         .mockResolvedValue({ responseMessage: 'OK', publicViewEnabled: false, publicViewId: 'pub-old' });
@@ -457,7 +485,7 @@ describe('ModalShare', () => {
     });
 
     it('reverts the select on error', async () => {
-      modal.projectData = { publicViewEnabled: false };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: false };
       window.eXeLearning.app.api.updatePublicViewAccess = vi
         .fn()
         .mockResolvedValue({ responseMessage: 'ERROR', detail: 'nope' });
@@ -470,7 +498,7 @@ describe('ModalShare', () => {
 
     it('shows an error and does nothing when the project is not loaded', async () => {
       window.eXeLearning.app.project.odeId = undefined;
-      modal.projectData = { publicViewEnabled: false };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: false };
       const errorSpy = vi.spyOn(modal, 'showError').mockImplementation(() => {});
       window.eXeLearning.app.api.updatePublicViewAccess = vi.fn();
 
@@ -482,7 +510,7 @@ describe('ModalShare', () => {
 
     it('reverts the select and does not call the API for non-owners', async () => {
       modal.currentUserIsOwner = false;
-      modal.projectData = { publicViewEnabled: false };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: false };
       window.eXeLearning.app.api.updatePublicViewAccess = vi.fn();
 
       await modal.handlePublicViewChange('enabled');
@@ -492,7 +520,7 @@ describe('ModalShare', () => {
     });
 
     it('does nothing when the value matches the current state', async () => {
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
       window.eXeLearning.app.api.updatePublicViewAccess = vi.fn();
 
       await modal.handlePublicViewChange('enabled');
@@ -501,7 +529,7 @@ describe('ModalShare', () => {
     });
 
     it('reverts the select when the API call throws', async () => {
-      modal.projectData = { publicViewEnabled: false };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: false };
       window.eXeLearning.app.api.updatePublicViewAccess = vi.fn().mockRejectedValue(new Error('boom'));
       vi.spyOn(modal, 'saveProjectBeforeSharing').mockResolvedValue(undefined);
       const errorSpy = vi.spyOn(modal, 'showError').mockImplementation(() => {});
@@ -525,7 +553,7 @@ describe('ModalShare', () => {
     });
 
     it('reveals the inline confirmation without calling the API', () => {
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
 
       modal.handleRegeneratePublicLink();
 
@@ -536,7 +564,7 @@ describe('ModalShare', () => {
 
     it('does not open the confirmation for non-owners', () => {
       modal.currentUserIsOwner = false;
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
 
       modal.handleRegeneratePublicLink();
 
@@ -544,7 +572,7 @@ describe('ModalShare', () => {
     });
 
     it('hides the confirmation when cancelled', () => {
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
       modal.handleRegeneratePublicLink();
 
       modal.hideRegenerateConfirm();
@@ -554,7 +582,7 @@ describe('ModalShare', () => {
     });
 
     it('regenerates the id and updates the public link input on confirm', async () => {
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
 
       await modal.confirmRegeneratePublicLink();
 
@@ -567,7 +595,7 @@ describe('ModalShare', () => {
 
     it('hides the confirmation and skips the API when the project is not loaded', async () => {
       window.eXeLearning.app.project.odeId = undefined;
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
       modal.handleRegeneratePublicLink();
       window.eXeLearning.app.api.regeneratePublicViewId = vi.fn();
 
@@ -579,7 +607,7 @@ describe('ModalShare', () => {
 
     it('hides the confirmation and skips the API for non-owners', async () => {
       modal.currentUserIsOwner = false;
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
       window.eXeLearning.app.api.regeneratePublicViewId = vi.fn();
 
       await modal.confirmRegeneratePublicLink();
@@ -588,7 +616,7 @@ describe('ModalShare', () => {
     });
 
     it('shows an error when the API returns a non-OK response', async () => {
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
       window.eXeLearning.app.api.regeneratePublicViewId = vi
         .fn()
         .mockResolvedValue({ responseMessage: 'ERROR', detail: 'cannot' });
@@ -601,7 +629,7 @@ describe('ModalShare', () => {
     });
 
     it('shows an error when the API call throws', async () => {
-      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.projectData = { publicViewAvailable: true, publicViewEnabled: true, publicViewId: 'pub-old' };
       window.eXeLearning.app.api.regeneratePublicViewId = vi.fn().mockRejectedValue(new Error('boom'));
       const errorSpy = vi.spyOn(modal, 'showError').mockImplementation(() => {});
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

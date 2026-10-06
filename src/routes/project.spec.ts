@@ -379,8 +379,12 @@ function createMockDependencies(): ProjectDependencies {
         zip: createMockZip(),
         queries: createMockQueries(),
         utils: createMockUtils(),
+        settings: { isPublicViewFeatureEnabled: async () => publicViewFeatureEnabled },
     };
 }
+
+// Site-wide PUBLIC_VIEW_ENABLED value seen by the routes (reset to true per test)
+let publicViewFeatureEnabled = true;
 
 describe('Project Routes', () => {
     let app: Elysia;
@@ -399,6 +403,7 @@ describe('Project Routes', () => {
         userIdCounter = 1;
         projectIdCounter = 1;
         assetIdCounter = 1;
+        publicViewFeatureEnabled = true;
 
         // Create test users
         mockUsers.set(1, {
@@ -712,6 +717,94 @@ describe('Project Routes', () => {
             expect(res.status).toBe(403);
             const body = await res.json();
             expect(body.responseMessage).toBe('FORBIDDEN');
+        });
+    });
+
+    describe('Public view site setting (PUBLIC_VIEW_ENABLED)', () => {
+        function createOwnedProject(id: number, uuid: string) {
+            const project = {
+                id,
+                uuid,
+                owner_id: 1,
+                title: `Project ${id}`,
+                visibility: 'private',
+                public_view_id: `pub-${id}`,
+                public_view_enabled: 1,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(id, project);
+            mockProjectsByUuid.set(uuid, project);
+            return project;
+        }
+
+        async function request(url: string, method = 'GET', body?: unknown) {
+            const token = await createAuthToken(1);
+            return app.handle(
+                new Request(`http://localhost${url}`, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                    body: body === undefined ? undefined : JSON.stringify(body),
+                }),
+            );
+        }
+
+        it('reports the public link as available when the site allows it', async () => {
+            createOwnedProject(700, 'uuid-700');
+
+            const body = await (await request('/api/projects/700/sharing')).json();
+
+            expect(body.project.publicViewAvailable).toBe(true);
+            expect(body.project.publicViewEnabled).toBe(true);
+            expect(body.project.publicViewId).toBe('pub-700');
+        });
+
+        it('hides the public link in sharing info when the site disables it', async () => {
+            publicViewFeatureEnabled = false;
+            createOwnedProject(701, 'uuid-701');
+
+            for (const url of ['/api/projects/701/sharing', '/api/projects/uuid/uuid-701/sharing']) {
+                const res = await request(url);
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.project.publicViewAvailable).toBe(false);
+                expect(body.project.publicViewEnabled).toBe(false);
+                expect(body.project.publicViewId).toBeNull();
+            }
+        });
+
+        it('refuses to enable or regenerate a public link when the site disables it', async () => {
+            publicViewFeatureEnabled = false;
+            createOwnedProject(702, 'uuid-702');
+
+            const calls: Array<[string, string, unknown?]> = [
+                ['/api/projects/702/public-view', 'PATCH', { enabled: true }],
+                ['/api/projects/uuid/uuid-702/public-view', 'PATCH', { enabled: true }],
+                ['/api/projects/702/public-view/regenerate', 'POST'],
+                ['/api/projects/uuid/uuid-702/public-view/regenerate', 'POST'],
+            ];
+            for (const [url, method, body] of calls) {
+                const res = await request(url, method, body);
+                expect(res.status).toBe(403);
+                const json = await res.json();
+                expect(json.responseMessage).toBe('FEATURE_DISABLED');
+                expect(json.detail).toBe('Public read-only links are disabled on this site');
+            }
+            expect(mockProjects.get(702).public_view_id).toBe('pub-702');
+        });
+
+        it('still lets the owner turn an existing public link off when the site disables it', async () => {
+            publicViewFeatureEnabled = false;
+            createOwnedProject(703, 'uuid-703');
+            createOwnedProject(704, 'uuid-704');
+
+            const byId = await request('/api/projects/703/public-view', 'PATCH', { enabled: false });
+            const byUuid = await request('/api/projects/uuid/uuid-704/public-view', 'PATCH', { enabled: false });
+
+            expect(byId.status).toBe(200);
+            expect((await byId.json()).publicViewEnabled).toBe(false);
+            expect(byUuid.status).toBe(200);
+            expect((await byUuid.json()).publicViewEnabled).toBe(false);
         });
     });
 

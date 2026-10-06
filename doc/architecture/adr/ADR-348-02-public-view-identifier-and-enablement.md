@@ -119,6 +119,14 @@ old link.
   `/view/:publicViewId` and `/view/:publicViewId/_/*` return **404** when
   `!project || !project.public_view_enabled`, returning 404 (not 403) so a disabled or
   missing project does not reveal its existence.
+- Site-wide switch above the per-project flag: `src/services/app-settings.ts` —
+  `isPublicViewFeatureEnabled()` reads the `PUBLIC_VIEW_ENABLED` admin setting, falling
+  back to the env var of the same name and then to `false`. `src/routes/pages.ts`
+  returns 404 on both `/view/*` routes while it is off; `src/routes/project.ts` answers
+  403 `FEATURE_DISABLED` to enable/regenerate (disable stays allowed) and serializes
+  `publicViewAvailable` so `modalShare.js` hides the card. The toggle lives in
+  `/admin` > Sharing (`views/admin/index.njk`, `ADMIN_SETTINGS_DEFAULTS` in
+  `src/routes/admin.ts`).
 - Unit tests: `src/routes/pages.spec.ts` — describe `GET /view/:publicViewId`: "render
   viewer when the public read-only link is enabled (no auth needed)", "render viewer
   when enabled even if edit access is private (decoupled)", "not expose the internal
@@ -142,6 +150,13 @@ and never via the project uuid. Whether the link resolves is controlled by a sep
 lazily on first enable, preserved across disable/enable, and rotatable via an explicit
 owner-only regenerate action. Disabled or non-existent public links return 404, not
 403.
+
+Above the per-project flag sits an installation-wide switch, `PUBLIC_VIEW_ENABLED`,
+**disabled by default**: many public-sector deployments already publish through their
+own media library and should not expose the option unless they opt in. The env var sets
+the default and the `/admin` > Sharing toggle overrides it, following the existing
+`app_settings` convention. Turning it off hides the option and makes every public link
+return 404 without touching per-project data, so turning it back on restores them.
 
 ## Consequences
 

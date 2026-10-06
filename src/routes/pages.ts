@@ -44,6 +44,7 @@ import {
     getAuthMethods as getAuthMethodsFromSettings,
     getSettingBoolean as getSettingBooleanFromSettings,
     getSettingString as getSettingStringFromSettings,
+    isPublicViewFeatureEnabled as isPublicViewFeatureEnabledFromSettings,
     parseBoolean as parseAppSettingBoolean,
 } from '../services/app-settings';
 type AppSettingsTable = {
@@ -165,6 +166,7 @@ export interface PagesSettingsDeps {
     getAuthMethods: typeof getAuthMethodsFromSettings;
     getSettingBoolean: typeof getSettingBooleanFromSettings;
     getSettingString: typeof getSettingStringFromSettings;
+    isPublicViewFeatureEnabled: typeof isPublicViewFeatureEnabledFromSettings;
 }
 
 /**
@@ -225,6 +227,7 @@ const defaultSettings: PagesSettingsDeps = {
     getAuthMethods: getAuthMethodsFromSettings,
     getSettingBoolean: getSettingBooleanFromSettings,
     getSettingString: getSettingStringFromSettings,
+    isPublicViewFeatureEnabled: isPublicViewFeatureEnabledFromSettings,
 };
 
 // Default dependencies
@@ -264,7 +267,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
     const { renderTemplate, setRenderLocale: setLocale } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
-    const { getAuthMethods, getSettingBoolean, getSettingString } = deps.settings ?? defaultSettings;
+    const { getAuthMethods, getSettingBoolean, getSettingString, isPublicViewFeatureEnabled } =
+        deps.settings ?? defaultSettings;
     const { fileExists, readFile } = deps.fileHelper ?? defaultFileHelper;
 
     /**
@@ -620,9 +624,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 // project must have the public read-only link enabled (this is
                 // independent of edit visibility). We return 404 (not 403) for
                 // missing or disabled projects so the route does not reveal
-                // whether a private project exists.
-                const project = await findProjectByPublicViewId(db, publicViewId);
-                if (!project || !project.public_view_enabled) {
+                // whether a private project exists. The same 404 is returned when
+                // the administrator has disabled public links site-wide.
+                const project = (await isPublicViewFeatureEnabled(db))
+                    ? await findProjectByPublicViewId(db, publicViewId)
+                    : undefined;
+                if (!project?.public_view_enabled) {
                     set.status = 404;
                     const html = renderTemplate('workarea/error', {
                         basePath: getBasePath(),
@@ -678,8 +685,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const { publicViewId } = params;
                 const relPath = (params as Record<string, string>)['*'] ?? '';
 
-                const project = await findProjectByPublicViewId(db, publicViewId);
-                if (!project || !project.public_view_enabled) {
+                const project = (await isPublicViewFeatureEnabled(db))
+                    ? await findProjectByPublicViewId(db, publicViewId)
+                    : undefined;
+                if (!project?.public_view_enabled) {
                     set.status = 404;
                     return 'Not found';
                 }
@@ -1277,6 +1286,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         online_idevices_install: parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
                         app_auth_methods: process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
                         version_control: parseBoolean(process.env.VERSION_CONTROL, true),
+                        public_view_enabled: parseBoolean(process.env.PUBLIC_VIEW_ENABLED, false),
                         default_project_visibility: process.env.DEFAULT_PROJECT_VISIBILITY || 'private',
                         user_recent_ode_files_amount: parseNumber(process.env.USER_RECENT_ODE_FILES_AMOUNT, 3),
                         collaborative_block_level: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice',
@@ -1338,6 +1348,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     ONLINE_IDEVICES_INSTALL: { path: ['general', 'online_idevices_install'], type: 'boolean' },
                     APP_AUTH_METHODS: { path: ['general', 'app_auth_methods'], type: 'string' },
                     VERSION_CONTROL: { path: ['general', 'version_control'], type: 'boolean' },
+                    PUBLIC_VIEW_ENABLED: { path: ['general', 'public_view_enabled'], type: 'boolean' },
                     DEFAULT_PROJECT_VISIBILITY: { path: ['general', 'default_project_visibility'], type: 'string' },
                     USER_RECENT_ODE_FILES_AMOUNT: { path: ['general', 'user_recent_ode_files_amount'], type: 'number' },
                     COLLABORATIVE_BLOCK_LEVEL: { path: ['general', 'collaborative_block_level'], type: 'string' },

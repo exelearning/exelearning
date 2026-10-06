@@ -565,6 +565,15 @@ With the opaque origin, untrusted content **cannot**: reach `window.parent`/`top
 (SecurityError), read or send the `auth` cookie (cross-site → `SameSite=lax` not
 sent), call `/api/...` as the viewer, or open the app's IndexedDB / Cache API.
 
+**Site-wide switch.** The whole feature is off by default. `PUBLIC_VIEW_ENABLED` sets
+the installation default and the `/admin` > Sharing toggle (stored in `app_settings`)
+overrides it; both are read through `isPublicViewFeatureEnabled()` in
+`src/services/app-settings.ts`. While it is off, both `/view/*` routes return 404, the
+enable/regenerate endpoints answer 403 `FEATURE_DISABLED` (turning a link off is still
+allowed), and the sharing payload reports `publicViewAvailable: false`, so the Share
+dialog hides the public-link card. Per-project flags are kept, so re-enabling the
+feature restores the links that were already on.
+
 **CSP profile.** Selectable via the `PUBLIC_VIEW_CSP_PROFILE` env var. The default
 `compatible` profile relies on the opaque origin to protect the session and still
 allows external `https:` assets (CDN, MathJax, external images, YouTube/Vimeo embeds)

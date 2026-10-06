@@ -35,6 +35,7 @@ export default class ModalShare extends Modal {
         this.linkInput = this.modalElement.querySelector('#share-link-input');
         this.copyButton = this.modalElement.querySelector('#share-copy-button');
 
+        this.publicViewSection = this.modalElement.querySelector('#share-public-view-section');
         this.publicViewSelect = this.modalElement.querySelector('#share-public-view-select');
         this.publicViewHelp = this.modalElement.querySelector('#share-public-view-help');
         this.publicLinkSection = this.modalElement.querySelector('#public-link-section');
@@ -408,6 +409,16 @@ export default class ModalShare extends Modal {
      */
     renderPublicViewSection() {
         if (!this.publicViewSelect) return;
+
+        // The administrator can turn public links off for the whole site; the
+        // card stays hidden unless the server reports the feature as available.
+        const available = this.projectData?.publicViewAvailable === true;
+        this.publicViewSection?.classList.toggle('d-none', !available);
+        if (!available) {
+            this.publicLinkSection?.classList.add('d-none');
+            this.hideRegenerateConfirm();
+            return;
+        }
 
         const enabled = Boolean(this.projectData?.publicViewEnabled);
 

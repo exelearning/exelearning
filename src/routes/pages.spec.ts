@@ -171,6 +171,7 @@ function createMockSettings(): PagesSettingsDeps {
         },
         getSettingBoolean: async (_db: any, _key: string, fallback: boolean) => fallback,
         getSettingString: async (_db: any, _key: string, fallback: string) => fallback,
+        isPublicViewFeatureEnabled: async () => true,
     };
 }
 
@@ -2878,6 +2879,29 @@ describe('Pages Routes', () => {
             expect(templateData.publicViewId).toBe('public-view-id-55');
         });
 
+        it('should return 404 for an enabled link when the site disables public links', async () => {
+            mockProjects.set('site-disabled-project', {
+                id: 57,
+                uuid: 'site-disabled-uuid',
+                public_view_id: 'public-view-id-57',
+                public_view_enabled: 1,
+                owner_id: 999,
+                visibility: 'public',
+                title: 'Site disabled',
+            });
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    settings: { ...createMockSettings(), isPublicViewFeatureEnabled: async () => false },
+                }),
+            );
+
+            const res = await customApp.handle(new Request('http://localhost/view/public-view-id-57'));
+
+            expect(res.status).toBe(404);
+            expect(await res.text()).toContain('workarea/error');
+        });
+
         it('should return 404 when the public read-only link is disabled', async () => {
             mockProjects.set('disabled-view-project', {
                 id: 51,
@@ -3415,6 +3439,41 @@ describe('Pages Routes', () => {
             expect(templateData.adminSettings.general).toBeDefined();
             expect(templateData.adminSettings.storage).toBeDefined();
         });
+
+        it('should seed the public view toggle from PUBLIC_VIEW_ENABLED (disabled when unset)', async () => {
+            const rendered: any[] = [];
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    template: {
+                        renderTemplate: (_template: string, data: any) => {
+                            rendered.push(data);
+                            return '<html></html>';
+                        },
+                        setRenderLocale: () => {},
+                    },
+                }),
+            );
+            mockUsers.set(31, { id: 31, email: 'admin-public-view@test.com', roles: '["ROLE_USER", "ROLE_ADMIN"]' });
+
+            const jwt = await import('@elysiajs/jwt');
+            const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 31,
+                email: 'admin-public-view@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+            const openAdmin = () =>
+                customApp.handle(new Request('http://localhost/admin', { headers: { Cookie: `auth=${token}` } }));
+
+            delete process.env.PUBLIC_VIEW_ENABLED;
+            await openAdmin();
+            process.env.PUBLIC_VIEW_ENABLED = 'true';
+            await openAdmin();
+
+            expect(rendered.map(data => data.adminSettings.general.public_view_enabled)).toEqual([false, true]);
+        });
     });
 
     describe('JWT verification catch block', () => {
@@ -3519,6 +3578,20 @@ describe('Pages Routes', () => {
         it('returns 404 for an unknown public view id without leaking existence', async () => {
             const res = await app.handle(new Request('http://localhost/view/does-not-exist/_/index.html'));
             expect(res.status).toBe(404);
+        });
+
+        it('returns 404 for an enabled link when the site disables public links', async () => {
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    settings: { ...createMockSettings(), isPublicViewFeatureEnabled: async () => false },
+                }),
+            );
+
+            const res = await customApp.handle(new Request('http://localhost/view/pub-1/_/index.html'));
+
+            expect(res.status).toBe(404);
+            expect(res.headers.get('Content-Security-Policy')).toBeNull();
         });
 
         it('returns 404 when the public view link is disabled', async () => {

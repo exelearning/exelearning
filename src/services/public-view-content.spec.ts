@@ -5,10 +5,18 @@
  * (`configurePublicViewContent`) so these tests do not run the full export
  * pipeline; they focus on path safety, content-type resolution and caching.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { zipSync, strToU8 } from 'fflate';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
+import { zipSync, strToU8, unzipSync, strFromU8 } from 'fflate';
+import * as Y from 'yjs';
+import { db, resetClientCacheForTesting } from '../db/client';
+import { up } from '../db/migrations/001_initial';
+import { up as up008 } from '../db/migrations/008_project_public_view_id';
+import { up as up009 } from '../db/migrations/009_project_public_view_enabled';
+import { saveFullState } from '../db/queries';
+import { now } from '../db/types';
 import type { Project } from '../db/types';
 import {
+    buildHtml5PreviewExport,
     getPublicViewFile,
     normalizePublicViewPath,
     configurePublicViewContent,
@@ -242,6 +250,29 @@ describe('getPublicViewFile', () => {
         await expect(getPublicViewFile(makeProject(), 'index.html')).rejects.toThrow(/too large/);
     });
 
+    it('evicts the oldest project once the cache is full', async () => {
+        let builds = 0;
+        configurePublicViewContent({
+            resolveVersion: async (): Promise<string> => '1',
+            buildExport: async (): Promise<ExportResult> => {
+                builds++;
+                return { success: true, data: makeZip({ 'index.html': 'x' }) };
+            },
+        });
+
+        // One more project than the cache holds (MAX_CACHE_ENTRIES = 32).
+        for (let i = 0; i <= 32; i++) {
+            await getPublicViewFile(makeProject({ id: i, public_view_id: `pub-${i}` }), 'index.html');
+        }
+        expect(builds).toBe(33);
+
+        // The newest project is still cached; the oldest was evicted and is rebuilt.
+        await getPublicViewFile(makeProject({ id: 32, public_view_id: 'pub-32' }), 'index.html');
+        expect(builds).toBe(33);
+        await getPublicViewFile(makeProject({ id: 0, public_view_id: 'pub-0' }), 'index.html');
+        expect(builds).toBe(34);
+    });
+
     it('resolves an unknown/extension-less file to application/octet-stream', async () => {
         configurePublicViewContent({
             resolveVersion: async (): Promise<string> => '1',
@@ -259,5 +290,72 @@ describe('getPublicViewFile', () => {
         const project = makeProject();
         expect((await getPublicViewFile(project, 'LICENSE'))!.contentType).toBe('application/octet-stream');
         expect((await getPublicViewFile(project, 'data.bin'))!.contentType).toBe('application/octet-stream');
+    });
+});
+
+describe('buildHtml5PreviewExport (real exporter)', () => {
+    let projectId: number;
+
+    beforeAll(async () => {
+        await resetClientCacheForTesting();
+        await up(db);
+        await up008(db);
+        await up009(db);
+
+        const user = await db
+            .insertInto('users')
+            .values({
+                email: 'public-view-export@test.com',
+                user_id: 'public-view-export-user',
+                password: 'x',
+                roles: '["ROLE_USER"]',
+                is_lopd_accepted: 1,
+                is_active: 1,
+                created_at: now(),
+                updated_at: now(),
+            })
+            .executeTakeFirst();
+        const project = await db
+            .insertInto('projects')
+            .values({
+                uuid: 'public-view-export-project',
+                title: 'Public view export',
+                owner_id: Number(user.insertId),
+                public_view_id: 'public-view-export-id',
+                public_view_enabled: 1,
+                created_at: now(),
+            })
+            .executeTakeFirst();
+        projectId = Number(project.insertId);
+
+        const ydoc = new Y.Doc();
+        ydoc.transact(() => {
+            const page = new Y.Map();
+            page.set('id', 'page-1');
+            page.set('pageId', 'page-1');
+            page.set('pageName', 'Welcome page');
+            page.set('children', new Y.Array());
+            page.set('blocks', new Y.Array());
+            ydoc.getArray('navigation').push([page]);
+            const metadata = ydoc.getMap('metadata');
+            metadata.set('title', 'Public view export');
+            metadata.set('language', 'en');
+            metadata.set('theme', 'base');
+        });
+        await saveFullState(db, projectId, Y.encodeStateAsUpdate(ydoc));
+    });
+
+    afterAll(async () => {
+        await resetClientCacheForTesting();
+    });
+
+    it('exports the persisted Yjs document as a multi-page HTML5 ZIP', async () => {
+        const project = (await db.selectFrom('projects').selectAll().where('id', '=', projectId).executeTakeFirst())!;
+
+        const result = await buildHtml5PreviewExport(project);
+
+        expect(result.success).toBe(true);
+        const files = unzipSync(result.data!);
+        expect(strFromU8(files['index.html'])).toContain('Welcome page');
     });
 });

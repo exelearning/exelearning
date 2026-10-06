@@ -46,7 +46,10 @@ import {
     type IdeviceContent,
 } from '../services/link-validator';
 import type { LookupFn } from '../utils/ssrf-guard';
-import { getSettingString } from '../services/app-settings';
+import {
+    getSettingString,
+    isPublicViewFeatureEnabled as isPublicViewFeatureEnabledDefault,
+} from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 import { getPreferenceValue } from '../db/queries/preferences';
 
@@ -231,6 +234,13 @@ export interface AccessNotifierDeps {
 }
 
 /**
+ * Installation-wide settings read by the project routes
+ */
+export interface ProjectSettingsDeps {
+    isPublicViewFeatureEnabled: typeof isPublicViewFeatureEnabledDefault;
+}
+
+/**
  * Link-validation overrides forwarded to the SSRF-hardened validateLink().
  *
  * Production leaves these undefined (real DNS + fetch). Tests inject a hermetic
@@ -257,6 +267,7 @@ export interface ProjectDependencies {
     utils?: UtilsDeps;
     accessNotifier?: AccessNotifierDeps;
     linkValidation?: LinkValidationDeps;
+    settings?: ProjectSettingsDeps;
 }
 
 // Default dependencies
@@ -321,6 +332,10 @@ const defaultAccessNotifier: AccessNotifierDeps = {
     notifyCollaboratorRemoved: notifyCollaboratorRemovedDefault,
 };
 
+const defaultSettings: ProjectSettingsDeps = {
+    isPublicViewFeatureEnabled: isPublicViewFeatureEnabledDefault,
+};
+
 const defaultDependencies: ProjectDependencies = {
     db: dbDefault,
     fs: fsDefault,
@@ -330,7 +345,10 @@ const defaultDependencies: ProjectDependencies = {
     queries: defaultQueries,
     utils: defaultUtils,
     accessNotifier: defaultAccessNotifier,
+    settings: defaultSettings,
 };
+
+const PUBLIC_VIEW_DISABLED_DETAIL = 'Public read-only links are disabled on this site';
 
 // Get default project visibility from environment
 async function getDefaultProjectVisibility(db: Kysely<Database>): Promise<'public' | 'private'> {
@@ -344,13 +362,16 @@ async function getDefaultProjectVisibility(db: Kysely<Database>): Promise<'publi
 
 /**
  * Serialize project sharing information for API response
- * Includes owner with role='owner' and collaborators with role='editor'
+ * Includes owner with role='owner' and collaborators with role='editor'.
+ * When the public viewer is disabled for the installation, the public link
+ * is reported as unavailable and its id is withheld.
  */
 function serializeProjectSharing(
     project: Project,
     owner: User | null | undefined,
     collaborators: User[],
     currentUserId: number | undefined,
+    publicViewAvailable: boolean,
     createGravatarUrl: (
         email: string | null | undefined,
         initials?: string | null,
@@ -388,8 +409,9 @@ function serializeProjectSharing(
         uuid: project.uuid,
         title: project.title,
         visibility: project.visibility || 'private',
-        publicViewId: project.public_view_id ?? null,
-        publicViewEnabled: Boolean(project.public_view_enabled),
+        publicViewAvailable,
+        publicViewId: publicViewAvailable ? (project.public_view_id ?? null) : null,
+        publicViewEnabled: publicViewAvailable && Boolean(project.public_view_enabled),
         owner: owner ? { id: owner.id, email: owner.email } : null,
         collaborators: collabsList,
         isOwner: currentUserId ? project.owner_id === currentUserId : false,
@@ -797,6 +819,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
     // Optional link-validation overrides (hermetic DNS/fetch for tests; empty in production)
     const linkValidation = deps.linkValidation ?? {};
 
+    // Installation-wide settings
+    const { isPublicViewFeatureEnabled } = deps.settings ?? defaultSettings;
+
     // Query functions
     const {
         findProjectById,
@@ -984,7 +1009,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 return {
                     responseMessage: 'OK',
-                    project: serializeProjectSharing(project, owner, collabs, currentUser?.id),
+                    project: serializeProjectSharing(
+                        project,
+                        owner,
+                        collabs,
+                        currentUser?.id,
+                        await isPublicViewFeatureEnabled(db),
+                    ),
                 };
             })
 
@@ -1064,6 +1095,12 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
                 }
 
+                // Turning the link off stays allowed so owners can always revoke it.
+                if (enabled && !(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
                 const updated = await setPublicViewEnabled(db, projectId, enabled);
 
                 return {
@@ -1096,6 +1133,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 if (project.owner_id !== currentUser.id) {
                     set.status = 403;
                     return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                if (!(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
                 }
 
                 const updated = await regeneratePublicViewId(db, projectId);
@@ -1359,7 +1401,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 return {
                     responseMessage: 'OK',
-                    project: serializeProjectSharing(project, owner, collabs, currentUser?.id),
+                    project: serializeProjectSharing(
+                        project,
+                        owner,
+                        collabs,
+                        currentUser?.id,
+                        await isPublicViewFeatureEnabled(db),
+                    ),
                 };
             })
 
@@ -1429,6 +1477,12 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
                 }
 
+                // Turning the link off stays allowed so owners can always revoke it.
+                if (enabled && !(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
                 const updated = await setPublicViewEnabledByUuid(db, uuid, enabled);
 
                 return {
@@ -1456,6 +1510,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 if (project.owner_id !== currentUser.id) {
                     set.status = 403;
                     return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                if (!(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
                 }
 
                 const updated = await regeneratePublicViewIdByUuid(db, uuid);
