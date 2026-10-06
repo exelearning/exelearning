@@ -51,6 +51,7 @@ var $eXeBeforeAfter = {
             const bfaf = $eXeBeforeAfter.createInterfaceCards(i);
 
             dl.before(bfaf).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#bfafGameMinimize-' + i).hide();
             $('#bfafGameContainer-' + i).hide();
             $('#bfafCubierta-' + i).hide();

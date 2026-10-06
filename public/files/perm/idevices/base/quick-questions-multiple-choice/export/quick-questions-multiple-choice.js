@@ -112,6 +112,7 @@ var $quickquestionsmultiplechoice = {
             const selecciona =
                 $quickquestionsmultiplechoice.createInterfaceSelecciona(i);
             dl.before(selecciona).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#seleccionaGameMinimize-' + i).hide();
             $('#seleccionaGameContainer-' + i).hide();

@@ -45,6 +45,13 @@ var $exeDevice = {
             'You can save the score as many times as you want'
         ),
         msgYouLastScore: c_('The last score saved is'),
+        // Progress report: the type it is listed under, and the three verdicts
+        // its icon can show.
+        msgTypeGame: c_('Rubric'),
+        msgUncompletedActivity: c_('Incomplete activity'),
+        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+        msgPassScore: c_('Minimum score needed to pass this activity: %s'),
         msgActityComply: c_('You have already done this activity.'),
         msgPlaySeveralTimes: c_(
             'You can do this activity as many times as you want'
@@ -217,13 +224,15 @@ var $exeDevice = {
                         </div>
                     </fieldset>
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         this.renderRubricTemplateControls();
         this.loadPreviousValues();
@@ -333,6 +342,16 @@ var $exeDevice = {
             data.repeatActivity,
             data.weighted
         );
+
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: data.passScoreMode,
+            passScoreCustom: data.passScoreCustom,
+        });
+
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: data.evaluation,
+            evaluationID: data.evaluationID,
+        });
 
         this.originalData = data;
     },
@@ -1355,9 +1374,14 @@ var $exeDevice = {
             : '';
 
         var dataPayload = this.encodeEscapedHTML(JSON.stringify(data));
+        // The course map reads these attributes without decoding the rubric payload.
+        var evaluationAttributes =
+            ' data-id="' + this.escapeAttribute(data.id || '') +
+            '" data-evaluationid="' + this.escapeAttribute(data.evaluationID || '') +
+            '" data-evaluationb="' + (!!data.evaluation) + '"';
         var dataBlock =
             '<div class="rubric">' +
-                '<div class="exe-rubrics-DataGame js-hidden">' + dataPayload + '</div>' +
+                '<div class="exe-rubrics-DataGame js-hidden"' + evaluationAttributes + '>' + dataPayload + '</div>' +
                 this.buildRubricAuthorshipHTML(data) +
                 this.buildRubricStringsHTML(data.i18n) +
             '</div>';
@@ -1750,6 +1774,14 @@ var $exeDevice = {
         data.textButtonScorm = scorm.textButtonScorm;
         data.repeatActivity = scorm.repeatActivity;
         data.weighted = $exeDevice.normalizeWeight(scorm.weighted);
+        var passScore = $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        data.passScoreMode = passScore.passScoreMode;
+        data.passScoreCustom = passScore.passScoreCustom;
+
+        var progressBar = $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBar) return false;
+        data.evaluation = progressBar.evaluation;
+        data.evaluationID = progressBar.evaluationID;
 
         var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
         var textAfter = textAfterEditor
