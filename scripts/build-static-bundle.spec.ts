@@ -595,7 +595,7 @@ describe('generateModalsHtml', () => {
     it('should include Connect MCP modal markup', () => {
         const modalsHtml = generateModalsHtml();
         expect(modalsHtml).toContain('id="modalConnectMcp"');
-        expect(modalsHtml).toContain('id="button-open-webmcp-widget"');
+        expect(modalsHtml).toContain('id="button-open-webmcp-docs"');
     });
 });
 
