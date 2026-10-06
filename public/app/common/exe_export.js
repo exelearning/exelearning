@@ -335,6 +335,12 @@ window.$exeExport = {
                     window.unloadPage(isSCORM);
                 });
             }
+            // loadPage() has just read the LMS's own pass mark, if it sets
+            // one, after the iDevices drew the page's minimum score.
+            const scorm = window.$exeDevices?.iDevice?.gamification?.scorm;
+            if (scorm && typeof scorm.showPagePassScore === 'function') {
+                scorm.showPagePassScore();
+            }
         }
     },
 
@@ -524,6 +530,12 @@ window.$exeExport = {
         // leaving the ones already initialized elsewhere on the page untouched.
         if (typeof $exeFX !== 'undefined' && typeof $exeFX.init === 'function') {
             $exeFX.init(ideviceNode);
+        }
+        // Lightbox links (rel^='lightbox'): the page-wide binding may have run on markup
+        // this iDevice has since replaced. See #2510.
+        if (typeof $exe !== 'undefined') {
+            if (typeof $exe.setMultimediaGalleries === 'function') $exe.setMultimediaGalleries(ideviceNode);
+            if (typeof $exe.setModalWindowContentSize === 'function') $exe.setModalWindowContentSize(ideviceNode);
         }
     },
 
