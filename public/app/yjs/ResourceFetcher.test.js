@@ -2710,6 +2710,31 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         expect(result.size).toBe(0);
         expect(mockFetch).not.toHaveBeenCalled();
       });
+
+      it('fetchBaseLibraries keeps a partial bundle flagged incomplete through the sprite filter', async () => {
+        const fetcher = new ResourceFetcher();
+        fetcher.isStaticMode = true;
+        fetcher.basePath = '';
+        fetcher.resourceCache = {
+          get: vi.fn().mockResolvedValue(null),
+          set: vi.fn().mockResolvedValue(undefined),
+        };
+        fetcher.bundleManifest = {
+          staticFiles: {
+            libs: [
+              { s: 'libs/jquery/jquery.min.js', t: 'jquery/jquery.min.js' },
+              { s: 'app/common/common.js', t: 'common.js' },
+            ],
+          },
+        };
+        mockFetch.mockResolvedValueOnce(looseResp()).mockResolvedValueOnce({ ok: false, status: 404 });
+
+        const result = await fetcher.fetchBaseLibraries();
+
+        expect(result.size).toBe(1);
+        expect(result.incomplete).toBe(true);
+        expect(fetcher.resourceCache.set).toHaveBeenCalledWith('libs', 'base', 'v3.1.0', result);
+      });
     });
 
     describe('fetchLibraryDirectory in static mode', () => {
@@ -2907,6 +2932,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         expect(result.has('a.css')).toBe(true);
         expect(result.get('a.css').type).toBe('text/css');
         expect(result.get('b.js').type).toBe('application/javascript');
+        expect(result.incomplete).toBeUndefined();
       });
 
       it('assembleBundleFromLoose skips files that fail to fetch', async () => {
@@ -2924,6 +2950,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         expect(result.size).toBe(1);
         expect(result.has('a.css')).toBe(true);
         expect(result.has('missing.css')).toBe(false);
+        expect(result.incomplete).toBe(true);
       });
 
       it('assembleBundleFromLoose returns an empty Map for no entries', async () => {

@@ -209,7 +209,7 @@ var $exeDevice = {
         var str6 = c_(
             'This content was created with eXeLearning, your free and open source editor to create educational resources.'
         );
-        var str7 = c_('Download .elp file');
+        var str7 = c_('Download .elpx file');
 
         // Note: The td wraps the span with mceNonEditable so the entire cell is immutable to the user
         // Styling is handled by global tinymce_5_extra.css to prevent inline styles from cloning to new rows
@@ -272,7 +272,7 @@ var $exeDevice = {
 			<div id="eXeDownloadPackageForm">\
 				<p><label for="dpiDescription">' +
             _(
-                'This block will create a link to download the elp file. Write some use instructions and customize your download link.'
+                'This block will create a link to download the .elpx file. Write some use instructions and customize your download link.'
             ) +
             '</label></p>\
 				<p><textarea id="dpiDescription" class="exe-html-editor">' +

@@ -267,4 +267,81 @@ describe('guess iDevice export', () => {
       expect($guess.sendScore).not.toHaveBeenCalled();
     });
   });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and moving it on to the next question.
+  describe('the clock of a game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      global.$exeDevices.iDevice.gamification.helpers = { getTimeSeconds: () => 30 };
+      document.body.innerHTML = `<div id="adivinaMainContainer-${instance}"></div>`;
+      $guess.options = [
+        {
+          gameStarted: false,
+          numberLives: 3,
+          numberQuestions: 1,
+          msgs: { msgPlayStart: '' },
+          wordsGame: [{ time: 1, type: 0, word: 'Valencia', definition: 'Ciudad conquistada' }],
+          showSolution: false,
+        },
+      ];
+      for (const method of ['updateLives', 'updateTime', 'updateSoundVideo', 'saveScormScore', 'newQuestion', 'drawPhrase']) {
+        vi.spyOn($guess, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    /** Start the game and put its first question on the clock, as newQuestion does. */
+    function startGame() {
+      $guess.startGame(instance);
+      $guess.options[instance].activeCounter = true;
+    }
+
+    it('counts down on its own game', () => {
+      startGame();
+
+      vi.advanceTimersByTime(3000);
+
+      expect($guess.updateTime).toHaveBeenLastCalledWith(27, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      startGame();
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="adivinaMainContainer-${instance}"></div>`;
+      $guess.options[instance] = { gameStarted: true, activeCounter: true, counter: 30 };
+      $guess.updateTime.mockClear();
+      $guess.newQuestion.mockClear();
+
+      vi.advanceTimersByTime(60000);
+
+      expect($guess.updateTime).not.toHaveBeenCalled();
+      expect($guess.newQuestion).not.toHaveBeenCalled();
+      expect($guess.options[instance].counter).toBe(30);
+    });
+  });
+});
+
+describe('guess minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'guess.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
+  });
 });

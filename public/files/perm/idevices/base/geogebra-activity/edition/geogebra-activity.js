@@ -13,6 +13,21 @@ var $exeDevice = {
     i18n: {
         name: _('GeoGebra activity'),
     },
+
+    /**
+     * This iDevice has no JSON options block: it persists everything as CSS
+     * classes on its own markup and parses them back on edition. The pass score
+     * follows the same rule -- one class, written only when the author
+     * customised the mark, so that "global" costs nothing and older content
+     * reads as global for free.
+     *
+     * A property rather than a module-level const: the editor re-injects this
+     * file with a <script> tag every time an iDevice is edited, and a top-level
+     * `const` throws "Identifier has already been declared" on the second
+     * edition. `var $exeDevice` is redeclarable, which is why it is the shape
+     * every iDevice uses.
+     */
+    passScoreClass: 'auto-geogebra-pass-score-',
     activityURLbase: 'https://www.geogebra.org/m/',
 
     idevicePath: '',
@@ -46,7 +61,6 @@ var $exeDevice = {
 
     // Create the form to insert HTML in the TEXTAREA
     createForm: function () {
-        const str1 = _('Save score');
         const instructions = _(
             'Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.'
         ).replace(
@@ -108,33 +122,12 @@ var $exeDevice = {
                             <input type="number" name="geogebraActivityScale" id="geogebraActivityScale" value="100" min="1" max="100" step="1" class="form-control" />
                         </div>
                         <div id="eXeAutoGeogebraCheckOptions" class="d-flex align-items-center flex-wrap gap-2 mb-3">${this.getTrueFalseOptions()}</div>
-                        <div id="geogebraActivitySCORMblock" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <div class="toggle-item mb-0">
-                                <span class="toggle-control">
-                                    <input type="checkbox" name="geogebraActivitySCORM" id="geogebraActivitySCORM" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label for="geogebraActivitySCORM" class="toggle-label mb-0">${_('Save score button')}</label>
-                            </div>
-                            <span id="geogebraActivitySCORMoptions" class="d-none d-flex flex-nowrap align-items-center gap-2">
-                                <label for="geogebraActivitySCORMbuttonText" class="mb-0">${_('Button text')}:</label>
-                                <input type="text" maxlength="100" name="geogebraActivitySCORMbuttonText" id="geogebraActivitySCORMbuttonText" value="${str1}" class="form-control" />
-                            </span>
-                        </div>
-                        <div id="geogebraActivitySCORMinstructions" class="d-none mb-3">
-                            <ul class="mb-0">
-                                <li>${_('The button will only be displayed when exporting as SCORM and while editing in eXeLearning.')}</li>
-                            </ul>
-                        </div>
-                        <div id="geogebraActivityWeightDiv" class="d-none d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <label for="geogebraActivityWeight" class="mb-0">${_('Weight')} (%):</label>
-                            <input type="number" name="geogebraActivityWeight" id="geogebraActivityWeight" value="100" min="1" max="100" step="1" class="form-control" />
-                        </div>
-                        ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                     </div>
                 </fieldset>
                 ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             </div>
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath, { hideautosave: true })}
+        </div>
     `;
         this.ideviceBody.innerHTML = html;
         $('#geogebraActivityURLexample').focus(function () {
@@ -165,32 +158,15 @@ var $exeDevice = {
             let v = this.value.replace(/\D/g, '');
             this.value = Math.min(Math.max(v, 1), 100);
         });
-        $('#geogebraActivityWeight').on('keyup', function () {
-            let v = this.value.replace(/\D/g, '');
-            this.value = Math.min(Math.max(v, 1), 100);
-        });
-        $('#geogebraActivitySCORM').change(function () {
-            const $opts = $(
-                '#geogebraActivitySCORMoptions, #geogebraActivitySCORMinstructions'
-            );
-            if (this.checked) {
-                $opts.removeClass('d-none').addClass('d-flex');
-                $('#geogebraActivityWeightDiv')
-                    .removeClass('d-none')
-                    .addClass('d-flex');
-            } else {
-                $opts.addClass('d-none').removeClass('d-flex');
-                $('#geogebraActivityWeightDiv')
-                    .addClass('d-none')
-                    .removeClass('d-flex');
-            }
-        });
         $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
             return false;
         });
+        $exeDevicesEdition.iDevice.tabs.init('eXeAutoGeogebraForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.loadPreviousValues();
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
     },
 
     loadData: function (id, lurl) {
@@ -387,22 +363,23 @@ var $exeDevice = {
                 $('#geogebraActivityURL').val(this.activityURLbase + id);
             }
 
+            // Only two modes are reachable here: this activity has no end of
+            // its own, so it can only report when the learner presses the
+            // button. The class means "button"; its absence means "do not save".
+            let scormMode = 0;
+            let scormButtonText = c_('Save score');
+            let scormWeight = 100;
+
             if (div.hasClass('auto-geogebra-scorm')) {
-                $('#geogebraActivitySCORM').prop('checked', true);
+                scormMode = 2;
                 // scorm-button-text
                 let btn = $('.scorm-button-text', div);
                 if (btn.length == 1) {
                     btn = btn.html();
                     btn = btn.replace(' (', '');
                     btn = btn.slice(0, -1);
-                    $('#geogebraActivitySCORMbuttonText').val(btn);
+                    scormButtonText = btn;
                 }
-                $('#geogebraActivitySCORMoptions')
-                    .removeClass('d-none')
-                    .addClass('d-flex');
-                $('#geogebraActivitySCORMinstructions')
-                    .removeClass('d-none')
-                    .addClass('d-flex');
             }
 
             let parts = css.split(' ');
@@ -429,9 +406,7 @@ var $exeDevice = {
                         part.replace('auto-geogebra-scale-', '')
                     );
                 } else if (part.indexOf('auto-geogebra-weight-') > -1) {
-                    $('#geogebraActivityWeight').val(
-                        part.replace('auto-geogebra-weight-', '')
-                    );
+                    scormWeight = part.replace('auto-geogebra-weight-', '');
                 } else if (part.indexOf('auto-geogebra-evaluation-id-') > -1) {
                     let evid = part.replace('auto-geogebra-evaluation-id-', '');
                     if (evid != '0') {
@@ -439,6 +414,15 @@ var $exeDevice = {
                             { evaluation: true, evaluationID: evid }
                         );
                     }
+                } else if (part.indexOf($exeDevice.passScoreClass) > -1) {
+                    // Only written when the author customised the mark, so
+                    // finding the class IS the custom mode. Content saved
+                    // before this option existed has no class and stays global,
+                    // which is what setValues() defaults to.
+                    $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+                        passScoreMode: 'custom',
+                        passScoreCustom: part.replace($exeDevice.passScoreClass, ''),
+                    });
                 } else if (part.indexOf('auto-geogebra-ideviceid-') > -1) {
                     $exeDevice.ideviceID = part.replace(
                         'auto-geogebra-ideviceid-',
@@ -457,15 +441,12 @@ var $exeDevice = {
                 }
             }
 
-            if ($('#geogebraActivitySCORM').is(':checked')) {
-                $('#geogebraActivityWeightDiv')
-                    .removeClass('d-none')
-                    .addClass('d-flex');
-            } else {
-                $('#geogebraActivityWeightDiv')
-                    .removeClass('d-flex')
-                    .addClass('d-none');
-            }
+            $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+                scormMode,
+                scormButtonText,
+                true,
+                scormWeight
+            );
 
             // Instructions
             const instructions = $('.auto-geogebra-instructions', wrapper);
@@ -527,6 +508,8 @@ var $exeDevice = {
         if (!progressBar) return false;
         const evaluation = progressBar.evaluation;
         const evaluationID = evaluation ? progressBar.evaluationID : '0';
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
 
         let divContent = '';
         // Instructions
@@ -549,8 +532,9 @@ var $exeDevice = {
             ')</a></p>';
         let css = 'auto-geogebra auto-geogebra-' + url;
 
-        if (document.getElementById('geogebraActivitySCORM').checked) {
-            let buttonText = $('#geogebraActivitySCORMbuttonText').val();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        if (scorm.isScorm > 0) {
+            let buttonText = scorm.textButtonScorm;
             if (buttonText == '') {
                 eXe.app.alert(_('Please write the button text.'));
                 return false;
@@ -589,11 +573,16 @@ var $exeDevice = {
             }
         }
         let scl = $('#geogebraActivityScale').val();
-        let weight = $('#geogebraActivityWeight').val();
+        let weight = scorm.weighted || 100;
         css += ' auto-geogebra-scale-' + scl;
         css += ' auto-geogebra-evaluation-id-' + evaluationID;
         css += ' auto-geogebra-ideviceid-' + ideviceID;
         css += ' auto-geogebra-weight-' + weight;
+        // Absence means "follow the project", so nothing is written for the
+        // global mode -- that is what keeps an activity inheriting live.
+        if (passScore.passScoreMode === 'custom') {
+            css += ' ' + $exeDevice.passScoreClass + passScore.passScoreCustom;
+        }
 
         let author = $('#geogebraActivityAuthorURL').text() || '';
         let titleNode = $('#geogebraActivityTitle').find('a').first();
@@ -634,6 +623,9 @@ var $exeDevice = {
             escape(c_('Activity: Not passed. Score: %s')) +
             ',' +
             escape(c_('Save score')) +
+            ',' +
+            // Last, so content saved before it keeps its positions.
+            escape(c_('Minimum score needed to pass this activity: %s')) +
             '</div>';
         divContent +=
             '<div class="auto-geogebra-messages-scorm">' +

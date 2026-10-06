@@ -210,6 +210,117 @@ var $exe = {
         }
     },
 
+    /**
+     * Project-wide pass score: the mark out of 10 a learner has to reach for an
+     * activity to count as passed. An iDevice that does not define its own value
+     * inherits this one, and inherits it live: the value is resolved when the
+     * page runs, never copied into the saved component, so changing the project
+     * option updates every activity that has not been customised.
+     *
+     * This file runs in two places, and the accessor has to work in both:
+     * - Exported and previewed pages, which carry the value in a META tag
+     *   written by src/shared/export/renderers/PageRenderer.ts.
+     * - The editor, where the live Y.Doc is the source of truth and any META
+     *   would be stale.
+     *
+     * Mirrors src/shared/export/metadata-properties.ts -- the constants, the
+     * META name and the normalisation rule live in both and must move together.
+     */
+    passScore: {
+
+        DEFAULT: 5,
+        MIN: 0,
+        MAX: 10,
+        META_NAME: 'exe-pass-score',
+        EVERY_ACTIVITY_META_NAME: 'exe-pass-score-every-activity',
+
+        /**
+         * Whether the page requires every activity to reach its own pass mark,
+         * rather than the weighted mean of the marks. Only an exported page
+         * can say so: it decides the SCORM verdict, which the editor never
+         * computes.
+         *
+         * Mirrors getPassScoreEveryActivity() in the SCORM 1.2 runtime
+         * (exe-scorm12-policy.js), which reads the same META on its own.
+         *
+         * @returns {boolean} True only when the page declares it.
+         */
+        requiresEveryActivity: function () {
+            var meta = document.querySelector('meta[name="' + $exe.passScore.EVERY_ACTIVITY_META_NAME + '"]');
+            return !!meta && meta.getAttribute("content") === "true";
+        },
+
+        /**
+         * Clamp a value into the 0-10 one-decimal domain.
+         *
+         * Anything that is not a finite number resolves to the default rather
+         * than to 0, because 0 legitimately means "any mark passes" and has to
+         * stay distinguishable from "not set".
+         *
+         * @param {*} value Raw value from a META tag, the Y.Doc or a form.
+         * @returns {number} A number in [0, 10] with at most one decimal.
+         */
+        normalize: function (value) {
+            var parsed = typeof value == "number" ? value : parseFloat(value);
+            if (!isFinite(parsed)) return $exe.passScore.DEFAULT;
+            var clamped = Math.min($exe.passScore.MAX, Math.max($exe.passScore.MIN, parsed));
+            return Math.round(clamped * 10) / 10;
+        },
+
+        /**
+         * The pass score in force for the current page.
+         *
+         * @returns {number} A number in [0, 10] with at most one decimal.
+         */
+        get: function () {
+            var meta = document.querySelector('meta[name="' + $exe.passScore.META_NAME + '"]');
+            if (meta) return $exe.passScore.normalize(meta.getAttribute("content"));
+
+            // Editor: read the live document rather than any rendered copy.
+            var app = window.eXeLearning && window.eXeLearning.app;
+            var manager = app && app.project && app.project._yjsBridge
+                ? app.project._yjsBridge.getDocumentManager()
+                : null;
+            var metadata = manager && manager.getMetadata ? manager.getMetadata() : null;
+            if (metadata) return $exe.passScore.normalize(metadata.get("passScore"));
+
+            return $exe.passScore.DEFAULT;
+        },
+
+        /**
+         * The pass score in force for one iDevice.
+         *
+         * An iDevice stores only what its author chose: the mode, and the mark
+         * when they customised it. "Global" is not stored at all, so a project
+         * whose option changes moves every non-customised activity with it --
+         * this resolver is where that inheritance actually happens, and every
+         * iDevice runtime goes through it rather than repeating the condition.
+         *
+         * @param {Object} [data] The iDevice options object
+         * (`passScoreMode`, `passScoreCustom`).
+         * @returns {number} A mark in [0, 10] with at most one decimal.
+         */
+        resolve: function (data) {
+            if (data && data.passScoreMode == "custom") {
+                return $exe.passScore.normalize(data.passScoreCustom);
+            }
+            return $exe.passScore.get();
+        },
+
+        /**
+         * Convert a 0-10 pass score to the 0-100 scale the SCORM activity
+         * registry stores scores on ($exeDevices.iDevice.gamification.scorm).
+         * The conversion lives here so the two scales are never mixed by hand.
+         *
+         * @param {number} [value] Pass score; defaults to the current page's.
+         * @returns {number} The same mark on a 0-100 scale.
+         */
+        toPercent: function (value) {
+            var score = value === undefined ? $exe.passScore.get() : $exe.passScore.normalize(value);
+            return Math.round(score * 10 * 100) / 100;
+        }
+    },
+
     init: function () {
         var bod = $('body');
         this.hasMultimediaGalleries = false;
@@ -1185,8 +1296,8 @@ var $exeDevices = {
                             scorm.SetScoreMax(100);
                             scorm.SetScoreMin(0);
                         } else {
-                            scorm.set("cmi.core.score.max", "100");
-                            scorm.set("cmi.core.score.min", "0");
+                            scorm.set(scorm.version === '2004' ? 'cmi.score.max' : 'cmi.core.score.max', "100");
+                            scorm.set(scorm.version === '2004' ? 'cmi.score.min' : 'cmi.core.score.min', "0");
                         }
                     } else {
                         console.warn("La inicialización SCORM devolvió false o scorm no está definido");
@@ -1270,13 +1381,13 @@ var $exeDevices = {
                     if (typeof scormgame.SetScoreMax === 'function') {
                         scormgame.SetScoreMax(100);
                     } else if (typeof scormgame.set === 'function') {
-                        scormgame.set('cmi.core.score.max', '100');
+                        scormgame.set(scormgame.version === '2004' ? 'cmi.score.max' : 'cmi.core.score.max', '100');
                     }
 
                     if (typeof scormgame.SetScoreMin === 'function') {
                         scormgame.SetScoreMin(0);
                     } else if (typeof scormgame.set === 'function') {
-                        scormgame.set('cmi.core.score.min', '0');
+                        scormgame.set(scormgame.version === '2004' ? 'cmi.score.min' : 'cmi.core.score.min', '0');
                     }
 
                     return {
@@ -1314,7 +1425,7 @@ var $exeDevices = {
                         return 0;
                     }
 
-                    const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
+                    const rawScore = pipwerks.SCORM.get(pipwerks.SCORM.version === '2004' ? 'cmi.score.raw' : 'cmi.core.score.raw');
                     return parseFloat(rawScore) || 0;
                 },
 
@@ -1396,6 +1507,12 @@ var $exeDevices = {
                                 weight: Number.isNaN(weight) || weight <= 0 ? 100 : weight,
                                 minimumScore: 0,
                                 maximumScore: 100,
+                                // This activity's own pass mark, the project's
+                                // unless its author customised it. The page is
+                                // judged by the weighted mean of these, so an
+                                // iDevice alone on its page passes in the LMS
+                                // exactly when it passes on screen.
+                                successThreshold: $exeDevices.iDevice.gamification.scorm.getSuccessThreshold(game),
                             },
                             progress || {}
                         )
@@ -1473,7 +1590,7 @@ var $exeDevices = {
                     let initialScore = 0;
                     
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
-                        const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
+                        const rawScore = pipwerks.SCORM.get(pipwerks.SCORM.version === '2004' ? 'cmi.score.raw' : 'cmi.core.score.raw');
                         if (rawScore && rawScore !== "" && rawScore !== "0") {
                             initialScore = parseFloat(rawScore) || 0;
                         } else {
@@ -1495,9 +1612,15 @@ var $exeDevices = {
                         }
                     }
 
+                    // The page's minimum score sits before the score itself, on
+                    // the same 0-100 scale; showPagePassScore() fills it in.
+                    const passScoreLabelHtml =
+                        '<div id="eXeScoreNodePassScore" class="border border-success text-success d-inline-block px-2 py-1 me-2 d-none"></div>';
+
                     if ($exeScoreNode.length === 0) {
                         const newScoreNodeHtml = `
                                     <div id="exeScoreNode" class="text-end p-2">
+                                        ${passScoreLabelHtml}
                                         <div id="eXeScoreNodeScore" class="bg-success text-white d-inline-block px-2 py-1">
                                             ${game.msgs.msgYouScore}: ${initialScore}/100
                                         </div>
@@ -1515,7 +1638,11 @@ var $exeDevices = {
                         }
                     } else {
                         $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${initialScore}/100`);
+                        if ($("#eXeScoreNodePassScore").length === 0) {
+                            $("#eXeScoreNodeScore").before(passScoreLabelHtml);
+                        }
                     }
+                    $exeDevices.iDevice.gamification.scorm.showPagePassScore();
                 },
 
                 updateScormNew: function (game, lmsData) {
@@ -1595,31 +1722,296 @@ var $exeDevices = {
                     if (keys.length === 0) {
                         return 0;
                     }
-                    function clamp(num, min, max) {
-                        return Math.max(min, Math.min(num, max));
-                    }
 
                     let sumWeights = 0;
                     let sumWeighted = 0;
                     keys.forEach(key => {
                         const activity = lmsData[key] || {};
-                        const score = clamp(parseFloat(activity.score) || 0, 0, 100);
-                        // Same rule as reportActivity: no usable weight is 100,
-                        // not 1. The two aggregations must stay arithmetically
-                        // identical, so their defaults cannot differ either.
-                        const storedWeight = parseFloat(activity.weighted);
-                        const weight = clamp(
-                            Number.isNaN(storedWeight) || storedWeight <= 0 ? 100 : storedWeight,
-                            1,
-                            100
-                        );
+                        const score = Math.max(0, Math.min(parseFloat(activity.score) || 0, 100));
+                        const weight = $exeDevices.iDevice.gamification.scorm.getLegacyWeight(activity);
                         sumWeighted += score * weight;
                         sumWeights += weight;
                     });
 
-                    // clamp() forces every weight to at least 1, so the sum of
-                    // one or more of them is never zero.
+                    // getLegacyWeight() is at least 1, so the sum of one or
+                    // more weights is never zero.
                     return Math.round((sumWeighted / sumWeights) * 100) / 100;
+                },
+
+                /**
+                 * The weight of one legacy suspend_data entry, clamped into
+                 * 1-100. Same rule as reportActivity: no usable weight is 100,
+                 * not 1. The aggregations must stay arithmetically identical
+                 * to the registry's, so their defaults cannot differ either.
+                 *
+                 * @param {Object} activity A parseSuspendData() entry.
+                 * @returns {number} A weight in 1-100.
+                 */
+                getLegacyWeight: function (activity) {
+                    const storedWeight = parseFloat(activity.weighted);
+                    const weight = Number.isNaN(storedWeight) || storedWeight <= 0 ? 100 : storedWeight;
+                    return Math.max(1, Math.min(weight, 100));
+                },
+
+                /**
+                 * One activity's pass mark on the 0-100 scale its score is
+                 * reported on: the project's, or its own when its author
+                 * customised it.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @returns {number} A percentage in 0-100.
+                 */
+                getSuccessThreshold: function (game) {
+                    return $exe.passScore.toPercent($exe.passScore.resolve(game));
+                },
+
+                /** Pass mark by page position, for the legacy runtimes (see getFinalThreshold). */
+                _successThresholdsByNumber: {},
+
+                /**
+                 * The page's pass mark for the runtimes that have no registry
+                 * (SCORM 2004): the weighted mean of the activities' own marks,
+                 * over the same entries and with the same weights as
+                 * getFinalScore(), so it must stay arithmetically identical to
+                 * aggregateSuccessThreshold() in exe-scorm12-activities.js. An
+                 * entry whose activity has not registered on this page load
+                 * counts at the project's mark.
+                 *
+                 * @param {Object} lmsData Activities by page position.
+                 * @returns {number} A percentage in 0-100.
+                 */
+                getFinalThreshold: function (lmsData) {
+                    const pageThreshold = $exe.passScore.toPercent();
+                    const keys = lmsData ? Object.keys(lmsData) : [];
+                    if (keys.length === 0) {
+                        return pageThreshold;
+                    }
+                    const thresholds = $exeDevices.iDevice.gamification.scorm._successThresholdsByNumber;
+
+                    let sumWeights = 0;
+                    let sumWeighted = 0;
+                    keys.forEach(key => {
+                        const own = thresholds[key];
+                        const threshold = typeof own === 'number' ? own : pageThreshold;
+                        const weight = $exeDevices.iDevice.gamification.scorm.getLegacyWeight(lmsData[key] || {});
+                        sumWeighted += threshold * weight;
+                        sumWeights += weight;
+                    });
+
+                    return Math.round((sumWeighted / sumWeights) * 100) / 100;
+                },
+
+                /**
+                 * Progress of an activity in the legacy suspend_data, stored
+                 * in its `state`: registered with no score yet, scored but not
+                 * finished, or finished (see convertToLineFormat).
+                 */
+                ACTIVITY_PENDING: 0,
+                ACTIVITY_SCORED: 1,
+                ACTIVITY_FINISHED: 2,
+
+                /**
+                 * An entry's progress. Entries written before the state was
+                 * stored have none: a positive score shows the activity was
+                 * played, so it counts as finished, while a 0 cannot be told
+                 * apart from the one registerActivity() seeds and stays pending.
+                 *
+                 * @param {Object} [entry] One activity of the parsed suspend_data.
+                 * @returns {number} One of the ACTIVITY_* states.
+                 */
+                getActivityState: function (entry) {
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    if (!entry) return scorm.ACTIVITY_PENDING;
+                    if ([scorm.ACTIVITY_PENDING, scorm.ACTIVITY_SCORED, scorm.ACTIVITY_FINISHED].includes(entry.state)) {
+                        return entry.state;
+                    }
+                    return parseFloat(entry.score) > 0 ? scorm.ACTIVITY_FINISHED : scorm.ACTIVITY_PENDING;
+                },
+
+                /**
+                 * The page's status for the runtimes that have no registry
+                 * (SCORM 2004), keeping apart the three things the SCORM 1.2
+                 * policy keeps apart: whether there is a score, whether the
+                 * activities are finished, and whether the page is passed.
+                 *
+                 * The page is incomplete while an activity has not finished,
+                 * whatever its score, so a page opened and left is not reported
+                 * as completed. Once all of them have, it is passed by the
+                 * weighted mean of decision 3 of ADR-2316-01, or, when the
+                 * author requires it, only if every activity reaches its own
+                 * mark: the same comparison as unmetThresholds() in the
+                 * registry, rounded to two decimals. A threshold the LMS
+                 * publishes (getLmsPassingScore) judges the page's score
+                 * instead, under either rule.
+                 *
+                 * The activities judged are the ones registered on this page
+                 * load, plus any entry that carries a state: the runtime only
+                 * writes one for an activity it tracks, so it is pending work
+                 * whose iDevice has not registered yet. A stateless entry that
+                 * did not register is a leftover from an older runtime, which
+                 * seeded every registered iDevice, and does not hold the page
+                 * back. An activity cannot report without registering: its page
+                 * position comes from registerActivity(). Until every activity
+                 * has registered, one still missing counts at the project's
+                 * mark (getFinalThreshold), so the verdict is provisional while
+                 * the page loads; ADR-2316-01 accepts that risk.
+                 *
+                 * @param {Object} lmsData Activities by page position.
+                 * @returns {{completion: string, success: string, scored: boolean}|null}
+                 *   The SCORM 2004 completion and success statuses, and whether
+                 *   any activity has a score to publish; null with no activities.
+                 */
+                getLegacyVerdict: function (lmsData) {
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    const data = lmsData || {};
+                    const thresholds = scorm._successThresholdsByNumber;
+                    const numbers = Object.keys(thresholds);
+                    Object.keys(data).forEach(key => {
+                        if (numbers.indexOf(key) === -1 && typeof data[key].state === 'number') numbers.push(key);
+                    });
+                    if (numbers.length === 0) {
+                        return null;
+                    }
+                    const scored = Object.keys(data).some(key => scorm.getActivityState(data[key]) !== scorm.ACTIVITY_PENDING);
+                    if (numbers.some(key => scorm.getActivityState(data[key]) !== scorm.ACTIVITY_FINISHED)) {
+                        return { completion: 'incomplete', success: 'unknown', scored: scored };
+                    }
+                    let passed;
+                    const lmsThreshold = scorm.getLmsPassingScore();
+                    if (lmsThreshold !== null) {
+                        // The LMS wins, as mastery_score does in SCORM 1.2:
+                        // its threshold is for the page's score.
+                        passed = scorm.getFinalScore(data) >= lmsThreshold;
+                    } else if ($exe.passScore.requiresEveryActivity()) {
+                        const pageThreshold = $exe.passScore.toPercent();
+                        passed = numbers.every(key => {
+                            const score = Math.max(0, Math.min(parseFloat(data[key].score) || 0, 100));
+                            const own = thresholds[key];
+                            const threshold = typeof own === 'number' ? own : pageThreshold;
+                            return Math.round(score * 100) / 100 >= Math.round(threshold * 100) / 100;
+                        });
+                    } else {
+                        passed = scorm.getFinalScore(data) >= scorm.getFinalThreshold(data);
+                    }
+                    return { completion: 'completed', success: passed ? 'passed' : 'failed', scored: scored };
+                },
+
+                /**
+                 * Write a getLegacyVerdict() result with the connected LMS's
+                 * data model. SCORM 1.2 has a single element for both.
+                 *
+                 * @param {{completion: string, success: string}} verdict
+                 */
+                setLegacyStatus: function (verdict) {
+                    if (pipwerks.SCORM.version === '2004') {
+                        pipwerks.SCORM.set('cmi.completion_status', verdict.completion);
+                        pipwerks.SCORM.set('cmi.success_status', verdict.success);
+                    } else {
+                        pipwerks.SCORM.set(
+                            'cmi.core.lesson_status',
+                            verdict.completion === 'incomplete' ? 'incomplete' : verdict.success
+                        );
+                    }
+                },
+
+                /**
+                 * The pass mark the LMS sets for this SCO on the legacy path:
+                 * SCORM 2004's cmi.scaled_passing_score (-1 to 1), as a
+                 * percentage. The SCORM 1.2 runtime reads mastery_score in its
+                 * own policy.
+                 *
+                 * cmi.score.scaled is not written alongside, on purpose: with
+                 * both set, the LMS works out success_status by itself when the
+                 * session ends, and would mark failed a page still incomplete.
+                 * The verdict here compares the same score with the same mark.
+                 *
+                 * @returns {number|null} A percentage in 0-100, or null when the
+                 *   LMS sets none.
+                 */
+                getLmsPassingScore: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || pipwerks.SCORM.version !== '2004') {
+                        return null;
+                    }
+                    let value;
+                    try {
+                        value = pipwerks.SCORM.get('cmi.scaled_passing_score');
+                    } catch (e) {
+                        return null;
+                    }
+                    if (value === null || value === undefined || String(value).trim() === '') return null;
+                    const scaled = parseFloat(value);
+                    if (!Number.isFinite(scaled) || scaled < -1 || scaled > 1) return null;
+                    // Every decimal the element can hold (real(10,7), so five
+                    // as a percentage) is kept: rounding it to two would let a
+                    // score of 45 pass a mark of 45.004. Rounding at that
+                    // precision only drops floating-point noise (0.56 * 100).
+                    return Math.round(Math.max(0, scaled) * 1e7) / 1e5;
+                },
+
+                /**
+                 * How the page is passed, for the label beside its score: every
+                 * activity at its own mark, or the page's score against a
+                 * threshold. It asks whatever decides the status, so the two
+                 * agree: the SCORM 1.2 policy, or getLegacyVerdict().
+                 *
+                 * @param {Object} [lmsData] Activities by page position (legacy
+                 *   path); read from cmi.suspend_data when not given.
+                 * @returns {{everyActivity: boolean, threshold: number|null}|null}
+                 *   The threshold is a percentage in 0-100; null when nothing
+                 *   decides a pass here.
+                 */
+                getPagePassRule: function (lmsData) {
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
+                    const policy = runtime && runtime.policy;
+                    if (policy && typeof policy.setScoreDetailed === 'function') {
+                        if (typeof policy.getPassRule === 'function') return policy.getPassRule();
+                        // A host runtime from before getPassRule().
+                        if (typeof policy.getSuccessThreshold === 'function') {
+                            return { everyActivity: false, threshold: policy.getSuccessThreshold() };
+                        }
+                        return null;
+                    }
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) return null;
+                    const lmsThreshold = scorm.getLmsPassingScore();
+                    if (lmsThreshold !== null) return { everyActivity: false, threshold: lmsThreshold };
+                    if ($exe.passScore.requiresEveryActivity()) return { everyActivity: true, threshold: null };
+                    const data = lmsData || scorm.parseSuspendData(pipwerks.SCORM.get('cmi.suspend_data') || '');
+                    return { everyActivity: false, threshold: scorm.getFinalThreshold(data) };
+                },
+
+                /**
+                 * Write the page's minimum score into the label beside its
+                 * score (createScoreScormHtml), on the same 0-100 scale, or say
+                 * that each activity must reach its own. Hidden when nothing
+                 * decides a pass, or when the page carries no text for it
+                 * ($exe_i18n, as the iDevices' own notice).
+                 *
+                 * @param {Object} [lmsData] See getPagePassRule().
+                 */
+                showPagePassScore: function (lmsData) {
+                    const $label = $('#eXeScoreNodePassScore');
+                    if ($label.length === 0) return;
+                    const rule = $exeDevices.iDevice.gamification.scorm.getPagePassRule(lmsData);
+                    const i18n = typeof $exe_i18n !== 'undefined' && $exe_i18n ? $exe_i18n : {};
+                    let text = '';
+                    if (rule && rule.everyActivity) {
+                        text = i18n.pagePassEveryActivity || '';
+                    } else if (rule && typeof rule.threshold === 'number' && Number.isFinite(rule.threshold)) {
+                        // Scores are kept to two decimals, so the lowest one
+                        // that passes is the threshold rounded up, never down:
+                        // 45.000001 shows as 45.01, not as a 45 that fails.
+                        // Compare a candidate with the full threshold instead
+                        // of truncating its decimals. The comparison also
+                        // absorbs floating-point noise in the scaling: 0.07 *
+                        // 100 is 7.000000000000001, which a plain ceil would
+                        // show as 0.08.
+                        const hundredths = Math.floor(rule.threshold * 100);
+                        const candidate = hundredths / 100;
+                        const minimum = candidate >= rule.threshold ? candidate : (hundredths + 1) / 100;
+                        text = (i18n.pagePassScore || '').replace('%s', `${minimum}/100`);
+                    }
+                    $label.text(text).toggleClass('d-none', text === '');
                 },
 
                 registerActivity: function (game) {
@@ -1669,6 +2061,17 @@ var $exeDevices = {
                         } else {
                             // Legacy runtime (SCORM 2004 packages and packages
                             // exported before the SCORM 1.2 runtime rewrite).
+                            // Its suspend_data identifies activities by page
+                            // position, so that is how getFinalThreshold()
+                            // finds this activity's mark. Only an activity
+                            // that sends a score is tracked, as the registry
+                            // tracks only evaluable ones: another would keep
+                            // the page pending for ever (getLegacyVerdict).
+                            const evaluable = Number(game.isScorm) > 0;
+                            if (evaluable) {
+                                $exeDevices.iDevice.gamification.scorm._successThresholdsByNumber[game.ideviceNumber] =
+                                    $exeDevices.iDevice.gamification.scorm.getSuccessThreshold(game);
+                            }
                             let suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
 
                             lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
@@ -1680,11 +2083,12 @@ var $exeDevices = {
                                 if (totalScore > 0) {
                                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
                                 }
-                            } else {
+                            } else if (evaluable) {
                                 lmsData[game.ideviceNumber] = {
                                     title: game.title,
                                     score: 0,
-                                    weighted: game.weighted
+                                    weighted: game.weighted,
+                                    state: $exeDevices.iDevice.gamification.scorm.ACTIVITY_PENDING
                                 };
 
                                 const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
@@ -1697,7 +2101,7 @@ var $exeDevices = {
                 },
 
                 convertToLineFormat: function (obj, game) {
-                    return Object.keys(obj).map(key => {
+                    const lines = Object.keys(obj).map(key => {
                         const item = obj[key];
                         const num = parseInt(key, 10);
                         const title = item.title || "";
@@ -1707,7 +2111,15 @@ var $exeDevices = {
                         const msgWeight = game.msgs.msgWeight ?? "Peso";
 
                         return `${num}. "${title}"; ${msgScore}: ${score}%; ${msgWeight}: ${weight}%`;
-                    }).join('.\t');
+                    });
+                    // A separate, versioned line leaves every score line readable
+                    // by older runtimes, whose parser ignores unknown lines. An
+                    // entry without a state keeps none: rewriting an old
+                    // payload must not make up its history (getActivityState).
+                    const states = Object.keys(obj).filter(key => typeof obj[key].state === 'number')
+                        .map(key => `${parseInt(key, 10)}=${obj[key].state}`);
+                    if (states.length) lines.push(`exe-state/1:${states.join(',')}`);
+                    return lines.join('.\t');
                 },
 
                 parseActivity: function (line) {
@@ -1749,6 +2161,15 @@ var $exeDevices = {
                                 weighted: parseFloat(weighted)
                             };
                         }
+                    });
+
+                    lines.forEach(line => {
+                        const match = /^exe-state\/1:([\d=,]+)$/.exec(line.trim());
+                        if (!match) return;
+                        match[1].split(',').forEach(item => {
+                            const entry = /^(\d+)=([0-2])$/.exec(item);
+                            if (entry && obj[entry[1]]) obj[entry[1]].state = parseInt(entry[2], 10);
+                        });
                     });
 
                     return obj;
@@ -2010,7 +2431,7 @@ var $exeDevices = {
                 readLessonStatus: function () {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) return '';
                     try {
-                        return pipwerks.SCORM.get('cmi.core.lesson_status') || '';
+                        return pipwerks.SCORM.get(pipwerks.SCORM.version === '2004' ? 'cmi.success_status' : 'cmi.core.lesson_status') || '';
                     } catch (e) {
                         return '';
                     }
@@ -2098,12 +2519,16 @@ var $exeDevices = {
 
                     // Legacy runtime (SCORM 2004 packages and packages
                     // exported before the SCORM 1.2 runtime rewrite).
-                    const updatedData = {
+                    // The latest report decides the state, as in the registry:
+                    // a replay that reports `completed: false` reopens the page
+                    // until the activity is finished again.
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    lmsData[game.ideviceNumber] = {
                         title: game.title,
                         score: game.scorerp * 10,
-                        weighted: game.weighted
+                        weighted: game.weighted,
+                        state: completed === true ? scorm.ACTIVITY_FINISHED : scorm.ACTIVITY_SCORED
                     };
-                    lmsData[game.ideviceNumber] = updatedData;
 
                     const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
 
@@ -2205,15 +2630,42 @@ var $exeDevices = {
                     } else {
                         // Legacy runtime (SCORM 2004 packages and packages
                         // exported before the SCORM 1.2 runtime rewrite).
-                        pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                        if (newFinalScore >= 50) {
-                            pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
-                        } else {
-                            pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
+                        //
+                        // The threshold was a hard-coded 50. It is now the
+                        // weighted mean of the activities' own pass marks, the
+                        // same rule the SCORM 1.2 policy applies; a project
+                        // that never touches the option publishes 5, which is
+                        // 50, so nothing changes for content that does not use
+                        // the feature. There is no policy layer here to consult
+                        // mastery_score, so this path applies the author's
+                        // marks directly.
+                        //
+                        // The author may instead require every activity to
+                        // reach its own mark. Either way the page is judged
+                        // only once its activities are finished, as the SCORM
+                        // 1.2 policy does (getLegacyVerdict). This also runs
+                        // when an iDevice registers, so a page opened and left
+                        // reports incomplete, never completed.
+                        //
+                        // No score is published before any activity has one:
+                        // a 0 would read as "scored zero", the case the SCORM
+                        // 1.2 branch above guards against as well.
+                        const scorm = $exeDevices.iDevice.gamification.scorm;
+                        const verdict = scorm.getLegacyVerdict(lmsData);
+                        if (verdict && verdict.scored) {
+                            pipwerks.SCORM.set(pipwerks.SCORM.version === '2004' ? 'cmi.score.raw' : 'cmi.core.score.raw', newFinalScore);
+                        }
+                        if (verdict) {
+                            scorm.setLegacyStatus(verdict);
                         }
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
+                    // Each registration may change the activities' marks, and
+                    // so the page's minimum score.
+                    $exeDevices.iDevice.gamification.scorm.showPagePassScore(
+                        $exeDevices.iDevice.gamification.scorm.getActivityRegistry() ? undefined : lmsData
+                    );
 
                 },
             },
@@ -2392,6 +2844,15 @@ var $exeDevices = {
                         // count of zero also produces.
                         const rawScore = parseFloat(game.scorerp);
                         const score = Number.isFinite(rawScore) ? rawScore : 0;
+                        // The pass mark used to be a hard-coded 5 here. It is
+                        // now the project's, or this iDevice's own when its
+                        // author customised it -- resolved per activity, on the
+                        // same 0-10 scale every iDevice computes scorerp on.
+                        // This single comparison decides both the report state
+                        // and the message the learner reads, because
+                        // showEvaluationIcon picks msgSuccessfulActivity or
+                        // msgUnsuccessfulActivity from it.
+                        const passMark = $exe.passScore.resolve(game);
                         const name = $exeDevices.iDevice.gamification.report.getNameIdevice($main),
                             formattedDate = $exeDevices.iDevice.gamification.report.getDateString(),
                             scorm = {
@@ -2400,7 +2861,7 @@ var $exeDevices = {
                                 'name': name,
                                 'score': score,
                                 'date': formattedDate,
-                                'state': (parseFloat(score) >= 5 ? 2 : 1),
+                                'state': (score >= passMark ? 2 : 1),
                                 'page': $exeDevices.iDevice.gamification.report.getNodeIdevice()
                             },
                             data = $exeDevices.iDevice.gamification.report.updateEvaluation($exeDevices.iDevice.gamification.report.getDataStorage(game.evaluationID), scorm, game.id);
@@ -2410,6 +2871,72 @@ var $exeDevices = {
                         const event = new CustomEvent('gamification-evaluation-saved', { detail: { evaluationID: game.evaluationID, ideviceId: game.id, ideviceType: game.idevice, score: scorm.score, state: scorm.state } });
                         window.dispatchEvent(event);
                     }
+                },
+
+                /**
+                 * Tell the learner the mark this activity is passed at, when it
+                 * is not the 5 they take for granted.
+                 *
+                 * Only while something judges the mark: SCORM saving, or the
+                 * progress report under the same condition saveEvaluation()
+                 * applies. The mark is the one resolve() gives that verdict, and
+                 * it is shown as stored, so 7.5 reads 7.5. Placed right before
+                 * the iDevice's main container, which is below its instructions.
+                 *
+                 * The text is the iDevice's own custom text, editable in its
+                 * Custom texts tab. An iDevice saved before that text existed
+                 * has none, and gets the default the page carries in the
+                 * content's language.
+                 *
+                 * An iDevice whose instructions live inside its main container
+                 * names the element that follows them instead, so the notice
+                 * still sits below the instructions and above the activity.
+                 *
+                 * Idempotent: an iDevice that rebuilds its interface gets one
+                 * notice, and one whose mark became 5 loses it.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @param {string|Element|jQuery} [before] The element to place the
+                 *   notice before; the main container when absent or not found.
+                 * @returns {jQuery|null} The notice, or null when none is shown.
+                 */
+                showPassScoreNotice: function (game, before) {
+                    if (typeof game !== 'object' || game === null || !game.main) return null;
+                    const $main = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
+                    if ($main.length === 0) return null;
+                    const $before = before ? $(before).eq(0) : $();
+                    const $anchor = $before.length ? $before : $main;
+                    $anchor.prev('.exe-pass-score-notice').remove();
+
+                    // Keep the options on the live anchor, including at 5 when
+                    // there is no notice yet. Removed activities then need no
+                    // registry cleanup, and an internal anchor keeps its place.
+                    $anchor.attr('data-exe-pass-score-anchor', '').data('exePassScoreGame', game);
+
+                    const reportActive = !!game.evaluation && typeof game.evaluationID === 'string' && game.evaluationID.length > 0;
+                    if (!(Number(game.isScorm) > 0) && !reportActive) return null;
+                    const mark = $exe.passScore.resolve(game);
+                    if (mark === 5) return null;
+
+                    const custom = game.msgs && game.msgs.msgPassScore;
+                    const fallback = typeof $exe_i18n !== 'undefined' && $exe_i18n ? $exe_i18n.passScoreNotice : '';
+                    const template = custom || fallback;
+                    if (!template) return null;
+
+                    const $notice = $('<p class="exe-pass-score-notice text-danger text-center"></p>')
+                        .text(template.replace('%s', String(mark)));
+                    $anchor.before($notice);
+                    return $notice;
+                },
+
+                /** Refresh inherited marks without rebuilding activities or sending scores. */
+                refreshPassScoreNotices: function () {
+                    $('[data-exe-pass-score-anchor]').each(function () {
+                        const game = $(this).data('exePassScoreGame');
+                        if (game && game.passScoreMode !== 'custom') {
+                            $exeDevices.iDevice.gamification.report.showPassScoreNotice(game, this);
+                        }
+                    });
                 },
 
                 getDataStorage: function (id) {

@@ -1,0 +1,651 @@
+---
+id: ADR-2316-01
+title: "Minimum score to pass an activity, resolved at runtime"
+status: Proposed
+date: 2026-09-16
+tracking_issue: 2316
+deciders:
+  - "@mnarvaezm"
+reviewers: []
+related:
+  prs: []
+  changes: []
+  adrs:
+    - ADR-2209-01
+    - ADR-2209-02
+supersedes: []
+superseded_by: []
+ai_assistance:
+  tool: "Claude Code"
+  model: "Claude Opus 5"
+---
+
+# ADR-2316-01: Minimum score to pass an activity, resolved at runtime
+
+## Context
+
+Until this change eXeLearning had no shared notion of what "passing" an activity
+meant. Three unrelated places decided it, each with its own hand-written number:
+
+- `public/app/common/common.js`, `report.saveEvaluation()` compared the mark
+  against a literal `5` on the 0-10 scale every iDevice computes `scorerp` on.
+  That single comparison also selected the message the learner reads, because
+  `showEvaluationIcon()` derives `msgSuccessfulActivity` /
+  `msgUnsuccessfulActivity` from the state it stores.
+- The SCORM 1.2 runtime policy used `DEFAULT_SUCCESS_THRESHOLD = 50`, a
+  percentage of the page aggregate
+  (`public/app/common/scorm/scorm12/exe-scorm12-policy.js:86`).
+- The legacy path (SCORM 2004 and packages exported before the SCORM 1.2 runtime
+  rewrite) compared the aggregate against a literal `50` in `showFinalScore()`.
+
+Some iDevices had grown their own answer as well. `form` shipped a pass-rate
+dropdown **the runtime never read** — it judged everyone at a hardcoded 50 %
+while `$form.passRate` stayed `''` for the life of the page. `rubric` grades
+internally on its own 0..maximum scale, and was also the one scoring iDevice that
+never registered in the progress report at all.
+
+Authors asked for one configurable threshold. What this ADR settles is not
+whether to add the option, but **where the value lives once it exists**, and what
+shape the code that consumes it takes.
+
+## Problem
+
+An authoring tool writes content once and that content is played many times,
+often long after the project was last opened. When a project-wide setting governs
+per-activity behaviour, the value can either be **copied into every activity when
+it is saved** or **resolved when the activity runs**. The two are
+indistinguishable on the day the content is written and diverge permanently
+afterwards.
+
+## Decision drivers
+
+- **Authoring intent.** An author who never customises an activity expects it to
+  follow the project, including after they change the project.
+- **Reach of a correction.** A threshold set wrongly across a 200-page course
+  must be fixable in one place, not in 200 activities.
+- **Already-published content.** Nothing may change how an existing package
+  grades while the feature is present but unused.
+- **File-format cost.** Every key added to `<odeProperties>` and to each
+  iDevice's stored data is a key the importer, the exporter and every future
+  reader must keep honouring.
+- **Number of iDevices.** Anything an iDevice has to remember to do is something
+  35 of them can get wrong, and that a 36th will not know about.
+- **LMS authority.** A teacher configuring an activity inside Moodle is more
+  specific than an author configuring content months earlier.
+
+## Options considered
+
+### Option 1: copy the project value into each iDevice on save
+
+The edition form prefills with the project value and stores it in the iDevice's
+own data. The runtime reads only what the iDevice carries.
+
+Pros: no new channel between the project and the exported page; the stored value
+is self-describing; plainly inspectable in `content.xml`.
+
+Cons: the project option degenerates into a default for *new* activities.
+Changing it later leaves every existing one on the old mark, silently and
+invisibly — the author cannot tell which activities followed the project and
+which were customised, because once stored they are identical.
+
+### Option 2: resolve the project value when the activity runs
+
+An iDevice stores only the author's choice. "Follow the project" stores nothing;
+the page publishes the value and the runtime resolves it on load.
+
+Pros: inheritance stays live for the life of the content; one correction reaches
+every non-customised activity; "not customised" is representable as the absence
+of data, so old content reads correctly without migration.
+
+Cons: needs a channel from the project to the exported page, which did not exist.
+
+### Option 3: resolve at runtime, but let each iDevice re-implement the rule
+
+Pros: maximum per-iDevice freedom; no shared code to agree on.
+
+Cons: 35 copies of one condition, which is exactly how `form` ended up with a
+control the runtime ignored.
+
+## Evidence
+
+- The SCORM page aggregate is a weighted mean, not a per-activity verdict:
+  `aggregateScore()` computes `sum(normalizedScore * weight) / sum(weights)` in
+  `public/app/common/scorm/scorm12/exe-scorm12-activities.js`. A page verdict
+  that respects each activity's own mark has to aggregate the marks the same
+  way, or the page and its activities answer different questions.
+- Judging the page by the project mark alone contradicted the activities in a
+  real LMS. In Moodle, with the project left at 5, a crossword customised to 7
+  scoring 66.7 was marked passed and one customised to 3 scoring 33.3 failed,
+  while each iDevice's own report said the opposite. Reproduced with the
+  exported package against a Moodle-like API: `$exe.passScore.resolve()` gave 7
+  and 3, and the policy judged both at 50.
+- Keeping the mark out of `cmi.suspend_data` broke restarting a resumed
+  activity. Traced in the exported crossword: `initGame()` opens the session,
+  so `applyEntryPolicy()` runs over an empty registry and the restored record,
+  judged by the page's 50, derived `failed` for a stored `passed` reached at 3.
+  The stored verdict was not recognised as the policy's own, and replaying the
+  activity left `passed` next to a 0, with `cmi.core.exit` still `""`. The
+  weight never had this problem because it is stored with the record.
+- `minimumScore` in the activity registry is **not** a threshold:
+  `normalizedScore()` computes
+  `((score - minimumScore) / (maximumScore - minimumScore)) * 100`, i.e. the lower
+  bound of the scale. Setting it to 5 would turn a raw 50 into 47.4, rescaling
+  every learner's mark instead of demanding a higher one.
+- `form` shipped a pass-mark dropdown the runtime never read: `showScore(50, data)`
+  was called with a literal and `$form.passRate` was declared `''` and never
+  assigned (`public/files/perm/idevices/base/form/export/form.js`, before this
+  change). Evidence that option 3 does not hold over time.
+- `interactive-video` carries the same scar in its `weighted` field: it read a
+  root-level key nothing ever wrote, so every activity weighed 100 whatever the
+  author chose. Evidence that a field an iDevice must remember to list is a field
+  it will eventually forget.
+- The SCORM 1.2 policy already adopted `cmi.student_data.mastery_score` when the
+  LMS publishes one (`resolveSuccessThreshold()`), which is the precedent for
+  letting the LMS override content.
+- New projects are not seeded with export options: `YjsDocumentManager`
+  initialises only title, author, language, licence, theme and dates. Defaults
+  are applied by readers, which matches option 2 and not option 1.
+- `geogebra-activity` reports through the button alone and fixes `isScorm: 2`
+  (`public/files/perm/idevices/base/geogebra-activity/export/geogebra-activity.js`),
+  so it has no moment at which to report automatically.
+- `rubric` already reports out of ten: `calculateScormScore()` divides the marks
+  by the table maximum and multiplies by ten
+  (`public/files/perm/idevices/base/rubric/export/rubric.js`). An activity that
+  converts to 0-10 to report has no reason to be configured on another scale.
+- `rubric` made no call to `gamification.report` at all before this change,
+  which is why it never appeared in a learner's progress report.
+- The weighted mean lets one activity make up for another, and that is visible
+  in a real package. A page with three scoring activities was marked `passed`
+  with its true/false activity at 0, because the other two lifted the mean of
+  the scores above the mean of the marks. Reproduced by playing the exported
+  package against a simulated SCORM 1.2 API.
+
+## Decision
+
+We adopt **option 2**. The twelve decisions below are listed in order of
+importance: the first five constrain the file format and the behaviour of
+already-published content; the rest follow from them and could be revisited
+without touching the first five.
+
+### 1. Inheritance is resolved at runtime, not copied on save
+
+An iDevice stores only the author's *choice*: follow the project, or this
+specific mark. "Follow the project" **stores nothing**. The page publishes the
+project value and the runtime resolves it on load.
+
+Direct consequence: changing the project option moves every non-customised
+activity with it, including those saved months ago. And because "not customised"
+is the absence of data, all content predating this feature reads correctly **with
+no migration at all**.
+
+### 2. The project → page channel is a META tag
+
+No channel existed: `PageRenderer` emitted no global configuration of any kind.
+Every exported and previewed page now carries:
+
+```html
+<meta name="exe-pass-score" content="5">
+```
+
+It travels as a META rather than an inline script for two verifiable reasons:
+EPUB forbids inline scripts by CSP, and the parser sees the tag before
+`libs/common.js` runs.
+
+### 3. SCORM threshold precedence: LMS > activities' marks > project > historical 50
+
+The SCORM 1.2 policy settles its threshold least specific first: the historical
+50, then the mark the page publishes, then the **weighted mean of the
+activities' own marks**, then `cmi.student_data.mastery_score` if the LMS
+publishes one. **The LMS wins on purpose**: `mastery_score` is what the teacher
+configured on the activity in their own platform, and that is more specific than
+what the author chose when building the content months earlier.
+
+Each activity declares its mark to the registry when it registers
+(`successThreshold`, the resolved 0-10 mark ×10), and the page is judged against
+the mean of those marks over the same activities and with the same weights as
+the aggregate score. An activity that declares none counts at the project mark.
+Three properties follow, and they are why this shape was chosen over requiring
+every activity to pass its own mark:
+
+- A lone activity is judged by its own mark, so the LMS and the iDevice's own
+  verdict agree on a page with one activity.
+- A page whose activities all follow the project is judged by the project's
+  mark, so content that never customises an activity grades as it did.
+- The page passes when `sum(weight × score) ≥ sum(weight × mark)`: an activity
+  above its mark can make up for one below it, exactly as its score already
+  does in the aggregate.
+
+That is the default, not the only rule: an author who needs every activity to
+pass its own mark turns on a project option (decision 11).
+
+The mean is computed on every decision rather than resolved once, because
+activities keep registering after the session opens. The mark is **stored with
+each record in `cmi.suspend_data`**, as an optional ninth field, for the same
+reason the weight already is: the entry policy recognises its own earlier
+verdict only when the restored registry derives that verdict again, and a game
+iDevice opens the session from `initGame()` before it registers. A live
+declaration still replaces the stored mark, as it does the weight. The field is
+optional and last, so the payload version does not change and an older runtime
+reads the record and ignores the mark.
+
+The first version of this decision judged the page by the project mark alone and
+left the activity's own mark to the progress report. That made the LMS and the
+activity disagree, which is the report in the Evidence above.
+
+### 4. The domain is 0-10 with one decimal, and 0 is a legitimate value
+
+The default is 5. A non-numeric value falls back to 5 and **not to 0**, because 0
+means "any mark passes" and must stay distinguishable from "not set" — a
+`parseFloat(x) || 0` would quietly turn every unset threshold into "everyone
+passes". That distinction also forced the correction of a truthiness check
+(`if (passRate)`) that hid the verdict when the threshold was 0.
+
+The default of 5 out of 10 is exactly the historical 50 %, and a package with no
+META falls back to it: **no existing content changes how it grades**.
+
+### 5. One resolver for every consumer
+
+`$exe.passScore` owns the resolution: `get()` reads the META in an exported page
+and the live Y.Doc in the editor; `resolve(data)` answers for one iDevice;
+`normalize()` enforces the domain; `toPercent()` converts to the 0-100 scale of
+the activity registry. No iDevice repeats the condition.
+
+This works because `common.js` is the same file in both worlds: loaded from
+`workarea.njk` in the editor and shipped as `libs/common.js` in the package.
+
+### 6. A single place composes the grading controls
+
+The SCORM tab becomes the **Grading** tab, and `getTab(path, options)` composes
+the three blocks that answer the same question — what counts as passing: SCORM,
+Progress report and Minimum score. Previously the pass score and the report sat
+loose in each iDevice's general options, laid out by hand, so the author had to
+look in two places.
+
+Cases that cannot offer something are expressed with composition flags
+(`passScore: false`, `hideautosave`) rather than letting each iDevice trim on its
+own. The accepted trade-off: any change to that function reaches all 35 tabs at
+once.
+
+"Grading" rather than "Evaluation" is deliberate: the iDevice menu already has an
+"Assessment and tracking" category, and the tab is narrower than either — no
+criteria, no instruments, no rubrics.
+
+### 7. Three persistence conventions coexist, unified nowhere
+
+Three shapes are in use and none needed a migration, precisely because the
+absence of data is meaningful (decision 1):
+
+| Shape | Where | How the mark is stored |
+|---|---|---|
+| Options JSON | most iDevices | `passScoreMode` and `passScoreCustom` in the stored object |
+| CSS classes | `geogebra-activity` | `auto-geogebra-pass-score-N`, written only when customised |
+| Serialised payload | `interactive-video` | fields on `activityToSave`, which is JSON-stringified |
+
+Unifying them would mean migrating every `.elp` ever saved — large, risky, and
+unrelated to the feature that was asked for.
+
+Three iDevices build their options object field by field instead of spreading the
+stored data (`geogebra-activity`, `interactive-video`, `rubric`), so in those the
+fields must be listed explicitly or they never reach the runtime. This is the
+trap the `weighted` bug above fell into.
+
+### 8. Every activity is configured on the same scale, with no exceptions
+
+`rubric` grades internally from 0 to whatever its first level adds up to, so a
+mark in its own units was considered — the author reads "Maximum score: 16" on
+screen. It was rejected, for two reasons that only became clear once the runtime
+was traced.
+
+The rubric **already reports out of ten**: `calculateScormScore()` divides by the
+maximum and multiplies by ten before sending. So the learner reads "Your score:
+6.25" out of ten while the author would have been configuring out of sixteen —
+two scales for the same thing inside one activity.
+
+And on a page with several scoring iDevices, that 6.25 enters the weighted mean
+alongside the others. With a threshold in rubric units, the author had no way to
+compare what they demanded of the rubric with what they demanded of its
+neighbours on the same page.
+
+The same argument closes the general case: an activity that grades on a scale of
+its own converts to 0-10 to report, so it can convert to 0-10 to be configured.
+
+### 9. `geogebra-activity` does not offer the automatic mode
+
+Its construction has no end of its own — the learner may keep dragging it
+forever — so there is no moment at which to report by itself. Of the three modes,
+the one it cannot honour is hidden rather than offering an option that would do
+nothing. Its former "Save score button" checkbox encoded exactly the two modes it
+can honour, so the radios replace it without losing a capability.
+
+### 10. The threshold decides passing, not completion
+
+`completed` in the activity registry still means *finished*, not *passed*. A
+failed activity is still a finished one, and conflating them would leave a
+learner who finished but did not pass with a page stuck at `incomplete`.
+
+For the same reason **`minimumScore` was left alone**: despite the name it is the
+lower bound of the scale, not a threshold (see Evidence).
+
+### 11. The author can require every activity to reach its own mark
+
+Decision 3 lets a high mark make up for a low one, and some pages must not
+allow it: a well-done crossword should not pass a page whose safety quiz was
+failed. A project option, **off by default**, changes the page verdict:
+`passScoreEveryActivity`, stored as `pp_passScoreEveryActivity`. Once every
+required activity is complete, the page passes only when each evaluable activity
+reaches its own mark, or the project mark if it declares none. Both sides are
+rounded to two decimals, as the activity's own report compares them, so the
+page and the activity agree at the exact boundary.
+
+It is an option rather than a change to decision 3 because both readings are
+legitimate, and because existing projects and published packages must grade as
+they did (see Decision drivers). The page publishes it as a second META, written
+only when the option is on:
+
+```html
+<meta name="exe-pass-score-every-activity" content="true">
+```
+
+A page without that META grades exactly as decision 3 describes. That covers
+every package exported before the option existed and every project that leaves
+it off.
+
+- **Only the status changes.** The score sent to the LMS is still the weighted
+  mean of decision 3.
+- **The LMS and content still win.** When the LMS publishes `mastery_score`, or
+  content sets a threshold with `setSuccessThreshold()`, the page is judged by
+  its aggregate against that value, as before. That threshold is a mark for the
+  whole page, and Moodle applies `masteryoverride` at `LMSFinish` anyway.
+- **SCORM 1.2 stores nothing new.** The rule needs each activity's score and mark, and
+  both are already in its record in `cmi.suspend_data` (decision 3). A resumed
+  attempt therefore derives the same verdict, and the entry policy recognises
+  it as its own.
+- **Legacy SCORM (2004)** has no registry, so `common.js` judges the activities
+  it knows by page position, through the activity states of decision 12. The
+  page is judged only once every activity is finished, so the 0 the legacy path
+  writes for each activity as it registers never fails a page the learner has
+  not touched. A submitted 0 stays finished after a resume, including when its
+  mark is 0.
+
+### 12. SCORM 2004 judges a page only once its activities are finished
+
+SCORM 2004 packages use the legacy runtime, which has no registry. Until this
+change it wrote SCORM 1.2 element names (`cmi.core.lesson_status`,
+`cmi.core.score.raw`) to the SCORM 2004 API, which rejects them, so nothing it
+decided reached the LMS. What did reach it came from the exit: the exported page
+calls `unloadPage()` with no argument from its body attributes, before
+`exe_export.js` can pass `isSCORM`, and that call marked any page that was not
+yet terminal `completed` and `passed`, answered or not.
+
+Writing valid element names alone made it wrong in another way. The legacy path
+judged the page every time an iDevice registered, counting the 0 it seeds for
+each activity as a score. A page opened and left became `completed` and `failed`
+with a score of 0, and `quit()` then ended the attempt with `cmi.exit = normal`.
+
+The legacy path therefore keeps apart the three things the SCORM 1.2 policy keeps
+apart ([ADR-2209-02](ADR-2209-02-scorm12-activity-completion-registry.md)):
+
+- **Whether there is a score.** `cmi.score.raw` is written only once an activity
+  has sent one.
+- **Whether the activities are finished.** Each activity is pending (registered,
+  no score), scored, or finished. Only the bridge's `completed: true`, sent when
+  the game is over, finishes it. A score sent from the button in the middle of a
+  game does not, as in the SCORM 1.2 runtime contract (§9.1), and the latest
+  report decides, so a replay that reports `completed: false` reopens the page.
+  While an activity is not finished, the page is `incomplete` and `unknown`,
+  and the exit is `suspend`.
+- **Whether the page is passed.** Once every activity is finished, the page is
+  `completed`, and `passed` or `failed` by the weighted mean of decision 3, or by
+  each activity's own mark under decision 11. A `cmi.scaled_passing_score` set
+  by the LMS judges the page's score instead, under either rule, as
+  `mastery_score` does in SCORM 1.2 (decision 3). `cmi.score.scaled` is not
+  written: with both set, the LMS works out `success_status` itself when the
+  session ends, and would mark `failed` a page that is still incomplete.
+
+The states travel in a separate, versioned line at the end of the payload,
+`exe-state/1:1=2,2=0` (page position and state), with the existing `.\t`
+separator. The score lines do not change, and an older runtime ignores the
+line. A payload written before it has no states. A positive score then counts
+as finished, because the activity was played. A 0 cannot be told apart from the
+placeholder, so it stays pending until the activity reports again. Rewriting
+such a payload does not make up states for it.
+
+Only activities that send a score (`isScorm > 0`) are tracked, as the registry
+tracks only evaluable ones. Any other activity would keep the page pending for
+ever. Entry and exit (`SCOFunctions.js`) decide from the same stored states under
+either rule, so the argument-less exit no longer completes an unfinished page.
+At entry, the verdict the LMS holds is kept until an iDevice registers, because
+the activities' own marks are not known before that. It waits for the first one
+only: until every activity has registered, a finished one still missing counts
+at the project's mark, so the verdict written in between is provisional and is
+corrected as the rest register (see Risks). A page with no activities
+keeps the view-only rule and is completed by being viewed.
+
+## Changes introduced
+
+### Storage and format
+
+- `Y.Map('metadata').passScore`; it travels through ELP/ELPX as
+  `<odeProperty>pp_passScore</odeProperty>`.
+- `metadata-properties.ts` gains a third property type (`number`) alongside
+  `string` and `boolean`, holding the domain, the normalisation and the META name.
+- The value is not seeded when a project is created: readers apply the default.
+- Each SCORM 1.2 registry record in `cmi.suspend_data` gains an optional ninth
+  field with the activity's mark (0-100), under the same `exe12/1` version.
+- `Y.Map('metadata').passScoreEveryActivity`, a boolean that defaults to
+  `false`; it travels as `<odeProperty>pp_passScoreEveryActivity</odeProperty>`
+  and, when `true`, as `<meta name="exe-pass-score-every-activity">`. An ELP
+  without it imports as `false`.
+- The legacy line format of `cmi.suspend_data` (SCORM 2004) gains a last line,
+  `exe-state/1:`, with each activity's state: pending, scored or finished.
+
+### Path of the value
+
+```
+config-params.ts → API /parameters → ProjectProperties → form
+                                          ↕ YjsPropertiesBinding
+                                Y.Map('metadata').passScore
+                                          ↓
+                 YjsDocumentAdapter → ExportMetadata.passScore
+                                          ↓
+              OdeXmlGenerator → <odeProperty>pp_passScore</…>   and
+              PageRenderer   → <meta name="exe-pass-score">
+                                          ↓
+                    ElpxImporter / xml-parser → back into the Y.Map
+```
+
+`passScoreEveryActivity` follows the same path. `PageRenderer` writes its META
+only when the value is `true`.
+
+### Interface
+
+- A new `number` field type in the project properties form, with `min`/`max`/`step`
+  declared in the property definition.
+- A checkbox under the minimum score in Export options, "Each SCORM activity
+  must reach its minimum score", whose help text explains the
+  weighted mean that applies while it is unchecked.
+- In SCORM exports, a label before the page's score shows the minimum score to
+  pass the page, on the same 0-100 scale ("Minimum score to pass: 60/100"), or
+  says that each activity must reach its own when that rule decides the page.
+  It shows whatever decides the status: the LMS's threshold when it sets one,
+  otherwise the activities' marks and the project mark. `showPagePassScore()`
+  in `common.js` draws it, and the SCORM 1.2 policy answers through
+  `getPassRule()`. Scores are kept to two decimals, so the label rounds the
+  threshold up to the lowest score that passes (45.004 shows as 45.01). The
+  verdict keeps every decimal the LMS gives.
+- The **Grading** tab, with three sections headed alike.
+- Four collapsible help notes written from what the runtime does: what each of
+  the three SCORM modes implies, and that the weight is a proportion between
+  weights rather than a percentage of the total.
+- `gamification.help` (`icon`, `note`, `bind`) avoids the sixth copy of the same
+  anchor, inline sizing and delegated handler.
+
+### Where the threshold applies
+
+- Progress report and the learner's message: a single comparison in
+  `saveEvaluation()`.
+- SCORM 1.2: `reportActivity()` declares each activity's mark to the registry,
+  `activities.successThreshold()` averages them, and the policy settles the
+  threshold in four layers.
+- Legacy SCORM (2004): `registerActivity()` records each mark by page position
+  and `getFinalThreshold()` averages them with the same weights as
+  `getFinalScore()`; a test pins the two averages against each other.
+- With every activity at its own mark (decision 11): in SCORM 1.2,
+  `activities.unmetThresholds()` lists the activities below their mark, and
+  `decideStatus()` answers with the reason `own-marks-evaluated`. On the legacy
+  path, `getLegacyVerdict()` applies it once the activities are finished
+  (decision 12). Both read the META, the first directly and the second through
+  `$exe.passScore.requiresEveryActivity()`.
+- SCORM 2004 status under either rule (decision 12): `getLegacyVerdict()` in
+  `common.js` decides the completion and success statuses from the activity
+  states, `setLegacyStatus()` writes them with the SCORM 2004 element names, and
+  `showFinalScore()`, `loadPage()` and `unloadPage()` all go through it.
+
+### Scope
+
+- **35 of 35** scoring iDevices have the shared Grading tab and the shared 0-10
+  control. No iDevice opts out.
+- `3dmol` and `electrical-circuits` migrate their own progress report to the
+  shared block.
+- `rubric` gains a progress report, which it never had: it was the one scoring
+  iDevice that never registered, so a course mixing rubrics with other
+  activities produced a report the rubrics were missing from, and its threshold
+  had nowhere to show a verdict. It also gains the four translatable strings
+  `showEvaluationIcon` needs, which it lacked.
+- Removed along the way: `form`'s dead dropdown, and `getGamificationTab()`,
+  which called two helpers that do not exist and which no iDevice ever invoked.
+- The legacy SCORM quiz's `passRate` (0-100), which the importer copied into
+  that dropdown's field, now imports as the `form` activity's own mark
+  (`passRate / 10`). 50, eXe 2.x's default, cannot be told apart from a choice
+  and is left to inherit the project's mark, as is a missing or invalid rate.
+
+## Consequences
+
+### Positive
+
+- Changing the project option moves every non-customised activity with it, in
+  content published years earlier, on the next export.
+- One resolver stops an iDevice from ignoring the threshold by oversight.
+- The absence of data is meaningful, so none of the three persistence shapes
+  needed a migration.
+- Three hand-written numbers and one control that did nothing are gone.
+- SCORM 2004 packages report a status the LMS accepts, and a page is completed
+  only when its activities are finished.
+
+### Negative
+
+- Exported pages now depend on a META tag. A consumer that stripped unknown META
+  elements would silently fall back to 5 rather than failing.
+- A saved iDevice is no longer self-describing: reading its stored data does not
+  tell you the mark it will be judged by.
+- Any change to `getTab` reaches all 35 tabs at once.
+- Two page verdicts exist, chosen per project, so the same scores can pass a
+  page in one course and fail it in another.
+- A SCORM 2004 page that used to end `completed` and `passed` on leaving now
+  stays `incomplete` until its activities are finished. An activity stored as a
+  0 by an older runtime has to be played again before the page can complete.
+
+### Neutral
+
+- The domain and the normalisation exist in
+  `src/shared/export/metadata-properties.ts` and again in
+  `public/app/common/common.js`, because the runtime cannot import TypeScript.
+- `geogebra-activity` stores the threshold through its own convention (CSS
+  classes) but publishes the same two fields to the shared resolver, so the
+  difference stops at the storage layer.
+
+## Risks
+
+- **Divergence between the two copies of the rule** (TypeScript and JavaScript).
+  Both are covered by tests and name each other in comments, but they can drift.
+- **A stale META in a cached page.** Low: it is regenerated on every export and
+  preview.
+- **Authors reading "Weighted" as a share of the page.** Mitigated with a help
+  note, not with code.
+- **Top-level declarations in an edition file.** The editor re-injects those
+  files with a `<script>` tag on every open, so a module-level `const` breaks the
+  second edition with "Identifier has already been declared". It happened during
+  this work; a test now pins the rule.
+- **A runtime older than the every-activity META.** Such a runtime ignores the
+  META and grades by the weighted mean. That includes any host that plays
+  packages with its own copy of the SCORM 1.2 runtime, such as the eXeLearning
+  Moodle plugin, until that copy is updated.
+- **A provisional SCORM 2004 verdict while the page loads** (decision 12). On a
+  revisit, the page is judged again as each iDevice registers, and an activity
+  finished in an earlier session counts at the project's mark until its own
+  registers. With marks of 3 and 9, scores of 40 and 60 and a project at 5, the
+  first registration writes `passed` ((30+50)/2 = 40 against 50) and the second
+  corrects it to `failed` ((30+90)/2 = 60). The wrong verdict stays if the
+  learner leaves in between, or if an iDevice never registers. Accepted: the
+  window is narrow, and SCORM 2004 is being phased out, so no more legacy logic
+  is added for it.
+
+## Validation
+
+- Unit tests cover the domain and the normalisation on both sides of the language
+  boundary, the adapter, the five exporters, the importer, the XML parser, the
+  policy precedence and the per-activity verdict.
+- `test/e2e/playwright/specs/project-pass-score.spec.ts` walks the whole path:
+  the field in project properties, the value in the Y.Doc, the META in the
+  previewed page and `$exe.passScore.get()` inside the iframe.
+- The claim that nothing changes for existing content is pinned by a test
+  asserting that a page publishing no threshold keeps `DEFAULT_SUCCESS_THRESHOLD`.
+- The page verdict is pinned at unit level for a lone customised activity on
+  either side of the project mark, for weighted pages, for activities with no
+  mark of their own, for the LMS and content overrides and across a resumed
+  attempt, with the activity registering on either side of the entry policy.
+  `scorm12-sco-runtime.spec.ts` exports a rubric customised to 8 in a project
+  at 5 and plays it against a strict SCORM 1.2 API: 7.5 is `failed`, clearing
+  it on a second visit reopens the attempt, and 10 is `passed`. A second test
+  does the same with a Relate game, which registers after the session opens;
+  it fails against a runtime that does not store the mark.
+- For `map`, whose six game modes each end differently, a test asserts that all
+  of them still report through a single `saveEvaluation` funnel — the property
+  that lets the threshold reach every mode without touching the runtime.
+- Decision 11 is pinned at unit level in the registry, the SCORM 1.2 policy and
+  the legacy path. Those tests cover a high mark making up for a low one, every
+  activity at its mark, the two-decimal boundary, the LMS and content
+  overrides, a pending activity and a resumed attempt. Without the META, the
+  existing tests keep the weighted mean. `project-pass-score.spec.ts` checks the
+  checkbox and finds the META in the preview. `scorm12-sco-runtime.spec.ts`
+  exports with the option on and gives one activity 70 against a mark of 80 and
+  another 100 against 40: the mean (85 against 60) would pass, but the page is
+  `failed`. A new attempt with 80 is `passed`.
+- `scorm2004-contract.test.js` runs the shipped legacy scripts against
+  `scorm-again`'s independent SCORM 2004 API, rejecting invalid data-model writes,
+  and leaves through the argument-less `unloadPage()` the exported page calls.
+  Under both rules it covers a page opened and left, a half-answered page,
+  scores sent without finishing, a finished page, a restored 0 at a mark of 0, a
+  payload from an older runtime and an informational page.
+  `scorm2004-sco-runtime.spec.ts` exports from the editor and plays the package
+  below that API: with the option, it reopens a submitted 0 at a mark of 0;
+  without it, an unanswered page stays `incomplete` with exit `suspend`, and a
+  finished one is judged by the mean.
+- The page's minimum score label is pinned at unit level for both runtimes, the
+  LMS threshold (`mastery_score`, `cmi.scaled_passing_score`), the every-activity
+  rule and a page with no text for it. The SCORM 2004 contract checks that a
+  `cmi.scaled_passing_score` judges the page under either rule. Both runtime
+  specs find the label before the score in an exported package.
+
+## Follow-up work
+
+- Verify in a real Moodle that a project mark is overridden by an activity-level
+  `mastery_score`, asserted at unit level only so far.
+- Verify decisions 11 and 12 in a real Moodle. So far they have been tried only
+  against simulated SCORM 1.2 and SCORM 2004 APIs.
+- The exported SCORM 2004 page still calls `unloadPage()` with no argument
+  before `exe_export.js` can pass `isSCORM`. Decision 12 makes the argument
+  irrelevant for pages with activities; removing the body attributes was left
+  out of this change.
+
+## References
+
+- `public/app/common/common.js` — `$exe.passScore`, `report.saveEvaluation()`
+- `public/app/common/common_edition.js` — the Grading tab, `gamification.help`
+- `public/app/common/scorm/scorm12/exe-scorm12-activities.js` — `aggregateScore()`
+- `public/app/common/scorm/scorm12/exe-scorm12-policy.js` — `resolveSuccessThreshold()`
+- `src/shared/export/metadata-properties.ts` — domain, normalisation, META name
+- `src/shared/export/renderers/PageRenderer.ts` — where the META is emitted
+- `doc/elpx-format/metadata.md` — the `pp_passScore` and `pp_passScoreEveryActivity` properties
+- [ADR-2209-01](ADR-2209-01-scorm12-runtime-rewrite.md) — the SCORM 1.2 runtime
+- [ADR-2209-02](ADR-2209-02-scorm12-activity-completion-registry.md) — its activity registry
