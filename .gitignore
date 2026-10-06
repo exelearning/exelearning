@@ -124,6 +124,8 @@ public/app/common/i18n/
 # Vendored from the pinned `edicuatex` package by scripts/vendor-edicuatex.ts,
 # which runs as part of build:all. Not committed, like every other generated tree here.
 public/app/common/edicuatex/
+# Vendored from the pinned `sirenaapp` package by scripts/vendor-sirena.ts, the same way.
+public/app/common/sirena/
 public/app/dist/
 
 ###> claude-code ###

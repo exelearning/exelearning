@@ -1,7 +1,8 @@
 /**
  * Utility functions for Mermaid diagram max-width / max-height handling.
  *
- * Consumed by the exemermaid TinyMCE plugin via window.eXeLearning.mermaidMaxSize,
+ * Consumed by Sirena, the diagram editor the exemermaid TinyMCE button opens, via
+ * window.eXeLearning.mermaidMaxSize (read from the parent window),
  * which is set up by the App constructor before any editor is opened.
  */
 

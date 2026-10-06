@@ -3,7 +3,7 @@
  *
  * Scope is deliberately narrow:
  *  - only our own code (never vendored trees like exe_math/mermaid/mindmaps/
- *    edicuatex/exe_tooltips/exe_media, and never app/common/scorm, whose two
+ *    edicuatex/sirena/exe_tooltips/exe_media, and never app/common/scorm, whose two
  *    vendored pipwerks files carry a byte-identity contract);
  *  - only editor-side files that are NOT copied into exported packages
  *    (common.js, common_i18n.js, exe_export.js and the exe_* library

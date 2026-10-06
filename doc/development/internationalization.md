@@ -81,10 +81,12 @@ const html = `<span>${_('Save')}</span>`;
 The extraction scans the working tree, not the dependency graph. Some of the strings it
 must find no longer live in files the repository commits: they belong to libraries
 vendored out of a pinned npm package into a scanned path by the build, and left
-gitignored. `public/app/common/edicuatex/` is the first one — `scripts/vendor-edicuatex.ts`
-writes it as the first step of `build:all` — and **it will not be the last**, because the
-project is steadily moving third-party code from hand-maintained copies to pinned
-packages.
+gitignored. `public/app/common/edicuatex/` was the first one — `scripts/vendor-edicuatex.ts`
+writes it as the first step of `build:all` — and `public/app/common/sirena/`, the Mermaid
+diagram editor vendored by `scripts/vendor-sirena.ts` from the pinned `sirenaapp` package,
+the second. Both scripts share `scripts/vendor-package.ts`, and **they will not be the
+last**, because the project is steadily moving third-party code from hand-maintained
+copies to pinned packages.
 
 This matters because a checkout that has not been built looks completely normal to the
 scanner. Every other source scans fine; the key set simply comes out short. That is
@@ -103,7 +105,8 @@ carries look obsolete. Both count as incomplete.
 Three things keep that from happening:
 
 1. `make translations`, `make translations-cleanup` and `make translations-sort` depend on
-   `vendor-edicuatex`, so the tree is regenerated before anything reads it. Running
+   `vendor-edicuatex` and `vendor-sirena`, so the trees are regenerated before anything
+   reads them. Running
    through `make` is always safe.
 2. The commands warn when a registered tree is absent **or incomplete**, and
    `--remove-obsolete` refuses to run at all. This is what protects a direct
@@ -112,9 +115,10 @@ Three things keep that from happening:
    only when you know the missing tree holds no strings.
 3. `GENERATED_SOURCE_DIRS` in `src/cli/commands/translations.ts` is the registry the
    warning and the refusal read. Each entry may carry an `inspect` hook that compares the
-   tree on disk against what its generator would write; `edicuatex` uses
-   `scripts/vendor-edicuatex.ts`'s own plan, the same knowledge behind
-   `vendor-edicuatex.ts --check`, rather than a second list that could disagree with it —
+   tree on disk against what its generator would write; `edicuatex` and `sirena` use
+   their vendor script's own plan through `inspectVendoredTree` in
+   `scripts/vendor-package.ts`, the same knowledge behind `--check`, rather than a second
+   list that could disagree with it —
    files that are missing *and* files whose contents differ, since either hides strings.
    Without a hook, an entry falls back to the existence check. A hook whose package is
    absent altogether reports nothing: there is no pinned version to compare against, and

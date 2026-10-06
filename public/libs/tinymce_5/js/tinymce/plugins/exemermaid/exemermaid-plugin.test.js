@@ -1,9 +1,10 @@
 /**
- * Unit tests for exemermaid TinyMCE plugin path handling
+ * Unit tests for the exemermaid TinyMCE plugin
  *
- * Tests the CSS path construction logic.
- * The exemermaid plugin is simpler than exemindmap/codemagic as it uses
- * TinyMCE's built-in `url` parameter for resource loading.
+ * The button opens Sirena, the Mermaid diagram editor vendored at
+ * app/common/sirena/, in a TinyMCE window. Sirena itself reads the diagram under
+ * the cursor and writes it back, so what the plugin owns is how the window is
+ * opened, the toggle state of the button, the Mermaid preload and the CSS path.
  */
 
 describe('exemermaid plugin - Path Handling', () => {
@@ -58,126 +59,22 @@ describe('exemermaid plugin - Path Handling', () => {
         });
     });
 
-    describe('Mermaid diagram content escaping', () => {
-        // The plugin escapes HTML entities in mermaid code (line 59-60)
-        function escapeHtml(content) {
-            return content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        function unescapeHtml(content) {
-            return content.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-        }
-
-        it('should escape ampersand', () => {
-            expect(escapeHtml('A & B')).toBe('A &amp; B');
-        });
-
-        it('should escape less-than', () => {
-            expect(escapeHtml('A < B')).toBe('A &lt; B');
-        });
-
-        it('should escape greater-than', () => {
-            expect(escapeHtml('A > B')).toBe('A &gt; B');
-        });
-
-        it('should escape multiple special characters', () => {
-            const input = 'A-->B & B-->C';
-            const result = escapeHtml(input);
-            expect(result).toBe('A--&gt;B &amp; B--&gt;C');
-        });
-
-        it('should handle mermaid flowchart syntax', () => {
-            const input = 'flowchart TD\n    A-->B\n    B-->C';
-            const result = escapeHtml(input);
-            expect(result).toBe('flowchart TD\n    A--&gt;B\n    B--&gt;C');
-        });
-
-        it('should handle empty string', () => {
-            expect(escapeHtml('')).toBe('');
-        });
-
-        it('should handle string with no special characters', () => {
-            expect(escapeHtml('Hello World')).toBe('Hello World');
-        });
-
-        it('should unescape ampersand', () => {
-            expect(unescapeHtml('A &amp; B')).toBe('A & B');
-        });
-
-        it('should unescape less-than', () => {
-            expect(unescapeHtml('A &lt; B')).toBe('A < B');
-        });
-
-        it('should unescape greater-than', () => {
-            expect(unescapeHtml('A &gt; B')).toBe('A > B');
-        });
-
-        it('should round-trip escape and unescape', () => {
-            const original = 'A-->B & B<--C';
-            const escaped = escapeHtml(original);
-            const unescaped = unescapeHtml(escaped);
-            expect(unescaped).toBe(original);
-        });
-    });
-
-    describe('PRE element class detection', () => {
-        // The plugin detects mermaid code by checking node type and class (line 35-36)
-        function isMermaidElement(nodeName, className) {
-            return nodeName === 'PRE' && className.indexOf('mermaid') !== -1;
-        }
-
-        it('should return true for PRE with mermaid class', () => {
-            expect(isMermaidElement('PRE', 'mermaid')).toBe(true);
-        });
-
-        it('should return true for PRE with mermaid and other classes', () => {
-            expect(isMermaidElement('PRE', 'mermaid custom-class')).toBe(true);
-        });
-
-        it('should return true for PRE with mermaid in middle of class list', () => {
-            expect(isMermaidElement('PRE', 'custom mermaid another')).toBe(true);
-        });
-
-        it('should return false for non-PRE elements', () => {
-            expect(isMermaidElement('DIV', 'mermaid')).toBe(false);
-            expect(isMermaidElement('CODE', 'mermaid')).toBe(false);
-            expect(isMermaidElement('SPAN', 'mermaid')).toBe(false);
-        });
-
-        it('should return false for PRE without mermaid class', () => {
-            expect(isMermaidElement('PRE', 'code highlight')).toBe(false);
-        });
-
-        it('should return false for empty class', () => {
-            expect(isMermaidElement('PRE', '')).toBe(false);
-        });
-
-        it('should handle lowercase node name', () => {
-            // Note: in browser, nodeName is typically uppercase
-            expect(isMermaidElement('pre', 'mermaid')).toBe(false);
-        });
-    });
-
-    describe('Mermaid library preload on dialog open', () => {
-        // These tests run the real plugin.min.js: the preload cannot be removed
-        // from openHTMLDialog without failing here.
+    describe('Sirena window (real plugin source)', () => {
+        // These tests run the real plugin.min.js against a stub editor.
         const fs = require('node:fs');
         const path = require('node:path');
         const PLUGIN_SRC = fs.readFileSync(path.join(__dirname, 'plugin.min.js'), 'utf8');
 
-        // jQuery-like stub: every call returns the same chainable object
-        function domQuery() {
-            const chain = { length: 0 };
-            chain.eq = () => chain;
-            chain.children = () => chain;
-            return () => chain;
-        }
+        const body = { nodeName: 'BODY', parentNode: null };
+        const selected = { node: { nodeName: 'P', className: '', parentNode: body }, text: '' };
 
-        function loadPlugin() {
+        function loadPlugin(settings = { sirena_url: './app/common/sirena/index.html' }) {
             const calls = [];
             const handlers = {};
             const registry = {};
+            const opened = [];
             const editor = {
+                settings,
                 ui: {
                     registry: {
                         addIcon: () => {},
@@ -192,38 +89,40 @@ describe('exemermaid plugin - Path Handling', () => {
                 on: (name, fn) => {
                     handlers[name] = fn;
                 },
-                off: () => {},
-                dom: { loadCSS: () => {} },
+                off: (name) => {
+                    delete handlers[name];
+                },
+                dom: { loadCSS: (href) => calls.push('css:' + href) },
+                getBody: () => body,
                 selection: {
-                    getContent: () => '',
-                    getNode: () => ({ nodeName: 'P', className: '', style: {} }),
+                    getNode: () => selected.node,
+                    getContent: () => selected.text,
+                    getBookmark: (type, normalized) => ({ type, normalized, at: 'cursor' }),
                 },
                 windowManager: {
-                    open: (...args) => {
-                        calls.push('open');
-                        return args;
+                    openUrl: (spec) => {
+                        calls.push('openUrl');
+                        opened.push(spec);
                     },
-                    close: () => {},
-                    alert: () => {},
                 },
             };
             const tinymce = {
                 PluginManager: { add: (name, factory) => tinymce.PluginManager._factories.push(factory) },
-                dom: { DomQuery: domQuery() },
-                DOM: { setAttrib: () => {}, setStyle: () => {} },
-                activeEditor: editor,
             };
             tinymce.PluginManager._factories = [];
-            // Run the shipped plugin file, then instantiate it for our stub editor
-            new Function('tinymce', 'tinyMCE', '_', PLUGIN_SRC)(tinymce, tinymce, (s) => s);
-            tinymce.PluginManager._factories[0](editor, '/libs/tinymce_5/js/tinymce/plugins/exemermaid');
-            return { editor, registry, handlers, calls };
+            new Function('tinymce', '_', PLUGIN_SRC)(tinymce, (s) => s);
+            const api = tinymce.PluginManager._factories[0](editor, '/libs/tinymce_5/js/tinymce/plugins/exemermaid');
+            return { editor, registry, handlers, calls, opened, api };
         }
 
         let originalExe;
+        let originalWidth;
+        let originalHeight;
 
         beforeEach(() => {
             originalExe = globalThis.$exe;
+            originalWidth = window.innerWidth;
+            originalHeight = window.innerHeight;
         });
 
         afterEach(() => {
@@ -232,35 +131,99 @@ describe('exemermaid plugin - Path Handling', () => {
             } else {
                 globalThis.$exe = originalExe;
             }
-            delete globalThis.PasteMermaidDialog;
-            delete globalThis.win;
+            window.innerWidth = originalWidth;
+            window.innerHeight = originalHeight;
         });
 
-        it('starts loading Mermaid before the dialog is opened', () => {
-            const calls = [];
-            globalThis.$exe = { mermaid: { loadMermaid: () => calls.push('loadMermaid'), init: () => {} } };
+        it('opens Sirena from the toolbar button, at the URL of the editor settings', () => {
+            globalThis.$exe = { mermaid: { loadMermaid: () => {}, init: () => {} } };
             const plugin = loadPlugin();
-            plugin.calls = calls;
-            // The toolbar button is the production entry point
             plugin.registry.button.onAction();
-            expect(calls[0]).toBe('loadMermaid');
+
+            expect(plugin.opened).toHaveLength(1);
+            expect(plugin.opened[0].url).toBe('./app/common/sirena/index.html');
+            // The title says what the window is, and which editor it is
+            expect(plugin.opened[0].title).toBe('Mermaid diagram (Sirena)');
+            // Sirena has its own Insert and Cancel: the window adds no buttons
+            expect(plugin.opened[0].buttons).toEqual([]);
         });
 
-        it('preloads Mermaid from the menu item too', () => {
-            const loadMermaid = vi.fn();
-            globalThis.$exe = { mermaid: { loadMermaid, init: () => {} } };
+        it('opens Sirena from the menu item too', () => {
+            globalThis.$exe = { mermaid: { loadMermaid: () => {}, init: () => {} } };
             const plugin = loadPlugin();
             plugin.registry.menuItem.onAction();
-            expect(loadMermaid).toHaveBeenCalledTimes(1);
+
+            expect(plugin.opened).toHaveLength(1);
         });
 
-        it('opens the dialog after requesting the preload', () => {
-            const loadMermaid = vi.fn();
-            globalThis.$exe = { mermaid: { loadMermaid, init: () => {} } };
+        it('falls back to the server path when the settings do not name one', () => {
+            globalThis.$exe = { mermaid: { loadMermaid: () => {}, init: () => {} } };
+            const plugin = loadPlugin({});
+            plugin.registry.button.onAction();
+
+            expect(plugin.opened[0].url).toBe('/app/common/sirena/index.html');
+        });
+
+        it('starts loading Mermaid before the window is opened', () => {
+            const order = [];
+            globalThis.$exe = { mermaid: { loadMermaid: () => order.push('loadMermaid'), init: () => {} } };
+            const plugin = loadPlugin();
+            plugin.editor.windowManager.openUrl = () => order.push('openUrl');
+            plugin.registry.button.onAction();
+
+            expect(order).toEqual(['loadMermaid', 'openUrl']);
+        });
+
+        it('gives the window room for code and drawing, capped on a large screen', () => {
+            window.innerWidth = 1920;
+            window.innerHeight = 1080;
             const plugin = loadPlugin();
             plugin.registry.button.onAction();
-            expect(plugin.calls).toContain('open');
-            expect(loadMermaid).toHaveBeenCalledTimes(1);
+
+            expect(plugin.opened[0].width).toBe(1200);
+            expect(plugin.opened[0].height).toBe(760);
+        });
+
+        it('keeps a margin around the window on a small screen', () => {
+            window.innerWidth = 800;
+            window.innerHeight = 600;
+            const plugin = loadPlugin();
+            plugin.registry.button.onAction();
+
+            expect(plugin.opened[0].width).toBe(760);
+            expect(plugin.opened[0].height).toBe(480);
+        });
+
+        it('never makes the window smaller than a usable minimum', () => {
+            window.innerWidth = 300;
+            window.innerHeight = 300;
+            const plugin = loadPlugin();
+            plugin.registry.button.onAction();
+
+            expect(plugin.opened[0].width).toBe(320);
+            expect(plugin.opened[0].height).toBe(400);
+        });
+
+        it('marks the button as active only inside a Mermaid block', () => {
+            const plugin = loadPlugin();
+            const states = [];
+            const release = plugin.registry.button.onSetup({ setActive: (value) => states.push(value) });
+
+            plugin.handlers.NodeChange({ element: { nodeName: 'PRE', className: 'mermaid' } });
+            plugin.handlers.NodeChange({ element: { nodeName: 'PRE', className: 'language-js' } });
+            plugin.handlers.NodeChange({ element: { nodeName: 'P', className: 'mermaid' } });
+            plugin.handlers.NodeChange({ element: null });
+            expect(states).toEqual([true, false, false, false]);
+
+            release();
+            expect(plugin.handlers.NodeChange).toBeUndefined();
+        });
+
+        it('loads its content CSS when the editor starts', () => {
+            const plugin = loadPlugin();
+            plugin.handlers.init({});
+
+            expect(plugin.calls).toContain('css:/libs/tinymce_5/js/tinymce/plugins/exemermaid/css/content.css');
         });
 
         it('still renders the diagram when the editor is deactivated', () => {
@@ -268,18 +231,75 @@ describe('exemermaid plugin - Path Handling', () => {
             globalThis.$exe = { mermaid: { loadMermaid: () => {}, init } };
             const plugin = loadPlugin();
             plugin.handlers.deactivate({});
+
             expect(init).toHaveBeenCalledTimes(1);
+        });
+
+        describe('context handed to Sirena', () => {
+            // The editor loses its selection while the window loads, so the plugin
+            // records it when the button is pressed; Sirena reads it through getContext().
+            afterEach(() => {
+                selected.node = { nodeName: 'P', className: '', parentNode: body };
+                selected.text = '';
+            });
+
+            it('is empty before the button is pressed', () => {
+                const plugin = loadPlugin();
+
+                expect(plugin.api.getContext()).toEqual({ block: null, selectedText: '', bookmark: null });
+            });
+
+            it('records the Mermaid block under the cursor, with no bookmark', () => {
+                const pre = { nodeName: 'PRE', className: 'mermaid', parentNode: body };
+                selected.node = pre;
+                const plugin = loadPlugin();
+                plugin.registry.button.onAction();
+
+                expect(plugin.api.getContext()).toEqual({ block: pre, selectedText: '', bookmark: null });
+            });
+
+            it('finds the block when the cursor is inside a child of it', () => {
+                const pre = { nodeName: 'PRE', className: 'mermaid', parentNode: body };
+                selected.node = { nodeName: 'SPAN', className: '', parentNode: pre };
+                const plugin = loadPlugin();
+                plugin.registry.button.onAction();
+
+                expect(plugin.api.getContext().block).toBe(pre);
+            });
+
+            it('records the selected text and where to insert a new diagram', () => {
+                selected.text = 'graph LR\n A --> B';
+                const plugin = loadPlugin();
+                plugin.registry.menuItem.onAction();
+
+                expect(plugin.api.getContext()).toEqual({
+                    block: null,
+                    selectedText: 'graph LR\n A --> B',
+                    bookmark: { type: 2, normalized: true, at: 'cursor' },
+                });
+            });
+
+            it('does not treat a code block of another language as a diagram', () => {
+                selected.node = { nodeName: 'PRE', className: 'language-js', parentNode: body };
+                const plugin = loadPlugin();
+                plugin.registry.button.onAction();
+
+                expect(plugin.api.getContext().block).toBeNull();
+            });
         });
 
         it('does not throw when $exe is undefined', () => {
             delete globalThis.$exe;
             const plugin = loadPlugin();
+
             expect(() => plugin.registry.button.onAction()).not.toThrow();
+            expect(plugin.opened).toHaveLength(1);
         });
 
         it('does not throw when $exe.mermaid is missing', () => {
             globalThis.$exe = {};
             const plugin = loadPlugin();
+
             expect(() => plugin.registry.button.onAction()).not.toThrow();
         });
     });
