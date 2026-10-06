@@ -546,76 +546,6 @@ describe('form iDevice edition', () => {
     });
   });
 
-  // The threshold the author picks here never reached the exported activity:
-  // save() collected the dropdown into `this.dropdownPassRate`, pushed its id
-  // onto `dataIds` — which this iDevice never iterates — and getDataJson()
-  // wrote a hardcoded 5 into `passRate` instead. The export then ignored that
-  // too and graded against a literal 50.
-  describe('the pass rate the author configures', () => {
-    const renderEditionForm = () => {
-      document.body.innerHTML = `
-        <div idevice-id="f1">
-          <textarea id="eXeGameInstructions"></textarea>
-          <textarea id="eXeIdeviceTextAfter"></textarea>
-          <select id="dropdownPassRate_f1">
-            <option value="" selected></option>
-            <option value="50">50%</option>
-            <option value="70">70%</option>
-          </select>
-          <input type="checkbox" id="checkAddBtnAnswers" />
-          <input type="checkbox" id="frmEQuestionsRandom" />
-          <input id="frmEPercentageQuestions" value="100" />
-          <input id="frmETime" value="0" />
-          <input type="checkbox" id="frmEShowSlider" />
-        </div>
-      `;
-      $exeDevice.ideviceBody = document.body.firstElementChild;
-    };
-
-    const storedDropdown = () =>
-      document.querySelector('#dropdownPassRate_f1').value;
-
-    beforeEach(() => {
-      renderEditionForm();
-      vi.spyOn($exeDevice, 'updateQuestionsNumber').mockImplementation(() => {});
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-      document.body.innerHTML = '';
-    });
-
-    it('travels from the dropdown into the saved data under both names', () => {
-      $exeDevice.passRate = '70';
-      $exeDevice[$exeDevice.dropdownPassRateId] = '70';
-
-      const data = $exeDevice.getDataJson();
-
-      expect(data.passRate).toBe('70');
-      expect(data[$exeDevice.dropdownPassRateId]).toBe('70');
-    });
-
-    it('comes back into the dropdown when the activity is reopened', () => {
-      $exeDevice.idevicePreviousData = { dropdownPassRate: '70' };
-
-      $exeDevice.loadPreviousValues();
-
-      expect(storedDropdown()).toBe('70');
-    });
-
-    // Content saved before this fix carries no threshold at all and was graded
-    // against the 50 the export hardcoded. Leaving the control blank would
-    // have silently regraded it the moment the author saved again.
-    it('shows the 50 in force when the activity carries none', () => {
-      $exeDevice.idevicePreviousData = { questionsRandom: false };
-
-      $exeDevice.loadPreviousValues();
-
-      expect(storedDropdown()).toBe('50');
-      expect($exeDevice.defaultPassRate).toBe(50);
-    });
-  });
-
   describe('checkFormValues', () => {
     beforeEach(() => {
       eXe.app.alert = vi.fn();
@@ -961,5 +891,72 @@ describe('form iDevice edition', () => {
       expect(c_).toHaveBeenCalledWith('Incorrect');
       expect(c_).toHaveBeenCalledWith('Hide');
     });
+  });
+
+  /**
+   * The pass-score control is a shared block in common_edition.js, exercised by
+   * its own tests. What is specific to this iDevice -- and what silently breaks
+   * if someone edits the form -- is the wiring: all four call sites have to be
+   * present, and the two saved fields have to reach the stored data. Reading
+   * the source is how that is checked without standing up the whole edition
+   * form.
+   */
+  describe('pass score wiring', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'form.js'), 'utf-8');
+    });
+
+    it('delegates the evaluation controls to the shared tab', () => {
+        // The pass score and the progress report used to be rendered here,
+        // loose in the general options. They now live in the Grading tab,
+        // so rendering them again would show each control twice.
+        expect(source).not.toContain('passScore.getContents(');
+        expect(source).not.toContain('progressBar.getContents(');
+        expect(source).toContain('gamification.scorm.getTab(');
+    });
+
+    it('restores the control when the iDevice is reopened', () => {
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain('passScoreMode: previousData.passScoreMode');
+      expect(source).toContain('passScoreCustom: previousData.passScoreCustom');
+    });
+
+    it('saves the mode and the customised mark, and nothing else', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+      expect(source).toContain('data.passScoreMode = this.passScoreMode');
+      expect(source).toContain('data.passScoreCustom = this.passScoreCustom');
+      // The project value is never copied into the iDevice: it is read live, so
+      // an iDevice on the global mode follows the project.
+      expect(source).not.toContain('passScoreGlobal');
+    });
+
+    it('wires the radio and input handlers', () => {
+      expect(source).toContain('gamification.passScore.addEvents()');
+    });
+
+    /**
+     * form used to carry a pass-mark dropdown of its own. It was dead: the
+     * runtime never read it and judged everyone at a hardcoded 50 %. Unifying
+     * on the shared control means every trace of it has to be gone, or the
+     * author is offered two marks and only one of them counts.
+     */
+    it('no longer offers a pass mark of its own', () => {
+      expect(source).not.toContain('createPassRateDropdown');
+      expect(source).not.toContain('dropdownPassRateId');
+      expect(source).not.toContain('passRateId');
+      expect(source).not.toContain('data.passRate');
+    });
+  });
+});
+
+describe('form minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'form.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });

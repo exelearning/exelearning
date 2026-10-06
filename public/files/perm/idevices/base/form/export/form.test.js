@@ -361,181 +361,29 @@ describe('form iDevice export', () => {
     });
   });
 
-  describe('passRate', () => {
-    it('is initially empty', () => {
-      expect($form.passRate).toBe('');
-    });
-  });
-
-  // The threshold the author picks travels as `dropdownPassRate`, but until
-  // now it never reached the score: every edition save wrote a hardcoded 5
-  // into `passRate`, and gameOver() graded against a literal 50 that ignored
-  // both. Swapping that 50 for `data.passRate` on its own would have dropped
-  // every activity's threshold to 5%.
-  describe('toPassRate', () => {
-    it('reads the strings the dropdown produces', () => {
-      expect($form.toPassRate('70')).toBe(70);
+  describe('showScore verdict', () => {
+    // The threshold used to be a hardcoded 50 while $form.passRate, the
+    // author's own dropdown, was never read. Both are gone: the mark now comes
+    // from the shared pass score.
+    it('no longer carries a pass rate of its own', () => {
+      expect($form.passRate).toBeUndefined();
     });
 
-    it('reads the numbers the legacy format and the API produce', () => {
-      expect($form.toPassRate(70)).toBe(70);
-    });
-
-    it('rejects anything outside 1..100', () => {
-      expect($form.toPassRate('0')).toBe(0);
-      expect($form.toPassRate('-10')).toBe(0);
-      expect($form.toPassRate('120')).toBe(0);
-    });
-
-    it('rejects what is not a rate at all', () => {
-      expect($form.toPassRate('')).toBe(0);
-      expect($form.toPassRate('abc')).toBe(0);
-      expect($form.toPassRate(null)).toBe(0);
-      expect($form.toPassRate(undefined)).toBe(0);
-    });
-  });
-
-  describe('resolvePassRate', () => {
-    it('uses the value the author picked', () => {
-      expect($form.resolvePassRate({ dropdownPassRate: '70' })).toBe(70);
-    });
-
-    it('accepts every value the dropdown offers', () => {
-      [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].forEach((rate) => {
-        expect($form.resolvePassRate({ dropdownPassRate: String(rate) })).toBe(rate);
-      });
-    });
-
-    it('honours a threshold stored under the runtime field name', () => {
-      expect($form.resolvePassRate({ passRate: 70 })).toBe(70);
-    });
-
-    // The dropdown only offers 10..100, so a stored 5 cannot be an authored
-    // threshold: it is the value every save wrote while the field was
-    // hardcoded. Reading it literally would pass a 1-out-of-10 answer sheet.
-    it('reads the legacy hardcoded 5 as nothing authored', () => {
-      expect($form.resolvePassRate({ passRate: 5 })).toBe(50);
-      expect($form.resolvePassRate({ passRate: '5' })).toBe(50);
-    });
-
-    it('prefers the authored value over a legacy 5 alongside it', () => {
-      expect($form.resolvePassRate({ passRate: 5, dropdownPassRate: '80' })).toBe(80);
-    });
-
-    it('falls back to the 50 the export used to hardcode', () => {
-      expect($form.resolvePassRate({})).toBe(50);
-      expect($form.resolvePassRate(undefined)).toBe(50);
-      expect($form.resolvePassRate({ dropdownPassRate: '' })).toBe(50);
-      expect($form.resolvePassRate({ dropdownPassRate: 'abc' })).toBe(50);
-      expect($form.resolvePassRate({ dropdownPassRate: '120' })).toBe(50);
-    });
-  });
-
-  describe('updateConfig', () => {
-    let previousDevices;
-
-    beforeEach(() => {
-      previousDevices = global.$exeDevices;
-      global.$exeDevices = {
-        iDevice: {
-          gamification: {
-            helpers: { getQuestions: (questions) => questions || [] },
-          },
-        },
-      };
+    it('treats a mark of zero as a verdict, not as "no mark"', () => {
+      // Everyone passes at 0, which is a verdict; a truthiness check on the
+      // percentage would have hidden the result instead of showing it.
       document.body.innerHTML =
-        '<div class="idevice_node form" data-idevice-path="idevices/form"></div>';
-    });
+        '<div id="form-result-test-q"></div><div id="form-score-q"></div>';
+      const data = {
+        id: 'q',
+        rightQuestions: 0,
+        totalQuestions: 4,
+        msgs: { msgTestResultPass: 'Passed', msgTestResultNotPass: 'Not passed', msgYouScore: 'Score' },
+      };
 
-    afterEach(() => {
-      global.$exeDevices = previousDevices;
-      document.body.innerHTML = '';
-    });
+      $form.showScore(0, data);
 
-    it('resolves the authored threshold onto data.passRate', () => {
-      expect($form.updateConfig({ dropdownPassRate: '80' }, 'f1').passRate).toBe(80);
-    });
-
-    it('keeps 50 for content saved with the old hardcoded 5', () => {
-      expect($form.updateConfig({ passRate: 5 }, 'f1').passRate).toBe(50);
-    });
-
-    it('keeps 50 for content that predates the setting entirely', () => {
-      expect($form.updateConfig({}, 'f1').passRate).toBe(50);
-    });
-  });
-
-  describe('showScore', () => {
-    const render = (id) => {
-      document.body.innerHTML = `
-        <div id="resultsContainer-${id}" style="display:none">
-          <div id="form-score-${id}"></div>
-          <div id="form-result-test-${id}"></div>
-        </div>
-      `;
-    };
-
-    const activity = (rightQuestions) => ({
-      id: 'f1',
-      totalQuestions: 10,
-      rightQuestions,
-      msgs: {
-        msgYouScore: 'You scores is',
-        msgTestResultPass: 'Passed',
-        msgTestResultNotPass: 'Not passed',
-      },
-    });
-
-    afterEach(() => {
-      document.body.innerHTML = '';
-    });
-
-    it('passes a sheet that reaches the threshold', () => {
-      render('f1');
-      $form.showScore(60, activity(6));
-      expect($('#form-result-test-f1').text()).toBe('Passed');
-      expect($('#form-result-test-f1').hasClass('pass-test')).toBe(true);
-    });
-
-    it('fails a sheet that does not', () => {
-      render('f1');
-      $form.showScore(70, activity(6));
-      expect($('#form-result-test-f1').text()).toBe('Not passed');
-      expect($('#form-result-test-f1').hasClass('fail-test')).toBe(true);
-    });
-
-    // The regression a bare `showScore(data.passRate, data)` would have
-    // shipped: one right answer out of ten clears a 5% threshold.
-    it('fails a 1/10 sheet at the rate resolved for legacy content', () => {
-      render('f1');
-      $form.showScore($form.resolvePassRate({ passRate: 5 }), activity(1));
-      expect($('#form-result-test-f1').text()).toBe('Not passed');
-    });
-  });
-
-  describe('gameOver', () => {
-    beforeEach(() => {
-      document.body.innerHTML = `
-        <div id="frmCover-f1"></div>
-        <input id="form-button-check-f1" />
-        <input id="form-button-reset-f1" />
-      `;
-      vi.spyOn($form, 'checkAllQuestions').mockImplementation(() => {});
-      vi.spyOn($form, 'showScore').mockImplementation(() => {});
-      vi.spyOn($form, 'saveEvaluation').mockImplementation(() => {});
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-      document.body.innerHTML = '';
-    });
-
-    it('grades against the activity threshold, not a hardcoded one', () => {
-      const data = { id: 'f1', passRate: 70, time: 0, addBtnAnswers: false };
-
-      $form.gameOver(data);
-
-      expect($form.showScore).toHaveBeenCalledWith(70, data);
+      expect(document.getElementById('form-result-test-q').textContent).toBe('Passed');
     });
   });
 
@@ -1204,5 +1052,66 @@ describe('form iDevice export', () => {
 
       expect(sendScoreNew.mock.calls[0][0]).toBe(true);
     });
+  });
+});
+
+describe('form minimum score notice', () => {
+  const ANCHOR = '#frmMainContainer-f3 > .FRMP-GameScoreBoard';
+  let $form;
+
+  beforeEach(() => {
+    global.$form = undefined;
+    $form = loadExportIdevice(readFileSync(join(__dirname, 'form.js'), 'utf-8'));
+    eXe.app.isInExe = vi.fn(() => false);
+    eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  // The instructions live inside the main container here, so the notice is
+  // placed before what follows them rather than before the container.
+  it('places it below the instructions, inside the main container', () => {
+    document.body.innerHTML = $form.renderView(
+      { id: 'f3', ideviceId: 'f3', eXeFormInstructions: '<p>Instructions</p>', time: 0, questionsData: [], msgs: {} },
+      0,
+      '{content}',
+      'f3'
+    );
+
+    const anchor = document.querySelector(ANCHOR);
+    expect(anchor.previousElementSibling.className).toBe('form-instructions');
+    expect(anchor.parentElement.id).toBe('frmMainContainer-f3');
+  });
+
+  it('asks for the notice there once the questions are on the page', () => {
+    document.body.innerHTML = '<div id="f3"><div id="form-questions-f3"></div></div>';
+    const showPassScoreNotice = vi.spyOn($exeDevices.iDevice.gamification.report, 'showPassScoreNotice');
+    for (const name of [
+      'setBehaviourButtonResetQuestions',
+      'setBehaviourButtonCheckQuestions',
+      'setBehaviourButtonSendScore',
+      'setBehaviourButtonShowAnswers',
+      'setBehaviourOptions',
+      'hideScore',
+      'setBehaviourTest',
+      'addEventsSlideShow',
+    ]) {
+      $form[name] = () => {};
+    }
+
+    $form.renderBehaviour(
+      { id: 'f3', passScoreMode: 'custom', passScoreCustom: 7, questionsData: [{ question: 'q', options: [], typeQuestion: 'text' }] },
+      0,
+      'f3'
+    );
+
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    expect(showPassScoreNotice).toHaveBeenCalledWith(
+      expect.objectContaining({ main: 'frmMainContainer-f3', passScoreCustom: 7 }),
+      ANCHOR
+    );
   });
 });

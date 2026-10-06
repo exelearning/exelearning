@@ -24,18 +24,6 @@ var $exeDevice = {
     btnAddFillBottom: 'buttonAddFillQuestionBottom',
     btnAddDropdownBottom: 'buttonAddDropdownQuestionBottom',
     btnAddSelectionBottom: 'buttonAddSelectionQuestionBottom',
-    passRateId: 'passRateMessage',
-    dropdownPassRateId: 'dropdownPassRate',
-    /**
-     * The threshold the export applies when an activity carries no authored
-     * one. Kept in step with $form.defaultPassRate in export/form.js.
-     *
-     * Note the control itself is still hidden (`display:none` on its
-     * container), so the values that reach `dropdownPassRate` today come from
-     * legacy content — ScormTestHandler maps the old `passRate` property onto
-     * it. Revealing the control is a separate decision.
-     */
-    defaultPassRate: 50,
     checkCapitalizationId: 'checkCapitalization',
     checkStrictQualificationId: 'checkStrictQualification',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
@@ -210,6 +198,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Form'),
             msgStartGame: c_('Click here to start'),
             msgTime: c_('Time per question'),
@@ -311,20 +300,6 @@ var $exeDevice = {
                 ).style.display = 'none';
             }
         }
-        let dropdownPassRate = $exeDevice.ideviceBody.querySelector(
-            `[id^="${$exeDevice.dropdownPassRateId}"]`
-        );
-        if (previousData[$exeDevice.dropdownPassRateId] !== undefined) {
-            dropdownPassRate.value =
-                previousData[$exeDevice.dropdownPassRateId];
-        } else {
-            // Content saved before the pass rate reached the runtime carries
-            // none, and was graded against the 50 the export hardcoded. Seed
-            // that, so saving such an activity again keeps the grading it has
-            // always had instead of persisting the blank option.
-            dropdownPassRate.value = String($exeDevice.defaultPassRate);
-        }
-
         let checkAddBtnAnswers = $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.checkAddBtnAnswersId}`
         );
@@ -338,6 +313,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: previousData.evaluation ?? false,
             evaluationID: previousData.evaluationID ?? '',
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: previousData.passScoreMode,
+            passScoreCustom: previousData.passScoreCustom,
         });
         this.ideviceBody.querySelector('#frmEQuestionsRandom').checked =
             previousData.questionsRandom || false;
@@ -388,6 +367,10 @@ var $exeDevice = {
         if (!progressBar) return false;
         this.evaluation = progressBar.evaluation;
         this.evaluationID = progressBar.evaluationID;
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        this.passScoreMode = passScore.passScoreMode;
+        this.passScoreCustom = passScore.passScoreCustom;
         this.eXeFormInstructions = this.getEditorTinyMCEValue(
             'eXeGameInstructions'
         );
@@ -395,17 +378,12 @@ var $exeDevice = {
             'eXeIdeviceTextAfter'
         );
         this.questionsData = $exeDevice.getQuestionsData();
-        this[$exeDevice.dropdownPassRateId] =
-            $exeDevice.ideviceBody.querySelector(
-                `[id^="${$exeDevice.dropdownPassRateId}"]`
-            ).value;
         this[$exeDevice.checkAddBtnAnswersId] =
             $exeDevice.ideviceBody.querySelector(
                 `#${$exeDevice.checkAddBtnAnswersId}`
             ).checked;
         this.showSlider =
             this.ideviceBody.querySelector('#frmEShowSlider').checked;
-        this.passRate = this[$exeDevice.dropdownPassRateId];
         this.addBtnAnswers =
             $exeDevice.ideviceBody.querySelector(`#checkAddBtnAnswers`).checked;
         this.questionsRandom = this.ideviceBody.querySelector(
@@ -417,7 +395,6 @@ var $exeDevice = {
         this.time = this.ideviceBody.querySelector('#frmETime').value;
         this.dataIds.push('eXeFormInstructions');
         this.dataIds.push('questionsData');
-        this.dataIds.push($exeDevice.dropdownPassRateId);
         this.dataIds.push($exeDevice.checkAddBtnAnswersId);
         this.dataIds.push('eXeIdeviceTextAfter');
         const fields = this.ci18n,
@@ -763,6 +740,8 @@ var $exeDevice = {
         data.ideviceId = this.ideviceBody.getAttribute('idevice-id');
         data.evaluation = this.evaluation;
         data.evaluationID = this.evaluationID;
+        data.passScoreMode = this.passScoreMode;
+        data.passScoreCustom = this.passScoreCustom;
         data.repeatActivity = this.repeatActivity;
         data.isScorm = this.isScorm;
         data.textButtonScorm = this.textButtonScorm;
@@ -774,9 +753,6 @@ var $exeDevice = {
         data.time = this.time;
         data.eXeFormInstructions = this.eXeFormInstructions;
         data.questionsData = this.questionsData;
-        data.passRate = this.passRate;
-        data[$exeDevice.dropdownPassRateId] =
-            this[$exeDevice.dropdownPassRateId];
         data.addBtnAnswers = this.addBtnAnswers;
         data.eXeIdeviceTextAfter = this.eXeIdeviceTextAfter;
         data.showSlider = this.showSlider;
@@ -853,7 +829,8 @@ var $exeDevice = {
         this.strings.msgETrue = _('True');
         this.strings.msgEFalse = _('False');
         this.strings.msgNoQuestions = _('No questions in the form');
-        this.strings.msgPassRate = _('Set the pass mark');
+        // msgPassRate ('Set the pass mark') went with the dropdown it labelled:
+        // the mark now comes from the shared pass-score control.
         this.strings.msgAddBtnAnswers = _(
             'Include a button to display the answers'
         );
@@ -971,11 +948,6 @@ var $exeDevice = {
                                 <input type="number" name="frmEPercentageQuestions" id="frmEPercentageQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
                                 <span id="frmENumeroPercentaje">1/1</span>
                             </div>
-                            <!-- Pass Rate Dropdown -->
-                            <div class="question-button inline mb-3" style="display:none;">
-                                <span id="${$exeDevice.passRateId}">${this.strings.msgPassRate}</span>
-                                ${this.createPassRateDropdown('formIdevice')}
-                            </div>            
                             <!-- Show Answers Checkbox -->
                             <div id="${$exeDevice.checkAddBtnAnswersId}_container" class="mb-3">
                                 <span class="toggle-item" role="switch" aria-checked="true">
@@ -987,7 +959,6 @@ var $exeDevice = {
                                 </span>
                             </div>
                             <!-- Evaluation -->
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1023,7 +994,7 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 7, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(7)}
@@ -2322,6 +2293,7 @@ var $exeDevice = {
     behaviourEvaluation() {
         const { ideviceBody } = $exeDevice;
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         const divTime = ideviceBody.querySelector('#frmETimeDiv');
         const percentageQuestions = ideviceBody.querySelector(
             '#frmEPercentageQuestions'
@@ -3203,18 +3175,6 @@ var $exeDevice = {
         });
         selectDropdown += `</select>`;
         selectDropdown += `<span id="dropdownAnswer_${id}" class="dropdownAnswer" style="display:none">${answer}</span>`;
-        return selectDropdown;
-    },
-
-    createPassRateDropdown(id) {
-        let options = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-        let selectDropdown = ``;
-        selectDropdown += `<select id="${$exeDevice.dropdownPassRateId}_${id}" class="dropdownPassRate form-control" aria-labelledby="${$exeDevice.passRateId}" data-id="${id}">`;
-        selectDropdown += `<option value="" selected></option>`;
-        options.forEach((option) => {
-            selectDropdown += `<option value="${option}">${option}%</option>`;
-        });
-        selectDropdown += `</select>`;
         return selectDropdown;
     },
 

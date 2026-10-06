@@ -585,6 +585,19 @@ export default class FormProperties {
                 valueElement = document.createElement('input');
                 valueElement.value = property.value;
                 break;
+            case 'number':
+                valueElement = document.createElement('input');
+                valueElement.value = property.value;
+                // The bounds come from the property definition
+                // (src/routes/config-params.ts) so the domain of a numeric
+                // property is declared in one place only.
+                if (property.min !== undefined)
+                    valueElement.setAttribute('min', property.min);
+                if (property.max !== undefined)
+                    valueElement.setAttribute('max', property.max);
+                if (property.step !== undefined)
+                    valueElement.setAttribute('step', property.step);
+                break;
             case 'textarea':
                 valueElement = document.createElement('textarea');
                 valueElement.innerHTML = property.value;
@@ -631,6 +644,9 @@ export default class FormProperties {
                 );
                 break;
             case 'checkbox':
+                break;
+            case 'number':
+                valueElement.classList.add('form-control', 'exe-number-field');
                 break;
             case 'date':
             case 'text':

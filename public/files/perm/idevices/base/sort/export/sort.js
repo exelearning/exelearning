@@ -67,6 +67,7 @@ var $eXeOrdena = {
             const ordena = $eXeOrdena.createInterfaceOrdena(i);
 
             dl.before(ordena).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ordenaGameMinimize-' + i).hide();
             $('#ordenaGameContainer-' + i).hide();
@@ -1921,14 +1922,22 @@ var $eXeOrdena = {
         }
 
         if (mOptions.time > 0) {
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#ordenaMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'ordenaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (mOptions.gameStarted) {
@@ -1940,6 +1949,7 @@ var $eXeOrdena = {
                 }
                 $eXeOrdena.uptateTime(mOptions.counter, instance);
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeOrdena.uptateTime(mOptions.time * 60, instance);
         }
         if (mOptions.type === 1) {

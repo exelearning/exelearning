@@ -13,22 +13,7 @@ var $form = {
      * very object the activity's controls are bound to. See resolveInstance().
      */
     instances: {},
-    dropdownPassRateId: 'dropdownPassRate',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
-    passRate: '',
-    /**
-     * The threshold used when nothing usable was authored. It is the value
-     * gameOver() used to pass to showScore() literally, so every activity
-     * saved before the pass rate reached the runtime keeps the grading it has
-     * always had.
-     */
-    defaultPassRate: 50,
-    /**
-     * The value every edition save wrote into `passRate` while the field was
-     * hardcoded. The dropdown only offers 10..100, so a stored 5 cannot be an
-     * authored threshold — it is the old hardcode, and means "nothing set".
-     */
-    legacyPassRate: 5,
     iconSingleSelection: 'rule',
     iconMultipleSelection: 'checklist_rtl',
     iconTrueFalse: 'rule',
@@ -133,7 +118,7 @@ var $form = {
                     </div>
                     <div class="form-buttons-container inline">
                         <input id="form-button-check-${ldata.id}" class="btn btn-primary" type="button" value="${ldata.msgs.msgCheck}"
-                            data-id="${ldata.id}" data-pass-rate="${ldata.passRate}" />
+                            data-id="${ldata.id}" />
                         <input id="form-button-reset-${ldata.id}" type="button" value="${ldata.msgs.msgReset}"
                             data-id="${ldata.id}" class="btn btn-primary"  style="display:none" />
                         ${
@@ -207,7 +192,6 @@ var $form = {
         data.rightQuestions = 0;
         data.wrongQuestions = 0;
         data.showSlider = data.showSlider ?? false;
-        data.passRate = $form.resolvePassRate(data);
         data.addBtnAnswers = data.addBtnAnswers ?? true;
         data.scorerp = 0;
         data.main = 'frmMainContainer-' + data.id;
@@ -240,6 +224,12 @@ var $form = {
         const questionsHtml = $form.getHtmlFormView(ldata.questionsData, ldata);
         $('#form-questions-' + ldata.id).empty();
         $('#form-questions-' + ldata.id).append(questionsHtml);
+        // The instructions are inside the main container, so the notice goes
+        // before what follows them: below the instructions, above the form.
+        $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+            ldata,
+            '#frmMainContainer-' + ldata.id + ' > .FRMP-GameScoreBoard'
+        );
         const bindBehaviour = () => {
             $form.setBehaviourButtonResetQuestions(ldata);
             $form.setBehaviourButtonCheckQuestions(ldata);
@@ -802,7 +792,11 @@ var $form = {
         if (data.addBtnAnswers & showAnswers.length) showAnswers.show();
         data.gameOver = true;
         $form.checkAllQuestions(data);
-        $form.showScore(data.passRate, data);
+        // The mark used to be a hardcoded 50 here, while the author's own
+        // dropdown was never read: $form.passRate stayed '' for the life of the
+        // page. Both are gone -- the threshold is the project's, or this
+        // activity's own when its author customised it.
+        $form.showScore($exe.passScore.toPercent($exe.passScore.resolve(data)), data);
         if ($('body').hasClass('exe-scorm') && data.isScorm > 0) {
             $form.sendScore(data);
         }
@@ -1488,51 +1482,16 @@ var $form = {
         }
     },
     /**
-     * A pass rate as a usable percentage.
-     *
-     * @param {*} value A rate as authored, stored or imported — the dropdown
-     *   hands over a string, the legacy format and the API may hand a number.
-     * @returns {number} the percentage, or 0 when the value is not one.
+     * @param {number|null} passRate Pass mark as a percentage, or null to show
+     * the score without a verdict. A mark of 0 is a verdict -- everyone passes
+     * -- so it must not be mistaken for "no mark", which a truthiness check did.
+     * @param {Object} data The activity options.
      */
-    toPassRate: function (value) {
-        const rate = parseFloat(value);
-        if (!Number.isFinite(rate) || rate <= 0 || rate > 100) return 0;
-        return rate;
-    },
-
-    /**
-     * The percentage a learner must reach for the activity to read as passed.
-     *
-     * Three fields claimed to hold it and none of them reached the score:
-     *
-     * - `dropdownPassRate` is the authored value — the edition dropdown
-     *   (10..100), and where the legacy ScormTest importer puts the old
-     *   `passRate` property. Edition collected it on save and then dropped it,
-     *   so it never left the editor.
-     * - `passRate` is what this runtime reads, and every save wrote a
-     *   hardcoded 5 into it.
-     * - gameOver() ignored both and graded against a literal 50.
-     *
-     * 50 is therefore the threshold every existing activity was really graded
-     * against, and is what an activity keeps when it carries no authored
-     * value — including one carrying the old hardcoded 5.
-     *
-     * @param {Object} data The activity's options.
-     * @returns {number} the pass percentage, 1..100.
-     */
-    resolvePassRate: function (data) {
-        const authored = $form.toPassRate(data && data.dropdownPassRate);
-        if (authored) return authored;
-        const stored = $form.toPassRate(data && data.passRate);
-        if (stored && stored !== $form.legacyPassRate) return stored;
-        return $form.defaultPassRate;
-    },
-
     showScore: function (passRate, data) {
         const $resultTest = $('#form-result-test-' + data.id);
         const $scoreTest = $('#form-score-' + data.id);
         const $resultsContainer = $('#resultsContainer-' + data.id);
-        if (passRate) {
+        if (passRate !== null && passRate !== undefined && passRate !== '') {
             $resultTest.show();
             $scoreTest.show();
             $scoreTest

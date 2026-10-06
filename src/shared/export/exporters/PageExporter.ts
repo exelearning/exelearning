@@ -283,6 +283,10 @@ export class PageExporter extends Html5Exporter {
             detectedLibraries,
             linkToElp: meta.exportSource !== false,
             addMathJax,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
             addExeLink: meta.addExeLink ?? true,
             // Pre-translated nav labels (resolved from XLF at export time)
             navLabels,
