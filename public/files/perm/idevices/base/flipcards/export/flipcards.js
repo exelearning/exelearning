@@ -78,6 +78,7 @@ var $eXeFlipCards = {
 
             const flcds = $eXeFlipCards.createInterfaceCards(i);
             dl.before(flcds).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#flcdsGameMinimize-' + i).hide();
             $('#flcdsGameContainer-' + i).hide();
