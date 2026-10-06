@@ -6,6 +6,7 @@
  * Uses Dependency Injection pattern for testability
  */
 import * as fflateModule from 'fflate';
+import { safeUnzipSync } from '../utils/safe-unzip';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
@@ -64,7 +65,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
         const resolvedTargetDir = path.resolve(targetDir);
 
         // Use sync version for reliability in Node.js/Bun environment
-        const unzipped = fflate.unzipSync(uint8ZipData);
+        const unzipped = safeUnzipSync(uint8ZipData, { fflate });
         const extractedFiles: string[] = [];
 
         // Extract all files
@@ -103,7 +104,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
         const resolvedTargetDir = path.resolve(targetDir);
 
         // Use sync version for reliability in Node.js/Bun environment
-        const unzipped = fflate.unzipSync(uint8ZipData);
+        const unzipped = safeUnzipSync(uint8ZipData, { fflate });
         const extractedFiles: string[] = [];
 
         // Extract all files
@@ -205,7 +206,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
         if (await fs.pathExists(zipPath)) {
             const zipData = await fs.readFile(zipPath);
             const uint8ZipData = new Uint8Array(zipData);
-            existingFiles = fflate.unzipSync(uint8ZipData);
+            existingFiles = safeUnzipSync(uint8ZipData, { fflate });
         }
 
         // Add new files
@@ -233,7 +234,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     const listZipContents = async (zipPath: string): Promise<string[]> => {
         const zipData = await fs.readFile(zipPath);
         const uint8ZipData = new Uint8Array(zipData);
-        const unzipped = fflate.unzipSync(uint8ZipData);
+        const unzipped = safeUnzipSync(uint8ZipData, { fflate });
 
         // Filter out directories (fflate doesn't include them, but just in case)
         return Object.keys(unzipped).filter(name => !name.endsWith('/'));
@@ -242,7 +243,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     const readFileFromZip = async (zipPath: string, fileName: string): Promise<Buffer | null> => {
         const zipData = await fs.readFile(zipPath);
         const uint8ZipData = new Uint8Array(zipData);
-        const unzipped = fflate.unzipSync(uint8ZipData);
+        const unzipped = safeUnzipSync(uint8ZipData, { fflate });
 
         if (unzipped[fileName]) {
             return Buffer.from(unzipped[fileName]);
@@ -264,7 +265,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     const fileExistsInZip = async (zipPath: string, fileName: string): Promise<boolean> => {
         const zipData = await fs.readFile(zipPath);
         const uint8ZipData = new Uint8Array(zipData);
-        const unzipped = fflate.unzipSync(uint8ZipData);
+        const unzipped = safeUnzipSync(uint8ZipData, { fflate });
         return fileName in unzipped;
     };
 

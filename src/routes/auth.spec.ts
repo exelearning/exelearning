@@ -2,7 +2,7 @@
  * Auth Routes Tests
  * Tests for authentication endpoints using DI pattern
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
@@ -16,7 +16,14 @@ import {
 } from '../db/migrations/005_user_id_nullable';
 import { up as migration006Up } from '../db/migrations/006_impersonation_audit_log';
 import { now } from '../db/types';
-import { createAuthRoutes, verifyToken, getJwtSecret, shouldAutoCreateUsers, type AuthDependencies } from './auth';
+import {
+    createAuthRoutes,
+    verifyToken,
+    verifyUserPassword,
+    getJwtSecret,
+    shouldAutoCreateUsers,
+    type AuthDependencies,
+} from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
 import { resetOidcDiscoveryCache } from '../services/oidc-discovery';
 
@@ -213,6 +220,54 @@ describe('Auth Routes', () => {
             expect(setCookie).toContain('auth=');
         });
 
+        it('marks the auth cookie Secure in production and not in development', async () => {
+            const hashedPw = await hashPassword('password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'securecookie@example.com',
+                    user_id: 'securecookie-user',
+                    password: hashedPw,
+                    roles: '[]',
+                    is_lopd_accepted: 1,
+                    is_active: 1,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const login = () =>
+                app.handle(
+                    new Request('http://localhost/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: 'securecookie@example.com', password: 'password' }),
+                    }),
+                );
+
+            const prevAppEnv = process.env.APP_ENV;
+            const prevNodeEnv = process.env.NODE_ENV;
+            try {
+                // Production (APP_ENV=prod) → the session cookie must carry Secure.
+                process.env.APP_ENV = 'prod';
+                process.env.NODE_ENV = 'test';
+                const prodCookie = (await login()).headers.get('set-cookie') ?? '';
+                expect(prodCookie).toContain('auth=');
+                expect(prodCookie.toLowerCase()).toContain('secure');
+
+                // Development → no Secure flag (cookies work over plain http://localhost).
+                process.env.APP_ENV = 'dev';
+                const devCookie = (await login()).headers.get('set-cookie') ?? '';
+                expect(devCookie).toContain('auth=');
+                expect(devCookie.toLowerCase()).not.toContain('secure');
+            } finally {
+                if (prevAppEnv !== undefined) process.env.APP_ENV = prevAppEnv;
+                else delete process.env.APP_ENV;
+                if (prevNodeEnv !== undefined) process.env.NODE_ENV = prevNodeEnv;
+                else delete process.env.NODE_ENV;
+            }
+        });
+
         it('should return 403 with "Account deactivated" for disabled user with correct password', async () => {
             const hashedPw = await hashPassword('correct-password');
             await testDb
@@ -246,6 +301,90 @@ describe('Auth Routes', () => {
             expect(data.message).toBe('Account deactivated');
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie ?? '').not.toContain('auth=');
+        });
+    });
+
+    // =========================================================================
+    // Username-enumeration timing oracle (constant-time login)
+    //
+    // A failed login MUST run exactly one Bun.password.verify whether or not the
+    // email exists, otherwise the fast "user not found" path (no verify) leaks
+    // account existence through response latency. See security finding
+    // "no-rate-limit-auth-brute-force" and ADR-2255-02.
+    // =========================================================================
+    describe('login is constant-time for unknown vs existing accounts', () => {
+        it('POST /api/auth/login runs password verify even when the email does not exist', async () => {
+            const verifySpy = spyOn(Bun.password, 'verify');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: 'ghost-does-not-exist@example.com',
+                            password: 'whatever',
+                        }),
+                    }),
+                );
+
+                expect(response.status).toBe(401);
+                // Vulnerable code returns before verify when the user is
+                // absent, so the spy is never called and this assertion fails.
+                expect(verifySpy).toHaveBeenCalledTimes(1);
+            } finally {
+                verifySpy.mockRestore();
+            }
+        });
+
+        it('POST /login_check runs password verify even when the email does not exist', async () => {
+            const verifySpy = spyOn(Bun.password, 'verify');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/login_check', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            email: 'ghost-does-not-exist-2@example.com',
+                            password: 'whatever',
+                        }).toString(),
+                    }),
+                );
+
+                // Symfony-compatible form login redirects on failure.
+                expect(response.status).toBe(302);
+                expect(verifySpy).toHaveBeenCalledTimes(1);
+            } finally {
+                verifySpy.mockRestore();
+            }
+        });
+    });
+
+    describe('verifyUserPassword (constant-time helper)', () => {
+        it('returns false for a missing user even if password verify would succeed', async () => {
+            // Boolean(user) must gate the result: a non-existent account can never
+            // authenticate, even though a decoy compare runs (timing parity).
+            const verifySpy = spyOn(Bun.password, 'verify').mockResolvedValue(true as never);
+            try {
+                expect(await verifyUserPassword(null, 'anything')).toBe(false);
+                expect(await verifyUserPassword(undefined, 'anything')).toBe(false);
+                // The decoy compare still ran (one call per invocation) — timing parity.
+                expect(verifySpy).toHaveBeenCalledTimes(2);
+            } finally {
+                verifySpy.mockRestore();
+            }
+        });
+
+        it('returns true only for an existing user with the correct password', async () => {
+            const hash = await hashPassword('correct-horse');
+            expect(await verifyUserPassword({ password: hash }, 'correct-horse')).toBe(true);
+            expect(await verifyUserPassword({ password: hash }, 'wrong-horse')).toBe(false);
+        });
+
+        it('returns false for a user whose password is null (SSO/guest rows) without throwing', async () => {
+            // A null/empty stored password falls back to the decoy hash, so it can
+            // never match — password login is impossible for password-less accounts.
+            expect(await verifyUserPassword({ password: null }, 'anything')).toBe(false);
+            expect(await verifyUserPassword({ password: '' }, 'anything')).toBe(false);
         });
     });
 
