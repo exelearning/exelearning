@@ -816,9 +816,10 @@ var $exe = {
         }
     },
     // Modal Window: Height problem in some browsers #328
-    setModalWindowContentSize: function () {
+    // context: optional node to limit the fix to (e.g. an iDevice rendered after init)
+    setModalWindowContentSize: function (context) {
         if (window.chrome) {
-            $(".exe-dialog-text img").each(
+            $(".exe-dialog-text img", context).each(
                 function () {
                     var e = $(this);
                     var h = e.attr("height");
@@ -838,10 +839,11 @@ var $exe = {
 
     // Transform links to audios or videos (with rel^='lightbox') in links to inline content
     // (see prettyPhoto documentation)
-    setMultimediaGalleries: function () {
+    // context: optional node whose links have to be transformed (e.g. an iDevice rendered after init)
+    setMultimediaGalleries: function (context) {
         if (typeof ($.prettyPhoto) != 'undefined') {
-            var lightboxLinks = $("a[rel^='lightbox']");
-            lightboxLinks.each(function (i) {
+            var lightboxLinks = $("a[rel^='lightbox']", context);
+            lightboxLinks.each(function () {
                 var ref = $(this).attr("href");
 
                 // Within eXe replace the blob URL with the URL of the asset to check if isAudio or isVideo
@@ -857,7 +859,10 @@ var $exe = {
                 var isAudio = _ref.indexOf(".mp3") != -1;
                 var isVideo = _ref.indexOf(".mp4") != -1 || _ref.indexOf(".flv") != -1 || _ref.indexOf(".ogg") != -1 || _ref.indexOf(".ogv") != -1;
                 if (isAudio || isVideo) {
-                    var id = "media-box-" + i;
+                    // First free id: this can run more than once per page
+                    var n = 0;
+                    while (document.getElementById("media-box-" + n)) n++;
+                    var id = "media-box-" + n;
                     $(this).attr("href", "#" + id);
                     var hiddenPlayer = $('<div class="exe-media-box js-hidden" id="' + id + '"></div>');
                     if (isAudio) hiddenPlayer.html('<div class="exe-media-audio-box"><audio controls="controls" src="' + ref + '" class="exe-media-box-element exe-media-box-audio"><a href="' + ref + '">audio/mpeg</a></audio></div>');
@@ -868,6 +873,8 @@ var $exe = {
             });
             // Re-query after $exeFX.init() has finished rebuilding exe-fx DOM (e.g. accordion rft()).
             // Both prettyPhoto and the gallery-error fallback use the same post-FX-init set.
+            // The whole page is bound even with a context: prettyPhoto builds its galleries
+            // from the links it is bound to.
             setTimeout(function() {
                 var currentLightboxLinks = $("a[rel^='lightbox']");
                 currentLightboxLinks.prettyPhoto({
@@ -922,7 +929,7 @@ var $exe = {
                 // If there are galleries but no lightbox links, there's an error (e.g. some ePub readers).
                 // See issue #258
                 var eXeGalleries = $('.GalleryIdevice');
-                if (currentLightboxLinks.length == 0 && eXeGalleries.length > 0 && typeof (exe_editor_mode) == "undefined") {
+                if (!context && currentLightboxLinks.length == 0 && eXeGalleries.length > 0 && typeof (exe_editor_mode) == "undefined") {
                     // We execute this code only outside eXe or the Image Gallery edition will fail (see issue #317)
                     $('.exeImageGallery a').each(function () {
                         this.title += " ~ [" + this.href + "]";
