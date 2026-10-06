@@ -83,7 +83,7 @@ global.eXeLearning = {
 };
 
 // Import after setting up mocks
-import IdeviceBlockNode from './blockNode.js';
+import IdeviceBlockNode, { sortThemeIcons } from './blockNode.js';
 
 describe('IdeviceBlockNode', () => {
     let block;
@@ -916,6 +916,27 @@ describe('IdeviceBlockNode', () => {
             expect(firstThemeIndex).toBeLessThan(firstMaterialIndex);
         });
 
+        it('lists theme icons alphabetically regardless of source order (#2411)', () => {
+            // Static bundles built on Linux ship icons in raw readdir order
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                udl_rep_informarse: { id: 'udl_rep_informarse', value: '/i/udl_rep_informarse.svg' },
+                udl_exp_grupohomogeneo: { id: 'udl_exp_grupohomogeneo', value: '/i/udl_exp_grupohomogeneo.svg' },
+                udl_eng_reto: { id: 'udl_eng_reto', value: '/i/udl_eng_reto.svg' },
+                udl_eng_curiosidad: { id: 'udl_eng_curiosidad', value: '/i/udl_eng_curiosidad.svg' },
+            }));
+            const body = block.makeModalChangeIconBody();
+            const values = [...body.querySelectorAll('.option-block-icon[data-icon-source="theme"]')].map((el) =>
+                el.getAttribute('data-icon-value')
+            );
+
+            expect(values).toEqual([
+                'udl_eng_curiosidad',
+                'udl_eng_reto',
+                'udl_exp_grupohomogeneo',
+                'udl_rep_informarse',
+            ]);
+        });
+
         it('adds section titles separating theme and general icons', () => {
             const body = block.makeModalChangeIconBody();
             const titles = [...body.querySelectorAll('.icon-options-section-title')].map((el) => el.textContent);
@@ -931,13 +952,38 @@ describe('IdeviceBlockNode', () => {
             expect(body.querySelectorAll('.option-block-icon[data-icon-source="theme"]')).toHaveLength(0);
         });
 
-        it('renders material modal options from the sprite', () => {
+        it('renders material modal options as inline SVG from the shared sprite runtime', () => {
+            // Under Electron's app:// scheme Chromium fetches the whole sprite once per
+            // external <use>, so 3 798 options froze the renderer (#2419). The picker
+            // must inline each glyph from the sprite already parsed in memory instead.
+            const renderMaterialInlineIcon = vi.fn(
+                () =>
+                    '<svg class="exe-material-icon-sprite" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M1-1Z"/></svg>'
+            );
+            window.eXeBlockIconRuntime = { renderMaterialInlineIcon };
+            try {
+                const body = block.makeModalChangeIconBody();
+                const firstMaterialIcon = body.querySelector('.option-block-icon[data-icon-source="material"]');
+
+                expect(firstMaterialIcon.querySelector('.exe-material-icon-sprite path')).not.toBeNull();
+                expect(body.querySelector('.exe-material-icon-sprite use')).toBeNull();
+                expect(body.innerHTML).not.toContain('material-icons.svg');
+                expect(renderMaterialInlineIcon).toHaveBeenCalledWith(
+                    firstMaterialIcon.getAttribute('data-icon-value'),
+                    expect.objectContaining({ catalog: expect.any(Array) })
+                );
+            } finally {
+                delete window.eXeBlockIconRuntime;
+            }
+        });
+
+        it('renders material modal options as hydration placeholders when the sprite is not loaded yet', () => {
             const body = block.makeModalChangeIconBody();
             const firstMaterialIcon = body.querySelector('.option-block-icon[data-icon-source="material"]');
-            const spriteUse = firstMaterialIcon.querySelector('.exe-material-icon-sprite use');
 
-            expect(spriteUse).not.toBeNull();
-            expect(spriteUse.getAttribute('href')).toContain('/libs/material-icons/material-icons.svg#');
+            expect(firstMaterialIcon.querySelector('.exe-material-icon[data-exe-material-icon]')).not.toBeNull();
+            expect(body.querySelector('use')).toBeNull();
+            expect(body.innerHTML).not.toContain('material-icons.svg');
         });
     });
 
@@ -1720,10 +1766,25 @@ describe('IdeviceBlockNode', () => {
             expect(block.getRenderableAssetUrl('https://example.com/icon.svg')).toBe('https://example.com/icon.svg');
         });
 
-        it('renders material sprite icon with fallback symbol for invalid names', () => {
-            const html = block.renderMaterialSpriteIcon('not-in-catalog');
-            expect(html).toContain('exe-material-icon-sprite');
-            expect(html).toContain('/libs/material-icons/material-icons.svg#help');
+        it('renders material picker icon as a hydration placeholder with the help fallback when no shared runtime exists', () => {
+            const html = block.renderMaterialInlineIcon('not-in-catalog');
+            expect(html).toContain('class="exe-material-icon"');
+            expect(html).toContain('data-exe-material-icon="help"');
+            expect(html).not.toContain('<use');
+        });
+
+        it('delegates material picker icon rendering to the shared runtime with the catalog', () => {
+            const renderMaterialInlineIcon = vi.fn(() => '<svg class="exe-material-icon-sprite"><path d="M1-1Z"/></svg>');
+            window.eXeBlockIconRuntime = { renderMaterialInlineIcon };
+            try {
+                expect(block.renderMaterialInlineIcon('alarm')).toContain('<path d="M1-1Z"/>');
+                expect(renderMaterialInlineIcon).toHaveBeenCalledWith(
+                    'alarm',
+                    expect.objectContaining({ catalog: expect.any(Array) })
+                );
+            } finally {
+                delete window.eXeBlockIconRuntime;
+            }
         });
 
         it('filters material and theme icon tiles from the search query', () => {
@@ -4386,4 +4447,32 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+});
+
+describe('sortThemeIcons', () => {
+    it('returns icons sorted by id with numeric awareness', () => {
+        const sorted = sortThemeIcons({
+            icon10: { id: 'icon10', value: '/i/icon10.svg' },
+            icon2: { id: 'icon2', value: '/i/icon2.svg' },
+            icon1: { id: 'icon1', value: '/i/icon1.svg' },
+        });
+
+        expect(sorted.map((icon) => icon.id)).toEqual(['icon1', 'icon2', 'icon10']);
+    });
+
+    it('drops entries without a value and falls back to value when id is missing', () => {
+        const sorted = sortThemeIcons({
+            b: { id: 'b', value: '/i/b.svg' },
+            broken: { id: 'broken' },
+            empty: null,
+            a: { value: '/i/a.svg' },
+        });
+
+        expect(sorted.map((icon) => icon.id || icon.value)).toEqual(['/i/a.svg', 'b']);
+    });
+
+    it('returns an empty list for null or undefined input', () => {
+        expect(sortThemeIcons(null)).toEqual([]);
+        expect(sortThemeIcons(undefined)).toEqual([]);
+    });
 });

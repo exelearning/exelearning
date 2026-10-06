@@ -36,7 +36,10 @@ const dynamicServerEnv = {
     FILES_DIR: path.join(os.tmpdir(), 'exelearning-e2e'),
     PORT: '3001',
     APP_PORT: '3001',
-    APP_AUTH_METHODS: 'password,guest',
+    APP_AUTH_METHODS: 'password,guest,openid',
+    OIDC_ISSUER: '',
+    OIDC_AUTHORIZATION_ENDPOINT: 'https://oidc.example.test/authorize',
+    OIDC_CLIENT_ID: 'e2e-client',
     ADMIN_EMAIL: 'admin@exelearning.test',
     ADMIN_PASSWORD: 'AdminPass123!',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
@@ -181,6 +184,8 @@ export default defineConfig({
         // },
         {
             name: 'static',
+            // OIDC requires backend routes (https://github.com/exelearning/exelearning/issues/2377).
+            testIgnore: /oidc-login\.spec\.ts/,
             use: {
                 ...devices['Desktop Chrome'],
                 baseURL: 'http://localhost:3002',

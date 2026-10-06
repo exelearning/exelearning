@@ -942,9 +942,17 @@ var $exeDevice = {
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
-        });
+        // Closing the editor must silence the preview and drop its stream; the
+        // `canplaythrough` handler goes with it, so a clip that finishes
+        // buffering after teardown never starts playing.
+        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
+        this.$lifecycle.addEventListener(
+            $exeDevice.playerAudio,
+            'canplaythrough',
+            function () {
+                this.playerAudio.play();
+            }
+        );
     },
 
     stopSound() {
@@ -983,6 +991,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         $('#sopaEPaste').hide();
 
         $('#sopaEAdd').on('click', function (e) {
@@ -1075,9 +1086,10 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
 
@@ -1217,7 +1229,7 @@ var $exeDevice = {
         $('#sopaETime').on('keyup', function () {
             let v = this.value;
             v = v.replace(/\D/g, '');
-            v = v.substring(0, 1);
+            v = v.substring(0, 2);
             this.value = v;
         });
         $('#sopaETime').on('focusout', function () {

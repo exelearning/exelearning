@@ -17,6 +17,10 @@ on:
       - package.json
       - bun.lock
       - .github/workflows/e2e-db-matrix.yml
+      # This matrix is the only consumer of the compose stack it boots, so a
+      # change there must be proven here rather than after merge.
+      - doc/deploy/.env.e2e
+      - doc/deploy/docker-compose.*.yml
   workflow_dispatch:
 
 concurrency:

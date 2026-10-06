@@ -148,4 +148,187 @@ describe('guess iDevice export', () => {
       expect($guess.idevicePath).toBe('');
     });
   });
+
+  // The automatic report used to happen only from newQuestion()/showQuestion(),
+  // i.e. once the setTimeout that reveals the next question had elapsed. That
+  // put the mark in the LMS seconds late, and a learner who left during that
+  // window lost the answer: the timer never fired.
+  describe('reporting in the same turn the learner answered', () => {
+    function setupAnswer(overrides) {
+      document.body.innerHTML = `
+        <div id="adivinaMainContainer-0">
+          <div id="adivinaPShowClue-0"></div>
+          <div id="adivinaModeBoardOK-0"></div>
+          <div id="adivinaModeBoardKO-0"></div>
+          <div id="adivinaModeBoardMoveOn-0"></div>
+        </div>`;
+      $guess.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: false,
+          hits: 1,
+          errors: 0,
+          numberQuestions: 4,
+          activeQuestion: 0,
+          activeCounter: true,
+          gameActived: true,
+          wordsGame: [
+            { word: 'uno' },
+            { word: 'dos' },
+            { word: 'tres' },
+            { word: 'cuatro' },
+          ],
+          obtainedClue: false,
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($guess, 'updateScore').mockReturnValue(1);
+      vi.spyOn($guess, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($guess, 'newQuestion').mockImplementation(() => {});
+      vi.spyOn($guess, 'showMessage').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports before the reveal timer runs, not after it', () => {
+      vi.useFakeTimers();
+      setupAnswer();
+
+      $guess.answerQuestionBoard(true, 0);
+
+      // No timer has been advanced: the report has to have gone out already.
+      expect($guess.sendScore).toHaveBeenCalledWith(true, 0);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    it('does not report when the activity is not in automatic SCORM mode', () => {
+      vi.useFakeTimers();
+      setupAnswer({ isScorm: 0 });
+
+      $guess.answerQuestionBoard(true, 0);
+
+      expect($guess.sendScore).not.toHaveBeenCalled();
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // An intermediate answer must not close the attempt: the page would go to
+    // passed/failed while the learner is still playing.
+    it('leaves the activity unfinished while questions remain', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeQuestion: 0, numberQuestions: 4 });
+
+      $guess.answerQuestionBoard(true, 0);
+
+      expect($guess.options[0].gameOver).toBe(false);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // The last answer must carry the completion, so leaving during the reveal
+    // delay still records a finished activity.
+    it('marks the activity finished on the last question, before reporting', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeQuestion: 3, numberQuestions: 4 });
+      let flagWhenReported;
+      $guess.sendScore.mockImplementation(() => {
+        flagWhenReported = $guess.options[0].gameOver;
+      });
+
+      $guess.answerQuestionBoard(true, 0);
+
+      expect(flagWhenReported).toBe(true);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // saveScormScore is the single entry point the three call sites share
+    // (startGame, answerQuestion, answerQuestionBoard).
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupAnswer({ isScorm: 1 });
+      $guess.saveScormScore(0);
+      expect($guess.sendScore).toHaveBeenCalledWith(true, 0);
+
+      $guess.sendScore.mockClear();
+      $guess.options[0].isScorm = 2;
+      $guess.saveScormScore(0);
+      expect($guess.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and moving it on to the next question.
+  describe('the clock of a game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      global.$exeDevices.iDevice.gamification.helpers = { getTimeSeconds: () => 30 };
+      document.body.innerHTML = `<div id="adivinaMainContainer-${instance}"></div>`;
+      $guess.options = [
+        {
+          gameStarted: false,
+          numberLives: 3,
+          numberQuestions: 1,
+          msgs: { msgPlayStart: '' },
+          wordsGame: [{ time: 1, type: 0, word: 'Valencia', definition: 'Ciudad conquistada' }],
+          showSolution: false,
+        },
+      ];
+      for (const method of ['updateLives', 'updateTime', 'updateSoundVideo', 'saveScormScore', 'newQuestion', 'drawPhrase']) {
+        vi.spyOn($guess, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    /** Start the game and put its first question on the clock, as newQuestion does. */
+    function startGame() {
+      $guess.startGame(instance);
+      $guess.options[instance].activeCounter = true;
+    }
+
+    it('counts down on its own game', () => {
+      startGame();
+
+      vi.advanceTimersByTime(3000);
+
+      expect($guess.updateTime).toHaveBeenLastCalledWith(27, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      startGame();
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="adivinaMainContainer-${instance}"></div>`;
+      $guess.options[instance] = { gameStarted: true, activeCounter: true, counter: 30 };
+      $guess.updateTime.mockClear();
+      $guess.newQuestion.mockClear();
+
+      vi.advanceTimersByTime(60000);
+
+      expect($guess.updateTime).not.toHaveBeenCalled();
+      expect($guess.newQuestion).not.toHaveBeenCalled();
+      expect($guess.options[instance].counter).toBe(30);
+    });
+  });
 });

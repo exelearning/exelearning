@@ -1,7 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { getYjsComponentPlainText, waitForYjsComponentText } from './sync-helpers';
-import { waitForTinyMCEReady } from './workarea-helpers';
 
 export const ORIGINAL_IDEVICE_CONTENT = 'Original content';
 export const UPDATED_IDEVICE_CONTENT = 'Updated by client A';
@@ -29,61 +28,23 @@ export async function getVisibleIdeviceText(page: Page, ideviceId: string): Prom
     });
 }
 
-export async function getTinyMCEPlainText(page: Page): Promise<string> {
-    await waitForTinyMCEReady(page);
-    return page.evaluate(() => {
-        const editor = (window as any).tinymce?.activeEditor;
-        return editor ? editor.getContent({ format: 'text' }).trim() : '';
+/** Wait for the content editor, independently of the feedback editor's initialization. */
+export async function waitForTextIdeviceEditor(page: Page) {
+    await page.waitForFunction(() => (window as any).tinymce?.get('textTextarea')?.initialized === true, undefined, {
+        timeout: 15000,
     });
+    return page.frameLocator('#textTextarea_ifr').locator('body[contenteditable="true"]');
 }
 
-/**
- * Write text into the text iDevice TinyMCE instance that Save actually reads
- * (`textTextarea`), not only `tinymce.activeEditor`.
- */
+export async function getTinyMCEPlainText(page: Page): Promise<string> {
+    const editor = await waitForTextIdeviceEditor(page);
+    return (await editor.innerText()).trim();
+}
+
 export async function fillTextIdeviceEditor(page: Page, text: string): Promise<void> {
-    await waitForTinyMCEReady(page);
-    await page.waitForFunction(
-        () => {
-            const tinymce = (window as any).tinymce;
-            return !!(tinymce?.get?.('textTextarea') || tinymce?.editors?.textTextarea);
-        },
-        undefined,
-        { timeout: 15000 },
-    );
-
-    await page.evaluate(html => {
-        const tinymce = (window as any).tinymce;
-        const editors = [tinymce?.get?.('textTextarea'), tinymce?.editors?.textTextarea, tinymce?.activeEditor].filter(
-            Boolean,
-        );
-        for (const editor of editors) {
-            editor.setContent(html);
-            editor.fire('change');
-            editor.fire('input');
-            editor.setDirty(true);
-            if (typeof editor.save === 'function') {
-                editor.save();
-            }
-        }
-        if ((window as any).$exeDevice) {
-            (window as any).$exeDevice.textTextarea = html;
-        }
-        const textarea = document.getElementById('textTextarea') as HTMLTextAreaElement | null;
-        if (textarea) {
-            textarea.value = html;
-        }
-    }, `<p>${text}</p>`);
-
-    await page.waitForFunction(
-        expected => {
-            const tinymce = (window as any).tinymce;
-            const editor = tinymce?.get?.('textTextarea') || tinymce?.editors?.textTextarea;
-            return editor?.getContent?.({ format: 'text' })?.includes(expected) === true;
-        },
-        text,
-        { timeout: 10000 },
-    );
+    const editor = await waitForTextIdeviceEditor(page);
+    await editor.fill(text);
+    await expect(editor).toHaveText(text);
 }
 
 export async function confirmDiscardModal(page: Page): Promise<void> {

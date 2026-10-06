@@ -83,6 +83,22 @@ var $eXeDesafio = {
         $eXeDesafio.loadGame();
     },
 
+    /**
+     * Where a game keeps its progress: under its own component's id.
+     *
+     * The id in the game's data travels with it when the iDevice is
+     * duplicated, so two copies read and wrote the same entry and each resumed
+     * the other's game. The component's id is its own, in the editor and once
+     * exported. Without one there is nowhere safe to keep it, and nothing is.
+     *
+     * @param {Element} activity - The game's element
+     * @returns {string} The key, or '' when the game belongs to no component
+     */
+    storageKeyOf: function (activity) {
+        const nodeId = $(activity).closest('.idevice_node').attr('id');
+        return nodeId ? 'dataDesafio-' + nodeId : '';
+    },
+
     loadGame: function () {
         $eXeDesafio.options = [];
 
@@ -97,6 +113,7 @@ var $eXeDesafio = {
             mOption.idevicePath = $eXeDesafio.idevicePath;
             mOption.main = 'desafioMainContainer-' + i;
             mOption.idevice = 'desafio-IDevice';
+            mOption.storageKey = $eXeDesafio.storageKeyOf(this);
 
             $eXeDesafio.options.push(mOption);
 
@@ -420,10 +437,12 @@ var $eXeDesafio = {
 
         $(window).on('pagehide.eXeChallenger', () => {
             if (mOptions.gameStarted || mOptions.gameOver) {
+                // Persist only. The endScorm() call that used to follow was
+                // dead twice over: the helper is intentionally empty in
+                // common.js — the SCORM 1.2 runtime owns end-of-session
+                // handling — and $eXeDesafio.mScorm is declared null and never
+                // assigned, so it passed null to a no-op.
                 $eXeDesafio.saveDataStorage(instance);
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeDesafio.mScorm
-                );
             }
         });
         $(`#desafioSolutionDiv-${instance}`).hide();
@@ -538,9 +557,9 @@ var $eXeDesafio = {
         mOptions.counter = parseInt(mOptions.desafioTime) * 60;
         mOptions.activeChallenge = 0;
 
-        if (typeof mOptions.desafioID !== 'undefined') {
+        if (mOptions.storageKey) {
             const dataDesafio = $eXeDesafio.getDesafioStorage(
-                mOptions.desafioID
+                mOptions.storageKey
             );
             if (dataDesafio) {
                 if (
@@ -549,9 +568,7 @@ var $eXeDesafio = {
                         mOptions.challengesGame.length ||
                     dataDesafio.desafioTime !== mOptions.desafioTime
                 ) {
-                    localStorage.removeItem(
-                        `dataDesafio-${mOptions.desafioID}`
-                    );
+                    localStorage.removeItem(mOptions.storageKey);
                 } else {
                     $eXeDesafio.reloadGame(instance, dataDesafio);
                 }
@@ -611,7 +628,7 @@ var $eXeDesafio = {
 
         clearInterval(mOptions.counterClock);
 
-        localStorage.removeItem('dataDesafio-' + mOptions.desafioID);
+        if (mOptions.storageKey) localStorage.removeItem(mOptions.storageKey);
         mOptions.stateChallenges = $eXeDesafio.createArrayStateChallenges(
             mOptions.desafioType,
             mOptions.challengesGame.length
@@ -807,10 +824,9 @@ var $eXeDesafio = {
                 `${mOptions.msgs.msgYouScore}: ${score}`
             );
         }
-        localStorage.setItem(
-            'dataDesafio-' + mOptions.desafioID,
-            JSON.stringify(data)
-        );
+        if (mOptions.storageKey) {
+            localStorage.setItem(mOptions.storageKey, JSON.stringify(data));
+        }
     },
 
     changeStateButton: function (instance) {
@@ -838,9 +854,9 @@ var $eXeDesafio = {
         }
     },
 
-    getDesafioStorage: function (id) {
+    getDesafioStorage: function (key) {
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataDesafio-' + id)
+            localStorage.getItem(key)
         );
     },
 
@@ -969,17 +985,25 @@ var $eXeDesafio = {
             $eXeDesafio.showChallenge(numberButton, instance);
         }
 
-        mOptions.counterClock = setInterval(() => {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and ending it when its own
+        // time ran out.
+        const container = document.getElementById(
+            'desafioMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted) {
-                let $node = $('#desafioMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXeDesafio.updateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
@@ -1002,6 +1026,7 @@ var $eXeDesafio = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         mOptions.gameStarted = true;
         mOptions.gameActived = true;
@@ -1034,6 +1059,22 @@ var $eXeDesafio = {
 
         clearInterval(mOptions.counterClock);
 
+        // The attempt ends here and only here: the desafío was solved (type 0) or
+        // the clock ran out (type 1). Every other saveDataStorage call runs while
+        // the game is still going, so this is the only report that can carry
+        // `gameOver`. common.js derives completion from
+        // `gameOver === true || auto !== true`, so with no report after the flag
+        // the page stays `incomplete` in the LMS however well the learner did.
+        // saveDataStorage is reused rather than calling sendScore directly so the
+        // `isScorm === 1` auto-report gate stays in one place.
+        //
+        // Reported BEFORE the results screen is painted, the way padlock does
+        // it: the LMS write must not depend on the painting succeeding. Safe
+        // because showScoreGame only reads solvedsChallenges, never changes it.
+        mOptions.gameOver = true;
+        mOptions.endGame = true;
+        $eXeDesafio.saveDataStorage(instance);
+
         $(`#desafioTitle-${instance}`).hide();
         $(`#desafioDescription-${instance}`).hide();
         $(`#desafioSolutionDiv-${instance}`).hide();
@@ -1049,17 +1090,6 @@ var $eXeDesafio = {
                 : mOptions.msgs.msgEndTime;
         $eXeDesafio.showMessage(2, message, instance);
         $eXeDesafio.showScoreGame(type, instance);
-        mOptions.gameOver = true;
-        mOptions.endGame = true;
-        // The attempt ends here and only here: the desafío was solved (type 0) or
-        // the clock ran out (type 1). Every other saveDataStorage call runs while
-        // the game is still going, so this is the only report that can carry
-        // `gameOver`. common.js derives completion from
-        // `gameOver === true || auto !== true`, so with no report after the flag
-        // the page stays `incomplete` in the LMS however well the learner did.
-        // saveDataStorage is reused rather than calling sendScore directly so the
-        // `isScorm === 1` auto-report gate stays in one place.
-        $eXeDesafio.saveDataStorage(instance);
     },
 
     getRetroFeedMessages: function (iHit, instance) {

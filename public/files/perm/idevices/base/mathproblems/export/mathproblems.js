@@ -37,7 +37,6 @@ var $eXeMathProblems = {
     isInExe: false,
     userName: '',
     previousScore: '',
-    initialScore: '',
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
@@ -989,17 +988,25 @@ var $eXeMathProblems = {
         $('#mthpPNumber-' + instance).text(mOptions.numberQuestions);
         $('#mthpDivReply-' + instance).show();
 
-        mOptions.counterClock = setInterval(function () {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and answering its question when
+        // its own time ran out.
+        const container = document.getElementById(
+            'mthpMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#mthpMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXeMathProblems.uptateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
@@ -1025,6 +1032,7 @@ var $eXeMathProblems = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $eXeMathProblems.uptateTime(0, instance);
         mOptions.gameStarted = true;
@@ -1051,13 +1059,9 @@ var $eXeMathProblems = {
             $mthpPNumber.text(mOptions.numberQuestions - mActiveQuestion);
         }
 
+        // No "score only once" lock — see gameOver().
         if (mOptions.scorm.isScorm == 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
-                $eXeMathProblems.sendScore(true, instance);
-            }
+            $eXeMathProblems.sendScore(true, instance);
         }
 
         $eXeMathProblems.saveEvaluation(instance);
@@ -1087,18 +1091,15 @@ var $eXeMathProblems = {
         clearInterval(mOptions.counterClock);
 
         $eXeMathProblems.uptateTime(0, instance);
+        // No "score only once" lock: the end of the attempt is always reported.
+        // The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew). It read the nested `scorm.repeatActivity`
+        // that common.js never writes, so here it survived a while longer than
+        // in its siblings, but the option itself is always true. The activity
+        // registry owns what has been recorded.
         if (mOptions.scorm.isScorm == 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                $eXeMathProblems.sendScore(true, instance);
-                $eXeMathProblems.initialScore = score;
-            }
+            $eXeMathProblems.sendScore(true, instance);
         }
 
         $eXeMathProblems.saveEvaluation(instance);
@@ -1192,13 +1193,18 @@ var $eXeMathProblems = {
         message = $eXeMathProblems.getMessageAnswer(correctAnswer, instance);
         mOptions.score = (mOptions.hits / mOptions.numberQuestions) * 10;
 
+        // No questions left means this answer ends the activity. Raise the flag
+        // before the report below, so the one carrying the final score is the
+        // one that tells the LMS the activity is finished: common.js derives
+        // completion from `gameOver === true || auto !== true`, and the gameOver()
+        // that runs after the reveal delay comes too late for this send.
+        if (pendientes <= 0) {
+            mOptions.gameOver = true;
+        }
+
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
-                $eXeMathProblems.sendScore(true, instance);
-            }
+            $eXeMathProblems.sendScore(true, instance);
         }
 
         $eXeMathProblems.saveEvaluation(instance);

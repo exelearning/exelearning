@@ -79,6 +79,9 @@ var $exeDevice = {
                 'Your score will be automatically saved after each question.'
             ),
             msgYouScore: c_('Your score'),
+            msgEndGameScore: c_(
+                'Please start the activity before saving your score.'
+            ),
             msgSeveralScore: c_(
                 'You can save the score as many times as you want'
             ),
@@ -273,7 +276,7 @@ var $exeDevice = {
                     ${$exeDevice.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;

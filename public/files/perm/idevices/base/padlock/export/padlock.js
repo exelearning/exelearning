@@ -49,6 +49,28 @@ var $padlock = {
         $padlock.loadGame();
     },
 
+    /**
+     * Where a padlock keeps its state: under its own component's id.
+     *
+     * The key used to come from `mOptions.id`, which changes under the
+     * padlock: it starts as the id in the padlock's data, or its position on
+     * the page when the data has none, and updateEvaluationIcon replaces it
+     * with the component's id half a second after loading. The state was
+     * written under the component and read back under the data: a duplicated
+     * padlock, which carries the original's id until it is edited, came back
+     * with the original's time and result, and one saved without an id never
+     * found its own. The component's id is the padlock's own, in the editor
+     * and once exported. Without one there is nowhere safe to keep the state,
+     * and nothing is.
+     *
+     * @param {Element} activity - The padlock's element
+     * @returns {string} The key, or '' when the padlock belongs to no component
+     */
+    storageKeyOf: function (activity) {
+        const nodeId = $(activity).closest('.idevice_node').attr('id');
+        return nodeId ? 'dataCandado-' + nodeId : '';
+    },
+
     loadGame: function () {
         $padlock.options = [];
         $padlock.activities.each(function (i) {
@@ -67,6 +89,7 @@ var $padlock = {
             mOption.candadoErrors = 0;
 
             mOption.id = typeof mOption.id === 'undefined' ? i : mOption.id;
+            mOption.storageKey = $padlock.storageKeyOf(this);
             $padlock.options.push(mOption);
 
             mOption.scorerp = 0;
@@ -103,6 +126,12 @@ var $padlock = {
             $padlock.addEvents(i);
             $('#candadoMainContainer-' + i).show();
         });
+        // One handler for the whole page, set once per load. Each padlock used
+        // to add its own in addEvents, whose removeEvents first took every
+        // padlock's off the window: a page with several kept only the last.
+        $(window)
+            .off('pagehide.eXeCandado')
+            .on('pagehide.eXeCandado', () => $padlock.saveStartedPadlocks());
         const candadoHtml = $('.candado-IDevice').html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(candadoHtml)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -125,8 +154,8 @@ var $padlock = {
             </div>
             <div class="candado-GameContainer" id="candadoGameContainer-${instance}">
                 <div class="candado-GameScoreBoard">
-                    <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
-                    <div class="exeQuextIcons34-Time" title="${msgs.msgTime}"></div>
+                    <strong id="candadoTimeLabel-${instance}"><span class="sr-av">${msgs.msgTime}:</span></strong>
+                    <div class="exeQuextIcons34-Time" id="candadoTimeIcon-${instance}" title="${msgs.msgTime}"></div>
                     <p id="candadoPTime-${instance}" class="candado-PTime">00:00</p>
                     <a href="#" class="candado-LinkMinimize candado-Activo" id="candadoLinkMinimize-${instance}" title="${msgs.msgMinimize}">
                         <strong><span class="sr-av">${msgs.msgMinimize}:</span></strong>
@@ -187,16 +216,27 @@ var $padlock = {
                 candadoErrors: mOptions.candadoErrors,
                 candadoScore: mOptions.score,
             };
-        localStorage.setItem(
-            'dataCandado-' + mOptions.id,
-            JSON.stringify(data)
-        );
+        if (!mOptions.storageKey) return;
+        localStorage.setItem(mOptions.storageKey, JSON.stringify(data));
+    },
+
+    /**
+     * Keep the state of every padlock on the page that has been started, as
+     * the page goes.
+     */
+    saveStartedPadlocks: function () {
+        $padlock.options.forEach((mOptions, instance) => {
+            if (mOptions.candadoStarted) {
+                $padlock.saveCandadoData(instance);
+            }
+        });
     },
 
     getCandadoData: function (instance) {
         const mOptions = $padlock.options[instance];
+        if (!mOptions.storageKey) return false;
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataCandado-' + mOptions.id)
+            localStorage.getItem(mOptions.storageKey)
         );
     },
 
@@ -257,9 +297,17 @@ var $padlock = {
                 .show();
         }
 
+        // An untimed padlock has no countdown — startGame() returns before
+        // setting the interval — so the board must not show a clock icon and a
+        // 00:00 that will never move. The label goes with them, or a screen
+        // reader announces "Time:" over nothing.
+        //
+        // This used to hide candadoTimeQuestion and candadoTimeNumber, ids the
+        // export markup has never had, so it did nothing at all.
         if (mOptions.candadoTime === 0) {
-            $(`#candadoTimeQuestion-${instance}`).hide();
-            $(`#candadoTimeNumber-${instance}`).css('width', '32px');
+            $(`#candadoTimeLabel-${instance}`).hide();
+            $(`#candadoTimeIcon-${instance}`).hide();
+            $(`#candadoPTime-${instance}`).hide();
         }
 
         const dataCandado = $padlock.getCandadoData(instance);
@@ -273,27 +321,44 @@ var $padlock = {
                 (mOptions.candadoReboot && dataCandado.candadoSolved)
             ) {
                 mOptions.score = 0;
-                localStorage.removeItem(`dataCandado-${mOptions.id}`);
+                localStorage.removeItem(mOptions.storageKey);
+                // The board is reset and the clock below starts again, but the
+                // LMS is told nothing: loading a page changes no mark. The
+                // score moves only when the learner enters the code or the
+                // clock runs out, so the previous passed/failed stands until
+                // this retry produces an outcome of its own.
+                //
+                // padlock never raises `gameStarted`, so the report in
+                // addEvents is dropped by sendScoreNew, which needs a game that
+                // declares itself started or over. That is the intended silence
+                // here, not an oversight.
             } else {
                 mOptions.candadoSolved = dataCandado.candadoSolved;
                 mOptions.counter = dataCandado.counter;
-                mOptions.score = mOptions.candadoScore
-                    ? mOptions.candadoScore
+                // Read from the stored payload, not from mOptions: saveCandadoData
+                // writes `candadoScore`, but nothing ever puts that key on the
+                // instance, so this always fell through to 0. A learner who had
+                // solved the padlock came back to a restored 0, and startGame's
+                // early path reports it — turning a passed page into a failed one.
+                mOptions.score = dataCandado.candadoScore
+                    ? dataCandado.candadoScore
                     : 0;
             }
         }
-        $(window).on('pagehide.eXeCandado', function () {
-            const mOptions = $padlock.options[instance];
-            if (mOptions.candadoStarted) {
-                $padlock.saveCandadoData(instance);
-            }
-        });
-
         $('#candadoMainContainer-' + instance)
             .closest('.idevice_node')
             .on('click', '.Games-SendScore', function () {
                 $padlock.sendScore(false, instance);
             });
+
+        // Registering comes first: it is what resolves the node id from the
+        // DOM, and reportActivity drops any report that arrives without one.
+        // Both calls below report — the second through startGame, which shows
+        // the feedback straight away for a padlock restored as solved — so
+        // registering after them threw away the very mark being restored.
+        if (mOptions.isScorm > 0) {
+            $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
+        }
 
         if (mOptions.isScorm === 1) {
             $padlock.sendScore(true, instance);
@@ -301,9 +366,6 @@ var $padlock = {
 
         if (!mOptions.candadoShowMinimize) {
             $padlock.startGame(instance);
-        }
-        if (mOptions.isScorm > 0) {
-            $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
         setTimeout(() => {
@@ -322,8 +384,6 @@ var $padlock = {
         $(`#candadoShowIntro-${instance}`).off('click');
         $(`#candadoShowRetro-${instance}`).off('click');
         $(`#candadoSendScore`).off('click');
-
-        $(window).off('pagehide.eXeCandado');
     },
 
     startGame: function (instance) {
@@ -331,7 +391,10 @@ var $padlock = {
         mOptions.candadoStarted = true;
 
         if (mOptions.candadoSolved && !mOptions.candadoReboot) {
-            $padlock.showFeedback(instance);
+            // Paint the stored result, say nothing: this runs on page load and
+            // the learner has done nothing. The registry restored the mark from
+            // cmi.suspend_data already.
+            $padlock.showFeedback(instance, false);
             return;
         }
 
@@ -341,30 +404,66 @@ var $padlock = {
 
         $padlock.uptateTime(0, instance);
 
-        mOptions.counterClock = setInterval(() => {
-            let $node = $('#candadoMainContainer-' + instance);
-            let $content = $('#node-content');
+        // Bound to this padlock's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first padlock takes the same ones: a
+        // clock that looked its padlock up by id each second found that one
+        // and ran it, counting down on its display and opening it when its
+        // own time ran out.
+        const container = document.getElementById(
+            'candadoMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
             mOptions.counter--;
 
             $padlock.uptateTime(mOptions.counter, instance);
             if (mOptions.counter <= 0 || mOptions.candadoSolved) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 $padlock.showFeedback(instance);
             }
         }, 1000);
+        mOptions.counterClock = clock;
     },
 
-    showFeedback: function (instance) {
+    /**
+     * @param {number} instance - Activity index.
+     * @param {boolean} [report] - Send the outcome to the LMS. Only the two
+     * callers that resolve the padlock do: the learner entering the code and
+     * the clock running out. Reopening an already solved padlock paints the
+     * same result on page load, and reporting there would write and commit a
+     * score nobody has just earned — merely visiting a page must not. Nothing
+     * is lost by staying quiet: the score it would resend is the one the
+     * activity registry has already restored from cmi.suspend_data.
+     */
+    showFeedback: function (instance, report = true) {
         const mOptions = $padlock.options[instance];
 
-        if (mOptions.isScorm > 0) {
+        // The padlock is resolved here and only here — its three callers are
+        // the solved code, the clock running out and reopening an already
+        // solved padlock. common.js derives completion from
+        // `gameOver === true || auto !== true`, and the report below is
+        // automatic, so without this flag a page carrying a padlock stays
+        // `incomplete` in the LMS even once the learner has opened it.
+        mOptions.gameOver = true;
+        // The mark is left alone: 10 when the padlock was opened, 0 when the
+        // clock ran out without it — right or wrong, nothing in between.
+        //
+        // Deliberately not derived from `candadoSolved`, which means "finished"
+        // rather than "opened": the timeout path raises it too, and a restored
+        // attempt reads it back, so a padlock that once timed out would come
+        // back scoring 10. The score itself is the honest record — the solve
+        // path sets it to 10 just before calling in, and a restored attempt
+        // brings back whatever was stored.
+
+        if (report && mOptions.isScorm > 0) {
             $padlock.sendScore(true, instance);
         }
 
@@ -495,7 +594,10 @@ var $padlock = {
 
     saveEvaluation: function (instance) {
         const mOptions = $padlock.options[instance];
-        mOptions.scorerp = 10;
+        // The same mark the LMS gets: 10 for a padlock opened with the right
+        // code, 0 for one the clock closed. A hardcoded 10 here made the local
+        // report and the LMS disagree about the very same attempt.
+        mOptions.scorerp = mOptions.score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $padlock.isInExe

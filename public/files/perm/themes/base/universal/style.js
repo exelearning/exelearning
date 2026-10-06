@@ -45,25 +45,32 @@ var eXeUniversalStyle = {
         // Add menu and search bar togglers
         togglers +=
             '\
-            <button type="button" id="siteNavToggler" class="toggler" title="' +
+            <button type="button" id="siteNavToggler" class="toggler" aria-expanded="true" aria-controls="siteNav" title="' +
             $exe_i18n.menu +
             '">\
                 <span>' +
             $exe_i18n.menu +
-            '</span>\
-            </button>\
-            <button type="button" id="searchBarTogger" class="toggler" title="' +
-            $exe_i18n.search +
-            '">\
-                <span>' +
-            $exe_i18n.search +
             '</span>\
             </button>\
         ';
+        // The search box is optional: only add its toggler when it exists
+        if ($('#exe-client-search').length) {
+            togglers +=
+                '\
+                <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
+                $exe_i18n.search +
+                '">\
+                    <span>' +
+                $exe_i18n.search +
+                '</span>\
+                </button>\
+            ';
+        }
         $('#siteNav').before(togglers);
         // Check the current NAV status
         if (new URLSearchParams(window.location.search).get('nav') == 'false') {
             $('body').addClass('siteNav-off');
+            eXeUniversalStyle.navExpanded(false);
             eXeUniversalStyle.params('add');
         }
         // Dark mode
@@ -72,6 +79,7 @@ var eXeUniversalStyle = {
         $('#siteNavToggler').on('click', function () {
             if (eXeUniversalStyle.isLowRes()) {
                 $('#exe-client-search').hide();
+                $('#searchBarToggler').attr('aria-expanded', 'false');
                 if ($('body').hasClass('siteNav-off')) {
                     $('body').removeClass('siteNav-off');
                 } else {
@@ -87,20 +95,23 @@ var eXeUniversalStyle = {
                     $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
+            eXeUniversalStyle.navExpanded(!$('body').hasClass('siteNav-off'));
         });
         // Search bar toggler
-        $('#searchBarTogger').on('click', function () {
+        $('#searchBarToggler').on('click', function () {
             var bar = $('#exe-client-search');
             if (bar.is(':visible')) {
                 bar.hide();
             } else {
                 if (eXeUniversalStyle.isLowRes()) {
                     $('body').addClass('siteNav-off');
+                    eXeUniversalStyle.navExpanded(false);
                 }
                 bar.show();
                 $('#exe-client-search-text').focus();
                 window.scroll(0, 0);
             }
+            $(this).attr('aria-expanded', bar.is(':visible'));
         });
         // Allways close the menu in low resolution
         $('#siteNav a').on('click', function(event){
@@ -273,6 +284,10 @@ var eXeUniversalStyle = {
                 }
             });
         })
+    },
+    navExpanded: function (visible) {
+        $('#siteNavToggler').attr('aria-expanded', visible ? 'true' : 'false');
+        $('#siteNav').prop('inert', !visible);
     },
     // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {

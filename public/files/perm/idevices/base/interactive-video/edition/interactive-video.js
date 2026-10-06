@@ -36,7 +36,8 @@ var $exeDevice = {
     scorm: {
         isScorm: 0,
         textButtonScorm: c_('Save score'),
-        repeatActivity: false,
+        // Activities may be replayed by default, as everywhere else.
+        repeatActivity: true,
     },
 
     refreshTranslations: function () {
@@ -458,10 +459,17 @@ var $exeDevice = {
                 $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                     InteractiveVideo.i18n
                 );
+                // The weight too: setValues defaults it to 100 when the
+                // argument is missing, so the stored value never reached the
+                // field — and the next save read that 100 back out of the form
+                // and overwrote it. `undefined` still lands on the helper's
+                // default, which is what a game saved before the field existed
+                // needs.
                 $exeDevicesEdition.iDevice.gamification.scorm.setValues(
                     InteractiveVideo.scorm.isScorm,
                     InteractiveVideo.scorm.textButtonScorm,
-                    InteractiveVideo.scorm.repeatActivity
+                    InteractiveVideo.scorm.repeatActivity,
+                    InteractiveVideo.scorm.weighted
                 );
                 InteractiveVideo.scoreNIA =
                     typeof InteractiveVideo.scoreNIA == 'undefined'
@@ -615,12 +623,55 @@ var $exeDevice = {
     	</div>	
     	`;
             $('body').append(html);
-            win = new bootstrap.Modal(
-                document.getElementById('modalGenericIframeContainer')
-            );
+            win = new bootstrap.Modal(document.getElementById('modalGenericIframeContainer'));
+            // The modal, its stylesheet and the editor iframe are appended
+            // outside the edition form, so nothing detaches them when the
+            // editor closes. Left behind, the iframe keeps running and keeps
+            // writing into `top.interactiveVideoEditor`, which the next iDevice
+            // edition rebuilds for itself. Removing them here is the same
+            // cleanup `start()` performs before it opens a new modal.
+            const lifecycle = $exeDevice.$lifecycle;
+            const editor = $exeDevice.editor;
+            lifecycle.own(() => editor.destroyModal(win));
             win.show();
             // Save the status (with or without changes)
             top.interactiveVideoEditor.hasChanged = false;
+        },
+        /**
+         * Tear the editor modal down.
+         *
+         * Bootstrap's `dispose()` destroys the instance without hiding it, so a
+         * teardown that happens with the modal still open — a page switch, say
+         * — would leave the scroll lock (`modal-open` on `<body>`) and the
+         * backdrop behind, with no modal left to close them. Hiding first lets
+         * Bootstrap undo both.
+         *
+         * @param {Object} modal Bootstrap modal instance opened by `start()`.
+         */
+        destroyModal: function (modal) {
+            if (modal && typeof modal.hide === 'function') {
+                try {
+                    modal.hide();
+                } catch (error) {
+                    console.warn('[InteractiveVideo] Could not hide the editor modal:', error);
+                }
+            }
+            if (modal && typeof modal.dispose === 'function') {
+                try {
+                    modal.dispose();
+                } catch (error) {
+                    console.warn('[InteractiveVideo] Could not dispose the editor modal:', error);
+                }
+            }
+            $('#modalGenericIframeContainer,#modalGenericIframeContainerCSS').remove();
+            // `hide()` is a no-op while Bootstrap is mid-transition, so sweep
+            // what it may have left — but only once no modal is on screen: the
+            // scroll lock and the backdrop are shared with every other one.
+            if (document.querySelector('.modal.show')) return;
+            document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
         },
         close: function () {
             $(document.getElementById('modalGenericIframeContainer')).modal(
@@ -636,6 +687,37 @@ var $exeDevice = {
                 .attr('id') || '';
 
         return ideviceid;
+    },
+
+    /**
+     * Whether the activity has anything the runtime can score.
+     *
+     * The same criterion the export counts with, so the editor and the runtime
+     * cannot disagree: with "score every slide" ticked every slide counts, and
+     * without it only the six interactive types do — the rest are images, text
+     * and pauses, which the learner cannot answer.
+     *
+     * @param {Array} slides The activity's slides.
+     * @param {boolean} scoreNIA Whether every slide counts towards the mark.
+     * @returns {boolean} True when at least one slide can be scored.
+     */
+    hasScorableSlide: function (slides, scoreNIA) {
+        if (!Array.isArray(slides) || slides.length === 0) return false;
+        if (scoreNIA) return true;
+        var scorable = [
+            'singleChoice',
+            'multipleChoice',
+            'dropdown',
+            'matchElements',
+            'sortableList',
+            'cloze',
+        ];
+        for (var i = 0; i < slides.length; i++) {
+            if (slides[i] && scorable.indexOf(slides[i].type) !== -1) {
+                return true;
+            }
+        }
+        return false;
     },
 
     save: function () {
@@ -712,6 +794,33 @@ var $exeDevice = {
             }
             var slides = activity.slides;
 
+            // Before the loop below, which rewrites slide.url in place on the
+            // editor's own activity — absolute URLs cut down to `resources/…`,
+            // legacy relative ones replaced by their index. A rejected save
+            // must leave nothing behind, so everything that can refuse has to
+            // run first.
+            //
+            // Saving a score needs something to score: the mark is hits over
+            // the number of scorable slides, so with none of them the division
+            // has no denominator and the activity could only ever report a zero
+            // the learner did nothing to earn. Refused here rather than papered
+            // over at runtime, the way every other iDevice asks for at least
+            // one question.
+            var scormValues =
+                $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+            var scoreNIA = $('#interactiveVideoScoreNIA').is(':checked');
+            if (
+                scormValues.isScorm > 0 &&
+                !$exeDevice.hasScorableSlide(slides, scoreNIA)
+            ) {
+                eXe.app.alert(
+                    _(
+                        'To save the score, the activity needs at least one question.'
+                    )
+                );
+                return false;
+            }
+
             if (slides) {
                 for (var i = 0; i < slides.length; i++) {
                     var slide = slides[i];
@@ -762,11 +871,8 @@ var $exeDevice = {
             }
 
             top.interactiveVideoEditor.activityToSave.i18n = i18n;
-            top.interactiveVideoEditor.activityToSave.scorm =
-                $exeDevicesEdition.iDevice.gamification.scorm.getValues();
-            top.interactiveVideoEditor.activityToSave.scoreNIA = $(
-                '#interactiveVideoScoreNIA'
-            ).is(':checked');
+            top.interactiveVideoEditor.activityToSave.scorm = scormValues;
+            top.interactiveVideoEditor.activityToSave.scoreNIA = scoreNIA;
             top.interactiveVideoEditor.activityToSave.evaluation = seval;
             top.interactiveVideoEditor.activityToSave.evaluationID = sevalid;
             top.interactiveVideoEditor.activityToSave.ideviceID = ideviceID;

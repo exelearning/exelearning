@@ -23,6 +23,9 @@ function loadIdevice(code) {
   const modifiedCode = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  // Same lifecycle the workarea publishes before calling init(), so the suite
+  // can close the edition and assert on what is actually released.
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -736,7 +739,157 @@ describe('form iDevice edition', () => {
     });
   });
 
+  describe('edition lifecycle', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    describe('showHideWordButton', () => {
+      it('wires the button once the markup is in the DOM', () => {
+        document.body.innerHTML = $exeDevice.showHideWordButton('editor1');
+        const removeOrAddUnderline = vi
+          .spyOn($exeDevice, 'removeOrAddUnderline')
+          .mockImplementation(() => {});
+
+        vi.advanceTimersByTime(0);
+        document.getElementById('buttonShowHide_editor1').click();
+
+        expect(removeOrAddUnderline).toHaveBeenCalledWith('editor1');
+      });
+
+      it('does not wire the button once the edition closed', () => {
+        document.body.innerHTML = $exeDevice.showHideWordButton('editor1');
+        const removeOrAddUnderline = vi
+          .spyOn($exeDevice, 'removeOrAddUnderline')
+          .mockImplementation(() => {});
+
+        $exeDevice.$lifecycle.destroy();
+        vi.advanceTimersByTime(100);
+        document.getElementById('buttonShowHide_editor1').click();
+
+        expect(removeOrAddUnderline).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('setDataFromSelectionQuestion', () => {
+      function buildSelectionForm() {
+        document.body.innerHTML = `
+          <div id="body">
+            <div id="buttonRadioCheckboxToggle"></div>
+            <textarea id="formPreview"></textarea>
+            <input id="formPreview_buttonAddOption" type="button" />
+            <textarea class="small-textarea"></textarea>
+          </div>
+        `;
+        const root = document.getElementById('body');
+        // `setDataFromSelectionQuestion` builds one attribute selector without
+        // its closing bracket (`TEXTAREA[id^=formPreview`), which every engine
+        // rejects. That defect is out of scope here — the shim keeps the
+        // selector usable so the teardown behaviour can be observed.
+        $exeDevice.ideviceBody = {
+          querySelector: (selector) =>
+            root.querySelector(
+              selector.includes('[') && !selector.includes(']') ? `${selector}]` : selector
+            ),
+          querySelectorAll: (selector) => root.querySelectorAll(selector),
+        };
+        $exeDevice.formPreviewId = 'formPreview';
+        $exeDevice.questionsForm = [
+          {
+            id: 'q1',
+            baseText: 'Question?',
+            answers: [[true, 'Answer A']],
+            typeSelection: 'radio',
+          },
+        ];
+        vi.spyOn($exeDevice, 'getQuestionIndexById').mockReturnValue(0);
+        return { dataset: { id: 'q1' } };
+      }
+
+      it('fills the option textareas while the edition is open', () => {
+        const question = buildSelectionForm();
+
+        $exeDevice.setDataFromSelectionQuestion(question);
+        vi.advanceTimersByTime(100);
+
+        expect(document.querySelector('.small-textarea').value).toBe('Answer A');
+      });
+
+      it('does not fill the form once the edition closed', () => {
+        const question = buildSelectionForm();
+
+        $exeDevice.setDataFromSelectionQuestion(question);
+        $exeDevice.$lifecycle.destroy();
+        vi.advanceTimersByTime(500);
+
+        expect(document.querySelector('.small-textarea').value).toBe('');
+      });
+    });
+
+    describe('toggle-input delegated handler', () => {
+      it('stops handling document changes once the edition closes', () => {
+        document.body.innerHTML = `
+          <div class="toggle-item" role="switch" aria-checked="false">
+            <input type="checkbox" class="toggle-input" data-target="#toggleTarget" checked />
+          </div>
+          <div id="toggleTarget" style="display: none"></div>
+        `;
+        const unrelated = vi.fn();
+        $(document).on('change.formSuite', unrelated);
+        $exeDevice.$lifecycle.on(document, 'change', '.toggle-input', (event) => {
+          $(event.currentTarget)
+            .closest('.toggle-item[role="switch"]')
+            .attr('aria-checked', 'handled');
+        });
+
+        $('.toggle-input').trigger('change');
+        expect($('.toggle-item').attr('aria-checked')).toBe('handled');
+
+        $('.toggle-item').attr('aria-checked', 'false');
+        $exeDevice.$lifecycle.destroy();
+        $('.toggle-input').trigger('change');
+
+        expect($('.toggle-item').attr('aria-checked')).toBe('false');
+        // Removal is scoped to this edition's namespace.
+        expect(unrelated).toHaveBeenCalledTimes(2);
+
+        $(document).off('change.formSuite');
+      });
+    });
+  });
+
   // Note: Form class tests removed because $exeDevice.Form
   // does not exist in the current version of form.js from main branch.
   // These tests were written for a modified version of the code.
+
+  // Issue #2263: these keys had no c_() counterpart here, so nothing ever
+  // translated them and the export's own default — Spanish — was the only value
+  // that reached the page, whatever the project language.
+  describe('the message keys the export expects', () => {
+    it('translates the per-question feedback and the suggestion toggle', () => {
+      $exeDevice.refreshTranslations();
+
+      expect($exeDevice.ci18n.msgOk).toBe('Correct');
+      expect($exeDevice.ci18n.msgKO).toBe('Incorrect');
+      expect($exeDevice.ci18n.msgHide).toBe('Hide');
+    });
+
+    // The values above would also be right if the strings were inlined, so pin
+    // the route: they have to go through c_() to reach the catalogue.
+    it('routes them through c_ rather than inlining them', () => {
+      c_.mockClear();
+
+      $exeDevice.refreshTranslations();
+
+      expect(c_).toHaveBeenCalledWith('Correct');
+      expect(c_).toHaveBeenCalledWith('Incorrect');
+      expect(c_).toHaveBeenCalledWith('Hide');
+    });
+  });
 });

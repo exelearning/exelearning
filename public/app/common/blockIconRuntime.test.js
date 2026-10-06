@@ -118,6 +118,36 @@ describe('blockIconRuntime', () => {
     expect(decodeURIComponent(encoded)).toContain('<path d="M40-200Z"/>');
   });
 
+  it('renderMaterialInlineIcon emits a hydration placeholder before the sprite is loaded', () => {
+    const runtime = require('./blockIconRuntime.js');
+    const html = runtime.renderMaterialInlineIcon('alarm');
+
+    expect(html).toContain('class="exe-material-icon"');
+    expect(html).toContain('data-exe-material-icon="alarm"');
+    expect(html).not.toContain('<use');
+  });
+
+  it('renderMaterialInlineIcon inlines the symbol once the sprite is loaded (no external <use>)', () => {
+    const runtime = require('./blockIconRuntime.js');
+    runtime.loadMaterialSprite(SPRITE);
+    const html = runtime.renderMaterialInlineIcon('alarm');
+
+    expect(html).toBe(
+      '<svg class="exe-material-icon-sprite" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M40-200Z"/></svg>',
+    );
+    expect(html).not.toContain('<use');
+    expect(html).not.toContain('material-icons.svg');
+  });
+
+  it('renderMaterialInlineIcon falls back to the help glyph for unknown or off-catalog names', () => {
+    const runtime = require('./blockIconRuntime.js');
+    runtime.loadMaterialSprite(SPRITE);
+
+    expect(runtime.renderMaterialInlineIcon('missing-symbol')).toContain('<path d="M1-1Z"/>');
+    expect(runtime.renderMaterialInlineIcon('lightbulb', { catalog: ['alarm'] })).toContain('<path d="M1-1Z"/>');
+    expect(runtime.renderMaterialInlineIcon('lightbulb', { catalog: ['lightbulb'] })).toContain('<path d="M10-10Z"/>');
+  });
+
   it('loadMaterialSprite parses the sprite and reports it loaded', () => {
     const runtime = require('./blockIconRuntime.js');
 

@@ -187,7 +187,12 @@
                 : source.completionRequired === true;
         var minimumScore = toNumber(source.minimumScore, toNumber(base.minimumScore, 0));
         var maximumScore = toNumber(source.maximumScore, toNumber(base.maximumScore, 100));
-        var weight = toNumber(source.weight, toNumber(base.weight, 1));
+        // No usable weight means 100, the same answer common.js gives in
+        // reportActivity() and the same default the editor writes into the
+        // form. It used to be 1 here, so the fallback was decided in two
+        // places that disagreed — and 1 is what made an activity that had
+        // never been through the editor weigh a hundredth of one that had.
+        var weight = toNumber(source.weight, toNumber(base.weight, 100));
         return {
             id: id,
             evaluable: evaluable,
@@ -200,7 +205,12 @@
             // A degenerate range (max <= min) cannot normalise a score; fall
             // back to the SCORM 1.2 default 0-100 window.
             maximumScore: maximumScore > minimumScore ? maximumScore : minimumScore + 100,
-            weight: weight > 0 ? weight : 1,
+            // Not usable is not usable: a zero or a negative gets the same 100
+            // a missing weight gets, which is what getFinalScore() answers and
+            // what the cross-check in the test file pins. Flooring these at 1
+            // instead made the two aggregations disagree — 40.4 against 60 for
+            // an activity weighed 0 next to one weighed by default.
+            weight: weight > 0 ? weight : 100,
         };
     }
 
@@ -226,57 +236,52 @@
     }
 
     /**
-     * Aggregate the evaluable activities into one 0-100 score with the
-     * historical eXeLearning weighting algorithm: each weight (clamped into
-     * 1-100) is scaled so the weights sum to exactly 100 as integers
-     * (largest-remainder rounding), and the aggregate is the weight-scaled
-     * sum of the normalised scores.
+     * Aggregate the evaluable activities into one 0-100 score: the weighted
+     * mean of their normalised scores, with each weight clamped into 1-100.
      *
-     * This is the registry's only aggregation. Published packages recorded
-     * cmi.core.score.raw with this exact rounding for years, and the
-     * completion policy compares the aggregate against the mastery
-     * threshold — a second algorithm (say, an exact weighted mean) could
-     * disagree near the threshold and flip a passed page to failed at exit.
+     * This is the registry's only aggregation, and `common.js`'s
+     * `getFinalScore()` carries the same arithmetic for the runtimes that have
+     * no registry (SCORM 2004, pre-rewrite packages). The two must agree: a
+     * second algorithm could disagree near the mastery threshold and flip a
+     * passed page to failed at exit. `exe-scorm12-activities.test.js` pins
+     * them against each other — it used to name a `.spec.js` that has never
+     * existed (frontend tests are `*.test.js`), so the invariant was declared
+     * and unguarded, which is how the two answers for an unusable weight came
+     * to disagree.
+     *
+     * It used to scale the weights to integers summing to exactly 100 by
+     * largest-remainder rounding. That made the page's mark depend on the
+     * order the author placed the iDevices in: the scaling leaves one point
+     * over, it goes to the largest fraction, and with equal weights every
+     * fraction ties — so a stable sort handed it to whichever activity came
+     * first, multiplying that one activity's score. Three equally weighted
+     * activities scoring 100/50/0 aggregated to 50.5, and the same three as
+     * 0/50/100 to 49.5: same work by the learner, opposite verdict against a
+     * mastery score of 50. A weighted mean is symmetric, so it cannot.
      *
      * @returns {number|null} Aggregate score, or null when no activity is
      * evaluable.
      */
     function aggregateScore() {
-        var entries = [];
         var weightSum = 0;
+        var weightedTotal = 0;
+        var evaluableCount = 0;
         for (var index = 0; index < state.order.length; index += 1) {
             var activity = state.byId[state.order[index]];
             if (!activity.evaluable) {
                 continue;
             }
             var weight = clamp(activity.weight, 1, 100);
-            entries.push({ score: normalizedScore(activity), scaled: weight, floored: 0, fraction: 0 });
+            weightedTotal += normalizedScore(activity) * weight;
             weightSum += weight;
+            evaluableCount += 1;
         }
-        if (entries.length === 0) {
+        if (evaluableCount === 0) {
             return null;
         }
-        var factor = 100 / weightSum;
-        var flooredSum = 0;
-        for (var position = 0; position < entries.length; position += 1) {
-            var scaled = entries[position].scaled * factor;
-            entries[position].floored = Math.floor(scaled);
-            entries[position].fraction = scaled - entries[position].floored;
-            flooredSum += entries[position].floored;
-        }
-        var remainder = 100 - flooredSum;
-        entries.sort(function (a, b) {
-            return b.fraction - a.fraction;
-        });
-        for (var slot = 0; slot < entries.length && remainder > 0; slot += 1) {
-            entries[slot].floored += 1;
-            remainder -= 1;
-        }
-        var weightedTotal = 0;
-        for (var item = 0; item < entries.length; item += 1) {
-            weightedTotal += entries[item].score * entries[item].floored;
-        }
-        return round2(weightedTotal / 100);
+        // clamp() forces every weight to at least 1, so the sum of one or more
+        // of them is never zero.
+        return round2(weightedTotal / weightSum);
     }
 
     /**
@@ -340,7 +345,10 @@
             answered: toNumber(fields[2], 0),
             total: toNumber(fields[3], 0),
             score: fields[4] === '' ? null : toNumber(fields[4], null),
-            weight: toNumber(fields[5], 1),
+            // A record whose weight field is missing or unreadable has no
+            // usable weight, which is the same 100 the rest of the runtime
+            // answers. A record that really carries 1 still decodes as 1.
+            weight: toNumber(fields[5], 100),
             minimumScore: toNumber(fields[6], 0),
             maximumScore: toNumber(fields[7], 100),
         });
@@ -373,10 +381,16 @@
                 continue;
             }
             var score = toNumber(match[3], null);
-            var weight = toNumber(match[4], 1);
+            // Same rule as everywhere else: a weight that is missing, zero or
+            // negative is not usable, and an unusable weight is 100. A pool
+            // record does not weigh until a live registration claims it — and
+            // claiming inherits the score alone — but serialize() writes the
+            // pool back out, so a bad value would round-trip through
+            // cmi.suspend_data on every visit.
+            var weight = toNumber(match[4], 100);
             pool[match[1]] = {
                 score: score === null ? 0 : clamp(score, 0, 100),
-                weight: weight !== null && weight > 0 ? weight : 1,
+                weight: weight !== null && weight > 0 ? weight : 100,
             };
         }
         return pool;
@@ -685,10 +699,14 @@
                     if (fields.length === 3) {
                         var poolPosition = toNumber(fields[0], null);
                         var poolScore = toNumber(fields[1], null);
+                        var poolWeight = toNumber(fields[2], 100);
                         if (poolPosition !== null && poolScore !== null) {
                             state.legacyByIndex[poolPosition] = {
                                 score: clamp(poolScore, 0, 100),
-                                weight: toNumber(fields[2], 1) || 1,
+                                // As above. `|| 1` used to let a negative
+                                // through untouched, because a negative number
+                                // is truthy.
+                                weight: poolWeight > 0 ? poolWeight : 100,
                             };
                             result.restored += 1;
                         }

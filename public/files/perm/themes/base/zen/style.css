@@ -856,8 +856,8 @@ button.toggler:focus {
 }
 
 /* Search bar */
-body.siteNav-off.exe-search-on button#searchBarTogger,
-body.exe-search-on button#searchBarTogger {
+body.siteNav-off.exe-search-on button#searchBarToggler,
+body.exe-search-on button#searchBarToggler {
     display: inline-block;
 }
 #exe-client-search-form p {
@@ -870,7 +870,7 @@ body.exe-search-on button#searchBarTogger {
     flex-wrap: nowrap;
     gap: 6px;
 }
-button#searchBarTogger {
+button#searchBarToggler {
     right: auto;
     left: 304px;
     top: 136px;
@@ -880,7 +880,7 @@ button#searchBarTogger {
     display: none;
     border-radius: 0 8px 8px 0;
 }
-body.siteNav-off button#searchBarTogger {
+body.siteNav-off button#searchBarToggler {
     top: 136px;
     left: 0px;
     padding-left: 50px;
@@ -1165,8 +1165,8 @@ body.siteNav-off button#searchBarTogger {
     .exe-search-on button#siteNavToggler {
         right: 100px;
     }
-    body.siteNav-off button#searchBarTogger,
-    body button#searchBarTogger {
+    body.siteNav-off button#searchBarToggler,
+    body button#searchBarToggler {
         left: auto;
         right: 20px;
         top: 120px;

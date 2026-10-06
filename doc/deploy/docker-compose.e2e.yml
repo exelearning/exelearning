@@ -1,0 +1,18 @@
+# E2E-only overlay for the database compatibility matrix.
+#
+# Layered on top of docker-compose.{sqlite,postgres,mariadb}.yml with a second
+# `-f` so those files keep describing exactly what a real installation runs:
+# nothing here reaches anyone who deploys from them.
+#
+# Compose merges `environment` key by key, so this only adds the settings the
+# suite needs on top of the deployment defaults.
+services:
+  exelearning:
+    environment:
+      # test/e2e/playwright/specs/oidc-login.spec.ts asserts the authorize
+      # redirect, so the stack must advertise the method and point at a fake
+      # provider. OIDC_ISSUER stays unset: no discovery is attempted and the
+      # explicit endpoint is used verbatim.
+      APP_AUTH_METHODS: password,guest,openid
+      OIDC_AUTHORIZATION_ENDPOINT: https://oidc.example.test/authorize
+      OIDC_CLIENT_ID: e2e-client

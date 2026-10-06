@@ -632,6 +632,19 @@
         },
 
         /**
+         * @param {string} element - cmi element name.
+         * @returns {boolean} True when this runtime wrote the element during
+         * this session. getCachedValue() cannot answer this on its own: it
+         * returns '' both for "never written" and for "written as ''", and
+         * for a write-only element like cmi.core.exit the two mean opposite
+         * things — a resumed attempt has the LMS holding the previous visit's
+         * value while this session has written nothing.
+         */
+        hasWrittenValue: function (element) {
+            return Object.prototype.hasOwnProperty.call(state.writeCache, element);
+        },
+
+        /**
          * Persist the session data (LMSCommit).
          *
          * @returns {boolean} True when the LMS accepted the commit.

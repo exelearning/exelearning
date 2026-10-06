@@ -15689,6 +15689,10 @@
         <source>Huger text</source>
         <target>~Testu erraldoia</target>
       </trans-unit>
+      <trans-unit id="9mwu77c" resname="To save the score, the activity needs at least one question.">
+        <source>To save the score, the activity needs at least one question.</source>
+        <target>~Puntuazioa gordetzeko, jarduerak gutxienez galdera bat behar du.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
