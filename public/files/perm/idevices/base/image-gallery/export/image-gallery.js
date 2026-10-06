@@ -114,17 +114,17 @@ var $imagegallery = {
                 <div class="imageGallery-body">`;
         Object.entries(data).forEach(([key, value]) => {
             if (key !== 'ideviceId') {
-                let imageURL = $imagegallery.changeDirectory(value.img, data);
-                let thumbnailURL = $imagegallery.changeDirectory(
-                    value.thumbnail,
-                    data
+                const esc = $imagegallery.escapeAttr;
+                let imageURL = esc($imagegallery.changeDirectory(value.img, data));
+                let thumbnailURL = esc(
+                    $imagegallery.changeDirectory(value.thumbnail, data)
                 );
-                let imageTitle = value.title;
-                let imageLinkTitle = value.linktitle;
-                let imageAuthor = value.author;
-                let imageLinkAuthor = value.linkauthor;
-                let imageLicense = value.license;
-                let imageLinkLicense = this.getLinkLicense(value.license);
+                let imageTitle = esc(value.title);
+                let imageLinkTitle = esc(value.linktitle);
+                let imageAuthor = esc(value.author);
+                let imageLinkAuthor = esc(value.linkauthor);
+                let imageLicense = esc(value.license);
+                let imageLinkLicense = esc(this.getLinkLicense(value.license));
                 htmlContent += `<div id="imageContainer_${idIncremental}" class="imageContainer">`;
                 htmlContent += ` <a idevice-id="${ideviceId}" title="${imageTitle}" href="${imageURL}" class="imageLink">`;
                 htmlContent += `  <div class="imageElement">`;
@@ -142,6 +142,18 @@ var $imagegallery = {
     },
 
     /**
+     * Escape a value for a double-quoted HTML attribute. Keeps the legacy
+     * "undefined" text for missing values, as older versions saved it.
+     */
+    escapeAttr: function (value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    /**
      * Json idevice api function
      * Engine execution order: 3
      *
@@ -155,19 +167,105 @@ var $imagegallery = {
     createSLightboxGallery: function (ideviceId) {
         let selector = `[id="${ideviceId}"] .imageGallery-IDevice a`;
         new SimpleLightbox(selector, {
-            // Custom lightbox for exe. Now we can take values from multiple attributes
-            captionsData: [
-                'title',
-                'titlelink',
-                'author',
-                'authorlink',
-                'license',
-                'licenselink',
-            ],
+            // The caption (title, author, license and their links) is built
+            // here with DOM APIs, so stored values are rendered as text.
+            captionSelector: (link) =>
+                $imagegallery.buildCaption(link.querySelector('img')),
+            captionType: 'text',
             captionPosition: 'outside',
             // Disable file extension check to support blob:// URLs in editor
             fileExt: false,
         });
+    },
+
+    /**
+     * Read a caption attribute. Galleries saved by older versions store the
+     * literal string "undefined" for empty fields.
+     */
+    captionValue: function (img, name) {
+        const value = img.getAttribute(name);
+        return value && value !== 'undefined' ? value : '';
+    },
+
+    /**
+     * Return the URL only when it is safe to use as a link target.
+     */
+    safeLink: function (href) {
+        if (!href) return '';
+        try {
+            const url = new URL(href, window.location.href);
+            return ['http:', 'https:', 'mailto:'].includes(url.protocol)
+                ? href
+                : '';
+        } catch (e) {
+            return '';
+        }
+    },
+
+    /**
+     * Build the lightbox caption for a gallery image: author, title and
+     * license, each linked when a link is set. Returns null when there is
+     * nothing to show.
+     *
+     * @param {HTMLImageElement} img
+     * @returns {HTMLElement|null}
+     */
+    buildCaption: function (img) {
+        if (!img) return null;
+        const get = (name) => $imagegallery.captionValue(img, name);
+        const author = get('author');
+        const authorLink = $imagegallery.safeLink(get('authorlink'));
+        const title = get('title');
+        const titleLink = $imagegallery.safeLink(get('titlelink'));
+        const license = get('license');
+        const licenseLink = $imagegallery.safeLink(get('licenselink'));
+
+        const caption = document.createElement('div');
+        const add = (tag, className, text, attrs) => {
+            const el = document.createElement(tag);
+            if (className) el.className = className;
+            if (text) el.textContent = text;
+            Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+            return el;
+        };
+        const link = (href, className, text) =>
+            add('a', className, text, { href, target: '_blank', rel: 'noopener' });
+
+        if (author || authorLink) {
+            caption.appendChild(
+                authorLink
+                    ? link(authorLink, 'caption author', author || authorLink)
+                    : add('span', 'caption autor', author)
+            );
+        }
+        if (title || titleLink) {
+            const em = add('em', '', title || titleLink);
+            const el = titleLink
+                ? link(titleLink, 'caption title', '')
+                : add('span', 'caption title', '');
+            el.appendChild(em);
+            caption.appendChild(el);
+        }
+        if (license) {
+            const alone = !author && !authorLink && !title && !titleLink;
+            const label =
+                (typeof $exe_i18n !== 'undefined' && $exe_i18n.license) ||
+                'License';
+            const el = add('span', 'caption license', alone ? label + ': ' : '(');
+            el.appendChild(
+                licenseLink
+                    ? add('a', '', license, {
+                          href: licenseLink,
+                          rel: 'license nofollow noopener',
+                          target: '_blank',
+                          title: license,
+                      })
+                    : add('span', 'custom-license', license)
+            );
+            if (!alone) el.appendChild(document.createTextNode(')'));
+            caption.appendChild(el);
+        }
+        return caption.childNodes.length ? caption : null;
     },
 
     getLinkLicense: function (attrLicense) {

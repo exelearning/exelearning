@@ -139,6 +139,7 @@
     "sass": "^1.105.0",
     "scorm-again": "3.3.2",
     "showdown": "^2.1.0",
+    "simplelightbox": "2.14.3",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^5.0.2",
