@@ -112,6 +112,7 @@ var $quickquestionsmultiplechoice = {
             const selecciona =
                 $quickquestionsmultiplechoice.createInterfaceSelecciona(i);
             dl.before(selecciona).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#seleccionaGameMinimize-' + i).hide();
             $('#seleccionaGameContainer-' + i).hide();
@@ -609,6 +610,27 @@ var $quickquestionsmultiplechoice = {
         );
     },
 
+    /**
+     * Whether a clock's game is still on the page, and the page is not being
+     * edited.
+     *
+     * A clock holds the element its game had when it started, not the
+     * element's id. The editor never reloads the document between pages and
+     * ids are numbered by position, so the next page's first game takes the
+     * same ones: a clock that looked its game up by id each second found that
+     * game and ran it.
+     *
+     * @param {Element|null} container - The game's element when the clock started
+     * @returns {boolean}
+     */
+    isClockLive: function (container) {
+        const $content = $('#node-content');
+        return (
+            !!container?.isConnected &&
+            !($content.length && $content.attr('mode') === 'edition')
+        );
+    },
+
     startVideoIntro: function (id, start, end, instance, type) {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             mstart = start < 1 ? 0.1 : start;
@@ -625,20 +647,19 @@ var $quickquestionsmultiplechoice = {
                 }
             }
             clearInterval(mOptions.timeUpdateIntervalIntro);
-            mOptions.timeUpdateIntervalIntro = setInterval(() => {
-                let $node = $('#seleccionaMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.timeUpdateIntervalIntro);
+            const container = document.getElementById(
+                'seleccionaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$quickquestionsmultiplechoice.isClockLive(container)) {
+                    clearInterval(clock);
                     return;
                 }
                 $quickquestionsmultiplechoice.updateTimerDisplayLocalIntro(
                     instance
                 );
             }, 1000);
+            mOptions.timeUpdateIntervalIntro = clock;
             $('#seleccionaVideoIntroLocal-' + instance).show();
             return;
         }
@@ -670,18 +691,17 @@ var $quickquestionsmultiplechoice = {
                 }
             }
             clearInterval(mOptions.timeUpdateInterval);
-            mOptions.timeUpdateInterval = setInterval(() => {
-                let $node = $('#seleccionaMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.timeUpdateInterval);
+            const container = document.getElementById(
+                'seleccionaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$quickquestionsmultiplechoice.isClockLive(container)) {
+                    clearInterval(clock);
                     return;
                 }
                 $quickquestionsmultiplechoice.updateTimerDisplayLocal(instance);
             }, 1000);
+            mOptions.timeUpdateInterval = clock;
             return;
         }
 
@@ -1424,17 +1444,15 @@ var $quickquestionsmultiplechoice = {
             question.answerScore = -1;
         });
 
-        mOptions.counterClock = setInterval(() => {
+        const container = document.getElementById(
+            'seleccionaMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            if (!$quickquestionsmultiplechoice.isClockLive(container)) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#seleccionaMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $quickquestionsmultiplechoice.updateTime(
                     mOptions.counter,
@@ -1483,6 +1501,7 @@ var $quickquestionsmultiplechoice = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $quickquestionsmultiplechoice.updateTime(0, instance);
         $(`#seleccionaGamerOver-${instance}`).hide();

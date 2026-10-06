@@ -74,6 +74,23 @@ var $eXeEC = {
         $eXeEC.previousScore = mOptions.previousScore;
     },
 
+    /**
+     * The colour the end-of-attempt message is painted in: 2 when the learner
+     * passed, 1 when they did not.
+     *
+     * It used to be a fixed 2. Every attempt closed in the pass colour, a
+     * perfect one and an empty one alike, while the progress report beside it
+     * told the learner the opposite. Judged on getScoreRP, which is the very
+     * mark sent to the report and to the LMS.
+     *
+     * @param {number} instance Index of the activity on the page.
+     * @returns {number} An index into the colour table showMessage paints with.
+     */
+    getVerdictColor: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        return $eXeEC.getScoreRP(instance) >= $exe.passScore.resolve(mOptions) ? 2 : 1;
+    },
+
     getShowScoreRP: function (instance) {
         const mOptions = $eXeEC.options[instance];
         const total = mOptions.selectsGame.length;
@@ -107,6 +124,7 @@ var $eXeEC = {
             $eXeEC.options.push(mOption);
             const interfaceHtml = $eXeEC.createInterface(i);
             dl.before(interfaceHtml).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#elcpGameMinimize-' + i).hide();
             $('#elcpGameContainer-' + i).hide();
@@ -919,7 +937,7 @@ var $eXeEC = {
             $gamerOver = $(`#elcpGamerOver-${instance}`);
 
         let message = '',
-            messageColor = 2;
+            messageColor = $eXeEC.getVerdictColor(instance);
 
         $histGame.hide();
         $overPoint.show();
@@ -952,6 +970,10 @@ var $eXeEC = {
                 }
                 break;
             case 2:
+                // Not an outcome: the learner is still exploring the circuit,
+                // and the score panel is hidden. Neutral, so it is not read as
+                // a verdict on an attempt that has not finished.
+                messageColor = 0;
                 message = msgs.msgInformationLooking;
                 $overPoint.hide();
                 $overHits.hide();
@@ -1023,17 +1045,25 @@ var $eXeEC = {
             question.answerScore = -1;
         });
 
-        mOptions.counterClock = setInterval(() => {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and moving it on to the next
+        // question when its own time ran out.
+        const container = document.getElementById(
+            'elcpMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#elcpMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXeEC.updateTime(mOptions.counter, instance);
 
@@ -1076,6 +1106,7 @@ var $eXeEC = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $eXeEC.updateTime(0, instance);
         $(`#elcpGamerOver-${instance}`).hide();
@@ -1121,7 +1152,7 @@ var $eXeEC = {
         $exeDevices.iDevice.gamification.media.stopSound();
 
         const message = mOptions.msgs.msgAllQuestions;
-        $eXeEC.showMessage(2, message, instance);
+        $eXeEC.showMessage($eXeEC.getVerdictColor(instance), message, instance);
         $eXeEC.showScoreGame(type, instance);
         $eXeEC.clearQuestions(instance);
         $eXeEC.updateTime(0, instance);

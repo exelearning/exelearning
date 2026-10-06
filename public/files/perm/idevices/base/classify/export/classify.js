@@ -78,6 +78,7 @@ var $eXeClasifica = {
 
             const clasifica = $eXeClasifica.createInterfaceClasifica(i);
             dl.before(clasifica).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#clasificaGameMinimize-' + i)
                 .css('cursor', 'pointer')
@@ -1334,7 +1335,10 @@ var $eXeClasifica = {
         const percentageHits = mOptions.hits / mOptions.cardsGame.length;
 
         let msg = '',
-            type = percentageHits < 0.5 ? 1 : 2;
+            // The verdict goes by the mark, on the same 0-10 scale the report
+            // uses. The bands below are a different thing -- three tiers of
+            // encouragement -- and keep their own boundaries.
+            type = mOptions.score < $exe.passScore.resolve(mOptions) ? 1 : 2;
         if (percentageHits < 0.5) {
             msg = mOptions.msgs.msgQ5.replace(
                 '%s',
@@ -1712,25 +1716,34 @@ var $eXeClasifica = {
         }
 
         if (mOptions.time > 0) {
-            mOptions.counterClock = setInterval(() => {
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'clasificaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
+                if (
+                    !container?.isConnected ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
+                    clearInterval(clock);
+                    return;
+                }
                 if (mOptions.gameStarted) {
-                    let $node = $('#clasificaMainContainer-' + instance);
-                    let $content = $('#node-content');
-                    if (
-                        !$node.length ||
-                        ($content.length && $content.attr('mode') === 'edition')
-                    ) {
-                        clearInterval(mOptions.counterClock);
-                        return;
-                    }
                     mOptions.counter--;
                     $eXeClasifica.uptateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
-                        clearInterval(mOptions.counterClock);
+                        clearInterval(clock);
                         $eXeClasifica.gameOver(instance);
                     }
                 }
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeClasifica.uptateTime(mOptions.time * 60, instance);
         }
 
