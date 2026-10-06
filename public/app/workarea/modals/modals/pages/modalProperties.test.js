@@ -172,9 +172,54 @@ describe('ModalProperties', () => {
         expect(el.querySelectorAll('option').length).toBe(2);
         expect(el.value).toBe('v2');
     });
+
+    it('should create a multi-select with selected options', () => {
+      const prop = {
+        type: 'multiselect',
+        value: ['es', 'fr'],
+        options: { 'en-US': 'en-US', es: 'es', fr: 'fr' },
+      };
+      const el = modal.makeRowValueElement('id', 'name', prop);
+
+      expect(el.multiple).toBe(true);
+      expect(Array.from(el.selectedOptions, option => option.value)).toEqual(['es', 'fr']);
+    });
+
+    it('keeps System default exclusive from concrete languages', () => {
+      const el = modal.makeRowValueElement('id', 'name', {
+        type: 'multiselect', value: ['__system_default__'],
+        options: { __system_default__: 'System default', es: 'es' },
+      });
+      el.options[1].selected = true;
+      el.dispatchEvent(new Event('change'));
+      expect(el.options[0].selected).toBe(false);
+      expect(el.options[1].selected).toBe(true);
+    });
+
+    it('renders a dynamically added preference in the existing category', () => {
+      const properties = {
+        locale: { title: 'Language', type: 'select', value: 'en', options: { en: 'English' }, category: 'General settings' },
+        spellCheckerLanguages: { title: 'Spell checker languages', type: 'multiselect', value: ['es'], options: { es: 'es' }, category: 'General settings' },
+      };
+      const body = modal.makeBodyElement(properties);
+      expect(modal.getListCategories(properties)).toEqual(['General settings']);
+      expect(body.querySelector('[property="spellCheckerLanguages"]')).not.toBeNull();
+      expect(body.querySelector('[category="undefined"]')).toBeNull();
+    });
   });
 
   describe('getModalPropertiesData', () => {
+    it('should collect all selected multi-select values', () => {
+      modal.modalElementBody.innerHTML = `
+        <select class="property-value" property="languages" data-type="multiselect" multiple>
+          <option value="en-US" selected>en-US</option>
+          <option value="es">es</option>
+          <option value="fr" selected>fr</option>
+        </select>`;
+
+      expect(modal.getModalPropertiesData()).toEqual({ languages: ['en-US', 'fr'] });
+    });
+
     it('should collect data from inputs', () => {
       const properties = {
         p1: { title: 'P1', type: 'text', value: 'v1', category: 'C1' },

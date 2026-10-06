@@ -1,3 +1,9 @@
+import {
+    SYSTEM_DEFAULT,
+    getSpellCheckerPreferenceCategory,
+    spellCheckerSettingsToValue,
+} from './spellCheckerPreferences.js';
+
 export default class UserPreferences {
     constructor(manager) {
         this.manager = manager;
@@ -52,6 +58,37 @@ export default class UserPreferences {
         } else {
             // Static mode: load from localStorage via adapter
             await this.loadStaticPreferences();
+        }
+
+        await this.loadSpellCheckerPreferences();
+    }
+
+    async loadSpellCheckerPreferences() {
+        const getSettings = window.electronAPI?.getSpellCheckerSettings;
+        if (!getSettings) return;
+
+        try {
+            const settings = await getSettings();
+            if (!settings?.supported) return;
+
+            const category = getSpellCheckerPreferenceCategory(this.preferences);
+            this.preferences.spellCheckerLanguages = {
+                title: _('Spell checker languages'),
+                help: _(
+                    'Choose System default, or select no languages, to use the operating system language.'
+                ),
+                ...(category !== undefined ? { category } : {}),
+                value: spellCheckerSettingsToValue(settings),
+                type: 'multiselect',
+                options: {
+                    [SYSTEM_DEFAULT]: _('System default'),
+                    ...Object.fromEntries(
+                        settings.availableLanguages.map(language => [language, language])
+                    ),
+                },
+            };
+        } catch (error) {
+            console.warn('[UserPreferences] Error loading spell checker preferences:', error);
         }
     }
 
@@ -200,6 +237,26 @@ export default class UserPreferences {
      *
      */
     async apiSaveProperties(preferences) {
+        // The modal owns the submitted object; keep it intact for callers and tests.
+        preferences = { ...preferences };
+        const spellCheckerLanguages = preferences.spellCheckerLanguages;
+        if (spellCheckerLanguages !== undefined) {
+            try {
+                const settings = await window.electronAPI?.setSpellCheckerLanguages?.(spellCheckerLanguages);
+                if (settings && this.preferences.spellCheckerLanguages) {
+                    this.preferences.spellCheckerLanguages.value = spellCheckerSettingsToValue(settings);
+                }
+                if (settings?.applied && settings.persisted === false) {
+                    console.warn(
+                        '[UserPreferences] Spell checker languages were applied for this session but could not be persisted.'
+                    );
+                }
+            } catch (error) {
+                console.warn('[UserPreferences] Error saving spell checker preferences:', error);
+            }
+            delete preferences.spellCheckerLanguages;
+        }
+
         // Update array of preferences
         for (let [key, value] of Object.entries(preferences)) {
             this.preferences[key].value = value;
