@@ -223,6 +223,14 @@ describe('download-source-file iDevice (edition)', () => {
       expect(input.type).toBe('text');
     });
 
+    it('names the .elpx package in the default button text and the instructions', () => {
+      $exeDevice.createForm();
+
+      expect(container.querySelector('#dpiButtonText').value).toBe('Download .elpx file');
+      expect(container.textContent).toContain('download the .elpx file');
+      expect(container.innerHTML).not.toMatch(/\.elp(?!x)|the elp file/);
+    });
+
     it('creates form with font size select', () => {
       $exeDevice.createForm();
 
@@ -364,7 +372,7 @@ describe('download-source-file iDevice (edition)', () => {
       container = document.createElement('div');
       container.innerHTML = `
         <textarea id="dpiDescription"></textarea>
-        <input type="text" id="dpiButtonText" value="Download .elp file" />
+        <input type="text" id="dpiButtonText" value="Download .elpx file" />
         <select id="dpiButtonFontSize">
           <option value="1" selected>100%</option>
           <option value="1.2">120%</option>
