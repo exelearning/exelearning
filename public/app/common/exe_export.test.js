@@ -311,6 +311,38 @@ describe('exe_export.js', () => {
       expect(() => window.$exeExport.afterIdeviceRendered(node)).not.toThrow();
     });
 
+    describe('lightbox links (#2510)', () => {
+      afterEach(() => {
+        delete window.$exe;
+      });
+
+      it('sets up the lightbox links and dialog images of the rendered iDevice', () => {
+        window.$exe = { setMultimediaGalleries: vi.fn(), setModalWindowContentSize: vi.fn() };
+        const node = document.createElement('div');
+
+        window.$exeExport.afterIdeviceRendered(node);
+
+        expect(window.$exe.setMultimediaGalleries).toHaveBeenCalledWith(node);
+        expect(window.$exe.setModalWindowContentSize).toHaveBeenCalledWith(node);
+      });
+
+      it('runs after the effects, which may rebuild the iDevice markup', () => {
+        const calls = [];
+        window.$exeFX = { init: vi.fn(() => calls.push('fx')) };
+        window.$exe = { setMultimediaGalleries: vi.fn(() => calls.push('lightbox')) };
+
+        window.$exeExport.afterIdeviceRendered(document.createElement('div'));
+
+        expect(calls).toEqual(['fx', 'lightbox']);
+      });
+
+      it('does nothing when the common library lacks the lightbox helpers', () => {
+        window.$exe = {};
+
+        expect(() => window.$exeExport.afterIdeviceRendered(document.createElement('div'))).not.toThrow();
+      });
+    });
+
     it('runs after an iDevice rendered with a template', () => {
       window.$exeFX = { init: vi.fn() };
       const exportIdevice = {
@@ -405,6 +437,29 @@ describe('exe_export.js', () => {
     // One teardown, one end-of-session call, carrying the scored flag.
     expect(window.unloadPage).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).toHaveBeenCalledWith(true);
+  });
+
+  it.each([
+    ['the legacy runtime', undefined],
+    ['the SCORM 1.2 runtime', { setPageHasScoredActivities: () => {} }],
+  ])('refreshes the page minimum score once loadPage() has read the LMS, under %s', (_label, runtime) => {
+    window.scorm = {};
+    window.exeScorm12 = runtime;
+    const order = [];
+    window.loadPage = vi.fn(() => order.push('loadPage'));
+    window.unloadPage = vi.fn();
+    const previousDevices = window.$exeDevices;
+    window.$exeDevices = {
+      iDevice: { gamification: { scorm: { showPagePassScore: vi.fn(() => order.push('label')) } } },
+    };
+
+    try {
+      window.$exeExport.initScorm();
+      expect(order).toEqual(['loadPage', 'label']);
+    } finally {
+      window.$exeDevices = previousDevices;
+      delete window.exeScorm12;
+    }
   });
 
   it('the legacy pagehide bridge stands down when the page enters the back/forward cache', () => {

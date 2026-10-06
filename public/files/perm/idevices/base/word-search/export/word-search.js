@@ -106,6 +106,7 @@ var $eXeSopa = {
             const sopa = $eXeSopa.createInterfaceSopa(i);
 
             dl.before(sopa).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             const $container = $('#sopaMainContainer-' + i);
             $container.find('#sopaGameMinimize-' + i).hide();
@@ -1034,7 +1035,10 @@ var $eXeSopa = {
         }
 
         const type =
-            (mOptions.hits * 10) / mOptions.numberQuestions >= 5 ? 2 : 1;
+            (mOptions.hits * 10) / mOptions.numberQuestions >=
+            $exe.passScore.resolve(mOptions)
+                ? 2
+                : 1;
         $eXeSopa.showMessage(type, message, instanceId);
         $eXeSopa.showFeedBack(instanceId);
     },
