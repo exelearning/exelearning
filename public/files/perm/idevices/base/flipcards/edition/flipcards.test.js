@@ -342,6 +342,12 @@ describe('flipcards iDevice', () => {
               getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
               addEvents: vi.fn(),
             },
+            passScore: {
+              getContents: vi.fn(() => '<div class="mock-pass-score"></div>'),
+              setValues: vi.fn(),
+              getValues: vi.fn(() => ({ passScoreMode: 'global', passScoreCustom: 5 })),
+              addEvents: vi.fn(),
+            },
           },
         },
       };
@@ -353,11 +359,14 @@ describe('flipcards iDevice', () => {
       global.$exeDevicesEdition = originalExeDevicesEdition;
     });
 
-    it('renders shared progress bar contents through the helper', () => {
+    it('hands its asset path to the Grading tab, which renders the report', () => {
+      // The iDevice used to render the progress report itself. The tab does it
+      // now, and it needs this path for the report's help icon -- so what this
+      // iDevice still owns is passing it along.
       $exeDevice.createForm();
-      const progressBar = global.$exeDevicesEdition.iDevice.gamification.progressBar;
-      expect(progressBar.getContents).toHaveBeenCalledWith('/test/');
-      expect(container.querySelector('.mock-progress-bar')).not.toBeNull();
+      const scorm = global.$exeDevicesEdition.iDevice.gamification.scorm;
+      expect(scorm.getTab).toHaveBeenCalledWith('/test/');
+      expect(container.querySelector('.mock-scorm')).not.toBeNull();
     });
   });
 
@@ -372,6 +381,7 @@ describe('flipcards iDevice', () => {
             itinerary: { addEvents: vi.fn() },
             share: { addEvents: vi.fn() },
             progressBar: { addEvents: vi.fn() },
+            passScore: { addEvents: vi.fn() },
           },
         },
       };
@@ -434,6 +444,50 @@ describe('flipcards iDevice', () => {
       expect($('#flipcardsETime').val()).toBe('12');
     });
   });
+
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(join(__dirname, 'flipcards.js'), 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            expect(source).toContain('passScoreMode: game.passScoreMode');
+            expect(source).toContain('passScoreCustom: game.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            expect(source).toContain('passScoreMode: passScore.passScoreMode');
+            expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
 
   describe('edition lifecycle', () => {
     let savedGamification;
@@ -598,5 +652,15 @@ describe('flipcards iDevice', () => {
         play.mockRestore();
       });
     });
+  });
+});
+
+describe('flipcards minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'flipcards.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });

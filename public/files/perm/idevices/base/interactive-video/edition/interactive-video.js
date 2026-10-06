@@ -93,6 +93,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Interactive video'),
             youtubePreviewNotice: c_(
                 'YouTube videos cannot be embedded in preview mode. ' +
@@ -190,7 +191,6 @@ var $exeDevice = {
                     <label class="toggle-label mb-0" for="interactiveVideoScoreNIA">${_('Score non-interactive activities')}</label>
                 </div>
                 <div class="mb-4">
-                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                 </div>
                 <p class="exe-block-success d-flex align-items-center justify-content-between gap-3">
                     <span class="me-auto">${_('Open the editor and start adding interaction...')}</span>
@@ -199,7 +199,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             </div>
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
         </div>
     `;
 
@@ -213,6 +213,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#interactiveVideoFile')
             .change(function () {
@@ -499,6 +500,10 @@ var $exeDevice = {
                     evaluation: InteractiveVideo.evaluation,
                     evaluationID: InteractiveVideo.evaluationID,
                 });
+                $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+                    passScoreMode: InteractiveVideo.passScoreMode,
+                    passScoreCustom: InteractiveVideo.passScoreCustom,
+                });
             }
             // Save the list of images and remove the wrapper
             top.interactiveVideoEditor.imageList = $(
@@ -776,6 +781,9 @@ var $exeDevice = {
         var seval = progressBarValues.evaluation,
             sevalid = progressBarValues.evaluationID;
 
+        var passScoreValues =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+
         var ideviceID = $exeDevice.getIdeviceID();
 
         var contents = '{}';
@@ -875,6 +883,10 @@ var $exeDevice = {
             top.interactiveVideoEditor.activityToSave.scoreNIA = scoreNIA;
             top.interactiveVideoEditor.activityToSave.evaluation = seval;
             top.interactiveVideoEditor.activityToSave.evaluationID = sevalid;
+            top.interactiveVideoEditor.activityToSave.passScoreMode =
+                passScoreValues.passScoreMode;
+            top.interactiveVideoEditor.activityToSave.passScoreCustom =
+                passScoreValues.passScoreCustom;
             top.interactiveVideoEditor.activityToSave.ideviceID = ideviceID;
 
             contents = JSON.stringify(
