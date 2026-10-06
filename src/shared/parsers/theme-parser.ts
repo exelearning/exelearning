@@ -123,6 +123,33 @@ function scanThemeFiles(
 }
 
 /**
+ * Collator used to order theme icons. `readdirSync` order is filesystem-dependent
+ * (Bun returns raw ext4 hash order on Linux, NTFS returns names sorted), so every
+ * scanner sorts explicitly with this collator to give the icon picker a stable,
+ * alphabetical order (#2411). Keep in sync with the JS twin in
+ * `public/app/workarea/project/idevices/content/blockNode.js` (sortThemeIcons).
+ */
+const THEME_ICON_COLLATOR = new Intl.Collator('en', { numeric: true });
+
+/**
+ * Compare two theme icon names (or file names) for display ordering.
+ */
+export function compareThemeIconNames(a: string, b: string): number {
+    return THEME_ICON_COLLATOR.compare(a, b);
+}
+
+/**
+ * Return a copy of an icons record whose keys are in display order (by icon id).
+ */
+export function sortThemeIcons(icons: Record<string, ThemeIcon>): Record<string, ThemeIcon> {
+    const sorted: Record<string, ThemeIcon> = {};
+    for (const key of Object.keys(icons).sort(compareThemeIconNames)) {
+        sorted[key] = icons[key];
+    }
+    return sorted;
+}
+
+/**
  * Scan theme directory for icon files
  */
 function scanThemeIcons(
@@ -161,7 +188,7 @@ function scanThemeIcons(
             };
         }
     }
-    return icons;
+    return sortThemeIcons(icons);
 }
 
 /**

@@ -1473,6 +1473,7 @@ export default class IdevicesEngine {
 
         // Initialize the iDevice
         await ideviceNode.loadInitScriptIdevice('export');
+        this.scheduleRemoteExportRuntimeReload(pageId);
 
         // Hide empty node message since we now have content
         if (eXeLearning?.app?.menus?.menuStructure?.menuStructureBehaviour) {
@@ -1487,8 +1488,9 @@ export default class IdevicesEngine {
      * Called when another client saves content for a component we already have rendered
      *
      * @param {Object} componentData - Updated component data from Yjs
+     * @param {string} pageId - Page the component belongs to
      */
-    async updateRemoteIdeviceContent(componentData) {
+    async updateRemoteIdeviceContent(componentData, pageId) {
         // Find the existing iDevice node
         const ideviceNode = this.components.idevices.find(
             i => i.odeIdeviceId === componentData.id || i.yjsComponentId === componentData.id
@@ -1565,6 +1567,7 @@ export default class IdevicesEngine {
                 ideviceNode.ideviceBody.innerHTML = sanitizeCollaborativeHtml(incomingHtml);
             }
             await ideviceNode.loadInitScriptIdevice('export');
+            this.scheduleRemoteExportRuntimeReload(pageId);
         }
 
         // Update the lock indicator in the header
@@ -1664,20 +1667,52 @@ export default class IdevicesEngine {
                 await idevice.generateContentExportView();
             }
         }
-        // Remove old scripts and reload them
-        // (forces re-initialization of HTML-type iDevices after all HTML is in DOM)
-        this.clearNeedlessScripts();
-        this.loadIdevicesExportScripts();
-        // Load legacy functions
-        this.loadLegacyExeFunctionalitiesExport();
+        this.reloadExportRuntime();
         // Resets the "loading" attribute for the display effect
         setTimeout(() => {
             this.components.idevices.forEach((idevice) => {
                 idevice.ideviceContent.setAttribute('loading', false);
             });
         }, 500);
-        // Enable internal links
+    }
+
+    /**
+     * Page-level steps that must run once export HTML has landed in the DOM.
+     *
+     * Export scripts are removed and inserted again so their document-ready
+     * bootstraps run over the new HTML: HTML-type iDevices (A-Z quiz, Guess,
+     * GeoGebra...) only initialise from `$(function () { $x.init() })`, so a
+     * script that is already in <head> never picks up content added later.
+     * The legacy functionalities then render ABC music notation, effects,
+     * games and the highlighter, and internal links are wired.
+     *
+     * Page-level only: re-executing an export script redefines its global
+     * and drops the state of instances already on the page. The incremental
+     * remote paths therefore go through scheduleRemoteExportRuntimeReload().
+     */
+    reloadExportRuntime() {
+        this.clearNeedlessScripts();
+        this.loadIdevicesExportScripts();
+        this.loadLegacyExeFunctionalitiesExport();
         this.enableInternalLinks();
+    }
+
+    /**
+     * Post-render hooks for an iDevice that arrived from a collaborator
+     * (renderRemoteIdevice / updateRemoteIdeviceContent, #2428).
+     *
+     * The export runtime is page-wide: HTML-type iDevices bootstrap every
+     * instance from `$(function () { $x.init() })` and reset their shared
+     * state when re-executed, and the legacy $exe* hooks expect fresh DOM.
+     * Running them piecemeal breaks the other instances on the page (#2434),
+     * so the page is reloaded through the bridge instead: debounced across the
+     * several updates of one remote save, and deferred while this user has an
+     * iDevice open for editing (#2427).
+     *
+     * @param {string} pageId
+     */
+    scheduleRemoteExportRuntimeReload(pageId) {
+        this.project?._yjsBridge?.schedulePageReloadIfCurrent?.(pageId);
     }
 
     /**
@@ -2375,6 +2410,35 @@ export default class IdevicesEngine {
     }
 
     /**
+     * Dispose the edition of every component this engine still tracks.
+     *
+     * Used before the page content is discarded wholesale, where the nodes are
+     * detached directly instead of through `IdeviceNode.remove()`. A failure on
+     * one node must not stop the others from being released.
+     *
+     * Only one iDevice can be edited at a time, so this looks like it could
+     * dispose the active lifecycle directly instead of walking every node. It
+     * cannot: `destroyEditionInstance()` also does per-node work that no
+     * lifecycle owns. It stops the node's `checkDeviceLoadInterval` poll, and it
+     * releases `$exeDevice` for an edition whose script defined the global but
+     * never reached `initExeDeviceEdition()` — that edition has no lifecycle at
+     * all, so nothing else would ever clean it up, and the next iDevice's poll
+     * would adopt the stale global.
+     */
+    destroyEditionIdevices() {
+        this.components.idevices.forEach((idevice) => {
+            try {
+                idevice.destroyEditionInstance?.();
+            } catch (error) {
+                Logger.warn(
+                    '[IdevicesEngine] Failed to dispose an iDevice edition:',
+                    error
+                );
+            }
+        });
+    }
+
+    /**
      * Removes elements from content, scripts and temporary variables
      *
      * @returns boolean
@@ -2383,6 +2447,10 @@ export default class IdevicesEngine {
         let saveOk = true;
         if (!force) saveOk = await this.saveEditionIdevices();
         if (saveOk) {
+            // Dispose every open edition before its DOM is wiped below: these
+            // nodes are dropped from this.components without ever going through
+            // IdeviceNode.remove(), so this is their only teardown chance.
+            this.destroyEditionIdevices();
             // Remove scripts that are not needed by the application base
             this.clearNeedlessScripts();
             // Clear html of node_content
@@ -2484,6 +2552,10 @@ export default class IdevicesEngine {
             this.mode = 'view';
         }
         this.nodeContentElement.setAttribute('mode', this.mode);
+        // Remote structure changes received during the edition are applied now (#2427)
+        if (!ideviceEdition) {
+            this.project?._yjsBridge?.flushDeferredPageReload?.();
+        }
     }
 
     /*******************************************************************************

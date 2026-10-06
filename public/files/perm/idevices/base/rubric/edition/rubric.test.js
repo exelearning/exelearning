@@ -971,4 +971,128 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect($exeDevice.ci18n.msgWeight).toBe('Weight');
     });
   });
+
+  // Only 1-100 is stored. The previous `value || 100` let -1 through — which
+  // is exactly what the shared SCORM tab returns for an emptied weight field —
+  // and any number above 100 as well.
+  describe('normalizeWeight', () => {
+    it('keeps every weight inside the range, including the ends', () => {
+      expect($exeDevice.normalizeWeight(1)).toBe(1);
+      expect($exeDevice.normalizeWeight(40)).toBe(40);
+      expect($exeDevice.normalizeWeight(100)).toBe(100);
+    });
+
+    it('falls back to 100 outside the range or when unreadable', () => {
+      expect($exeDevice.normalizeWeight(0)).toBe(100);
+      expect($exeDevice.normalizeWeight(-1)).toBe(100);
+      expect($exeDevice.normalizeWeight(101)).toBe(100);
+      expect($exeDevice.normalizeWeight(undefined)).toBe(100);
+      expect($exeDevice.normalizeWeight('abc')).toBe(100);
+    });
+  });
+
+  describe('edition lifecycle', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    describe('readCSVFile', () => {
+      function csvFile() {
+        return new File(['A,B\n1,2'], 'rubric.csv', { type: 'text/csv' });
+      }
+
+      it('imports the CSV while the edition is open', async () => {
+        const importCSV = vi.spyOn($exeDevice, 'importCSV').mockImplementation(() => {});
+
+        $exeDevice.readCSVFile(csvFile());
+        await vi.waitFor(() => expect(importCSV).toHaveBeenCalledTimes(1));
+      });
+
+      it('aborts a read still in flight when the edition closes', () => {
+        const abort = vi.spyOn(window.FileReader.prototype, 'abort');
+
+        $exeDevice.readCSVFile(csvFile());
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not import a CSV that arrives after the edition closed', async () => {
+        const importCSV = vi.spyOn($exeDevice, 'importCSV').mockImplementation(() => {});
+
+        $exeDevice.readCSVFile(csvFile());
+        $exeDevice.$lifecycle.destroy();
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(importCSV).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("CEDEC's rubrics download", () => {
+      let handlers;
+      let abort;
+
+      function openTemplateControls() {
+        document.body.innerHTML = '<div id="ri_RubricsEditor"></div>';
+        delete $exeDevice.cedecRubrics;
+        $exeDevice.renderRubricTemplateControls();
+        $('#ri_LoadCEDECRubrics').trigger('click');
+      }
+
+      beforeEach(() => {
+        handlers = null;
+        abort = vi.fn();
+        vi.spyOn($, 'ajax').mockImplementation((options) => {
+          handlers = options;
+          return { abort };
+        });
+      });
+
+      it('stores the rubrics when the download answers while the editor is open', () => {
+        const complete = vi
+          .spyOn($exeDevice, 'completeRubricModels')
+          .mockImplementation(() => {});
+
+        openTemplateControls();
+        handlers.success({ rubrics: [{ title: 'x' }] });
+
+        expect($exeDevice.cedecRubrics).toEqual({ rubrics: [{ title: 'x' }] });
+        expect(complete).toHaveBeenCalledTimes(1);
+      });
+
+      it('aborts the pending download when the edition closes', () => {
+        openTemplateControls();
+        expect(abort).not.toHaveBeenCalled();
+
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      it('ignores a download that answers after the edition closed', () => {
+        const complete = vi
+          .spyOn($exeDevice, 'completeRubricModels')
+          .mockImplementation(() => {});
+
+        openTemplateControls();
+        $exeDevice.$lifecycle.destroy();
+        handlers.success({ rubrics: [{ title: 'x' }] });
+
+        expect($exeDevice.cedecRubrics).toBeUndefined();
+        expect(complete).not.toHaveBeenCalled();
+      });
+
+      it('does not alert for an error raised by its own abort', () => {
+        const alert = vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
+
+        openTemplateControls();
+        // jQuery calls the error handler synchronously when a request is aborted.
+        abort.mockImplementation(() => handlers.error());
+        $exeDevice.$lifecycle.destroy();
+
+        expect(alert).not.toHaveBeenCalled();
+      });
+    });
+  });
 });

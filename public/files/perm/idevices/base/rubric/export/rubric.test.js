@@ -979,7 +979,9 @@ describe('rubric iDevice SCORM integration', () => {
       expect(game.main).toBe('rubric-node-42');
       expect(game.isScorm).toBe(2);
       expect(game.textButtonScorm).toBe('Guardar');
-      expect(game.repeatActivity).toBe(false);
+      // Always true now, whatever the stored value: every activity may be
+      // replayed, and common.js forces the flag on registration anyway.
+      expect(game.repeatActivity).toBe(true);
       expect(game.weighted).toBe(75);
       expect(game.scorerp).toBe(0);
       expect(game.gameStarted).toBe(false);
@@ -1087,7 +1089,9 @@ describe('rubric iDevice SCORM integration', () => {
 
       expect(registerSpy).toHaveBeenCalledTimes(1);
       expect(data.scormGame).toBeDefined();
-      expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(1);
+      // The button is part of the rendered interface now, not something this
+      // step injects afterwards into the rubric's own row of actions.
+      expect($rubricRoot.find('.exe-rubrics-actions .Games-SendScore').length).toBe(0);
     });
 
     it('initScorm does not add save button when isScorm=1', () => {
@@ -1112,25 +1116,72 @@ describe('rubric iDevice SCORM integration', () => {
       expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(0);
     });
 
-    it('addScormSaveButton prepends a button with the configured text', () => {
-      const scope = $('<div class="idevice_node rubric" id="btn-scope"><div class="rubric"><div class="exe-rubrics-actions"><button class="existing"></button></div></div></div>');
-      document.body.append(scope);
+    // The defect: this iDevice built its own button and prepended it to the row
+    // holding Download and Reset, so it sat among the rubric's own actions
+    // instead of in the container every other iDevice puts it in.
+    describe('getScormAreaHtml', () => {
+      it('renders the shared container with the button in manual mode', () => {
+        const html = $rubric.getScormAreaHtml(
+          { isScorm: 2, textButtonScorm: 'Enviar puntuación' },
+          {}
+        );
 
-      const table = $('<table></table>');
-      scope.find('.rubric').append(table);
-
-      $rubric.addScormSaveButton({
-        table,
-        textButtonScorm: 'Enviar puntuación',
-        strings: {},
+        expect(html).toContain('Games-GetScore');
+        expect(html).toContain('Games-SendScore');
+        expect(html).toContain('Enviar puntuación');
+        expect(html).toContain('btn btn-primary');
       });
 
-      const $btn = scope.find('.exe-rubrics-scorm-save');
-      expect($btn.length).toBe(1);
-      expect($btn.text()).toBe('Enviar puntuación');
-      expect($btn.hasClass('Games-SendScore')).toBe(true);
-      // Button must be first child of actions container
-      expect(scope.find('.exe-rubrics-actions').children().first().is($btn)).toBe(true);
+      it('renders no button in automatic mode, only the message slot', () => {
+        const html = $rubric.getScormAreaHtml({ isScorm: 1 }, {});
+
+        expect(html).not.toContain('Games-SendScore');
+        expect(html).toContain('Games-RepeatActivity');
+      });
+
+      it('falls back to the caption from the activity strings', () => {
+        const html = $rubric.getScormAreaHtml({ isScorm: 2 }, { msgScore: 'Puntuación' });
+
+        expect(html).toContain('Puntuación');
+      });
+
+      it('keeps the message slot when the gamification bridge is absent', () => {
+        const previous = globalThis.$exeDevices;
+        globalThis.$exeDevices = undefined;
+
+        try {
+          const html = $rubric.getScormAreaHtml({ isScorm: 2 }, {});
+
+          expect(html).toContain('Games-RepeatActivity');
+        } finally {
+          globalThis.$exeDevices = previous;
+        }
+      });
+
+      // Where the learner actually sees it: in the interface the activity
+      // renders, below its own actions, not inside the row with Download and
+      // Reset.
+      it('lands in the rendered interface, outside the rubric actions', () => {
+        const scope = $(
+          '<div class="idevice_node rubric" id="iface-node"><div class="rubric"></div></div>'
+        );
+        document.body.append(scope);
+        const table = buildScoredTable();
+        const $root = scope.find('.rubric');
+        $root.append(table);
+
+        $rubric.createInterface({
+          scope: $root,
+          scopeId: 'iface-node',
+          strings: {},
+          table,
+          isScorm: 2,
+          textButtonScorm: 'Guardar',
+        });
+
+        expect($root.find('.Games-GetScore .Games-SendScore').length).toBe(1);
+        expect($root.find('.exe-rubrics-actions .Games-SendScore').length).toBe(0);
+      });
     });
 
     it('sendRubricScore calls sendScoreNew with computed score', () => {
@@ -1148,7 +1199,144 @@ describe('rubric iDevice SCORM integration', () => {
       expect(sendSpy.mock.calls[0][0]).toBe(false);
       expect(sendSpy.mock.calls[0][1].scorerp).toBe(10);
       expect(sendSpy.mock.calls[0][1].gameStarted).toBe(true);
-      expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
+      // Both criteria are ticked, so the rubric is finished.
+      expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+    });
+
+    // The rubric is finished exactly while every criterion is scored. It used
+    // to report `gameOver: false` always, so a fully filled rubric never took
+    // its page out of `incomplete`.
+    describe('completion follows the ticked criteria', () => {
+      /**
+       * Report one change and hand back what reached the runtime.
+       *
+       * @param {Function} tick applies the ticks to the table
+       * @returns {object} the game object as it was reported
+       */
+      function reportAfter(tick) {
+        const table = buildScoredTable();
+        tick(table);
+        const sendSpy = vi.fn();
+        globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+        $rubric.sendRubricScore(true, {
+          table,
+          scormGame: { scorerp: 0, gameStarted: false, gameOver: false },
+        });
+
+        return sendSpy.mock.calls[0][1];
+      }
+
+      it('is unfinished while a criterion is left unscored', () => {
+        const reported = reportAfter(table => {
+          table.find('input[value="3"]').prop('checked', true);
+        });
+
+        expect(reported.gameOver).toBe(false);
+      });
+
+      it('is finished once every criterion is scored', () => {
+        const reported = reportAfter(table => {
+          table.find('input[value="1"]').prop('checked', true);
+          table.find('input[value="2"]').prop('checked', true);
+        });
+
+        expect(reported.gameOver).toBe(true);
+      });
+
+      // Unticking has to take the verdict back, not just lower the score.
+      it('is unfinished again when a criterion is cleared', () => {
+        const reported = reportAfter(table => {
+          table.find('input[value="1"]').prop('checked', true);
+        });
+
+        expect(reported.gameOver).toBe(false);
+      });
+
+      it('is unfinished when nothing has been ticked at all', () => {
+        expect(reportAfter(() => {}).gameOver).toBe(false);
+      });
+
+      // Rows without cells — a spacer, a heading — are not criteria and must
+      // not hold the rubric open for ever.
+      it('ignores rows that carry no cells', () => {
+        const table = buildScoredTable();
+        table.find('tbody').append('<tr><th>Notes</th><td></td></tr>');
+        table.find('input[value="1"]').prop('checked', true);
+        table.find('input[value="2"]').prop('checked', true);
+
+        expect($rubric.isRubricComplete(table)).toBe(true);
+      });
+
+      it('answers false for a table with no criteria at all', () => {
+        expect($rubric.isRubricComplete($('<table><tbody></tbody></table>'))).toBe(false);
+      });
+    });
+
+    // The button publishes the marks so far and leaves the attempt open, like
+    // everywhere else. It used to refuse an unfinished rubric outright, because
+    // sendScoreNew counted any hand-sent score as completion and there was no
+    // other way to keep it open. Completion comes from gameOver alone now, so
+    // the refusal is gone and the rubric decides its own state.
+    describe('the manual save button obeys the same rule', () => {
+      function givenManualSave(tick) {
+        const node = $('<div class="idevice_node"><span class="Games-RepeatActivity"></span></div>');
+        document.body.append(node);
+        const table = buildScoredTable();
+        tick(table);
+        const sendSpy = vi.fn();
+        globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+        const game = {
+          scorerp: 0,
+          gameStarted: false,
+          gameOver: false,
+          mainElement: node,
+          msgs: { msgEndGameScore: 'Complete the rubric first' },
+        };
+        $rubric.sendRubricScore(false, { table, scormGame: game });
+
+        return { sendSpy, node };
+      }
+
+      it('saves an unfinished rubric without closing the attempt', () => {
+        const { sendSpy } = givenManualSave(table => {
+          table.find('input[value="3"]').prop('checked', true);
+        });
+
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(sendSpy.mock.calls[0][0]).toBe(false);
+        // One of two criteria scored: the rubric is not finished, and saying so
+        // is what keeps the attempt open.
+        expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
+      });
+
+      it('saves once every criterion is scored', () => {
+        const { sendSpy } = givenManualSave(table => {
+          table.find('input[value="1"]').prop('checked', true);
+          table.find('input[value="2"]').prop('checked', true);
+        });
+
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+      });
+
+      // The automatic path reports every change, finished or not: that is how
+      // the score follows along and how the attempt reopens.
+      it('does not hold back the automatic report', () => {
+        const table = buildScoredTable();
+        table.find('input[value="3"]').prop('checked', true);
+        const sendSpy = vi.fn();
+        globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+        $rubric.sendRubricScore(true, {
+          table,
+          scormGame: { scorerp: 0, gameStarted: false, gameOver: false, msgs: {} },
+        });
+
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
+      });
     });
 
     it('sendRubricScore is a no-op when data has no scormGame', () => {
@@ -1161,17 +1349,20 @@ describe('rubric iDevice SCORM integration', () => {
       expect(sendSpy).not.toHaveBeenCalled();
     });
 
-    it('resetScormScore zeroes the score and flags gameOver', () => {
+    // Clearing the rubric leaves every criterion unscored, so the attempt is
+    // open again. Reporting it finished told the LMS the learner had completed
+    // the rubric and scored nothing.
+    it('resetScormScore zeroes the score and reopens the attempt', () => {
       const sendSpy = vi.fn();
       globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
 
-      const game = { scorerp: 7, gameStarted: true, gameOver: false };
+      const game = { scorerp: 7, gameStarted: true, gameOver: true };
       $rubric.resetScormScore({ isScorm: 1, scormGame: game });
 
       expect(sendSpy).toHaveBeenCalledTimes(1);
       expect(sendSpy.mock.calls[0][0]).toBe(true);
       expect(sendSpy.mock.calls[0][1].scorerp).toBe(0);
-      expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+      expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
     });
 
     it('resetScormScore is a no-op when isScorm is 0', () => {
@@ -1207,7 +1398,8 @@ describe('rubric iDevice SCORM integration', () => {
 
       expect(data.isScorm).toBe(2);
       expect(data.textButtonScorm).toBe('Submit');
-      expect(data.repeatActivity).toBe(false);
+      // Always true now, even with a stored false: see buildScormGame above.
+      expect(data.repeatActivity).toBe(true);
       expect(data.weighted).toBe(80);
     });
 
@@ -1233,5 +1425,38 @@ describe('rubric iDevice SCORM integration', () => {
       expect(data.textButtonScorm).toBe('');
       expect(data.repeatActivity).toBe(true);
       expect(data.weighted).toBe(100);
+    });
+
+    // The weight feeds the page's weighted average, so a value outside the
+    // 1-100 the editor offers would skew every other activity on the page. The
+    // previous `value || 100` only caught the falsy ones: -1 and 150 went
+    // straight through.
+    describe('normalizeWeight', () => {
+      it('keeps every weight inside the range, including the ends', () => {
+        expect($rubric.normalizeWeight(1)).toBe(1);
+        expect($rubric.normalizeWeight(40)).toBe(40);
+        expect($rubric.normalizeWeight(100)).toBe(100);
+        expect($rubric.normalizeWeight('40')).toBe(40);
+        expect($rubric.normalizeWeight(40.5)).toBe(40.5);
+      });
+
+      it('falls back to 100 below the range', () => {
+        expect($rubric.normalizeWeight(0)).toBe(100);
+        expect($rubric.normalizeWeight(-1)).toBe(100);
+        expect($rubric.normalizeWeight(0.5)).toBe(100);
+      });
+
+      it('falls back to 100 above the range', () => {
+        expect($rubric.normalizeWeight(101)).toBe(100);
+        expect($rubric.normalizeWeight(1000)).toBe(100);
+      });
+
+      it('falls back to 100 for anything unreadable', () => {
+        expect($rubric.normalizeWeight(undefined)).toBe(100);
+        expect($rubric.normalizeWeight(null)).toBe(100);
+        expect($rubric.normalizeWeight('')).toBe(100);
+        expect($rubric.normalizeWeight('abc')).toBe(100);
+        expect($rubric.normalizeWeight(NaN)).toBe(100);
+      });
     });
 });

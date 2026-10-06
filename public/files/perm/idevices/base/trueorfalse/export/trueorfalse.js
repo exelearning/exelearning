@@ -22,6 +22,22 @@ var $trueorfalse = {
     scormFunctions: 'libs/SCOFunctions.js',
     userName: '',
     previousScore: '',
+    /**
+     * The mark this SCO already held when the page opened.
+     *
+     * Kept for a use it does not yet have: nothing reads it, here or in the
+     * shared runtime — `previousScore` is what carries the restored mark into
+     * a report, and common.js's own `initialScore` is a local variable of
+     * createScoreScormHtml with no relation to this one. Every game iDevice
+     * declares it and writes it, and none reads it.
+     *
+     * Two blocks used to sit on top of it and look as if they protected
+     * something: `initialScore = typeof initialScore === 'undefined' ? '' :
+     * initialScore` on a property declared right here as an empty string —
+     * an assignment that could not change anything — and a copy of the result
+     * onto the options object, which nothing reads either. Those are gone. The
+     * property stays.
+     */
     initialScore: '',
     mScorm: null,
 
@@ -168,6 +184,22 @@ var $trueorfalse = {
         data.ideviceNumber = $idevices.index($('#' + data.id)) + 1;
 
         data.isTest = typeof data.isTest === 'undefined' ? false : data.isTest;
+
+        // Number of attempts (checks) in test mode: 1 means one check and no
+        // retry. The activity is still marked completed on the first Comprobar
+        // regardless of remaining attempts; this only limits how many times the
+        // learner can retry to improve the score.
+        //
+        // An activity authored before this field existed has no value here and
+        // gets 1. That is a product decision, not backward compatibility: the
+        // retry button used to be shown unconditionally at the end of a check,
+        // so such an activity offered unlimited retries and now offers none.
+        // Already-exported packages are unaffected — the runtime travels inside
+        // the ZIP — but an old .elp reopened and exported today does change.
+        data.attemptsNumber =
+            typeof data.attemptsNumber === 'undefined'
+                ? 1
+                : parseInt(data.attemptsNumber, 10) || 1;
 
         // Saving a SCORM score needs quiz mode: outside it `startGame()` is
         // unreachable (createInterfaceTrueOrFalse hides both the start and the
@@ -378,7 +410,6 @@ var $trueorfalse = {
             !mOptions.isTest || (mOptions.isTest && mOptions.time > 0)
                 ? 'TOFP-EHidden'
                 : '';
-        const display = mOptions.isScorm == 2 ? 'block' : 'none';
         const html = `
     <div class="game-evaluation-ids js-hidden" data-id="${mOptions.id}" data-evaluationb="${mOptions.evaluation}" data-evaluationid="${mOptions.evaluationID}"></div>
         <div class="TOFP-instructions">${mOptions.eXeGameInstructions}</div>
@@ -404,11 +435,7 @@ var $trueorfalse = {
                 </div>
         </div> 
         </div>
-        <div class="Games-BottonContainer">
-            <div class="Games-GetScore">
-                <input id="tofPSendScore-${instance}" type="button" value="${mOptions.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:${display}"/> <span class="Games-RepeatActivity"></span>
-            </div>
-        </div>
+        ${$exeDevices.iDevice.gamification.scorm.addButtonScoreNew(mOptions)}
         <div class="TOFP-After">${mOptions.eXeIdeviceTextAfter}</div>
         `;
         return html;
@@ -532,7 +559,9 @@ var $trueorfalse = {
     removeEvents: function (data) {
         const instance = data.id;
 
-        $(`#tofPSendScore-${instance}`).off('click');
+        $(`#tofPMainContainer-${instance}`)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore');
         $(`#tofPStartGame-${instance}`).off('click');
         $(`#tofPCheckTest-${instance}`).off('click');
         $(`#tofRebootTest-${instance}`).off('click');
@@ -681,20 +710,31 @@ var $trueorfalse = {
 
         mOptions.gameOver = false;
         mOptions.gameStarted = false;
+        // Remaining retries for this play. Consumed on each Comprobar (gameOver);
+        // the "Try again" button is only shown while there are attempts left. Not
+        // reset on reboot, so the attempts run down across retries.
+        mOptions.pendingAttempts = mOptions.attemptsNumber;
         mOptions.counter = parseInt(mOptions.tofPTime) * 60;
         mOptions.active = 0;
         mOptions.scorep = 0;
         mOptions.main = `tofPMainContainer-${instance}`;
         mOptions.idevice = 'trueorfalseIdevice';
 
-        $(`#tofPSendScore-${instance}`).attr('value', mOptions.textButtonScorm);
-        $(`#tofPSendScore-${instance}`).hide();
-
-        $(`#tofPSendScore-${instance}`).on('click', function (e) {
-            e.preventDefault();
-            $trueorfalse.sendScore(false, mOptions);
-            return true;
-        });
+        // The shared addButtonScoreNew emits the save button for isScorm 2
+        // alone, already visible and carrying the author's caption, so there is
+        // nothing here to caption, reveal or hide. This used to hide it
+        // unconditionally, and addEvents runs after registerActivity — which
+        // was what revealed it — so the button vanished the moment the runtime
+        // showed it, and under SCORM the winner depended on how fast the API
+        // wrapper loaded.
+        $(`#tofPMainContainer-${instance}`)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $trueorfalse.sendScore(false, mOptions);
+                return true;
+            });
 
         $('#tofPGameContainer-' + instance).on(
             'click',
@@ -721,10 +761,6 @@ var $trueorfalse = {
                     .css({ 'background-color': bgcolor, color: color })
                     .fadeIn('fast');
                 if (mOptions.isScorm == 1) {
-                    mOptions.initialScore =
-                        typeof $trueorfalse.initialScore === 'undefined'
-                            ? ''
-                            : $trueorfalse.initialScore;
                     $trueorfalse.updateScoreData(mOptions);
                     $trueorfalse.sendScore(true, mOptions);
                 }
@@ -760,12 +796,17 @@ var $trueorfalse = {
             if (mOptions.showSlider) {
                 $trueorfalse.addEventsSlideShow(mOptions);
             }
-            $trueorfalse.startGame(mOptions);
+            // Play again is the learner's own start, like the play button
+            // below: it clears the answers and the score, so it has to say so.
+            // Restarting silently left the LMS holding the finished attempt's
+            // mark and status while a blank quiz sat at zero on screen, and a
+            // learner who walked away there left the previous grade standing.
+            $trueorfalse.startGame(mOptions, true);
         });
 
         $(`#tofPStartGame-${instance}`).val(msgs.tofPStartGame);
         $(`#tofPStartGame-${instance}`).on('click', function () {
-            $trueorfalse.startGame(mOptions);
+            $trueorfalse.startGame(mOptions, true);
         });
 
         $('#tofPGameContainer-' + instance).on(
@@ -824,6 +865,13 @@ var $trueorfalse = {
         const msgs = mOptions.msgs;
         mOptions.gameStarted = false;
         mOptions.gameOver = true;
+
+        // Pressing Comprobar (or running out of time) consumes one attempt. The
+        // activity is already completed (gameOver=true); attempts only gate the
+        // "Try again" button shown at the end of gameOver.
+        if (typeof mOptions.pendingAttempts === 'number') {
+            mOptions.pendingAttempts -= 1;
+        }
 
         $('#tofPCheckTest-' + instance).hide();
         $trueorfalse.stopCounter(mOptions);
@@ -887,12 +935,14 @@ var $trueorfalse = {
 
         $trueorfalse.showMessage(type, message, instance);
         $trueorfalse.saveEvaluation(mOptions);
-        $('#tofRebootTest-' + instance).show();
+        // Offer a retry only while attempts remain (default 1 -> no retry after
+        // the first Comprobar). The activity is completed regardless.
+        if (mOptions.pendingAttempts > 0) {
+            $('#tofRebootTest-' + instance).show();
+        } else {
+            $('#tofRebootTest-' + instance).hide();
+        }
         if (mOptions.isScorm == 1) {
-            $trueorfalse.initialScore =
-                typeof $trueorfalse.initialScore === 'undefined'
-                    ? ''
-                    : $trueorfalse.initialScore;
             $trueorfalse.sendScore(true, data);
         }
     },
@@ -925,7 +975,7 @@ var $trueorfalse = {
         mOptions.errors = errors;
     },
 
-    startGame: function (data) {
+    startGame: function (data, reportScorm = false) {
         const mOptions = data,
             instance = mOptions.id;
 
@@ -935,6 +985,7 @@ var $trueorfalse = {
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.scorerp = 0;
+        mOptions.gameOver = false;
 
         $(`#tofPMultimedia-${instance}`).removeClass('TOFP-EHidden');
         $(`#tofPCheckTestDiv-${instance}`).removeClass('TOFP-EHidden');
@@ -968,10 +1019,10 @@ var $trueorfalse = {
                     return;
                 }
                 if (mOptions && mOptions.isTest && mOptions.gameStarted) {
-                    mOptions.counter--;
+                    mOptions.counter = Math.max(0, mOptions.counter - 1);
                     $trueorfalse.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
-                        $trueorfalse.gameOver(mOptions);
+                        $trueorfalse.finishByTime(mOptions);
                     }
                 }
             }, 1000);
@@ -983,6 +1034,17 @@ var $trueorfalse = {
             );
         }
         mOptions.gameStarted = true;
+        if (reportScorm && mOptions.isScorm == 1) {
+            $trueorfalse.sendScore(true, mOptions);
+        }
+    },
+
+    finishByTime: function (data) {
+        const mOptions = data;
+        mOptions.counter = 0;
+        mOptions.gameStarted = false;
+        mOptions.gameOver = true;
+        $trueorfalse.gameOver(mOptions);
     },
 
     stopCounter: function (data) {
@@ -1018,24 +1080,33 @@ var $trueorfalse = {
         }
     },
 
+    /**
+     * Fallback texts for any key the saved content does not carry.
+     *
+     * English, and word for word the source strings the edition passes through
+     * c_() (edition/trueorfalse.js refreshTranslations). Literals because this
+     * file runs inside the exported package, where c_() does not exist, so the
+     * source language is the only honest fallback. They used to be Spanish,
+     * which imposed Spanish on every project whose content missed a key.
+     */
     msgsdefault: {
-        msgNoImage: 'Sin imagen',
-        msgFeedback: 'Retroalimentación',
-        msgSuggestion: 'Sugerencia',
-        msgSolution: 'Respuesta',
-        msgQuestion: 'Pregunta',
-        msgTrue: 'Verdadero',
-        msgFalse: 'Falso',
-        msgOk: 'Correcto',
-        msgKO: 'Incorrecto',
-        msgShow: 'Mostrar',
-        msgHide: 'Ocultar',
-        msgReboot: 'Volver a intentar',
-        msgCheck: 'Comprobar',
-        msgStartGame: 'Haz clic aquí para comenzar',
-        msgYouScore: 'Tu puntuación',
-        textButtonScorm: 'Guardar puntuación',
-        msgNext: 'Siguiente',
-        msgPrevious: 'Anterior',
+        msgNoImage: 'No picture question',
+        msgFeedback: 'Feedback',
+        msgSuggestion: 'Suggestion',
+        msgSolution: 'Solution',
+        msgQuestion: 'Question',
+        msgTrue: 'True',
+        msgFalse: 'False',
+        msgOk: 'Correct',
+        msgKO: 'Incorrect',
+        msgShow: 'Show',
+        msgHide: 'Hide',
+        msgReboot: 'Try again!',
+        msgCheck: 'Check',
+        msgStartGame: 'Click here to start',
+        msgYouScore: 'Your score',
+        textButtonScorm: 'Save score',
+        msgNext: 'Next',
+        msgPrevious: 'Previous',
     },
 };

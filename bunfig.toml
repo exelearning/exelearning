@@ -11,6 +11,9 @@ root = "."
 # pathIgnorePatterns prunes directories during scanning (more efficient than ignore for large dirs)
 pathIgnorePatterns = ["node_modules/**", "**/public/**", "public/", "nestjs_legacy/**", "symfony_legacy/**", "test/e2e/**"]
 
+# Browser automation helpers can be imported by unit tests, but are exercised by Playwright.
+coveragePathIgnorePatterns = ["test/e2e/**"]
+
 # Environment variables for tests
 # Use in-memory SQLite database for fast, isolated tests
 env = { DB_PATH = ":memory:", ELYSIA_FILES_DIR = "/tmp/exelearning-test" }

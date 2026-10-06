@@ -30,7 +30,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            color: var(--modal-icon-color, var(--icon-primary));
+            color: var(--modal-icon-color, var(--modal-icon-default));
             cursor: pointer;
             background-color: var(--main-background-color);
             border: 1px solid var(--gray-border-light);
@@ -75,7 +75,7 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            color: var(--modal-icon-color, var(--icon-primary));
+            color: var(--modal-icon-color, var(--modal-icon-default));
             border: 1px solid var(--gray-border-light);
             background: var(--main-background-color);
 
@@ -87,8 +87,8 @@
             }
 
             &.selected {
-                border-color: var(--modal-icon-color, var(--icon-primary));
-                box-shadow: 0 0 0 2px color-mix(in srgb, var(--modal-icon-color, var(--icon-primary)) 18%, transparent);
+                border-color: var(--modal-icon-color, var(--modal-icon-default));
+                box-shadow: 0 0 0 2px color-mix(in srgb, var(--modal-icon-color, var(--modal-icon-default)) 18%, transparent);
             }
         }
 
@@ -155,23 +155,23 @@
             &[selected="true"] {
                 opacity: 1;
                 color: var(--main-background-color);
-                background-color: var(--modal-icon-color, var(--icon-primary));
-                border-color: var(--modal-icon-color, var(--icon-primary));
+                background-color: var(--modal-icon-color, var(--modal-icon-default));
+                border-color: var(--modal-icon-color, var(--modal-icon-default));
 
                 // Theme icons render as <img> with their own colors, so the
                 // invert-on-fill trick used for Material icons would hide them.
                 // Keep a light background and mark the selection with a border.
                 &.theme-block-icon {
-                    color: var(--modal-icon-color, var(--icon-primary));
+                    color: var(--modal-icon-color, var(--modal-icon-default));
                     background-color: var(--main-background-color);
-                    border: 2px solid var(--modal-icon-color, var(--icon-primary));
+                    border: 2px solid var(--modal-icon-color, var(--modal-icon-default));
                 }
 
                 // Same treatment for "no icon": the filled accent would bury its red,
                 // so mark the selection with the border instead.
                 &.empty-block-icon {
                     background-color: var(--main-background-color);
-                    border: 2px solid var(--modal-icon-color, var(--icon-primary));
+                    border: 2px solid var(--modal-icon-color, var(--modal-icon-default));
                 }
             }
 

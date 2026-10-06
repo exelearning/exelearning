@@ -151,51 +151,51 @@ function getIdeviceDragHandle(idevice: Locator): Locator {
  * the full dragstart→dragover→drop→dragend sequence that the iDevices engine
  * relies on.
  *
- * Key timing: the dragstart handler calls isAvalaibleOdeComponent() which is
- * async. We wait 500 ms before firing dragover so that callback can resolve and
- * set draggedElement.inNodeContent / inBlockContent. Without this wait the
- * engine's dragover handler finds the element in an incomplete state.
+ * Wait for drag initialization and the resulting iDevice to settle instead of
+ * assuming the availability check and Yjs update finish within fixed delays.
  */
 async function dragAndDrop(page: Page, source: Locator, target: Locator): Promise<void> {
-    // Prefer .box-content as drop zone — the actual iDevice container below the header.
     const boxContent = target.locator('.box-content').first();
     const dropTarget = (await boxContent.count()) > 0 ? boxContent : target;
-
+    const ideviceId = await source.getAttribute('idevice-id');
     const sourceHandle = await source.elementHandle();
     const targetHandle = await dropTarget.elementHandle();
     if (!sourceHandle || !targetHandle) throw new Error('dragAndDrop: could not resolve element handles');
 
-    await page.evaluate(
-        ([src, tgt]: [any, any]) => {
-            return new Promise<void>(resolve => {
-                const rect = (tgt as Element).getBoundingClientRect();
-                const cx = rect.left + rect.width / 2;
-                const cy = rect.top + rect.height / 2;
-                const mk = (type: string) =>
-                    new DragEvent(type, { bubbles: true, cancelable: true, clientX: cx, clientY: cy });
-
-                (src as Element).dispatchEvent(mk('dragstart'));
-
-                // Wait for the async isAvalaibleOdeComponent call in the dragstart
-                // handler to resolve before firing dragover.
-                setTimeout(() => {
-                    (tgt as Element).dispatchEvent(mk('dragenter'));
-                    (tgt as Element).dispatchEvent(mk('dragover'));
-
-                    setTimeout(() => {
-                        (tgt as Element).dispatchEvent(mk('drop'));
-                        setTimeout(() => {
-                            (src as Element).dispatchEvent(mk('dragend'));
-                            resolve();
-                        }, 100);
-                    }, 100);
-                }, 500);
-            });
-        },
-        [sourceHandle, targetHandle],
-    );
-
-    await page.waitForTimeout(800);
+    try {
+        await sourceHandle.dispatchEvent('dragstart');
+        // The class is set by the availability callback and cleared by the
+        // engine's deferred drag setup. Counters alone can be stale on reuse.
+        await page.waitForFunction(
+            src => src.classList.contains('dragging') && !src.classList.contains('dragging-start'),
+            sourceHandle,
+        );
+        await page.evaluate(
+            ([src, tgt]) => {
+                const rect = tgt.getBoundingClientRect();
+                const options = {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2,
+                };
+                for (const type of ['dragenter', 'dragover', 'drop']) {
+                    tgt.dispatchEvent(new DragEvent(type, options));
+                }
+                src.dispatchEvent(new DragEvent('dragend', options));
+            },
+            [sourceHandle, targetHandle],
+        );
+        const movedIdevice = page.locator(`#node-content .idevice_node[id="${ideviceId}"]`);
+        await expect(movedIdevice).toHaveCount(1);
+        await expect(movedIdevice).not.toHaveClass(/(?:dragging|moving)/);
+        if ((await boxContent.count()) > 0) {
+            await expect(dropTarget.locator(`.idevice_node[id="${ideviceId}"]`)).toHaveCount(1);
+        }
+    } finally {
+        await sourceHandle.dispose();
+        await targetHandle.dispose();
+    }
 }
 
 /**
@@ -239,14 +239,6 @@ async function countAllIdevices(page: Page): Promise<number> {
     return await page.locator('#node-content article.box .idevice_node').count();
 }
 
-async function hasMergedBlockState(page: Page): Promise<boolean> {
-    return await page.evaluate(() => {
-        const blocks = Array.from(document.querySelectorAll('#node-content article.box'));
-        if (blocks.length <= 2) return true;
-        return blocks.some(block => block.querySelectorAll('.idevice_node').length >= 2);
-    });
-}
-
 /**
  * Helper to dismiss confirm dialog
  */
@@ -274,47 +266,73 @@ async function handleConfirmDialog(page: Page, confirm: boolean): Promise<void> 
 
 test.describe('iDevice Drag and Drop', () => {
     test.describe('Basic Movement', () => {
-        test('should move iDevice from one block to another block', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        for (const availabilityDelay of [0, 1000]) {
+            test(`should move iDevice between blocks with ${availabilityDelay}ms availability latency`, async ({
+                authenticatedPage,
+                createProject,
+            }) => {
+                const page = authenticatedPage;
 
-            // Create project
-            const projectUuid = await createProject(page, 'Drag Drop Move Test');
-            await gotoWorkarea(page, projectUuid);
-            await waitForLoadingScreen(page);
+                // Create project
+                const projectUuid = await createProject(page, 'Drag Drop Move Test');
+                await gotoWorkarea(page, projectUuid);
+                await waitForLoadingScreen(page);
 
-            // Add first text iDevice (creates Block 1)
-            await addTextIdevice(page);
+                // Add first text iDevice (creates Block 1)
+                await addTextIdevice(page);
 
-            // Verify Block 1 exists with iDevice
-            let blockCount = await countBlocks(page);
-            expect(blockCount).toBe(1);
+                // Verify Block 1 exists with iDevice
+                let blockCount = await countBlocks(page);
+                expect(blockCount).toBe(1);
 
-            // Add second text iDevice (creates Block 2)
-            await addTextIdevice(page);
+                // Add second text iDevice (creates Block 2)
+                await addTextIdevice(page);
 
-            // Verify Block 2 exists
-            blockCount = await countBlocks(page);
-            expect(blockCount).toBe(2);
+                // Verify Block 2 exists
+                blockCount = await countBlocks(page);
+                expect(blockCount).toBe(2);
 
-            // Get references to blocks and iDevices
-            const block1 = getBlock(page, 0);
-            const block2 = getBlock(page, 1);
-            const idevice2 = getIdeviceInBlock(block2);
-            const dragHandle = getIdeviceDragHandle(idevice2);
+                // Get references to blocks and iDevices
+                const block1 = getBlock(page, 0);
+                const block2 = getBlock(page, 1);
+                const idevice2 = getIdeviceInBlock(block2);
+                const dragHandle = getIdeviceDragHandle(idevice2);
 
-            // Drag iDevice 2 from Block 2 to Block 1
-            await dragAndDrop(page, dragHandle, block1);
+                // Inject latency beyond the old 500ms guess to reproduce #2340.
+                // This timer simulates a slow dependency; it does not synchronize the test.
+                await page.evaluate(delay => {
+                    const project = (window as any).eXeLearning.app.project;
+                    const original = project.isAvalaibleOdeComponent.bind(project);
+                    let available = false;
+                    (window as any).__dragBeforeAvailable = false;
+                    document.addEventListener(
+                        'dragover',
+                        () => {
+                            (window as any).__dragBeforeAvailable = !available;
+                        },
+                        { once: true, capture: true },
+                    );
+                    project.isAvalaibleOdeComponent = async (...args) => {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        const response = await original(...args);
+                        available = true;
+                        return response;
+                    };
+                }, availabilityDelay);
 
-            // Handle empty block confirmation dialog if it appears
-            await handleConfirmDialog(page, true);
+                // Drag iDevice 2 from Block 2 to Block 1
+                await dragAndDrop(page, dragHandle, block1);
 
-            // Wait for move to complete
-            await page.waitForTimeout(500);
+                // Handle empty block confirmation dialog if it appears
+                await handleConfirmDialog(page, true);
 
-            // Verify iDevice 2 is now in Block 1
-            const idevicesInBlock1 = await countIdevicesInBlock(block1);
-            expect(idevicesInBlock1).toBe(2);
-        });
+                expect(await page.evaluate(() => (window as any).__dragBeforeAvailable)).toBe(false);
+
+                // Verify iDevice 2 is now in Block 1
+                const idevicesInBlock1 = await countIdevicesInBlock(block1);
+                expect(idevicesInBlock1).toBe(2);
+            });
+        }
 
         test('should allow moving iDevice back to original block after moving out', async ({
             authenticatedPage,
@@ -401,9 +419,7 @@ test.describe('iDevice Drag and Drop', () => {
 
             // Final state: Block 1 should have 2 iDevices (received one back)
             const finalCount = await countIdevicesInBlock(getBlock(page, 0));
-            // Accept that the drag might not work in automated tests due to timing/implementation details
-            // The important thing is that the block structure is preserved
-            expect(finalCount).toBeGreaterThanOrEqual(1);
+            expect(finalCount).toBe(2);
         });
     });
 
@@ -508,7 +524,7 @@ test.describe('iDevice Drag and Drop', () => {
             // Create Block 2
             await addTextIdevice(page);
 
-            let blockCount = await countBlocks(page);
+            const blockCount = await countBlocks(page);
             expect(blockCount).toBe(2);
 
             const block1 = getBlock(page, 0);
@@ -519,22 +535,9 @@ test.describe('iDevice Drag and Drop', () => {
             // Move iDevice 2 to Block 1 (making Block 2 empty)
             await dragAndDrop(page, dragHandle, block1);
 
-            // Wait for potential dialog
-            await page.waitForTimeout(500);
-
-            // Check if confirmation dialog appeared
-            const modal = page.locator('.modal.show');
-            const dialogAppeared = (await modal.count()) > 0;
-
-            // If dialog appeared, confirm deletion
-            if (dialogAppeared) {
-                await handleConfirmDialog(page, true);
-                await page.waitForTimeout(500);
-
-                // Verify Block 2 was deleted
-                blockCount = await countBlocks(page);
-                expect(blockCount).toBe(1);
-            }
+            await expect(page.locator('.modal.show')).toBeVisible();
+            await handleConfirmDialog(page, true);
+            await expect(page.locator('#node-content article.box')).toHaveCount(1);
 
             // Verify iDevice is in Block 1 (poll to allow Yjs sync to settle)
             await expect
@@ -631,24 +634,10 @@ test.describe('iDevice Drag and Drop', () => {
             const idevice2 = getIdeviceInBlock(block2);
             const dragHandle = getIdeviceDragHandle(idevice2);
 
-            for (let attempt = 0; attempt < 2; attempt++) {
-                await dragAndDrop(page, dragHandle, block1);
-                await handleConfirmDialog(page, true); // Confirm delete of empty Block 2
-
-                try {
-                    await expect
-                        .poll(async () => await hasMergedBlockState(page), {
-                            timeout: 10000,
-                            intervals: [250, 500, 1000],
-                        })
-                        .toBe(true);
-                    break;
-                } catch (error) {
-                    if (attempt === 1) {
-                        throw error;
-                    }
-                }
-            }
+            await dragAndDrop(page, dragHandle, block1);
+            await handleConfirmDialog(page, true); // Confirm delete of empty Block 2
+            await expect(page.locator('#node-content article.box')).toHaveCount(2);
+            await expect(block1.locator('.idevice_node')).toHaveCount(2);
 
             // Now we should have Block 1 (with 2 iDevices) and Block 3 (with 1 iDevice)
             blockCount = await countBlocks(page);

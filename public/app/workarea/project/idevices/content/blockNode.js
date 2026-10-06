@@ -21,20 +21,6 @@ const LEGACY_ICON_MAP = {
     keypoints: 'bookmark',
 };
 
-// Fallback tint for Material ("General") icons, matched to each theme's own
-// "Style" icon artwork so both groups look identical in the picker and content.
-// Multicolor themes (neo, universal) ship multi-hued style icons that cannot be
-// matched by a single tint, so their Material icons keep the theme accent color.
-const THEME_ICON_COLOR_MAP = {
-    base: '#d86e41',
-    flux: '#eda900',
-    nova: '#f5c200',
-    neo: '#e3ac3b',
-    zen: '#d40055',
-    universal: '#0d2953',
-    educablue: '#0d77d1', // picker accent; the box head icon itself is white
-};
-
 // Theme icons whose file was renamed after a release shipped it, old name -> current name.
 // Mirrors RENAMED_THEME_ICONS in src/shared/block-icon.ts, which documents why entries are
 // added and never removed. Only used on the degraded path where the shared runtime is absent.
@@ -101,9 +87,39 @@ const localBlockIconRuntime = {
         const pendingName = String(safeIconName).replace(/[^a-z0-9_-]/gi, '');
         return `<span class="exe-material-icon" data-exe-material-icon="${pendingName}" aria-hidden="true"></span>`;
     },
+
+    // Inline <svg> for the picker grid, from the sprite parsed by the shared runtime.
+    // The picker must never emit an external <use href="…material-icons.svg#id">:
+    // under Electron's app:// scheme Chromium fetches the whole sprite once per
+    // <use>, which froze the renderer with ~3 800 options (#2419).
+    renderMaterialInlineIcon(iconName, options = {}) {
+        const shared = window.eXeBlockIconRuntime;
+        if (shared && shared !== this && typeof shared.renderMaterialInlineIcon === 'function') {
+            return shared.renderMaterialInlineIcon(iconName, options);
+        }
+        // Degraded path (no shared runtime): the mask placeholder is hydrated later.
+        return this.renderMaterialMaskIcon(iconName, options);
+    },
 };
 
 const blockIconRuntime = window.eXeBlockIconRuntime || localBlockIconRuntime;
+
+// JS twin of THEME_ICON_COLLATOR in src/shared/parsers/theme-parser.ts — keep both in sync.
+const THEME_ICON_COLLATOR = new Intl.Collator('en', { numeric: true });
+
+/**
+ * Theme icons in picker display order (alphabetical by id, numeric-aware).
+ * The source order is not reliable: static bundles built on Linux keep Bun's raw
+ * readdir order and user themes keep ZIP entry order (#2411).
+ *
+ * @param {Record<string, {id?: string, title?: string, value?: string}>|null|undefined} themeIcons
+ * @returns {Array<{id?: string, title?: string, value?: string}>}
+ */
+export function sortThemeIcons(themeIcons) {
+    return Object.values(themeIcons || {})
+        .filter((themeIcon) => themeIcon && themeIcon.value)
+        .sort((a, b) => THEME_ICON_COLLATOR.compare(a.id || a.value, b.id || b.value));
+}
 /**
  * eXeLearning
  *
@@ -289,10 +305,6 @@ export default class IdeviceBlockNode {
 </svg>`;
     }
 
-    getMaterialSpritePath() {
-        return this.resolveAppAssetUrl('/libs/material-icons/material-icons.svg');
-    }
-
     getAssetManager() {
         return eXeLearning?.app?.project?._yjsBridge?.assetManager || null;
     }
@@ -389,13 +401,16 @@ export default class IdeviceBlockNode {
         });
     }
 
-    renderMaterialSpriteIcon(iconName) {
-        const safeIconName = MATERIAL_ICON_CATALOG.includes(iconName) ? iconName : 'help';
-        const spritePath = this.getMaterialSpritePath();
-        const spriteHref = `${spritePath}#${safeIconName}`;
-        return `<svg class="exe-material-icon-sprite" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-<use href="${spriteHref}" xlink:href="${spriteHref}"></use>
-</svg>`;
+    /**
+     * Picker option glyph: a self-contained inline <svg> built from the sprite
+     * already parsed in memory. Never an external <use> reference (#2419).
+     */
+    renderMaterialInlineIcon(iconName) {
+        return blockIconRuntime.renderMaterialInlineIcon(iconName, {
+            app: window.eXeLearning?.app,
+            config: window.eXeLearning?.config,
+            catalog: MATERIAL_ICON_CATALOG,
+        });
     }
 
     renderIconPreviewHtml(iconDescriptor) {
@@ -428,37 +443,45 @@ export default class IdeviceBlockNode {
 </svg>`;
     }
 
+    /**
+     * Tint for Material ("General") icons in the picker, so they match the theme's own
+     * "Style" artwork. The value comes from the theme's stylesheet and nowhere else:
+     * --exe-icon-picker-color, then --exe-icon-color. No theme is named here.
+     *
+     * Both are custom properties, so they inherit: reading them off the block header is
+     * enough. The title and the icon are its descendants and resolve to the same value,
+     * which is why there is no walk over the three elements. They stay only as a defensive
+     * source for a block with no header; a browser returns nothing for them anyway, since
+     * a block without a header has not attached them either.
+     *
+     * Returns an empty string when the theme declares neither, so the caller leaves
+     * --modal-icon-color unset and the picker CSS falls back to --modal-icon-default
+     * (assets/styles/components/_modals.scss).
+     */
     getCurrentThemeIconColor() {
-        const colorCandidates = [
-            this.headElement,
-            this.blockNameElementText,
-            this.iconElement,
-        ].filter(Boolean);
-
-        for (const colorSource of colorCandidates) {
-            if (!window.getComputedStyle) break;
-            const styles = window.getComputedStyle(colorSource);
-            // The picker chips sit on a light background, so a style whose header needs
-            // a light --exe-icon-color declares a readable picker accent separately.
-            const customColor = styles.getPropertyValue('--exe-icon-picker-color').trim()
-                || styles.getPropertyValue('--exe-icon-color').trim()
-                || styles.getPropertyValue('--icon-primary').trim();
-            if (customColor) {
-                return customColor;
-            }
-
-            const color = styles.color;
-            if (color && color !== 'rgba(0, 0, 0, 0)') {
-                return color;
-            }
+        const colorSource = this.headElement || this.blockNameElementText || this.iconElement;
+        // Returning early rather than throwing keeps a host without getComputedStyle on the
+        // untinted picker instead of failing to open it at all.
+        if (!colorSource || !window.getComputedStyle) {
+            return '';
         }
 
-        const selectedThemeId = eXeLearning.app?.themes?.selected?.id;
-        if (selectedThemeId && THEME_ICON_COLOR_MAP[selectedThemeId]) {
-            return THEME_ICON_COLOR_MAP[selectedThemeId];
+        const styles = window.getComputedStyle(colorSource);
+        // The picker chips sit on a light background, so a theme whose header needs
+        // a light --exe-icon-color declares a readable picker accent separately.
+        const customColor = styles.getPropertyValue('--exe-icon-picker-color').trim()
+            || styles.getPropertyValue('--exe-icon-color').trim();
+
+        // `--exe-icon-color: currentColor` is a natural way for a theme to say "follow the
+        // block header text", and it works in the content. The picker is another matter: the
+        // value is copied verbatim onto the modal body, which lives outside .exe-content, so
+        // the keyword would resolve there against the modal's own near-black text. Resolve it
+        // here instead, against the element the theme meant.
+        if (customColor.toLowerCase() === 'currentcolor') {
+            return styles.color || '';
         }
 
-        return '#6E9F41';
+        return customColor;
     }
 
     resolveAppAssetUrl(path) {
@@ -1635,7 +1658,7 @@ export default class IdeviceBlockNode {
         iconElement.setAttribute('title', title || iconConfig.value || _('Icon'));
         const modalPreviewHtml =
             iconConfig.source === 'material'
-                ? this.renderMaterialSpriteIcon(iconConfig.value)
+                ? this.renderMaterialInlineIcon(iconConfig.value)
                 : this.renderIconPreviewHtml(iconConfig);
         iconElement.innerHTML = options.innerHtml || modalPreviewHtml;
         if (options.iconId) {
@@ -1798,7 +1821,10 @@ export default class IdeviceBlockNode {
     makeModalChangeIconBody() {
         let modalBody = document.createElement('div');
         modalBody.id = 'change-block-icon-modal-content';
-        modalBody.style.setProperty('--modal-icon-color', this.getCurrentThemeIconColor());
+        const themeIconColor = this.getCurrentThemeIconColor();
+        if (themeIconColor) {
+            modalBody.style.setProperty('--modal-icon-color', themeIconColor);
+        }
 
         const toolbar = document.createElement('div');
         toolbar.className = 'icon-picker-toolbar';
@@ -1834,8 +1860,7 @@ export default class IdeviceBlockNode {
             { className: 'empty-block-icon', iconId: '0', innerHtml: this.getModalNoIconSvg() }
         );
 
-        const themeIcons = eXeLearning.app?.themes?.getThemeIcons?.() || {};
-        const themeIconList = Object.values(themeIcons).filter((themeIcon) => themeIcon && themeIcon.value);
+        const themeIconList = sortThemeIcons(eXeLearning.app?.themes?.getThemeIcons?.());
         if (themeIconList.length > 0) {
             appendSectionTitle(_('Style icons'));
             for (const themeIcon of themeIconList) {

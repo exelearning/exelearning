@@ -112,6 +112,15 @@
             // required activity registers late; one restored from a previous
             // attempt or written explicitly by content never is.
             policySessionStatus: null,
+            // True while the LMS may hold an empty cmi.core.exit next to a
+            // terminal status this policy owns — either because this session
+            // cleared it, or because the entry policy adopted a terminal
+            // attempt the previous visit closed, which is what closing it
+            // wrote. It is what lets that "" be undone if the attempt reopens:
+            // outside the window the exit belongs to applyExitPolicy, and
+            // writing "suspend" on every page that merely reports progress
+            // would mark attempts the learner is still working on as suspended.
+            exitCleared: false,
             // True after applyEntryPolicy() has restored suspend_data. Game
             // iDevices register on jQuery ready, which is before loadPage().
             entryApplied: false,
@@ -153,6 +162,81 @@
     }
 
     /**
+     * Write cmi.core.exit, skipping a value this session already sent.
+     *
+     * @param {string} exit - "" (normal end) or "suspend" (resumable).
+     * @returns {string} The value now in force for this session.
+     */
+    function writeExit(exit) {
+        var client = deps.getClient();
+        // The client's write cache is the single record of what this session
+        // has sent, and every write path updates it — including SetExit()
+        // from content, which does not go through this policy. A copy kept
+        // here would go stale the moment content set its own exit, and the
+        // skipped write would be exactly the one that matters.
+        //
+        // Branch on the CAPABILITY, not on the client object, for the same
+        // reason showFinalScore does in common.js: getClient() resolves
+        // `exeScorm12.client` off the global, and the Moodle plugin injects
+        // its own vendored copy of this runtime into content exported by
+        // whichever eXeLearning release the author used. Both accessors
+        // arrived with the exit clearing itself, so a client from before it
+        // has neither. Losing the de-duplication costs one LMSSetValue of a
+        // value the LMS already holds; throwing here would take the exit, the
+        // session time and LMSFinish with it, since this runs inside
+        // applyExitPolicy.
+        var remembersWrites =
+            typeof client.hasWrittenValue === 'function' && typeof client.getCachedValue === 'function';
+        if (remembersWrites && client.hasWrittenValue(EXIT) && client.getCachedValue(EXIT) === exit) {
+            return exit;
+        }
+        client.setValue(EXIT, exit);
+        return exit;
+    }
+
+    /**
+     * Clear cmi.core.exit the moment the attempt turns terminal, instead of
+     * waiting for the exit policy at page unload.
+     *
+     * A resumed attempt starts with the previous visit's "suspend" stored at
+     * the LMS. Writing the status alone leaves the two disagreeing for the
+     * whole visit — the attempt reads as passed AND suspended — and Moodle
+     * redraws its course-structure menu on LMSCommit, which happens while the
+     * stale "suspend" is still there. Measured on Moodle 4.5: a page finished
+     * after a resume kept the unfinished icon until cmi.core.exit was cleared,
+     * with cmi.core.lesson_status sitting at "passed" the whole time.
+     *
+     * The other direction is handled only inside the window this function
+     * opened. Writing "suspend" as soon as any page reports progress would
+     * mark an attempt the learner is still working on as suspended; that value
+     * belongs to the exit, and applyExitPolicy still writes it. But once this
+     * session has cleared the exit, a "" is stored at the LMS describing an end
+     * that has not happened — and if the attempt then reopens (the learner
+     * restarts an activity, so reconcilePendingActivities downgrades the status
+     * back to "incomplete") nothing rewrote it. The only path that would is
+     * applyExitPolicy, and that runs from lifecycle.finish() alone: a tab the
+     * mobile browser kills, or an iframe Moodle replaces without firing
+     * pagehide, never reaches it. persist() — the last moment this runtime
+     * documents as guaranteed — does not touch the exit. The LMS would then
+     * close an unfinished attempt as a normal completion.
+     *
+     * Before the exit was cleared mid-session there was no such window: the
+     * "suspend" a resumed attempt already had at the LMS simply survived.
+     *
+     * @param {string} status - The status now in force at the LMS.
+     */
+    function syncExitWithStatus(status) {
+        if (policy.isTerminalStatus(status)) {
+            state.exitCleared = true;
+            writeExit('');
+            return;
+        }
+        if (state.exitCleared) {
+            writeExit('suspend');
+        }
+    }
+
+    /**
      * Write a lesson_status on behalf of content (the explicit setters and
      * doContinue). Content's verdict belongs to content, not to the policy:
      * the session claim is cleared even when the value repeats what the
@@ -168,6 +252,40 @@
             state.policySessionStatus = null;
         }
         return written;
+    }
+
+    /**
+     * Take the progress this session has already reported, before the stored
+     * attempt is restored over it.
+     *
+     * `score !== null` is what separates a report from a mere declaration:
+     * registerActivity() declares an activity with `total` and `legacyIndex`
+     * only, so a declared-but-unplayed activity still has a null score, while
+     * every real report carries one — including the 0 an iDevice publishes when
+     * the learner starts it.
+     *
+     * @param {object|null} activities - The registry, when one is installed.
+     * @returns {Array<{id: string, score: number, completed: boolean,
+     * answered: number}>} What to re-apply after the restore.
+     */
+    function reportedThisSession(activities) {
+        var reports = [];
+        if (!activities) {
+            return reports;
+        }
+        var records = activities.list();
+        for (var index = 0; index < records.length; index += 1) {
+            var record = records[index];
+            if (record.score !== null) {
+                reports.push({
+                    id: record.id,
+                    score: record.score,
+                    completed: record.completed,
+                    answered: record.answered,
+                });
+            }
+        }
+        return reports;
     }
 
     /**
@@ -302,8 +420,77 @@
             }
             policy.resolveSuccessThreshold();
             var activities = deps.getActivities();
+            // Anything the registry already holds got there before the session
+            // opened: iDevices register and report on jQuery ready, and
+            // loadPage() always trails them — the first attempt is a 50 ms poll
+            // in exe_export.js, it only latches on a successful open, and its
+            // sole retry is the body's onload, which waits for every image,
+            // stylesheet and iframe. The registry needs no session, so those
+            // reports land — but showFinalScore's own publish is refused, and
+            // they would sit unseen by the LMS until something else flushed
+            // them.
+            //
+            // Taken here as records, not as a flag. load() merges the stored
+            // payload OVER the live one — normalize() falls back to the live
+            // record only for an undefined field, and decodeRecord() never
+            // produces one — so this session's work does not survive the
+            // restore on its own. Knowing merely that work arrived cannot
+            // protect it; knowing which activities reported can.
+            var pendingReports = reportedThisSession(activities);
             if (activities) {
                 activities.load(client.getValue(SUSPEND_DATA));
+            }
+            // A terminal status the LMS already holds that the *restored*
+            // registry derives on its own is this policy's own earlier verdict
+            // coming back across a page load: the same registry wrote it and
+            // the same registry still accounts for it. Adopt it as the session
+            // claim, so the replay correction in applyDecidedStatus still
+            // applies to it. Without this, a learner who finishes a page,
+            // navigates away, comes back and restarts an activity gets the
+            // score reset to 0 while the LMS keeps showing "passed".
+            //
+            // Deliberately narrow, and it is the registry that makes it so: a
+            // status content set explicitly, or one left by a genuinely
+            // different attempt, does not match what the restored payload
+            // derives, so it stays preserved. This is not the same as
+            // agreeing with a stored value mid-session, which never claims
+            // ownership (see applyDecidedStatus) — here the agreement comes
+            // from the payload the LMS just handed back.
+            if (activities && policy.isTerminalStatus(status) && policy.decideStatus().status === status) {
+                state.policySessionStatus = status;
+                // The exit that goes with it is claimed too. A terminal attempt
+                // stored at the LMS was closed by the visit that finished it,
+                // and closing it wrote cmi.core.exit = "": the same window this
+                // session opens when it clears the exit itself, only opened by
+                // a previous visit. Without claiming it here, a learner who
+                // finishes a page, comes back and restarts an activity leaves
+                // the LMS holding a "" that describes an end that no longer
+                // happened — verified in Moodle 5.0.7 with a minimal SCO, where
+                // only an intermediate re-evaluation of the terminal status
+                // (which the full iDevice flow happens to do, and the policy
+                // alone does not guarantee) covered it up.
+                state.exitCleared = true;
+            }
+            // Now re-apply this session's reports over the restored attempt —
+            // after the adoption above, which has to read the registry exactly
+            // as the payload left it, and never before it.
+            //
+            // A report supersedes the stored record whether it scores higher or
+            // lower, because an iDevice cannot resume: nothing under idevices/
+            // reads cmi.suspend_data, and startGame() clears the board and
+            // resets the counters. Interacting again therefore begins a new
+            // attempt, and the 0 it publishes is deliberate — once the session
+            // is open register() already lets that 0 win, so anything else here
+            // would make the same learner action behave differently depending
+            // on when it landed. Applied as a unit: mixing a stored completion
+            // with a live score would build a state no report ever produced.
+            for (var pending = 0; pending < pendingReports.length; pending += 1) {
+                var report = pendingReports[pending];
+                activities.update(report.id, {
+                    score: report.score,
+                    completed: report.completed,
+                    answered: report.answered,
+                });
             }
             state.entryApplied = true;
             var summary = activities ? activities.summary() : null;
@@ -315,6 +502,24 @@
             // question and common.js reads the same field.
             if (summary && summary.score !== null && summary.scored > 0) {
                 policy.setScoreDetailed(summary.score, 0, 100);
+            }
+            // Flush what was reported before the session opened, and only that:
+            // deciding the status from a purely restored registry would rewrite
+            // an attempt this session has not touched, which the entry contract
+            // forbids. The score above is published either way — it always was.
+            //
+            // Persist before committing, as applyExitPolicy does. The registry
+            // now holds the restored attempt plus whatever was reported before
+            // the session opened, and only the first of those is in
+            // cmi.suspend_data. Committing the score and the status without
+            // rewriting it would store a mark the payload cannot account for,
+            // so a later visit would restore less than the LMS already shows.
+            // This was the one place in the runtime that committed without
+            // persisting first.
+            if (pendingReports.length > 0) {
+                policy.persistActivities();
+                policy.applyDecidedStatus();
+                client.commit();
             }
         },
 
@@ -502,6 +707,12 @@
                 var policyOwned = current === state.policySessionStatus;
                 var lateRegistration = decision.reason === 'required-activities-pending';
                 if (!policyOwned || !lateRegistration) {
+                    // No exit sync here: this branch deliberately touches
+                    // nothing. The terminal status belongs to a previous
+                    // attempt or to content, and the learner may be working
+                    // through the page right now — claiming a normal end for
+                    // an attempt this policy declined to judge would be worse
+                    // than leaving the two disagreeing.
                     return {
                         status: current,
                         written: false,
@@ -516,17 +727,22 @@
                 // by content — agreeing with it is not the same as having
                 // written it, and only a status this policy wrote may later
                 // be downgraded.
+                syncExitWithStatus(current);
                 return { status: current, written: true, reason: decision.reason, effective: current };
             }
             var written = writeStatus(decision.status);
             if (written) {
                 state.policySessionStatus = decision.status;
             }
+            // The status the LMS actually holds, so a rejected write does not
+            // clear an exit the attempt still needs.
+            var effective = written ? decision.status : current;
+            syncExitWithStatus(effective);
             return {
                 status: decision.status,
                 written: written,
                 reason: decision.reason,
-                effective: written ? decision.status : current,
+                effective: effective,
             };
         },
 
@@ -576,8 +792,7 @@
             } else {
                 status = client.getValue(LESSON_STATUS);
             }
-            var exit = policy.isTerminalStatus(status) ? '' : 'suspend';
-            client.setValue(EXIT, exit);
+            var exit = writeExit(policy.isTerminalStatus(status) ? '' : 'suspend');
             return { status: status, exit: exit };
         },
 

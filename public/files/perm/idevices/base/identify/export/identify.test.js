@@ -98,4 +98,222 @@ describe('identify iDevice export', () => {
       expect($eXeIdentifica.idevicePath).toBe('');
     });
   });
+
+  // common.js derives completion from `gameOver === true || auto !== true`, and
+  // gameOver() reports automatically, so without the flag a page carrying an
+  // identify stays `incomplete` in the LMS however well the learner did.
+  describe('completion signal', () => {
+    function setupGame(overrides) {
+      document.body.innerHTML = `
+        <div id="idfPNumber-0"></div>
+        <div id="idfAnswer-0"></div>
+        <div id="idfSubmit-0"></div>
+        <div id="idfBtnMoveOn-0"></div>
+        <div id="idfMessageClue-0"></div>
+        <div id="idfUseClue-0"></div>
+        <div id="idfLinkAudio-0"></div>
+        <div id="idfCursor-0"></div>
+        <div id="idfRepeatActivity-0"></div>`;
+      $eXeIdentifica.options[0] = Object.assign(
+        {
+          id: 0,
+          gameStarted: true,
+          gameOver: false,
+          score: 8,
+          isScorm: 0,
+          msgs: { msgGameEnd: 'end', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeIdentifica, 'showCluesLinks').mockImplementation(() => {});
+      vi.spyOn($eXeIdentifica, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeIdentifica, 'showScoreGame').mockImplementation(() => {});
+      vi.spyOn($eXeIdentifica, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeIdentifica, 'showFeedBack').mockImplementation(() => {});
+      // gameOver() stops the clue audio through the shared media helper; this
+      // suite does not load the gamification stubs, so provide just that.
+      global.$exeDevices = global.$exeDevices || {};
+      global.$exeDevices.iDevice = global.$exeDevices.iDevice || {};
+      global.$exeDevices.iDevice.gamification =
+        global.$exeDevices.iDevice.gamification || {};
+      global.$exeDevices.iDevice.gamification.media = { stopSound: vi.fn() };
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('marks the activity finished, so the page can leave incomplete', () => {
+      setupGame();
+
+      $eXeIdentifica.gameOver(0);
+
+      expect($eXeIdentifica.options[0].gameOver).toBe(true);
+      expect($eXeIdentifica.options[0].gameStarted).toBe(false);
+    });
+
+    it('raises the flag before it reports, so the two cannot disagree', () => {
+      setupGame({ isScorm: 1 });
+      let flagWhenReported;
+      vi.spyOn($eXeIdentifica, 'sendScore').mockImplementation(() => {
+        flagWhenReported = $eXeIdentifica.options[0].gameOver;
+      });
+
+      $eXeIdentifica.gameOver(0);
+
+      expect($eXeIdentifica.sendScore).toHaveBeenCalledWith(true, 0);
+      expect(flagWhenReported).toBe(true);
+    });
+  });
+
+  // Behind a code the activity is already running: startGame goes through on
+  // load, under the cover. What never happened was the report — showQuestion
+  // holds it until initGame, which only a clue or an answer raises — so the LMS
+  // kept the previous attempt's grade. Accepting the code is that first act.
+  describe('opening the activity with an access code', () => {
+    function setupCodeAccess(typed, overrides) {
+      document.body.innerHTML = `
+        <div id="idfMainContainer-0">
+          <div id="idfCodeAccessDiv-0"></div>
+          <div id="idfMesajeAccesCodeE-0"></div>
+          <a id="idfLinkMaximize-0" href="#"></a>
+          <input id="idfCodeAccessE-0" value="${typed}" />
+        </div>`;
+      $eXeIdentifica.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          // The load path already ran startGame, which is what cleared the
+          // score and raised the flag before the learner saw the code field.
+          gameStarted: true,
+          gameOver: false,
+          score: 0,
+          initGame: false,
+          itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeIdentifica, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+      vi.spyOn($eXeIdentifica, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('publishes a zero and an unfinished attempt when the code is right', () => {
+      setupCodeAccess('AbrE');
+      let stateWhenReported;
+      $eXeIdentifica.sendScore.mockImplementation(() => {
+        const { score, gameOver, gameStarted } = $eXeIdentifica.options[0];
+        stateWhenReported = { score, gameOver, gameStarted };
+      });
+
+      $eXeIdentifica.enterCodeAccess(0);
+
+      expect(stateWhenReported).toEqual({
+        score: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('reports nothing when the code is wrong', () => {
+      setupCodeAccess('nope');
+
+      $eXeIdentifica.enterCodeAccess(0);
+
+      expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
+      expect($('#idfCodeAccessE-0').val()).toBe('');
+    });
+
+    it('does not auto-report in manual SCORM mode', () => {
+      setupCodeAccess('abre', { isScorm: 2 });
+
+      $eXeIdentifica.enterCodeAccess(0);
+
+      expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  // Without a code the activity is live from the moment the page loads — there
+  // is no start button — so nothing may reach the LMS until the learner acts.
+  // A zero recorded on load would mark the attempt of somebody who only walked
+  // past the page. initGame is the gate: only a clue or an answer raises it.
+  describe('staying silent until the learner acts', () => {
+    function setupSilent(overrides) {
+      document.body.innerHTML = `
+        <div id="idfMainContainer-0">
+          <div id="idfPNumber-0"></div>
+          <div id="idfPHits-0"></div>
+          <div id="idfPErrors-0"></div>
+          <div id="idfPScore-0"></div>
+          <div id="idfShowClue-0"></div>
+          <div id="idfPShowClue-0"></div>
+          <div id="idfGameContainer-0"></div>
+          <div id="idfCardDraw-0"><div class="IDFP-card-inner"></div></div>
+          <div id="idfAttempts-0"></div>
+          <div id="idfPoints-0"></div>
+          <div id="idfUseClue-0"></div>
+          <div id="idfRepeatActivity-0"></div>
+          <div id="idfMultimedia-0"></div>
+        </div>`;
+      $eXeIdentifica.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: false,
+          score: 0,
+          hits: 0,
+          errors: 0,
+          initGame: false,
+          numberQuestions: 2,
+          questionsGame: [{ attempts: 2 }, { attempts: 2 }],
+          itinerary: { showClue: false, showCodeAccess: false },
+          msgs: { msgShowClue: 'clue', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeIdentifica, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports nothing while the page loads', () => {
+      setupSilent();
+      vi.spyOn($eXeIdentifica, 'newQuestion').mockImplementation(() => {});
+
+      $eXeIdentifica.startGame(0);
+
+      expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
+      // Started all the same: sendScoreNew drops a game that reports as
+      // neither started nor over, so the first answer needs this flag up.
+      expect($eXeIdentifica.options[0].gameStarted).toBe(true);
+    });
+
+    it('shows a question without reporting before the learner has acted', () => {
+      setupSilent({ initGame: false });
+
+      $eXeIdentifica.showQuestion(0, 0);
+
+      expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('reports once the learner has acted', () => {
+      setupSilent({ initGame: true });
+
+      $eXeIdentifica.showQuestion(0, 0);
+
+      expect($eXeIdentifica.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+  });
 });

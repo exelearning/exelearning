@@ -313,7 +313,58 @@ class ResourceCache {
   }
 
   /**
-   * Clear cached resources except for current version
+   * Match plain app versions and resource versions with hash or timestamp suffixes.
+   * @param {string} version - Cached resource version
+   * @param {string} currentVersion - Current app version
+   * @returns {boolean}
+   */
+  static isCurrentVersion(version, currentVersion) {
+    return typeof version === 'string' &&
+      (version === currentVersion || version.startsWith(`${currentVersion}-`));
+  }
+
+  /**
+   * Build the group key identifying a cached resource regardless of its version.
+   * Composite versions embed a per-resource cache-buster, so several entries may
+   * describe the same resource; they all share this key.
+   * @param {Object} entry - Stored cache entry
+   * @returns {string|null} Group key, or null when the entry carries no usable metadata
+   */
+  static buildResourceGroupKey(entry) {
+    const type = entry?.type;
+    const name = entry?.name;
+
+    if (typeof type !== 'string' || typeof name !== 'string') return null;
+
+    return `${type}:${name}`;
+  }
+
+  /**
+   * Read an entry write timestamp, treating missing or invalid values as oldest.
+   * @param {Object} entry - Stored cache entry
+   * @returns {number}
+   */
+  static getCachedAt(entry) {
+    const cachedAt = entry?.cachedAt;
+    return typeof cachedAt === 'number' && Number.isFinite(cachedAt) ? cachedAt : 0;
+  }
+
+  /**
+   * Decide whether a candidate entry supersedes the newest one seen so far for
+   * the same resource. Ties keep the incumbent, so cleanup stays deterministic.
+   * @param {{cachedAt: number}} candidate - Entry currently under the cursor
+   * @param {{cachedAt: number}|undefined} incumbent - Newest entry kept so far
+   * @returns {boolean}
+   */
+  static isNewerEntry(candidate, incumbent) {
+    return !incumbent || candidate.cachedAt > incumbent.cachedAt;
+  }
+
+  /**
+   * Clear cached resources except for the newest entry of each current-version resource.
+   * Old app versions are dropped entirely; within the current version only the most
+   * recently written entry per resource survives, so re-uploaded site themes and
+   * rebuilt library bundles do not pile up superseded copies.
    * @param {string} currentVersion - Version to keep
    * @returns {Promise<number>} Number of entries deleted
    */
@@ -326,15 +377,39 @@ class ResourceCache {
       const request = store.openCursor();
 
       let deletedCount = 0;
+      const newestPerResource = new Map();
 
       request.onerror = () => reject(request.error);
 
       request.onsuccess = (event) => {
         const cursor = event.target.result;
         if (cursor) {
-          if (cursor.value.version !== currentVersion) {
+          if (!ResourceCache.isCurrentVersion(cursor.value.version, currentVersion)) {
             store.delete(cursor.primaryKey);
             deletedCount++;
+          } else {
+            const groupKey = ResourceCache.buildResourceGroupKey(cursor.value);
+
+            // Entries without type/name metadata cannot be grouped safely, so they
+            // are kept as-is rather than risking the loss of an unrelated resource.
+            if (groupKey !== null) {
+              const candidate = {
+                primaryKey: cursor.primaryKey,
+                cachedAt: ResourceCache.getCachedAt(cursor.value),
+              };
+              const incumbent = newestPerResource.get(groupKey);
+
+              if (ResourceCache.isNewerEntry(candidate, incumbent)) {
+                if (incumbent) {
+                  store.delete(incumbent.primaryKey);
+                  deletedCount++;
+                }
+                newestPerResource.set(groupKey, candidate);
+              } else {
+                store.delete(candidate.primaryKey);
+                deletedCount++;
+              }
+            }
           }
           cursor.continue();
         } else {

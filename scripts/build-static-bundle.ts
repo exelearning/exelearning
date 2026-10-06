@@ -33,6 +33,7 @@ import { buildConfigParams } from '../src/routes/config-params';
 import { STATIC_ROUTES } from '../src/routes/api-routes';
 import { buildParameterResponse } from '../src/routes/parameter-response';
 import { VOID_ELEMENTS } from '../src/shared/utils/html-constants';
+import { sortThemeIcons, type ThemeIcon } from '../src/shared/parsers/theme-parser';
 
 // Re-export config for external use
 export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
@@ -475,16 +476,6 @@ export function buildIdevicesList(
 }
 
 /**
- * Theme icon interface
- */
-interface ThemeIcon {
-    id: string;
-    title: string;
-    type: 'img';
-    value: string; // URL path to the icon image
-}
-
-/**
  * Theme interface matching what navbarStyles.js expects
  */
 interface Theme {
@@ -529,7 +520,9 @@ export function scanThemeIcons(themePath: string, themeUrl: string): Record<stri
             };
         }
     }
-    return icons;
+    // Bun's readdirSync returns raw ext4 order on the Linux CI runner that builds
+    // the static bundle, which the picker would otherwise show verbatim (#2411)
+    return sortThemeIcons(icons);
 }
 
 /**

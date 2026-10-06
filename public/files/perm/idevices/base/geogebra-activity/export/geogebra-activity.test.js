@@ -390,4 +390,312 @@ describe('geogebra-activity iDevice (export)', () => {
       $exeDevices.iDevice.gamification.report = previousReport;
     }
   });
+
+  // The options literal used to declare msgYouScore twice, from two different
+  // sources. The later one wins in JavaScript, so the effective value has
+  // always come from the evaluation messages; this pins that, because dropping
+  // the wrong one of the pair would have changed the label silently.
+  describe('getOptions', () => {
+    // msgs used to define msgYouScore twice — from messagesScorm[1], which is
+    // what the editor writes 'Your score' into, and again from messagesEval[3],
+    // which is the save button's caption. In an object literal the last wins,
+    // so the correct one was shadowed and dead, and the score line read
+    // "Save score: 6.67". Dropping the duplicate kept the winner.
+    it('takes msgYouScore from the SCORM messages, where the editor puts it', () => {
+      $geogebraactivity.messages = ['m0', 'm1', 'm2', 'button-caption'];
+
+      const options = $geogebraactivity.getOptions(
+        'a0',
+        100,
+        ['scorm0', 'your-score', 'scorm2', 'scorm3', 'scorm4'],
+        ''
+      );
+
+      expect(options.msgs.msgYouScore).toBe('your-score');
+      // [3] of the evaluation list is the button's caption, and that is the
+      // only thing it feeds.
+      expect(options.textButtonScorm).toBe('button-caption');
+    });
+
+    // The editor serialises the evaluation list as [0] incomplete, [1] passed,
+    // [2] not passed. The two names were bound to the wrong slots, so the
+    // progress report told a learner who passed that they had not — and paired
+    // the message with the opposite icon, since showEvaluationIcon shows the
+    // error icon with msgUnsuccessfulActivity and the success icon with
+    // msgSuccessfulActivity.
+    it('does not swap the pass and fail messages', () => {
+      $geogebraactivity.messages = [
+        'Incomplete activity',
+        'Activity: Passed. Score: %s',
+        'Activity: Not passed. Score: %s',
+        'Save score',
+      ];
+
+      const options = $geogebraactivity.getOptions('a0', 100, [], '');
+
+      expect(options.msgs.msgSuccessfulActivity).toBe('Activity: Passed. Score: %s');
+      expect(options.msgs.msgUnsuccessfulActivity).toBe('Activity: Not passed. Score: %s');
+      expect(options.msgs.msgUncompletedActivity).toBe('Incomplete activity');
+    });
+
+    it('does not swap them in the fallbacks either', () => {
+      $geogebraactivity.messages = [];
+
+      const options = $geogebraactivity.getOptions('a0', 100, [], '');
+
+      expect(options.msgs.msgSuccessfulActivity).toContain('Passed');
+      expect(options.msgs.msgSuccessfulActivity).not.toContain('Not passed');
+      expect(options.msgs.msgUnsuccessfulActivity).toContain('Not passed');
+    });
+
+    // msgYouLastScore compared the value against the string 'undefined' where
+    // its six siblings use typeof, so an absent message resolved to undefined
+    // instead of the empty string every other message falls back to.
+    it('falls back to an empty string for messages that were not supplied', () => {
+      $geogebraactivity.messages = ['', '', '', ''];
+
+      const options = $geogebraactivity.getOptions('a0', 100, [], '');
+
+      expect(options.msgs.msgYouLastScore).toBe('');
+      // The siblings, so the fallback stays uniform across all of them.
+      expect(options.msgs.msgScoreScorm).toBe('');
+      expect(options.msgs.msgScore).toBe('');
+      expect(options.msgs.msgWeight).toBe('');
+    });
+
+    it('keeps a supplied last-score message', () => {
+      $geogebraactivity.messages = ['', '', '', ''];
+
+      const options = $geogebraactivity.getOptions(
+        'a0',
+        100,
+        ['', '', '', '', 'última nota'],
+        ''
+      );
+
+      expect(options.msgs.msgYouLastScore).toBe('última nota');
+    });
+
+    it('carries the applet suffix so the score is read from the right one', () => {
+      $geogebraactivity.messages = ['', '', '', ''];
+
+      const options = $geogebraactivity.getOptions('b1', 100, [], '');
+
+      expect(options.appletSuffix).toBe('b1');
+      expect(options.main).toBe('auto-geogebra-b1');
+    });
+  });
+
+  // A page can carry several GeoGebra activities. The engine is loaded once
+  // and publishes a single global `ggbApplet`, so reading the score from it
+  // cannot tell the applets apart: with two scored activities both buttons
+  // read the same construction.
+  describe('reading the score from the right applet', () => {
+    function fakeApplet(values) {
+      return {
+        exists: name => Object.prototype.hasOwnProperty.call(values, name),
+        getValue: name => values[name],
+      };
+    }
+
+    function scored(raw) {
+      return fakeApplet({
+        SCORMRawScore: raw,
+        SCORMMinScore: 0,
+        SCORMMaxScore: 100,
+      });
+    }
+
+    afterEach(() => {
+      delete global.ggbApplet;
+    });
+
+    it('captures each applet under its own suffix as it loads', () => {
+      const previousGGBApplet = global.GGBApplet;
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const captured = [];
+
+      vi.useFakeTimers();
+      global.GGBApplet = vi.fn(function (parameters) {
+        captured.push(parameters);
+        this.inject = vi.fn();
+      });
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+      document.body.innerHTML = `
+        <div class="idevice_body geogebra-activityIdevice">
+          <div id="geogebra-1" class="idevice_node geogebra-activity">
+            <div class="auto-geogebra auto-geogebra-AAA"></div>
+          </div>
+        </div>`;
+
+      try {
+        const activity = document.querySelector('.auto-geogebra');
+        $geogebraactivity.addActivity(
+          activity,
+          'AAA',
+          activity.className.split(' '),
+          0,
+        );
+        vi.runAllTimers();
+
+        // GeoGebra hands the applet its own API through this callback.
+        const api = scored(50);
+        captured[0].appletOnLoad(api);
+
+        expect($geogebraactivity.applets.AAA0).toBe(api);
+      } finally {
+        vi.useRealTimers();
+        global.GGBApplet = previousGGBApplet;
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+    });
+
+    // The defect: two scored activities on one page must not share a score.
+    it('gives each activity the score of its own construction', () => {
+      $geogebraactivity.applets = { a0: scored(30), b1: scored(90) };
+      global.ggbApplet = scored(30);
+
+      expect(
+        $geogebraactivity.getAppletScore({ appletSuffix: 'a0' })
+      ).toBe('3.00');
+      expect(
+        $geogebraactivity.getAppletScore({ appletSuffix: 'b1' })
+      ).toBe('9.00');
+    });
+
+    // A page with one activity, or an applet that loaded without firing the
+    // callback, must keep behaving exactly as before.
+    it('falls back to the global applet when none was captured', () => {
+      $geogebraactivity.applets = {};
+      global.ggbApplet = scored(70);
+
+      expect($geogebraactivity.getApplet({ appletSuffix: 'x0' })).toBe(
+        global.ggbApplet
+      );
+      expect($geogebraactivity.getAppletScore({ appletSuffix: 'x0' })).toBe(
+        '7.00'
+      );
+    });
+
+    it('answers null when there is no applet at all', () => {
+      $geogebraactivity.applets = {};
+
+      expect($geogebraactivity.getApplet({ appletSuffix: 'x0' })).toBeNull();
+    });
+  });
+
+  // getValue() used to be read and formatted before exists() was checked, so a
+  // construction without the SCORM variables threw on undefined.toFixed() —
+  // and since the click handler runs sendScore() then saveEvaluation(), the
+  // SCORM score was sent and the local record then never saved.
+  describe('a construction without the SCORM variables', () => {
+    afterEach(() => {
+      delete global.ggbApplet;
+    });
+
+    it('scores 0 instead of throwing', () => {
+      $geogebraactivity.applets = {
+        z0: { exists: () => false, getValue: () => undefined },
+      };
+
+      expect(() =>
+        $geogebraactivity.getAppletScore({ appletSuffix: 'z0' })
+      ).not.toThrow();
+      expect($geogebraactivity.getAppletScore({ appletSuffix: 'z0' })).toBe(
+        '0.00'
+      );
+    });
+
+    it('lets saveEvaluation record the attempt', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const saveEvaluation = vi.fn();
+      $exeDevices.iDevice.gamification.report = { saveEvaluation };
+      $geogebraactivity.applets = {
+        z0: { exists: () => false, getValue: () => undefined },
+      };
+
+      try {
+        expect(() =>
+          $geogebraactivity.saveEvaluation({
+            appletSuffix: 'z0',
+            isInExe: false,
+          })
+        ).not.toThrow();
+        expect(saveEvaluation).toHaveBeenCalledWith(
+          expect.objectContaining({ scorerp: '0.00' }),
+          false
+        );
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+    });
+
+    // A construction whose min and max are the same would divide by zero and
+    // report NaN to the LMS.
+    it('scores 0 for a degenerate score range', () => {
+      $geogebraactivity.applets = {
+        z0: {
+          exists: () => true,
+          getValue: name => (name === 'SCORMRawScore' ? 5 : 10),
+        },
+      };
+
+      expect($geogebraactivity.getAppletScore({ appletSuffix: 'z0' })).toBe(
+        '0.00'
+      );
+    });
+  });
+
+  // An applet has no end of its own — the learner can go on dragging the
+  // construction — so saving is the only completion signal this activity has,
+  // and it has to give it itself. The shared runtime decides completion from
+  // gameOver alone and no longer infers it from the save button, so without
+  // this the activity would never complete and its page would stay
+  // `incomplete` however many times the learner saved.
+  describe('sendScore', () => {
+    let previousScorm;
+    let previousPipwerks;
+    let reported;
+
+    beforeEach(() => {
+      reported = [];
+      previousScorm = $exeDevices.iDevice.gamification.scorm;
+      previousPipwerks = global.pipwerks;
+      $exeDevices.iDevice.gamification.scorm = {
+        sendScoreNew: (auto, game) => reported.push({ auto, game }),
+      };
+      global.pipwerks = {
+        SCORM: { SetScoreMax: () => {}, SetScoreMin: () => {} },
+      };
+      $geogebraactivity.applets = {
+        z0: {
+          exists: () => true,
+          getValue: name =>
+            ({ SCORMRawScore: 8, SCORMMinScore: 0, SCORMMaxScore: 10 })[name],
+        },
+      };
+    });
+
+    afterEach(() => {
+      $exeDevices.iDevice.gamification.scorm = previousScorm;
+      global.pipwerks = previousPipwerks;
+    });
+
+    it('declares the activity finished, because saving is its only end', () => {
+      $geogebraactivity.sendScore({ appletSuffix: 'z0' });
+
+      expect(reported).toHaveLength(1);
+      expect(reported[0].auto).toBe(false);
+      expect(reported[0].game.gameOver).toBe(true);
+      expect(reported[0].game.gameStarted).toBe(true);
+    });
+
+    it('stands down without the SCORM wrapper', () => {
+      delete global.pipwerks;
+
+      $geogebraactivity.sendScore({ appletSuffix: 'z0' });
+
+      expect(reported).toEqual([]);
+    });
+  });
 });

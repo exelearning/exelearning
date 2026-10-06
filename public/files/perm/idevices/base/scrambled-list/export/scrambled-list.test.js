@@ -165,6 +165,21 @@ describe('scrambled-list iDevice export', () => {
       }
     });
 
+    // Invisible while nothing could report before a check, but the save button
+    // can: a true here published a zero for a list nobody had answered instead
+    // of the runtime telling the learner to do the activity first. check(),
+    // retryGame() and sendScore() each set it at the moment they mean it.
+    it('does not call the activity started before the learner checks it', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+
+      try {
+        expect($scrambledlist.updateConfig({ id: 'sl-1' }, 'sl-1').gameStarted).toBe(false);
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+      }
+    });
+
     it('normalizes legacy option objects before rendering', () => {
       const previousIsInExe = eXe.app.isInExe;
       eXe.app.isInExe = vi.fn(() => false);
@@ -428,11 +443,11 @@ describe('scrambled-list iDevice export', () => {
     });
 
     it('marks the activity finished, so the page can leave `incomplete`', () => {
-      // common.js derives completion as `gameOver === true || auto !== true`, and this
-      // call passes auto = true. Without the flag the registry never marks the activity
-      // complete and any SCO carrying a scrambled-list stays `incomplete` in the LMS
-      // even at 100%, which costs the learner the "Learning Objects" grade and any
-      // completion condition keyed on status.
+      // common.js derives completion from `gameOver` alone. Without the flag the
+      // registry never marks the activity complete and any SCO carrying a
+      // scrambled-list stays `incomplete` in the LMS even at 100%, which costs the
+      // learner the "Learning Objects" grade and any completion condition keyed on
+      // status.
       const surface = captureGradingSurface();
       const data = { id: 'sl-1', isScorm: 1 };
 
@@ -442,6 +457,360 @@ describe('scrambled-list iDevice export', () => {
       expect(surface.calls[0].data.gameOver).toBe(true);
       expect(surface.calls[0].data.gameStarted).toBe(true);
       surface.restore();
+    });
+
+    // check() re-reads the node's JSON on every grading and works on that copy,
+    // so what sendScore sets is gone by the next click unless it is written
+    // back — and the save button would then have nothing to publish.
+    it('writes the state it sets back onto the node', () => {
+      const surface = captureGradingSurface();
+      document.body.innerHTML = '<div id="sl-1" class="idevice_node"></div>';
+
+      $scrambledlist.sendScore(3, 4, { id: 'sl-1', isScorm: 2 });
+
+      const stored = JSON.parse($('#sl-1').attr('data-idevice-json-data'));
+      expect(stored.scorerp).toBe(7.5);
+      expect(stored.gameOver).toBe(true);
+      expect(stored.gameStarted).toBe(true);
+      surface.restore();
+      document.body.innerHTML = '';
+    });
+  });
+
+  // The defect the unification left behind: this iDevice wrote its own markup
+  // with `display:none` and relied on updateScormNew to reveal the button,
+  // which only runs inside a SCORM package. So the button was missing from the
+  // editor and from every other export format, while the other thirty iDevices
+  // showed it — the author enabled the option and saw nothing.
+  describe('getScormHtml', () => {
+    it('renders the button visible, not waiting on the SCORM runtime', () => {
+      const html = $scrambledlist.getScormHtml({
+        id: 'sl-1',
+        isScorm: 2,
+        textButtonScorm: 'Guardar',
+      });
+
+      expect(html).toContain('Games-SendScore');
+      expect(html).not.toContain('display:none');
+    });
+
+    // Its own markup also gave the button this iDevice's grey `feedbackbutton`
+    // class, so it did not even look like the same control as everywhere else.
+    it('renders the same green control as every other iDevice', () => {
+      const html = $scrambledlist.getScormHtml({
+        id: 'sl-1',
+        isScorm: 2,
+        textButtonScorm: 'Guardar',
+      });
+
+      expect(html).toContain('btn btn-primary');
+      expect(html).not.toContain('feedbackbutton');
+    });
+
+    it('renders no button in automatic mode', () => {
+      const html = $scrambledlist.getScormHtml({
+        id: 'sl-1',
+        isScorm: 1,
+        textButtonScorm: 'Guardar',
+      });
+
+      expect(html).not.toContain('Games-SendScore');
+      // The runtime still needs somewhere to put its message.
+      expect(html).toContain('Games-RepeatActivity');
+    });
+
+    it('renders nothing at all for an untracked activity', () => {
+      expect($scrambledlist.getScormHtml({ id: 'sl-1', isScorm: 0 })).toBe('');
+    });
+  });
+
+  /**
+   * The save button the learner owns in manual mode, which this iDevice used to
+   * render and never wire: it was visible in the package and did nothing.
+   */
+  describe('the save-score button', () => {
+    let calls;
+    let previousDevices;
+
+    beforeEach(() => {
+      calls = [];
+      previousDevices = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: { sendScoreNew: (auto, data) => calls.push({ auto, data }) },
+          },
+        },
+      };
+      document.body.innerHTML = `
+        <div id="sl-1" class="idevice_node">
+          <input id="tofPSendScore-sl-1" type="button" class="Games-SendScore" style="display:none" />
+          <span class="Games-RepeatActivity"></span>
+        </div>`;
+    });
+
+    afterEach(() => {
+      global.$exeDevices = previousDevices;
+      document.body.innerHTML = '';
+    });
+
+    it('publishes the state the node holds, as a hand-sent score', () => {
+      $('#sl-1').attr(
+        'data-idevice-json-data',
+        JSON.stringify({ id: 'sl-1', isScorm: 2, scorerp: 5, gameStarted: true, gameOver: false })
+      );
+
+      $scrambledlist.setBehaviourButtonSendScore({ id: 'sl-1', isScorm: 2 });
+      $('#tofPSendScore-sl-1').trigger('click');
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].auto).toBe(false);
+      expect(calls[0].data.scorerp).toBe(5);
+      // Pressing the button changes nothing: an unchecked list is not finished.
+      expect(calls[0].data.gameOver).toBe(false);
+    });
+
+    it('binds once however many times the behaviour is wired', () => {
+      const ldata = { id: 'sl-1', isScorm: 2 };
+
+      $scrambledlist.setBehaviourButtonSendScore(ldata);
+      $scrambledlist.setBehaviourButtonSendScore(ldata);
+      $('#tofPSendScore-sl-1').trigger('click');
+
+      expect(calls).toHaveLength(1);
+    });
+
+    // The other modes render no button at all, so there is nothing to bind and
+    // nothing to blow up on.
+    it('stands down when the activity renders no button', () => {
+      document.body.innerHTML = '';
+
+      expect(() =>
+        $scrambledlist.setBehaviourButtonSendScore({ id: 'sl-1' })
+      ).not.toThrow();
+    });
+
+    // It is the only thing that publishes a grade in manual mode, so leaving it
+    // out of the render step means the learner presses a button that does
+    // nothing — which is exactly what this iDevice shipped before.
+    it('is wired when the activity renders', () => {
+      let bound;
+      $scrambledlist.setBehaviourButtonSendScore = ldata => {
+        bound = ldata.id;
+      };
+      global.$exeDevices.iDevice.gamification.scorm.registerActivity = () => {};
+      global.$exeDevices.iDevice.gamification.math = {
+        hasLatex: () => false,
+        updateLatex: () => {},
+      };
+
+      $scrambledlist.renderBehaviour({ isScorm: 2 }, 0, 'sl-1');
+
+      expect(bound).toBe('sl-1');
+    });
+
+    describe('readState', () => {
+      it('falls back to the render-time options when the node holds nothing', () => {
+        const ldata = { id: 'sl-1', isScorm: 2 };
+
+        expect($scrambledlist.readState(ldata)).toBe(ldata);
+      });
+
+      it('falls back when what the node holds is not readable', () => {
+        const ldata = { id: 'sl-1', isScorm: 2 };
+        $('#sl-1').attr('data-idevice-json-data', '{not json');
+
+        expect($scrambledlist.readState(ldata)).toBe(ldata);
+      });
+    });
+
+    describe('persistState', () => {
+      it('stands down without an activity or an id', () => {
+        expect(() => $scrambledlist.persistState(null)).not.toThrow();
+        expect(() => $scrambledlist.persistState({})).not.toThrow();
+      });
+
+      it('stands down when the node is not in the page', () => {
+        expect(() =>
+          $scrambledlist.persistState({ id: 'missing' })
+        ).not.toThrow();
+      });
+    });
+  });
+
+  // Accepting the retry reshuffles the list and clears the feedback, so the
+  // mark the LMS holds from the check that failed stops describing anything on
+  // screen. It used to stay there until the learner checked again.
+  describe('retryGame', () => {
+    function captureGradingSurface() {
+      const calls = [];
+      const previous = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: {
+              sendScoreNew: (auto, data) => calls.push({ auto, data }),
+            },
+          },
+        },
+      };
+      return { calls, restore: () => { global.$exeDevices = previous; } };
+    }
+
+    function givenGradedList() {
+      document.body.classList.add('exe-scorm');
+      document.body.innerHTML += `
+        <ul id="exe-sortableList-0"></ul>
+        <ul id="exe-sortableListResults-0"><li>a</li><li>b</li></ul>
+        <div id="exe-sortableList-0-feedback"></div>
+        <div id="exe-sortableList-0-retry"></div>
+        <button id="exe-sortableListButton-0"></button>`;
+    }
+
+    afterEach(() => {
+      document.body.classList.remove('exe-scorm');
+      document.body.innerHTML = '';
+    });
+
+    it('reports a zero and an attempt still open', () => {
+      givenGradedList();
+      const surface = captureGradingSurface();
+      const data = { id: 'sl-1', isScorm: 1, scorerp: 5, gameOver: true, gameStarted: true };
+
+      $scrambledlist.retryGame(0, data);
+
+      expect(surface.calls).toHaveLength(1);
+      expect(surface.calls[0].auto).toBe(true);
+      expect(surface.calls[0].data.scorerp).toBe(0);
+      // sendScoreNew drops a game that is neither started nor over, and it
+      // derives completion from gameOver: the retry is not a finished attempt.
+      expect(surface.calls[0].data.gameStarted).toBe(true);
+      expect(surface.calls[0].data.gameOver).toBe(false);
+      surface.restore();
+    });
+
+    it('says nothing when the activity does not report to SCORM', () => {
+      givenGradedList();
+      const surface = captureGradingSurface();
+
+      $scrambledlist.retryGame(0, { id: 'sl-1', isScorm: 0 });
+
+      expect(surface.calls).toHaveLength(0);
+      surface.restore();
+    });
+  });
+
+  /**
+   * A wrong list with attempts left stops at the retry prompt: check() returns
+   * there and never reaches sendScore. The state it leaves on the node is
+   * therefore the only description of the attempt the save button can read.
+   */
+  describe('check leaves the node describing the attempt', () => {
+    let previousReport;
+
+    beforeEach(() => {
+      previousReport = global.$exeDevices.iDevice.gamification.report;
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: () => {},
+      };
+    });
+
+    afterEach(() => {
+      global.$exeDevices.iDevice.gamification.report = previousReport;
+      document.body.classList.remove('exe-scorm');
+      document.body.innerHTML = '';
+    });
+
+    /**
+     * A three-item list with the first two swapped: one of three in place.
+     *
+     * @param {Object} stored what the node holds before the check
+     * @returns {Element} the check button to hand to check()
+     */
+    function givenMisorderedList(stored) {
+      document.body.classList.add('exe-scorm');
+      document.body.innerHTML = `
+        <div id="sl-1" class="idevice_node">
+          <div class="exe-sortableList">
+            <ul id="exe-sortableList-0">
+              <li data-orig-index="1">b</li>
+              <li data-orig-index="0">a</li>
+              <li data-orig-index="2">c</li>
+            </ul>
+            <ul id="exe-sortableListResults-0"><li>a</li><li>b</li><li>c</li></ul>
+            <div id="exe-sortableList-0-feedback"></div>
+            <div id="exe-sortableList-0-retry"></div>
+            <p id="exe-sortableListButton-0">
+              <input type="button" class="exe-sortableList-check-0" />
+            </p>
+          </div>
+        </div>`;
+      $('#sl-1').attr('data-idevice-json-data', JSON.stringify(stored));
+      return $('.exe-sortableList-check-0')[0];
+    }
+
+    // The defect: the write-back ran before saveEvaluation, which is what
+    // computes the mark, so the node kept the previous attempt's score. A
+    // learner pressing the save button while the retry prompt was up published
+    // that stale mark — 0 for a list that had just scored 3.33.
+    it('stores the mark it has just computed, not the previous one', () => {
+      const button = givenMisorderedList({
+        id: 'sl-1',
+        isScorm: 2,
+        attemptsNumber: 3,
+        pendingAttempts: 3,
+        scorerp: 0,
+        msgs: {},
+      });
+
+      $scrambledlist.check(button, 0);
+
+      const stored = JSON.parse($('#sl-1').attr('data-idevice-json-data'));
+      // One of three in place.
+      expect(stored.scorerp).toBeCloseTo(10 / 3, 5);
+      // And the attempt is open: the learner has still to accept or cancel.
+      expect(stored.gameStarted).toBe(true);
+      expect(stored.gameOver).toBe(false);
+      // The attempt just spent still has to survive, as it always did.
+      expect(stored.pendingAttempts).toBe(2);
+    });
+
+    // The button reads the node, so the two have to agree.
+    it('is what the save button then publishes', () => {
+      const calls = [];
+      const previousDevices = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: { sendScoreNew: (auto, data) => calls.push({ auto, data }) },
+            report: { saveEvaluation: () => {} },
+          },
+        },
+      };
+      const button = givenMisorderedList({
+        id: 'sl-1',
+        isScorm: 2,
+        attemptsNumber: 3,
+        pendingAttempts: 3,
+        scorerp: 0,
+        msgs: {},
+      });
+      $('#sl-1').append(
+        '<input id="tofPSendScore-sl-1" type="button" class="Games-SendScore" />'
+      );
+
+      try {
+        $scrambledlist.check(button, 0);
+        $scrambledlist.setBehaviourButtonSendScore({ id: 'sl-1', isScorm: 2 });
+        $('#tofPSendScore-sl-1').trigger('click');
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0].auto).toBe(false);
+        expect(calls[0].data.scorerp).toBeCloseTo(10 / 3, 5);
+        expect(calls[0].data.gameOver).toBe(false);
+      } finally {
+        global.$exeDevices = previousDevices;
+      }
     });
   });
 
@@ -576,6 +945,29 @@ describe('scrambled-list iDevice export', () => {
       } finally {
         eXe.app.isInExe = previousIsInExe;
       }
+    });
+  });
+
+  // Issue #2263: getMessages() was Spanish, and it is what content without a
+  // saved `msgs` falls back to — so the activity spoke Spanish whatever the
+  // project language.
+  describe('getMessages fallback texts', () => {
+    it('is in the source language', () => {
+      const msgs = $scrambledlist.getMessages();
+
+      expect(msgs.msgCheck).toBe('Check');
+      expect(msgs.msgSubmit).toBe('Submit');
+      expect(msgs.msgTestFailed).toBe("You didn't pass the test. Please try again");
+    });
+
+    // The fallback is only useful if it is the same text the translator sees,
+    // so no default may be left in another language. Accented characters are a
+    // cheap, reliable proxy for the Spanish this replaced.
+    it('leaves no default in another language', () => {
+      const nonEnglish = Object.entries($scrambledlist.getMessages()).filter(
+        ([, value]) => typeof value === 'string' && /[áéíóúñ¿¡]/i.test(value)
+      );
+      expect(nonEnglish).toEqual([]);
     });
   });
 });

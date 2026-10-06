@@ -36,6 +36,11 @@ describe('download-source-file iDevice (edition)', () => {
   });
 
   afterEach(() => {
+    // Close the edition the way the workarea does, so no test leaves timers or
+    // window handlers behind for the next one.
+    if ($exeDevice && $exeDevice.$lifecycle && !$exeDevice.$lifecycle.isDestroyed()) {
+      $exeDevice.$lifecycle.destroy();
+    }
     global.$exeDevice = undefined;
     vi.clearAllMocks();
   });
@@ -218,6 +223,14 @@ describe('download-source-file iDevice (edition)', () => {
       expect(input.type).toBe('text');
     });
 
+    it('names the .elpx package in the default button text and the instructions', () => {
+      $exeDevice.createForm();
+
+      expect(container.querySelector('#dpiButtonText').value).toBe('Download .elpx file');
+      expect(container.textContent).toContain('download the .elpx file');
+      expect(container.innerHTML).not.toMatch(/\.elp(?!x)|the elp file/);
+    });
+
     it('creates form with font size select', () => {
       $exeDevice.createForm();
 
@@ -359,7 +372,7 @@ describe('download-source-file iDevice (edition)', () => {
       container = document.createElement('div');
       container.innerHTML = `
         <textarea id="dpiDescription"></textarea>
-        <input type="text" id="dpiButtonText" value="Download .elp file" />
+        <input type="text" id="dpiButtonText" value="Download .elpx file" />
         <select id="dpiButtonFontSize">
           <option value="1" selected>100%</option>
           <option value="1.2">120%</option>
@@ -479,6 +492,103 @@ describe('download-source-file iDevice (edition)', () => {
 
       // Short color should not be included (validation requires 7 chars)
       expect(result).not.toContain('background-color:#fff;');
+    });
+  });
+  describe('edition lifecycle teardown', () => {
+    let container;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      $exeDevice.ideviceBody = container;
+      $exeDevice.idevicePreviousData = '';
+      $exeDevice.loadPreviousValues = vi.fn();
+      $exeDevice.updateProperties = vi.fn();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      container.remove();
+    });
+
+    it('refreshes the properties while the window regains focus', () => {
+      $exeDevice.createForm();
+      $exeDevice.updateProperties.mockClear();
+
+      $(window).trigger('focus');
+
+      expect($exeDevice.updateProperties).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops listening on window focus once the edition is closed', () => {
+      $exeDevice.createForm();
+      $exeDevice.updateProperties.mockClear();
+
+      $exeDevice.$lifecycle.destroy();
+      $(window).trigger('focus');
+
+      expect($exeDevice.updateProperties).not.toHaveBeenCalled();
+    });
+
+    it('leaves unrelated window focus handlers untouched', () => {
+      const unrelated = vi.fn();
+      $(window).on('focus.dlSourceFileUnrelated', unrelated);
+      $exeDevice.createForm();
+
+      $exeDevice.$lifecycle.destroy();
+      $(window).trigger('focus');
+
+      expect(unrelated).toHaveBeenCalledTimes(1);
+      $(window).off('focus.dlSourceFileUnrelated');
+    });
+
+    it('removes the window handler itself once the form is gone', () => {
+      $exeDevice.createForm();
+      $exeDevice.updateProperties.mockClear();
+      container.innerHTML = '';
+
+      // The form is gone, so this run unregisters the handler...
+      $(window).trigger('focus');
+      // ...and this one must not reach the device any more.
+      $(window).trigger('focus');
+
+      expect($exeDevice.updateProperties).not.toHaveBeenCalled();
+    });
+
+    it('polls until TinyMCE is ready and then stops', () => {
+      const originalEditors = global.tinymce.editors;
+      global.tinymce.editors = [{ getDoc: () => ({}) }];
+
+      try {
+        $exeDevice.createForm();
+        $exeDevice.updateProperties.mockClear();
+
+        vi.advanceTimersByTime(500);
+        expect($exeDevice.updateProperties).toHaveBeenCalledTimes(1);
+
+        vi.advanceTimersByTime(2000);
+        expect($exeDevice.updateProperties).toHaveBeenCalledTimes(1);
+      } finally {
+        global.tinymce.editors = originalEditors;
+      }
+    });
+
+    it('does not poll TinyMCE after the edition is closed', () => {
+      const originalEditors = global.tinymce.editors;
+      global.tinymce.editors = [{ getDoc: () => ({}) }];
+
+      try {
+        $exeDevice.createForm();
+        $exeDevice.updateProperties.mockClear();
+
+        $exeDevice.$lifecycle.destroy();
+        vi.advanceTimersByTime(10000);
+
+        expect($exeDevice.updateProperties).not.toHaveBeenCalled();
+      } finally {
+        global.tinymce.editors = originalEditors;
+      }
     });
   });
 });

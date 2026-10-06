@@ -15,7 +15,7 @@ import type { Page, FrameLocator } from '@playwright/test';
 
 const TEST_DATA = {
     projectTitle: 'Download Source File E2E Test Project',
-    defaultButtonText: 'Download .elp file',
+    defaultButtonText: 'Download .elpx file',
     customButtonText: 'Get Project File',
     defaultBgColor: '#107275',
     customBgColor: '#ff5500',

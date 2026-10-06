@@ -45,6 +45,9 @@ var $exeDevice = {
                 "The score can't be saved because this page is not part of a SCORM package."
             ),
             msgYouScore: c_('Your score'),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
             msgYouLastScore: c_('The last score saved is'),
@@ -349,7 +352,7 @@ var $exeDevice = {
 
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
             </div>`;
@@ -360,6 +363,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#sortableAttemptsNumber')
@@ -402,9 +408,10 @@ var $exeDevice = {
                 }
 
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
         } else {
@@ -581,7 +588,7 @@ var $exeDevice = {
             this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1);
 
         data.weighted = data.weighted || 100;
-        data.repeatActivity = data.repeatActivity || false;
+        data.repeatActivity = true;
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 

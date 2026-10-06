@@ -2,6 +2,7 @@
     padding: 0 20px 0 20px;
     margin: 0 20px 0 20px;
     border-radius: 8px;
+    min-height: 0; // Theme rules like `.exe-content { min-height: 100vh }` must not grow the scroll container
     &:not(.properties-page) {
         height: calc(100vh - 105px - 80px);
         &:has(#node-content[mode='edition']) {
