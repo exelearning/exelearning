@@ -3513,6 +3513,10 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
         }
     }
 
+    .print-preview-options .form-check-label {
+        color: var(--white, white);
+    }
+
     .print-preview-actions {
         display: flex;
         align-items: center;

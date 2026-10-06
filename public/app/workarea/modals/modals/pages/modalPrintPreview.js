@@ -48,21 +48,13 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Read the current state of print option checkboxes.
-     * Returns defaults if the checkboxes don't exist in the DOM.
-     * @returns {{ showPageNumbers: boolean, showWatermark: boolean, showLinkUrls: boolean }}
+     * Read the current state of the print option checkbox.
+     * Returns the default if the checkbox doesn't exist in the DOM.
+     * @returns {{ showLinkUrls: boolean }}
      */
     getPrintOptions() {
-        const getChecked = (selector, defaultValue) => {
-            const el = this.overlay?.querySelector(selector);
-            return el ? el.checked : defaultValue;
-        };
-
-        return {
-            showPageNumbers: getChecked('#printOptPageNumbers', true),
-            showWatermark: getChecked('#printOptWatermark', false),
-            showLinkUrls: getChecked('#printOptLinkUrls', true),
-        };
+        const linkUrls = this.overlay?.querySelector('#printOptLinkUrls');
+        return { showLinkUrls: linkUrls ? linkUrls.checked : true };
     }
 
     /**

@@ -52,18 +52,6 @@ export interface PrintPreviewOptions {
      */
     printMode?: boolean;
     /**
-     * If true, adds page numbers to printed pages via @page CSS.
-     * Only visible in actual print output, not in screen preview.
-     * Defaults to true.
-     */
-    showPageNumbers?: boolean;
-    /**
-     * If true, adds "Created with eXeLearning" watermark to printed pages.
-     * Only visible in actual print output, not in screen preview.
-     * Defaults to false.
-     */
-    showWatermark?: boolean;
-    /**
      * If true, shows URLs inline after external links in printed output.
      * E.g., "Cedec" becomes "Cedec [https://cedec.intef.es]".
      * Only visible in actual print output, not in screen preview.
@@ -289,23 +277,7 @@ export class PrintPreviewExporter {
 }`
             : '';
 
-        // Resolve print option defaults: page numbers and link URLs default to ON
-        const showPageNumbers = options.showPageNumbers !== false;
-        const showWatermark = options.showWatermark === true;
         const showLinkUrls = options.showLinkUrls !== false;
-
-        // Build conditional @page rules for page numbers and watermark
-        let pageRules = '';
-        if (showPageNumbers || showWatermark) {
-            pageRules = '\n@page {';
-            if (showPageNumbers) {
-                pageRules += `\n    @bottom-center {\n        content: counter(page);\n        font-size: 9pt;\n        color: #666;\n    }`;
-            }
-            if (showWatermark) {
-                pageRules += `\n    @bottom-right {\n        content: "Created with eXeLearning (https://exelearning.net)";\n        font-size: 7pt;\n        color: #999;\n    }`;
-            }
-            pageRules += '\n}';
-        }
 
         // Build conditional link URL display CSS
         const linkUrlsCss = showLinkUrls
@@ -457,7 +429,6 @@ figure img {
         text-decoration: underline;
     }
 ${linkUrlsCss}
-${pageRules}
 }
 
 /* Force visibility for feedback elements even if JS tries to hide them */

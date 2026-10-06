@@ -298,29 +298,12 @@ describe('PrintPreviewExporter', () => {
     });
 
     describe('print options', () => {
-        it('should include page number @page rule by default', async () => {
+        it('should not inject page numbers or a watermark (browser print headers own them)', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('@page {');
-            expect(result.html).toContain('@bottom-center');
-            expect(result.html).toContain('counter(page)');
-        });
-
-        it('should omit page number @page rule when showPageNumbers is false', async () => {
-            const result = await exporter.generatePreview({ showPageNumbers: false });
             expect(result.html).not.toContain('@bottom-center');
             expect(result.html).not.toContain('counter(page)');
-        });
-
-        it('should NOT include watermark by default', async () => {
-            const result = await exporter.generatePreview();
             expect(result.html).not.toContain('@bottom-right');
             expect(result.html).not.toContain('Created with eXeLearning');
-        });
-
-        it('should include watermark when showWatermark is true', async () => {
-            const result = await exporter.generatePreview({ showWatermark: true });
-            expect(result.html).toContain('@bottom-right');
-            expect(result.html).toContain('Created with eXeLearning');
         });
 
         it('should include link URL CSS by default', async () => {
@@ -359,28 +342,6 @@ describe('PrintPreviewExporter', () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('a[href]');
             expect(result.html).toContain('text-decoration: underline');
-        });
-
-        it('should include both page numbers and watermark when both are enabled', async () => {
-            const result = await exporter.generatePreview({
-                showPageNumbers: true,
-                showWatermark: true,
-            });
-            expect(result.html).toContain('@bottom-center');
-            expect(result.html).toContain('counter(page)');
-            expect(result.html).toContain('@bottom-right');
-            expect(result.html).toContain('Created with eXeLearning');
-        });
-
-        it('should omit @page block entirely when both page numbers and watermark are disabled', async () => {
-            const result = await exporter.generatePreview({
-                showPageNumbers: false,
-                showWatermark: false,
-            });
-            // @page should not appear in the injected styles
-            // Note: it might still appear from other CSS (like injectPrintSpecifics), so check specifically
-            expect(result.html).not.toContain('@bottom-center');
-            expect(result.html).not.toContain('@bottom-right');
         });
     });
 

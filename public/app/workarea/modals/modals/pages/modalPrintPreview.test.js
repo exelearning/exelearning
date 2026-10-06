@@ -17,13 +17,7 @@ describe('ModalPrintPreview', () => {
                 <div class="print-preview-title">Print preview</div>
                 <div class="print-preview-options">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="printOptPageNumbers" checked>
-                    </div>
-                    <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="printOptLinkUrls" checked>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="printOptWatermark">
                     </div>
                 </div>
                 <div class="print-preview-actions">
@@ -148,59 +142,37 @@ describe('ModalPrintPreview', () => {
     });
 
     describe('getPrintOptions', () => {
-        it('should return default checked states from checkboxes', () => {
-            const options = modal.getPrintOptions();
-            expect(options.showPageNumbers).toBe(true);
-            expect(options.showLinkUrls).toBe(true);
-            expect(options.showWatermark).toBe(false);
-        });
-
-        it('should reflect unchecked page numbers', () => {
-            document.getElementById('printOptPageNumbers').checked = false;
-            const options = modal.getPrintOptions();
-            expect(options.showPageNumbers).toBe(false);
-        });
-
-        it('should reflect checked watermark', () => {
-            document.getElementById('printOptWatermark').checked = true;
-            const options = modal.getPrintOptions();
-            expect(options.showWatermark).toBe(true);
+        it('should return the link URLs checkbox state (checked by default)', () => {
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
         });
 
         it('should reflect unchecked link URLs', () => {
             document.getElementById('printOptLinkUrls').checked = false;
-            const options = modal.getPrintOptions();
-            expect(options.showLinkUrls).toBe(false);
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: false });
         });
 
-        it('should return defaults when checkboxes are missing', () => {
-            // Remove checkboxes from DOM
-            overlayElement.querySelectorAll('input[type="checkbox"]').forEach(el => el.remove());
-            const options = modal.getPrintOptions();
-            expect(options.showPageNumbers).toBe(true);
-            expect(options.showWatermark).toBe(false);
-            expect(options.showLinkUrls).toBe(true);
+        it('should default to showing link URLs when the checkbox is missing', () => {
+            document.getElementById('printOptLinkUrls').remove();
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
         });
     });
 
     describe('buildPreviewOptions', () => {
         it('should include print options from checkboxes', () => {
             const options = modal.buildPreviewOptions();
-            expect(options.showPageNumbers).toBe(true);
             expect(options.showLinkUrls).toBe(true);
-            expect(options.showWatermark).toBe(false);
             expect(options.baseUrl).toBe('http://localhost:8080');
         });
 
         it('should merge extra options', () => {
             const options = modal.buildPreviewOptions({ printMode: true });
             expect(options.printMode).toBe(true);
-            expect(options.showPageNumbers).toBe(true);
+            expect(options.showLinkUrls).toBe(true);
         });
 
         it('should allow extra options to override checkbox options', () => {
-            const options = modal.buildPreviewOptions({ showPageNumbers: false });
-            expect(options.showPageNumbers).toBe(false);
+            const options = modal.buildPreviewOptions({ showLinkUrls: false });
+            expect(options.showLinkUrls).toBe(false);
         });
     });
 
@@ -314,15 +286,13 @@ describe('ModalPrintPreview', () => {
         });
 
         it('should pass print options to generatePrintPreview', async () => {
-            document.getElementById('printOptWatermark').checked = true;
+            document.getElementById('printOptLinkUrls').checked = false;
 
             await modal.generatePreview();
 
             const calls = window.generatePrintPreview.mock.calls;
             const optionsArg = calls[0][2];
-            expect(optionsArg.showPageNumbers).toBe(true);
-            expect(optionsArg.showWatermark).toBe(true);
-            expect(optionsArg.showLinkUrls).toBe(true);
+            expect(optionsArg.showLinkUrls).toBe(false);
         });
     });
 
@@ -408,16 +378,14 @@ describe('ModalPrintPreview', () => {
         });
 
         it('should pass print options from checkboxes', async () => {
-            document.getElementById('printOptWatermark').checked = true;
-            document.getElementById('printOptPageNumbers').checked = false;
+            document.getElementById('printOptLinkUrls').checked = false;
 
             await modal.openPrintWindow();
 
             const calls = window.generatePrintPreview.mock.calls;
             const optionsArg = calls[0][2];
             expect(optionsArg.printMode).toBe(true);
-            expect(optionsArg.showWatermark).toBe(true);
-            expect(optionsArg.showPageNumbers).toBe(false);
+            expect(optionsArg.showLinkUrls).toBe(false);
         });
     });
 
