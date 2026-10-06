@@ -632,6 +632,29 @@ describe('buildApiParameters', () => {
         expect(params.userPreferencesConfig.versionControl).toBeDefined();
     });
 
+    it('exposes a safe external-only AI capability object with no secrets', () => {
+        // Static/offline builds can only offer external assistants and must never
+        // embed provider secrets/endpoints. toEqual guarantees exactly these 4 keys.
+        expect(params.ai).toEqual({ enabled: true, provider: 'external', mode: 'external', configured: true });
+    });
+
+    it('disables AI and omits defaultAI when AI_FEATURES_ENABLED=false at build time', () => {
+        const prev = process.env.AI_FEATURES_ENABLED;
+        process.env.AI_FEATURES_ENABLED = 'false';
+        try {
+            const disabled = buildApiParameters();
+            expect(disabled.ai.enabled).toBe(false);
+            expect(disabled.ai.mode).toBe('external');
+            expect(disabled.userPreferencesConfig.defaultAI).toBeUndefined();
+        } finally {
+            if (prev === undefined) {
+                delete process.env.AI_FEATURES_ENABLED;
+            } else {
+                process.env.AI_FEATURES_ENABLED = prev;
+            }
+        }
+    });
+
     it('should include iDevice info fields config', () => {
         expect(params.ideviceInfoFieldsConfig).toBeDefined();
         expect(params.ideviceInfoFieldsConfig.title).toBeDefined();

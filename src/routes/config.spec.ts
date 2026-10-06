@@ -626,4 +626,78 @@ describe('Config Routes', () => {
             }
         });
     });
+
+    describe('AI capability config (public, no secrets)', () => {
+        async function clearAiSettings() {
+            await db
+                .deleteFrom('app_settings')
+                .where('key', 'in', [
+                    'AI_FEATURES_ENABLED',
+                    'AI_PROVIDER',
+                    'AI_OLLAMA_MODEL',
+                    'AI_AZURE_ENDPOINT',
+                    'AI_AZURE_API_KEY',
+                    'AI_AZURE_DEPLOYMENT',
+                    'AI_AZURE_API_VERSION',
+                ])
+                .execute();
+        }
+
+        async function fetchParams() {
+            const response = await app.handle(
+                new Request('http://localhost/api/parameter-management/parameters/data/list'),
+            );
+            return response.json();
+        }
+
+        it('defaults to enabled external mode and includes defaultAI', async () => {
+            await clearAiSettings();
+            const data = await fetchParams();
+            expect(data.ai).toEqual({ enabled: true, provider: 'external', mode: 'external', configured: true });
+            expect(data.userPreferencesConfig.defaultAI).toBeDefined();
+        });
+
+        it('hides defaultAI and reports managed mode for a configured managed provider', async () => {
+            await clearAiSettings();
+            await setSetting(db, 'AI_PROVIDER', 'ollama', 'string');
+            await setSetting(db, 'AI_OLLAMA_MODEL', 'llama3', 'string');
+            try {
+                const data = await fetchParams();
+                expect(data.ai.provider).toBe('ollama');
+                expect(data.ai.mode).toBe('managed');
+                expect(data.ai.configured).toBe(true);
+                expect(data.userPreferencesConfig.defaultAI).toBeUndefined();
+            } finally {
+                await clearAiSettings();
+            }
+        });
+
+        it('disables AI and hides defaultAI when features are turned off', async () => {
+            await clearAiSettings();
+            await setSetting(db, 'AI_FEATURES_ENABLED', 'false', 'boolean');
+            try {
+                const data = await fetchParams();
+                expect(data.ai.enabled).toBe(false);
+                expect(data.userPreferencesConfig.defaultAI).toBeUndefined();
+            } finally {
+                await clearAiSettings();
+            }
+        });
+
+        it('never leaks provider secrets in the response', async () => {
+            await clearAiSettings();
+            await setSetting(db, 'AI_PROVIDER', 'azure', 'string');
+            await setSetting(db, 'AI_AZURE_ENDPOINT', 'https://x.openai.azure.com', 'string');
+            await setSetting(db, 'AI_AZURE_API_KEY', 'leaky-secret-value', 'string');
+            await setSetting(db, 'AI_AZURE_DEPLOYMENT', 'gpt4o', 'string');
+            await setSetting(db, 'AI_AZURE_API_VERSION', '2024-02-01', 'string');
+            try {
+                const data = await fetchParams();
+                expect(data.ai.configured).toBe(true);
+                expect(JSON.stringify(data)).not.toContain('leaky-secret-value');
+            } finally {
+                await clearAiSettings();
+            }
+        });
+    });
 });
