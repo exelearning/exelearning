@@ -35,7 +35,7 @@
 
                 {# Edit Access Card #}
                 <div id="share-edit-access-section" class="share-access-card share-access-card-edit mb-3">
-                    <div class="share-access-card-header">
+                    <div class="share-access-card-header mb-3">
                         <img id="share-visibility-icon"
                              class="share-access-card-icon"
                              src="{{ basePath }}/style/workarea/images/icons/exe-lock-icon-green.svg"
@@ -76,7 +76,7 @@
 
                 {# Public Read-Only Link Card (hidden until the server reports it is available on this site) #}
                 <div id="share-public-view-section" class="share-access-card share-access-card-view mb-3 d-none">
-                    <div class="share-access-card-header">
+                    <div class="share-access-card-header mb-3">
                         <img class="share-access-card-icon"
                              src="{{ basePath }}/style/workarea/images/icons/exe-globe-icon-green.svg"
                              alt=""
@@ -112,7 +112,7 @@
                             </button>
                         </div>
                         <button id="public-regenerate-button"
-                                class="btn btn-outline-danger btn-sm mt-2"
+                                class="btn btn-secondary btn-sm mt-2"
                                 type="button">
                             <div class="auto-icon" aria-hidden="true">autorenew</div>
                             <span>{{ 'Regenerate link' | trans }}</span>
@@ -120,17 +120,17 @@
 
                         {# Inline confirmation, kept inside this modal so it never closes it #}
                         <div id="public-regenerate-confirm" class="d-none" role="alertdialog" aria-live="polite">
-                            <span class="public-regenerate-confirm-text">
+                            <span class="public-regenerate-confirm-text text-danger my-2">
                                 {{ 'Regenerate the public link? The previous link will stop working.' | trans }}
                             </span>
                             <div class="public-regenerate-confirm-actions">
                                 <button id="public-regenerate-confirm-yes"
-                                        class="btn btn-danger btn-sm"
+                                        class="btn btn-secondary btn-sm me-2"
                                         type="button">
                                     {{ 'Yes, regenerate' | trans }}
                                 </button>
                                 <button id="public-regenerate-confirm-no"
-                                        class="btn btn-outline-secondary btn-sm"
+                                        class="btn btn-sm"
                                         type="button">
                                     {{ 'Cancel' | trans }}
                                 </button>

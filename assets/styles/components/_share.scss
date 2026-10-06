@@ -29,7 +29,6 @@
     h6 {
         font-size: 14px;
         font-weight: 600;
-        margin-bottom: 12px;
         color: var(--bs-gray-700, #495057);
     }
 
@@ -281,6 +280,10 @@
     align-items: center;
     gap: 6px;
 
+    span {
+        font-size: 13px;
+    }
+
     .auto-icon {
         font-size: 18px;
     }
@@ -289,22 +292,9 @@
 /* Inline regenerate confirmation (kept inside the share modal so it never
    closes the parent modal). */
 #public-regenerate-confirm {
-    margin-top: 8px;
-    padding: 10px 12px;
-    border: 1px solid rgba(220, 53, 69, 0.3);
-    border-radius: 8px;
-    background: rgba(220, 53, 69, 0.05);
-
     .public-regenerate-confirm-text {
         display: block;
-        margin-bottom: 8px;
         font-size: 13px;
-        color: var(--bs-gray-700, #495057);
-    }
-
-    .public-regenerate-confirm-actions {
-        display: flex;
-        gap: 8px;
     }
 }
 
