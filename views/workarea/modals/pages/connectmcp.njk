@@ -1,0 +1,33 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalConnectMcp" role="dialog" aria-hidden="true" data-testid="modal-connect-mcp" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">{{ 'Connect MCP' | trans }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body help-modal">
+                <div class="help-modal-content">
+                    <p>{{ 'eXeLearning registers its editing tools with the browser through WebMCP, so a browser AI agent can work on the open project.' | trans }}</p>
+                    <p>{{ 'In Chrome, enable chrome://flags/#enable-webmcp-testing and relaunch the browser. The tools then appear in DevTools > Application > WebMCP.' | trans }}</p>
+                    <p>{{ 'Recommended workflow: set project title/author/description first, then create text iDevices with block title and optional icon.' | trans }}</p>
+
+                    <div class="alert alert-info mt-3 mb-3">
+                        <strong>{{ 'Status:' | trans }}</strong>
+                        <span id="webmcp-status-value">-</span>
+                        <br>
+                        <small id="webmcp-status-description"></small>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap mb-3">
+                        <button type="button" class="btn btn-outline-secondary" id="button-open-webmcp-docs">{{ 'Open guide' | trans }}</button>
+                    </div>
+
+                    <h6>{{ 'Available tools in this eXe session:' | trans }}</h6>
+                    <ul id="webmcp-tools-list" class="mb-0"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
