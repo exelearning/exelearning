@@ -5527,6 +5527,48 @@ describe('YjsProjectBridge', () => {
       delete global.window.__lastElpxExportTimeline;
     });
 
+    it('measures Electron phases from one clock reading, however slow the bridge is', async () => {
+      // On a loaded CI runner the clock moves between two reads in the bridge,
+      // which made the Electron durations come out a millisecond short.
+      let now = 0;
+      bridge.getElpxExportDebugNow = () => (now += 1);
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({
+          export: mock(() => Promise.resolve({
+            success: true,
+            data: new ArrayBuffer(8),
+            filename: 'project.elpx',
+          })),
+        })),
+      };
+      global.eXeLearning = { config: { debugElpxExport: true, isOfflineInstallation: true } };
+      global.window.eXeLearning = global.eXeLearning;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: { totalMs: 44, promptMs: 30, normalizeMs: 4, writeMs: 10 },
+        })),
+      };
+
+      try {
+        await bridge.exportToElpx();
+
+        expect(global.window.__lastElpxExportSummary).toEqual(
+          expect.objectContaining({ electronSaveMs: 44, electronPromptMs: 30 })
+        );
+      } finally {
+        delete bridge.getElpxExportDebugNow;
+        delete global.eXeLearning;
+        delete global.window.eXeLearning;
+        delete global.window.electronAPI;
+        delete global.window.__lastElpxExportSummary;
+        delete global.window.__lastElpxExportTimeline;
+      }
+    });
+
     it('falls back to browser download when not in Electron mode', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
