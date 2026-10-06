@@ -13,6 +13,7 @@ import {
     updateUserStatus,
     createUserAsAdmin,
     updateUserQuota,
+    updateAllUsersQuota,
     getSystemStats,
     getAllSettings,
     getSetting,
@@ -667,6 +668,33 @@ describe('Admin Queries', () => {
             const updated = await updateUserQuota(db, userId, 2000);
 
             expect(updated!.updated_at! > before!.updated_at!).toBe(true);
+        });
+    });
+
+    describe('updateAllUsersQuota', () => {
+        it('should set the same quota on every user and return how many were updated', async () => {
+            const first = await seedTestUser(db, { email: 'all1@test.com', user_id: 'all1' });
+            const second = await seedTestUser(db, { email: 'all2@test.com', user_id: 'all2' });
+            await updateUserQuota(db, first, 100);
+            await updateUserQuota(db, second, null);
+
+            const count = await updateAllUsersQuota(db, 750);
+
+            expect(count).toBe(2);
+            const quotas = await db.selectFrom('users').select('quota_mb').execute();
+            expect(quotas.map(row => row.quota_mb)).toEqual([750, 750]);
+        });
+
+        it('should set every user to unlimited with null', async () => {
+            await seedTestUser(db, { email: 'all3@test.com', user_id: 'all3' });
+
+            expect(await updateAllUsersQuota(db, null)).toBe(1);
+            const row = await db.selectFrom('users').select('quota_mb').executeTakeFirst();
+            expect(row?.quota_mb).toBeNull();
+        });
+
+        it('should return 0 when there are no users', async () => {
+            expect(await updateAllUsersQuota(db, 100)).toBe(0);
         });
     });
 

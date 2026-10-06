@@ -1637,6 +1637,30 @@ describe('Admin Routes', () => {
             expect(data.message).toContain('Unknown setting');
         });
 
+        it('should reject the removed storage settings that never had an effect (#2514)', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            for (const [key, value, type] of [
+                ['USER_STORAGE_MAX_DISK_SPACE', '1024', 'number'],
+                ['COUNT_USER_AUTOSAVE_SPACE_ODE_FILES', 'true', 'boolean'],
+            ]) {
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/settings', {
+                        method: 'PUT',
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ settings: [{ key, value, type }] }),
+                    }),
+                );
+
+                expect(response.status).toBe(400);
+                expect((await response.json()).message).toBe(`Unknown setting: ${key}`);
+            }
+        });
+
         it('should validate APP_AUTH_METHODS requires at least one method', async () => {
             const token = await generateAdminToken();
             const app = new Elysia().use(createAdminRoutes(createMockDeps()));

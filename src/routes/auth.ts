@@ -20,7 +20,7 @@ import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validato
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
 import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
-import { getAuthMethods, getSettingString, getSettingNumber } from '../services/app-settings';
+import { getAuthMethods, getSettingString, getDefaultQuotaMb } from '../services/app-settings';
 import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
 import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
@@ -672,11 +672,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             return { error: 'Unauthorized', message: 'CAS authentication failed.' };
                         }
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
-                        const defaultQuota = await getSettingNumber(
-                            db,
-                            'DEFAULT_QUOTA',
-                            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-                        );
+                        const defaultQuota = await getDefaultQuotaMb(db);
                         user = await createUser(db, {
                             email,
                             user_id: `cas:${casUser}`,
@@ -1008,11 +1004,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
                         }
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
-                        const defaultQuota = await getSettingNumber(
-                            db,
-                            'DEFAULT_QUOTA',
-                            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-                        );
+                        const defaultQuota = await getDefaultQuotaMb(db);
                         user = await createUser(db, {
                             email: userEmail,
                             user_id: `oidc:${subject || userEmail}`,
@@ -1126,11 +1118,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 let user = await findUserByEmail(db, guestEmail);
                 if (!user) {
                     const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
-                    const defaultQuota = await getSettingNumber(
-                        db,
-                        'DEFAULT_QUOTA',
-                        parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-                    );
+                    const defaultQuota = await getDefaultQuotaMb(db);
                     user = await createUser(db, {
                         email: guestEmail,
                         // user_id: not set for guest users (null) - they're not SSO

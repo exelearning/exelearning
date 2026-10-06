@@ -1803,22 +1803,9 @@
                             <h6>{{ t.storage_and_quotas or 'Storage and quotas' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
-                                    <label>USER_STORAGE_MAX_DISK_SPACE</label>
-                                    <input type="number" class="admin-input" data-setting-key="USER_STORAGE_MAX_DISK_SPACE" data-setting-type="number" value="{{ adminSettings.storage.user_storage_max_disk_space }}">
-                                    <small>{{ t.max_storage_per_user or 'Maximum storage per user (MB).' }}</small>
-                                </div>
-                                <div class="admin-field">
                                     <label>DEFAULT_QUOTA</label>
                                     <input type="number" class="admin-input" data-setting-key="DEFAULT_QUOTA" data-setting-type="number" value="{{ adminSettings.storage.default_quota }}">
-                                    <small>{{ t.default_quota_mb or 'Default quota (MB).' }}</small>
-                                </div>
-                                <div class="admin-field">
-                                    <label>COUNT_USER_AUTOSAVE_SPACE_ODE_FILES</label>
-                                    <div class="form-check-custom">
-                                        <input type="checkbox" data-setting-key="COUNT_USER_AUTOSAVE_SPACE_ODE_FILES" data-setting-type="boolean" {% if adminSettings.storage.count_user_autosave_space_ode_files %}checked{% endif %}>
-                                        <span>{{ t.active or 'Active' }}</span>
-                                    </div>
-                                    <small>{{ t.count_autosave_in_quota or 'Counts autosave in quota.' }}</small>
+                                    <small>{{ t.default_quota_mb or 'Default quota (MB) for new users. Existing users keep their own quota.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>FILE_UPLOAD_MAX_SIZE</label>

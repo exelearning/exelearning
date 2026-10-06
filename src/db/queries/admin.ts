@@ -252,6 +252,14 @@ export async function updateUserQuota(
     });
 }
 
+/**
+ * Set the same quota on every user. Returns the number of users updated.
+ */
+export async function updateAllUsersQuota(db: Kysely<Database>, quotaMb: number | null): Promise<number> {
+    const result = await db.updateTable('users').set({ quota_mb: quotaMb, updated_at: now() }).executeTakeFirst();
+    return Number(result.numUpdatedRows ?? 0);
+}
+
 // ============================================================================
 // STATISTICS QUERIES
 // ============================================================================

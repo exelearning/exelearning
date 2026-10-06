@@ -353,11 +353,9 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         storage_and_quotas: trans('Storage and quotas', {}, locale),
         quota_mb: trans('Quota (MB)', {}, locale),
         quota_help: trans('Leave empty for unlimited quota', {}, locale),
-        default_quota_mb: trans('Default quota (MB).', {}, locale),
-        max_storage_per_user: trans('Maximum storage per user (MB).', {}, locale),
+        default_quota_mb: trans('Default quota (MB) for new users. Existing users keep their own quota.', {}, locale),
         max_upload_size: trans('Maximum upload size (MB).', {}, locale),
         unlimited: trans('Unlimited', {}, locale),
-        count_autosave_in_quota: trans('Counts autosave in quota.', {}, locale),
         // Settings — autosave
         autosave: trans('Autosave', {}, locale),
         autosave_interval: trans('Autosave interval (seconds).', {}, locale),
@@ -637,12 +635,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     DEFAULT_PROJECT_VISIBILITY: { value: process.env.DEFAULT_PROJECT_VISIBILITY || 'private', type: 'string' },
     USER_RECENT_ODE_FILES_AMOUNT: { value: process.env.USER_RECENT_ODE_FILES_AMOUNT ?? '3', type: 'number' },
     COLLABORATIVE_BLOCK_LEVEL: { value: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice', type: 'string' },
-    USER_STORAGE_MAX_DISK_SPACE: { value: process.env.USER_STORAGE_MAX_DISK_SPACE ?? '1024', type: 'number' },
     DEFAULT_QUOTA: { value: process.env.DEFAULT_QUOTA ?? '4096', type: 'number' },
-    COUNT_USER_AUTOSAVE_SPACE_ODE_FILES: {
-        value: process.env.COUNT_USER_AUTOSAVE_SPACE_ODE_FILES ?? 'true',
-        type: 'boolean',
-    },
     FILE_UPLOAD_MAX_SIZE: { value: process.env.FILE_UPLOAD_MAX_SIZE ?? '1024', type: 'number' },
     PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL: {
         value: process.env.PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL ?? '600',
