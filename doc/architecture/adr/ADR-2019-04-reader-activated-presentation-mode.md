@@ -105,6 +105,14 @@ the only reason to add this parameter to a link is to present, and one more
 click would be pure friction. Fullscreen is left to the browser (`F11`),
 which is what presenters already do.
 
+The menu is a reader preference as well (PR #2020 review). The mode collapses
+it only when entering without one; while presenting, the URL and the links
+carry `nav=true|false` with the state the reader chose with `M` or the style's
+toggler, and a page opened presenting with `nav` honours it instead of
+collapsing again. Leaving restores the menu as it was before the mode
+collapsed it on that page, and otherwise keeps the reader's last choice; once
+the mode is off only the style's own `nav=false` convention remains.
+
 ## Evidence
 
 - Runtime: `public/app/common/exe_export.js`, `presentationMode` —
@@ -186,7 +194,8 @@ the top-level document.
   rewriting, key handling and overlay deferral in `exe_export.test.js`.
 - E2E: `presentation-mode.spec.ts` (no parameter → nothing; `=1` → mode on,
   collapsed menu, keys, propagation; leave → `=0` in URL and links, inert
-  keys, survives reload and navigation; re-enter) and the SimpleLightbox case
+  keys, survives reload and navigation; re-enter; the menu chosen with `M`
+  survives page changes and reloads, and leaving keeps or restores it) and the SimpleLightbox case
   in `idevices/image-gallery.spec.ts`.
 
 ## Follow-up work

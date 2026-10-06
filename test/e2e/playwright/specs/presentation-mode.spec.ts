@@ -23,7 +23,7 @@ const SECOND_PAGE = 'Presentation second page';
  * mode and binds the key listener in the same call, so waiting on the runtime's
  * own flag guarantees the keys are live before pressing one.
  */
-async function expectPresenting(page: Page, active: boolean): Promise<void> {
+async function expectPresenting(page: Page, active: boolean, menuExpanded = false): Promise<void> {
     await page.waitForFunction(
         expected => (window as any).$exeExport?.presentationMode?.isActive() === expected,
         active,
@@ -31,9 +31,11 @@ async function expectPresenting(page: Page, active: boolean): Promise<void> {
     await expect(page.locator('#exe-presentation-toggler')).toHaveText(
         active ? 'Exit presentation mode' : 'Presentation mode',
     );
-    // The mode collapses the menu; when it is off the menu is the style's business
-    // (the style's own ?nav=false may still be in the URL after a key navigation).
-    if (active) await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'false');
+    // The mode collapses the menu unless the reader chose otherwise (nav=true); when it
+    // is off the menu is the style's business.
+    if (active) {
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', String(menuExpanded));
+    }
 }
 
 async function exportTwoPageSite(
@@ -133,5 +135,52 @@ test.describe('Presentation mode (web site export)', () => {
         await page.keyboard.press('ArrowLeft');
         await expect(heading).toHaveText(firstTitle ?? '');
         await expectPresenting(page, true);
+    });
+
+    test('the menu the reader chooses with M survives page changes and reloads, and leaving keeps it', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await exportTwoPageSite(page, createProject);
+
+        // The site opens with the menu visible; entering collapses it.
+        await page.goto(`${ORIGIN}/index.html?exe-presentation=0`);
+        const heading = page.locator('main h1.page-title');
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'true');
+        await page.locator('#exe-presentation-toggler').click();
+        await expectPresenting(page, true);
+
+        // Leaving on the same page, untouched, restores the menu as it was.
+        await page.locator('#exe-presentation-toggler').click();
+        await expectPresenting(page, false);
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'true');
+
+        // Back in, M shows the menu: the next page and a reload keep it visible.
+        await page.locator('#exe-presentation-toggler').click();
+        await expectPresenting(page, true);
+        await heading.click();
+        await page.keyboard.press('m');
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'true');
+        await expect(page.locator('a.nav-button-right')).toHaveAttribute('href', /nav=true/);
+        await page.keyboard.press('ArrowRight');
+        await expect(heading).toHaveText(SECOND_PAGE);
+        expect(page.url()).toContain('nav=true');
+        await expectPresenting(page, true, true);
+        await page.reload();
+        await expectPresenting(page, true, true);
+
+        // M hides it again; the previous page keeps it hidden.
+        await heading.click();
+        await page.keyboard.press('m');
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'false');
+        await page.keyboard.press('ArrowLeft');
+        await expect(heading).not.toHaveText(SECOND_PAGE);
+        await expectPresenting(page, true, false);
+
+        // Leaving keeps the state the reader chose instead of forcing the menu open.
+        await page.locator('#exe-presentation-toggler').click();
+        await expectPresenting(page, false);
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'false');
     });
 });

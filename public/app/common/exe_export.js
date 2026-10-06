@@ -107,11 +107,16 @@ window.$exeExport = {
      */
     withNavParam : function(href, navParams){
         if (!href || !navParams) return href;
-        if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
+        if (!this.isInPackageHref(href)) return href;
         var eq = navParams.indexOf('=');
         var name = eq === -1 ? navParams : navParams.slice(0, eq);
         var value = eq === -1 ? '' : navParams.slice(eq + 1);
         return this.setUrlParam(href, name, value);
+    },
+
+    /** False for external links, non-relative schemes and pure fragments. */
+    isInPackageHref : function(href){
+        return !!href && !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href);
     },
 
     /** Rewrite the menu and prev/next links so navigation keeps the chosen mode. */
@@ -120,6 +125,15 @@ window.$exeExport = {
         var self = this;
         document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]').forEach(function(a){
             a.setAttribute('href', self.withNavParam(a.getAttribute('href'), navParams));
+        });
+    },
+
+    /** Like propagateNavParam, but a null value removes the parameter from the links. */
+    setNavLinksParam : function(name, value){
+        var self = this;
+        document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]').forEach(function(a){
+            var href = a.getAttribute('href');
+            if (self.isInPackageHref(href)) a.setAttribute('href', self.setUrlParam(href, name, value));
         });
     },
 
@@ -649,6 +663,13 @@ window.$exeExport = {
      * (history.replaceState) and in the menu, prev/next and search-result links, so the
      * choice survives page changes and reloads without any storage.
      *
+     * The menu is a reader preference too. The mode collapses it only when entering
+     * without one; while presenting, the links and the URL carry nav=true|false (the
+     * state the reader chose with M or the style's toggler) and later pages honour it
+     * instead of collapsing again. Leaving restores the menu as it was before the mode
+     * collapsed it, unless the reader has chosen a state since; outside the mode only
+     * the style's own nav=false convention is kept.
+     *
      * Scope: web site exports opened as the top-level document. Never SCORM/IMS (the LMS
      * owns navigation), EPUB, or content embedded in an iframe. Fullscreen is deliberately
      * left to the browser (F11): the Fullscreen API needs a user gesture, is lost on
@@ -666,6 +687,9 @@ window.$exeExport = {
         _available : false,
         _requested : false,
         _active : false,
+        _navPref : null,
+        _menuBefore : null,
+        _ownMenuToggle : false,
         _boundHandleKeydown : null,
         _truthy : function(v){ return v === '1' || v === 'true' || v === 'yes'; },
         /**
@@ -674,8 +698,11 @@ window.$exeExport = {
          */
         bootstrap : function(){
             try {
-                var value = new URLSearchParams(window.location.search).get(this.PARAM);
+                var params = new URLSearchParams(window.location.search);
+                var value = params.get(this.PARAM);
+                var nav = params.get('nav');
                 this._available = value !== null;
+                this._navPref = nav === 'true' || nav === 'false' ? nav : null;
                 this._requested = this._truthy(value);
                 if (this._requested) document.documentElement.classList.add('mode-presentation');
             } catch (e) {
@@ -689,7 +716,10 @@ window.$exeExport = {
         },
         /** Keep the mode across in-package navigation (see $exeExport.withNavParam). */
         withParams : function(href){
-            return $exeExport.withNavParam(href, this.navParams());
+            href = $exeExport.withNavParam(href, this.navParams());
+            var menu = this._menuParam();
+            if (this._active && menu) href = $exeExport.withNavParam(href, 'nav=' + menu);
+            return href;
         },
         /** Web site export (never SCORM/IMS/EPUB) opened as the top-level document. */
         isSupported : function(){
@@ -713,17 +743,27 @@ window.$exeExport = {
             var self = this;
             control.addEventListener('click', function(){ self.toggle(); });
             document.body.appendChild(control);
-            if (this._requested) this.enter();
+            // Registered after the style's own handler, so the new state is already set.
+            var toggler = document.getElementById('siteNavToggler');
+            if (toggler) toggler.addEventListener('click', function(){ self._onMenuToggled(); });
+            if (this._requested) this.enter(true);
         },
         toggle : function(){
             if (this._active) this.leave(); else this.enter();
         },
-        enter : function(){
+        /** @param {boolean} [fromUrl] the page was opened presenting (keep its nav=true|false). */
+        enter : function(fromUrl){
             if (this._active) return;
             this._active = true;
             document.documentElement.classList.add('mode-presentation');
+            if (fromUrl === true && this._navPref !== null) {
+                this._menuBefore = null;
+                this._setMenuExpanded(this._navPref === 'true');
+            } else {
+                this._menuBefore = this._isMenuExpanded();
+                this._setMenuExpanded(false);
+            }
             this._syncState();
-            this._setMenuExpanded(false);
             this._boundHandleKeydown = this.handleKeydown.bind(this);
             document.addEventListener('keydown', this._boundHandleKeydown);
         },
@@ -731,8 +771,9 @@ window.$exeExport = {
             if (!this._active) return;
             this._active = false;
             document.documentElement.classList.remove('mode-presentation');
+            if (this._menuBefore !== null) this._setMenuExpanded(this._menuBefore);
+            this._menuBefore = null;
             this._syncState();
-            this._setMenuExpanded(true);
             document.removeEventListener('keydown', this._boundHandleKeydown);
             this._boundHandleKeydown = null;
         },
@@ -741,11 +782,23 @@ window.$exeExport = {
                 ? ($exe_i18n.exit_presentation_mode || 'Exit presentation mode')
                 : ($exe_i18n.presentation_mode || 'Presentation mode');
         },
+        // The menu state to carry in the nav parameter: nav=true|false while presenting,
+        // the style's own convention (nav=false or nothing) otherwise; undefined without
+        // a toggler (leave the parameter alone).
+        _navValue : function(){
+            var menu = this._menuParam();
+            if (!menu) return undefined;
+            if (this._active) return menu;
+            return menu === 'false' ? 'false' : null;
+        },
         // The parameter is the state: mirror it in the URL, the links and the control.
         _syncState : function(){
             $exeExport.propagateNavParam(this.navParams());
+            var nav = this._navValue();
+            if (nav !== undefined) $exeExport.setNavLinksParam('nav', nav);
             try {
                 var url = $exeExport.setUrlParam(window.location.href, this.PARAM, this._active ? '1' : '0');
+                if (nav !== undefined) url = $exeExport.setUrlParam(url, 'nav', nav);
                 window.history.replaceState(window.history.state, '', url);
             } catch (e) {
                 // The links still carry the state; only a reload of this page forgets it.
@@ -759,7 +812,29 @@ window.$exeExport = {
         _setMenuExpanded : function(expanded){
             var toggler = document.getElementById('siteNavToggler');
             if (!toggler) return;
-            if ((toggler.getAttribute('aria-expanded') === 'true') !== expanded) toggler.click();
+            if ((toggler.getAttribute('aria-expanded') === 'true') === expanded) return;
+            this._ownMenuToggle = true;
+            try {
+                toggler.click();
+            } finally {
+                this._ownMenuToggle = false;
+            }
+        },
+        /** true/false from the style's toggler, or null when the style has none. */
+        _isMenuExpanded : function(){
+            var toggler = document.getElementById('siteNavToggler');
+            return toggler ? toggler.getAttribute('aria-expanded') === 'true' : null;
+        },
+        _menuParam : function(){
+            var expanded = this._isMenuExpanded();
+            return expanded === null ? null : String(expanded);
+        },
+        // The reader showed or hid the menu (M or the style's toggler) while presenting:
+        // that choice now wins, travels in the links and survives leaving the mode.
+        _onMenuToggled : function(){
+            if (!this._active || this._ownMenuToggle) return;
+            this._menuBefore = null;
+            this._syncState();
         },
         // Never hijack keys while the reader is typing or composing text.
         isTypingTarget : function(target){

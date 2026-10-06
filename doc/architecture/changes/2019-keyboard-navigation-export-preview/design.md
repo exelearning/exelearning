@@ -46,9 +46,11 @@ Web site (HTML5) exports opened as the top-level document. Not SCORM/IMS
 ## Goals
 
 - A reader can enter and leave presentation mode from a visible control.
-- While presenting: menu collapsed, `←`/`PageUp` previous page,
+- While presenting: menu collapsed on entering, `←`/`PageUp` previous page,
   `→`/`PageDown` next page, `M` shows/hides the menu, `T` toggles Teacher Mode
   where its toggle exists.
+- The menu state the reader chooses travels as `nav=true|false` and is not
+  re-collapsed on later pages; leaving never forces the menu open.
 - The choice survives navigation between pages.
 - Nothing is injected and no key is captured unless the reader asked for it.
 - Open overlays, fullscreen iDevices and form fields keep their keys.

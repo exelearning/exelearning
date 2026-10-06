@@ -2960,8 +2960,9 @@ describe('exe_export.js', () => {
       });
     }
 
-    function bootstrapWith(value) {
-      const restore = mockSearchParams(value === undefined ? {} : { 'exe-presentation': value });
+    function bootstrapWith(value, extra = {}) {
+      const params = Object.assign(value === undefined ? {} : { 'exe-presentation': value }, extra);
+      const restore = mockSearchParams(params);
       pm().bootstrap();
       restore();
     }
@@ -3068,8 +3069,10 @@ describe('exe_export.js', () => {
         expect(control().title).toBe('Keys: Left/Right change page, M menu, T teacher mode, F11 full screen');
         expect(pm().isActive()).toBe(true);
         expect(menuExpanded()).toBe('false');
-        expect(firstMenuHref()).toBe('page1.html?exe-presentation=1');
-        expect(document.querySelector('a.nav-button-right').getAttribute('href')).toBe('next.html?exe-presentation=1');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=1&nav=false');
+        expect(document.querySelector('a.nav-button-right').getAttribute('href')).toBe(
+          'next.html?exe-presentation=1&nav=false'
+        );
       });
 
       it('with =0 offers the control with the mode off and links carrying =0', () => {
@@ -3132,8 +3135,8 @@ describe('exe_export.js', () => {
         expect(presenting()).toBe(true);
         expect(control().textContent).toBe('Exit presentation mode');
         expect(menuExpanded()).toBe('false');
-        expect(firstMenuHref()).toBe('page1.html?exe-presentation=1');
-        expect(replaceState.mock.lastCall[2]).toContain('exe-presentation=1');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=1&nav=false');
+        expect(replaceState.mock.lastCall[2]).toContain('exe-presentation=1&nav=false');
       });
 
       it('enter() leaves an already collapsed menu alone', () => {
@@ -3168,6 +3171,7 @@ describe('exe_export.js', () => {
         expect(presenting()).toBe(true);
       });
 
+
       it('clicking the control toggles the mode', () => {
         control().click();
         expect(pm().isActive()).toBe(true);
@@ -3197,6 +3201,123 @@ describe('exe_export.js', () => {
         pm().leave();
         expect(removeSpy.mock.calls.filter((c) => c[0] === 'keydown').length).toBe(1);
         removeSpy.mockRestore();
+      });
+    });
+
+    describe('menu preference (PR #2020 review)', () => {
+      const nextHref = () => document.querySelector('a.nav-button-right').getAttribute('href');
+      const lastUrl = () => replaceState.mock.lastCall[2];
+
+      it('a page opened presenting with nav=true keeps the menu the reader showed', () => {
+        buildWebSitePage();
+        bootstrapWith('1', { nav: 'true' });
+        pm().init();
+        expect(pm().isActive()).toBe(true);
+        expect(menuExpanded()).toBe('true');
+        expect(nextHref()).toBe('next.html?exe-presentation=1&nav=true');
+      });
+
+      it('a page opened presenting with nav=false keeps the menu hidden', () => {
+        buildWebSitePage({ expanded: false });
+        bootstrapWith('1', { nav: 'false' });
+        pm().init();
+        expect(menuExpanded()).toBe('false');
+        expect(nextHref()).toBe('next.html?exe-presentation=1&nav=false');
+      });
+
+      it('ignores a nav value other than true/false and collapses as on entering', () => {
+        buildWebSitePage();
+        bootstrapWith('1', { nav: 'maybe' });
+        pm().init();
+        expect(menuExpanded()).toBe('false');
+      });
+
+      it('M while presenting carries the chosen state in the links and the URL', () => {
+        buildWebSitePage();
+        bootstrapWith('1');
+        pm().init();
+        pm().handleKeydown(makeEvent({ key: 'm', code: 'KeyM' }));
+        expect(menuExpanded()).toBe('true');
+        expect(nextHref()).toBe('next.html?exe-presentation=1&nav=true');
+        expect(lastUrl()).toContain('nav=true');
+        pm().handleKeydown(makeEvent({ key: 'm', code: 'KeyM' }));
+        expect(nextHref()).toBe('next.html?exe-presentation=1&nav=false');
+        expect(lastUrl()).toContain('nav=false');
+      });
+
+      it('leave() restores an open menu and drops nav from the links', () => {
+        buildWebSitePage();
+        bootstrapWith('0');
+        pm().init();
+        pm().enter();
+        pm().leave();
+        expect(menuExpanded()).toBe('true');
+        expect(nextHref()).toBe('next.html?exe-presentation=0');
+        expect(lastUrl()).not.toContain('nav=');
+      });
+
+      it('leave() keeps a menu the reader had hidden before entering', () => {
+        buildWebSitePage({ expanded: false });
+        bootstrapWith('0');
+        pm().init();
+        pm().enter();
+        pm().leave();
+        expect(menuExpanded()).toBe('false');
+        expect(nextHref()).toBe('next.html?exe-presentation=0&nav=false');
+      });
+
+      it('leave() keeps the state the reader chose while presenting', () => {
+        buildWebSitePage();
+        bootstrapWith('0');
+        pm().init();
+        pm().enter();
+        document.getElementById('siteNavToggler').click();
+        document.getElementById('siteNavToggler').click();
+        pm().leave();
+        expect(menuExpanded()).toBe('false');
+      });
+
+      it('leave() on a later page keeps the menu the reader carried', () => {
+        buildWebSitePage();
+        bootstrapWith('1', { nav: 'true' });
+        pm().init();
+        pm().leave();
+        expect(menuExpanded()).toBe('true');
+        expect(nextHref()).toBe('next.html?exe-presentation=0');
+      });
+
+      it('toggling the menu outside the mode does not rewrite the links', () => {
+        buildWebSitePage();
+        bootstrapWith('0');
+        pm().init();
+        document.getElementById('siteNavToggler').click();
+        expect(nextHref()).toBe('next.html?exe-presentation=0');
+      });
+
+      it('withParams() adds the menu state to search-result links while presenting', () => {
+        buildWebSitePage();
+        bootstrapWith('1');
+        pm().init();
+        expect(pm().withParams('page3.html')).toBe('page3.html?exe-presentation=1&nav=false');
+        pm().leave();
+        expect(pm().withParams('page3.html')).toBe('page3.html?exe-presentation=0');
+      });
+
+      it('leaves nav alone when the style has no menu toggler', () => {
+        buildWebSitePage();
+        document.getElementById('siteNavToggler').remove();
+        bootstrapWith('1');
+        pm().init();
+        expect(nextHref()).toBe('next.html?exe-presentation=1');
+        expect(pm().withParams('page3.html')).toBe('page3.html?exe-presentation=1');
+      });
+
+      it('setNavLinksParam() leaves external links untouched', () => {
+        buildWebSitePage();
+        document.getElementById('siteNav').insertAdjacentHTML('beforeend', '<a href="https://example.org/">x</a>');
+        window.$exeExport.setNavLinksParam('nav', 'true');
+        expect(document.querySelector('#siteNav a[href^="https"]').getAttribute('href')).toBe('https://example.org/');
+        expect(nextHref()).toBe('next.html?nav=true');
       });
     });
 

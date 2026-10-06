@@ -98,6 +98,8 @@ decides *when* to trigger them.
   `_setMenuExpanded()` clicks `#siteNavToggler` only when its `aria-expanded`
   differs from the wanted state, so the theme's `?nav=false` propagation and
   low-resolution rules keep working and the menu can still be opened normally.
+  While presenting, `nav=true|false` carries the reader's menu choice
+  (ADR-2019-04).
 - The `window.$exeExport` block is guarded by
   `if (typeof window.$exeExport === 'undefined')` so scripts reloaded by a
   reader survive; `enter()` binds a single listener and `leave()` removes it.
