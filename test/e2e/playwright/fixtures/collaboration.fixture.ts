@@ -128,7 +128,19 @@ export const test = authTest.extend<CollaborationFixtures, CollaborationWorkerFi
     secondAuthenticatedPage: async ({ secondContext }, use) => {
         const page = await secondContext.newPage();
 
-        await page.goto('/workarea');
+        // Online mode redirects a bare /workarea to /projects, so create a project
+        // and open it directly to land in a fully-initialised workarea.
+        const createResponse = await page.request.post('/api/project/create-quick', {
+            data: { title: 'Collaboration Client B' },
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000,
+        });
+        if (!createResponse.ok()) {
+            throw new Error(`Failed to create project for second client: ${createResponse.status()}`);
+        }
+        const { uuid } = await createResponse.json();
+
+        await page.goto(`/workarea?project=${uuid}`);
         await waitForWorkareaUiReady(page, 60000);
 
         await use(page);
