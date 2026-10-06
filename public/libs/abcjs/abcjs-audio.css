@@ -1,3 +1,9 @@
+/*
+ * abcjs-audio.css from abcjs 6.7.0 (node_modules/abcjs/abcjs-audio.css) plus the
+ * eXeLearning block at the end. Tracked in git — not copied by
+ * scripts/copy-vendor-libs.js — because of that local block. When abcjs is bumped,
+ * diff the upstream file against the part above the eXe block and port changes.
+ */
 /* Some basic CSS to make the Audio controls in abcjs presentable. */
 
 .abcjs-inline-audio {
@@ -24,6 +30,7 @@
   background: none !important;
   border: 1px solid transparent;
   box-sizing: border-box;
+  line-height: 1;
 }
 
 .abcjs-btn g {
@@ -188,6 +195,7 @@
   display: none;
 }
 
+/* +++++ eXeLearning additions (not in upstream abcjs) +++++ */
 /* Fix presentation issues (to review) */
 p + .inline.abc-container {
     margin-top: 1.5em;

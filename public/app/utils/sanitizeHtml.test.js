@@ -8,17 +8,19 @@
  * Run with: make test-frontend
  */
 
-import { COLLABORATIVE_HTML_CONFIG, sanitizeCollaborativeHtml } from './sanitizeHtml.js';
-
-// Load the real vendored DOMPurify (UMD) so the primary path is exercised
-// exactly as in production. The UMD wrapper attaches to globalThis.DOMPurify.
+import { JSDOM } from 'jsdom';
 import createDOMPurify from '../../libs/dompurify/purify.min.js';
+import { COLLABORATIVE_HTML_CONFIG, sanitizeCollaborativeHtml } from './sanitizeHtml.js';
 
 describe('sanitizeHtml', () => {
     describe('with real DOMPurify (primary path)', () => {
         beforeEach(() => {
-            // The vendored UMD build either returns a factory or an instance.
-            const dp = typeof createDOMPurify === 'function' ? createDOMPurify(window) : createDOMPurify;
+            // Bind the vendored UMD to a jsdom Window. happy-dom (Vitest's default
+            // env) disagrees with DOMPurify 3.4+ on <script>/<p>/<img>, so using
+            // the test window would make the primary path look broken even though
+            // browsers and jsdom sanitize correctly.
+            const { window: purifyWindow } = new JSDOM('<!doctype html><html><body></body></html>');
+            const dp = typeof createDOMPurify === 'function' ? createDOMPurify(purifyWindow) : createDOMPurify;
             window.DOMPurify = dp;
         });
 

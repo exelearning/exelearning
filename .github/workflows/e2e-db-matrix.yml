@@ -58,6 +58,13 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      # Vendor libs are generated from npm (`bundle:vendor`) and gitignored, so
+      # specs that read `public/libs/...` from disk (e.g. resource-cache-upgrade)
+      # need this copy on the runner. The sharded E2E workflow gets the same
+      # files from the build-public artifact after `build:static`.
+      - name: Copy vendor libs from npm
+        run: bun run bundle:vendor
+
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
 

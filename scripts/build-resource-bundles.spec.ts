@@ -5,11 +5,13 @@
  * file paths that exporters expect.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { unzipSync } from 'fflate';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const resourceBundles = require('./build-resource-bundles.js');
 
 const projectRoot = path.resolve(__dirname, '..');
 
@@ -252,6 +254,55 @@ describe('build-resource-bundles', () => {
             const zipTargets = new Set(Object.keys(unzipped));
             const manifestTargets = new Set(manifest.staticFiles.libs.map((e: any) => e.t));
             expect(manifestTargets).toEqual(zipTargets);
+        });
+    });
+
+    describe('required vendor libs', () => {
+        it('marks the gitignored vendor files (jquery/bootstrap) as required', () => {
+            const required = resourceBundles.BASE_LIBS.filter((lib: { required?: boolean }) => lib.required).map(
+                (lib: { src: string }) => lib.src,
+            );
+            expect(required).toContain('libs/jquery/jquery.min.js');
+            expect(required).toContain('libs/bootstrap/bootstrap.bundle.min.js');
+            expect(required).toContain('libs/bootstrap/bootstrap.min.css');
+        });
+
+        it('does not put Bootstrap source maps in the libs bundle', () => {
+            // #2260 dropped the .map entries from BASE_LIBS so exported packages
+            // do not 404 them. Maps may still be copied next to the dist files
+            // for local debugging; they must not be required or zipped.
+            const srcs = resourceBundles.BASE_LIBS.map((lib: { src: string }) => lib.src);
+            expect(srcs.some((src: string) => src.endsWith('.map'))).toBe(false);
+        });
+
+        it('does not mark repository-tracked source files (common.js, favicon) as required', () => {
+            const byScr = new Map(
+                resourceBundles.BASE_LIBS.map((lib: { src: string; required?: boolean }) => [lib.src, !!lib.required]),
+            );
+            expect(byScr.get('app/common/common.js')).toBe(false);
+            expect(byScr.get('favicon.ico')).toBe(false);
+        });
+
+        it('FAILS the build when a required vendor lib is missing (no silent skip)', () => {
+            // A skipped or mis-ordered `bundle:vendor` leaves the gitignored vendor
+            // files absent. The build must throw instead of shipping a libs bundle
+            // without jquery/bootstrap. Simulate the missing file by temporarily
+            // moving it aside, then always restore it.
+            const requiredLib = resourceBundles.BASE_LIBS.find((lib: { required?: boolean }) => lib.required) as {
+                src: string;
+            };
+            const fullPath = path.join(projectRoot, 'public', requiredLib.src);
+            const backupPath = `${fullPath}.spec-backup`;
+
+            expect(fs.existsSync(fullPath)).toBe(true);
+            fs.renameSync(fullPath, backupPath);
+            try {
+                expect(() => resourceBundles.buildLibsBundle({})).toThrow(/Missing required library/);
+            } finally {
+                fs.renameSync(backupPath, fullPath);
+            }
+            // Restoration check: the real file is back so later builds still work.
+            expect(fs.existsSync(fullPath)).toBe(true);
         });
     });
 });
