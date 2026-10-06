@@ -2504,3 +2504,83 @@ export async function zipContainsFile(buffer: Buffer, filename: string): Promise
     const files = await listZipContents(buffer);
     return files.some(path => path.endsWith(filename) || path.includes(`/${filename}`));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SERVED WEB SITE EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const EXPORT_CONTENT_TYPES: Record<string, string> = {
+    html: 'text/html; charset=utf-8',
+    js: 'text/javascript; charset=utf-8',
+    mjs: 'text/javascript; charset=utf-8',
+    css: 'text/css; charset=utf-8',
+    json: 'application/json',
+    svg: 'image/svg+xml',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    ico: 'image/x-icon',
+    woff: 'font/woff',
+    woff2: 'font/woff2',
+    ttf: 'font/ttf',
+    xml: 'application/xml',
+};
+
+/**
+ * Export the open project as a web site in the browser and serve the resulting files
+ * from `origin` through `page.route()`, so a test can open the export as a real
+ * TOP-LEVEL document (not the preview iframe) with `page.goto(`${origin}/index.html`)`.
+ * Reader-activated features such as Presentation mode only exist in that context.
+ *
+ * @returns the file names contained in the export
+ */
+export async function serveWebSiteExport(page: Page, origin: string): Promise<string[]> {
+    const files: Record<string, string> = await page.evaluate(async () => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        const exporters = (window as any).SharedExporters;
+        const fflate = (window as any).fflate;
+        if (!bridge?.documentManager || !exporters?.quickExport || !fflate?.unzipSync) {
+            throw new Error('Browser export dependencies are not available');
+        }
+        const exported = await exporters.quickExport(
+            'html5',
+            bridge.documentManager,
+            bridge.assetCache || null,
+            bridge.resourceFetcher || null,
+            {},
+            bridge.assetManager || null,
+        );
+        if (!exported.success || !exported.data) {
+            throw new Error(exported.error || 'html5 export failed');
+        }
+        const unzipped = fflate.unzipSync(new Uint8Array(exported.data)) as Record<string, Uint8Array>;
+        const encoded: Record<string, string> = {};
+        for (const [name, bytes] of Object.entries(unzipped)) {
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += 0x8000) {
+                binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
+            }
+            encoded[name] = btoa(binary);
+        }
+        return encoded;
+    });
+
+    await page.route(`${origin}/**`, async route => {
+        const pathname = decodeURIComponent(new URL(route.request().url()).pathname).replace(/^\//, '');
+        const body = files[pathname];
+        if (body === undefined) {
+            await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${pathname}` });
+            return;
+        }
+        const extension = pathname.split('.').pop()?.toLowerCase() ?? '';
+        await route.fulfill({
+            status: 200,
+            contentType: EXPORT_CONTENT_TYPES[extension] ?? 'application/octet-stream',
+            body: Buffer.from(body, 'base64'),
+        });
+    });
+
+    return Object.keys(files);
+}
