@@ -15,6 +15,11 @@
     /* See .rosco-GameScoreBoard */
 }
 
+/* Room between the minimum score notice and the scoreboard at the top of the game. */
+.exe-pass-score-notice + .rosco-Main {
+    margin-top: 1em;
+}
+
 .rosco-MainContainer {
     display: flex;
     justify-content: center;

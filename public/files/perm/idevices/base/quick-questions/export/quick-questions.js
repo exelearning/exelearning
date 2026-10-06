@@ -95,6 +95,7 @@ var $quickquestions = {
 
             const quext = $quickquestions.createInterfaceQuExt(i);
             dl.before(quext).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#quextGameMinimize-' + i).hide();
             $('#quextGameContainer-' + i).hide();
 

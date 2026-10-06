@@ -56,6 +56,7 @@ var $eXeDragDrop = {
             const dadP = $eXeDragDrop.createInterfaceCards(i);
 
             dl.before(dadP).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#dadPGameContainer-' + i).show();
             $('#dadPGameMinimize-' + i)
                 .css({ cursor: 'pointer' })
@@ -729,7 +730,7 @@ var $eXeDragDrop = {
             msgs = mOptions.msgs,
             score = ((mOptions.hits * 10) / mOptions.numberCards).toFixed(2);
         let message = msgs.msgEndGameM.replace('%s', score),
-            messageColor = score >= 5 ? 2 : 1,
+            messageColor = score >= $exe.passScore.resolve(mOptions) ? 2 : 1,
             clueMessage = '';
 
         $eXeDragDrop.showMessage(messageColor, message, instance, true);
