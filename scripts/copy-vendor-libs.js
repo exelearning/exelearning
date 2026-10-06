@@ -147,6 +147,16 @@ const COPIES = [
         dest: pub('files/perm/idevices/base/rubric/export/html2canvas.js'),
     },
 
+    // jsPDF (checklist, progress report and rubric "save as PDF"). One shared
+    // copy, lazy-loaded by $exe.loadJsPDF (common.js) and added to exports only
+    // when one of those iDevices is present (LIBRARY_PATTERNS 'jspdf').
+    // stripSourceMap: exports ship this file but not the map.
+    {
+        src: nm('jspdf/dist/jspdf.umd.min.js'),
+        dest: pub('libs/jspdf/jspdf.umd.min.js'),
+        stripSourceMap: true,
+    },
+
     // DOMPurify (slide iDevice — loaded lazily by edition/slide.js before the editor bundle)
     { src: nm('dompurify/dist/purify.min.js'), dest: pub('libs/dompurify/purify.min.js') },
 
