@@ -171,6 +171,33 @@ describe('Assets Routes', () => {
                 findAllAssetsForProject: async (_db: any, projectId: number) => {
                     return Array.from(mockAssets.values()).filter(a => a.project_id === projectId);
                 },
+                searchAssetsForProject: async (_db: any, projectId: number, term: string) => {
+                    const t = (term || '').trim().toLowerCase();
+                    return Array.from(mockAssets.values()).filter(a => {
+                        if (a.project_id !== projectId) return false;
+                        if (!t) return true;
+                        return (
+                            (a.filename || '').toLowerCase().includes(t) ||
+                            (a.description || '').toLowerCase().includes(t) ||
+                            (a.title || '').toLowerCase().includes(t) ||
+                            (a.author || '').toLowerCase().includes(t) ||
+                            (a.license || '').toLowerCase().includes(t)
+                        );
+                    });
+                },
+                updateAssetMetadataByClientId: async (_db: any, clientId: string, projectId: number, patch: any) => {
+                    const asset = Array.from(mockAssets.values()).find(
+                        a => a.client_id === clientId && a.project_id === projectId,
+                    );
+                    if (!asset) return false;
+                    if (patch.description !== undefined) asset.description = patch.description.trim();
+                    if (patch.title !== undefined) asset.title = patch.title.trim();
+                    if (patch.license !== undefined) asset.license = patch.license.trim();
+                    if (patch.author !== undefined) asset.author = patch.author.trim();
+                    if (patch.authorUrl !== undefined) asset.author_url = patch.authorUrl.trim();
+                    if (patch.sourceUrl !== undefined) asset.source_url = patch.sourceUrl.trim();
+                    return true;
+                },
                 findAssetByClientId: async (_db: any, clientId: string, projectId?: number) => {
                     return Array.from(mockAssets.values()).find(
                         a => a.client_id === clientId && (projectId === undefined || a.project_id === projectId),
@@ -551,6 +578,140 @@ describe('Assets Routes', () => {
             const body = await res.json();
             expect(body.data.length).toBe(1);
             expect(body.data[0].filename).toBe('mine.png');
+        });
+
+        it('should expose centralized metadata fields in the serialized asset', async () => {
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                filename: 'image.png',
+                file_size: '100',
+                client_id: 'client-1',
+                description: 'A description',
+                title: 'Title',
+                license: 'Creative Commons BY',
+                author: 'Ada',
+                author_url: 'https://ada.example',
+                source_url: 'https://src.example/image.png',
+            });
+
+            const res = await handle(new Request(`http://localhost/api/projects/1/assets`));
+            const body = await res.json();
+
+            expect(body.data[0].description).toBe('A description');
+            expect(body.data[0].title).toBe('Title');
+            expect(body.data[0].license).toBe('Creative Commons BY');
+            expect(body.data[0].author).toBe('Ada');
+            expect(body.data[0].authorUrl).toBe('https://ada.example');
+            expect(body.data[0].sourceUrl).toBe('https://src.example/image.png');
+        });
+
+        it('should default metadata to empty strings for assets without metadata', async () => {
+            mockAssets.set(1, { id: 1, project_id: 1, filename: 'legacy.png', file_size: '100' });
+
+            const res = await handle(new Request(`http://localhost/api/projects/1/assets`));
+            const body = await res.json();
+
+            expect(body.data[0].description).toBe('');
+            expect(body.data[0].authorUrl).toBe('');
+        });
+
+        it('should filter by ?search= over filename, description, title, author and license', async () => {
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                filename: 'mountain.jpg',
+                file_size: '1',
+                description: 'A tall peak',
+            });
+            mockAssets.set(2, {
+                id: 2,
+                project_id: 1,
+                filename: 'beach.png',
+                file_size: '1',
+                author: 'Grace Hopper',
+            });
+
+            const byDesc = await handle(new Request(`http://localhost/api/projects/1/assets?search=peak`));
+            const descBody = await byDesc.json();
+            expect(descBody.data.length).toBe(1);
+            expect(descBody.data[0].filename).toBe('mountain.jpg');
+
+            const byAuthor = await handle(new Request(`http://localhost/api/projects/1/assets?search=HOPPER`));
+            const authorBody = await byAuthor.json();
+            expect(authorBody.data.length).toBe(1);
+            expect(authorBody.data[0].filename).toBe('beach.png');
+        });
+    });
+
+    describe('PATCH /api/projects/:projectId/assets/by-client-id/:clientId/metadata', () => {
+        beforeEach(() => {
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                filename: 'photo.jpg',
+                file_size: '100',
+                client_id: 'meta-client',
+            });
+        });
+
+        it('updates metadata and returns the serialized asset', async () => {
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/meta-client/metadata`, {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({
+                        description: '  A sunset  ',
+                        authorUrl: 'https://ada.example',
+                        license: 'Creative Commons BY',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.data.description).toBe('A sunset');
+            expect(body.data.authorUrl).toBe('https://ada.example');
+            expect(body.data.license).toBe('Creative Commons BY');
+        });
+
+        it('allows empty values to clear a field', async () => {
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/meta-client/metadata`, {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ description: '' }),
+                }),
+            );
+
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.data.description).toBe('');
+        });
+
+        it('rejects non-string field values with 400', async () => {
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/meta-client/metadata`, {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ description: 123 }),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+        });
+
+        it('returns 404 when the asset does not exist', async () => {
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/missing/metadata`, {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ description: 'x' }),
+                }),
+            );
+
+            expect(res.status).toBe(404);
         });
     });
 
