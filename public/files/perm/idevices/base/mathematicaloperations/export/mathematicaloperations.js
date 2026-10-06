@@ -80,6 +80,7 @@ var $eXeMathOperations = {
 
             const matho = $eXeMathOperations.createInterfaceMathO(i);
             dl.before(matho).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#mthoGameMinimize-' + i).hide();
             $('#mthoGameContainer-' + i).hide();

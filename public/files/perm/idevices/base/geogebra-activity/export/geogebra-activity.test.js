@@ -141,12 +141,20 @@ describe('geogebra-activity iDevice (export)', () => {
     expect(document.querySelector('.auto-geogebra-title')).not.toBeNull();
   });
 
-  it('targets the GeoGebra iDevice body for report icons', () => {
+  // The progress report puts its icon, and the anchor it links to, in
+  // $('#' + main).closest('.' + idevice). `idevice` used to name a class only
+  // the editor gives the iDevice body, so in the preview and in an exported
+  // package the learner never saw a result.
+  it.each([
+    ['an exported package', '', ''],
+    ['the editor', '<div class="idevice_body geogebra-activityIdevice">', '</div>'],
+  ])('places the report icon around its own applet in %s', (_where, open, close) => {
     document.body.innerHTML = `
-      <div class="idevice_body geogebra-activityIdevice">
-        <div id="geogebra-1" class="idevice_node geogebra-activity">
-          <div id="auto-geogebra-VgHhQXCC0"></div>
-        </div>
+      <div id="geogebra-1" class="idevice_node geogebra-activity">
+        ${open}
+          <div class="auto-geogebra-wrapper"><div id="auto-geogebra-VgHhQXCC0"></div></div>
+          <div class="auto-geogebra-wrapper"><div id="auto-geogebra-VgHhQXCC1"></div></div>
+        ${close}
       </div>
     `;
 
@@ -156,10 +164,13 @@ describe('geogebra-activity iDevice (export)', () => {
       [],
       'evaluation-1',
     );
+    const $container = $('#' + options.main).closest('.' + options.idevice);
 
     expect(options.id).toBe('geogebra-1');
     expect(options.main).toBe('auto-geogebra-VgHhQXCC0');
-    expect(options.idevice).toBe('geogebra-activityIdevice');
+    // The wrapper of this applet, not the second one's.
+    expect($container).toHaveLength(1);
+    expect($container.children('#auto-geogebra-VgHhQXCC0')).toHaveLength(1);
   });
 
   it('does not enable report icons when the saved evaluation id is disabled', () => {
@@ -208,7 +219,7 @@ describe('geogebra-activity iDevice (export)', () => {
       capturedParams.push(parameters);
       this.inject = vi.fn();
     });
-    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn(), showPassScoreNotice: vi.fn(() => null) };
 
     document.body.innerHTML = `
       <div class="idevice_body geogebra-activityIdevice">
@@ -247,7 +258,7 @@ describe('geogebra-activity iDevice (export)', () => {
       capturedParams.push(parameters);
       this.inject = vi.fn();
     });
-    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn(), showPassScoreNotice: vi.fn(() => null) };
 
     document.body.innerHTML = `
       <div class="idevice_body geogebra-activityIdevice">
@@ -357,16 +368,24 @@ describe('geogebra-activity iDevice (export)', () => {
     global.GGBApplet = vi.fn(function () {
       this.inject = vi.fn();
     });
-    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon, showPassScoreNotice: vi.fn(() => null) };
 
+    // Each applet's icon and anchor live in the wrapper the runtime puts around
+    // it. The second applet still reports, so its icon has to survive.
     document.body.innerHTML = `
-      <div class="idevice_body geogebra-activityIdevice">
-        <div id="ac-geogebra-1"></div>
-        <div class="Games-ReportIconDiv"></div>
-        <div id="geogebra-1" class="idevice_node geogebra-activity">
-          <div
-            class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-evaluation-id-0 auto-geogebra-ideviceid-geogebra-1"
-          ></div>
+      <div id="geogebra-1" class="idevice_node geogebra-activity">
+        <div class="idevice_body geogebra-activityIdevice">
+          <div class="auto-geogebra-wrapper">
+            <div id="ac-geogebra-1"></div>
+            <div class="Games-ReportIconDiv stale"></div>
+            <div
+              class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-evaluation-id-0 auto-geogebra-ideviceid-geogebra-1"
+            ></div>
+          </div>
+          <div class="auto-geogebra-wrapper">
+            <div class="Games-ReportIconDiv other"></div>
+            <div id="auto-geogebra-OtherApplet0"></div>
+          </div>
         </div>
       </div>
     `;
@@ -382,8 +401,9 @@ describe('geogebra-activity iDevice (export)', () => {
       vi.runAllTimers();
 
       expect(updateEvaluationIcon).not.toHaveBeenCalled();
-      expect(document.querySelector('.Games-ReportIconDiv')).toBeNull();
+      expect(document.querySelector('.Games-ReportIconDiv.stale')).toBeNull();
       expect(document.getElementById('ac-geogebra-1')).toBeNull();
+      expect(document.querySelector('.Games-ReportIconDiv.other')).not.toBeNull();
     } finally {
       vi.useRealTimers();
       global.GGBApplet = previousGGBApplet;
@@ -446,6 +466,32 @@ describe('geogebra-activity iDevice (export)', () => {
       expect(options.msgs.msgSuccessfulActivity).toContain('Passed');
       expect(options.msgs.msgSuccessfulActivity).not.toContain('Not passed');
       expect(options.msgs.msgUnsuccessfulActivity).toContain('Not passed');
+    });
+
+    /**
+     * The pass score reaches this iDevice as a CSS class rather than as JSON.
+     * saveEvaluation() resolves the verdict from these two fields, so what
+     * matters is that they arrive -- and that their absence reads as "follow
+     * the project", which is how every activity saved before the option
+     * existed has to behave.
+     */
+    describe('pass score', () => {
+      it('carries a customised mark through to the options', () => {
+        const options = $geogebraactivity.getOptions('a0', 100, [], '', {
+          passScoreMode: 'custom',
+          passScoreCustom: 7.5,
+        });
+
+        expect(options.passScoreMode).toBe('custom');
+        expect(options.passScoreCustom).toBe(7.5);
+      });
+
+      it('follows the project when the markup carries no class', () => {
+        const options = $geogebraactivity.getOptions('a0', 100, [], '');
+
+        expect(options.passScoreMode).toBe('global');
+        expect(options.passScoreCustom).toBeNull();
+      });
     });
 
     // msgYouLastScore compared the value against the string 'undefined' where
@@ -520,7 +566,7 @@ describe('geogebra-activity iDevice (export)', () => {
         captured.push(parameters);
         this.inject = vi.fn();
       });
-      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn(), showPassScoreNotice: vi.fn(() => null) };
       document.body.innerHTML = `
         <div class="idevice_body geogebra-activityIdevice">
           <div id="geogebra-1" class="idevice_node geogebra-activity">
@@ -697,5 +743,95 @@ describe('geogebra-activity iDevice (export)', () => {
 
       expect(reported).toEqual([]);
     });
+  });
+});
+
+describe('geogebra-activity minimum score notice', () => {
+  let $geogebraactivity;
+  let previous;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    global.$geogebraactivity = undefined;
+    $geogebraactivity = loadExportIdevice(readFileSync(join(__dirname, 'geogebra-activity.js'), 'utf-8'));
+    const gamification = $exeDevices.iDevice.gamification;
+    previous = {
+      report: gamification.report,
+      registerActivity: gamification.scorm.registerActivity,
+      GGBApplet: global.GGBApplet,
+    };
+    gamification.report = { updateEvaluationIcon: vi.fn(), showPassScoreNotice: vi.fn(() => null) };
+    gamification.scorm.registerActivity = vi.fn();
+    global.GGBApplet = vi.fn(function () {
+      this.inject = vi.fn();
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    const gamification = $exeDevices.iDevice.gamification;
+    gamification.report = previous.report;
+    gamification.scorm.registerActivity = previous.registerActivity;
+    global.GGBApplet = previous.GGBApplet;
+    document.body.innerHTML = '';
+  });
+
+  it('reads its text from the fifth evaluation message, like the rest of its texts', () => {
+    const messages = ['Incomplete', 'Passed', 'Not passed', 'Save score', 'Nota mínima: %s'];
+    document.body.innerHTML = `
+      <div class="auto-geogebra auto-geogebra-VgHhQXCC">
+        <div class="auto-geogebra-messages-evaluation">${messages.map(message => escape(message)).join(',')}</div>
+      </div>`;
+    $geogebraactivity.activities = $('.auto-geogebra');
+    $geogebraactivity.indicator.start();
+
+    expect($geogebraactivity.getOptions('VgHhQXCC0', 100, [], '').msgs.msgPassScore).toBe('Nota mínima: %s');
+  });
+
+  it('has no text of its own for content saved with four messages', () => {
+    $geogebraactivity.messages = ['Incomplete', 'Passed', 'Not passed', 'Save score'];
+
+    // No literal: the shared runtime then uses the page's text.
+    expect($geogebraactivity.getOptions('a0', 100, [], '').msgs.msgPassScore).toBeUndefined();
+  });
+
+  function addActivity(classes) {
+    document.body.innerHTML = `
+      <div class="idevice_body geogebra-activityIdevice">
+        <div id="geogebra-1" class="idevice_node geogebra-activity">
+          <div class="auto-geogebra-instructions">Build it</div>
+          <div class="auto-geogebra-wrapper"><div class="${classes}"></div></div>
+        </div>
+      </div>`;
+    const activity = document.querySelector('.auto-geogebra');
+    $geogebraactivity.addActivity(activity, 'VgHhQXCC', activity.className.split(' '), 0);
+    return $exeDevices.iDevice.gamification.report.showPassScoreNotice;
+  }
+
+  it('asks below the instructions, before the applet wrapper, when score saving is on', () => {
+    const notice = addActivity('auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-scorm auto-geogebra-pass-score-7');
+
+    expect(notice).toHaveBeenCalledTimes(1);
+    const [game, before] = notice.mock.calls[0];
+    expect(game).toMatchObject({ isScorm: 2, passScoreMode: 'custom', passScoreCustom: 7, main: 'auto-geogebra-VgHhQXCC0' });
+    expect(before[0].className).toBe('auto-geogebra-wrapper');
+    expect(before.prev().hasClass('auto-geogebra-instructions')).toBe(true);
+  });
+
+  // getOptions() marks every applet isScorm 2; the notice must not take that
+  // for the author turning score saving on.
+  it('tells the shared runtime nothing judges the mark while saving and the report are off', () => {
+    const notice = addActivity('auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-pass-score-7');
+
+    expect(notice.mock.calls[0][0]).toMatchObject({ isScorm: 0, evaluation: false, evaluationID: '' });
+  });
+
+  it('passes the progress report on when it is on', () => {
+    const notice = addActivity(
+      'auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-ideviceid-geogebra-1 auto-geogebra-evaluation-id-report-1 auto-geogebra-pass-score-7'
+    );
+
+    expect(notice.mock.calls[0][0]).toMatchObject({ isScorm: 0, evaluation: true, evaluationID: 'report-1' });
   });
 });
