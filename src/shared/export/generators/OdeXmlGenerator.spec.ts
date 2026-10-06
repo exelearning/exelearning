@@ -123,6 +123,15 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('</odeProperties>');
         });
 
+        it('should save the every-activity pass rule so it survives a reopen', () => {
+            const xml = generateOdeXml({ title: 'T', passScoreEveryActivity: true }, []);
+
+            expect(xml).toContain(`<odeProperty>
+    <key>pp_passScoreEveryActivity</key>
+    <value>true</value>
+  </odeProperty>`);
+        });
+
         it('should include empty odeNavStructures for no pages', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [];

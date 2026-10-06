@@ -1,4 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 require('./common.js');
 
@@ -236,6 +238,26 @@ describe('common.js $exe helpers', () => {
     it('does not throw in chrome', () => {
       expect(() => global.$exe.setModalWindowContentSize()).not.toThrow();
     });
+
+    it('only fixes the dialog images inside the given context', () => {
+      const hadChrome = 'chrome' in window;
+      const previousChrome = window.chrome;
+      window.chrome = {};
+      document.body.innerHTML = `
+        <div class="exe-dialog-text"><img id="outside" width="240" height="120"></div>
+        <div id="idevice"><div class="exe-dialog-text"><img id="inside" width="240" height="120"></div></div>
+      `;
+
+      try {
+        global.$exe.setModalWindowContentSize(document.getElementById('idevice'));
+
+        expect(document.getElementById('inside').style.height).toBe('120px');
+        expect(document.getElementById('outside').style.height).toBe('');
+      } finally {
+        if (hadChrome) window.chrome = previousChrome;
+        else delete window.chrome;
+      }
+    });
   });
 
   describe('$exe.dl', () => {
@@ -272,6 +294,527 @@ describe('common.js $exe helpers', () => {
 
     it('has i18n object', () => {
       expect(global.$exe.options.atools.i18n).toEqual({});
+    });
+  });
+
+  describe('report.showPassScoreNotice', () => {
+    const report = () => global.$exeDevices.iDevice.gamification.report;
+    const game = (overrides = {}) =>
+      Object.assign(
+        { main: 'game-main', isScorm: 1, evaluation: false, evaluationID: '', msgs: { msgPassScore: 'Pass at %s' } },
+        overrides
+      );
+    const custom = (mark, overrides = {}) =>
+      game(Object.assign({ passScoreMode: 'custom', passScoreCustom: mark }, overrides));
+    const setMeta = (content) => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'exe-pass-score');
+      meta.setAttribute('content', content);
+      document.head.appendChild(meta);
+    };
+    const main = () => document.getElementById('game-main');
+    const notices = () => document.querySelectorAll('.exe-pass-score-notice');
+
+    beforeEach(() => {
+      document.body.innerHTML =
+        '<div class="activity"><div class="instructions">Read me</div><div id="game-main"></div></div>';
+    });
+
+    afterEach(() => {
+      document.head.querySelectorAll('meta[name="exe-pass-score"]').forEach((meta) => meta.remove());
+    });
+
+    it('shows a customised mark between the instructions and the main container', () => {
+      expect(report().showPassScoreNotice(custom(7))).not.toBeNull();
+
+      const notice = main().previousElementSibling;
+      expect(notice.classList.contains('exe-pass-score-notice')).toBe(true);
+      expect(notice.previousElementSibling.className).toBe('instructions');
+      expect(notice.textContent).toBe('Pass at 7');
+    });
+
+    it('is red and centred with Bootstrap', () => {
+      const notice = report().showPassScoreNotice(custom(7))[0];
+
+      expect(notice.classList.contains('text-danger')).toBe(true);
+      expect(notice.classList.contains('text-center')).toBe(true);
+    });
+
+    it('shows the project mark of an activity that follows it', () => {
+      setMeta('7');
+
+      report().showPassScoreNotice(game({ passScoreMode: 'global', passScoreCustom: 3 }));
+
+      expect(main().previousElementSibling.textContent).toBe('Pass at 7');
+    });
+
+    it('shows a mark with a decimal as it is stored', () => {
+      report().showPassScoreNotice(custom(7.5));
+
+      expect(main().previousElementSibling.textContent).toBe('Pass at 7.5');
+    });
+
+    it('shows a mark of 0', () => {
+      report().showPassScoreNotice(custom(0));
+
+      expect(main().previousElementSibling.textContent).toBe('Pass at 0');
+    });
+
+    // A learner takes 5 for granted, so saying it adds nothing.
+    it.each([
+      ['the project 5 it follows', () => game()],
+      ['its own 5 in a project at 5', () => custom(5)],
+      [
+        'its own 5 in a project at 7',
+        () => {
+          setMeta('7');
+          return custom(5);
+        },
+      ],
+    ])('shows nothing for %s', (_label, build) => {
+      expect(report().showPassScoreNotice(build())).toBeNull();
+      expect(notices()).toHaveLength(0);
+    });
+
+    it('shows nothing while neither SCORM nor the progress report judges the mark', () => {
+      expect(report().showPassScoreNotice(custom(7, { isScorm: 0 }))).toBeNull();
+      expect(notices()).toHaveLength(0);
+    });
+
+    it.each([1, 2])('shows it in SCORM mode %d', (isScorm) => {
+      expect(report().showPassScoreNotice(custom(7, { isScorm }))).not.toBeNull();
+    });
+
+    it('shows it for the progress report alone', () => {
+      report().showPassScoreNotice(custom(7, { isScorm: 0, evaluation: true, evaluationID: 'report-1' }));
+
+      expect(main().previousElementSibling.textContent).toBe('Pass at 7');
+    });
+
+    it('needs a report identifier, as saveEvaluation() does', () => {
+      expect(report().showPassScoreNotice(custom(7, { isScorm: 0, evaluation: true, evaluationID: '' }))).toBeNull();
+    });
+
+    it('falls back to the default text for an iDevice saved before it had one', () => {
+      global.$exe_i18n.passScoreNotice = 'Default %s';
+
+      report().showPassScoreNotice(custom(7, { msgs: { msgPlayStart: 'Play' } }));
+
+      expect(main().previousElementSibling.textContent).toBe('Default 7');
+    });
+
+    it('falls back to the default text when the custom one was left empty', () => {
+      global.$exe_i18n.passScoreNotice = 'Default %s';
+
+      report().showPassScoreNotice(custom(7, { msgs: { msgPassScore: '' } }));
+
+      expect(main().previousElementSibling.textContent).toBe('Default 7');
+    });
+
+    it('shows nothing when there is no text to show', () => {
+      expect(report().showPassScoreNotice(custom(7, { msgs: undefined }))).toBeNull();
+    });
+
+    it('writes the custom text as text, not markup', () => {
+      report().showPassScoreNotice(custom(7, { msgs: { msgPassScore: '<b>%s</b>' } }));
+
+      expect(main().previousElementSibling.textContent).toBe('<b>7</b>');
+      expect(document.querySelector('.exe-pass-score-notice b')).toBeNull();
+    });
+
+    it('keeps one notice when the interface is set up again', () => {
+      report().showPassScoreNotice(custom(7));
+      report().showPassScoreNotice(custom(8));
+
+      expect(notices()).toHaveLength(1);
+      expect(notices()[0].textContent).toBe('Pass at 8');
+    });
+
+    it('drops the notice once the mark is 5', () => {
+      report().showPassScoreNotice(custom(7));
+      report().showPassScoreNotice(custom(5));
+
+      expect(notices()).toHaveLength(0);
+    });
+
+    it('refreshes inherited marks, including transitions to and from 5, without changing custom marks', () => {
+      document.body.innerHTML += '<div id="custom-main"></div><div id="ungraded-main"></div>';
+      setMeta('5');
+      report().showPassScoreNotice(game());
+      report().showPassScoreNotice(custom(7, { main: 'custom-main' }));
+      report().showPassScoreNotice(game({ main: 'ungraded-main', isScorm: 0 }));
+      const customNotice = document.getElementById('custom-main').previousElementSibling;
+
+      for (const mark of [3, 9, 5, 0]) {
+        document.head.querySelector('meta[name="exe-pass-score"]').content = String(mark);
+        report().refreshPassScoreNotices();
+
+        expect(notices()).toHaveLength(mark === 5 ? 1 : 2);
+        if (mark !== 5) expect(main().previousElementSibling.textContent).toBe(`Pass at ${mark}`);
+        expect(document.getElementById('custom-main').previousElementSibling).toBe(customNotice);
+        expect(customNotice.textContent).toBe('Pass at 7');
+      }
+    });
+
+    it('refreshes an internal anchor without rebuilding or resetting the activity', () => {
+      document.body.innerHTML =
+        '<div id="game-main"><div class="instructions">Read me</div><div class="activity"><input value="answer"></div></div>';
+      setMeta('3');
+      const options = game({ scorerp: 6, gameStarted: true, gameOver: false });
+      const savedOptions = JSON.stringify(options);
+      const activity = document.querySelector('.activity');
+      const input = activity.querySelector('input');
+      input.value = 'Answer in progress';
+      input.focus();
+      report().showPassScoreNotice(options, activity);
+
+      document.head.querySelector('meta[name="exe-pass-score"]').content = '9';
+      report().refreshPassScoreNotices();
+      report().refreshPassScoreNotices();
+
+      expect(notices()).toHaveLength(1);
+      expect(activity.previousElementSibling.textContent).toBe('Pass at 9');
+      expect(activity.previousElementSibling.previousElementSibling.className).toBe('instructions');
+      expect(document.querySelector('.activity')).toBe(activity);
+      expect(document.activeElement).toBe(input);
+      expect(input.value).toBe('Answer in progress');
+      expect(JSON.stringify(options)).toBe(savedOptions);
+    });
+
+    it('ignores removed activities and replaces the saved options when an anchor is reused', () => {
+      setMeta('3');
+      report().showPassScoreNotice(game());
+      const oldMain = main();
+      oldMain.parentElement.remove();
+      document.body.innerHTML = '<div id="game-main"></div>';
+      report().refreshPassScoreNotices();
+      expect(notices()).toHaveLength(0);
+
+      report().showPassScoreNotice(game());
+      report().showPassScoreNotice(game({ msgs: { msgPassScore: 'New text: %s' } }));
+      document.head.querySelector('meta[name="exe-pass-score"]').content = '9';
+      report().refreshPassScoreNotices();
+
+      expect(notices()).toHaveLength(1);
+      expect(main().previousElementSibling.textContent).toBe('New text: 9');
+      expect(oldMain.previousElementSibling.textContent).toBe('Pass at 3');
+    });
+
+    it('leaves alone a notice that belongs to another activity', () => {
+      document.body.innerHTML =
+        '<div><p class="exe-pass-score-notice">Other</p><div class="other"></div><div id="game-main"></div></div>';
+
+      report().showPassScoreNotice(custom(7));
+
+      expect(notices()).toHaveLength(2);
+    });
+
+    it('finds a main container given by class', () => {
+      document.body.innerHTML = '<div class="game-main-class"></div>';
+
+      report().showPassScoreNotice(custom(7, { main: '.game-main-class' }));
+
+      expect(document.querySelector('.game-main-class').previousElementSibling.textContent).toBe('Pass at 7');
+    });
+
+    describe('for an iDevice whose instructions are inside its main container', () => {
+      beforeEach(() => {
+        document.body.innerHTML =
+          '<div id="game-main"><div class="instructions">Read me</div><div class="activity"></div></div>';
+      });
+
+      it('goes before the element it is given, below the instructions', () => {
+        report().showPassScoreNotice(custom(7), '#game-main > .activity');
+
+        const notice = document.querySelector('.activity').previousElementSibling;
+        expect(notice.textContent).toBe('Pass at 7');
+        expect(notice.previousElementSibling.className).toBe('instructions');
+        expect(notice.parentElement.id).toBe('game-main');
+      });
+
+      it('keeps one notice there when set up again, and drops it at 5', () => {
+        report().showPassScoreNotice(custom(7), '#game-main > .activity');
+        report().showPassScoreNotice(custom(8), '#game-main > .activity');
+        expect(notices()).toHaveLength(1);
+        expect(notices()[0].textContent).toBe('Pass at 8');
+
+        report().showPassScoreNotice(custom(5), '#game-main > .activity');
+        expect(notices()).toHaveLength(0);
+      });
+
+      it('falls back to the main container when that element is not on the page', () => {
+        report().showPassScoreNotice(custom(7), '#game-main > .missing');
+
+        expect(main().previousElementSibling.textContent).toBe('Pass at 7');
+      });
+    });
+
+    it.each([
+      ['no options', undefined],
+      ['no main container', { isScorm: 1 }],
+      ['a main container missing from the page', { main: 'not-here', isScorm: 1 }],
+    ])('does nothing with %s', (_label, options) => {
+      expect(report().showPassScoreNotice(options)).toBeNull();
+      expect(notices()).toHaveLength(0);
+    });
+  });
+
+  describe('$exe.passScore', () => {
+    const setMeta = (content) => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'exe-pass-score');
+      meta.setAttribute('content', content);
+      document.head.appendChild(meta);
+    };
+
+    const setYjsPassScore = (value) => {
+      global.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              getDocumentManager: () => ({
+                getMetadata: () => new Map([['passScore', value]]),
+              }),
+            },
+          },
+        },
+      };
+    };
+
+    afterEach(() => {
+      document.head.querySelectorAll('meta[name="exe-pass-score"]').forEach((meta) => meta.remove());
+      delete global.eXeLearning;
+    });
+
+    describe('requiresEveryActivity', () => {
+      const setEveryActivityMeta = (content) => {
+        const meta = document.createElement('meta');
+        meta.setAttribute('name', 'exe-pass-score-every-activity');
+        meta.setAttribute('content', content);
+        document.head.appendChild(meta);
+      };
+
+      afterEach(() => {
+        document.head
+          .querySelectorAll('meta[name="exe-pass-score-every-activity"]')
+          .forEach((meta) => meta.remove());
+      });
+
+      it('is required when the page says "true"', () => {
+        setEveryActivityMeta('true');
+
+        expect(global.$exe.passScore.requiresEveryActivity()).toBe(true);
+      });
+
+      it('is not required with any other value', () => {
+        setEveryActivityMeta('false');
+
+        expect(global.$exe.passScore.requiresEveryActivity()).toBe(false);
+      });
+
+      it('is not required when the page says nothing, as every page did before', () => {
+        expect(global.$exe.passScore.requiresEveryActivity()).toBe(false);
+      });
+    });
+
+    describe('normalize', () => {
+      it('keeps a value already inside the domain', () => {
+        expect(global.$exe.passScore.normalize(7.5)).toBe(7.5);
+        expect(global.$exe.passScore.normalize('7.5')).toBe(7.5);
+      });
+
+      it('keeps zero, which means "any mark passes"', () => {
+        expect(global.$exe.passScore.normalize(0)).toBe(0);
+        expect(global.$exe.passScore.normalize('0')).toBe(0);
+      });
+
+      it('clamps values outside 0-10', () => {
+        expect(global.$exe.passScore.normalize(12)).toBe(10);
+        expect(global.$exe.passScore.normalize(-3)).toBe(0);
+      });
+
+      it('rounds to a single decimal', () => {
+        expect(global.$exe.passScore.normalize(7.55)).toBe(7.6);
+        expect(global.$exe.passScore.normalize(7.44)).toBe(7.4);
+      });
+
+      it('falls back to the default rather than to zero', () => {
+        expect(global.$exe.passScore.normalize(undefined)).toBe(5);
+        expect(global.$exe.passScore.normalize(null)).toBe(5);
+        expect(global.$exe.passScore.normalize('')).toBe(5);
+        expect(global.$exe.passScore.normalize('abc')).toBe(5);
+      });
+    });
+
+    describe('get', () => {
+      it('reads the META tag exported pages carry', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.get()).toBe(7.5);
+      });
+
+      it('normalizes what the META says', () => {
+        setMeta('42');
+        expect(global.$exe.passScore.get()).toBe(10);
+      });
+
+      it('reads the live Y.Doc in the editor, where there is no META', () => {
+        setYjsPassScore(7.5);
+        expect(global.$exe.passScore.get()).toBe(7.5);
+      });
+
+      it('prefers the META over the Y.Doc, so an exported page never consults the editor', () => {
+        setMeta('3');
+        setYjsPassScore(9);
+        expect(global.$exe.passScore.get()).toBe(3);
+      });
+
+      it('falls back to the default with neither META nor editor', () => {
+        expect(global.$exe.passScore.get()).toBe(5);
+      });
+    });
+
+    describe('resolve', () => {
+      it('uses the mark the iDevice stored when its author customised it', () => {
+        setMeta('5');
+        expect(global.$exe.passScore.resolve({ passScoreMode: 'custom', passScoreCustom: 7.5 })).toBe(7.5);
+      });
+
+      it('follows the page value when the iDevice is on the global mode', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.resolve({ passScoreMode: 'global', passScoreCustom: 3 })).toBe(7.5);
+      });
+
+      it('follows the page value for an iDevice saved before this option existed', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.resolve({})).toBe(7.5);
+        expect(global.$exe.passScore.resolve()).toBe(7.5);
+      });
+
+      it('normalizes a stored mark that is out of range', () => {
+        setMeta('5');
+        expect(global.$exe.passScore.resolve({ passScoreMode: 'custom', passScoreCustom: 42 })).toBe(10);
+      });
+
+      it('keeps a customised zero rather than falling back to the page value', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.resolve({ passScoreMode: 'custom', passScoreCustom: 0 })).toBe(0);
+      });
+    });
+
+    describe('toPercent', () => {
+      it('converts a 0-10 mark to the 0-100 scale the SCORM registry uses', () => {
+        expect(global.$exe.passScore.toPercent(7.5)).toBe(75);
+        expect(global.$exe.passScore.toPercent(0)).toBe(0);
+        expect(global.$exe.passScore.toPercent(10)).toBe(100);
+      });
+
+      it('converts the current page value when called with no argument', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.toPercent()).toBe(75);
+      });
+    });
+
+    /**
+     * The threshold reached the progress report for free -- the iDevices hand
+     * their whole options object to report.saveEvaluation, which resolves it --
+     * but the message the learner reads is decided inside each export, and
+     * thirteen of them went on comparing the score against a literal. The
+     * report said "not passed" and the very same screen painted the score
+     * green.
+     *
+     * They did not even agree on the literal: 5 in most, 6 in puzzle and
+     * select-media-files, 0.5 in classify on a ratio scale. So the rule is not
+     * "no 5" but the one that actually holds -- a mark strictly between 0 and
+     * 10 is a threshold and must be resolved. The edges are exempt because they
+     * mean something else entirely: 0 is "scored at all" and 10 is "everything
+     * right", neither of which moves when the author changes the pass mark.
+     */
+    describe('no export decides a verdict against a literal mark', () => {
+      const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
+      const MARK = String.raw`(\d+(?:\.\d+)?)`;
+      // Two shapes, because a verdict is recognisable either by what it weighs
+      // or by what it produces.
+      //
+      // By what it produces: throughout these files the pass/fail answer is the
+      // pair 1 and 2, the indices showMessage turns into red and green. The
+      // left operand is deliberately not captured -- `parseInt(score) >= 5` and
+      // `(hits * 10) / total >= 5` are both verdicts and neither is a plain
+      // identifier.
+      const VERDICT_PAIR = new RegExp(String.raw`[<>]=?\s*${MARK}\s*\?\s*([12])\s*:\s*([12])\b`, 'g');
+      // By what it weighs: a score-named operand against a literal, whatever it
+      // then decides -- `sp < 5 ? red : green` paints rather than returning 1/2.
+      const SCORE_NAMED = new RegExp(
+        String.raw`(?:^|[^\w.])(?:score|scorep|scorerp|scoretotal|puntuacion|nota|sp)\s*[<>]=?\s*${MARK}`,
+        'g'
+      );
+
+      /**
+       * Bands of encouragement, not verdicts: each is one boundary of three or
+       * four that pick how warmly the activity congratulates the learner. They
+       * keep their own numbers because moving only the lowest would put the
+       * tiers out of order -- a pass mark of 8 would leave the middle band
+       * unreachable.
+       */
+      const ENCOURAGEMENT_BANDS = [
+        'puntuacion < 5', // map: msgScore4 / msgScore6 / msgScore8 / msgScore10
+        'puntuacion < 7',
+        'percentageHits < 0.5', // classify: msgQ5 / msgQ7 / msgQ9
+        'percentageHits < 0.7',
+      ];
+
+      const verdicts = (source) => {
+        const cleaned = ENCOURAGEMENT_BANDS.reduce(
+          (text, band) => text.split(band).join(''),
+          source
+        );
+        const found = [];
+        for (const pattern of [VERDICT_PAIR, SCORE_NAMED]) {
+          for (const match of cleaned.matchAll(pattern)) {
+            const mark = Number.parseFloat(match[1]);
+            // 0 is "scored at all" and 10 is "everything right"; neither moves
+            // when the author changes the pass mark. Anything between them is a
+            // threshold and has to be resolved.
+            if (mark > 0 && mark < 10) found.push(match[0].trim());
+          }
+        }
+        return found;
+      };
+
+      const exports = readdirSync(IDEVICES_DIR)
+        .map((name) => ({ name, file: join(IDEVICES_DIR, name, 'export', `${name}.js`) }))
+        .filter(({ file }) => existsSync(file))
+        .map(({ name, file }) => ({ name, source: readFileSync(file, 'utf-8') }));
+
+      it('finds the exports to scan', () => {
+        expect(exports.length).toBeGreaterThan(30);
+      });
+
+      it('recognises the shapes the offenders were written in', () => {
+        // A guard rail for the matcher: were it to stop matching, every
+        // assertion below would pass on any source at all.
+        expect(verdicts('type = scoreX < 5 ? 1 : 2;')).not.toEqual([]);
+        expect(verdicts('let c = mOptions.score >= 6 ? 2 : 1;')).not.toEqual([]);
+        expect(verdicts('type = percentageX < 0.5 ? 1 : 2;')).not.toEqual([]);
+        expect(verdicts('const t = parseInt(score) >= 5 ? 2 : 1;')).not.toEqual([]);
+        expect(verdicts('const t = (h * 10) / n >= 5 ? 2 : 1;')).not.toEqual([]);
+        expect(verdicts("let bgc = sp < 5 ? '#B61E1E' : '#007F5F';")).not.toEqual([]);
+      });
+
+      it('leaves alone what is not a pass mark', () => {
+        expect(verdicts('if (mOptions.score > 0) {')).toEqual([]);
+        expect(verdicts('if (mOptions.scorerp >= 10) {')).toEqual([]);
+        expect(verdicts('score = score > 10 ? 10 : score;')).toEqual([]);
+        // A count of topics, and the fewest a board can draw.
+        expect(verdicts('numasi = mOptions.numeroTemas < 5 ? 4 : n;')).toEqual([]);
+        // Lengths, indices and attempt counters are not marks either.
+        expect(verdicts('if (url.length >= 4) {')).toEqual([]);
+        expect(verdicts('const x = pool.length > 1 ? a : b;')).toEqual([]);
+      });
+
+      it.each(exports.map(({ name }) => name))('%s resolves the mark instead', (name) => {
+        const { source } = exports.find((entry) => entry.name === name);
+        expect(verdicts(source)).toEqual([]);
+      });
     });
   });
 
@@ -838,6 +1381,93 @@ describe('common.js $exe helpers', () => {
       expect(link.getAttribute('href')).toBe('#');
       expect(link.title).toContain('Photo');
     });
+
+    // #2510: JSON iDevices replace their markup after the page-wide call, so
+    // $exeExport.afterIdeviceRendered() calls it again for the rendered node.
+    describe('with a context', () => {
+      it('only transforms the media links inside the context', () => {
+        document.body.innerHTML = `
+          <a id="outside" rel="lightbox" href="audio/outside.mp3">Out</a>
+          <div id="idevice"><a id="inside" rel="lightbox" href="audio/inside.mp3">In</a></div>
+        `;
+
+        global.$exe.setMultimediaGalleries(document.getElementById('idevice'));
+
+        expect(document.getElementById('inside').getAttribute('href')).toBe('#media-box-0');
+        expect(document.getElementById('outside').getAttribute('href')).toBe('audio/outside.mp3');
+      });
+
+      it('does not reuse the id of a media box created by an earlier call', () => {
+        document.body.innerHTML = `
+          <a id="first" rel="lightbox" href="audio/first.mp3">First</a>
+          <div id="idevice"><a id="second" rel="lightbox" href="video/second.mp4">Second</a></div>
+        `;
+        global.$exe.setMultimediaGalleries(document.getElementById('first').parentNode);
+        const idevice = document.getElementById('idevice');
+        idevice.innerHTML = '<a id="second" rel="lightbox" href="video/second.mp4">Second</a>';
+
+        global.$exe.setMultimediaGalleries(idevice);
+
+        expect(document.getElementById('second').getAttribute('href')).toBe('#media-box-2');
+        expect(document.querySelectorAll('#media-box-2 video')).toHaveLength(1);
+        const ids = Array.from(document.querySelectorAll('.exe-media-box'), (box) => box.id);
+        expect(new Set(ids).size).toBe(ids.length);
+      });
+
+      it('applies the same href hardening to links inside the context', () => {
+        document.body.innerHTML = '<div id="idevice"></div>';
+        const idevice = document.getElementById('idevice');
+        global.$(idevice).append(
+          global.$('<a id="unsafe" rel="lightbox">Unsafe</a>').attr('href', 'javascript:alert(1)//a.mp3'),
+          global.$('<a id="quoted" rel="lightbox">Quoted</a>').attr('href', 'a.mp3" onerror="window.__pwned=1'),
+        );
+
+        global.$exe.setMultimediaGalleries(idevice);
+
+        expect(document.getElementById('unsafe').getAttribute('href')).toBe('javascript:alert(1)//a.mp3');
+        expect(document.querySelectorAll('.exe-media-box')).toHaveLength(1);
+        const audio = document.querySelector('.exe-media-audio-box audio');
+        expect(audio.getAttribute('src')).toBe('a.mp3" onerror="window.__pwned=1');
+        expect(document.querySelector('[onerror]')).toBeNull();
+      });
+
+      it('binds prettyPhoto to every lightbox link of the page', () => {
+        document.body.innerHTML = `
+          <a rel="lightbox" href="#a">A</a>
+          <div id="idevice"><a rel="lightbox" href="#b">B</a></div>
+        `;
+        let boundLinks = null;
+        global.$.fn.prettyPhoto = vi.fn(function () {
+          boundLinks = this.length;
+          return this;
+        });
+
+        global.$exe.setMultimediaGalleries(document.getElementById('idevice'));
+        vi.runAllTimers();
+
+        expect(boundLinks).toBe(2);
+      });
+
+      it('leaves the GalleryIdevice fallback to the page-wide call', () => {
+        delete global.exe_editor_mode;
+        document.body.innerHTML = `
+          <div class="GalleryIdevice">
+            <div class="exeImageGallery">
+              <ul id="gallery-1">
+                <li><a href="http://example.com/img.jpg" title="Photo">img</a></li>
+              </ul>
+            </div>
+          </div>
+        `;
+
+        global.$exe.setMultimediaGalleries(document.querySelector('.GalleryIdevice'));
+        vi.runAllTimers();
+
+        const link = document.querySelector('.exeImageGallery a');
+        expect(link.getAttribute('href')).toBe('http://example.com/img.jpg');
+        expect(link.title).toBe('Photo');
+      });
+    });
   });
 
   describe('$exe rgb2hex edge cases', () => {
@@ -910,11 +1540,16 @@ describe('common.js $exe helpers', () => {
 
   describe('$exe.isIE edge cases', () => {
     it('returns IE version for Trident', () => {
+      const originalUserAgent = navigator.userAgent;
       Object.defineProperty(navigator, 'userAgent', {
         value: 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)',
         configurable: true,
       });
-      expect(global.$exe.isIE()).toBe(10);
+      try {
+        expect(global.$exe.isIE()).toBe(10);
+      } finally {
+        Object.defineProperty(navigator, 'userAgent', { value: originalUserAgent, configurable: true });
+      }
     });
   });
 
@@ -1348,6 +1983,22 @@ describe('common.js $exeDevices', () => {
       expect(mockGame.enable).not.toHaveBeenCalled();
     });
 
+    it.each(['1.2', '2004'])('initializes score bounds using the %s data model', version => {
+      document.body.className = 'exe-scorm';
+      document.body.innerHTML = '<div class="test-IDevice"></div>';
+      const previous = global.scorm;
+      const api = { version, init: vi.fn(() => true), set: vi.fn() };
+      global.scorm = api;
+      try {
+        getInitGame()(mockGame, 'TestGame', 'testgame', 'test-IDevice');
+        const prefix = version === '2004' ? 'cmi.score' : 'cmi.core.score';
+        expect(api.set.mock.calls).toEqual([[`${prefix}.max`, '100'], [`${prefix}.min`, '0']]);
+        expect(mockGame.enable).toHaveBeenCalledOnce();
+      } finally {
+        global.scorm = previous;
+      }
+    });
+
     it('finds all activities matching the ideviceClass', () => {
       document.body.innerHTML = `
         <div class="test-IDevice">Activity 1</div>
@@ -1776,15 +2427,15 @@ describe('common.js $exeDevices', () => {
       expect(api.SetScoreMin).toHaveBeenCalledWith(0);
     });
 
-    it('bindSession writes the bounds through the data model when the setters are absent', () => {
+    it.each(['1.2', '2004'])('bindSession writes %s bounds when the setters are absent', version => {
       const scorm = getScorm();
       const set = vi.fn();
-      const api = { init: vi.fn(), set };
+      const api = { version, init: vi.fn(), set };
 
       scorm.bindSession(api);
 
-      expect(set).toHaveBeenCalledWith('cmi.core.score.max', '100');
-      expect(set).toHaveBeenCalledWith('cmi.core.score.min', '0');
+      const prefix = version === '2004' ? 'cmi.score' : 'cmi.core.score';
+      expect(set.mock.calls).toEqual([[`${prefix}.max`, '100'], [`${prefix}.min`, '0']]);
     });
 
     it('bindSession answers defaults when there is no wrapper at all', () => {
@@ -2111,8 +2762,31 @@ describe('common.js $exeDevices', () => {
         weight: 3,
         minimumScore: 0,
         maximumScore: 100,
+        // Not customised and no META in this document: the default 5, as a percentage.
+        successThreshold: 50,
         total: 5,
       });
+    });
+
+    it('reportActivity declares the mark the author customised', () => {
+      getScorm().reportActivity({ ideviceId: 'id-8', isScorm: 1, passScoreMode: 'custom', passScoreCustom: 7 });
+
+      expect(registry.register).toHaveBeenCalledWith('id-8', expect.objectContaining({ successThreshold: 70 }));
+    });
+
+    it('reportActivity declares the project mark for an activity that follows it', () => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'exe-pass-score');
+      meta.setAttribute('content', '6');
+      document.head.appendChild(meta);
+
+      try {
+        getScorm().reportActivity({ ideviceId: 'id-9', isScorm: 1, passScoreMode: 'global', passScoreCustom: 9 });
+
+        expect(registry.register).toHaveBeenCalledWith('id-9', expect.objectContaining({ successThreshold: 60 }));
+      } finally {
+        meta.remove();
+      }
     });
 
     it('reportActivity declares a presentation activity as not required', () => {
@@ -2190,6 +2864,178 @@ describe('common.js $exeDevices', () => {
             2: { score: 0, weighted: 100 },
           })
         ).toBe(0.99);
+      });
+
+      describe('getFinalThreshold', () => {
+        afterEach(() => {
+          getScorm()._successThresholdsByNumber = {};
+        });
+
+        it('is the project mark while nothing has reported', () => {
+          // No META in this document: the default 5, which is 50.
+          expect(getScorm().getFinalThreshold({})).toBe(50);
+          expect(getScorm().getFinalThreshold(null)).toBe(50);
+        });
+
+        it('weighs the marks of the entries it aggregates', () => {
+          getScorm()._successThresholdsByNumber = { 1: 70, 2: 30 };
+
+          expect(
+            getScorm().getFinalThreshold({
+              1: { score: 0, weighted: 3 },
+              2: { score: 0, weighted: 1 },
+            })
+          ).toBe(60);
+        });
+
+        it('counts an entry whose activity has not registered at the project mark', () => {
+          getScorm()._successThresholdsByNumber = { 1: 90 };
+
+          expect(getScorm().getFinalThreshold({ 1: { score: 0 }, 2: { score: 0 } })).toBe(70);
+        });
+      });
+
+      // The page's status on the legacy path, under either pass rule.
+      describe('getLegacyVerdict', () => {
+        const [PENDING, SCORED, FINISHED] = [0, 1, 2];
+        const completed = success => ({ completion: 'completed', success, scored: true });
+        const incomplete = scored => ({ completion: 'incomplete', success: 'unknown', scored });
+        let meta;
+        const requireEveryActivity = () => {
+          meta = document.createElement('meta');
+          meta.setAttribute('name', 'exe-pass-score-every-activity');
+          meta.setAttribute('content', 'true');
+          document.head.appendChild(meta);
+        };
+
+        afterEach(() => {
+          meta?.remove();
+          meta = undefined;
+          getScorm()._successThresholdsByNumber = {};
+        });
+
+        it('judges a finished page by the weighted mean, or by each mark when the author asks', () => {
+          getScorm()._successThresholdsByNumber = { 1: 50, 2: 30 };
+          const lmsData = {
+            1: { score: 0, weighted: 50, state: FINISHED },
+            2: { score: 100, weighted: 50, state: FINISHED },
+          };
+          expect(getScorm().getFinalScore(lmsData)).toBeGreaterThanOrEqual(getScorm().getFinalThreshold(lmsData));
+
+          expect(getScorm().getLegacyVerdict(lmsData)).toEqual(completed('passed'));
+          requireEveryActivity();
+          expect(getScorm().getLegacyVerdict(lmsData)).toEqual(completed('failed'));
+        });
+
+        it('passes when every activity reaches its own mark', () => {
+          requireEveryActivity();
+          getScorm()._successThresholdsByNumber = { 1: 30, 2: 80 };
+
+          expect(
+            getScorm().getLegacyVerdict({ 1: { score: 30, state: FINISHED }, 2: { score: 90, state: FINISHED } })
+          ).toEqual(completed('passed'));
+        });
+
+        it.each([false, true])('keeps the page incomplete while an activity has not finished (every activity: %s)', every => {
+          if (every) requireEveryActivity();
+          getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
+
+          // Opened and left: registerActivity() seeds each with a pending 0.
+          expect(getScorm().getLegacyVerdict({ 1: { score: 0, state: PENDING }, 2: { score: 0, state: PENDING } }))
+            .toEqual(incomplete(false));
+          // One of two answered.
+          expect(getScorm().getLegacyVerdict({ 1: { score: 100, state: FINISHED }, 2: { score: 0, state: PENDING } }))
+            .toEqual(incomplete(true));
+          // Both sent a score, but one has not finished: a score is not a hand-in.
+          expect(getScorm().getLegacyVerdict({ 1: { score: 100, state: FINISHED }, 2: { score: 90, state: SCORED } }))
+            .toEqual(incomplete(true));
+        });
+
+        it('fails a 0 the learner has just earned, and passes it at a mark of 0', () => {
+          requireEveryActivity();
+          getScorm()._successThresholdsByNumber = { 1: 50 };
+          expect(getScorm().getLegacyVerdict({ 1: { score: 0, state: FINISHED } })).toEqual(completed('failed'));
+
+          getScorm()._successThresholdsByNumber = { 1: 0 };
+          expect(getScorm().getLegacyVerdict({ 1: { score: 0, state: FINISHED } })).toEqual(completed('passed'));
+        });
+
+        it('counts a positive score stored before states as finished, and a stateless 0 as pending', () => {
+          getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
+
+          expect(getScorm().getLegacyVerdict({ 1: { score: 60 }, 2: { score: 70 } })).toEqual(completed('passed'));
+          expect(getScorm().getLegacyVerdict({ 1: { score: 60 }, 2: { score: 0 } })).toEqual(incomplete(true));
+        });
+
+        it('judges pending work whose activity has not registered yet by the project mark', () => {
+          requireEveryActivity();
+          // No exe-pass-score META in this document: the default 5, which is 50.
+          expect(getScorm().getLegacyVerdict({ 3: { score: 40, state: FINISHED } })).toEqual(completed('failed'));
+          expect(getScorm().getLegacyVerdict({ 3: { score: 50, state: FINISHED } })).toEqual(completed('passed'));
+          expect(getScorm().getLegacyVerdict({ 3: { score: 0, state: PENDING } })).toEqual(incomplete(false));
+        });
+
+        it('does not hold the page back for a stateless leftover that did not register', () => {
+          getScorm()._successThresholdsByNumber = { 1: 50 };
+          const lmsData = { 1: { score: 80, state: FINISHED }, 7: { score: 0 } };
+
+          // It still counts in the mean, like every stored entry in
+          // getFinalScore(): the verdict and the published score agree.
+          expect(getScorm().getLegacyVerdict(lmsData)).toEqual(completed('failed'));
+          requireEveryActivity();
+          expect(getScorm().getLegacyVerdict(lmsData)).toEqual(completed('passed'));
+        });
+
+        it('passes an activity at its mark that floating point left a hair below', () => {
+          requireEveryActivity();
+          getScorm()._successThresholdsByNumber = { 1: 57 };
+          const score = 0.57 * 100;
+          expect(score).toBeLessThan(57);
+
+          expect(getScorm().getLegacyVerdict({ 1: { score, state: FINISHED } })).toEqual(completed('passed'));
+        });
+
+        it('has nothing to judge while no activity is known', () => {
+          expect(getScorm().getLegacyVerdict({})).toBeNull();
+          expect(getScorm().getLegacyVerdict(null)).toBeNull();
+          expect(getScorm().getLegacyVerdict({ 7: { score: 0 } })).toBeNull();
+        });
+      });
+
+      describe('the activity state in cmi.suspend_data', () => {
+        const game = { msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+
+        it('round-trips every state and keeps the score lines readable by the old parser', () => {
+          const scorm = getScorm();
+          const data = {
+            1: { title: 'Pending', score: 0, weighted: 100, state: 0 },
+            2: { title: 'Scored', score: 40, weighted: 100, state: 1 },
+            3: { title: 'Finished', score: 0, weighted: 100, state: 2 },
+          };
+          const saved = scorm.convertToLineFormat(data, game);
+
+          expect(saved.endsWith('.\texe-state/1:1=0,2=1,3=2')).toBe(true);
+          expect(scorm.parseSuspendData(saved)).toEqual(data);
+          const oldRecords = saved.split('.\t').map(line => scorm.parseActivity(line)).filter(Boolean);
+          expect(oldRecords.map(record => record.score)).toEqual([0, 40, 0]);
+        });
+
+        it('does not invent a state for an old payload', () => {
+          const scorm = getScorm();
+          const old = '1. "Old activity"; Score: 0%; Weight: 100%';
+          const parsed = scorm.parseSuspendData(old);
+
+          expect(parsed[1].state).toBeUndefined();
+          expect(scorm.convertToLineFormat(parsed, game)).toBe(old);
+        });
+
+        it('ignores unknown, malformed and orphaned state lines', () => {
+          const scorm = getScorm();
+          const score = '1. "Old activity"; Score: 0%; Weight: 100%';
+          for (const suffix of ['exe-state/2:1=2', 'exe-state/1:1=x', 'exe-state/1:1=3', 'exe-state/1:99=2']) {
+            expect(scorm.parseSuspendData(`${score}.\t${suffix}`)).toEqual(scorm.parseSuspendData(score));
+          }
+        });
       });
     });
 
@@ -2586,10 +3432,498 @@ describe('common.js $exeDevices', () => {
       global.pipwerks = { SCORM: { get: () => '', set } };
       const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
 
-      getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1 } }, game);
+      getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1, state: 2 } }, game);
 
       expect(set).toHaveBeenCalledWith('cmi.core.score.raw', score);
       expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
+    });
+
+    /**
+     * SCORM 2004 packages and anything exported before the SCORM 1.2 runtime
+     * rewrite have no policy layer, so the project mark is applied directly to
+     * the page aggregate. There is no mastery_score to consult on this path.
+     */
+    it.each([
+      ['passes at the project mark', 70, 'passed'],
+      ['fails just below it', 69, 'failed'],
+    ])('showFinalScore on the legacy path %s', (_label, score, expected) => {
+      delete window.exeScorm12;
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'exe-pass-score');
+      meta.setAttribute('content', '7');
+      document.head.appendChild(meta);
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+      try {
+        getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1, state: 2 } }, game);
+
+        expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
+      } finally {
+        meta.remove();
+      }
+    });
+
+    /**
+     * The report from Moodle, on the path with no policy layer: an activity
+     * customised away from the project's 5 must be judged by its own mark,
+     * which registerActivity() records by page position.
+     */
+    it.each([
+      ['fails below its own mark of 7', 7, 66.7, 'failed'],
+      ['passes at its own mark of 3', 3, 33.3, 'passed'],
+    ])('showFinalScore on the legacy path %s', (_label, mark, score, expected) => {
+      delete window.exeScorm12;
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const node = document.createElement('div');
+      node.className = 'idevice_node';
+      node.id = 'node-legacy';
+      const main = document.createElement('div');
+      main.id = 'game-legacy';
+      node.appendChild(main);
+      document.body.appendChild(node);
+      const game = {
+        main: 'game-legacy',
+        isScorm: 1,
+        weighted: 100,
+        passScoreMode: 'custom',
+        passScoreCustom: mark,
+        msgs: { msgYouScore: 'Score', msgScoreScorm: 'scorm', msgSaveAuto: 'auto', msgPlaySeveralTimes: 'again', msgYouLastScore: 'last', msgActityComply: 'ok' },
+      };
+
+      try {
+        getScorm().registerActivity(game);
+        getScorm().showFinalScore({ [game.ideviceNumber]: { title: 'Q', score, weighted: 100 } }, game);
+
+        expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
+      } finally {
+        node.remove();
+        getScorm()._successThresholdsByNumber = {};
+      }
+    });
+
+    describe('on the legacy path, the page is judged once its activities are finished', () => {
+      const [PENDING, SCORED, FINISHED] = [0, 1, 2];
+      let meta;
+      const requireEveryActivity = () => {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'exe-pass-score-every-activity');
+        meta.setAttribute('content', 'true');
+        document.head.appendChild(meta);
+      };
+      /** A SCORM 2004 wrapper that keeps the suspend_data it is given. */
+      const scorm2004 = () => {
+        const lms = { 'cmi.suspend_data': '' };
+        const set = vi.fn((key, value) => {
+          lms[key] = value;
+          return true;
+        });
+        global.pipwerks = { SCORM: { version: '2004', get: key => lms[key] || '', set } };
+        return { lms, set };
+      };
+      const playable = (id, mark, isScorm = 1) => {
+        const node = document.createElement('article');
+        node.className = 'idevice_node';
+        node.id = id;
+        node.innerHTML = `<div id="${id}-game"></div>`;
+        document.body.appendChild(node);
+        return {
+          main: `${id}-game`, isScorm, weighted: 100, passScoreMode: 'custom', passScoreCustom: mark,
+          msgs: { msgYouScore: 'Score', msgScore: 'Score', msgWeight: 'Weight' },
+        };
+      };
+      const report = (game, score, completed) => {
+        game.scorerp = score;
+        const stored = global.pipwerks.SCORM.get('cmi.suspend_data');
+        getScorm().updateActivity(game, getScorm().parseSuspendData(stored), completed);
+      };
+
+      beforeEach(() => {
+        delete window.exeScorm12;
+        document.body.innerHTML = '';
+      });
+
+      afterEach(() => {
+        meta?.remove();
+        meta = undefined;
+        getScorm()._successThresholdsByNumber = {};
+      });
+
+      it.each([false, true])('reports a page opened and left as incomplete, with no score (every activity: %s)', every => {
+        if (every) requireEveryActivity();
+        const { lms, set } = scorm2004();
+
+        getScorm().registerActivity(playable('first', 8));
+        getScorm().registerActivity(playable('second', 4));
+
+        expect(lms['cmi.completion_status']).toBe('incomplete');
+        expect(lms['cmi.success_status']).toBe('unknown');
+        expect(set.mock.calls.some(([key]) => key === 'cmi.score.raw')).toBe(false);
+        expect(set.mock.calls.some(([key]) => key.startsWith('cmi.core.'))).toBe(false);
+      });
+
+      it.each([
+        [false, 'passed'],
+        [true, 'failed'],
+      ])('judges the page once both activities finish (every activity: %s)', (every, verdict) => {
+        if (every) requireEveryActivity();
+        const { lms } = scorm2004();
+        const first = playable('first', 8);
+        const second = playable('second', 4);
+        getScorm().registerActivity(first);
+        getScorm().registerActivity(second);
+
+        report(first, 7, true);
+        expect(lms['cmi.completion_status']).toBe('incomplete');
+        expect(lms['cmi.score.raw']).toBe(35);
+
+        // 85 against a mean mark of 60 passes; 7 against its own 8 does not.
+        report(second, 10, true);
+        expect(lms['cmi.completion_status']).toBe('completed');
+        expect(lms['cmi.success_status']).toBe(verdict);
+        expect(lms['cmi.score.raw']).toBe(85);
+      });
+
+      it('keeps an activity that sent a score without finishing pending, and reopens on a replay', () => {
+        const { lms } = scorm2004();
+        const game = playable('only', 5);
+        getScorm().registerActivity(game);
+
+        // A manual send in the middle of the game: a score is not a hand-in.
+        report(game, 9, false);
+        expect(getScorm().parseSuspendData(lms['cmi.suspend_data'])[1].state).toBe(SCORED);
+        expect(lms['cmi.completion_status']).toBe('incomplete');
+
+        report(game, 9, true);
+        expect(lms['cmi.completion_status']).toBe('completed');
+        expect(lms['cmi.success_status']).toBe('passed');
+
+        // The latest report decides, as in the registry.
+        report(game, 2, false);
+        expect(lms['cmi.completion_status']).toBe('incomplete');
+        expect(lms['cmi.success_status']).toBe('unknown');
+      });
+
+      it('registers a zero as pending and keeps a submitted zero after a resume', () => {
+        requireEveryActivity();
+        const { lms } = scorm2004();
+        const game = playable('zero', 0);
+
+        getScorm().registerActivity(game);
+        expect(getScorm().parseSuspendData(lms['cmi.suspend_data'])[1]).toMatchObject({ score: 0, state: PENDING });
+
+        report(game, 0, true);
+        getScorm().registerActivity(game);
+        expect(getScorm().parseSuspendData(lms['cmi.suspend_data'])[1]).toMatchObject({ score: 0, state: FINISHED });
+        expect(lms['cmi.completion_status']).toBe('completed');
+        expect(lms['cmi.success_status']).toBe('passed');
+      });
+
+      it('does not track an activity that sends no score', () => {
+        const { lms, set } = scorm2004();
+
+        getScorm().registerActivity(playable('presentation', 5, 0));
+
+        expect(getScorm()._successThresholdsByNumber).toEqual({});
+        expect(lms['cmi.suspend_data']).toBe('');
+        expect(set.mock.calls.some(([key]) => key.startsWith('cmi.completion') || key.startsWith('cmi.success'))).toBe(
+          false
+        );
+      });
+
+      it('showFinalScore fails the page when one activity falls short, though the mean passes', () => {
+        requireEveryActivity();
+        const set = vi.fn(() => true);
+        global.pipwerks = { SCORM: { get: () => '', set } };
+        getScorm()._successThresholdsByNumber = { 1: 50, 2: 30 };
+        const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+        getScorm().showFinalScore(
+          {
+            1: { title: 'A', score: 0, weighted: 50, state: FINISHED },
+            2: { title: 'B', score: 100, weighted: 50, state: FINISHED },
+          },
+          game
+        );
+
+        // 50 against a mean mark of 40 would pass.
+        expect(set).toHaveBeenCalledWith('cmi.core.score.raw', 50);
+        expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+      });
+
+      it('updateActivity stores the activity that finished, and SCORM 1.2 reads pending as incomplete', () => {
+        const set = vi.fn(() => true);
+        global.pipwerks = { SCORM: { get: () => '', set } };
+        getScorm()._successThresholdsByNumber = { 1: 50, 2: 50 };
+        const game = { ideviceNumber: 2, title: 'B', scorerp: 6, weighted: 100, msgs: { msgYouScore: 'Score' } };
+
+        getScorm().updateActivity(game, { 1: { title: 'A', score: 0, weighted: 100, state: PENDING } }, true);
+
+        const saved = set.mock.calls.find(([key]) => key === 'cmi.suspend_data')[1];
+        expect(getScorm().parseSuspendData(saved)[2].state).toBe(FINISHED);
+        // The first activity still has only the 0 registerActivity seeded.
+        expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+      });
+
+      it.each([
+        [{ score: 100, state: FINISHED }, 'completed', 'passed', true],
+        [{ score: 0, state: FINISHED }, 'completed', 'failed', true],
+        [{ score: 40, state: SCORED }, 'incomplete', 'unknown', true],
+        [{ score: 0, state: PENDING }, 'incomplete', 'unknown', false],
+      ])('publishes the SCORM 2004 verdict %s through its own data model', (record, completion, success, scored) => {
+        const set = vi.fn(() => true);
+        global.pipwerks = { SCORM: { version: '2004', get: () => '', set } };
+        getScorm()._successThresholdsByNumber = { 1: 50 };
+        getScorm().showFinalScore({ 1: record }, { msgs: { msgYouScore: 'Score' } });
+        expect(set.mock.calls.some(([key]) => key === 'cmi.score.raw')).toBe(scored);
+        if (scored) expect(set).toHaveBeenCalledWith('cmi.score.raw', record.score);
+        expect(set).toHaveBeenCalledWith('cmi.completion_status', completion);
+        expect(set).toHaveBeenCalledWith('cmi.success_status', success);
+        expect(set.mock.calls.some(([key]) => key.startsWith('cmi.core.'))).toBe(false);
+      });
+
+      it('reads the SCORM 2004 score and success state for the score display', () => {
+        const get = vi.fn(key => ({ 'cmi.score.raw': '75', 'cmi.success_status': 'passed' })[key] || '');
+        global.pipwerks = { SCORM: { version: '2004', get } };
+        expect(getScorm().getTotalScore()).toBe(75);
+        expect(getScorm().readLessonStatus()).toBe('passed');
+        getScorm().createScoreScormHtml({ main: 'unused', msgs: { msgYouScore: 'Score' } });
+        expect(get.mock.calls.some(([key]) => key.startsWith('cmi.core.'))).toBe(false);
+      });
+    });
+
+    describe('the page minimum score, beside the score', () => {
+      const FINISHED = 2;
+      const game = { main: 'unused', msgs: { msgYouScore: 'Score' } };
+      // Two activities stored by registerActivity(), at marks of 8 and 4.
+      const twoActivities = '1. "A"; Score: 0%; Weight: 100%.\t2. "B"; Score: 0%; Weight: 100%';
+      let metas = [];
+      let previousI18n;
+      const addMeta = (name, content) => {
+        const meta = document.createElement('meta');
+        meta.setAttribute('name', name);
+        meta.setAttribute('content', content);
+        document.head.appendChild(meta);
+        metas.push(meta);
+      };
+      const scorm2004 = (values = {}) => {
+        const lms = Object.assign({ 'cmi.suspend_data': '' }, values);
+        global.pipwerks = {
+          SCORM: { version: '2004', get: key => (key in lms ? lms[key] : ''), set: vi.fn(() => true) },
+        };
+      };
+      const label = () => document.getElementById('eXeScoreNodePassScore');
+      const shown = () => (label().classList.contains('d-none') ? null : label().textContent);
+
+      beforeEach(() => {
+        delete window.exeScorm12;
+        previousI18n = global.$exe_i18n;
+        global.$exe_i18n = Object.assign({}, previousI18n, {
+          pagePassScore: 'Minimum score to pass: %s',
+          pagePassEveryActivity: 'Each activity must reach its minimum score',
+        });
+        document.body.innerHTML = '<div class="page-content"></div>';
+      });
+
+      afterEach(() => {
+        metas.forEach(meta => meta.remove());
+        metas = [];
+        global.$exe_i18n = previousI18n;
+        delete window.exeScorm12;
+        getScorm()._successThresholdsByNumber = {};
+        document.body.innerHTML = '';
+      });
+
+      it('draws it before the score, on the same 0-100 scale', () => {
+        scorm2004({ 'cmi.suspend_data': twoActivities });
+        getScorm()._successThresholdsByNumber = { 1: 80, 2: 40 };
+
+        getScorm().createScoreScormHtml(game);
+
+        expect(shown()).toBe('Minimum score to pass: 60/100');
+        expect(label().nextElementSibling.id).toBe('eXeScoreNodeScore');
+      });
+
+      it('says each activity must reach its own when the author requires it', () => {
+        addMeta('exe-pass-score-every-activity', 'true');
+        scorm2004({ 'cmi.suspend_data': twoActivities });
+        getScorm()._successThresholdsByNumber = { 1: 80, 2: 40 };
+
+        getScorm().createScoreScormHtml(game);
+
+        expect(shown()).toBe('Each activity must reach its minimum score');
+      });
+
+      it('adds it to a score node drawn without one', () => {
+        scorm2004();
+        document.body.innerHTML =
+          '<div class="page-content"><div id="exeScoreNode"><div id="eXeScoreNodeScore"></div></div></div>';
+
+        getScorm().createScoreScormHtml(game);
+
+        // No activity stored yet: the project mark, 5 by default.
+        expect(shown()).toBe('Minimum score to pass: 50/100');
+        expect(label().nextElementSibling.id).toBe('eXeScoreNodeScore');
+      });
+
+      it('follows each report', () => {
+        scorm2004();
+        getScorm().createScoreScormHtml(game);
+        getScorm()._successThresholdsByNumber = { 1: 70 };
+
+        getScorm().showFinalScore({ 1: { title: 'A', score: 90, weighted: 100, state: FINISHED } }, game);
+
+        expect(shown()).toBe('Minimum score to pass: 70/100');
+      });
+
+      it('shows the SCORM 1.2 policy rule, which decides the page', () => {
+        scorm2004();
+        getScorm().createScoreScormHtml(game);
+        const policy = { setScoreDetailed: vi.fn(), getPassRule: () => ({ everyActivity: false, threshold: 45.5 }) };
+        window.exeScorm12 = { policy };
+
+        getScorm().showPagePassScore();
+        expect(shown()).toBe('Minimum score to pass: 45.5/100');
+
+        policy.getPassRule = () => ({ everyActivity: true, threshold: 45.5 });
+        getScorm().showPagePassScore();
+        expect(shown()).toBe('Each activity must reach its minimum score');
+
+        // A host runtime from before getPassRule().
+        delete policy.getPassRule;
+        policy.getSuccessThreshold = () => 40;
+        getScorm().showPagePassScore();
+        expect(shown()).toBe('Minimum score to pass: 40/100');
+
+        delete policy.getSuccessThreshold;
+        getScorm().showPagePassScore();
+        expect(shown()).toBeNull();
+      });
+
+      it('hides it when nothing decides a pass, or the page has no text for it', () => {
+        scorm2004();
+        getScorm().createScoreScormHtml(game);
+        window.exeScorm12 = {
+          policy: { setScoreDetailed: vi.fn(), getPassRule: () => ({ everyActivity: false, threshold: null }) },
+        };
+        getScorm().showPagePassScore();
+        expect(shown()).toBeNull();
+
+        delete window.exeScorm12;
+        global.$exe_i18n = Object.assign({}, previousI18n, { pagePassScore: undefined });
+        getScorm().showPagePassScore();
+        expect(shown()).toBeNull();
+
+        delete global.pipwerks;
+        expect(getScorm().getPagePassRule()).toBeNull();
+      });
+
+      describe('a pass mark set by a SCORM 2004 LMS', () => {
+        it.each([
+          ['0.7', 70],
+          ['1', 100],
+          ['-0.2', 0],
+          ['0.555', 55.5],
+          // Every decimal the data model allows (real(10,7)) is kept: rounding
+          // it would let a lower score pass.
+          ['0.45004', 45.004],
+          ['0.4500001', 45.00001],
+          // Without floating-point noise: 0.56 * 100 is 56.00000000000001.
+          ['0.56', 56],
+          ['', null],
+          ['abc', null],
+          ['1.5', null],
+        ])('reads cmi.scaled_passing_score %j as %s', (value, expected) => {
+          scorm2004({ 'cmi.scaled_passing_score': value });
+          expect(getScorm().getLmsPassingScore()).toBe(expected);
+        });
+
+        it('is not read from SCORM 1.2, or when the wrapper fails', () => {
+          global.pipwerks = { SCORM: { version: '1.2', get: () => '0.7' } };
+          expect(getScorm().getLmsPassingScore()).toBeNull();
+
+          global.pipwerks = {
+            SCORM: {
+              version: '2004',
+              get: () => {
+                throw new Error('not initialised');
+              },
+            },
+          };
+          expect(getScorm().getLmsPassingScore()).toBeNull();
+        });
+
+        it.each([
+          ['0.7', 'passed', 70],
+          ['0.9', 'failed', 90],
+        ])('at %s, judges the page score under either rule and shows on the label', (passing, verdict, mark) => {
+          addMeta('exe-pass-score-every-activity', 'true');
+          scorm2004({ 'cmi.scaled_passing_score': passing });
+          getScorm()._successThresholdsByNumber = { 1: 80, 2: 40 };
+          // 70 is below its own 80, so every activity would fail the page;
+          // the mean of the marks, 60, would pass the score of 85.
+          const lmsData = {
+            1: { score: 70, weighted: 100, state: FINISHED },
+            2: { score: 100, weighted: 100, state: FINISHED },
+          };
+
+          expect(getScorm().getLegacyVerdict(lmsData)).toMatchObject({ completion: 'completed', success: verdict });
+
+          getScorm().createScoreScormHtml(game);
+          expect(shown()).toBe(`Minimum score to pass: ${mark}/100`);
+        });
+
+        it.each([false, true])('does not pass a score just below a fractional mark (every activity: %s)', every => {
+          if (every) addMeta('exe-pass-score-every-activity', 'true');
+          scorm2004({ 'cmi.scaled_passing_score': '0.45004' });
+          getScorm()._successThresholdsByNumber = { 1: 50 };
+
+          expect(getScorm().getLegacyVerdict({ 1: { score: 45, state: FINISHED } })).toMatchObject({
+            success: 'failed',
+          });
+          expect(getScorm().getLegacyVerdict({ 1: { score: 45.01, state: FINISHED } })).toMatchObject({
+            success: 'passed',
+          });
+          expect(getScorm().getLegacyVerdict({ 1: { score: 56, state: FINISHED } })).toMatchObject({
+            success: 'passed',
+          });
+        });
+      });
+
+      // Scores are kept to two decimals, so the lowest one that passes is the
+      // threshold rounded up: rounded down, the label would show a score that
+      // fails as enough.
+      it.each([
+        [45.004, '45.01'],
+        [45.00001, '45.01'],
+        [45.000001, '45.01'],
+        [45.00000000000001, '45.01'],
+        // This is an actual policy threshold above 56, not noise introduced
+        // while formatting it: the policy rejects a score of exactly 56.
+        [56.00000000000001, '56.01'],
+        [56, '56'],
+        [28.999999999999996, '29'],
+        // Scaling an exact hundredth can itself introduce floating-point noise.
+        [0.29, '0.29'],
+        [0.07, '0.07'],
+        [56.67, '56.67'],
+        [Number.MIN_VALUE, '0.01'],
+        [0, '0'],
+        [100, '100'],
+      ])('never shows less than the threshold %s (shows %s)', (threshold, text) => {
+        scorm2004();
+        getScorm().createScoreScormHtml(game);
+        window.exeScorm12 = {
+          policy: { setScoreDetailed: vi.fn(), getPassRule: () => ({ everyActivity: false, threshold }) },
+        };
+
+        getScorm().showPagePassScore();
+
+        expect(shown()).toBe(`Minimum score to pass: ${text}/100`);
+        expect(Number(text)).toBeGreaterThanOrEqual(threshold);
+      });
     });
 
     it('showFinalScore publishes no score for a page the learner never answered', () => {
@@ -2647,7 +3981,7 @@ describe('common.js $exeDevices', () => {
       global.pipwerks = { SCORM: { get: () => '', set } };
       const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
 
-      expect(() => getScorm().showFinalScore({ 1: { title: 'Q', score: 90, weighted: 1 } }, game)).not.toThrow();
+      expect(() => getScorm().showFinalScore({ 1: { title: 'Q', score: 90, weighted: 1, state: 2 } }, game)).not.toThrow();
 
       expect(set).toHaveBeenCalledWith('cmi.core.score.raw', 90);
       expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
@@ -3207,8 +4541,8 @@ describe('common.js $exeDevices', () => {
 
       getScorm().updateActivity(game(), lmsData, true);
 
-      expect(lmsData[1]).toEqual({ title: 'Quiz', score: 90, weighted: 1 });
-      expect(api.data['cmi.suspend_data']).toBe('1. "Quiz"; Score: 90%; Weight: 1%');
+      expect(lmsData[1]).toEqual({ title: 'Quiz', score: 90, weighted: 1, state: 2 });
+      expect(api.data['cmi.suspend_data']).toBe('1. "Quiz"; Score: 90%; Weight: 1%.\texe-state/1:1=2');
       expect(api.data['cmi.core.score.raw']).toBe('90');
       expect(api.data['cmi.core.lesson_status']).toBe('passed');
       // The legacy path needs the same commit as the runtime one, and for the
@@ -3217,7 +4551,7 @@ describe('common.js $exeDevices', () => {
     });
 
     it('showFinalScore parses the legacy cmi.suspend_data when given no lmsData and there is no registry', () => {
-      api.data['cmi.suspend_data'] = '1. "Quiz"; Score: 40%; Weight: 1%';
+      api.data['cmi.suspend_data'] = '1. "Quiz"; Score: 40%; Weight: 1%.\texe-state/1:1=2';
       delete window.exeScorm12;
       window.pipwerks = loadLegacyWrapper();
       expect(window.pipwerks.SCORM.init()).toBe(true);
@@ -3770,6 +5104,107 @@ describe('common.js $exeDevices', () => {
       });
     });
 
+    /**
+     * The pass mark used to be a hard-coded 5. It is now the project's, or the
+     * iDevice's own when its author customised it, and the same comparison
+     * drives the message the learner reads.
+     */
+    describe('saveEvaluation against the pass score', () => {
+      const instance = 'rep-2';
+
+      function givenActivity(scorerp, passScoreFields = {}) {
+        document.body.innerHTML = `
+          <article>
+            <header><h1 class="box-title">Game</h1></header>
+            <div id="${instance}" class="idevice_node">
+              <div id="main-${instance}"></div>
+            </div>
+          </article>`;
+        localStorage.removeItem('dataEvaluation-eval-2');
+        return {
+          main: `main-${instance}`,
+          evaluation: true,
+          evaluationID: 'eval-2',
+          scorerp,
+          idevicePath: 'p/',
+          idevice: 'idevice_node',
+          msgs: {
+            msgTypeGame: 'Game',
+            msgUncompletedActivity: 'x',
+            msgSuccessfulActivity: 'Passed: %s',
+            msgUnsuccessfulActivity: 'Not passed: %s',
+          },
+          ...passScoreFields,
+        };
+      }
+
+      function setPageMark(mark) {
+        const meta = document.createElement('meta');
+        meta.setAttribute('name', 'exe-pass-score');
+        meta.setAttribute('content', mark);
+        meta.setAttribute('data-test-meta', '');
+        document.head.appendChild(meta);
+      }
+
+      function storedState() {
+        return JSON.parse(localStorage.getItem('dataEvaluation-eval-2')).activities[0].state;
+      }
+
+      const PASSED = 2;
+      const NOT_PASSED = 1;
+
+      it('keeps the historical 5 for a page that publishes nothing', () => {
+        getReport().saveEvaluation(givenActivity(5));
+        expect(storedState()).toBe(PASSED);
+
+        getReport().saveEvaluation(givenActivity(4.9));
+        expect(storedState()).toBe(NOT_PASSED);
+      });
+
+      it('follows the project mark for an iDevice on the global mode', () => {
+        setPageMark('7.5');
+
+        getReport().saveEvaluation(givenActivity(7.5, { passScoreMode: 'global' }));
+        expect(storedState()).toBe(PASSED);
+
+        getReport().saveEvaluation(givenActivity(7, { passScoreMode: 'global' }));
+        expect(storedState()).toBe(NOT_PASSED);
+      });
+
+      it('follows the iDevice mark when its author customised it', () => {
+        // The project demands 7.5, this activity only 3.
+        setPageMark('7.5');
+
+        getReport().saveEvaluation(
+          givenActivity(4, { passScoreMode: 'custom', passScoreCustom: 3 })
+        );
+
+        expect(storedState()).toBe(PASSED);
+      });
+
+      it('passes everyone when the mark is zero', () => {
+        setPageMark('0');
+
+        getReport().saveEvaluation(givenActivity(0, { passScoreMode: 'global' }));
+
+        expect(storedState()).toBe(PASSED);
+      });
+
+      it('tells the learner the same verdict it stored', () => {
+        setPageMark('7.5');
+
+        getReport().saveEvaluation(givenActivity(4, { passScoreMode: 'global' }));
+
+        expect(document.querySelector('.Games-ReportIconDiv').textContent).toContain('Not passed');
+      });
+
+      afterEach(() => {
+        localStorage.removeItem('dataEvaluation-eval-2');
+        document.head.querySelectorAll('meta[data-test-meta]').forEach((meta) => meta.remove());
+        document.body.innerHTML = '';
+      });
+    });
+
     it('scrollToHash does nothing when in eXe', () => {
       const report = getReport();
       global.eXeLearning = {};
@@ -3844,10 +5279,54 @@ describe('common.js $exeDevices', () => {
       const timeParts = parts[1].split(':');
       expect(timeParts.length).toBe(3);
     });
+
+    // showEvaluationIcon builds its image from the iDevice's own export folder:
+    // exequextsq.svg until there is a mark, then exequextrerrors.svg or
+    // exequexthits.svg. interactive-video shipped only the first, so once the
+    // learner had a score the icon was a broken image.
+    describe('every iDevice that reports ships the icons showEvaluationIcon asks for', () => {
+      const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
+      const ICONS = ['exequextsq.svg', 'exequextrerrors.svg', 'exequexthits.svg'];
+      const reporters = readdirSync(IDEVICES_DIR)
+        .map((name) => ({ name, dir: join(IDEVICES_DIR, name, 'export') }))
+        .filter(({ name, dir }) => existsSync(join(dir, `${name}.js`)))
+        .filter(({ name, dir }) =>
+          /gamification\.report\.(saveEvaluation|updateEvaluationIcon|showEvaluationIcon)\(/.test(
+            readFileSync(join(dir, `${name}.js`), 'utf-8')
+          )
+        );
+
+      it('finds the iDevices that report', () => {
+        // A guard rail for the scan: a rename that matched nothing would leave
+        // every assertion below vacuously green.
+        expect(reporters.length).toBeGreaterThan(30);
+      });
+
+      it.each(reporters.map(({ name }) => name))('%s', (name) => {
+        const { dir } = reporters.find((reporter) => reporter.name === name);
+        expect(ICONS.filter((icon) => !existsSync(join(dir, icon)))).toEqual([]);
+      });
+    });
   });
 
   describe('gamification.math', () => {
     const getMath = () => global.$exeDevices.iDevice.gamification.math;
+    let originalMathJax;
+
+    beforeEach(() => {
+      originalMathJax = global.MathJax;
+      // These tests exercise the caller, not loading the real MathJax engine.
+      // Otherwise happy-dom's synthetic script load starts a readiness poll
+      // that survives the test environment and throws after window is removed.
+      global.MathJax = { typesetPromise: vi.fn().mockResolvedValue(undefined) };
+    });
+
+    afterEach(async () => {
+      await Promise.resolve();
+      global.MathJax = originalMathJax;
+      getMath()._loading = false;
+      getMath()._callbacks = [];
+    });
 
     it('hasLatex detects LaTeX syntax', () => {
       const math = getMath();
@@ -3931,10 +5410,18 @@ describe('common.js $exeDevices', () => {
       expect(() => math.updateLatex(element)).not.toThrow();
     });
 
-    it('updateLatex handles deferred option', () => {
+    it('updateLatex handles deferred option', async () => {
       const math = getMath();
       document.body.innerHTML = '<div class="math-content">\\(x^2\\)</div>';
-      expect(() => math.updateLatex('.math-content', { defer: true })).not.toThrow();
+      vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+      try {
+        math.updateLatex('.math-content', { defer: true });
+        expect(global.MathJax.typesetPromise).not.toHaveBeenCalled();
+        await vi.runAllTimersAsync();
+        expect(global.MathJax.typesetPromise).toHaveBeenCalledWith([document.querySelector('.math-content')]);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('engineConfig has expected structure', () => {

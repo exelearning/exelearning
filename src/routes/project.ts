@@ -46,7 +46,10 @@ import {
     type IdeviceContent,
 } from '../services/link-validator';
 import type { LookupFn } from '../utils/ssrf-guard';
-import { getSettingString } from '../services/app-settings';
+import {
+    getSettingString,
+    isPublicViewFeatureEnabled as isPublicViewFeatureEnabledDefault,
+} from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 import { getPreferenceValue } from '../db/queries/preferences';
 
@@ -192,6 +195,10 @@ export interface QueriesDeps {
     findProjectsAsCollaborator: typeof queriesDefault.findProjectsAsCollaborator;
     updateProjectVisibility: typeof queriesDefault.updateProjectVisibility;
     updateProjectVisibilityByUuid: typeof queriesDefault.updateProjectVisibilityByUuid;
+    setPublicViewEnabled: typeof queriesDefault.setPublicViewEnabled;
+    setPublicViewEnabledByUuid: typeof queriesDefault.setPublicViewEnabledByUuid;
+    regeneratePublicViewId: typeof queriesDefault.regeneratePublicViewId;
+    regeneratePublicViewIdByUuid: typeof queriesDefault.regeneratePublicViewIdByUuid;
     getProjectCollaborators: typeof queriesDefault.getProjectCollaborators;
     addCollaborator: typeof queriesDefault.addCollaborator;
     removeCollaborator: typeof queriesDefault.removeCollaborator;
@@ -227,6 +234,13 @@ export interface AccessNotifierDeps {
 }
 
 /**
+ * Installation-wide settings read by the project routes
+ */
+export interface ProjectSettingsDeps {
+    isPublicViewFeatureEnabled: typeof isPublicViewFeatureEnabledDefault;
+}
+
+/**
  * Link-validation overrides forwarded to the SSRF-hardened validateLink().
  *
  * Production leaves these undefined (real DNS + fetch). Tests inject a hermetic
@@ -253,6 +267,7 @@ export interface ProjectDependencies {
     utils?: UtilsDeps;
     accessNotifier?: AccessNotifierDeps;
     linkValidation?: LinkValidationDeps;
+    settings?: ProjectSettingsDeps;
 }
 
 // Default dependencies
@@ -285,6 +300,10 @@ const defaultQueries: QueriesDeps = {
     findProjectsAsCollaborator: queriesDefault.findProjectsAsCollaborator,
     updateProjectVisibility: queriesDefault.updateProjectVisibility,
     updateProjectVisibilityByUuid: queriesDefault.updateProjectVisibilityByUuid,
+    setPublicViewEnabled: queriesDefault.setPublicViewEnabled,
+    setPublicViewEnabledByUuid: queriesDefault.setPublicViewEnabledByUuid,
+    regeneratePublicViewId: queriesDefault.regeneratePublicViewId,
+    regeneratePublicViewIdByUuid: queriesDefault.regeneratePublicViewIdByUuid,
     getProjectCollaborators: queriesDefault.getProjectCollaborators,
     addCollaborator: queriesDefault.addCollaborator,
     removeCollaborator: queriesDefault.removeCollaborator,
@@ -313,6 +332,10 @@ const defaultAccessNotifier: AccessNotifierDeps = {
     notifyCollaboratorRemoved: notifyCollaboratorRemovedDefault,
 };
 
+const defaultSettings: ProjectSettingsDeps = {
+    isPublicViewFeatureEnabled: isPublicViewFeatureEnabledDefault,
+};
+
 const defaultDependencies: ProjectDependencies = {
     db: dbDefault,
     fs: fsDefault,
@@ -322,7 +345,10 @@ const defaultDependencies: ProjectDependencies = {
     queries: defaultQueries,
     utils: defaultUtils,
     accessNotifier: defaultAccessNotifier,
+    settings: defaultSettings,
 };
+
+const PUBLIC_VIEW_DISABLED_DETAIL = 'Public read-only links are disabled on this site';
 
 // Get default project visibility from environment
 async function getDefaultProjectVisibility(db: Kysely<Database>): Promise<'public' | 'private'> {
@@ -336,13 +362,16 @@ async function getDefaultProjectVisibility(db: Kysely<Database>): Promise<'publi
 
 /**
  * Serialize project sharing information for API response
- * Includes owner with role='owner' and collaborators with role='editor'
+ * Includes owner with role='owner' and collaborators with role='editor'.
+ * When the public viewer is disabled for the installation, the public link
+ * is reported as unavailable and its id is withheld.
  */
 function serializeProjectSharing(
     project: Project,
     owner: User | null | undefined,
     collaborators: User[],
     currentUserId: number | undefined,
+    publicViewAvailable: boolean,
     createGravatarUrl: (
         email: string | null | undefined,
         initials?: string | null,
@@ -380,6 +409,9 @@ function serializeProjectSharing(
         uuid: project.uuid,
         title: project.title,
         visibility: project.visibility || 'private',
+        publicViewAvailable,
+        publicViewId: publicViewAvailable ? (project.public_view_id ?? null) : null,
+        publicViewEnabled: publicViewAvailable && Boolean(project.public_view_enabled),
         owner: owner ? { id: owner.id, email: owner.email } : null,
         collaborators: collabsList,
         isOwner: currentUserId ? project.owner_id === currentUserId : false,
@@ -787,6 +819,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
     // Optional link-validation overrides (hermetic DNS/fetch for tests; empty in production)
     const linkValidation = deps.linkValidation ?? {};
 
+    // Installation-wide settings
+    const { isPublicViewFeatureEnabled } = deps.settings ?? defaultSettings;
+
     // Query functions
     const {
         findProjectById,
@@ -796,6 +831,10 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
         findProjectsAsCollaborator,
         updateProjectVisibility,
         updateProjectVisibilityByUuid,
+        setPublicViewEnabled,
+        setPublicViewEnabledByUuid,
+        regeneratePublicViewId,
+        regeneratePublicViewIdByUuid,
         getProjectCollaborators,
         addCollaborator,
         removeCollaborator,
@@ -970,7 +1009,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 return {
                     responseMessage: 'OK',
-                    project: serializeProjectSharing(project, owner, collabs, currentUser?.id),
+                    project: serializeProjectSharing(
+                        project,
+                        owner,
+                        collabs,
+                        currentUser?.id,
+                        await isPublicViewFeatureEnabled(db),
+                    ),
                 };
             })
 
@@ -1016,7 +1061,91 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     notifyVisibilityChanged(project.uuid, project.owner_id, collaboratorIds);
                 }
 
-                return { responseMessage: 'OK' };
+                return { responseMessage: 'OK', visibility };
+            })
+
+            // PATCH /api/projects/:projectId/public-view - Enable/disable the public read-only link
+            .patch('/api/projects/:projectId/public-view', async ({ params, body, set, currentUser }) => {
+                const projectId = parseInt(params.projectId, 10);
+                const { enabled } = body as { enabled?: boolean };
+
+                if (isNaN(projectId)) {
+                    set.status = 400;
+                    return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
+                }
+
+                if (typeof enabled !== 'boolean') {
+                    set.status = 400;
+                    return { responseMessage: 'INVALID_PAYLOAD', detail: 'enabled must be a boolean' };
+                }
+
+                const project = await findProjectById(db, projectId);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                // Turning the link off stays allowed so owners can always revoke it.
+                if (enabled && !(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
+                const updated = await setPublicViewEnabled(db, projectId, enabled);
+
+                return {
+                    responseMessage: 'OK',
+                    publicViewEnabled: Boolean(updated?.public_view_enabled),
+                    publicViewId: updated?.public_view_id ?? null,
+                };
+            })
+
+            // POST /api/projects/:projectId/public-view/regenerate - Regenerate the public link id
+            .post('/api/projects/:projectId/public-view/regenerate', async ({ params, set, currentUser }) => {
+                const projectId = parseInt(params.projectId, 10);
+
+                if (isNaN(projectId)) {
+                    set.status = 400;
+                    return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
+                }
+
+                const project = await findProjectById(db, projectId);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                if (!(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
+                const updated = await regeneratePublicViewId(db, projectId);
+
+                return {
+                    responseMessage: 'OK',
+                    publicViewId: updated?.public_view_id ?? null,
+                };
             })
 
             // POST /api/projects/:projectId/collaborators - Add collaborator
@@ -1272,7 +1401,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 return {
                     responseMessage: 'OK',
-                    project: serializeProjectSharing(project, owner, collabs, currentUser?.id),
+                    project: serializeProjectSharing(
+                        project,
+                        owner,
+                        collabs,
+                        currentUser?.id,
+                        await isPublicViewFeatureEnabled(db),
+                    ),
                 };
             })
 
@@ -1313,7 +1448,81 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     notifyVisibilityChanged(uuid, project.owner_id, collaboratorIds);
                 }
 
-                return { responseMessage: 'OK' };
+                return { responseMessage: 'OK', visibility };
+            })
+
+            // PATCH /api/projects/uuid/:uuid/public-view - Enable/disable the public read-only link by UUID
+            .patch('/api/projects/uuid/:uuid/public-view', async ({ params, body, set, currentUser }) => {
+                const uuid = params.uuid;
+                const { enabled } = body as { enabled?: boolean };
+
+                if (typeof enabled !== 'boolean') {
+                    set.status = 400;
+                    return { responseMessage: 'INVALID_PAYLOAD', detail: 'enabled must be a boolean' };
+                }
+
+                const project = await findProjectByUuid(db, uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                // Turning the link off stays allowed so owners can always revoke it.
+                if (enabled && !(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
+                const updated = await setPublicViewEnabledByUuid(db, uuid, enabled);
+
+                return {
+                    responseMessage: 'OK',
+                    publicViewEnabled: Boolean(updated?.public_view_enabled),
+                    publicViewId: updated?.public_view_id ?? null,
+                };
+            })
+
+            // POST /api/projects/uuid/:uuid/public-view/regenerate - Regenerate the public link id by UUID
+            .post('/api/projects/uuid/:uuid/public-view/regenerate', async ({ params, set, currentUser }) => {
+                const uuid = params.uuid;
+
+                const project = await findProjectByUuid(db, uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                if (!(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
+                const updated = await regeneratePublicViewIdByUuid(db, uuid);
+
+                return {
+                    responseMessage: 'OK',
+                    publicViewId: updated?.public_view_id ?? null,
+                };
             })
 
             // POST /api/projects/uuid/:uuid/collaborators - Add collaborator by UUID
