@@ -56,6 +56,8 @@ export const PREVIEW_METADATA_FIELD_CLASSIFICATION: Record<string, 'author-html'
     odeVersionId: 'inert',
     scormIdentifier: 'inert',
     masteryScore: 'inert',
+    passScore: 'inert',
+    passScoreEveryActivity: 'inert',
 };
 
 /**
