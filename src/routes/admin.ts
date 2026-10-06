@@ -46,6 +46,7 @@ import { trans } from '../services/translation';
 import { getBasePath } from '../utils/basepath.util';
 import { logActivity } from '../services/activity-logger';
 import { getSystemInfo } from '../services/system-info';
+import { getDefaultQuotaMb as getDefaultQuotaMbDefault } from '../services/app-settings';
 import {
     getActiveUserMetrics as getActiveUserMetricsDefault,
     getActivityTimeSeries as getActivityTimeSeriesDefault,
@@ -94,6 +95,7 @@ export interface AdminQueries {
     updateUserStatus: typeof updateUserStatusDefault;
     createUserAsAdmin: typeof createUserAsAdminDefault;
     updateUserQuota: typeof updateUserQuotaDefault;
+    getDefaultQuotaMb: typeof getDefaultQuotaMbDefault;
     deleteUser: typeof deleteUserDefault;
     getSystemStats: typeof getSystemStatsDefault;
     getUserStorageUsage: typeof getUserStorageUsageDefault;
@@ -137,6 +139,7 @@ const defaultDependencies: AdminDependencies = {
         updateUserStatus: updateUserStatusDefault,
         createUserAsAdmin: createUserAsAdminDefault,
         updateUserQuota: updateUserQuotaDefault,
+        getDefaultQuotaMb: getDefaultQuotaMbDefault,
         deleteUser: deleteUserDefault,
         getSystemStats: getSystemStatsDefault,
         getUserStorageUsage: getUserStorageUsageDefault,
@@ -584,7 +587,8 @@ const createUserSchema = t.Object({
     email: t.String({ format: 'email' }),
     password: t.String({ minLength: 4 }),
     roles: t.Optional(t.Array(t.String())),
-    quota_mb: t.Optional(t.Number()),
+    // Omitted: DEFAULT_QUOTA. null: unlimited.
+    quota_mb: t.Optional(t.Union([t.Number(), t.Null()])),
 });
 
 const updateRolesSchema = t.Object({
@@ -1083,7 +1087,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         email: body.email,
                         password: hashedPassword,
                         roles,
-                        quotaMb: body.quota_mb,
+                        quotaMb: body.quota_mb === undefined ? await queries.getDefaultQuotaMb(db) : body.quota_mb,
                     });
 
                     set.status = 201;

@@ -82,10 +82,18 @@ export async function execute(
     const emailFlag = getString(flags, 'email');
     const email = all ? undefined : emailFlag || positional[0];
     const rest = all || emailFlag ? positional : positional.slice(1);
-    const rawQuota = getString(flags, 'quota') ?? (typeof flags.all === 'string' ? flags.all : undefined) ?? rest[0];
+    const flagQuota = getString(flags, 'quota') ?? (typeof flags.all === 'string' ? flags.all : undefined);
+    const rawQuota = flagQuota ?? rest[0];
 
-    if (all && emailFlag) {
+    // Refuse ambiguous input instead of guessing: `set-quota user@x.com --all 500`
+    // must not silently change every user's quota.
+    if (all && (emailFlag || rest.length > (flagQuota === undefined ? 1 : 0))) {
         return { success: false, message: 'Use either --all or an email, not both' };
+    }
+
+    const unexpected = rest[flagQuota === undefined ? 1 : 0];
+    if (!all && unexpected !== undefined) {
+        return { success: false, message: `Unexpected argument "${unexpected}"` };
     }
 
     if (!all && !email) {

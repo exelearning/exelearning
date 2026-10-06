@@ -120,6 +120,7 @@ const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries 
             quota_mb: data.quotaMb ?? null,
         }),
     updateUserQuota: async (_db, _id, quota) => mockUser({ quota_mb: quota }),
+    getDefaultQuotaMb: async () => 4096,
     deleteUser: async () => undefined,
     getSystemStats: async () => ({
         totalUsers: 10,
@@ -639,6 +640,55 @@ describe('Admin Routes', () => {
             expect(response.status).toBe(201);
             const body = await response.json();
             expect(body.user.quota_mb).toBe(500);
+        });
+
+        it('should give the configured DEFAULT_QUOTA when quota_mb is omitted (#2514)', async () => {
+            const app = new Elysia().use(createAdminRoutes(createMockDeps({ getDefaultQuotaMb: async () => 1234 })));
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/users', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: 'default-quota@example.com', password: 'password123' }),
+                }),
+            );
+
+            expect(response.status).toBe(201);
+            expect((await response.json()).user.quota_mb).toBe(1234);
+        });
+
+        it('should create an unlimited user when quota_mb is null (#2514)', async () => {
+            let defaultQuotaRequested = false;
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        getDefaultQuotaMb: async () => {
+                            defaultQuotaRequested = true;
+                            return 1234;
+                        },
+                    }),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/users', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: 'unlimited@example.com', password: 'password123', quota_mb: null }),
+                }),
+            );
+
+            expect(response.status).toBe(201);
+            expect((await response.json()).user.quota_mb).toBeNull();
+            expect(defaultQuotaRequested).toBe(false);
         });
 
         it('should return 409 for duplicate email', async () => {

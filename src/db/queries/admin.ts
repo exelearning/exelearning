@@ -217,7 +217,7 @@ export async function createUserAsAdmin(
         password: string;
         userId?: string; // Optional: only for SSO users (CAS/OIDC)
         roles: string[];
-        quotaMb?: number;
+        quotaMb?: number | null;
     },
 ): Promise<User> {
     const timestamp = now();

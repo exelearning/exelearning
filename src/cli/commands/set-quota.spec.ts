@@ -106,6 +106,41 @@ describe('Set Quota Command', () => {
             expect(allQuotaCalls).toHaveLength(0);
         });
 
+        it('should reject --all with a positional email instead of updating every user', async () => {
+            const result = await execute(['user@x.com'], { all: '500' }, createMockDependencies());
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('not both');
+            expect(allQuotaCalls).toHaveLength(0);
+            expect(userQuotaCalls).toHaveLength(0);
+        });
+
+        it('should reject --all with more positional arguments than the quota', async () => {
+            const result = await execute(['user@x.com', '500'], { all: true }, createMockDependencies());
+
+            expect(result.success).toBe(false);
+            expect(allQuotaCalls).toHaveLength(0);
+            expect(userQuotaCalls).toHaveLength(0);
+        });
+
+        it('should reject an extra argument after the email and quota', async () => {
+            const result = await execute(['user@x.com', '500', 'oops'], {}, createMockDependencies('user@x.com'));
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('Unexpected argument');
+            expect(userQuotaCalls).toHaveLength(0);
+        });
+
+        it('should exit with failure for set-quota user@x.com --all 500', async () => {
+            let code = -1;
+            await runCli(['bun', 'cli', 'set-quota', 'user@x.com', '--all', '500'], createMockDependencies(), c => {
+                code = c;
+            });
+
+            expect(code).toBe(1);
+            expect(allQuotaCalls).toHaveLength(0);
+        });
+
         it('should fail when neither email nor --all is given', async () => {
             const result = await execute([], {}, createMockDependencies());
 
