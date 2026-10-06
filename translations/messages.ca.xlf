@@ -2057,10 +2057,6 @@
         <source>Huge text</source>
         <target>Text enorme</target>
       </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>Text més enorme</target>
-      </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
         <target>Blackboard bold</target>
@@ -3729,14 +3725,6 @@
         <source>Info</source>
         <target>Informació</target>
       </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>Mostra o amaga els fills del node</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>Comença a treballar en un mapa mental nou</target>
-      </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
         <target>S'ha produït un error en pujar el fitxer</target>
@@ -3952,10 +3940,6 @@
       <trans-unit id=".2bNgXe" resname="New file">
         <source>New file</source>
         <target>Nou fitxer</target>
-      </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Crea un fitxer nou sense desar</target>
       </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
@@ -4524,10 +4508,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>No pots afegir un iDevice a la pàgina arrel</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema en afegir l'iDevice</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -10709,102 +10689,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>Canvia el text de les pestanyes afegint un títol a cada Capítol 2 amb l'opció "Insereix/Edita atributs": </target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>De Wikipedia, l'enciclopèdia lliure.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>Redirigit des de</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>Wikipedia no té cap article amb aquest nom exacte.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>cerca a</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>a Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>per comprovar títols o ortografies alternatives.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>Article de Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>Article</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>Anglès</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>Basc</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>Català</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>Xinès</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>Neerlandès</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>Francès</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>Gallec</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>Alemany</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>Italià</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>Japonès</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>Hongarès</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>Polonès</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>Portuguès</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>Eslovè</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>Castellà</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>Suec</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>Èmfasis</target>
@@ -11687,7 +11571,7 @@
       </trans-unit>
       <trans-unit id="cZ0oVQz" resname="Choose a file or paste a link (URL)">
         <source>Choose a file or paste a link (URL)</source>
-        <target>Reproducció automàtica silenciada (recomanat)</target>
+        <target>~Tria un fitxer o enganxa un enllaç (URL)</target>
       </trans-unit>
       <trans-unit id="poYLy27" resname="Choose a file">
         <source>Choose a file</source>
@@ -12601,18 +12485,6 @@
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>~Escriu la paraula o frase correcta i fes clic al botó "Responder".</target>
       </trans-unit>
-      <trans-unit id="pxcfex9" resname="Timeout">
-        <source>Timeout</source>
-        <target>~Temps d'espera esgotat</target>
-      </trans-unit>
-      <trans-unit id="evt1eda" resname="Network error">
-        <source>Network error</source>
-        <target>~Error de xarxa</target>
-      </trans-unit>
-      <trans-unit id="ewyu264" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>~URL no vàlida</target>
-      </trans-unit>
       <trans-unit id="0ptelwp" resname="Session Expired">
         <source>Session Expired</source>
         <target>~Sessió expirada</target>
@@ -12988,10 +12860,6 @@
       <trans-unit id="d8xt34k" resname="Error validating links">
         <source>Error validating links</source>
         <target>~Error en validar els enllaços</target>
-      </trans-unit>
-      <trans-unit id="484ojvj" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>~Sense enllaços trencats per exportar</target>
       </trans-unit>
       <trans-unit id="3foktxa" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
@@ -13377,10 +13245,6 @@
         <source>config.xml not found in ZIP</source>
         <target>~config.xml no trobat al ZIP</target>
       </trans-unit>
-      <trans-unit id="nu62n9p" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>~Aquest estil no es pot descarregar</target>
-      </trans-unit>
       <trans-unit id="yjbmryo" resname="Style already exists">
         <source>Style already exists</source>
         <target>~L'estil ja existeix</target>
@@ -13460,14 +13324,6 @@
       <trans-unit id="yxp77kp" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>~Seran redirigits automàticament a la pàgina de nivell superior.</target>
-      </trans-unit>
-      <trans-unit id="hncpzpd" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>~Les preferències s'aplicaran després d'actualitzar la pàgina.</target>
-      </trans-unit>
-      <trans-unit id="hw8yi8h" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>~És necessari recarregar la pàgina per aplicar els canvis. Descarrega el teu projecte primer per no perdre feina. Després recarrega la pàgina.</target>
       </trans-unit>
       <trans-unit id="n1mjhxq" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -13676,10 +13532,6 @@
       <trans-unit id="j0f1o4l" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
         <target>~El teu accés a aquest projecte ha estat revocat.</target>
-      </trans-unit>
-      <trans-unit id="fzas8gf" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>~Mapa mental desat</target>
       </trans-unit>
       <trans-unit id="3gkwirm" resname="source">
         <source>source</source>
@@ -14101,10 +13953,6 @@
         <source>Close without saving</source>
         <target>~Tancar sense guardar</target>
       </trans-unit>
-      <trans-unit id="7kskr8s" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>~No es pot comprovar: el contingut HTTP està bloquejat en pàgines HTTPS.</target>
-      </trans-unit>
       <trans-unit id="73bgw6a" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
         <target>~Només podeu afegir un iDevice Rúbrica per pàgina.</target>
@@ -14304,10 +14152,6 @@
       <trans-unit id="c2qabkh" resname="The battery drains">
         <source>The battery drains</source>
         <target>~La bateria s'esgota</target>
-      </trans-unit>
-      <trans-unit id="4lxasmt" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
-        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
-        <target>~Genera 5 preguntes d'opció múltiple sobre circuits elèctrics. Una pregunta per línia. Cada línia ha de contenir tots els camps separats per #: una descripció curta, codi TikZ (usant circuitikz) per al diagrama del circuit, la resposta correcta en lletres (p. ex.: A, AB), la pregunta i de 2 a 4 opcions de resposta. No utilitzis el caràcter # dins de cap camp. No afegeixis salts de línia dins d'una pregunta. IMPORTANT: El codi TikZ ha de ser compatible amb la versió 0.9.6 de circuitikz. Utilitza només components disponibles en aquesta versió: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. NO utilitzis components de circuitikz 1.0 o posterior com dipchip, qfpchip, muxdemux, flipflop, latch o pantalles de 7 segments.</target>
       </trans-unit>
       <trans-unit id="sypff0g" resname="Drop an .elpx file here to open it">
         <source>Drop an .elpx file here to open it</source>
@@ -15063,295 +14907,791 @@
       </trans-unit>
       <trans-unit id="46ilu2z" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
         <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
-        <target></target>
+        <target>~Nivell: 0 (baix), 1 (mitjà), 2 (alt), 3 (expert) o 4 (mestre).</target>
       </trans-unit>
       <trans-unit id="ijh8lt9" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
         <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
-        <target></target>
+        <target>~Nivell: 0 (baix), 1 (mitjà), 2 (alt) o 3 (expert).</target>
       </trans-unit>
       <trans-unit id="i8ihb14" resname="Level: 0 (low), 1 (medium) or 2 (high).">
         <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
-        <target></target>
+        <target>~Nivell: 0 (baix), 1 (mitjà) o 2 (alt).</target>
       </trans-unit>
       <trans-unit id="bbpljee" resname="OptionE">
         <source>OptionE</source>
-        <target></target>
+        <target>~OpcióE</target>
       </trans-unit>
       <trans-unit id="vtnu45s" resname="OptionF">
         <source>OptionF</source>
-        <target></target>
+        <target>~OpcióF</target>
       </trans-unit>
       <trans-unit id="xz34iyo" resname="Which of the following are prime numbers?">
         <source>Which of the following are prime numbers?</source>
-        <target></target>
+        <target>~Quins dels següents són nombres primers?</target>
       </trans-unit>
       <trans-unit id="u5zqieu" resname="Sort from largest to smallest">
         <source>Sort from largest to smallest</source>
-        <target></target>
+        <target>~Ordena de major a menor</target>
       </trans-unit>
       <trans-unit id="fb1eniw" resname="Elephant">
         <source>Elephant</source>
-        <target></target>
+        <target>~Elefant</target>
       </trans-unit>
       <trans-unit id="x29bi0i" resname="Mouse">
         <source>Mouse</source>
-        <target></target>
+        <target>~Ratolí</target>
       </trans-unit>
       <trans-unit id="ckrttw0" resname="Which of these are transcendental numbers?">
         <source>Which of these are transcendental numbers?</source>
-        <target></target>
+        <target>~Quins d'aquests són nombres transcendents?</target>
       </trans-unit>
       <trans-unit id="u9jgsip" resname="Liouville constant">
         <source>Liouville constant</source>
-        <target></target>
+        <target>~Constant de Liouville</target>
       </trans-unit>
       <trans-unit id="g3opkvq" resname="Champernowne constant">
         <source>Champernowne constant</source>
-        <target></target>
+        <target>~Constant de Champernowne</target>
       </trans-unit>
       <trans-unit id="qvlxuga" resname="Sort these chemical elements from lowest to highest atomic number">
         <source>Sort these chemical elements from lowest to highest atomic number</source>
-        <target></target>
+        <target>~Ordena aquests elements químics de menor a major nombre atòmic</target>
       </trans-unit>
       <trans-unit id="mgvvb8z" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
         <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
-        <target></target>
+        <target>~S'accepten tres tipus de preguntes. Cada línia ha de començar amb el número de tipus, seguit de @, el nivell i la resta de camps separats amb #:</target>
       </trans-unit>
       <trans-unit id="kelu6px" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
         <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
-        <target></target>
+        <target>~Tipus 0 (opció múltiple): 0@Nivell#Solució#Pregunta#OpcióA#OpcióB[#OpcióC][#OpcióD][#OpcióE][#OpcióF]. La solució és una combinació en majúscules d'A, B, C, D, E, F que identifica les opcions correctes (p. ex. A, AB, ACD, ABCDEF). Usa fins a 6 lletres i mai més que el nombre d'opcions. Deixa Solució buida si cap opció no és correcta.</target>
       </trans-unit>
       <trans-unit id="8nwqdvz" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
         <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
-        <target></target>
+        <target>~Tipus 1 (ordenar): 1@Nivell#Pregunta#Element1#Element2#Element3[#Element4][#Element5][#Element6]. Proporciona entre 3 i 6 elements ja llistats en l'ordre correcte segons el criteri de la pregunta.</target>
       </trans-unit>
       <trans-unit id="mj2lg7q" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
         <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
-        <target></target>
+        <target>~Tipus 2 (paraula/definició): 2@Nivell#Paraula#Definició.</target>
       </trans-unit>
       <trans-unit id="l1w5ihn" resname="Do not include the # character inside any field.">
         <source>Do not include the # character inside any field.</source>
-        <target></target>
+        <target>~No incloguis el caràcter # dins de cap camp.</target>
       </trans-unit>
       <trans-unit id="d2eumxj" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
         <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
-        <target></target>
+        <target>~distribuïdes entre els 5 nivells (0=baix, 1=mitjà, 2=alt, 3=expert, 4=mestre)</target>
       </trans-unit>
       <trans-unit id="4uj6sgy" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
         <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
-        <target></target>
+        <target>~distribuïdes entre els 4 nivells (0=baix, 1=mitjà, 2=alt, 3=expert)</target>
       </trans-unit>
       <trans-unit id="vefnuk5" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
         <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
-        <target></target>
+        <target>~distribuïdes entre els 3 nivells (0=baix, 1=mitjà, 2=alt)</target>
       </trans-unit>
       <trans-unit id="4cd95ns" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
-        <target></target>
+        <target>~El nivell 0 ha de contenir les preguntes més fàcils (fets bàsics i record simple); cada nivell següent ha de ser estrictament més difícil que l'anterior (més raonament, opcions més llargues o complicades, vocabulari més abstracte), i el nivell 4 (mestre) ha de contenir les preguntes més difícils.</target>
       </trans-unit>
       <trans-unit id="g2bqaj7" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
-        <target></target>
+        <target>~El nivell 0 ha de contenir les preguntes més fàcils (fets bàsics i record simple); cada nivell següent ha de ser estrictament més difícil que l'anterior (més raonament, opcions més llargues o complicades, vocabulari més abstracte), i el nivell 3 (expert) ha de contenir les preguntes més difícils.</target>
       </trans-unit>
       <trans-unit id="idt0qsj" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
-        <target></target>
+        <target>~El nivell 0 ha de contenir les preguntes més fàcils (fets bàsics i record simple); cada nivell següent ha de ser estrictament més difícil que l'anterior (més raonament, opcions més llargues o complicades, vocabulari més abstracte), i el nivell 2 (alt) ha de contenir les preguntes més difícils.</target>
       </trans-unit>
       <trans-unit id="dqcyy7e" resname="Your browser is not compatible with this type of activity.">
         <source>Your browser is not compatible with this type of activity.</source>
-        <target></target>
+        <target>~El teu navegador no és compatible amb aquest tipus d'activitat.</target>
       </trans-unit>
       <trans-unit id="1bvhar4" resname="You must add at least one question.">
         <source>You must add at least one question.</source>
-        <target></target>
+        <target>~Has d'afegir almenys una pregunta.</target>
       </trans-unit>
       <trans-unit id="bizh92a" resname="You must have at least one question.">
         <source>You must have at least one question.</source>
-        <target></target>
+        <target>~Has de tenir almenys una pregunta.</target>
       </trans-unit>
       <trans-unit id="bbdfhay" resname="Question %s: the question text cannot be empty.">
         <source>Question %s: the question text cannot be empty.</source>
-        <target></target>
+        <target>~Pregunta %s: el text de la pregunta no pot estar buit.</target>
       </trans-unit>
       <trans-unit id="pysxjdh" resname="Question %s: please fill in all answer options.">
         <source>Question %s: please fill in all answer options.</source>
-        <target></target>
+        <target>~Pregunta %s: omple totes les opcions de resposta.</target>
       </trans-unit>
       <trans-unit id="e6i0l51" resname="Question %s: please mark which option is the correct answer.">
         <source>Question %s: please mark which option is the correct answer.</source>
-        <target></target>
+        <target>~Pregunta %s: indica quina opció és la resposta correcta.</target>
       </trans-unit>
       <trans-unit id="24gqibf" resname="You must add at least %s questions.">
         <source>You must add at least %s questions.</source>
-        <target></target>
+        <target>~Has d'afegir almenys %s preguntes.</target>
       </trans-unit>
       <trans-unit id="0zyyjfg" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
         <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
-        <target></target>
+        <target>~Avís: el nivell inicial seleccionat no té preguntes. El qüestionari començarà usant el nivell de reserva.</target>
       </trans-unit>
       <trans-unit id="5bcbb3i" resname="Please provide a name for every level.">
         <source>Please provide a name for every level.</source>
-        <target></target>
+        <target>~Indica un nom per a cada nivell.</target>
       </trans-unit>
       <trans-unit id="4xcljhy" resname="Level &quot;%s&quot; must have at least 2 questions.">
         <source>Level "%s" must have at least 2 questions.</source>
-        <target></target>
+        <target>~El nivell «%s» ha de tenir almenys 2 preguntes.</target>
       </trans-unit>
       <trans-unit id="bivulu9" resname="Please indicate the time the solution will be displayed.">
         <source>Please indicate the time the solution will be displayed.</source>
-        <target></target>
+        <target>~Indica el temps que es mostrarà la solució.</target>
       </trans-unit>
       <trans-unit id="l6ue8yh" resname="Question %s: please mark at least one correct answer.">
         <source>Question %s: please mark at least one correct answer.</source>
-        <target></target>
+        <target>~Pregunta %s: marca almenys una resposta correcta.</target>
       </trans-unit>
       <trans-unit id="egbn5j9" resname="Question %s: please provide the solution word or phrase.">
         <source>Question %s: please provide the solution word or phrase.</source>
-        <target></target>
+        <target>~Pregunta %s: proporciona la paraula o frase solució.</target>
       </trans-unit>
       <trans-unit id="x655xgj" resname="Question %s: please provide the definition.">
         <source>Question %s: please provide the definition.</source>
-        <target></target>
+        <target>~Pregunta %s: proporciona la definició.</target>
       </trans-unit>
       <trans-unit id="m3n8lhm" resname="Question %s: please specify a unique order from 1 to %n for every option.">
         <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
-        <target></target>
+        <target>~Pregunta %s: assigna un ordre únic de l'1 al %n a cada opció.</target>
       </trans-unit>
       <trans-unit id="kthem7s" resname="Audio URL">
         <source>Audio URL</source>
-        <target></target>
+        <target>~URL d'àudio</target>
       </trans-unit>
       <trans-unit id="dn3c8nk" resname="Show audio options">
         <source>Show audio options</source>
-        <target></target>
+        <target>~Mostra les opcions d'àudio</target>
       </trans-unit>
       <trans-unit id="5p33q3e" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
         <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
-        <target></target>
+        <target>~Crea un qüestionari d'opció múltiple la dificultat del qual s'adapta a l'alumne. Tria el nombre de nivells de dificultat (3, 4 o 5) i assigna'n un a cada pregunta; el qüestionari puja un nivell després de dues respostes correctes seguides i baixa després de dues incorrectes seguides.</target>
       </trans-unit>
       <trans-unit id="qes4rjh" resname="Number of levels">
         <source>Number of levels</source>
-        <target></target>
+        <target>~Nombre de nivells</target>
       </trans-unit>
       <trans-unit id="cmpkgrb" resname="Level 1 name">
         <source>Level 1 name</source>
-        <target></target>
+        <target>~Nom del nivell 1</target>
       </trans-unit>
       <trans-unit id="yct6t37" resname="Easy">
         <source>Easy</source>
-        <target></target>
+        <target>~Fàcil</target>
       </trans-unit>
       <trans-unit id="kyv4dgw" resname="Level 2 name">
         <source>Level 2 name</source>
-        <target></target>
+        <target>~Nom del nivell 2</target>
       </trans-unit>
       <trans-unit id="r41yptz" resname="Level 3 name">
         <source>Level 3 name</source>
-        <target></target>
+        <target>~Nom del nivell 3</target>
       </trans-unit>
       <trans-unit id="byf2jqz" resname="Hard">
         <source>Hard</source>
-        <target></target>
+        <target>~Difícil</target>
       </trans-unit>
       <trans-unit id="l6oyk1n" resname="Level 4 name">
         <source>Level 4 name</source>
-        <target></target>
+        <target>~Nom del nivell 4</target>
       </trans-unit>
       <trans-unit id="84rp47o" resname="Expert">
         <source>Expert</source>
-        <target></target>
+        <target>~Expert</target>
       </trans-unit>
       <trans-unit id="losg1o0" resname="Level 5 name">
         <source>Level 5 name</source>
-        <target></target>
+        <target>~Nom del nivell 5</target>
       </trans-unit>
       <trans-unit id="9yo8onl" resname="Master">
         <source>Master</source>
-        <target></target>
+        <target>~Mestre</target>
       </trans-unit>
       <trans-unit id="e107hs5" resname="Initial level">
         <source>Initial level</source>
-        <target></target>
+        <target>~Nivell inicial</target>
       </trans-unit>
       <trans-unit id="3t3qak5" resname="Set to 0 to disable the time limit.">
         <source>Set to 0 to disable the time limit.</source>
-        <target></target>
+        <target>~Posa 0 per desactivar el límit de temps.</target>
       </trans-unit>
       <trans-unit id="5amojxn" resname="Shuffle answer options at runtime">
         <source>Shuffle answer options at runtime</source>
-        <target></target>
+        <target>~Barreja les opcions de resposta durant l'execució</target>
       </trans-unit>
       <trans-unit id="8hptn1z" resname="Case-sensitive answer matching (word type)">
         <source>Case-sensitive answer matching (word type)</source>
-        <target></target>
+        <target>~Distingeix majúscules i minúscules (tipus paraula)</target>
       </trans-unit>
       <trans-unit id="k0ty05j" resname="Require correct accents (word type)">
         <source>Require correct accents (word type)</source>
-        <target></target>
+        <target>~Exigeix accents correctes (tipus paraula)</target>
       </trans-unit>
       <trans-unit id="bv7wd6n" resname="Level filter">
         <source>Level filter</source>
-        <target></target>
+        <target>~Filtre de nivell</target>
       </trans-unit>
       <trans-unit id="mg3lzgg" resname="Reload image">
         <source>Reload image</source>
-        <target></target>
+        <target>~Torna a carregar la imatge</target>
       </trans-unit>
       <trans-unit id="v5iwlnm" resname="Adaptative Quiz">
         <source>Adaptative Quiz</source>
-        <target></target>
+        <target>~Qüestionari adaptatiu</target>
       </trans-unit>
       <trans-unit id="akuzeko" resname="Click on an option to choose your answer.">
         <source>Click on an option to choose your answer.</source>
-        <target></target>
+        <target>~Fes clic en una opció per triar la teva resposta.</target>
       </trans-unit>
       <trans-unit id="qxy5u4c" resname="Highest level reached">
         <source>Highest level reached</source>
-        <target></target>
+        <target>~Nivell més alt assolit</target>
       </trans-unit>
       <trans-unit id="03i7o4k" resname="Level up!">
         <source>Level up!</source>
-        <target></target>
+        <target>~Puges de nivell!</target>
       </trans-unit>
       <trans-unit id="2m7rys4" resname="Level down">
         <source>Level down</source>
-        <target></target>
+        <target>~Baixes de nivell</target>
       </trans-unit>
       <trans-unit id="852pb3d" resname="Final report">
         <source>Final report</source>
-        <target></target>
+        <target>~Informe final</target>
       </trans-unit>
       <trans-unit id="if6iczi" resname="Excellent. You dominate the highest-level contents.">
         <source>Excellent. You dominate the highest-level contents.</source>
-        <target></target>
+        <target>~Excel·lent. Domines els continguts de més alt nivell.</target>
       </trans-unit>
       <trans-unit id="pp715tz" resname="Good job. You have achieved the intermediate level.">
         <source>Good job. You have achieved the intermediate level.</source>
-        <target></target>
+        <target>~Bona feina. Has assolit el nivell intermedi.</target>
       </trans-unit>
       <trans-unit id="twbqvib" resname="You need a bit more practice. Review the basic contents.">
         <source>You need a bit more practice. Review the basic contents.</source>
-        <target></target>
+        <target>~Necessites una mica més de pràctica. Repassa els continguts bàsics.</target>
       </trans-unit>
       <trans-unit id="jckvs5f" resname="Pause audio">
         <source>Pause audio</source>
-        <target></target>
+        <target>~Pausa l'àudio</target>
       </trans-unit>
       <trans-unit id="u2ztnn8" resname="Illustration">
         <source>Illustration</source>
-        <target></target>
+        <target>~Il·lustració</target>
       </trans-unit>
       <trans-unit id="xqdg3p8" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
         <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
-        <target></target>
+        <target>~Tria la resposta correcta per a cada pregunta. Per pujar al següent nivell has de respondre correctament dues preguntes seguides. Si falles dues seguides, baixaràs al nivell anterior.</target>
       </trans-unit>
       <trans-unit id="5yysqlm" resname="Time&apos;s up!">
         <source>Time's up!</source>
-        <target></target>
+        <target>~S'ha acabat el temps!</target>
       </trans-unit>
       <trans-unit id="mvddxf3" resname="Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.">
         <source>Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.</source>
-        <target></target>
+        <target>~Crea %total% preguntes mixtes de qüestionari adaptatiu %distribution% i dels tres tipus de pregunta admesos. Cada línia ha de començar amb el número de tipus seguit de @, després el nivell i després la resta de camps separats amb #. Mai posis # dins d'un camp. Les tres formes de línia admeses són: Tipus 0 (opció múltiple): 0@Nivell#Solució#Pregunta#OpcióA#OpcióB[#OpcióC][#OpcióD][#OpcióE][#OpcióF] — La solució és una combinació en majúscules de les lletres A, B, C, D, E, F que identifica les opcions correctes (p. ex. A, AB, ACD, ABCDEF); usa fins a 6 lletres i mai més que el nombre d'opcions; deixa la solució buida si cap opció no és correcta. Tipus 1 (ordenar): 1@Nivell#Pregunta#Element1#Element2#Element3[#Element4][#Element5][#Element6] — proporciona entre 3 i 6 elements ja llistats en l'ordre correcte segons el criteri de la pregunta. Tipus 2 (paraula/definició): 2@Nivell#Paraula#Definició. La dificultat ha d'augmentar amb el nivell: %ladder% Dins de cada nivell has d'incloure preguntes dels tres tipus (Tipus 0, Tipus 1 i Tipus 2): genera al voltant de %perLevel% preguntes per nivell i assegura't que cada nivell combini seleccionar (Tipus 0), ordenar (Tipus 1) i paraula/definició (Tipus 2). No posis totes del mateix tipus juntes; intercala els tres tipus dins de cada nivell.</target>
+      </trans-unit>
+      <trans-unit id="mhmzu4t" resname="Please render the circuit preview before saving.">
+        <source>Please render the circuit preview before saving.</source>
+        <target>~Genera la vista prèvia del circuit abans de desar</target>
+      </trans-unit>
+      <trans-unit id="4hqy9yx" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Captura de pantalla</target>
+      </trans-unit>
+      <trans-unit id="n01szqr" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Previsualització de la captura del projecte actual</target>
+      </trans-unit>
+      <trans-unit id="ig3vsn3" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Encara no hi ha captura de pantalla. Es generarà automàticament en guardar o exportar.</target>
+      </trans-unit>
+      <trans-unit id="tia5iym" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Puja una imatge personalitzada</target>
+      </trans-unit>
+      <trans-unit id="ki7ppkv" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~La captura de pantalla ha de ser inferior a 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="2zod872" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Imatge no vàlida</target>
+      </trans-unit>
+      <trans-unit id="edelrnd" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~La imatge no compleix els requisits mínims: relació d'aspecte 16:9 i almenys 600 píxels d'amplada.</target>
+      </trans-unit>
+      <trans-unit id="hc7wxq0" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Genera des del contingut</target>
+      </trans-unit>
+      <trans-unit id="t764wel" resname="Not available">
+        <source>Not available</source>
+        <target>~No disponible</target>
+      </trans-unit>
+      <trans-unit id="7laifyy" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~La generació de captures de pantalla no està disponible.</target>
+      </trans-unit>
+      <trans-unit id="1897es4" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Error en la generació</target>
+      </trans-unit>
+      <trans-unit id="x67tpix" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~No s'ha pogut generar la captura des del contingut. Prova a pujar una imatge en lloc d'això.</target>
+      </trans-unit>
+      <trans-unit id="hnwvovl" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Substitueix la captura de pantalla</target>
+      </trans-unit>
+      <trans-unit id="4z35j0h" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Això eliminarà la imatge actual. Vols continuar?</target>
+      </trans-unit>
+      <trans-unit id="kc00t8o" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Elimina la captura de pantalla</target>
+      </trans-unit>
+      <trans-unit id="oe3qs3v" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Elimines la imatge actual? Aquesta acció no es pot desfer.</target>
+      </trans-unit>
+      <trans-unit id="8h7muhj" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Recomanacions</target>
+      </trans-unit>
+      <trans-unit id="u1higx5" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Utilitza una imatge 16:9 (es recomanen 1280×720 px) que representi clarament el contingut principal del recurs educatiu. Evita el desordre i el text petit, i assegura un bon contrast per a la llegibilitat en mides reduïdes.</target>
+      </trans-unit>
+      <trans-unit id="b6f9jmr" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~La imatge s'utilitzarà com a previsualització d'aquest recurs educatiu en diferents plataformes.</target>
+      </trans-unit>
+      <trans-unit id="tenzxb9" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~Molècula 3D</target>
+      </trans-unit>
+      <trans-unit id="2dcde1v" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~Molècules 3D</target>
+      </trans-unit>
+      <trans-unit id="1geizo9" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Amplada màx. (opcional)</target>
+      </trans-unit>
+      <trans-unit id="rj49fl4" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Alçada màx. (opcional)</target>
+      </trans-unit>
+      <trans-unit id="t75w3sp" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~p. ex. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="hjgffrh" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~L'amplada màx. ha de ser superior a 0 i usar px, em, rem o % (p. ex. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="qyxn0fw" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~L'alçada màx. ha de ser superior a 0 i usar px, em, rem o % (p. ex. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="ngdv6dc" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Ho sentim, és incorrecte... La resposta correcta és:</target>
+      </trans-unit>
+      <trans-unit id="hy0z2hi" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Estil instal·lat</target>
+      </trans-unit>
+      <trans-unit id="t8raobo" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~L'estil s'ha instal·lat correctament.</target>
+      </trans-unit>
+      <trans-unit id="ootchbh" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~S'està editant el iDevice. La resta d'accions estan desactivades fins que guardeu o descarteu els canvis.</target>
+      </trans-unit>
+      <trans-unit id="wh7c8ft" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~Heu acabat d'editar el iDevice.</target>
+      </trans-unit>
+      <trans-unit id="lm6cjxo" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Guardeu o descarteu el iDevice obert abans de guardar el projecte.</target>
+      </trans-unit>
+      <trans-unit id="1823w67" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Els canvis d'idioma poden requerir recarregar o tornar a obrir eXeLearning per actualitzar tota la interfície.</target>
+      </trans-unit>
+      <trans-unit id="8gt8mt5" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~La preferència d'idioma s'ha guardat. És possible que alguns textos de la interfície no s'actualitzin fins que recarreguis o tornis a obrir eXeLearning. Guarda o descarrega el teu projecte abans de recarregar o tancar l'aplicació per evitar perdre canvis.</target>
+      </trans-unit>
+      <trans-unit id="nsi4av0" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Voleu guardar els canvis abans de crear un fitxer nou?</target>
+      </trans-unit>
+      <trans-unit id="tnvkzx6" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~No guardar</target>
+      </trans-unit>
+      <trans-unit id="sswuu14" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Alguns canvis col·laboratius encara no s'han guardat. Feu clic a Guardar abans de sortir per evitar perdre'ls.</target>
+      </trans-unit>
+      <trans-unit id="exbrw47" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
+        <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
+        <target>~El contingut marcat com a només per al professorat està amagat de manera predeterminada a les exportacions i les previsualitzacions. Obre’l amb ?exe-teacher=1 per mostrar-lo.</target>
+      </trans-unit>
+      <trans-unit id="ecnmqlm" resname="The file &quot;%1&quot; contains a large asset (%2).">
+        <source>The file "%1" contains a large asset (%2).</source>
+        <target>~El fitxer "%1" conté un recurs de gran mida (%2).</target>
+      </trans-unit>
+      <trans-unit id="j1sus10" resname="Importing it may use a large amount of memory.">
+        <source>Importing it may use a large amount of memory.</source>
+        <target>~Importar-lo pot consumir molta memòria.</target>
+      </trans-unit>
+      <trans-unit id="96jli6b" resname="The desktop application can open assets up to %1.">
+        <source>The desktop application can open assets up to %1.</source>
+        <target>~L’aplicació d’escriptori pot obrir recursos de fins a %1.</target>
+      </trans-unit>
+      <trans-unit id="m59i4p1" resname="Protection against malformed or malicious archives remains active.">
+        <source>Protection against malformed or malicious archives remains active.</source>
+        <target>~La protecció contra arxius comprimits malformats o maliciosos continua activa.</target>
+      </trans-unit>
+      <trans-unit id="k538mpa" resname="Import large file?">
+        <source>Import large file?</source>
+        <target>~Vols importar un fitxer gran?</target>
+      </trans-unit>
+      <trans-unit id="7hy4j2m" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
+        <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
+        <target>~El fitxer "%1" (%2) supera la mida màxima que aquesta aplicació pot obrir (%3).</target>
+      </trans-unit>
+      <trans-unit id="i639wmy" resname="This project (%1) is larger than the maximum this application can open (%2).">
+        <source>This project (%1) is larger than the maximum this application can open (%2).</source>
+        <target>~Aquest projecte (%1) supera la mida màxima que aquesta aplicació pot obrir (%2).</target>
+      </trans-unit>
+      <trans-unit id="lno7j9v" resname="This project has too many files to open (%1 of a maximum %2).">
+        <source>This project has too many files to open (%1 of a maximum %2).</source>
+        <target>~Aquest projecte té massa fitxers per poder obrir-se (%1 d’un màxim de %2).</target>
+      </trans-unit>
+      <trans-unit id="v82lxxc" resname="The project was not imported.">
+        <source>The project was not imported.</source>
+        <target>~El projecte no s’ha importat.</target>
+      </trans-unit>
+      <trans-unit id="ouea181" resname="To reduce its size, open the File Manager and:">
+        <source>To reduce its size, open the File Manager and:</source>
+        <target>~Per reduir-ne la mida, obre el Gestor de fitxers i:</target>
+      </trans-unit>
+      <trans-unit id="62zf3q8" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
+        <source>Sort by "Largest first" and review each asset\'s references.</source>
+        <target>~Ordena per "Més grans primer" i revisa les referències de cada recurs.</target>
+      </trans-unit>
+      <trans-unit id="td7inu9" resname="Remove an unused older version of a large asset.">
+        <source>Remove an unused older version of a large asset.</source>
+        <target>~Elimina una versió anterior sense fer servir d’un recurs de gran mida.</target>
+      </trans-unit>
+      <trans-unit id="i112w1z" resname="Optimise, replace, or remove the large file.">
+        <source>Optimise, replace, or remove the large file.</source>
+        <target>~Optimitza, substitueix o elimina el fitxer de gran mida.</target>
+      </trans-unit>
+      <trans-unit id="4htc8ou" resname="File too large to open">
+        <source>File too large to open</source>
+        <target>~Fitxer massa gran per obrir-lo</target>
+      </trans-unit>
+      <trans-unit id="ov7akaf" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
+        <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
+        <target>~El recurs "%1" (%2) supera la mida màxima que l’aplicació d’escriptori pot obrir (%3).</target>
+      </trans-unit>
+      <trans-unit id="41eyv2a" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
+        <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
+        <target>~Aquest projecte (%1) supera la mida màxima que l’aplicació d’escriptori pot obrir (%2).</target>
+      </trans-unit>
+      <trans-unit id="kiwl50y" resname="The resulting ELPX may not open in the desktop application.">
+        <source>The resulting ELPX may not open in the desktop application.</source>
+        <target>~És possible que l’ELPX resultant no es pugui obrir a l’aplicació d’escriptori.</target>
+      </trans-unit>
+      <trans-unit id="z1pisxh" resname="Do you want to continue exporting anyway?">
+        <source>Do you want to continue exporting anyway?</source>
+        <target>~Vols continuar amb l’exportació igualment?</target>
+      </trans-unit>
+      <trans-unit id="12pg8oy" resname="Large ELPX export">
+        <source>Large ELPX export</source>
+        <target>~Exportació ELPX de gran mida</target>
+      </trans-unit>
+      <trans-unit id="65c7eyk" resname="Export anyway">
+        <source>Export anyway</source>
+        <target>~Exporta igualment</target>
+      </trans-unit>
+      <trans-unit id="pcsh7km" resname="Page title">
+        <source>Page title</source>
+        <target>~Títol de la pàgina</target>
+      </trans-unit>
+      <trans-unit id="x0lh0bv" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
+        <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
+        <target>~Aquest iDevice no es pot editar perquè les seves dades desades estan malmeses. S’ha conservat el seu contingut actual.</target>
+      </trans-unit>
+      <trans-unit id="9lh81bb" resname="Invalid iDevice data. The save was discarded.">
+        <source>Invalid iDevice data. The save was discarded.</source>
+        <target>~Dades de l’iDevice no vàlides. S’ha descartat el desament.</target>
+      </trans-unit>
+      <trans-unit id="czefw7d" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
+        <target>~Genera 5 preguntes d’opció múltiple sobre circuits elèctrics. Una pregunta per línia. Cada línia ha de contenir tots els camps separats per #: una descripció breu, el codi TikZ (fent servir circuitikz) de l’esquema del circuit, la resposta correcta en lletres (per exemple, A, AB), la pregunta i de 2 a 4 opcions de resposta. No facis servir el caràcter # dins de cap camp. No afegeixis salts de línia dins d’una pregunta. IMPORTANT: el codi TikZ ha de ser compatible amb la versió 0.9.6 de circuitikz. Fes servir únicament components disponibles en aquesta versió: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (díode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (amb t=A per a amperímetre, t=V per a voltímetre), and gate, or gate, not gate, nand gate, nor gate. NO facis servir components de circuitikz 1.0 o posterior com dipchip, qfpchip, muxdemux, flipflop, latch o displays de 7 segments. L’esquema el renderitza TikZJax, que només carrega els paquets LaTeX circuitikz, amsmath i amssymb; NO facis servir ordres de cap altre paquet. Escriu les unitats com a text pla o Unicode (per exemple Ω, µ, V, A, W, F, H, Hz, kΩ, µF), mai com a macros de siunitx o gensymb com ara \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} o \\qty{...}{...}, i mai no envoltis una unitat entre claudàtors angulars (escriu 100 Ω, no 100&lt;\\ohm&gt;).</target>
+      </trans-unit>
+      <trans-unit id="m5hta25" resname="Attachment">
+        <source>Attachment</source>
+        <target>~Adjunt</target>
+      </trans-unit>
+      <trans-unit id="lm8tbzy" resname="No files attached.">
+        <source>No files attached.</source>
+        <target>~No hi ha cap fitxer adjunt.</target>
+      </trans-unit>
+      <trans-unit id="rciutwc" resname="File unavailable">
+        <source>File unavailable</source>
+        <target>~Fitxer no disponible</target>
+      </trans-unit>
+      <trans-unit id="x4uh105" resname="File attachments">
+        <source>File attachments</source>
+        <target>~Fitxers adjunts</target>
+      </trans-unit>
+      <trans-unit id="se3zzvn" resname="Show file descriptions">
+        <source>Show file descriptions</source>
+        <target>~Mostra les descripcions dels fitxers</target>
+      </trans-unit>
+      <trans-unit id="t6hs70z" resname="No files attached yet.">
+        <source>No files attached yet.</source>
+        <target>~Encara no hi ha cap fitxer adjunt.</target>
+      </trans-unit>
+      <trans-unit id="athag5s" resname="Unknown file">
+        <source>Unknown file</source>
+        <target>~Fitxer desconegut</target>
+      </trans-unit>
+      <trans-unit id="skdvdi3" resname="The attached file is missing. Re-add it from the Media Library.">
+        <source>The attached file is missing. Re-add it from the Media Library.</source>
+        <target>~Falta el fitxer adjunt. Torna a afegir-lo des de la Biblioteca de mitjans.</target>
+      </trans-unit>
+      <trans-unit id="oocb29m" resname="The Media Library is not available.">
+        <source>The Media Library is not available.</source>
+        <target>~La Biblioteca de mitjans no està disponible.</target>
+      </trans-unit>
+      <trans-unit id="mix6uls" resname="The file could not be uploaded.">
+        <source>The file could not be uploaded.</source>
+        <target>~No s’ha pogut pujar el fitxer.</target>
+      </trans-unit>
+      <trans-unit id="69ltswg" resname="File properties">
+        <source>File properties</source>
+        <target>~Propietats del fitxer</target>
+      </trans-unit>
+      <trans-unit id="56xzbay" resname="Please wait">
+        <source>Please wait</source>
+        <target>~Espera, si us plau</target>
+      </trans-unit>
+      <trans-unit id="rmjdwvy" resname="Generating the circuit images, this may take a few minutes, please wait…">
+        <source>Generating the circuit images, this may take a few minutes, please wait…</source>
+        <target>~S’estan generant les imatges dels circuits; això pot trigar uns minuts, espera si us plau…</target>
+      </trans-unit>
+      <trans-unit id="bh7vfse" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
+        <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
+        <target>~Algunes preguntes no s’han pogut afegir perquè no s’ha pogut generar el seu circuit. S’han mantingut al quadre de text perquè les puguis corregir i tornar-ho a provar.</target>
+      </trans-unit>
+      <trans-unit id="sg932tq" resname="Requires manual review">
+        <source>Requires manual review</source>
+        <target>~Requereix revisió manual</target>
+      </trans-unit>
+      <trans-unit id="eduwl5z" resname="Broken">
+        <source>Broken</source>
+        <target>~Trencat</target>
+      </trans-unit>
+      <trans-unit id="3vtfply" resname="Listing links...">
+        <source>Listing links...</source>
+        <target>~Llistant enllaços...</target>
+      </trans-unit>
+      <trans-unit id="ae60hhe" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
+        <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
+        <target>~Per restriccions de seguretat del navegador, aquesta versió d’eXeLearning no pot comprovar els enllaços externs automàticament. Obre cada enllaç per revisar-lo manualment.</target>
+      </trans-unit>
+      <trans-unit id="v8ongwz" resname="the status of these links could not be checked automatically; open them to confirm.">
+        <source>the status of these links could not be checked automatically; open them to confirm.</source>
+        <target>~Aquests enllaços no s’han pogut comprovar automàticament.</target>
+      </trans-unit>
+      <trans-unit id="sgbrdnm" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
+        <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
+        <target>~Una marca de verificació significa que el servidor ha respost, però alguns llocs responen 200 fins i tot per a pàgines que no existeixen.</target>
+      </trans-unit>
+      <trans-unit id="9svklsy" resname="Links listed">
+        <source>Links listed</source>
+        <target>~Enllaços llistats</target>
+      </trans-unit>
+      <trans-unit id="w79j7rq" resname="to review manually">
+        <source>to review manually</source>
+        <target>~per revisar manualment</target>
+      </trans-unit>
+      <trans-unit id="ks1epit" resname="to review">
+        <source>to review</source>
+        <target>~per revisar</target>
+      </trans-unit>
+      <trans-unit id="zvgh1zk" resname="No links to export">
+        <source>No links to export</source>
+        <target>~No hi ha enllaços per exportar</target>
+      </trans-unit>
+      <trans-unit id="zthq27r" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
+        <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
+        <target>~Els enllaços externs no es poden comprovar automàticament en aquesta versió d’eXeLearning: obtindràs una llista d’enllaços per revisar manualment.</target>
+      </trans-unit>
+      <trans-unit id="j8lehpx" resname="Not checked automatically: open the link to review it">
+        <source>Not checked automatically: open the link to review it</source>
+        <target>~No comprovat automàticament; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="ocs9vt1" resname="Local or private address: open the link to review it manually">
+        <source>Local or private address: open the link to review it manually</source>
+        <target>~Adreça local o privada; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="ot54nq2" resname="Redirects to another site — open the link to verify it">
+        <source>Redirects to another site — open the link to verify it</source>
+        <target>~Redirigeix a un altre lloc; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="bdkb70w" resname="Could not be fully verified: open the link to confirm it">
+        <source>Could not be fully verified: open the link to confirm it</source>
+        <target>~Verificació incompleta; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="11b4k56" resname="Redirects could not be followed: open the link to review it">
+        <source>Redirects could not be followed: open the link to review it</source>
+        <target>~No s’han pogut seguir les redireccions; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="7xpdvd3" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~i %1 més</target>
+      </trans-unit>
+      <trans-unit id="rwfxiot" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Fitxers que falten</target>
+      </trans-unit>
+      <trans-unit id="qx81u52" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Aquestes activitats fan referència a fitxers que no s'inclouen en el paquet importat. S'han conservat les referències, de manera que en tornar a afegir els fitxers es restauraran.</target>
+      </trans-unit>
+      <trans-unit id="036625d" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Les fórmules es mostren encara que aquesta opció estigui desactivada. Activa-la per incloure la biblioteca MathJax completa a les exportacions. Això hi afegeix el menú contextual i les funcions interactives.</target>
+      </trans-unit>
+      <trans-unit id="4b1m1zm" resname="Change password">
+        <source>Change password</source>
+        <target>~Canvia la contrasenya</target>
+      </trans-unit>
+      <trans-unit id="8jbemw9" resname="Current password">
+        <source>Current password</source>
+        <target>~Contrasenya actual</target>
+      </trans-unit>
+      <trans-unit id="85gov21" resname="New password">
+        <source>New password</source>
+        <target>~Contrasenya nova</target>
+      </trans-unit>
+      <trans-unit id="4qcxnlk" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Com a mínim 4 caràcters. Les contrasenyes llargues que combinen lletres, xifres i símbols són més segures.</target>
+      </trans-unit>
+      <trans-unit id="eu85z9b" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Confirma la contrasenya nova</target>
+      </trans-unit>
+      <trans-unit id="84nojm4" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Activitats malmeses</target>
+      </trans-unit>
+      <trans-unit id="w3iog6i" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~Les dades d'aquestes activitats estan malmeses i no s'han pogut llegir. S'han importat sense canvis: encara es mostra el seu darrer contingut, però no es poden editar sense crear-les de nou.</target>
+      </trans-unit>
+      <trans-unit id="ui91uka" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Avisos d'importació</target>
+      </trans-unit>
+      <trans-unit id="yy3hlea" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Cerca una icona</target>
+      </trans-unit>
+      <trans-unit id="o55ijqt" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Tria una imatge del gestor de fitxers</target>
+      </trans-unit>
+      <trans-unit id="ogerg8o" resname="Icon">
+        <source>Icon</source>
+        <target>~Icona</target>
+      </trans-unit>
+      <trans-unit id="h4vwxlx" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Icones de l'estil</target>
+      </trans-unit>
+      <trans-unit id="4ygp9yl" resname="General icons">
+        <source>General icons</source>
+        <target>~Icones generals</target>
+      </trans-unit>
+      <trans-unit id="qccn4ch" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Seguretat de la contrasenya: massa curta</target>
+      </trans-unit>
+      <trans-unit id="jadqn7y" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Seguretat de la contrasenya: feble</target>
+      </trans-unit>
+      <trans-unit id="8b3fs46" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Seguretat de la contrasenya: acceptable</target>
+      </trans-unit>
+      <trans-unit id="y90eykm" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Seguretat de la contrasenya: bona</target>
+      </trans-unit>
+      <trans-unit id="o5olrmt" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Seguretat de la contrasenya: forta</target>
+      </trans-unit>
+      <trans-unit id="06ovziu" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~La contrasenya actual no és correcta</target>
+      </trans-unit>
+      <trans-unit id="q4kqsoq" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~La contrasenya nova no pot estar buida.</target>
+      </trans-unit>
+      <trans-unit id="qyq60yf" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~Les contrasenyes no coincideixen</target>
+      </trans-unit>
+      <trans-unit id="vg1asoz" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~Contrasenya canviada correctament</target>
+      </trans-unit>
+      <trans-unit id="fezaxqh" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~S'ha produït un error. Torna-ho a provar.</target>
+      </trans-unit>
+      <trans-unit id="7jv1pyk" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Aquest compte no permet canviar la contrasenya.</target>
+      </trans-unit>
+      <trans-unit id="jxc6xxv" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~La contrasenya nova no és vàlida.</target>
+      </trans-unit>
+      <trans-unit id="k2hswxk" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Text més enorme</target>
+      </trans-unit>
+      <trans-unit id="l2puwct" resname="To save the score, the activity needs at least one question.">
+        <source>To save the score, the activity needs at least one question.</source>
+        <target>~Per a desar la puntuació, l'activitat necessita almenys una pregunta.</target>
       </trans-unit>
     </body>
   </file>

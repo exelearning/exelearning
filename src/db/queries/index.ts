@@ -18,6 +18,8 @@ export {
     findOrCreateExternalUser,
     updateApiToken,
     findFirstUser,
+    updateUserRoles,
+    updateUserPassword,
 } from './users';
 
 // Project queries
@@ -26,6 +28,12 @@ export {
     findProjectById,
     findProjectByUuid,
     findProjectByPlatformId,
+    findProjectByPublicViewId,
+    generatePublicViewId,
+    setPublicViewEnabled,
+    setPublicViewEnabledByUuid,
+    regeneratePublicViewId,
+    regeneratePublicViewIdByUuid,
     findProjectWithOwner,
     findProjectByUuidWithOwner,
     getProjectCollaborators,
@@ -98,6 +106,7 @@ export {
     deleteAllUpdates,
     deleteUpdatesBefore,
     getLatestVersion,
+    getDocumentVersion,
     countUpdates,
     documentExists,
     saveFullState,

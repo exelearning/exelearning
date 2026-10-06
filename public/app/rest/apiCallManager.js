@@ -52,9 +52,29 @@ export default class ApiCallManager {
             return;
         }
 
-        // Priority 2: fetch bundle.json (for dev)
-        // In static mode, bundle.json is always relative to the current HTML file
+        // Priority 2: fetch bundle.json.zst (the static build ships the bundle
+        // zstd-compressed; window.fzstd is loaded by the static index — same
+        // pattern as the LOMLOE/DigCompEdu datasets)
+        // In static mode, the bundle is always relative to the current HTML file.
         // Don't use basePath here as it may include subdirectory paths that cause double-path issues
+        if (window.fzstd) {
+            try {
+                const zstUrl = './data/bundle.json.zst';
+                console.log(`[ApiCallManager] Fetching static data from ${zstUrl}`);
+                const response = await fetch(zstUrl);
+                if (response.ok) {
+                    const compressed = new Uint8Array(await response.arrayBuffer());
+                    const json = new TextDecoder().decode(window.fzstd.decompress(compressed));
+                    this.staticData = JSON.parse(json);
+                    console.log('[ApiCallManager] Loaded static data from bundle.json.zst');
+                    return;
+                }
+            } catch (e) {
+                console.warn('[ApiCallManager] Error loading compressed static bundle:', e);
+            }
+        }
+
+        // Priority 3: fetch plain bundle.json (dev fallback / older mirrors)
         try {
             const bundleUrl = './data/bundle.json';
             console.log(`[ApiCallManager] Fetching static data from ${bundleUrl}`);
@@ -713,8 +733,17 @@ export default class ApiCallManager {
      * @returns
      */
     async postUploadIdevice(params) {
-        let url = this.endpoints.api_idevices_upload.path;
-        return await this.func.post(url, params);
+        // PROVISIONAL (issue #144): iDevice importing is not available yet. The
+        // endpoint is absent from the static/online route map, so reading its
+        // path threw an unhandled TypeError. Fail gracefully instead; remove
+        // this guard when iDevice importing is implemented.
+        const endpoint = this.endpoints.api_idevices_upload;
+        // No `error` detail: callers already show their own translated message,
+        // and an untranslated string here would duplicate it in the alert.
+        if (!endpoint || !endpoint.path) {
+            return { responseMessage: 'Error' };
+        }
+        return await this.func.post(endpoint.path, params);
     }
 
     /**
@@ -1818,6 +1847,30 @@ export default class ApiCallManager {
         const pageId = params.odeNavStructureSyncId || params.odePageId;
         const blockId = params.odePagStructureSyncId || params.odeBlockId;
         const componentId = params.odeComponentsSyncId || params.odeIdeviceId || params.id;
+        let validatedJsonProperties;
+
+        if (params.jsonProperties !== undefined) {
+            try {
+                // Validate here so an invalid payload never reaches the block
+                // creation below, which would otherwise leave an orphan block
+                // behind when the component write fails. Asset normalization is
+                // left to createComponent/updateComponent, which prepare the
+                // value themselves; running it here too would do the work twice.
+                validatedJsonProperties =
+                    structureBinding.serializeAndValidateJsonProperties(
+                        convertJsonProperties(params.jsonProperties)
+                    );
+            } catch (error) {
+                console.error(
+                    '[apiCallManager] Invalid jsonProperties, discarding save:',
+                    error
+                );
+                return {
+                    responseMessage: 'ERROR',
+                    error: _('Invalid iDevice data. The save was discarded.'),
+                };
+            }
+        }
 
         console.log('[apiCallManager] _saveIdeviceToYjs:', { pageId, blockId, componentId, params });
 
@@ -1847,22 +1900,52 @@ export default class ApiCallManager {
         if (!existingComponent && pageId && blockId && (params.odeIdeviceTypeName || componentId)) {
             // Ensure block exists - create if "new"
             let actualBlockId = blockId;
+            let blockCreatedHere = false;
             if (blockId === 'new' || !structureBinding.getBlockMap(pageId, blockId)) {
                 actualBlockId = structureBinding.createBlock(pageId, params.blockName || '');
+                blockCreatedHere = true;
                 console.log('[apiCallManager] Created new block in Yjs:', actualBlockId);
             }
 
-            const newComponentId = structureBinding.createComponent(
-                pageId,
-                actualBlockId,
-                params.odeIdeviceTypeName || 'FreeTextIdevice',
-                {
+            let newComponentId;
+            try {
+                const initialComponentData = {
                     id: componentId, // Preserve the original ID if provided
                     htmlContent: convertHtmlContent(params.htmlView) || '',
                     iconName: params.iconName,
-                    jsonProperties: params.jsonProperties ? convertJsonProperties(params.jsonProperties) : undefined,
+                };
+                if (validatedJsonProperties !== undefined) {
+                    initialComponentData.jsonProperties =
+                        validatedJsonProperties;
                 }
-            );
+                newComponentId = structureBinding.createComponent(
+                    pageId,
+                    actualBlockId,
+                    params.odeIdeviceTypeName || 'FreeTextIdevice',
+                    initialComponentData
+                );
+            } catch (error) {
+                console.error(
+                    '[apiCallManager] Error creating iDevice in Yjs:',
+                    error
+                );
+                // Do not leave behind the block we just created for this
+                // component: an empty orphan block would persist and sync.
+                if (blockCreatedHere) {
+                    try {
+                        structureBinding.deleteBlock(pageId, actualBlockId);
+                    } catch (cleanupError) {
+                        console.error(
+                            '[apiCallManager] Could not remove orphan block:',
+                            cleanupError
+                        );
+                    }
+                }
+                return {
+                    responseMessage: 'ERROR',
+                    error: _('Invalid iDevice data. The save was discarded.'),
+                };
+            }
             console.log('[apiCallManager] Created new iDevice in Yjs:', newComponentId);
             return buildResponse(newComponentId || componentId, true);
         }
@@ -1874,7 +1957,7 @@ export default class ApiCallManager {
                 updateData.htmlContent = convertHtmlContent(params.htmlView);
             }
             if (params.jsonProperties !== undefined) {
-                updateData.jsonProperties = convertJsonProperties(params.jsonProperties);
+                updateData.jsonProperties = validatedJsonProperties;
             }
             if (params.order !== undefined) {
                 updateData.order = params.order;
@@ -1885,6 +1968,10 @@ export default class ApiCallManager {
                 console.log('[apiCallManager] Updated iDevice in Yjs:', componentId);
             } catch (e) {
                 console.error('[apiCallManager] Error updating iDevice in Yjs:', e);
+                return {
+                    responseMessage: 'ERROR',
+                    error: _('Invalid iDevice data. The save was discarded.'),
+                };
             }
 
             return buildResponse(componentId, false);
@@ -2006,6 +2093,13 @@ export default class ApiCallManager {
                 if (params.blockName !== undefined && params.blockName !== currentBlock?.blockName) {
                     updates.blockName = params.blockName;
                 }
+                if (params.icon !== undefined) {
+                    const currentIcon = currentBlock?.icon ?? null;
+                    const nextIcon = params.icon ?? null;
+                    if (JSON.stringify(nextIcon) !== JSON.stringify(currentIcon)) {
+                        updates.icon = nextIcon;
+                    }
+                }
                 if (params.iconName !== undefined && params.iconName !== currentBlock?.iconName) {
                     updates.iconName = params.iconName;
                 }
@@ -2026,6 +2120,7 @@ export default class ApiCallManager {
                         id: blockId,
                         odePagId: blockId,
                         blockName: params.blockName,
+                        icon: params.icon,
                         iconName: params.iconName,
                         order: params.order
                     }
@@ -2312,6 +2407,64 @@ export default class ApiCallManager {
     }
 
     /**
+     * Resolve the auth token from the available sources, in priority order:
+     * the Yjs bridge token, the auth service token, then localStorage.
+     * Single source of truth for token resolution across project sharing calls.
+     *
+     * @returns {string|null} The bearer token, or null if none is available
+     */
+    _resolveAuthToken() {
+        return (
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken') ||
+            null
+        );
+    }
+
+    /**
+     * Perform a JSON request against an authenticated project endpoint and
+     * normalize the result into the shape the project-sharing callers expect:
+     * the parsed JSON body on success, or `{ responseMessage: 'ERROR', detail }`
+     * on a non-ok response or a network error.
+     *
+     * @param {string} url - The request URL
+     * @param {Object} [options] - Request options
+     * @param {string} [options.method='GET'] - HTTP method
+     * @param {Object} [options.body] - JSON body (serialized automatically)
+     * @param {string} [options.label] - Label used in error logging
+     * @returns {Promise<Object>} Parsed JSON, or an error envelope
+     */
+    async _jsonRequest(url, { method = 'GET', body, label = 'request' } = {}) {
+        const authToken = this._resolveAuthToken();
+
+        try {
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.detail || errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`[API] ${label} error:`, error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
      * Get project sharing information (owner, collaborators, visibility)
      * Accepts both numeric ID and UUID
      *
@@ -2399,6 +2552,38 @@ export default class ApiCallManager {
             console.error('[API] updateProjectVisibility error:', error);
             return { responseMessage: 'ERROR', detail: error.message };
         }
+    }
+
+    /**
+     * Enable or disable the public read-only viewer link for a project.
+     * Independent of edit visibility.
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {boolean} enabled - Whether the public read-only link is enabled
+     * @returns {Promise<Object>} Response with publicViewEnabled and publicViewId
+     */
+    async updatePublicViewAccess(projectId, enabled) {
+        const url = this._buildProjectUrl(projectId, '/public-view');
+        return this._jsonRequest(url, {
+            method: 'PATCH',
+            body: { enabled },
+            label: 'updatePublicViewAccess',
+        });
+    }
+
+    /**
+     * Regenerate the public read-only viewer link id for a project.
+     * Invalidates the previous public link.
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @returns {Promise<Object>} Response with the new publicViewId
+     */
+    async regeneratePublicViewId(projectId) {
+        const url = this._buildProjectUrl(projectId, '/public-view/regenerate');
+        return this._jsonRequest(url, {
+            method: 'POST',
+            label: 'regeneratePublicViewId',
+        });
     }
 
     /**

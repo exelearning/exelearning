@@ -236,7 +236,8 @@ iframe.contentWindow.postMessage({
     requestId: 'export-1',
     data: {
         format: 'html5',              // 'elpx', 'html5', 'scorm12', 'scorm2004', 'epub3', 'ims'
-        filename: 'my-course.zip'      // Optional
+        filename: 'my-course.zip',     // Optional
+        options: {}                    // Optional, forwarded to the exporter
     }
 }, '*');
 
@@ -250,6 +251,32 @@ iframe.contentWindow.postMessage({
     size: 54321
 }
 ```
+
+##### `options.forceEditableSource`
+
+Every format except `elpx` honours the project's **Editable export**
+(`exportSource`) property: with it off, the package ships without the
+re-editable `content.xml` ([#2415](https://github.com/exelearning/exelearning/issues/2415)).
+`elpx` always carries it, because the format requires it.
+
+A host that stores the exported package **as the project** and re-opens it for
+editing later must therefore set `options.forceEditableSource: true`. Otherwise
+an author who turns the property off saves a package the host can never read
+back. This applies to Moodle `mod_exescorm`, whose embedded editor round-trips
+the SCORM 1.2 package it wrote; hosts that export `elpx` (`mod_exeweb`,
+`mod_exelearning`) do not need it.
+
+```javascript
+data: {
+    format: 'scorm12',
+    filename: 'package.zip',
+    options: {forceEditableSource: true}
+}
+```
+
+The flag governs the packaged file only. It never changes what the author's own
+exports from inside the editor contain, and it does not add the
+"download source" link to the rendered pages.
 
 #### `GET_PROJECT_INFO` (parent -> editor)
 
@@ -346,6 +373,61 @@ The editor preview works in two modes:
 2. **Blob URL fallback** (embedded): When SW registration fails (cross-origin iframes), the preview generates a self-contained HTML file with inlined CSS/JS/images and loads it via a blob URL.
 
 The fallback is automatic and requires no configuration.
+
+## YouTube "Error 153" and `referrerpolicy`
+
+Separate from iframe sandboxing, YouTube's embedded player returns **Error 153**
+(`embedder.identity.missing.referrer`) when it cannot read the HTTP `Referer` header — e.g. when
+the host page's `Referrer-Policy` is `no-referrer`/`same-origin`, or the iframe has no
+`referrerpolicy` attribute. Common sanitizers (and WordPress **Jetpack**'s embed handling) strip
+the attribute, which triggers this.
+
+eXeLearning therefore ensures every YouTube/Vimeo iframe it produces carries
+`referrerpolicy="strict-origin-when-cross-origin"` (the per-iframe attribute **overrides** the
+page policy):
+
+- The collaborative sanitizer (`public/app/utils/sanitizeHtml.js`) **preserves** `referrerpolicy`
+  (it is in `ADD_ATTR`).
+- The export/preview renderer (`IdeviceRenderer.addReferrerPolicyToEmbeds`) **adds** it to
+  YouTube/Vimeo iframes that lack it — covering existing content and every export format.
+
+**Host integrators (WordPress/Moodle/Drupal/Omeka-S):** for full robustness also set the response
+header `Referrer-Policy: strict-origin-when-cross-origin` on pages that embed eXe content, and —
+on WordPress — make sure Jetpack's embed/shortcode handling does not rewrite eXe iframes (it
+strips `referrerpolicy`).
+
+## Teacher Mode
+
+Content that an author marks as **Teacher only** (the `teacher-only` CSS class on blocks and
+iDevices) is **hidden by default** in every exported package. Whether a viewer can reveal it
+is driven entirely by a URL parameter, so host plugins switch between the student and teacher
+experiences by changing the content URL only — **no injected CSS or JavaScript**.
+
+| View | URL | Result |
+|------|-----|--------|
+| Student (default) | `index.html` | Teacher content hidden; no toggle. |
+| Teacher | `index.html?exe-teacher=1` | The in-page Teacher Mode toggle appears (OFF by default); the viewer flips it to reveal teacher content. |
+
+```javascript
+// The parent only changes the iframe src — nothing else.
+iframe.src = base + '/index.html' + (isTeacher ? '?exe-teacher=1' : '');
+```
+
+- `?exe-teacher=1` makes the self-serve toggle **available**; it does **not** reveal content on
+  its own — the viewer activates the toggle, and its on/off state is remembered per browser in
+  `localStorage`. Accepted truthy values: `1`, `true`, `yes`; the generic alias `?teacher-mode=1`
+  and the legacy `?exe-teacher-toggler=1` are also accepted.
+- Without the parameter there is no toggle and teacher content stays hidden (student view).
+- The toggle's restored on/off state is applied in an early `<head>` script (before first paint),
+  so there is no flicker.
+- The parameter is propagated onto in-package navigation links, so the toggle stays available
+  across pages of a multi-page export (works in same-origin and opaque-origin iframes).
+- eXeLearning's own authoring preview loads the viewer with `?exe-teacher=1`, so the toggle is
+  available in the preview and the author can reveal their own teacher content.
+
+> **This is a presentation mode, not access control.** `?exe-teacher=1` only exposes a toggle;
+> it is not authentication and is not a security boundary. Truly sensitive answer keys must be
+> protected by a separate authenticated/password-gated feature, not by this flag.
 
 ## Example: WordPress Integration
 

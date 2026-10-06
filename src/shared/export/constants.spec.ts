@@ -25,7 +25,10 @@ import {
     getLicenseUrl,
     LICENSE_REGISTRY,
     shouldShowLicenseFooter,
+    hasSiteFooterContent,
+    hasUserFooterContent,
     formatShortLicenseText,
+    PRERENDERED_LATEX_CSS,
 } from './constants';
 import { resetIdeviceConfigCache, loadIdeviceConfigs } from '../../services/idevice-config';
 
@@ -219,6 +222,34 @@ describe('Constants', () => {
             const jqueryIndex = BASE_LIBRARIES.indexOf('jquery/jquery.min.js');
             const bootstrapIndex = BASE_LIBRARIES.findIndex(lib => lib.includes('bootstrap.bundle'));
             expect(jqueryIndex).toBeLessThan(bootstrapIndex);
+        });
+
+        // Tripwire, not a style rule: a library that announces `sourceMappingURL`
+        // must either travel with its .map or have the announcement stripped, or
+        // every exported package 404s in DevTools. Dropping the .map entries here
+        // to save bytes is the tempting half of that trade — this fails if it is
+        // done alone. `stripSourceMappingUrl` in
+        // scripts/static-bundle/strip-source-map-refs.ts is the other half.
+        it('ships a .map for every library that still announces one', () => {
+            const libsDir = path.join(__dirname, '../../../public/libs');
+            let resolved = 0;
+
+            for (const lib of BASE_LIBRARIES) {
+                if (lib.endsWith('.map')) continue; // a map's own JSON mentions the word
+                const absPath = path.join(libsDir, lib);
+                if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) continue;
+
+                resolved += 1;
+                if (!fs.readFileSync(absPath, 'utf-8').includes('sourceMappingURL')) continue;
+
+                expect(BASE_LIBRARIES as readonly string[]).toContain(`${lib}.map`);
+            }
+
+            // Guard the guard: count files that resolved on disk, not files that
+            // announce a map. Zero announcements is a valid end state — the
+            // announcement can be stripped from the vendored file instead — but
+            // zero resolved paths means the lookup broke and this asserts nothing.
+            expect(resolved).toBeGreaterThan(0);
         });
     });
 
@@ -924,6 +955,77 @@ describe('Constants', () => {
             it('should return true for unknown licenses', () => {
                 expect(shouldShowLicenseFooter('some random license')).toBe(true);
             });
+        });
+
+        describe('hasUserFooterContent', () => {
+            it('should return false for missing or empty content', () => {
+                expect(hasUserFooterContent()).toBe(false);
+                expect(hasUserFooterContent('')).toBe(false);
+                expect(hasUserFooterContent(undefined)).toBe(false);
+            });
+
+            it('should return false for whitespace-only content', () => {
+                expect(hasUserFooterContent('   ')).toBe(false);
+                expect(hasUserFooterContent('\n\t\r\n')).toBe(false);
+            });
+
+            it('should return true for real content', () => {
+                expect(hasUserFooterContent('<p>Hello</p>')).toBe(true);
+                expect(hasUserFooterContent('  text  ')).toBe(true);
+            });
+        });
+
+        describe('hasSiteFooterContent', () => {
+            it('should return false when there is neither license nor user content', () => {
+                expect(hasSiteFooterContent('')).toBe(false);
+                expect(hasSiteFooterContent('', '')).toBe(false);
+                expect(hasSiteFooterContent('', undefined)).toBe(false);
+                expect(hasSiteFooterContent(null as unknown as string)).toBe(false);
+            });
+
+            it('should return false for hidden licenses without user content', () => {
+                expect(hasSiteFooterContent('propietary license')).toBe(false);
+                expect(hasSiteFooterContent('not appropriate')).toBe(false);
+                expect(hasSiteFooterContent('Not Appropriate', '')).toBe(false);
+            });
+
+            it('should treat whitespace-only user content as empty', () => {
+                expect(hasSiteFooterContent('', '   ')).toBe(false);
+                expect(hasSiteFooterContent('', '\n\n')).toBe(false);
+                expect(hasSiteFooterContent('', ' \t \r\n ')).toBe(false);
+                expect(hasSiteFooterContent('not appropriate', '\n  \n')).toBe(false);
+            });
+
+            it('should return true when a visible license is present', () => {
+                expect(hasSiteFooterContent('creative commons: attribution 4.0')).toBe(true);
+                expect(hasSiteFooterContent('public domain', '')).toBe(true);
+                expect(hasSiteFooterContent('some random license', '   ')).toBe(true);
+            });
+
+            it('should return true when user content is present without a license', () => {
+                expect(hasSiteFooterContent('', '<p>Hello</p>')).toBe(true);
+                expect(hasSiteFooterContent('propietary license', '<p>Hello</p>')).toBe(true);
+                expect(hasSiteFooterContent('not appropriate', '  text  ')).toBe(true);
+            });
+        });
+    });
+
+    describe('PRERENDERED_LATEX_CSS', () => {
+        it('should style the rendered math wrapper and assistive MathML', () => {
+            expect(PRERENDERED_LATEX_CSS).toContain('.exe-math-rendered');
+            expect(PRERENDERED_LATEX_CSS).toContain('display: inline-block');
+            expect(PRERENDERED_LATEX_CSS).toContain('[data-display="block"]');
+            // Assistive MathML must be removed from layout so it never shifts the baseline.
+            expect(PRERENDERED_LATEX_CSS).toContain('.exe-math-rendered math');
+            expect(PRERENDERED_LATEX_CSS).toContain('position: absolute');
+        });
+
+        it('should NOT force vertical-align on the wrapper or svg (issue #1919)', () => {
+            // Baseline alignment is driven by the SVG's own inline `vertical-align: -X.XXXex`.
+            // Forcing `vertical-align: middle` centres the box on the line and breaks the baseline
+            // for fractions, sub/superscripts and radicals.
+            expect(PRERENDERED_LATEX_CSS).not.toContain('vertical-align: middle');
+            expect(PRERENDERED_LATEX_CSS).not.toContain('vertical-align');
         });
     });
 });

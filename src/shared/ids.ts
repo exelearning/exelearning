@@ -22,6 +22,9 @@ export function generateId(prefix: string): string {
         throw new Error('generateId: prefix is required');
     }
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 11);
+    // `toString(36)` yields a variable-length tail (a short random float drops
+    // trailing chars), so pad to a fixed 9-char suffix. Without this the suffix
+    // is occasionally 8 chars and callers asserting a 9-char tail flake.
+    const random = Math.random().toString(36).substring(2, 11).padEnd(9, '0');
     return `${prefix}-${timestamp}-${random}`;
 }

@@ -15,6 +15,7 @@ import { now } from '../../../db/types';
 import { assetsRoutes } from './assets';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser, createAsset } from '../../../db/queries';
+import { getAssetShard } from '../../../utils/asset-paths';
 import { configureDocManager, resetDocManager, configureBroadcaster, resetBroadcaster } from '../../../yjs';
 import * as Y from 'yjs';
 
@@ -369,6 +370,108 @@ describe('Assets API v1', () => {
             const body = (await response.json()) as { success: boolean; data: { filename: string } };
             expect(body.success).toBe(true);
             expect(body.data.filename).toBe('new.png');
+        });
+
+        it('should reject a path-traversal clientId with 400 and write nothing to disk', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'user-project-traversal',
+                    title: 'User Project',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+
+            // Sentinel target the traversal would attempt to overwrite if unguarded.
+            const escapeTarget = path.join(TEST_FILES_DIR, 'pwned.txt');
+            await fs.remove(escapeTarget).catch(() => {});
+
+            const formData = new FormData();
+            // No extension on the filename gives ext '', so without the guard this
+            // would resolve to TEST_FILES_DIR/pwned.txt — path.join collapses the `..`.
+            formData.append('file', new Blob(['malicious'], { type: 'text/plain' }), 'noext');
+            formData.append('clientId', '../../pwned.txt');
+
+            const response = await app.handle(
+                new Request('http://localhost/projects/user-project-traversal/assets', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${userToken}` },
+                    body: formData,
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const body = (await response.json()) as { success: boolean; error: { code: string } };
+            expect(body.success).toBe(false);
+            expect(body.error.code).toBe('BAD_REQUEST');
+
+            // Nothing was written outside (or inside) the project assets directory
+            // (checked in both the sharded and the legacy unsharded location).
+            expect(await fs.pathExists(escapeTarget)).toBe(false);
+            const shard = getAssetShard('user-project-traversal');
+            for (const assetsDir of [
+                path.join(TEST_FILES_DIR, 'assets', shard, 'user-project-traversal'),
+                path.join(TEST_FILES_DIR, 'assets', 'user-project-traversal'),
+            ]) {
+                const entries = (await fs.pathExists(assetsDir)) ? await fs.readdir(assetsDir) : [];
+                expect(entries.length).toBe(0);
+            }
+
+            // And no asset record was created.
+            const rows = await db.selectFrom('assets').selectAll().execute();
+            expect(rows.length).toBe(0);
+        });
+
+        it('should upload successfully with a normal UUID clientId', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'user-project-uuid-clientid',
+                    title: 'User Project',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+
+            const clientId = '123e4567-e89b-12d3-a456-426614174000';
+            const formData = new FormData();
+            formData.append('file', new Blob(['safe content'], { type: 'image/png' }), 'safe.png');
+            formData.append('clientId', clientId);
+
+            const response = await app.handle(
+                new Request('http://localhost/projects/user-project-uuid-clientid/assets', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${userToken}` },
+                    body: formData,
+                }),
+            );
+
+            expect(response.status).toBe(201);
+            const body = (await response.json()) as { success: boolean; data: { clientId: string; filename: string } };
+            expect(body.success).toBe(true);
+            expect(body.data.clientId).toBe(clientId);
+            expect(body.data.filename).toBe('safe.png');
+
+            // File is stored as {clientId}.{ext} inside the sharded project
+            // assets directory, and the DB row holds the FILES_DIR-relative path.
+            const shard = getAssetShard('user-project-uuid-clientid');
+            const expectedPath = path.join(
+                TEST_FILES_DIR,
+                'assets',
+                shard,
+                'user-project-uuid-clientid',
+                `${clientId}.png`,
+            );
+            expect(await fs.pathExists(expectedPath)).toBe(true);
+
+            const row = await db
+                .selectFrom('assets')
+                .selectAll()
+                .where('client_id', '=', clientId)
+                .executeTakeFirstOrThrow();
+            expect(row.storage_path).toBe(`assets/${shard}/user-project-uuid-clientid/${clientId}.png`);
+            expect(path.isAbsolute(row.storage_path)).toBe(false);
         });
     });
 

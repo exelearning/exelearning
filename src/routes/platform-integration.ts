@@ -6,9 +6,89 @@
  * bidirectional file transfer (download from platform, upload to platform).
  */
 import { Elysia, t } from 'elysia';
+import type { Kysely } from 'kysely';
 import { getBasePath } from '../utils/basepath.util';
 import { decodePlatformJWT, getPlatformIntegrationParams } from '../utils/platform-jwt';
 import { platformPetitionGet, platformPetitionSet, platformPetitionSetForward } from '../services/platform-integration';
+import { db as defaultDb } from '../db/client';
+import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
+import type { Database } from '../db/types';
+
+/**
+ * Route-level dependencies for platform integration.
+ *
+ * The export/post-back handlers must enforce that a client-supplied
+ * `projectUuid` actually belongs to the platform identity carried by the
+ * validated JWT before exporting and shipping its contents back to the
+ * platform. That ownership check needs to read the project row (in
+ * particular `platform_id`), so the lookup is exposed here for dependency
+ * injection in tests instead of mutating the service-level dependencies.
+ */
+export interface PlatformIntegrationRouteDependencies {
+    db: Kysely<Database>;
+    findProjectByUuid: typeof findProjectByUuidDefault;
+}
+
+const defaultRouteDeps: PlatformIntegrationRouteDependencies = {
+    db: defaultDb,
+    findProjectByUuid: findProjectByUuidDefault,
+};
+
+let routeDeps = defaultRouteDeps;
+
+/**
+ * Configure route-level dependencies (for testing).
+ */
+export function configurePlatformIntegrationRoutes(newDeps: Partial<PlatformIntegrationRouteDependencies>): void {
+    routeDeps = { ...defaultRouteDeps, ...newDeps };
+}
+
+/**
+ * Reset route-level dependencies to their defaults.
+ */
+export function resetPlatformIntegrationRoutesDependencies(): void {
+    routeDeps = defaultRouteDeps;
+}
+
+/**
+ * Authorize that a project may be exported to / posted back to the platform
+ * identified by a validated JWT.
+ *
+ * Ownership invariant (prevents IDOR — bug M2): a project that is already
+ * bound to a platform course module (`projects.platform_id` is set — this is
+ * written by `platformPetitionSet` / `platformPetitionSetForward` on a
+ * successful upload, and stores the JWT's `cmid`) may only be exported when
+ * its stored `platform_id` matches the `cmid` in the validated JWT. Without
+ * this check, a legitimate-but-malicious platform user holding a valid JWT
+ * for their own course module could substitute a victim's `projectUuid` and
+ * exfiltrate its full contents via the platform post-back.
+ *
+ * A project whose `platform_id` is still `null` is being saved back to a
+ * platform for the first time (the link is established on success), so it is
+ * allowed to proceed. A non-existent project is NOT treated as a denial here:
+ * the lookup is left to the service so the existing "Project not found"
+ * response shape is preserved.
+ *
+ * @returns `true` if the export may proceed, `false` if it must be denied.
+ */
+async function isProjectAuthorizedForPlatform(projectUuid: string, jwtCmid: string): Promise<boolean> {
+    const project = await routeDeps.findProjectByUuid(routeDeps.db, projectUuid);
+
+    // Not found here is not an authorization failure: defer to the service,
+    // which returns the canonical "Project not found" response shape.
+    if (!project) {
+        return true;
+    }
+
+    // Unlinked projects (first save back to the platform) are allowed; the
+    // linkage is created on success.
+    if (project.platform_id == null) {
+        return true;
+    }
+
+    // Linked projects may only be exported to the platform module they belong to.
+    return project.platform_id === jwtCmid;
+}
 
 /**
  * Platform integration routes
@@ -160,6 +240,17 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
                 set.status = 401;
                 return {
                     responseMessage: 'Invalid token or unauthorized provider',
+                };
+            }
+
+            // Ownership gate (IDOR — bug M2): a valid JWT only authorizes the
+            // platform module it was issued for. Refuse to export and post
+            // back a project that is bound to a different platform module.
+            const authorized = await isProjectAuthorizedForPlatform(projectUuid, params.cmid);
+            if (!authorized) {
+                set.status = 403;
+                return {
+                    responseMessage: 'Forbidden: project does not belong to this platform identity',
                 };
             }
 

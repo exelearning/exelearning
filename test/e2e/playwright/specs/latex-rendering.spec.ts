@@ -9,6 +9,7 @@ import {
     waitForPreviewContent,
     getPreviewFrame,
     addTextIdevice,
+    addTextIdeviceWithContent,
     waitForTinyMCEReady,
     saveProject,
     reloadPage,
@@ -30,6 +31,68 @@ import {
  */
 
 const LATEX_FIXTURE_PATH = path.resolve(__dirname, '../../../fixtures/latex.elp');
+
+interface RecordedRequest {
+    url: string;
+    resourceType: string;
+    status: number | null;
+}
+
+/**
+ * Resource kinds MathJax uses to reach a CDN: component scripts, font files, and the
+ * worker's locale fetches. Images are excluded on purpose — the workarea chrome pulls
+ * a Gravatar avatar, and a guard that trips on unrelated page furniture is a guard
+ * people delete.
+ */
+const OFF_ORIGIN_FORBIDDEN_TYPES = ['script', 'font', 'stylesheet', 'xhr', 'fetch'];
+
+/**
+ * Record every HTTP request the page and its frames make.
+ *
+ * MathJax 4 keeps the font's glyph ranges outside the combined component and, left
+ * alone, resolves them through `loader.paths.fonts`, whose stock value is
+ * https://cdn.jsdelivr.net/npm/@mathjax. That is invisible in a browser with a
+ * network: the formula renders and the suite passes, while every exported package
+ * carries an external dependency and drops the glyph offline. The only way to see
+ * it is to watch the wire, so this backs assertNoOffOriginRequests below.
+ */
+function recordRequests(page: Page): RecordedRequest[] {
+    const requests: RecordedRequest[] = [];
+    page.on('request', request => {
+        const url = request.url();
+        if (url.startsWith('http')) requests.push({ url, resourceType: request.resourceType(), status: null });
+    });
+    page.on('response', response => {
+        const entry = requests.find(request => request.url === response.url() && request.status === null);
+        if (entry) entry.status = response.status();
+    });
+    return requests;
+}
+
+/** Fails naming the offending URLs, so a regression says what leaked and where. */
+function assertNoOffOriginRequests(requests: RecordedRequest[], pageUrl: string): void {
+    const origin = new URL(pageUrl).origin;
+    const offOrigin = requests
+        .filter(
+            request =>
+                new URL(request.url).origin !== origin && OFF_ORIGIN_FORBIDDEN_TYPES.includes(request.resourceType),
+        )
+        .map(request => `${request.resourceType} ${request.url}`);
+
+    expect(offOrigin, `code or fonts were loaded from outside the origin: ${offOrigin.join(', ')}`).toEqual([]);
+}
+
+/** Every vendored glyph range that was asked for must have been served. */
+function assertFontRangesServed(requests: RecordedRequest[]): void {
+    const ranges = requests.filter(request => request.url.includes('/svg/dynamic/'));
+    const failed = ranges.filter(request => request.status !== null && request.status >= 400);
+
+    expect(ranges.length, 'no font glyph range was requested; the formulas no longer exercise one').toBeGreaterThan(0);
+    expect(
+        failed.map(request => request.url),
+        'a vendored glyph range was not served',
+    ).toEqual([]);
+}
 
 /**
  * Open the LaTeX ELP fixture and navigate to "Primeras fórmulas" page
@@ -330,6 +393,52 @@ test.describe('LaTeX Rendering', () => {
 
             // Should have rendered math content (either pre-rendered or MathJax processed)
             expect(mathRendered.totalMath).toBeGreaterThan(0);
+        });
+
+        test('renders inline formulas with several break opportunities as one complete SVG (issue #2440)', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'LaTeX Inline Breaks Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // MathJax 4 breaks in-line formulas at every top-level `=`, `+`, `\mid` or
+            // `\,` and, with SVG output, emits one <svg> per fragment. The pre-renderer
+            // keeps a single <svg>, so each formula was cut at its first break point:
+            // `x = 3 = 4 = 5` reached the preview as a lone `x`.
+            await addTextIdeviceWithContent(
+                page,
+                '<p>Chain: \\(x = 3 = 4 = 5\\)</p><p>Sum: \\(x^2 + y^2 = z^2\\)</p><p>Mid: \\(P(A \\mid B) = 1\\)</p>',
+            );
+
+            await waitForPreviewContent(page);
+            const iframe = getPreviewFrame(page);
+            await iframe.locator('.exe-math-rendered').first().waitFor({ state: 'attached', timeout: 15000 });
+
+            const rendered = await iframe.locator('body').evaluate(body =>
+                Array.from(body.querySelectorAll('.exe-math-rendered')).map(span => ({
+                    latex: span.getAttribute('data-latex'),
+                    svgCount: span.querySelectorAll('svg').length,
+                    breaks: span.querySelectorAll('mjx-break').length,
+                    // Glyph evidence, not container counting: every <use> names the
+                    // code point it draws, so this is the formula as the reader sees it.
+                    glyphs: Array.from(span.querySelectorAll('svg use[data-c]'))
+                        .map(use => String.fromCodePoint(parseInt(use.getAttribute('data-c') || '0', 16)))
+                        .join(''),
+                })),
+            );
+
+            expect(rendered).toHaveLength(3);
+            for (const formula of rendered) {
+                expect(formula.svgCount).toBe(1);
+                expect(formula.breaks).toBe(0);
+            }
+            expect(rendered[0].glyphs).toBe('𝑥=3=4=5');
+            expect(rendered[1].glyphs).toBe('𝑥2+𝑦2=𝑧2');
+            expect(rendered[2].glyphs).toBe('𝑃(𝐴∣𝐵)=1');
         });
 
         test('should not have rendering errors in preview', async ({ authenticatedPage, createProject }) => {
@@ -825,6 +934,85 @@ test.describe('LaTeX Rendering', () => {
         });
     });
 
+    test.describe('Pre-rendered Export Baseline Alignment (issue #1919)', () => {
+        // When MathJax is NOT bundled, inline math must sit on the text baseline like the
+        // runtime MathJax render. That requires (a) the export CSS to NOT force
+        // `vertical-align: middle` on the wrapper, and (b) the SVG to keep its own inline
+        // `vertical-align: -X.XXXex` produced by MathJax through the whole export pipeline.
+        test('keeps the SVG inline vertical-align and ships no vertical-align:middle CSS', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'LaTeX Baseline Align Export');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // Keep default addMathJax=false so LaTeX is pre-rendered to SVG+MathML.
+            await selectFirstPage(page);
+            await addTextIdevice(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 15000 });
+            await waitForTinyMCEReady(page);
+
+            // Inline math with depth below the baseline (fraction, subscript, radical) -
+            // exactly the cases that the old `vertical-align: middle` wrapper misaligned.
+            const contentWithInlineMath = `
+                <p>Let \\(\\frac{a}{b}\\) be the quotient, with \\(x_i\\) and \\(\\sqrt{y}\\) inline.</p>
+            `;
+            await page.evaluate(content => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(content);
+                    editor.fire('change');
+                    editor.fire('input');
+                    editor.setDirty(true);
+                }
+            }, contentWithInlineMath);
+
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            await saveProject(page);
+
+            const download = await exportHtml5Website(page);
+            const tmpDir = path.join('/tmp', `latex-baseline-export-${Date.now()}`);
+            fs.mkdirSync(tmpDir, { recursive: true });
+            const exportPath = path.join(tmpDir, download.suggestedFilename());
+            await download.saveAs(exportPath);
+            expect(fs.existsSync(exportPath)).toBe(true);
+
+            const zipMap = unzipSync(fs.readFileSync(exportPath));
+
+            // Inline math must have been pre-rendered to wrappers.
+            const htmlFiles = Object.keys(zipMap).filter(f => f.endsWith('.html') || f.endsWith('.xhtml'));
+            const decodedHtml = htmlFiles.map(f => Buffer.from(zipMap[f]).toString('utf8')).join('\n');
+            expect(decodedHtml).toContain('class="exe-math-rendered"');
+
+            // The SVG must keep its own inline vertical-align (negative ex offset) from MathJax.
+            const svgHasVerticalAlign = /<svg[^>]*style="[^"]*vertical-align:\s*-?[\d.]+ex/i.test(decodedHtml);
+            expect(svgHasVerticalAlign).toBe(true);
+
+            // The shipped CSS must define the wrapper with the fixed baseline rule and must NOT
+            // force vertical-align:middle on the wrapper/svg. (We assert the specific math rules,
+            // not a blanket vertical-align:middle, because theme/bootstrap CSS use it elsewhere.)
+            const cssFiles = Object.keys(zipMap).filter(f => f.endsWith('.css'));
+            const decodedCss = cssFiles.map(f => Buffer.from(zipMap[f]).toString('utf8')).join('\n');
+            expect(decodedCss).toContain('.exe-math-rendered { display: inline-block; line-height: 0; }');
+            expect(decodedCss).not.toContain('.exe-math-rendered { display: inline-block; vertical-align: middle');
+            expect(decodedCss).not.toContain('.exe-math-rendered svg { vertical-align: middle');
+        });
+    });
+
     test.describe('MathJax Runtime Option (addMathJax)', () => {
         test('should include MathJax script in preview when addMathJax option is enabled via UI', async ({
             authenticatedPage,
@@ -958,6 +1146,7 @@ test.describe('LaTeX Rendering', () => {
             createProject,
         }) => {
             const page = authenticatedPage;
+            const requests = recordRequests(page);
 
             const projectUuid = await createProject(page, 'MathJax Runtime Render Test');
             await gotoWorkarea(page, projectUuid);
@@ -979,9 +1168,17 @@ test.describe('LaTeX Rendering', () => {
             await waitForTinyMCEReady(page);
 
             // Set content with raw LaTeX (display and inline math)
+            // Display math uses \\[...\\], the supported delimiter. Dollar delimiters
+            // were deliberately dropped from eXeLearning: only \\(...\\) and \\[...\\]
+            // are valid, see the decision on PR #2269 closing issue #1990. $$...$$ does
+            // not survive the editor round-trip (a pair collapses to a single $).
+            // \mathbb and \mathcal are deliberate: MathJax 4 keeps those glyphs in font
+            // ranges outside the combined component, so they are what actually exercises
+            // the vendored exe_math/fonts tree and would otherwise be fetched from a CDN.
             const contentWithLatex = `
                 <p>Inline: \\(a^2 + b^2 = c^2\\)</p>
-                <p>Display: $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$</p>
+                <p>Display: \\[\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}\\]</p>
+                <p>Variants: \\(\\mathbb{R} \\subset \\mathcal{L}\\)</p>
             `;
             await page.evaluate(content => {
                 const editor = (window as any).tinymce?.activeEditor;
@@ -1016,12 +1213,16 @@ test.describe('LaTeX Rendering', () => {
 
             // When addMathJax is enabled, MathJax should render the content at runtime
             const mathRendered = await iframe.locator('body').evaluate(body => {
-                const mjxContainers = body.querySelectorAll('mjx-container');
+                // Count rendered formulas, not DOM nodes: MathJax nests a second
+                // mjx-container inside mjx-assistive-mml for the same expression, so a
+                // raw querySelectorAll('mjx-container') counts every formula twice.
+                const mjxContainers = body.querySelectorAll('mjx-container:not(mjx-assistive-mml mjx-container)');
                 const mjxContainersCount = mjxContainers.length;
+                const assistiveMmlCount = body.querySelectorAll('mjx-assistive-mml math').length;
                 const preRendered = body.querySelectorAll('.exe-math-rendered').length;
                 // Check if raw LaTeX delimiters are still visible (should NOT be after rendering)
                 const hasRawInlineLatex = body.textContent?.includes('\\(') || false;
-                const hasRawDisplayLatex = body.textContent?.includes('$$') || false;
+                const hasRawDisplayLatex = body.textContent?.includes('\\[') || false;
                 // Check for inline formula content (Pythagorean theorem: a² + b² = c²)
                 const hasInlineContent =
                     body.textContent?.includes('a') &&
@@ -1039,9 +1240,19 @@ test.describe('LaTeX Rendering', () => {
                 const hasSuperscript = body.querySelector('mjx-msup, g[data-mml-node="msup"]') !== null;
                 const hasFraction = body.querySelector('mjx-mfrac, g[data-mml-node="mfrac"]') !== null;
                 const hasSquareRoot = body.querySelector('mjx-msqrt, g[data-mml-node="msqrt"]') !== null;
+                // Glyph evidence, not container counting. A glyph whose font range is
+                // missing does not blank the formula: MathJax falls back to drawing the
+                // character with an <text> element in the CSS `unknownFamily` (serif),
+                // so the container, the assistive MathML and the text content all still
+                // look right. The presence of <text> is the tell.
+                const glyphPaths = body.querySelectorAll('mjx-container svg path[d]').length;
+                const fallbackGlyphs = body.querySelectorAll('mjx-container svg text').length;
 
                 return {
+                    glyphPaths,
+                    fallbackGlyphs,
                     mjxContainersCount,
+                    assistiveMmlCount,
                     preRendered,
                     hasRawInlineLatex,
                     hasRawDisplayLatex,
@@ -1056,8 +1267,12 @@ test.describe('LaTeX Rendering', () => {
 
             // Assert: Should have MathJax containers (rendered formulas)
             expect(mathRendered.mjxContainersCount).toBeGreaterThan(0);
-            // Assert: Should have at least 2 containers (one inline, one display)
+            // Assert: Should have 2 rendered formulas (one inline, one display)
             expect(mathRendered.mjxContainersCount).toBeGreaterThanOrEqual(2);
+            // Assert: Every rendered formula carries hidden MathML, which is what screen
+            // readers consume. MathJax 4 turns this off by default; common.js re-enables
+            // it because speech needs a web worker that an offline export cannot start.
+            expect(mathRendered.assistiveMmlCount).toBe(mathRendered.mjxContainersCount);
             // Assert: Should have SVG content (actual rendered math)
             expect(mathRendered.svgMathCount).toBeGreaterThan(0);
             // Assert: Raw LaTeX delimiters should NOT be visible (MathJax should have processed them)
@@ -1073,6 +1288,89 @@ test.describe('LaTeX Rendering', () => {
             const hasComplexMath =
                 mathRendered.hasFraction || mathRendered.hasSquareRoot || mathRendered.mjxContainersCount >= 2;
             expect(hasComplexMath).toBe(true);
+
+            // Assert: \mathbb{R} and \mathcal{L} drew real glyph outlines and nothing
+            // fell back to a system font, i.e. the vendored ranges were found.
+            expect(mathRendered.glyphPaths).toBeGreaterThan(0);
+            expect(mathRendered.fallbackGlyphs).toBe(0);
+            // Assert: nothing was fetched from outside the origin while typesetting, and
+            // every glyph range that was asked for came back. Without the vendored
+            // fonts these would be jsdelivr URLs.
+            assertFontRangesServed(requests);
+            assertNoOffOriginRequests(requests, page.url());
+        });
+
+        test('renders formulas whose text uses characters from unvendored font ranges', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // Regression guard for the blocker @ignaciogros found. MathJax 4 keeps most
+            // of its font in ranges fetched on demand; this build vendors 13 of ~40 and
+            // points paths.fonts at its own tree, so an unvendored range 404s. The first
+            // character degrades quietly to a serif glyph -- what 3.2.2 did -- but the
+            // range is then marked failed, and the *second* request for it rejects,
+            // which fails the whole typeset call: every formula in it is left on screen
+            // as raw \(...\), including formulas with no unusual characters.
+            //
+            // Accents live in the `latin` range, which is not vendored, so two accented
+            // letters in one iDevice used to blank every formula on the page. The
+            // existing tests missed it twice over: they use \mathbb and \mathcal, whose
+            // ranges *are* vendored, and they look at the first render, which is the
+            // case that works.
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'LaTeX Unvendored Glyphs');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await enableMathJaxViaUI(page);
+            await selectFirstPage(page);
+            await addTextIdevice(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 15000 });
+            await waitForTinyMCEReady(page);
+
+            // Accented text, bold accented text and Greek, mixed with plain formulas
+            // that must survive alongside them.
+            const content = `
+                <p>Control: \\(a^2 + b^2 = c^2\\) y \\(\\frac{x}{y}\\)</p>
+                <p>Un acento: \\(\\text{área} = \\pi r^2\\)</p>
+                <p>Dos acentos: \\(\\text{período mínimo}\\)</p>
+                <p>Colateral: \\(\\text{ñ}\\) y \\(\\text{ç}\\) y \\(\\frac{a}{b}\\)</p>
+                <p>Negrita: \\(\\textbf{Ámbito máximo}\\)</p>
+                <p>Griego: \\(\\alpha + \\beta + \\gamma = \\pi\\)</p>
+            `;
+            await page.evaluate(html => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(html);
+                    editor.fire('change');
+                    editor.setDirty(true);
+                }
+            }, content);
+
+            await block.locator('.btn-save-idevice').click();
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            await waitForPreviewContent(page);
+            const iframe = getPreviewFrame(page);
+            await page.waitForTimeout(1500);
+
+            const rendered = await iframe.locator('body').evaluate(body => ({
+                containers: body.querySelectorAll('mjx-container:not(mjx-assistive-mml mjx-container)').length,
+                rawDelimiters: (body.textContent || '').split('\\(').length - 1,
+            }));
+
+            // Assert: every formula rendered, and none was left as source text. Before
+            // the fix this was 0 rendered and 11 raw.
+            expect(rendered.containers).toBeGreaterThanOrEqual(9);
+            expect(rendered.rawDelimiters).toBe(0);
         });
 
         test('should NOT corrupt data-latex when same LaTeX appears multiple times', async ({

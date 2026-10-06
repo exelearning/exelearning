@@ -1,0 +1,170 @@
+/**
+ * File attachment iDevice (export styles)
+ * Released under the GNU AGPL-3.0 License.
+ */
+
+.fileAttachment-IDevice .fileAttachment-intro {
+    margin-bottom: 1em;
+}
+
+.fileAttachment-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.fileAttachment-item {
+    margin: 0 0 0.75em 0;
+    padding: 0;
+}
+
+.fileAttachment-item:last-child {
+    margin-bottom: 0;
+}
+
+.fileAttachment-link,
+.fileAttachment-link--missing {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.6em 0.8em;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    text-decoration: none;
+    color: inherit;
+    background: rgba(0, 0, 0, 0.015);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.fileAttachment-link:hover,
+.fileAttachment-link:focus {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.25);
+    text-decoration: none;
+}
+
+.fileAttachment-link:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.fileAttachment-link--missing {
+    cursor: not-allowed;
+    opacity: 0.75;
+}
+
+.fileAttachment-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fileAttachment-glyph {
+    width: 36px;
+    height: 44px;
+}
+
+.fileAttachment-glyph-page {
+    fill: #e9edf2;
+    stroke: #99a3ad;
+    stroke-width: 1.5;
+}
+
+.fileAttachment-glyph-fold {
+    fill: #c7cfd8;
+}
+
+.fileAttachment-glyph-label {
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    fill: #5a6573;
+}
+
+/* File-type colour accents for the icon glyph. */
+.fileAttachment-icon--image .fileAttachment-glyph-label,
+.fileAttachment-icon--image .fileAttachment-glyph-fold {
+    fill: #2e7d32;
+}
+.fileAttachment-icon--audio .fileAttachment-glyph-label,
+.fileAttachment-icon--audio .fileAttachment-glyph-fold {
+    fill: #6a1b9a;
+}
+.fileAttachment-icon--video .fileAttachment-glyph-label,
+.fileAttachment-icon--video .fileAttachment-glyph-fold {
+    fill: #283593;
+}
+.fileAttachment-icon--pdf .fileAttachment-glyph-label,
+.fileAttachment-icon--pdf .fileAttachment-glyph-fold {
+    fill: #c62828;
+}
+.fileAttachment-icon--archive .fileAttachment-glyph-label,
+.fileAttachment-icon--archive .fileAttachment-glyph-fold {
+    fill: #ef6c00;
+}
+.fileAttachment-icon--document .fileAttachment-glyph-label,
+.fileAttachment-icon--document .fileAttachment-glyph-fold {
+    fill: #1565c0;
+}
+.fileAttachment-icon--spreadsheet .fileAttachment-glyph-label,
+.fileAttachment-icon--spreadsheet .fileAttachment-glyph-fold {
+    fill: #2e7d32;
+}
+.fileAttachment-icon--presentation .fileAttachment-glyph-label,
+.fileAttachment-icon--presentation .fileAttachment-glyph-fold {
+    fill: #d84315;
+}
+.fileAttachment-icon--text .fileAttachment-glyph-label,
+.fileAttachment-icon--text .fileAttachment-glyph-fold {
+    fill: #455a64;
+}
+
+.fileAttachment-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+}
+
+.fileAttachment-title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.fileAttachment-meta {
+    font-size: 0.85em;
+    opacity: 0.75;
+    overflow-wrap: anywhere;
+}
+
+.fileAttachment-meta--missing {
+    color: #c62828;
+    opacity: 1;
+}
+
+.fileAttachment-description {
+    margin: 0.4em 0 0 0;
+    font-size: 0.95em;
+    overflow-wrap: anywhere;
+}
+
+.fileAttachment-empty {
+    font-style: italic;
+    opacity: 0.7;
+}
+
+/* Visually hidden text kept available to assistive technology. */
+.fileAttachment-IDevice .exe-sr-only {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

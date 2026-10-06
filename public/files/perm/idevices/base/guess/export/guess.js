@@ -66,6 +66,7 @@ var $guess = {
 
             const adivina = $guess.createInterfaceAdivina(i);
             dl.before(adivina).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#adivinaGameMinimize-' + i).hide();
             $('#adivinaGameContainer-' + i).hide();
@@ -466,6 +467,22 @@ var $guess = {
         );
     },
 
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen only from newQuestion()/showQuestion(),
+     * i.e. once the setTimeout that reveals the next question had elapsed. That
+     * put the mark in the LMS seconds late, and a learner who left during that
+     * window lost the answer: the timer never fired.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $guess.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        $guess.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $guess.options[instance];
 
@@ -727,12 +744,6 @@ var $guess = {
 
         $pNumber.text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeAdivina beforeunload.eXeAdivina', function () {
-            if (typeof $guess.mScorm !== 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm($guess.mScorm);
-            }
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -791,8 +802,6 @@ var $guess = {
         $(`#adivinaModeBoardOK-${instance}`).off('click');
         $(`#adivinaModeBoardKO-${instance}`).off('click');
         $(`#adivinaModeBoardMoveOn-${instance}`).off('click');
-
-        $(window).off('unload.eXeAdivina beforeunload.eXeAdivina');
     },
 
     enterCodeAccess: function (instance) {
@@ -873,17 +882,25 @@ var $guess = {
             mOptions.counter += durationVideo;
         }
 
-        mOptions.counterClock = setInterval(() => {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and moving it on to the next
+        // question when its own time ran out.
+        const container = document.getElementById(
+            'adivinaMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#adivinaMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $guess.updateTime(mOptions.counter, instance);
                 $guess.updateSoundVideo(instance);
@@ -911,9 +928,11 @@ var $guess = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $guess.updateTime(mOptions.counter, instance);
         mOptions.gameStarted = true;
+        $guess.saveScormScore(instance);
 
         $definition.show();
         $btnReply.show();
@@ -1548,6 +1567,15 @@ var $guess = {
             type = $guess.updateScore(isCorrect, instance),
             percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
 
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $guess.saveScormScore(instance);
+
         mOptions.activeCounter = false;
         let timeShowSolution = 1000;
 
@@ -1596,6 +1624,15 @@ var $guess = {
 
         const type = $guess.updateScore(value, instance),
             percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
+
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $guess.saveScormScore(instance);
 
         mOptions.activeCounter = false;
         let timeShowSolution = 1000;

@@ -871,7 +871,7 @@ describe('PreviewPanelManager', () => {
 
       // Should derive base path from pathname and construct correct URL
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -897,7 +897,7 @@ describe('PreviewPanelManager', () => {
       await manager.extractToNewTab();
 
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/app/viewer/index.html',
+        'https://example.com/app/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -922,7 +922,7 @@ describe('PreviewPanelManager', () => {
       await manager.extractToNewTab();
 
       expect(mockOpen).toHaveBeenCalledWith(
-        'http://localhost:8080/viewer/index.html',
+        'http://localhost:8080/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -948,7 +948,7 @@ describe('PreviewPanelManager', () => {
 
       // Should NOT produce double slashes
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -1322,6 +1322,8 @@ describe('PreviewPanelManager', () => {
 
       // happy-dom normalizes URLs, so check for the path
       expect(mockElements['preview-iframe'].src).toContain('/myapp/viewer/index.html');
+      // The authoring preview reveals Teacher Mode content by default.
+      expect(mockElements['preview-iframe'].src).toContain('exe-teacher=1');
     });
 
     it('should force reload when src is already viewer URL', async () => {
@@ -1712,8 +1714,8 @@ describe('PreviewPanelManager', () => {
 
       expect(result).toContain('initPdfEmbeds');
       expect(result).toContain('data-exe-pdf-src');
-      expect(result).toContain('libs/pdfjs/pdf.min.mjs');
-      expect(result).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(result).toContain('libs/pdfjs/pdf.min.js');
+      expect(result).toContain('libs/pdfjs/pdf.worker.min.js');
       expect(result).toContain("createElement('canvas')");
     });
 
@@ -1816,8 +1818,46 @@ describe('PreviewPanelManager', () => {
       await manager.refreshWithServiceWorker();
 
       expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
-      expect(window.eXeLearning.app.sendContentToPreviewSW).toHaveBeenCalled();
+      expect(window.eXeLearning.app.sendContentToPreviewSW).toHaveBeenCalledWith(
+        { 'index.html': expect.any(Uint8Array) },
+        { openExternalLinksInNewWindow: true },
+        { regenerateFiles: expect.any(Function) },
+      );
       expect(loadSpy).toHaveBeenCalled();
+    });
+
+    it('gives the app a callback that regenerates the files for a resend', async () => {
+      vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+      await manager.refreshWithServiceWorker();
+      const { regenerateFiles } = window.eXeLearning.app.sendContentToPreviewSW.mock.calls[0][2];
+      const freshFiles = { 'index.html': new Uint8Array([9]) };
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: freshFiles });
+
+      await expect(regenerateFiles()).resolves.toBe(freshFiles);
+
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: false, error: 'Regen failed' });
+      await expect(regenerateFiles()).rejects.toThrow('Regen failed');
+    });
+
+    it('falls back to the blob URL preview when the SW is gone after a failed send', async () => {
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(new Error('Timeout waiting for SW content ready'));
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+      const loadSpy = vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      expect(blobSpy).toHaveBeenCalled();
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('rethrows send errors while the SW is still available', async () => {
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(new Error('Timeout waiting for SW content ready'));
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Timeout waiting for SW content ready');
+      expect(blobSpy).not.toHaveBeenCalled();
     });
 
     it('should use theme from eXeLearning.app.themes.selected', async () => {
@@ -1841,6 +1881,29 @@ describe('PreviewPanelManager', () => {
       // Verify the last argument contains the theme
       const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
       expect(lastCall[4]).toEqual({ theme: 'theme-name' });
+    });
+
+    it('should rethrow send errors while the Service Worker is still available', async () => {
+      const error = new Error('Timeout waiting for SW content ready');
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(error);
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toBe(error);
+      expect(blobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to blob URL when the app gave up on the Service Worker', async () => {
+      const error = new Error('Preview Service Worker not available');
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(error);
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+      const loadSpy = vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      expect(blobSpy).toHaveBeenCalled();
+      expect(loadSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -2150,8 +2213,8 @@ describe('PreviewPanelManager', () => {
       expect(secondCallArg.type).toBe('text/html');
       // Verify viewer HTML contains PDF.js import (not iframe)
       const viewerHtml = await secondCallArg.text();
-      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.mjs');
-      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.js');
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.js');
       expect(viewerHtml).toContain('getDocument(');
       expect(viewerHtml).toContain('createElement("canvas")');
       expect(viewerHtml).not.toContain('<iframe');

@@ -113,4 +113,94 @@ describe('magnifier iDevice export', () => {
       expect(typeof $magnifier.createInterfaceMagnifier).toBe('function');
     });
   });
+
+  describe('changeDirectory (export path resolution)', () => {
+    beforeEach(() => {
+      // changeDirectory relies on eXe.app.isInExe(); the shared setup mock
+      // does not define it, so provide a controllable stub (default: export).
+      global.eXe.app.isInExe = () => false;
+      document.documentElement.removeAttribute('id');
+      document.body.innerHTML = '';
+    });
+
+    function mountNode(id) {
+      document.body.innerHTML = `<div id="${id}" class="idevice_node magnifier"></div>`;
+    }
+
+    it('returns the resource unchanged inside the eXe editor', () => {
+      global.eXe.app.isInExe = () => true;
+      mountNode('idev-1');
+      const out = $magnifier.changeDirectory({
+        ideviceId: 'idev-1',
+        imageResource: 'content/resources/img.jpg',
+      });
+      expect(out).toBe('content/resources/img.jpg');
+    });
+
+    it('returns the resource unchanged when the iDevice node is missing', () => {
+      const out = $magnifier.changeDirectory({
+        ideviceId: 'absent',
+        imageResource: 'content/resources/img.jpg',
+      });
+      expect(out).toBe('content/resources/img.jpg');
+    });
+
+    it('returns a falsy resource untouched', () => {
+      mountNode('idev-1');
+      expect(
+        $magnifier.changeDirectory({ ideviceId: 'idev-1', imageResource: '' })
+      ).toBe('');
+    });
+
+    it.each(['blob:http://x/y', 'data:image/png;base64,AAA', 'asset://uuid.jpg'])(
+      'keeps %s URLs as-is',
+      (url) => {
+        mountNode('idev-1');
+        expect(
+          $magnifier.changeDirectory({ ideviceId: 'idev-1', imageResource: url })
+        ).toBe(url);
+      }
+    );
+
+    it('preserves content/resources path on the index page (regression #1953)', () => {
+      document.documentElement.id = 'exe-index';
+      const ideviceId = 'idevice-1780487482081-mnjl9i39r';
+      mountNode(ideviceId);
+      const out = $magnifier.changeDirectory({
+        ideviceId,
+        imageResource: 'content/resources/img_animales.jpg',
+      });
+      // Must NOT insert the iDevice id as an intermediate folder.
+      expect(out).toBe('content/resources/img_animales.jpg');
+      expect(out).not.toContain(ideviceId);
+    });
+
+    it('prepends ../ for a content/resources path on a subpage', () => {
+      mountNode('idev-1'); // no #exe-index id on <html> => subpage
+      const out = $magnifier.changeDirectory({
+        ideviceId: 'idev-1',
+        imageResource: 'content/resources/img_animales.jpg',
+      });
+      expect(out).toBe('../content/resources/img_animales.jpg');
+    });
+
+    it('collapses a duplicated <filename>/<filename> tail', () => {
+      document.documentElement.id = 'exe-index';
+      mountNode('idev-1');
+      const out = $magnifier.changeDirectory({
+        ideviceId: 'idev-1',
+        imageResource: 'content/resources/img.jpg/img.jpg',
+      });
+      expect(out).toBe('content/resources/img.jpg');
+    });
+
+    it('leaves an already page-relative ../content/resources path untouched', () => {
+      mountNode('idev-1');
+      const out = $magnifier.changeDirectory({
+        ideviceId: 'idev-1',
+        imageResource: '../content/resources/img.jpg',
+      });
+      expect(out).toBe('../content/resources/img.jpg');
+    });
+  });
 });

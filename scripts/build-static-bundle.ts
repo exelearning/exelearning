@@ -10,7 +10,7 @@
  *   ├── app/                    # Bundled JavaScript
  *   ├── libs/                   # External libraries
  *   ├── style/                  # CSS
- *   ├── bundles/                # Pre-built resource ZIPs (from public/bundles/)
+ *   ├── bundles/                # Bundle manifest only (zips assembled client-side)
  *   ├── data/
  *   │   ├── bundle.json         # Pre-serialized API data
  *   │   └── translations/       # Per-locale JSON
@@ -33,12 +33,13 @@ import { buildConfigParams } from '../src/routes/config-params';
 import { STATIC_ROUTES } from '../src/routes/api-routes';
 import { buildParameterResponse } from '../src/routes/parameter-response';
 import { VOID_ELEMENTS } from '../src/shared/utils/html-constants';
+import { sortThemeIcons, type ThemeIcon } from '../src/shared/parsers/theme-parser';
 
 // Re-export config for external use
 export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
 
-const projectRoot = path.resolve(import.meta.dir, '..');
-const outputDir = process.env.OUTPUT_DIR
+export const projectRoot = path.resolve(import.meta.dir, '..');
+export const outputDir = process.env.OUTPUT_DIR
     ? path.resolve(process.env.OUTPUT_DIR)
     : path.join(projectRoot, 'dist/static');
 
@@ -252,11 +253,13 @@ export function parseXlfFile(filePath: string): Record<string, string> {
 /**
  * Load all translations
  */
-function loadAllTranslations(): Record<string, { translations: Record<string, string>; count: number }> {
+export function loadAllTranslations(
+    translationsDir: string = path.join(projectRoot, 'translations'),
+    locales: readonly string[] = LOCALES,
+): Record<string, { translations: Record<string, string>; count: number }> {
     const result: Record<string, { translations: Record<string, string>; count: number }> = {};
-    const translationsDir = path.join(projectRoot, 'translations');
 
-    for (const locale of LOCALES) {
+    for (const locale of locales) {
         const filePath = path.join(translationsDir, `messages.${locale}.xlf`);
         const translations = parseXlfFile(filePath);
         result[locale] = {
@@ -302,7 +305,7 @@ export interface IdeviceConfig {
 /**
  * Read template file content safely
  */
-function readTemplateContent(basePath: string, folder: string, filename: string): string {
+export function readTemplateContent(basePath: string, folder: string, filename: string): string {
     if (!filename) return '';
     try {
         const templatePath = path.join(basePath, folder, filename);
@@ -438,8 +441,9 @@ export function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePa
 /**
  * Build iDevices list from directory structure with full config data
  */
-function buildIdevicesList(): { idevices: IdeviceConfig[] } {
-    const idevicesDir = path.join(projectRoot, 'public/files/perm/idevices/base');
+export function buildIdevicesList(
+    idevicesDir: string = path.join(projectRoot, 'public/files/perm/idevices/base'),
+): { idevices: IdeviceConfig[] } {
     const idevices: IdeviceConfig[] = [];
 
     if (!fs.existsSync(idevicesDir)) {
@@ -472,16 +476,6 @@ function buildIdevicesList(): { idevices: IdeviceConfig[] } {
 }
 
 /**
- * Theme icon interface
- */
-interface ThemeIcon {
-    id: string;
-    title: string;
-    type: 'img';
-    value: string; // URL path to the icon image
-}
-
-/**
  * Theme interface matching what navbarStyles.js expects
  */
 interface Theme {
@@ -501,7 +495,7 @@ interface Theme {
 /**
  * Scan theme directory for icon files
  */
-function scanThemeIcons(themePath: string, themeUrl: string): Record<string, ThemeIcon> {
+export function scanThemeIcons(themePath: string, themeUrl: string): Record<string, ThemeIcon> {
     const iconsPath = path.join(themePath, 'icons');
     if (!fs.existsSync(iconsPath)) return {};
 
@@ -526,13 +520,15 @@ function scanThemeIcons(themePath: string, themeUrl: string): Record<string, The
             };
         }
     }
-    return icons;
+    // Bun's readdirSync returns raw ext4 order on the Linux CI runner that builds
+    // the static bundle, which the picker would otherwise show verbatim (#2411)
+    return sortThemeIcons(icons);
 }
 
 /**
  * Build themes list from directory structure
  */
-function buildThemesList(): { themes: Theme[] } {
+export function buildThemesList(): { themes: Theme[] } {
     const themesDir = path.join(projectRoot, 'public/files/perm/themes/base');
     const themes: Theme[] = [];
 
@@ -769,21 +765,21 @@ export function processNjkTemplate(filePath: string): string {
 /**
  * Generate the menu structure HTML
  */
-function generateMenuStructureHtml(): string {
+export function generateMenuStructureHtml(): string {
     return processNjkTemplate(path.join(projectRoot, 'views/workarea/menus/menuStructure.njk'));
 }
 
 /**
  * Generate the iDevices menu HTML
  */
-function generateMenuIdevicesHtml(): string {
+export function generateMenuIdevicesHtml(): string {
     return processNjkTemplate(path.join(projectRoot, 'views/workarea/menus/menuIdevices.njk'));
 }
 
 /**
  * Generate the head top menu HTML
  */
-function generateMenuHeadTopHtml(): string {
+export function generateMenuHeadTopHtml(): string {
     // Process main head top template
     let content = processNjkTemplate(path.join(projectRoot, 'views/workarea/menus/menuHeadTop.njk'));
 
@@ -797,7 +793,7 @@ function generateMenuHeadTopHtml(): string {
 /**
  * Generate the head bottom menu HTML
  */
-function generateMenuHeadBottomHtml(): string {
+export function generateMenuHeadBottomHtml(): string {
     return processNjkTemplate(path.join(projectRoot, 'views/workarea/menus/menuHeadBottom.njk'));
 }
 
@@ -805,7 +801,7 @@ function generateMenuHeadBottomHtml(): string {
  * Read and convert Nunjucks modal templates to static HTML
  * Replaces {{ 'string' | trans }} with the string itself
  */
-function generateModalsHtml(): string {
+export function generateModalsHtml(): string {
     const modalsDir = path.join(projectRoot, 'views/workarea/modals');
     const modalFiles = [
         'generic/modalAlert.njk',
@@ -824,6 +820,10 @@ function generateModalsHtml(): string {
         'pages/about.njk',
         'pages/easteregg.njk',
         'pages/properties.njk',
+        // Inert in static builds (no accounts, so the menu entry never renders),
+        // but ModalsManagement instantiates every modal unconditionally and the
+        // base Modal constructor requires its root element to exist.
+        'pages/changepassword.njk',
         'pages/openuserodefiles.njk',
         'pages/templateselection.njk',
         'pages/modalShare.njk',
@@ -874,7 +874,7 @@ export function buildApiParameters() {
  * Generate the static index.html
  * Reads the HTML template and replaces placeholders with dynamic content
  */
-function generateStaticHtml(bundleData: object): string {
+export function generateStaticHtml(bundleData: object): string {
     // Read the HTML template
     const templatePath = path.join(import.meta.dir, 'static-bundle/static-index.html');
     let html = fs.readFileSync(templatePath, 'utf-8');
@@ -996,12 +996,13 @@ const STATIC_ASSETS = [
     './libs/yjs/yjs.min.js',
     './libs/yjs/y-indexeddb.min.js',
     './libs/fflate/fflate.umd.js',
+    './libs/fzstd/fzstd.umd.js',
     './libs/jquery/jquery.min.js',
     './libs/bootstrap/bootstrap.bundle.min.js',
     './libs/bootstrap/bootstrap.min.css',
     './style/workarea/main.css',
     './style/workarea/base.css',
-    './data/bundle.json',
+    './data/bundle.json.zst',
 ];
 
 // Install: Cache all static assets
@@ -1076,12 +1077,13 @@ export function generateServiceWorker(): string {
 
 /**
  * Directories (relative to dist/static/) whose .json files must be shipped as
- * .json.gz. Large repetitive curricular data — compressing ~85% saves ~30 MB
- * in the static build and Electron package. Decompressed on the fly in the
- * browser via DecompressionStream('gzip').
+ * .json.zst. Large repetitive curricular data — zstd-19 compresses ~94% (vs
+ * ~81% for gzip), saving an extra ~6.5 MB over gzip in the static build and
+ * Electron package. Decompressed on the fly in the browser via `fzstd`
+ * (public/libs/fzstd/fzstd.umd.js) — see lomloe.js / digcompedu.js.
  *
  * Add new entries when introducing other large JSON datasets that the iDevice
- * loaders fetch through the .gz-first pattern (see lomloe.js / digcompedu.js).
+ * loaders fetch through the .zst-first pattern.
  */
 export const COMPRESS_JSON_DIRS = [
     'files/perm/idevices/base/lomloe/data',
@@ -1092,19 +1094,19 @@ export function shouldCompressJson(fileName: string): boolean {
     return fileName.endsWith('.json');
 }
 
-export function gzipBuffer(input: Buffer): Buffer {
-    return zlib.gzipSync(input, { level: zlib.constants.Z_BEST_COMPRESSION });
+export function zstdCompressBuffer(input: Buffer): Buffer {
+    return zlib.zstdCompressSync(input, { params: { [zlib.constants.ZSTD_c_compressionLevel]: 19 } });
 }
 
 /**
- * Walk a directory, gzip every .json into a sibling .json.gz, and delete the
- * raw .json. Returns aggregate stats for logging.
+ * Walk a directory, zstd-compress every .json into a sibling .json.zst, and
+ * delete the raw .json. Returns aggregate stats for logging.
  */
-function compressJsonInDir(absDir: string): { count: number; origTotal: number; gzTotal: number } {
+export function compressJsonInDir(absDir: string): { count: number; origTotal: number; compressedTotal: number } {
     let count = 0;
     let origTotal = 0;
-    let gzTotal = 0;
-    if (!fs.existsSync(absDir)) return { count, origTotal, gzTotal };
+    let compressedTotal = 0;
+    if (!fs.existsSync(absDir)) return { count, origTotal, compressedTotal };
     const entries = fs.readdirSync(absDir, { withFileTypes: true });
     for (const entry of entries) {
         const abs = path.join(absDir, entry.name);
@@ -1112,33 +1114,40 @@ function compressJsonInDir(absDir: string): { count: number; origTotal: number; 
             const sub = compressJsonInDir(abs);
             count += sub.count;
             origTotal += sub.origTotal;
-            gzTotal += sub.gzTotal;
+            compressedTotal += sub.compressedTotal;
             continue;
         }
         if (!shouldCompressJson(entry.name)) continue;
         const data = fs.readFileSync(abs);
-        const gz = gzipBuffer(data);
-        fs.writeFileSync(abs + '.gz', gz);
+        const compressed = zstdCompressBuffer(data);
+        fs.writeFileSync(abs + '.zst', compressed);
         fs.unlinkSync(abs);
         count += 1;
         origTotal += data.length;
-        gzTotal += gz.length;
+        compressedTotal += compressed.length;
     }
-    return { count, origTotal, gzTotal };
+    return { count, origTotal, compressedTotal };
 }
 
 /**
  * Copy directory recursively
  * @param src - Source directory
  * @param dest - Destination directory
- * @param exclude - Directory/file names to exclude (exact match)
- * @param excludePatterns - File patterns to exclude (e.g., '.test.js', '.spec.js')
+ * @param exclude - Directory/file names to exclude, matched either as a bare
+ *   name at any depth ('test') or as a path relative to the copy root
+ *   ('idevices/base/slide/src'). Prefer the relative form for a one-off
+ *   exclusion, so a future directory of the same name elsewhere in the tree is
+ *   not dropped along with it.
+ * @param excludePatterns - File suffixes to exclude (e.g., '.test.js', '.js.map').
+ *   Suffixes are deliberately specific: '.map' alone would also swallow a data
+ *   file that happens to end in it.
  */
-function copyDirRecursive(
+export function copyDirRecursive(
     src: string,
     dest: string,
     exclude: string[] = [],
-    excludePatterns: string[] = ['.test.js', '.spec.js'],
+    excludePatterns: string[] = ['.test.js', '.spec.js', '.js.map', '.css.map', '.d.ts'],
+    root: string = src,
 ) {
     if (!fs.existsSync(src)) {
         console.warn(`Source not found: ${src}`);
@@ -1150,15 +1159,18 @@ function copyDirRecursive(
 
     for (const entry of entries) {
         if (entry.name.startsWith('.')) continue;
-        if (exclude.includes(entry.name)) continue;
+
+        const srcPath = path.join(src, entry.name);
+        const relPath = path.relative(root, srcPath).split(path.sep).join('/');
+
+        if (exclude.includes(entry.name) || exclude.includes(relPath)) continue;
         // Skip test files
         if (excludePatterns.some(pattern => entry.name.endsWith(pattern))) continue;
 
-        const srcPath = path.join(src, entry.name);
         const destPath = path.join(dest, entry.name);
 
         if (entry.isDirectory()) {
-            copyDirRecursive(srcPath, destPath, exclude, excludePatterns);
+            copyDirRecursive(srcPath, destPath, exclude, excludePatterns, root);
         } else {
             fs.copyFileSync(srcPath, destPath);
         }
@@ -1166,175 +1178,33 @@ function copyDirRecursive(
 }
 
 /**
- * Main build function
+ * Ship only the bundle manifest into the static distribution, never the
+ * pre-built resource ZIPs.
+ *
+ * In static mode the client assembles each bundle on demand from the loose
+ * files (copied separately) using the manifest's per-bundle file lists, then
+ * persists the result to IndexedDB. Copying the zips would be a redundant,
+ * incompressible ~17 MB duplicate of bytes that ship loosely anyway. Server
+ * mode still serves `public/bundles/*.zip` via `/api/resources/bundle/*`.
+ *
+ * Returns `true` when the manifest was copied, `false` when the source
+ * manifest is missing (caller-visible so the build can warn).
  */
-async function buildStaticBundle() {
-    console.log('='.repeat(60));
-    console.log('Building Static Distribution');
-    console.log(`Version: ${buildVersion} (${buildHash})`);
-    console.log('='.repeat(60));
-
-    // Clean output directory (retry for Windows EBUSY locks)
-    if (fs.existsSync(outputDir)) {
-        let lastError: unknown;
-        for (let attempt = 1; attempt <= 5; attempt++) {
-            try {
-                fs.rmSync(outputDir, { recursive: true, force: true });
-                lastError = undefined;
-                break;
-            } catch (err: unknown) {
-                lastError = err;
-                const code = (err as NodeJS.ErrnoException).code;
-                if (code !== 'EBUSY' && code !== 'EPERM' && code !== 'ENOTEMPTY') throw err;
-                // Wait and retry: another process (Explorer, AV) may be scanning the dir
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (globalThis as any).Bun?.sleepSync(attempt * 200);
-            }
-        }
-        if (lastError) throw lastError;
+export function copyBundleManifest(projectRoot: string, outputDir: string): boolean {
+    const manifestSrc = path.join(projectRoot, 'public/bundles/manifest.json');
+    if (!fs.existsSync(manifestSrc)) {
+        return false;
     }
-    fs.mkdirSync(outputDir, { recursive: true });
-
-    // 1. Load and serialize API data
-    console.log('\n1. Loading API data...');
-    const apiParameters = buildApiParameters();
-    const translations = loadAllTranslations();
-    const idevices = buildIdevicesList();
-    const themes = buildThemesList();
-
-    // Read existing bundle manifest
-    const bundleManifestPath = path.join(projectRoot, 'public/bundles/manifest.json');
-    let bundleManifest = null;
-    if (fs.existsSync(bundleManifestPath)) {
-        bundleManifest = JSON.parse(fs.readFileSync(bundleManifestPath, 'utf-8'));
-    }
-
-    const bundleData = {
-        version: buildVersion,
-        builtAt: new Date().toISOString(),
-        parameters: apiParameters,
-        translations,
-        idevices,
-        themes,
-        bundleManifest,
-    };
-
-    // Write bundle.json
-    const dataDir = path.join(outputDir, 'data');
-    fs.mkdirSync(dataDir, { recursive: true });
-    fs.writeFileSync(path.join(dataDir, 'bundle.json'), JSON.stringify(bundleData, null, 2));
-    console.log('  Created data/bundle.json');
-
-    // 2. Generate static HTML
-    console.log('\n2. Generating static HTML...');
-    const staticHtml = generateStaticHtml(bundleData);
-    fs.writeFileSync(path.join(outputDir, 'index.html'), staticHtml);
-    console.log('  Created index.html');
-
-    // 3. Generate PWA files
-    console.log('\n3. Generating PWA files...');
-    fs.writeFileSync(path.join(outputDir, 'manifest.json'), generatePwaManifest());
-    fs.writeFileSync(path.join(outputDir, 'service-worker.js'), generateServiceWorker());
-    console.log('  Created manifest.json');
-    console.log('  Created service-worker.js');
-
-    // 4. Copy static assets
-    console.log('\n4. Copying static assets...');
-
-    // Copy app folder
-    copyDirRecursive(path.join(projectRoot, 'public/app'), path.join(outputDir, 'app'), ['test', 'spec']);
-    console.log('  Copied app/');
-
-    // Copy libs folder
-    copyDirRecursive(path.join(projectRoot, 'public/libs'), path.join(outputDir, 'libs'));
-
-    console.log('  Copied libs/');
-
-    // Copy style folder
-    copyDirRecursive(path.join(projectRoot, 'public/style'), path.join(outputDir, 'style'));
-    console.log('  Copied style/');
-
-    // Copy bundles folder (pre-built resource ZIPs)
-    copyDirRecursive(path.join(projectRoot, 'public/bundles'), path.join(outputDir, 'bundles'));
-    console.log('  Copied bundles/');
-
-    // Copy files/perm (themes, iDevices, favicon)
-    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
-    console.log('  Copied files/perm/');
-
-    // Gzip large iDevice JSON datasets in place (browser decompresses on the fly).
-    let totalOrig = 0;
-    let totalGz = 0;
-    let totalCount = 0;
-    for (const relDir of COMPRESS_JSON_DIRS) {
-        const absDir = path.join(outputDir, relDir);
-        const stats = compressJsonInDir(absDir);
-        if (stats.count === 0) {
-            throw new Error(
-                `Compression guard failed: no .json files found under ${relDir}. ` +
-                `Update COMPRESS_JSON_DIRS in build-static-bundle.ts or restore the data.`,
-            );
-        }
-        const pct = stats.origTotal > 0
-            ? Math.round((1 - stats.gzTotal / stats.origTotal) * 100)
-            : 0;
-        console.log(
-            `  Gzipped ${stats.count} file(s) in ${relDir}: ` +
-            `${(stats.origTotal / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(stats.gzTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
-        );
-        totalCount += stats.count;
-        totalOrig += stats.origTotal;
-        totalGz += stats.gzTotal;
-    }
-    if (totalCount > 0) {
-        const pct = Math.round((1 - totalGz / totalOrig) * 100);
-        console.log(
-            `  Total: ${totalCount} JSON file(s) compressed, ` +
-            `${(totalOrig / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(totalGz / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
-        );
-    }
-
-    // Copy images folder (default-avatar.svg, logo.svg, etc.)
-    copyDirRecursive(path.join(projectRoot, 'public/images'), path.join(outputDir, 'images'));
-    console.log('  Copied images/');
-
-    // Copy exelearning.png to root
-    const exelearningPng = path.join(projectRoot, 'public/exelearning.png');
-    if (fs.existsSync(exelearningPng)) {
-        fs.copyFileSync(exelearningPng, path.join(outputDir, 'exelearning.png'));
-        console.log('  Copied exelearning.png');
-    }
-
-    // Copy favicon.ico
-    const faviconIco = path.join(projectRoot, 'public/favicon.ico');
-    if (fs.existsSync(faviconIco)) {
-        fs.copyFileSync(faviconIco, path.join(outputDir, 'favicon.ico'));
-        console.log('  Copied favicon.ico');
-    }
-
-    // Copy CHANGELOG.md
-    const changelogMd = path.join(projectRoot, 'public/CHANGELOG.md');
-    if (fs.existsSync(changelogMd)) {
-        fs.copyFileSync(changelogMd, path.join(outputDir, 'CHANGELOG.md'));
-        console.log('  Copied CHANGELOG.md');
-    }
-
-    // Copy preview-sw.js (Service Worker for preview panel)
-    const previewSwJs = path.join(projectRoot, 'public/preview-sw.js');
-    if (fs.existsSync(previewSwJs)) {
-        fs.copyFileSync(previewSwJs, path.join(outputDir, 'preview-sw.js'));
-        console.log('  Copied preview-sw.js');
-    }
-
-    console.log('\n' + '='.repeat(60));
-    console.log('Static distribution built successfully!');
-    console.log(`Output: ${outputDir}`);
-    console.log('='.repeat(60));
+    const bundlesOut = path.join(outputDir, 'bundles');
+    fs.mkdirSync(bundlesOut, { recursive: true });
+    fs.copyFileSync(manifestSrc, path.join(bundlesOut, 'manifest.json'));
+    return true;
 }
 
-// Run build only when executed directly (not when imported for testing)
+// Run build only when executed directly (not when imported for testing).
+// The orchestrator lives in ./static-bundle/run-build.ts and is loaded lazily so
+// that importing this module for its helpers never pulls in the build itself.
 if (import.meta.main) {
+    const { buildStaticBundle } = await import('./static-bundle/run-build');
     buildStaticBundle().catch(console.error);
 }

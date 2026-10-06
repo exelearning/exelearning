@@ -1007,6 +1007,14 @@ describe('YjsProjectBridge', () => {
       expect(bridge.documentManager).toBeNull();
       expect(bridge.structureBinding).toBeNull();
     });
+
+    it('tears down the edition-mode observer', async () => {
+      const observerDisconnect = mock(() => {});
+      bridge.editionModeObserver = { disconnect: observerDisconnect };
+      await bridge.disconnect();
+      expect(observerDisconnect).toHaveBeenCalled();
+      expect(bridge.editionModeObserver).toBeNull();
+    });
   });
 
   describe('onSaveStatus', () => {
@@ -1201,7 +1209,10 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
     });
 
-    it('should skip theme import when theme is marked as non-downloadable', async () => {
+    it('should still import theme when marked as non-downloadable', async () => {
+      // Regression for issue #1893: a <downloadable>0</downloadable> flag in the embedded
+      // theme config must NOT block importing the style from an opened .elpx. The import
+      // modal is shown like for any other embedded style instead of falling back.
       const mockSelectTheme = mock(() => Promise.resolve());
       const mockShowModal = mock(() => undefined);
 
@@ -1235,9 +1246,9 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('blocked-theme', mockFile);
 
-      // Non-downloadable theme: pass the original theme so selectTheme's fallback chain runs
-      expect(mockSelectTheme).toHaveBeenCalledWith('blocked-theme', true);
-      expect(mockShowModal).not.toHaveBeenCalled();
+      // The style is offered for import (modal shown); selectTheme is left to the modal flow.
+      expect(mockShowModal).toHaveBeenCalledWith('blocked-theme');
+      expect(mockSelectTheme).not.toHaveBeenCalled();
     });
 
     it('should return early if themeName is empty', async () => {
@@ -1792,6 +1803,54 @@ describe('YjsProjectBridge', () => {
       expect(bridge.undoButton.disabled).toBe(false);
     });
 
+    it('updateUndoRedoButtons disables both buttons while an iDevice is in edition mode', () => {
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+
+      bridge.updateUndoRedoButtons();
+
+      expect(bridge.undoButton.disabled).toBe(true);
+      expect(bridge.redoButton.disabled).toBe(true);
+    });
+
+    it('updateUndoRedoButtons re-enables the buttons once no iDevice is in edition mode', () => {
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
+      global.document.querySelector = mock(() => null);
+
+      bridge.updateUndoRedoButtons();
+
+      expect(bridge.undoButton.disabled).toBe(false);
+      expect(bridge.redoButton.disabled).toBe(false);
+    });
+
+    it('observeIdeviceEditionState is a safe no-op without an observable DOM root', () => {
+      expect(() => bridge.observeIdeviceEditionState()).not.toThrow();
+      expect(bridge.editionModeObserver).toBeFalsy();
+    });
+
+    it('observeIdeviceEditionState refreshes the buttons when the DOM mutates', async () => {
+      // Borrow the real (happy-dom) body — the stubbed document has none.
+      global.document.body = originalDocument.body;
+      bridge.updateUndoRedoButtons = mock(() => {});
+
+      bridge.observeIdeviceEditionState();
+      expect(bridge.editionModeObserver).toBeTruthy();
+
+      const el = originalDocument.createElement('div');
+      originalDocument.body.appendChild(el);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+
+      bridge.editionModeObserver.disconnect();
+      el.remove();
+      delete global.document.body;
+    });
+
     it('onPendingMetadataChange sets flag and updates buttons', () => {
       bridge.updateUndoRedoButtons = mock(() => {});
 
@@ -1814,6 +1873,96 @@ describe('YjsProjectBridge', () => {
       callback();
 
       expect(bridge.onPendingMetadataChange).toHaveBeenCalled();
+    });
+  });
+
+  describe('Undo/Redo keyboard shortcuts', () => {
+    const keyEvent = (props) => ({
+      key: '',
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      preventDefault: mock(() => {}),
+      ...props,
+    });
+
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      bridge.undo = mock(() => {});
+      bridge.redo = mock(() => {});
+      mockApp.project = { checkOpenIdevice: mock(() => true) };
+      global.document.querySelector = mock(() => null);
+    });
+
+    it('Ctrl+Z runs the project undo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Cmd+Shift+Z runs the project redo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'z', metaKey: true, shiftKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.redo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Ctrl+Y runs the project redo when no iDevice is in edition mode', () => {
+      const e = keyEvent({ key: 'y', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.redo).toHaveBeenCalled();
+      expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it('Ctrl+Z yields silently while an iDevice is in edition mode', () => {
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      expect(e.preventDefault).not.toHaveBeenCalled();
+      // Silent yield: no checkOpenIdevice() call, so no warning modal
+      expect(mockApp.project.checkOpenIdevice).not.toHaveBeenCalled();
+    });
+
+    it('redo shortcuts yield silently while an iDevice is in edition mode', () => {
+      global.document.querySelector = mock((selector) =>
+        selector === 'div.idevice_node[mode="edition"]' ? {} : null
+      );
+      bridge.handleUndoRedoKeydown(keyEvent({ key: 'z', metaKey: true, shiftKey: true }));
+      bridge.handleUndoRedoKeydown(keyEvent({ key: 'y', ctrlKey: true }));
+      expect(bridge.redo).not.toHaveBeenCalled();
+      expect(mockApp.project.checkOpenIdevice).not.toHaveBeenCalled();
+    });
+
+    it('does nothing before the bridge is initialized', () => {
+      bridge.initialized = false;
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      expect(e.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('ignores shortcuts while typing in a contenteditable element', () => {
+      global.document.activeElement = {
+        getAttribute: (name) => (name === 'contenteditable' ? 'true' : null),
+        closest: () => null,
+      };
+      const e = keyEvent({ key: 'z', ctrlKey: true });
+      bridge.handleUndoRedoKeydown(e);
+      expect(bridge.undo).not.toHaveBeenCalled();
+      delete global.document.activeElement;
+    });
+
+    it('setupUndoRedoHandlers registers a document keydown listener that forwards to handleUndoRedoKeydown', () => {
+      const keydownCall = global.document.addEventListener.mock.calls.find(([type]) => type === 'keydown');
+      expect(keydownCall).toBeTruthy();
+      const handler = keydownCall[1];
+      bridge.handleUndoRedoKeydown = mock(() => {});
+      handler(keyEvent({ key: 'z', ctrlKey: true }));
+      expect(bridge.handleUndoRedoKeydown).toHaveBeenCalled();
     });
   });
 
@@ -2060,6 +2209,57 @@ describe('YjsProjectBridge', () => {
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
 
+    it('defers the reload while an iDevice is being edited locally (#2427)', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+
+      bridge.schedulePageReloadIfCurrent('current-page');
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('current-page');
+    });
+
+    it('defers the reload when an iDevice is opened for editing during the debounce (#2434)', async () => {
+      bridge.schedulePageReloadIfCurrent('current-page');
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('current-page');
+    });
+
+    it('flushDeferredPageReload runs the deferred reload once the edition ends', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      bridge.schedulePageReloadIfCurrent('current-page');
+
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => false);
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledTimes(1);
+      expect(bridge._deferredPageReloadId).toBeNull();
+    });
+
+    it('flushDeferredPageReload skips the reload when the user left the page', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      bridge.schedulePageReloadIfCurrent('current-page');
+
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => false);
+      bridge.app.project.structure.menuStructureBehaviour.nodeSelected.getAttribute = mock(() => 'another-page');
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBeNull();
+    });
+
+    it('flushDeferredPageReload is a no-op without a deferred reload', async () => {
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+
   });
 
   describe('asset refresh on late asset arrival', () => {
@@ -2131,6 +2331,17 @@ describe('YjsProjectBridge', () => {
         { id: 'page-element' },
       );
       expect(bridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('defers the late-asset reload while an iDevice is being edited locally (#2427)', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('page-1');
     });
 
     it('does not reload when current page does not reference late asset', async () => {
@@ -3118,7 +3329,7 @@ describe('YjsProjectBridge', () => {
 
       await bridge.updateRemoteComponent({ id: 'comp-1' }, 'page-1');
 
-      expect(mockEngine.updateRemoteIdeviceContent).toHaveBeenCalled();
+      expect(mockEngine.updateRemoteIdeviceContent).toHaveBeenCalledWith({ id: 'comp-1' }, 'page-1');
     });
 
     it('skips update when on different page', async () => {
@@ -3151,6 +3362,74 @@ describe('YjsProjectBridge', () => {
 
       // Should not throw
       await bridge.updateRemoteComponent({ id: 'comp-1' }, 'page-1');
+    });
+  });
+
+  describe('buildRemoteComponentUpdate', () => {
+    const makeCompMap = (values) => ({
+      get: (key) => values[key],
+    });
+
+    it('omits html and json payloads for lock-only key changes', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          ideviceType: 'text',
+          htmlContent: { toString: () => '<p>Original content</p>' },
+          jsonProperties: '{"textTextarea":"<p>Original content</p>"}',
+          lockedBy: 'client-a',
+          lockUserName: 'Alice',
+          lockUserColor: '#f00',
+        }),
+        ['lockedBy', 'lockUserName', 'lockUserColor', 'updatedAt'],
+      );
+
+      expect(update.id).toBe('comp-1');
+      expect(update.lockedBy).toBe('client-a');
+      expect(update.lockUserName).toBe('Alice');
+      expect(update.htmlContent).toBeUndefined();
+      expect(update.jsonProperties).toBeUndefined();
+    });
+
+    it('includes json without empty html when only jsonProperties change', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          type: 'text',
+          htmlContent: { toString: () => '' },
+          jsonProperties: '{"textTextarea":"<p>Updated by client A</p>"}',
+          lockedBy: null,
+        }),
+        ['jsonProperties', 'updatedAt'],
+      );
+
+      expect(update.htmlContent).toBeUndefined();
+      expect(update.jsonProperties).toBe('{"textTextarea":"<p>Updated by client A</p>"}');
+    });
+
+    it('includes html when htmlContent changes', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          ideviceType: 'text',
+          htmlContent: { toString: () => '<p>Updated by client A</p>' },
+        }),
+        ['htmlContent'],
+      );
+
+      expect(update.htmlContent).toBe('<p>Updated by client A</p>');
+      expect(update.jsonProperties).toBeUndefined();
+    });
+
+    it('falls back to htmlView when htmlContent is empty', () => {
+      const html = YjsProjectBridge.readComponentHtml(
+        makeCompMap({
+          htmlContent: { toString: () => '' },
+          htmlView: '<p>Imported</p>',
+        }),
+      );
+
+      expect(html).toBe('<p>Imported</p>');
     });
   });
 
@@ -3190,6 +3469,7 @@ describe('YjsProjectBridge', () => {
       const mockBlockNode = {
         blockName: 'Old Name',
         iconName: 'edit',
+        icon: { source: 'theme', value: 'edit' },
         blockNameElementText: { innerHTML: '' },
         renderBlockTitle: mock(() => {}),
         makeIconNameElement: mock(() => {}),
@@ -3215,7 +3495,145 @@ describe('YjsProjectBridge', () => {
 
       expect(mockBlockNode.blockName).toBe('New Name');
       expect(mockBlockNode.iconName).toBe('star');
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'star' });
       expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
+    });
+
+    it('maps a renamed theme icon name arriving in a structured descriptor', async () => {
+      // A collaborator on a project saved before neo renamed objetives.png sends the old
+      // name. Left as-is it misses getThemeIcons() and the block renders without an icon.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'objectives', name: 'objectives' });
+    });
+
+    it('leaves a theme icon name that was never renamed untouched', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'activity', icon: { source: 'theme', value: 'activity' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'activity' });
+    });
+
+    it('does not re-render a block whose stored icon name was renamed', async () => {
+      // The node already holds the mapped name; the update carries the raw one. Comparing
+      // those two strings reported a change on every remote update of that block, so
+      // makeIconNameElement() ran again each time until someone re-saved the project.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: 'objectives',
+        icon: { source: 'theme', value: 'objectives', name: 'objectives' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.makeIconNameElement).not.toHaveBeenCalled();
+      expect(mockBlockNode.iconName).toBe('objectives');
+    });
+
+    it('leaves a theme descriptor without a value alone', async () => {
+      // `icon.value` absent normalises to '', and comparing the mapped '' against an absent
+      // one would rewrite the descriptor and re-render for nothing.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'theme' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock({ id: 'block-1', icon: { source: 'theme' } }, 'page-1');
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme' });
+      expect(mockBlockNode.makeIconNameElement).not.toHaveBeenCalled();
+    });
+
+    it('updates block icon from structured icon data for remote collaborators', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+          structure: {
+            nodeSelected: { getAttribute: () => 'page-1' },
+          },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'mi-alarm', icon: { source: 'material', value: 'alarm' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'material', value: 'alarm' });
+      expect(mockBlockNode.iconName).toBe('mi-alarm');
+      expect(mockBlockNode.makeIconNameElement).toHaveBeenCalled();
     });
 
     it('updates block with properties object', async () => {
@@ -3462,6 +3880,65 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('pass score notice metadata updates', () => {
+    let metadata;
+    let refreshNotices;
+    let originalDevices;
+
+    beforeEach(() => {
+      originalDevices = window.$exeDevices;
+      metadata = new window.Y.Doc().getMap('metadata');
+      bridge.documentManager = { getMetadata: () => metadata };
+      bridge.updateUndoRedoButtons = mock(() => {});
+      bridge.syncMetadataToLegacy = mock(() => {});
+      refreshNotices = mock(() => {});
+      window.$exeDevices = {
+        iDevice: { gamification: { report: { refreshPassScoreNotices: refreshNotices } } },
+      };
+      bridge.setupMetadataObserver();
+    });
+
+    afterEach(() => {
+      metadata.doc.destroy();
+      window.$exeDevices = originalDevices;
+    });
+
+    it.each(['remote', 'local', 'undo'])('refreshes notices on %s pass score changes', (origin) => {
+      bridge.isUndoRedoInProgress = origin === 'undo';
+      metadata.doc.transact(() => metadata.set('passScore', 9), origin);
+
+      expect(refreshNotices).toHaveBeenCalledTimes(1);
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('ignores unrelated metadata changes', () => {
+      metadata.set('description', 'Updated description');
+
+      expect(refreshNotices).not.toHaveBeenCalled();
+    });
+
+    it('handles a pass score change before the activity runtime has loaded', () => {
+      delete window.$exeDevices;
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('keeps syncing the metadata when a notice fails to refresh', () => {
+      const failure = new Error('notice failed');
+      refreshNotices.mockImplementation(() => {
+        throw failure;
+      });
+      bridge.app = { project: { properties: {} } };
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+
+      expect(console.error).toHaveBeenCalledWith('[YjsProjectBridge] Error refreshing pass score notices:', failure);
+      expect(bridge.syncMetadataToLegacy).toHaveBeenCalled();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+  });
+
   describe('syncMetadataToLegacy', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
@@ -3591,6 +4068,23 @@ describe('YjsProjectBridge', () => {
         get: (key) => key === 'addExeLink' ? 'true' : undefined,
       };
       bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.checked).toBe(true);
+    });
+
+    it('updates the every-activity pass rule checkbox from its metadata key', () => {
+      const mockInput = {
+        getAttribute: (attr) => attr === 'property' ? 'pp_passScoreEveryActivity' : 'checkbox',
+        type: 'checkbox',
+        checked: false,
+        value: '',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+      bridge.documentManager.getMetadata = () => ({
+        get: (key) => key === 'passScoreEveryActivity' ? 'true' : undefined,
+      });
 
       bridge.forceAllFormInputsSync();
 
@@ -4627,6 +5121,42 @@ describe('YjsProjectBridge', () => {
       expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('base', file, mockZipContents);
     });
 
+    /**
+     * #2223 / #2190. This is the only funnel every import goes through: the
+     * online menu reaches it via projectManager.importFromElpxViaYjs, but the
+     * static build and the embedding bridge call it directly.
+     */
+    it('reports the import result to the project manager for the notices', async () => {
+      const stats = {
+        assets: 0,
+        missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        malformedProperties: [{ componentId: 'c2', ideviceType: 'trueorfalse' }],
+      };
+      global.window.ElpxImporter = mock(function() {
+        return { importFromFile: mock(() => Promise.resolve(stats)) };
+      });
+      bridge._checkAndImportTheme = mock(() => Promise.resolve());
+      const showImportNotices = mock(() => undefined);
+      global.window.eXeLearning.app.project = { showImportNotices };
+
+      await bridge.importFromElpx(new Blob(['test'], { type: 'application/zip' }));
+
+      expect(showImportNotices).toHaveBeenCalledWith(stats);
+    });
+
+    it('imports fine when no project manager is listening for the report', async () => {
+      const stats = { assets: 0 };
+      global.window.ElpxImporter = mock(function() {
+        return { importFromFile: mock(() => Promise.resolve(stats)) };
+      });
+      bridge._checkAndImportTheme = mock(() => Promise.resolve());
+      global.window.eXeLearning.app.project = undefined;
+
+      const result = await bridge.importFromElpx(new Blob(['test'], { type: 'application/zip' }));
+
+      expect(result).toBe(stats);
+    });
+
     it('imports theme when clearExisting is explicitly true', async () => {
       const mockZipContents = { 'content.xml': new Uint8Array([60, 63]) };
       const mockImporter = {
@@ -4844,6 +5374,7 @@ describe('YjsProjectBridge', () => {
           },
         })),
       };
+      bridge.assetManager.markAssetsSavedLocally = mock(() => {});
 
       const result = await bridge.exportToElpx();
 
@@ -4853,6 +5384,7 @@ describe('YjsProjectBridge', () => {
         'test-project-123',
         'project.elpx'
       );
+      expect(bridge.assetManager.markAssetsSavedLocally).toHaveBeenCalled();
 
       // Cleanup
       delete global.eXeLearning;
@@ -4888,10 +5420,12 @@ describe('YjsProjectBridge', () => {
           },
         })),
       };
+      bridge.assetManager.markAssetsSavedLocally = mock(() => {});
 
       const result = await bridge.exportToElpx();
 
       expect(result).toEqual({ saved: false });
+      expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
 
       // Cleanup
       delete global.eXeLearning;
@@ -5284,7 +5818,9 @@ describe('YjsProjectBridge', () => {
         expect(result.displayName).toBe('My Theme');
         expect(result.type).toBe('user');
         expect(result.isUserTheme).toBe(true);
-        expect(result.downloadable).toBe('0');
+        // Issue #1893: styles imported from a .elpx are always available, so the legacy
+        // <downloadable>0</downloadable> flag is normalized to '1' instead of being kept.
+        expect(result.downloadable).toBe('1');
       });
 
       it('uses default values when config.xml is missing', () => {
@@ -5877,6 +6413,85 @@ describe('YjsProjectBridge', () => {
         await expect(bridge._loadUserThemeFromYjs('theme', 'data')).resolves.not.toThrow();
       });
     });
+
+    describe('_showThemeImportModal', () => {
+      let mockConfirmShow;
+      let mockCreateToast;
+      let capturedConfirmExec;
+      let capturedCancelExec;
+
+      beforeEach(() => {
+        capturedConfirmExec = null;
+        capturedCancelExec = null;
+        mockConfirmShow = mock(({ confirmExec, cancelExec }) => {
+          capturedConfirmExec = confirmExec;
+          capturedCancelExec = cancelExec;
+        });
+        mockCreateToast = mock(() => {});
+
+        global.eXeLearning.app.modals = {
+          confirm: { show: mockConfirmShow },
+        };
+        global.eXeLearning.app.toasts = {
+          createToast: mockCreateToast,
+        };
+        global.eXeLearning.app.themes.selectTheme = mock(() => Promise.resolve());
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+
+        bridge._extractThemeFilesFromZip = mock(() => ({
+          files: { 'style.css': new Uint8Array([1, 2, 3]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'test-theme',
+          type: 'user',
+          displayName: 'Test Theme',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._copyThemeToYjs = mock(() => Promise.resolve());
+      });
+
+      it('shows confirm modal', () => {
+        bridge._showThemeImportModal('test-theme');
+        expect(mockConfirmShow).toHaveBeenCalledTimes(1);
+        const args = mockConfirmShow.mock.calls[0][0];
+        expect(args.title).toBe('Import style');
+      });
+
+      it('shows success toast after successful installation', async () => {
+        bridge._showThemeImportModal('test-theme');
+        await capturedConfirmExec();
+
+        expect(mockCreateToast).toHaveBeenCalledTimes(1);
+        const toastData = mockCreateToast.mock.calls[0][0];
+        expect(toastData.icon).toBe('task_alt');
+        expect(toastData.error).toBeFalsy();
+        expect(toastData.remove).toBeGreaterThan(0);
+      });
+
+      it('shows error toast when installation fails', async () => {
+        bridge._extractThemeFilesFromZip = mock(() => null);
+
+        bridge._showThemeImportModal('test-theme');
+        await capturedConfirmExec();
+
+        expect(mockCreateToast).toHaveBeenCalledTimes(1);
+        const toastData = mockCreateToast.mock.calls[0][0];
+        expect(toastData.error).toBe(true);
+        expect(toastData.remove).toBeGreaterThan(0);
+      });
+
+      it('cleans up pending references after cancel', () => {
+        bridge._pendingThemeFile = 'file';
+        bridge._pendingThemeZip = 'zip';
+
+        bridge._showThemeImportModal('test-theme');
+        capturedCancelExec();
+
+        expect(bridge._pendingThemeFile).toBeNull();
+        expect(bridge._pendingThemeZip).toBeNull();
+      });
+    });
   });
 
   describe('disconnect', () => {
@@ -6286,6 +6901,72 @@ describe('YjsProjectBridge', () => {
 
       // Should not change since src already matches and no exe-no-icon class
       expect(mockIconEl.innerHTML).toBe(originalHtml);
+    });
+
+    it('renders material icons with the shared mask runtime', () => {
+      // The shared runtime rebuilds the icon from the in-memory sprite as a
+      // self-contained data: URI (loose per-icon files were removed).
+      const iconRuntime = require('../common/blockIconRuntime.js');
+      iconRuntime.loadMaterialSprite(
+        [
+          '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+          '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M40-200Z"/></symbol>',
+          '</svg>',
+        ].join('\n'),
+      );
+
+      const mockIconEl = {
+        innerHTML: '',
+        style: {
+          removeProperty: mock(() => {}),
+        },
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      bridge._syncBlockIcon(mockIconEl, { source: 'material', value: 'alarm' }, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('class="exe-material-icon"');
+      expect(mockIconEl.innerHTML).toContain('data:image/svg+xml;utf8,');
+      expect(mockIconEl.innerHTML).not.toContain('alarm.svg');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+      expect(mockIconEl.style.removeProperty).toHaveBeenCalledWith('color');
+    });
+
+    it('renders asset icons using resolved asset URLs', () => {
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                resolveAssetURLSync: () => 'blob:asset-icon',
+              },
+            },
+          },
+          themes: {
+            getThemeIcons: () => ({}),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      bridge._syncBlockIcon(mockIconEl, { source: 'asset', value: 'asset://uuid-123/icon.jpg' }, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('blob:asset-icon');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
     });
 
     it('does not clear icon when already showing empty SVG', () => {
@@ -7453,6 +8134,424 @@ describe('YjsProjectBridge', () => {
       expect(window.html2canvas).toHaveBeenCalled();
       expect(result).toBe('data:image/png;base64,result');
       document.createElement = originalCreateElement;
+    });
+  });
+
+  describe('collaborative autosave integration (issue #1592)', () => {
+    class MockCollaborativeAutosaveManager {
+      constructor(bridgeRef, options) {
+        this.bridgeRef = bridgeRef;
+        this.options = options || {};
+        this.started = false;
+        this.destroyed = false;
+      }
+      start() {
+        this.started = true;
+      }
+      cancel() {}
+      destroy() {
+        this.destroyed = true;
+      }
+    }
+
+    beforeEach(async () => {
+      global.window.CollaborativeAutosaveManager = MockCollaborativeAutosaveManager;
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('creates and starts a collaborative autosave manager on enableAutoSync', () => {
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave).toBeInstanceOf(MockCollaborativeAutosaveManager);
+      expect(bridge.collaborativeAutosave.started).toBe(true);
+      expect(bridge.collaborativeAutosave.bridgeRef).toBe(bridge);
+    });
+
+    it('does not throw when CollaborativeAutosaveManager is unavailable', () => {
+      delete global.window.CollaborativeAutosaveManager;
+      expect(() => bridge.enableAutoSync()).not.toThrow();
+      expect(bridge.collaborativeAutosave).toBeNull();
+    });
+
+    it('passes the idle delay override from window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__', () => {
+      global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = 1500;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.idleDelayMs).toBe(1500);
+      delete global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
+    });
+
+    it('uses the default idle delay when no override is set', () => {
+      delete global.window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.idleDelayMs).toBeUndefined();
+    });
+
+    it('destroys and clears the autosave manager on disconnect', async () => {
+      bridge.enableAutoSync();
+      const manager = bridge.collaborativeAutosave;
+      await bridge.disconnect();
+      expect(manager.destroyed).toBe(true);
+      expect(bridge.collaborativeAutosave).toBeNull();
+    });
+
+    it('routes autosave phase changes to the collaborative status notice', () => {
+      const renderSpy = spyOn(bridge, '_updateCollaborativeSaveStatus').mockImplementation(() => {});
+      bridge.enableAutoSync();
+      bridge.collaborativeAutosave.options.onStatusChange('saving');
+      expect(renderSpy).toHaveBeenCalledWith('saving');
+    });
+
+    it('destroys the collaborative status view on disconnect', async () => {
+      const instances = [];
+      class MockCollaborativeSaveStatusView {
+        constructor() {
+          this.setPhase = mock(() => {});
+          this.destroy = mock(() => {});
+          instances.push(this);
+        }
+      }
+      global.window.CollaborativeSaveStatusView = MockCollaborativeSaveStatusView;
+
+      bridge._updateCollaborativeSaveStatus('failed'); // lazily creates the view
+      await bridge.disconnect();
+
+      expect(instances[0].destroy).toHaveBeenCalled();
+      expect(bridge._collabStatusView).toBeNull();
+    });
+  });
+
+  describe('_updateCollaborativeSaveStatus (issue #1592)', () => {
+    // The rendering itself lives in CollaborativeSaveStatusView (covered by its
+    // own colocated test); the bridge only wires phases through to it.
+    function installMockView() {
+      const instances = [];
+      class MockCollaborativeSaveStatusView {
+        constructor() {
+          this.setPhase = mock(() => {});
+          this.destroy = mock(() => {});
+          instances.push(this);
+        }
+      }
+      global.window.CollaborativeSaveStatusView = MockCollaborativeSaveStatusView;
+      return instances;
+    }
+
+    it('does nothing when the CollaborativeSaveStatusView global is unavailable', () => {
+      delete global.window.CollaborativeSaveStatusView;
+      expect(() => bridge._updateCollaborativeSaveStatus('failed')).not.toThrow();
+      expect(bridge._collabStatusView).toBeFalsy();
+    });
+
+    it('lazily constructs a single view and forwards each phase to it', () => {
+      const instances = installMockView();
+
+      bridge._updateCollaborativeSaveStatus('pending');
+      bridge._updateCollaborativeSaveStatus('saving');
+
+      expect(instances.length).toBe(1); // constructed once, then reused
+      expect(instances[0].setPhase).toHaveBeenCalledWith('pending');
+      expect(instances[0].setPhase).toHaveBeenCalledWith('saving');
+    });
+  });
+
+  // ==========================================================================
+  // #2193 — desktop large-asset import policy + export compatibility warning
+  // ==========================================================================
+  describe('#2193 desktop large-asset import policy', () => {
+    const MiB = 1024 * 1024;
+    let stubPolicy;
+
+    function installPolicy() {
+      stubPolicy = {
+        CONSERVATIVE_ZIP_LIMITS: { maxTotalBytes: 500 * MiB, maxEntryBytes: 200 * MiB, maxEntries: 10000 },
+        DESKTOP_ZIP_LIMITS: { maxTotalBytes: 2048 * MiB, maxEntryBytes: 1024 * MiB, maxEntries: 10000 },
+        DESKTOP_CONFIRM_ENTRY_BYTES: 200 * MiB,
+        getZipLimitsForRuntime: (rt) =>
+          rt === 'desktop' ? stubPolicy.DESKTOP_ZIP_LIMITS : stubPolicy.CONSERVATIVE_ZIP_LIMITS,
+        getDesktopExportCompatibility: mock(() => ({
+          compatible: true,
+          oversizedAsset: null,
+          exceedsTotal: false,
+          largestAsset: null,
+          totalBytes: 0,
+          entryLimit: 1024 * MiB,
+          totalLimit: 2048 * MiB,
+        })),
+        formatBytes: (n) => `${Math.round(n / MiB)} MB`,
+      };
+      global.window.ExeImportPolicy = stubPolicy;
+    }
+
+    function installModals() {
+      global.window.eXeLearning = global.window.eXeLearning || {};
+      global.window.eXeLearning.app = global.window.eXeLearning.app || {};
+      const confirmShow = mock(() => {});
+      const alertShow = mock(() => {});
+      global.window.eXeLearning.app.modals = { confirm: { show: confirmShow }, alert: { show: alertShow } };
+      global.eXeLearning = global.window.eXeLearning;
+      return { confirmShow, alertShow };
+    }
+
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      installPolicy();
+      delete global.window.electronAPI;
+    });
+
+    afterEach(() => {
+      delete global.window.electronAPI;
+      delete global.window.__EXE_IMPORT_LIMITS_OVERRIDE__;
+      delete global.window.ExeImportPolicy;
+    });
+
+    describe('_isDesktopRuntime', () => {
+      it('is true when electronAPI is present', () => {
+        global.window.electronAPI = { save: () => {} };
+        expect(bridge._isDesktopRuntime()).toBe(true);
+      });
+
+      it('is false on hosted/static without electronAPI', () => {
+        delete global.window.electronAPI;
+        expect(bridge._isDesktopRuntime()).toBe(false);
+      });
+    });
+
+    describe('_resolveImportPolicy', () => {
+      it('selects desktop limits and confirmation threshold in Electron', () => {
+        global.window.electronAPI = { save: () => {} };
+        const p = bridge._resolveImportPolicy();
+        expect(p.isDesktop).toBe(true);
+        expect(p.zipLimits.maxEntryBytes).toBe(1024 * MiB);
+        expect(p.confirmEntryThreshold).toBe(200 * MiB);
+      });
+
+      it('selects conservative limits on hosted/static (no desktop leakage)', () => {
+        const p = bridge._resolveImportPolicy();
+        expect(p.isDesktop).toBe(false);
+        expect(p.zipLimits.maxEntryBytes).toBe(200 * MiB);
+      });
+
+      it('applies a test limits override when present', () => {
+        global.window.electronAPI = { save: () => {} };
+        global.window.__EXE_IMPORT_LIMITS_OVERRIDE__ = {
+          desktop: { maxEntryBytes: 5000, maxTotalBytes: 20000, maxEntries: 100 },
+          confirmEntryThreshold: 1000,
+        };
+        const p = bridge._resolveImportPolicy();
+        expect(p.zipLimits.maxEntryBytes).toBe(5000);
+        expect(p.confirmEntryThreshold).toBe(1000);
+      });
+    });
+
+    describe('importFromElpx runtime wiring', () => {
+      function captureImportOptions(resolveValue = { assets: 0 }, impl) {
+        let captured = null;
+        const mockImporter = {
+          importFromFile: mock((file, options) => {
+            captured = options;
+            return impl ? impl(file, options) : Promise.resolve(resolveValue);
+          }),
+        };
+        global.window.ElpxImporter = mock(function () {
+          return mockImporter;
+        });
+        return () => captured;
+      }
+
+      it('passes desktop limits and a confirmation callback in Electron', async () => {
+        global.window.electronAPI = { save: () => {} };
+        const getOpts = captureImportOptions();
+        bridge.announceAssets = mock(() => Promise.resolve());
+        await bridge.importFromElpx(new Blob(['x']));
+        const opts = getOpts();
+        expect(opts.zipLimits.maxEntryBytes).toBe(1024 * MiB);
+        expect(typeof opts.onConfirmLargeEntry).toBe('function');
+      });
+
+      it('passes conservative limits and no confirmation callback on hosted', async () => {
+        const getOpts = captureImportOptions();
+        bridge.announceAssets = mock(() => Promise.resolve());
+        await bridge.importFromElpx(new Blob(['x']));
+        const opts = getOpts();
+        expect(opts.zipLimits.maxEntryBytes).toBe(200 * MiB);
+        expect(opts.onConfirmLargeEntry).toBeUndefined();
+      });
+
+      it('routes the confirmation callback through the confirm modal (accept => true)', async () => {
+        global.window.electronAPI = { save: () => {} };
+        const { confirmShow } = installModals();
+        confirmShow.mockImplementation((data) => data.confirmExec());
+        let confirmResult = null;
+        captureImportOptions({ assets: 0 }, async (file, options) => {
+          confirmResult = await options.onConfirmLargeEntry({
+            entryName: 'v.mp4',
+            entryBytes: 300 * MiB,
+            totalBytes: 300 * MiB,
+            entryCount: 2,
+            confirmThreshold: 200 * MiB,
+            hardLimitBytes: 1024 * MiB,
+          });
+          return { assets: 0 };
+        });
+        bridge.announceAssets = mock(() => Promise.resolve());
+        await bridge.importFromElpx(new Blob(['x']));
+        expect(confirmShow).toHaveBeenCalled();
+        expect(confirmResult).toBe(true);
+      });
+
+      it('routes the confirmation callback through the confirm modal (cancel => false)', async () => {
+        global.window.electronAPI = { save: () => {} };
+        const { confirmShow } = installModals();
+        confirmShow.mockImplementation((data) => data.cancelExec());
+        let confirmResult = null;
+        captureImportOptions({ assets: 0 }, async (file, options) => {
+          confirmResult = await options.onConfirmLargeEntry({
+            entryName: 'v.mp4',
+            entryBytes: 300 * MiB,
+            totalBytes: 300 * MiB,
+            entryCount: 2,
+            confirmThreshold: 200 * MiB,
+            hardLimitBytes: 1024 * MiB,
+          });
+          const e = new Error('cancelled');
+          e.name = 'ImportCancelledError';
+          throw e;
+        });
+        const result = await bridge.importFromElpx(new Blob(['x']));
+        expect(confirmResult).toBe(false);
+        expect(result.cancelled).toBe(true);
+      });
+
+      it('shows an actionable error and resolves (no throw) on a ZipLimitError', async () => {
+        const { alertShow } = installModals();
+        captureImportOptions({}, () => {
+          const e = new Error('too big');
+          e.name = 'ZipLimitError';
+          e.details = {
+            kind: 'entry-size',
+            archiveLabel: 'ELP/ELPX archive',
+            entryName: 'huge.mp4',
+            actualValue: 359357639,
+            limitValue: 209715200,
+          };
+          return Promise.reject(e);
+        });
+        const result = await bridge.importFromElpx(new Blob(['x']));
+        expect(alertShow).toHaveBeenCalled();
+        expect(result.cancelled).toBe(true);
+        const body = alertShow.mock.calls[0][0].body;
+        expect(body).toContain('huge.mp4');
+      });
+
+      it('silently returns cancelled on ImportCancelledError without an error dialog', async () => {
+        const { alertShow } = installModals();
+        captureImportOptions({}, () => {
+          const e = new Error('cancelled');
+          e.name = 'ImportCancelledError';
+          return Promise.reject(e);
+        });
+        const result = await bridge.importFromElpx(new Blob(['x']));
+        expect(alertShow).not.toHaveBeenCalled();
+        expect(result.cancelled).toBe(true);
+      });
+
+      it('wires clearPreviousProject to a post-gate beforeImport hook', async () => {
+        const getOpts = captureImportOptions();
+        bridge.clearAssetsForNewProject = mock(() => Promise.resolve());
+        bridge.clearMetadataForNewProject = mock(() => {});
+        bridge.announceAssets = mock(() => Promise.resolve());
+        await bridge.importFromElpx(new Blob(['x']), { clearPreviousProject: true });
+        const opts = getOpts();
+        expect(typeof opts.beforeImport).toBe('function');
+        // Not cleared until the hook runs (i.e. only after the gate passes).
+        expect(bridge.clearAssetsForNewProject).not.toHaveBeenCalled();
+        await opts.beforeImport();
+        expect(bridge.clearAssetsForNewProject).toHaveBeenCalled();
+        expect(bridge.clearMetadataForNewProject).toHaveBeenCalled();
+      });
+    });
+
+    describe('exportToElpx desktop-compatibility warning', () => {
+      function installExporter() {
+        const exportFn = mock(() => Promise.resolve({ success: true, data: new Uint8Array([1, 2, 3]), filename: 'p.elpx' }));
+        const createExporter = mock(() => ({ export: exportFn }));
+        global.window.SharedExporters = { createExporter };
+        return { createExporter, exportFn };
+      }
+
+      function installDomForDownload() {
+        global.document.body = { appendChild: mock(() => {}), removeChild: mock(() => {}) };
+        global.document.createElement = mock(() => ({ href: '', download: '', click: mock(() => {}) }));
+        // The browser-download branch uses object URLs; keep it self-contained
+        // so it does not depend on setup-level mocks that other tests may reset.
+        if (typeof global.URL === 'undefined') {
+          global.URL = {};
+        }
+        global.URL.createObjectURL = mock(() => 'blob:mock-2193');
+        global.URL.revokeObjectURL = mock(() => {});
+      }
+
+      beforeEach(() => {
+        bridge.ensureScreenshotForExport = mock(() => Promise.resolve());
+        bridge.assetManager = {
+          getAllAssetsMetadata: mock(() => [{ filename: 'big.mp4', size: 1500 * MiB, id: 'a1' }]),
+        };
+      });
+
+      it('does not warn when assets are within desktop limits', async () => {
+        installModals();
+        installDomForDownload();
+        const { createExporter } = installExporter();
+        await bridge.exportToElpx();
+        expect(createExporter).toHaveBeenCalled();
+      });
+
+      it('warns and aborts on cancel when an asset exceeds desktop limits', async () => {
+        const { confirmShow } = installModals();
+        confirmShow.mockImplementation((data) => data.cancelExec());
+        stubPolicy.getDesktopExportCompatibility = mock(() => ({
+          compatible: false,
+          oversizedAsset: { name: 'big.mp4', size: 1500 * MiB },
+          exceedsTotal: false,
+          largestAsset: { name: 'big.mp4', size: 1500 * MiB },
+          totalBytes: 1500 * MiB,
+          entryLimit: 1024 * MiB,
+          totalLimit: 2048 * MiB,
+        }));
+        const { createExporter } = installExporter();
+        const result = await bridge.exportToElpx();
+        expect(confirmShow).toHaveBeenCalled();
+        expect(createExporter).not.toHaveBeenCalled();
+        expect(result).toEqual({ saved: false });
+        const body = confirmShow.mock.calls[0][0].body;
+        expect(body).toContain('big.mp4');
+      });
+
+      it('continues export on confirm when an asset exceeds desktop limits', async () => {
+        const { confirmShow } = installModals();
+        confirmShow.mockImplementation((data) => data.confirmExec());
+        stubPolicy.getDesktopExportCompatibility = mock(() => ({
+          compatible: false,
+          oversizedAsset: { name: 'big.mp4', size: 1500 * MiB },
+          exceedsTotal: false,
+          largestAsset: { name: 'big.mp4', size: 1500 * MiB },
+          totalBytes: 1500 * MiB,
+          entryLimit: 1024 * MiB,
+          totalLimit: 2048 * MiB,
+        }));
+        installDomForDownload();
+        const { createExporter } = installExporter();
+        await bridge.exportToElpx();
+        expect(createExporter).toHaveBeenCalled();
+      });
+
+      it('does not run the compatibility check in the desktop runtime', async () => {
+        global.window.electronAPI = { save: () => {} };
+        installModals();
+        installDomForDownload();
+        installExporter();
+        await bridge.exportToElpx();
+        expect(stubPolicy.getDesktopExportCompatibility).not.toHaveBeenCalled();
+      });
     });
   });
 });

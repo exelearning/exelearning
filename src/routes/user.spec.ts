@@ -5,18 +5,25 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
+import * as bcrypt from 'bcryptjs';
 import { createUserRoutes, type UserDependencies } from './user';
 
-// Test JWT secret (must match what user.ts uses)
-const TEST_JWT_SECRET = process.env.APP_SECRET || 'test-secret-for-user-routes-testing';
+// Test JWT secret (must match what user.ts verifies with).
+const TEST_JWT_SECRET = 'test-secret-for-user-routes-testing';
 
-// Override APP_SECRET for tests
+// Save originals so each test restores them and never leaks the test secret to
+// other suites in the same Bun process.
 const originalAppSecret = process.env.APP_SECRET;
-// user.ts:getJwtSecret() prefers JWT_SECRET over APP_SECRET. Other specs in the
-// same Bun process (auth.spec.ts, admin.spec.ts, api/v1/*.spec.ts, ...) set
-// process.env.JWT_SECRET and don't clean it up, which would make jwt.verify()
-// use a different secret than the one this test signs with, breaking auth.
+// The canonical resolver (auth.ts:getJwtSecret) prefers API_JWT_SECRET over
+// JWT_SECRET over the public default. The test env sets API_JWT_SECRET via .env,
+// so we must override API_JWT_SECRET (not just JWT_SECRET/APP_SECRET) to the value
+// this spec signs with, otherwise jwt.verify() uses a different secret and auth fails.
+const originalApiJwtSecret = process.env.API_JWT_SECRET;
 const originalJwtSecret = process.env.JWT_SECRET;
+const originalOnlineMode = process.env.APP_ONLINE_MODE;
+
+// Password of the default mock user (id 1).
+const CURRENT_PASSWORD = 'current-secret';
 
 describe('User Routes', () => {
     let app: Elysia;
@@ -24,8 +31,10 @@ describe('User Routes', () => {
     let jwtHelper: { sign: (payload: any) => Promise<string> };
 
     // Mock user data
-    let mockUsers: Map<number, { id: number; email: string; quota_mb: number }>;
+    let mockUsers: Map<number, Record<string, unknown>>;
     let mockStorageUsage: Map<number, number>;
+    let passwordUpdates: Array<{ id: number; password: string }>;
+    let authMethodsSetting: string[];
 
     // Create mock dependencies for each test
     function createMockDependencies(): UserDependencies {
@@ -61,6 +70,16 @@ describe('User Routes', () => {
                 getUserStorageUsage: async (_db: any, userId: number) => {
                     return mockStorageUsage.get(userId) || 0;
                 },
+                updateUserPassword: async (_db: any, userId: number, password: string) => {
+                    passwordUpdates.push({ id: userId, password });
+                    const user = mockUsers.get(userId);
+                    if (!user) return undefined;
+                    user.password = password;
+                    return user as any;
+                },
+            },
+            settings: {
+                getAuthMethods: async () => authMethodsSetting,
             },
         };
     }
@@ -71,18 +90,86 @@ describe('User Routes', () => {
         return `auth=${token}`;
     }
 
+    /**
+     * Sign a full session payload (authMethod, isGuest, isImpersonated, ...),
+     * which the query-string based helper above cannot express.
+     */
+    async function generateSessionCookie(payload: Record<string, unknown>): Promise<string> {
+        const signer = new Elysia()
+            .use(jwt({ name: 'jwt', secret: TEST_JWT_SECRET, exp: '7d' }))
+            .post('/sign', async ({ jwt, body }) => ({ token: await jwt.sign(body as any) }));
+
+        const res = await signer.handle(
+            new Request('http://localhost/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sub: 1,
+                    email: 'test@test.com',
+                    authMethod: 'local',
+                    isGuest: false,
+                    ...payload,
+                }),
+            }),
+        );
+        const { token } = await res.json();
+        return `auth=${token}`;
+    }
+
+    /** Convenience: a normal local password session for user 1. */
+    function localSession(): Promise<string> {
+        return generateSessionCookie({});
+    }
+
+    async function changePassword(
+        cookie: string | null,
+        body: unknown,
+    ): Promise<{ status: number; body: Record<string, unknown> }> {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (cookie) headers.Cookie = cookie;
+
+        const res = await app.handle(
+            new Request('http://localhost/api/user/password', {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify(body),
+            }),
+        );
+
+        let parsed: Record<string, unknown> = {};
+        try {
+            parsed = await res.json();
+        } catch {
+            parsed = {};
+        }
+        return { status: res.status, body: parsed };
+    }
+
     beforeEach(async () => {
-        // Set test secret on both vars so getJwtSecret() (JWT_SECRET || APP_SECRET)
-        // always resolves to the same value this spec signs with.
+        // Set all three vars so the canonical resolver (API_JWT_SECRET || JWT_SECRET
+        // || default) always resolves to the value this spec signs with. Routes are
+        // created below in this hook, after the env is set.
+        process.env.API_JWT_SECRET = TEST_JWT_SECRET;
         process.env.APP_SECRET = TEST_JWT_SECRET;
         process.env.JWT_SECRET = TEST_JWT_SECRET;
 
         savedPreferences = new Map();
         mockUsers = new Map();
         mockStorageUsage = new Map();
+        passwordUpdates = [];
+        authMethodsSetting = ['password'];
+        process.env.APP_ONLINE_MODE = '1';
 
         // Add default test user
-        mockUsers.set(1, { id: 1, email: 'test@test.com', quota_mb: 100 });
+        mockUsers.set(1, {
+            id: 1,
+            email: 'test@test.com',
+            quota_mb: 100,
+            roles: '["ROLE_USER"]',
+            user_id: null,
+            external_identifier: null,
+            password: await bcrypt.hash(CURRENT_PASSWORD, 10),
+        });
         mockStorageUsage.set(1, 52428800); // 50 MB
 
         const mockDeps = createMockDependencies();
@@ -114,8 +201,13 @@ describe('User Routes', () => {
     });
 
     afterEach(() => {
-        // Restore original APP_SECRET / JWT_SECRET
-        if (originalAppSecret) {
+        // Restore original API_JWT_SECRET / APP_SECRET / JWT_SECRET
+        if (originalApiJwtSecret !== undefined) {
+            process.env.API_JWT_SECRET = originalApiJwtSecret;
+        } else {
+            delete process.env.API_JWT_SECRET;
+        }
+        if (originalAppSecret !== undefined) {
             process.env.APP_SECRET = originalAppSecret;
         } else {
             delete process.env.APP_SECRET;
@@ -124,6 +216,11 @@ describe('User Routes', () => {
             process.env.JWT_SECRET = originalJwtSecret;
         } else {
             delete process.env.JWT_SECRET;
+        }
+        if (originalOnlineMode !== undefined) {
+            process.env.APP_ONLINE_MODE = originalOnlineMode;
+        } else {
+            delete process.env.APP_ONLINE_MODE;
         }
     });
 
@@ -844,6 +941,310 @@ describe('User Routes', () => {
             const body = await res.json();
             // 'true' is valid JSON, so it gets parsed to boolean
             expect(body.userPreferences.boolPref.value).toBe(true);
+        });
+    });
+    describe('PATCH /api/user/password', () => {
+        const validBody = { currentPassword: CURRENT_PASSWORD, newPassword: 'brand-new-secret' };
+
+        describe('successful change', () => {
+            it('returns success for a local password session', async () => {
+                const { status, body } = await changePassword(await localSession(), validBody);
+
+                expect(status).toBe(200);
+                expect(body.success).toBe(true);
+                expect(body.message).toBe('Password changed successfully');
+            });
+
+            it('stores the new password hashed, never in plaintext', async () => {
+                await changePassword(await localSession(), validBody);
+
+                expect(passwordUpdates).toHaveLength(1);
+                const stored = passwordUpdates[0].password;
+                expect(stored).not.toBe('brand-new-secret');
+                expect(stored).toMatch(/^\$2[aby]\$10\$/);
+            });
+
+            it('makes the new password authenticate and the old one stop working', async () => {
+                await changePassword(await localSession(), validBody);
+
+                const stored = passwordUpdates[0].password;
+                expect(await bcrypt.compare('brand-new-secret', stored)).toBe(true);
+                expect(await bcrypt.compare(CURRENT_PASSWORD, stored)).toBe(false);
+            });
+
+            it('updates only the caller, taken from the session', async () => {
+                await changePassword(await localSession(), validBody);
+
+                expect(passwordUpdates[0].id).toBe(1);
+            });
+
+            it('ignores any user id supplied in the body', async () => {
+                mockUsers.set(2, {
+                    id: 2,
+                    email: 'victim@test.com',
+                    roles: '["ROLE_USER"]',
+                    user_id: null,
+                    password: await bcrypt.hash('victim-secret', 10),
+                });
+
+                const { status } = await changePassword(await localSession(), { ...validBody, userId: 2, id: 2 });
+
+                expect(status).toBe(200);
+                expect(passwordUpdates.map(update => update.id)).toEqual([1]);
+            });
+
+            it('never returns the password or its hash', async () => {
+                const { body } = await changePassword(await localSession(), validBody);
+
+                const serialized = JSON.stringify(body);
+                expect(serialized).not.toContain('brand-new-secret');
+                expect(serialized).not.toContain('$2');
+                expect(serialized).not.toContain('password_hash');
+            });
+        });
+
+        describe('wrong current password', () => {
+            it('rejects the request with 401', async () => {
+                const { status, body } = await changePassword(await localSession(), {
+                    currentPassword: 'wrong-secret',
+                    newPassword: 'brand-new-secret',
+                });
+
+                expect(status).toBe(401);
+                expect(body.error).toBe('INVALID_CURRENT_PASSWORD');
+            });
+
+            it('leaves the password unchanged', async () => {
+                await changePassword(await localSession(), {
+                    currentPassword: 'wrong-secret',
+                    newPassword: 'brand-new-secret',
+                });
+
+                expect(passwordUpdates).toHaveLength(0);
+            });
+        });
+
+        describe('authentication type restrictions', () => {
+            it('rejects an unauthenticated request', async () => {
+                const { status } = await changePassword(null, validBody);
+
+                expect(status).toBe(401);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a guest session', async () => {
+                mockUsers.set(1, {
+                    ...(mockUsers.get(1) as Record<string, unknown>),
+                    roles: '["ROLE_GUEST"]',
+                });
+
+                const cookie = await generateSessionCookie({ authMethod: 'guest', isGuest: true });
+                const { status, body } = await changePassword(cookie, validBody);
+
+                expect(status).toBe(403);
+                expect(body.message).toBe('Password changes are not available for this account.');
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a CAS session', async () => {
+                mockUsers.set(1, { ...(mockUsers.get(1) as Record<string, unknown>), user_id: 'cas:jdoe' });
+
+                const cookie = await generateSessionCookie({ authMethod: 'cas' });
+                const { status } = await changePassword(cookie, validBody);
+
+                expect(status).toBe(403);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects an OIDC session', async () => {
+                mockUsers.set(1, { ...(mockUsers.get(1) as Record<string, unknown>), user_id: 'oidc:abc-123' });
+
+                const cookie = await generateSessionCookie({ authMethod: 'openid' });
+                const { status } = await changePassword(cookie, validBody);
+
+                expect(status).toBe(403);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a SAML session', async () => {
+                const cookie = await generateSessionCookie({ authMethod: 'saml' });
+                const { status } = await changePassword(cookie, validBody);
+
+                expect(status).toBe(403);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a locally authenticated session whose account is externally managed', async () => {
+                // Defence in depth: even if a token claimed local auth, the
+                // persisted account decides.
+                mockUsers.set(1, {
+                    ...(mockUsers.get(1) as Record<string, unknown>),
+                    external_identifier: 'saml:abc-123',
+                });
+
+                const { status } = await changePassword(await localSession(), validBody);
+
+                expect(status).toBe(403);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects an impersonated session even though it inherits local auth', async () => {
+                const cookie = await generateSessionCookie({
+                    authMethod: 'local',
+                    isImpersonated: true,
+                    impersonatedBy: 99,
+                });
+
+                const { status, body } = await changePassword(cookie, validBody);
+
+                expect(status).toBe(403);
+                expect(body.message).toBe('Password changes are not available for this account.');
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a session with no auth method', async () => {
+                const cookie = await generateSessionCookie({ authMethod: undefined });
+                const { status } = await changePassword(cookie, validBody);
+
+                expect(status).toBe(403);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a session whose user no longer exists', async () => {
+                mockUsers.delete(1);
+
+                const { status } = await changePassword(await localSession(), validBody);
+
+                expect(status).toBe(401);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+        });
+
+        describe('offline / no-auth installations', () => {
+            it('rejects the request in offline mode', async () => {
+                process.env.APP_ONLINE_MODE = '0';
+
+                const { status, body } = await changePassword(await localSession(), validBody);
+
+                expect(status).toBe(403);
+                expect(body.message).toBe('Password changes are not available for this account.');
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects the request when authentication is disabled', async () => {
+                authMethodsSetting = ['none'];
+
+                const { status } = await changePassword(await localSession(), validBody);
+
+                expect(status).toBe(403);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+        });
+
+        describe('validation', () => {
+            it('rejects an empty new password', async () => {
+                const { status } = await changePassword(await localSession(), {
+                    currentPassword: CURRENT_PASSWORD,
+                    newPassword: '',
+                });
+
+                expect(status).toBe(422);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a whitespace-only new password', async () => {
+                const { status, body } = await changePassword(await localSession(), {
+                    currentPassword: CURRENT_PASSWORD,
+                    newPassword: '      ',
+                });
+
+                expect(status).toBe(422);
+                expect(body.error).toBe('INVALID_PASSWORD');
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a too-short new password', async () => {
+                const { status } = await changePassword(await localSession(), {
+                    currentPassword: CURRENT_PASSWORD,
+                    newPassword: 'ab',
+                });
+
+                expect(status).toBe(422);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a body without newPassword', async () => {
+                const { status } = await changePassword(await localSession(), { currentPassword: CURRENT_PASSWORD });
+
+                expect(status).toBe(422);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a body without currentPassword', async () => {
+                const { status } = await changePassword(await localSession(), { newPassword: 'brand-new-secret' });
+
+                expect(status).toBe(422);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('rejects a body with wrongly typed fields', async () => {
+                const { status } = await changePassword(await localSession(), {
+                    currentPassword: 123,
+                    newPassword: true,
+                });
+
+                expect(status).toBe(422);
+                expect(passwordUpdates).toHaveLength(0);
+            });
+
+            it('checks eligibility before the current password', async () => {
+                // A CAS session sending a wrong current password must get the
+                // eligibility refusal, not a credential probe result.
+                mockUsers.set(1, { ...(mockUsers.get(1) as Record<string, unknown>), user_id: 'cas:jdoe' });
+
+                const cookie = await generateSessionCookie({ authMethod: 'cas' });
+                const { status, body } = await changePassword(cookie, {
+                    currentPassword: 'anything',
+                    newPassword: 'brand-new-secret',
+                });
+
+                expect(status).toBe(403);
+                expect(body.error).toBe('Forbidden');
+            });
+        });
+
+        describe('failures', () => {
+            it('returns 500 when the database update reports nothing', async () => {
+                const deps = createMockDependencies();
+                deps.queries.updateUserPassword = async () => undefined;
+                app = new Elysia().use(createUserRoutes(deps));
+
+                const { status } = await changePassword(await localSession(), validBody);
+
+                expect(status).toBe(500);
+            });
+
+            it('returns 500 and does not leak the password when the update throws', async () => {
+                const deps = createMockDependencies();
+                deps.queries.updateUserPassword = async () => {
+                    throw new Error('database is down');
+                };
+                app = new Elysia().use(createUserRoutes(deps));
+
+                const originalError = console.error;
+                const logged: unknown[] = [];
+                console.error = (...args: unknown[]) => logged.push(args);
+
+                try {
+                    const { status, body } = await changePassword(await localSession(), validBody);
+                    expect(status).toBe(500);
+                    expect(JSON.stringify(body)).not.toContain('brand-new-secret');
+                } finally {
+                    console.error = originalError;
+                }
+
+                expect(JSON.stringify(logged)).not.toContain('brand-new-secret');
+            });
         });
     });
 });

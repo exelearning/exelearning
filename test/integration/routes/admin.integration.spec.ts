@@ -37,7 +37,11 @@ import { getUserStorageUsage } from '../../../src/db/queries/assets';
 
 const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
 
-// Set JWT secret environment variable so admin routes use the same secret
+// Set JWT secret environment variables so admin routes verify with the same
+// secret these tests sign with. The canonical resolver (routes/auth.getJwtSecret)
+// prefers API_JWT_SECRET, which the loaded .env sets to a different value, so we
+// must override API_JWT_SECRET — not only JWT_SECRET — here.
+process.env.API_JWT_SECRET = TEST_JWT_SECRET;
 process.env.JWT_SECRET = TEST_JWT_SECRET;
 
 // ============================================================================

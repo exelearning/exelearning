@@ -352,6 +352,68 @@ describe('Shortcuts', () => {
     });
   });
 
+  describe('getComboRemap (File -> Close, Electron-only)', () => {
+    afterEach(() => {
+      delete window.electronAPI;
+    });
+
+    it('maps mod+w to the close-file button under Electron on non-macOS', () => {
+      shortcuts.isMac = false;
+      window.electronAPI = { closeCurrentWindow: vi.fn() };
+      expect(shortcuts.getComboRemap()['mod+w']).toBe('navbar-button-close-file');
+    });
+
+    it('does not map mod+w on macOS (native Cmd+W already provided)', () => {
+      shortcuts.isMac = true;
+      window.electronAPI = { closeCurrentWindow: vi.fn() };
+      expect(shortcuts.getComboRemap()['mod+w']).toBeUndefined();
+    });
+
+    it('does not map mod+w in the browser/PWA build (no Electron bridge)', () => {
+      shortcuts.isMac = false;
+      delete window.electronAPI;
+      expect(shortcuts.getComboRemap()['mod+w']).toBeUndefined();
+    });
+  });
+
+  describe('onKeyDown (File -> Close, Ctrl+W)', () => {
+    let closeBtn;
+
+    beforeEach(() => {
+      closeBtn = document.createElement('button');
+      closeBtn.id = 'navbar-button-close-file';
+      closeBtn.click = vi.fn();
+      document.body.appendChild(closeBtn);
+      shortcuts.isMac = false;
+    });
+
+    afterEach(() => {
+      delete window.electronAPI;
+    });
+
+    it('clicks the close-file button on Ctrl+W under Electron (non-macOS)', () => {
+      window.electronAPI = { closeCurrentWindow: vi.fn() };
+      const event = new KeyboardEvent('keydown', { code: 'KeyW', ctrlKey: true });
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+      shortcuts.onKeyDown(event);
+
+      expect(closeBtn.click).toHaveBeenCalled();
+      expect(preventDefaultSpy).toHaveBeenCalled();
+    });
+
+    it('does not intercept Ctrl+W in the browser/PWA build (no Electron bridge)', () => {
+      delete window.electronAPI;
+      const event = new KeyboardEvent('keydown', { code: 'KeyW', ctrlKey: true });
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+      shortcuts.onKeyDown(event);
+
+      expect(closeBtn.click).not.toHaveBeenCalled();
+      expect(preventDefaultSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('observe', () => {
     it('should create MutationObserver on root element', () => {
       const root = document.createElement('div');

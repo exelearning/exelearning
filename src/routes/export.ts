@@ -12,6 +12,8 @@ import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
 import { buildContentDisposition } from '../shared/http/headers';
+import { deriveBlockIcon } from '../shared/block-icon';
+import { isSafePathSegment } from '../utils/safe-path';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
@@ -61,6 +63,7 @@ import { db as defaultDb } from '../db/client';
 import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
 import { DatabaseAssetProvider as DatabaseAssetProviderDefault } from '../shared/export/providers/DatabaseAssetProvider';
 import { CombinedAssetProvider as CombinedAssetProviderDefault } from '../shared/export/providers/CombinedAssetProvider';
+import { getAppVersion } from '../utils/version';
 
 // ============================================================================
 // Types and Interfaces for Dependency Injection
@@ -256,6 +259,7 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
             blockMap.set('id', block.id);
             blockMap.set('blockName', block.blockName || '');
             blockMap.set('iconName', block.iconName || '');
+            blockMap.set('icon', block.icon || deriveBlockIcon(block.iconName));
 
             // Block properties
             if (block.properties) {
@@ -583,6 +587,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // even when addMathJax is disabled.
             const latexRenderer = new ServerLatexPreRendererDefault();
             const exportOptionsWithHooks = {
+                // Stamp the SCORM 1.2 runtime with the release doing the exporting, so a
+                // package can always name the runtime it carries. A caller-supplied value wins.
+                runtimeVersion: getAppVersion(),
                 ...options,
                 preRenderLatex: async (html: string) => latexRenderer.preRender(html),
                 preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
@@ -664,6 +671,13 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             .get('/:odeSessionId/:exportType/download', async ({ params, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
 
+                // Reject path-traversal session ids before any filesystem path is built.
+                // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
+                if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
+                    set.status = 400;
+                    return { success: false, error: 'Invalid session id' };
+                }
+
                 const session = getSession(odeSessionId);
                 const authz = authorizeExport(session, jwtPayload);
                 if (!authz.ok) {
@@ -722,6 +736,13 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             .post('/:odeSessionId/:exportType/download', async ({ params, body, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
                 const options = body as ExportOptionsRequest;
+
+                // Reject path-traversal session ids before any filesystem path is built.
+                // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
+                if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
+                    set.status = 400;
+                    return { success: false, error: 'Invalid session id' };
+                }
 
                 let session = getSession(odeSessionId);
                 const authz = authorizeExport(session, jwtPayload);

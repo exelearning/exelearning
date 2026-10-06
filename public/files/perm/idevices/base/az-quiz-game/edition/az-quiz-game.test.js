@@ -22,6 +22,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
+ * The real browser environment, captured before `loadIdevice` below replaces
+ * it with the lightweight stubs the pure-function tests rely on. The edition
+ * lifecycle tests need real jQuery and a real document, so they restore these.
+ */
+const realEnvironment = {
+    $: global.$,
+    jQuery: global.jQuery,
+    document: global.document,
+    translate: global._,
+};
+
+/**
  * Helper to load iDevice file and expose $exeDevice globally.
  * Replaces 'var $exeDevice' with 'global.$exeDevice' to make it accessible.
  */
@@ -115,7 +127,7 @@ function loadIdevice(code) {
     querySelector: () => null,
     querySelectorAll: () => [],
     body: {
-      appendChild: (child) => {
+        appendChild: function(child) {
         child.parentNode = global.document.body;
         return child;
       },
@@ -525,4 +537,389 @@ describe('az-quiz-game iDevice', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
     });
   });
+
+  /**
+   * The pass-score control is a shared block in common_edition.js, exercised by
+   * its own tests. What is specific to this iDevice -- and what silently breaks
+   * if someone edits the form -- is the wiring: all four call sites have to be
+   * present, and the two saved fields have to reach the stored data. Reading the
+   * source is how that is checked without standing up the whole edition form.
+   */
+  describe('pass score wiring', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'az-quiz-game.js'), 'utf-8');
+    });
+
+    it('delegates the evaluation controls to the shared tab', () => {
+        // The pass score and the progress report used to be rendered here,
+        // loose in the general options. They now live in the Grading tab,
+        // so rendering them again would show each control twice.
+        expect(source).not.toContain('passScore.getContents(');
+        expect(source).not.toContain('progressBar.getContents(');
+        expect(source).toContain('gamification.scorm.getTab(');
+    });
+
+    it('restores the control when the iDevice is reopened', () => {
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain('passScoreMode: dataGame.passScoreMode');
+      expect(source).toContain('passScoreCustom: dataGame.passScoreCustom');
+    });
+
+    it('saves the mode and the customised mark, and nothing else', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+      expect(source).toContain('passScoreMode: passScore.passScoreMode');
+      expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+      // The project value is never copied into the iDevice: it is read live, so
+      // an iDevice on the global mode keeps following the project.
+      expect(source).not.toContain('passScoreGlobal');
+    });
+
+    it('wires the radio and input handlers', () => {
+      expect(source).toContain('gamification.passScore.addEvents()');
+    });
+  });
+});
+
+describe('az-quiz-game edition lifecycle', () => {
+    let $exeDevice;
+    let savedAnimationsOff;
+
+    beforeEach(() => {
+        // Undo the lightweight stubs installed by the pure-function suite above:
+        // these tests drive real DOM events through real jQuery.
+        global.$ = realEnvironment.$;
+        global.jQuery = realEnvironment.jQuery;
+        global.document = realEnvironment.document;
+        global._ = realEnvironment.translate;
+
+        global.$exeDevices = {
+            iDevice: {
+                gamification: {
+                    media: { extractURLGD: url => url },
+                    helpers: { supportedBrowser: () => true },
+                },
+            },
+        };
+        global.$exeDevicesEdition = {
+            iDevice: {
+                gamification: {
+                    progressBar: { addEvents: vi.fn() },
+                    passScore: { addEvents: vi.fn() },
+                    itinerary: { addEvents: vi.fn() },
+                    share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
+                    helpers: { stopSound: vi.fn(), playSound: vi.fn() },
+                    common: { getLanguageTab: () => '' },
+                },
+                tabs: { init: () => {} },
+            },
+        };
+
+        // slideToggle would otherwise leave animation frames running past the test.
+        savedAnimationsOff = $.fx.off;
+        $.fx.off = true;
+
+        document.body.innerHTML = `
+      <div id="roscoIdeviceForm">
+        <div id="roscoDataWord">
+          <div class="roscoFileWordEdition">
+            <h3 class="roscoLetterEdition">A</h3>
+            <input class="roscoWordEdition" value="">
+          </div>
+          <div class="roscoWordMutimediaEdition">
+            <a href="#" class="roscoLinkSelectImage"></a>
+            <div class="roscoImageBarEdition">
+              <img class="roscoHomeImageEdition" alt="">
+              <input class="roscoURLImageEdition" value="files/pic.png">
+              <input class="roscoAlt" value="a picture">
+              <input class="roscoXImageEdition" value="0">
+              <input class="roscoYImageEdition" value="0">
+              <input class="roscoURLAudioEdition" value="">
+              <span class="roscoCursorEdition"></span>
+              <span class="roscoNoImageEdition"></span>
+            </div>
+            <img class="roscoSelectImageEdition" alt="">
+          </div>
+        </div>
+        <div class="toggle-item" idevice-id="tglInput"><span class="toggle-face"></span></div>
+        <input id="tglInput" type="checkbox">
+        <input id="eXeGameImportGame" type="file">
+      </div>
+    `;
+
+        global.$exeDevice = undefined;
+        $exeDevice = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
+        $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+        // Close the edition the test opened, so its document handlers cannot leak
+        // into the next one.
+        $exeDevice.$lifecycle.destroy();
+        $.fx.off = savedAnimationsOff;
+        document.body.innerHTML = '';
+    });
+
+    describe('delegated .toggle-item click handler on document', () => {
+        it('toggles the linked checkbox while the edition is open', () => {
+            $('.toggle-item').trigger('click');
+
+            expect($('#tglInput').is(':checked')).toBe(true);
+        });
+
+        it('stops toggling once the edition is closed', () => {
+            const changed = vi.fn();
+            $('#tglInput').on('change', changed);
+
+            $exeDevice.$lifecycle.destroy();
+            $('.toggle-item').trigger('click');
+
+            expect(changed).not.toHaveBeenCalled();
+            expect($('#tglInput').is(':checked')).toBe(false);
+        });
+
+        it('leaves unrelated document handlers registered', () => {
+            const unrelated = vi.fn();
+            $(document).on('click.roscoUnrelated', '.toggle-item', unrelated);
+
+            $exeDevice.$lifecycle.destroy();
+            $('.toggle-item').trigger('click');
+
+            expect(unrelated).toHaveBeenCalledTimes(1);
+            $(document).off('click.roscoUnrelated');
+        });
+    });
+
+    describe('delegated image click handler on document', () => {
+        it('reports the clicked image while the edition is open', () => {
+            const clickImage = vi.fn();
+            $exeDevice.clickImage = clickImage;
+
+            $('#roscoDataWord img.roscoHomeImageEdition').trigger('click');
+
+            expect(clickImage).toHaveBeenCalledTimes(1);
+            expect(clickImage.mock.calls[0][0]).toBe(
+                document.querySelector('#roscoDataWord img.roscoHomeImageEdition'),
+            );
+        });
+
+        it('stops reporting once the edition is closed', () => {
+            const clickImage = vi.fn();
+            $exeDevice.clickImage = clickImage;
+
+            $exeDevice.$lifecycle.destroy();
+            $('#roscoDataWord img.roscoHomeImageEdition').trigger('click');
+
+            expect(clickImage).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('delegated image panel handler on document', () => {
+        it('previews the selected image while the edition is open', () => {
+            const showImage = vi.fn();
+            $exeDevice.showImage = showImage;
+
+            $('#roscoDataWord a.roscoLinkSelectImage').trigger('click');
+
+            expect(showImage).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops previewing once the edition is closed', () => {
+            const showImage = vi.fn();
+            $exeDevice.showImage = showImage;
+
+            $exeDevice.$lifecycle.destroy();
+            $('#roscoDataWord a.roscoLinkSelectImage').trigger('click');
+
+            expect(showImage).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('delegated word focusout handler on document', () => {
+        it('repaints the letter while the edition is open', () => {
+            const letter = document.querySelector('h3.roscoLetterEdition');
+            letter.style.backgroundColor = '';
+
+            $('#roscoDataWord .roscoWordEdition').trigger('focusout');
+
+            expect(letter.style.backgroundColor).not.toBe('');
+        });
+
+        it('stops repainting once the edition is closed', () => {
+            const letter = document.querySelector('h3.roscoLetterEdition');
+
+            $exeDevice.$lifecycle.destroy();
+            letter.style.backgroundColor = '';
+            $('#roscoDataWord .roscoWordEdition').trigger('focusout');
+
+            expect(letter.style.backgroundColor).toBe('');
+        });
+    });
+
+    describe('import FileReader', () => {
+        /**
+         * Drive the file input the way a user picking a file does, and hand back
+         * the FileReader the edition created for it.
+         *
+         * @returns {FileReader}
+         */
+        function pickFile() {
+            const readers = [];
+            const RealFileReader = global.FileReader;
+            class TrackedFileReader extends RealFileReader {
+                constructor() {
+                    super();
+                    readers.push(this);
+                }
+            }
+            global.FileReader = TrackedFileReader;
+            try {
+                const input = document.getElementById('eXeGameImportGame');
+                Object.defineProperty(input, 'files', {
+                    configurable: true,
+                    value: [new File(['word'], 'game.txt', { type: 'text/plain' })],
+                });
+                $(input).trigger('change');
+            } finally {
+                global.FileReader = RealFileReader;
+            }
+            return readers[0];
+        }
+
+        it('aborts a read that is still in flight when the edition closes', () => {
+            const reader = pickFile();
+            expect(reader).toBeDefined();
+            const abort = vi.spyOn(reader, 'abort');
+
+            expect(reader.readyState).toBe(1);
+            $exeDevice.$lifecycle.destroy();
+
+            expect(abort).toHaveBeenCalledTimes(1);
+            abort.mockRestore();
+        });
+
+        it('discards a load that resolves after the edition closed', () => {
+            const reader = pickFile();
+            const importGame = vi.fn();
+            $exeDevice.importGame = importGame;
+
+            $exeDevice.$lifecycle.destroy();
+            reader.onload({ target: { result: 'word' } });
+
+            expect(importGame).not.toHaveBeenCalled();
+        });
+
+        it('imports a load that resolves while the edition is open', () => {
+            const reader = pickFile();
+            const importGame = vi.fn();
+            $exeDevice.importGame = importGame;
+
+            reader.onload({ target: { result: 'word' } });
+
+            expect(importGame).toHaveBeenCalledWith('word', 'text/plain');
+        });
+    });
+
+    describe('preview audio', () => {
+        it('stops playback and releases the stream when the edition closes', () => {
+            $exeDevice.playSound('files/beep.mp3');
+            const player = $exeDevice.playerAudio;
+            const pause = vi.spyOn(player, 'pause');
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(pause).toHaveBeenCalledTimes(1);
+            expect(player.hasAttribute('src')).toBe(false);
+            pause.mockRestore();
+        });
+
+        it('plays on canplaythrough while open, and stays silent afterwards', () => {
+            $exeDevice.playSound('files/beep.mp3');
+            const player = $exeDevice.playerAudio;
+            const play = vi.spyOn(player, 'play').mockReturnValue(Promise.resolve());
+
+            player.dispatchEvent(new Event('canplaythrough'));
+            expect(play).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            player.dispatchEvent(new Event('canplaythrough'));
+
+            expect(play).toHaveBeenCalledTimes(1);
+            play.mockRestore();
+        });
+    });
+});
+
+/**
+ * The notice of the minimum score is editable in the Custom texts tab, which the
+ * shared getLanguageTab() builds from ci18n, and save() writes from it.
+ */
+describe('az-quiz-game minimum score text', () => {
+    const DEFAULT_TEXT = 'Minimum score needed to pass this activity: %s';
+    let $exeDevice;
+
+    /** The Custom texts tab as getLanguageTab() renders it: one input per key. */
+    function renderCustomTexts(overrides = {}) {
+        const inputs = Object.keys($exeDevice.ci18n)
+            .map(key => `<input id="ci18n_${key}">`)
+            .join('');
+        document.body.innerHTML = inputs;
+        for (const key of Object.keys($exeDevice.ci18n)) {
+            const value = key in overrides ? overrides[key] : $exeDevice.ci18n[key];
+            document.getElementById(`ci18n_${key}`).value = value;
+        }
+    }
+
+    /** Save with the form's own data stubbed, and read back the stored options. */
+    function saveAndReadMsgs() {
+        vi.spyOn($exeDevice, 'validateData').mockReturnValue({
+            instructions: '',
+            wordsGame: [],
+            evaluation: false,
+            evaluationID: '',
+        });
+        vi.spyOn($exeDevice, 'getIdeviceID').mockReturnValue('idevice-1');
+        const html = $exeDevice.save();
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        return JSON.parse(container.querySelector('.rosco-DataGame').textContent).msgs;
+    }
+
+    beforeEach(() => {
+        global.$ = realEnvironment.$;
+        global.jQuery = realEnvironment.jQuery;
+        global.document = realEnvironment.document;
+        global._ = realEnvironment.translate;
+        global.$exeDevices = {
+            iDevice: { gamification: { helpers: { encrypt: json => json } } },
+        };
+        global.tinymce = { editors: [{}, { getContent: () => '' }] };
+        global.$exeDevice = undefined;
+        $exeDevice = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
+        $exeDevice.refreshTranslations();
+        $exeDevice.msgs = { msgNoSuportBrowser: 'Unsupported browser' };
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete global.tinymce;
+        document.body.innerHTML = '';
+    });
+
+    it('offers the text among the custom texts, with the mark as %s', () => {
+        expect($exeDevice.ci18n.msgPassScore).toBe(DEFAULT_TEXT);
+    });
+
+    it('saves the default text when the author leaves it alone', () => {
+        renderCustomTexts();
+
+        expect(saveAndReadMsgs().msgPassScore).toBe(DEFAULT_TEXT);
+    });
+
+    it('saves the text the author wrote', () => {
+        renderCustomTexts({ msgPassScore: 'Nota mínima para superar la actividad: %s' });
+
+        expect(saveAndReadMsgs().msgPassScore).toBe('Nota mínima para superar la actividad: %s');
+    });
 });

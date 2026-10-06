@@ -326,6 +326,60 @@ describe('ComponentExporter', () => {
         });
     });
 
+    describe('subtitle .srt -> WebVTT conversion (issue #2034)', () => {
+        it('emits a converted .vtt subtitle asset (never raw .srt bytes) for iDevice exports', async () => {
+            const SRT_UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'P',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'B',
+                            order: 0,
+                            properties: {},
+                            components: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: `<video controls><track kind="subtitles" src="asset://${SRT_UUID}.srt" /></video>`,
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            const doc = new MockDocument({}, pages);
+            const srtAssets = new MockAssetProvider();
+            srtAssets.setAssets([
+                {
+                    id: SRT_UUID,
+                    filename: 'subs.srt',
+                    originalPath: '',
+                    mime: 'application/x-subrip',
+                    data: new TextEncoder().encode('1\n00:00:01,000 --> 00:00:02,000\nHola\n'),
+                },
+            ]);
+            const srtZip = new MockZipProvider();
+            const srtExporter = new ComponentExporter(doc, resources, srtAssets, srtZip);
+
+            await srtExporter.exportComponent('block-1', 'idevice-1');
+
+            const vttPath = srtZip.getFilePaths().find(p => p.endsWith('.vtt'));
+            expect(vttPath, 'component export must ship a converted .vtt subtitle').toBeTruthy();
+            const text = new TextDecoder().decode(srtZip.files.get(vttPath as string));
+            expect(text.startsWith('WEBVTT')).toBe(true);
+            expect(text).toContain('Hola');
+            expect(text).not.toMatch(/\d{2}:\d{2}:\d{2},\d{3}/);
+            expect(srtZip.getFilePaths().some(p => p.endsWith('.srt'))).toBe(false);
+        });
+    });
+
     describe('XML Generation', () => {
         it('should include component type', async () => {
             await exporter.exportComponent('block-1', 'idevice-1');
@@ -352,6 +406,42 @@ describe('ComponentExporter', () => {
             expect(contentXml).toContain('"title":"Welcome"');
         });
 
+        it('should export a malformed payload verbatim instead of {} (#2190)', async () => {
+            const malformed = '{"questionsData":[{"baseText":"<audio src="broken.webm"></audio>"}]}';
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'trueorfalse',
+                                    order: 0,
+                                    content: '<p>Damaged</p>',
+                                    properties: {},
+                                    malformedProperties: malformed,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            exporter = new ComponentExporter(new MockDocument({}, pages), resources, assets, zip);
+
+            await exporter.exportComponent('block-1', 'idevice-1');
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain(`<jsonProperties><![CDATA[${malformed}]]></jsonProperties>`);
+        });
+
         it('should include page ID', async () => {
             await exporter.exportComponent('block-1', 'idevice-1');
 
@@ -375,6 +465,134 @@ describe('ComponentExporter', () => {
 
             expect(contentXml).toContain('<odePagStructureProperties>');
             expect(contentXml).toContain('layout');
+        });
+    });
+
+    describe('Component Structure Properties (issue #1991)', () => {
+        // Pages whose iDevices carry structure properties (visibility, teacherOnly, cssClass).
+        // These must survive a single-block / single-iDevice export the same way they do in a
+        // full-page ELPX export, otherwise re-importing the exported .block/.idevice loses them.
+        const pagesWithStructureProps: ExportPage[] = [
+            {
+                id: 'page-sp',
+                title: 'Structure Props Page',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-sp',
+                        name: 'Block With Props',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'idevice-sp-1',
+                                type: 'FreeTextIdevice',
+                                order: 0,
+                                content: '<p>Hidden teacher-only idevice.</p>',
+                                properties: {},
+                                structureProperties: {
+                                    visibility: false,
+                                    teacherOnly: true,
+                                    cssClass: 'my-custom-class another-class',
+                                },
+                            },
+                            {
+                                id: 'idevice-sp-2',
+                                type: 'FreeTextIdevice',
+                                order: 1,
+                                content: '<p>Default idevice without structure props.</p>',
+                                properties: {},
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        beforeEach(() => {
+            document = new MockDocument({}, pagesWithStructureProps);
+            exporter = new ComponentExporter(document, resources, assets, zip);
+        });
+
+        it('should preserve iDevice structure properties when exporting a whole block', async () => {
+            await exporter.exportComponent('block-sp', null);
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<value>false</value>');
+            expect(contentXml).toContain('<key>teacherOnly</key>');
+            expect(contentXml).toContain('<value>true</value>');
+            expect(contentXml).toContain('<key>cssClass</key>');
+            expect(contentXml).toContain('<value>my-custom-class another-class</value>');
+            // The empty placeholder must no longer be emitted.
+            expect(contentXml).not.toContain('<odeComponentsProperties></odeComponentsProperties>');
+        });
+
+        it('should preserve structure properties when exporting a single iDevice', async () => {
+            await exporter.exportComponent('block-sp', 'idevice-sp-1');
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<value>false</value>');
+            expect(contentXml).toContain('<key>teacherOnly</key>');
+            expect(contentXml).toContain('<value>true</value>');
+            expect(contentXml).toContain('<key>cssClass</key>');
+            expect(contentXml).toContain('<value>my-custom-class another-class</value>');
+        });
+
+        it('should default to visibility=true when a component has no structure properties', async () => {
+            await exporter.exportComponent('block-sp', 'idevice-sp-2');
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<value>true</value>');
+            expect(contentXml).not.toContain('<key>teacherOnly</key>');
+            expect(contentXml).not.toContain('<odeComponentsProperties></odeComponentsProperties>');
+        });
+
+        it('should escape XML special characters in structure property values', async () => {
+            const pagesWithSpecialCss: ExportPage[] = [
+                {
+                    id: 'page-css',
+                    title: 'Special CSS Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-css',
+                            name: 'CSS Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'idevice-css',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Test</p>',
+                                    properties: {},
+                                    structureProperties: {
+                                        visibility: true,
+                                        cssClass: 'a&b <c> "d"',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithSpecialCss);
+            exporter = new ComponentExporter(document, resources, assets, zip);
+
+            await exporter.exportComponent('block-css', null);
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain('<value>a&amp;b &lt;c&gt; &quot;d&quot;</value>');
+            // The raw, unescaped value must never appear.
+            expect(contentXml).not.toContain('<value>a&b <c> "d"</value>');
         });
     });
 

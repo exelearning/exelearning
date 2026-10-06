@@ -2,7 +2,8 @@
  * Html5Exporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Html5Exporter } from './Html5Exporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -25,6 +26,21 @@ function decodePreviewFile(content: ArrayBuffer | Uint8Array | string | undefine
 
     const bytes = content instanceof Uint8Array ? content : new Uint8Array(content);
     return new TextDecoder().decode(bytes);
+}
+
+// Parse the JSON payload embedded in libs/elpx-manifest.js. Accepts both the raw
+// string stored in the ZIP mock and the ArrayBuffer returned by generateForPreview.
+function parseElpxManifest(content: ArrayBuffer | Uint8Array | string | undefined): {
+    version: number;
+    files: string[];
+    projectTitle: string;
+} {
+    const manifestJs = decodePreviewFile(content);
+    const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+    if (!manifestMatch) {
+        throw new Error('ELPX manifest payload not found');
+    }
+    return JSON.parse(manifestMatch[1]);
 }
 
 // Mock document adapter
@@ -85,7 +101,23 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        if (_files.includes('material-icons/material-icons.svg')) {
+            files.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -385,6 +417,35 @@ describe('Html5Exporter', () => {
             expect(indexHtml).toContain('libs/common.js');
         });
 
+        it('should inline material icon SVGs as data URIs in exported HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('data:image/svg+xml;utf8,');
+            expect(indexHtml).not.toContain('libs/material-icons/icons/lightbulb.svg');
+            expect(zip.files.has('libs/material-icons/icons/lightbulb.svg')).toBe(true);
+        });
+
         it('should use custom filename when provided', async () => {
             const result = await exporter.export({ filename: 'my-export.zip' });
 
@@ -436,6 +497,24 @@ describe('Html5Exporter', () => {
 
             // Other pages should have ../ prefix
             expect(html).toContain('href="../theme/');
+        });
+
+        it('should publish the project pass score for the runtime to read', () => {
+            document = new MockDocument({ passScore: 7.5 }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const html = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+        });
+
+        it('should publish the every-activity pass rule only when the project asks for it', () => {
+            const off = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const on = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(off).not.toContain('exe-pass-score-every-activity');
+            expect(on).toContain('<meta name="exe-pass-score-every-activity" content="true">');
         });
     });
 
@@ -624,7 +703,7 @@ describe('Html5Exporter', () => {
             // Check that base CSS includes LaTeX styles
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).toContain('.exe-math-rendered');
         });
 
@@ -641,7 +720,7 @@ describe('Html5Exporter', () => {
             // Check that base CSS does NOT include LaTeX styles
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).not.toContain('.exe-math-rendered');
         });
 
@@ -678,6 +757,15 @@ describe('Html5Exporter', () => {
             expect(css).toContain('display: inline-block');
             expect(css).toContain('svg');
             expect(css).toContain('math');
+        });
+
+        it('should NOT force vertical-align on the math wrapper (baseline regression, issue #1919)', () => {
+            // The wrapper must keep the surrounding text baseline so the SVG's own inline
+            // `vertical-align: -X.XXXex` (set by MathJax) governs alignment. `vertical-align: middle`
+            // here centres the box on the line and misaligns fractions, sub/superscripts and radicals.
+            const css = exporter['getPreRenderedLatexCss']();
+
+            expect(css).not.toContain('vertical-align: middle');
         });
     });
 
@@ -926,7 +1014,7 @@ describe('Html5Exporter', () => {
             // Since preRenderLatex was skipped, CSS should NOT include LaTeX styles
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).not.toContain('.exe-math-rendered');
         });
 
@@ -974,8 +1062,7 @@ describe('Html5Exporter', () => {
             });
 
             const indexHtml = zip.files.get('index.html');
-            const indexHtmlText =
-                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            const indexHtmlText = decodePreviewFile(indexHtml as ArrayBuffer | Uint8Array | string | undefined);
             expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
         });
 
@@ -1028,6 +1115,192 @@ describe('Html5Exporter', () => {
         });
     });
 
+    describe('MathJax for runtime JSON iDevices', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        const propsWithLatex = {
+            questionsGame: [{ question: 'Solve \\(x^2 + 1 = 0\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] }],
+        };
+        const propsWithoutLatex = {
+            questionsGame: [{ question: 'Capital of France?', options: [{ text: 'Paris' }, { text: 'Rome' }] }],
+        };
+
+        function pageWithIdevice(type: string, properties: Record<string, unknown>): ExportPage[] {
+            return [
+                {
+                    id: 'page-runtime-json',
+                    title: 'Runtime JSON',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-runtime-json',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-runtime-json',
+                                    type,
+                                    order: 0,
+                                    content: '',
+                                    properties,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+        }
+
+        function captureRequestedLibs(): { get: () => string[] } {
+            let requested: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requested = files;
+                return new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+            };
+            return { get: () => requested };
+        }
+
+        it('pre-renders form LaTeX on export and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            // form now pre-renders its nested JSON LaTeX to SVG (graded by index /
+            // plain <u> blanks), so the MathJax engine is never bundled.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('pre-renders form LaTeX on preview and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.generateForPreview({
+                preRenderLatex: async html => ({ html, hasLatex: true, latexRendered: true, count: 1 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('does not force exe_math when allowed JSON iDevices have no LaTeX in properties', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('form', propsWithoutLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('does not force exe_math for JSON iDevices outside the allow-list', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('image-gallery', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('does not force exe_math for non-JSON iDevices with LaTeX in properties', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('3dmol', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('pre-renders trueorfalse LaTeX and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('trueorfalse', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            // trueorfalse JSON LaTeX is pre-rendered to SVG instead of bundling MathJax.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders adaptative-quiz LaTeX and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            // adaptative-quiz escapes author text but keeps pre-rendered math spans,
+            // so its LaTeX is pre-rendered to SVG instead of bundling MathJax.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('pre-renders scrambled-list LaTeX and does NOT bundle exe_math', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('scrambled-list', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            // scrambled-list scores answers by a stable index, so its option LaTeX is
+            // pre-rendered to SVG instead of bundling MathJax.
+            expect(preRenderCalled).toBe(true);
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+    });
+
     describe('Mermaid Pre-Rendering', () => {
         it('should call preRenderMermaid hook when provided', async () => {
             let preRenderCalled = false;
@@ -1063,7 +1336,7 @@ describe('Html5Exporter', () => {
 
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).toContain('.exe-mermaid-rendered');
         });
 
@@ -1079,7 +1352,7 @@ describe('Html5Exporter', () => {
 
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).not.toContain('.exe-mermaid-rendered');
         });
 
@@ -1836,10 +2109,33 @@ describe('Html5Exporter', () => {
             expect(htmlFiles.length).toBe(1);
         });
 
-        it('should NOT include content.xml (not needed for preview)', async () => {
+        it('should include content.xml when exportSource is true', async () => {
+            document = new MockDocument({ exportSource: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
             const files = await exporter.generateForPreview();
 
-            // Preview should not include content.xml to save space
+            // Editable source is requested, so the re-importable ODE file must ship.
+            expect(files.has('content.xml')).toBe(true);
+            const contentXml = decodePreviewFile(files.get('content.xml'));
+            expect(contentXml).toContain('<?xml');
+            expect(contentXml).toContain('<ode');
+        });
+
+        it('should include content.xml when exportSource is undefined (editable by default)', async () => {
+            // Default metadata leaves exportSource undefined; editable content is on by default.
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content.xml')).toBe(true);
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Author opted out of shipping the source, so preview omits it too.
             expect(files.has('content.xml')).toBe(false);
         });
 
@@ -1863,9 +2159,62 @@ describe('Html5Exporter', () => {
             expect(files.has('libs/common.js')).toBe(true);
         });
 
-        it('should return ArrayBuffer content for all files', async () => {
+        it('should include used material icon SVGs in preview files', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-filter_5',
+                            icon: { source: 'material', value: 'filter_5' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
             const files = await exporter.generateForPreview();
 
+            expect(files.has('libs/material-icons/icons/filter_5.svg')).toBe(true);
+        });
+
+        it('should inline material icon SVGs as data URIs in preview HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+            const html = decodePreviewFile(files.get('index.html'));
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
+        });
+
+        it('should return ArrayBuffer content for all files', async () => {
+            const files = await exporter.generateForPreview();
             for (const [, content] of files) {
                 expect(content).toBeInstanceOf(ArrayBuffer);
             }
@@ -1993,6 +2342,163 @@ describe('Html5Exporter', () => {
             const files = await exporter.generateForPreview();
 
             expect(files.has('content/resources/images/image.png')).toBe(true);
+        });
+
+        it('should include custom block icon assets in preview files and HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            const html = decodePreviewFile(files.get('index.html'));
+            expect(html).toContain('content/resources/black-dog.jpg');
+        });
+
+        it('should only include referenced assets in preview files', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                        {
+                            id: 'unused-asset-id',
+                            filename: 'unused.jpg',
+                            originalPath: 'unused-asset-id/unused.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('unused JPG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            expect(files.has('content/resources/unused.jpg')).toBe(false);
+        });
+
+        it('should include content assets in preview files when a block has a custom icon', async () => {
+            const contentAssetId = 'a1b2c3d4-0000-4000-8000-000000000001';
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: `<p><img src="asset://${contentAssetId}.png"></p>`,
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                        {
+                            id: contentAssetId,
+                            filename: 'Captura desde 2026-09-29 10-13-04.png',
+                            originalPath: `${contentAssetId}/Captura desde 2026-09-29 10-13-04.png`,
+                            folderPath: '',
+                            mime: 'image/png',
+                            mimeType: 'image/png',
+                            data: Buffer.from('PNG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            expect(files.has('content/resources/Captura desde 2026-09-29 10-13-04.png')).toBe(true);
         });
 
         it('should handle asset fetch failure gracefully', async () => {
@@ -2190,6 +2696,83 @@ describe('Html5Exporter', () => {
             expect(manifest.files).toContain('libs/elpx-manifest.js');
         });
 
+        it('should list content.xml in the preview ELPX manifest when editable source is enabled', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ exportSource: true }, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Editable source is on, so the preview file map ships content.xml...
+            expect(files.has('content.xml')).toBe(true);
+
+            // ...and the manifest that drives the download-source-file iDevice lists it.
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifest = parseElpxManifest(files.get('libs/elpx-manifest.js'));
+            expect(manifest.files).toContain('content.xml');
+            expect(manifest.files).toContain('index.html');
+        });
+
+        it('should NOT list content.xml in the preview ELPX manifest when exportSource is false', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ exportSource: false }, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Source shipping is disabled: no content.xml file and none in the manifest.
+            expect(files.has('content.xml')).toBe(false);
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifest = parseElpxManifest(files.get('libs/elpx-manifest.js'));
+            expect(manifest.files).not.toContain('content.xml');
+        });
+
         it('should create ELPX manifest when exe-package:elp class is in content', async () => {
             const pagesWithElpClass: ExportPage[] = [
                 {
@@ -2377,7 +2960,7 @@ describe('Html5Exporter', () => {
 
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
 
             // Should contain both LaTeX and Mermaid CSS
             expect(cssContent).toContain('.exe-math-rendered');
@@ -2618,5 +3201,91 @@ describe('Html5Exporter', () => {
             expect(files.has('content/resources/known.png')).toBe(true);
             expect(files.has('content/resources/orphan.txt')).toBe(false);
         });
+    });
+});
+
+// Regression coverage for #1927: the re-editable content.xml must keep exe-node:
+// internal links so they survive an export -> re-import round trip. The exported
+// HTML pages still resolve to static paths at render time.
+const internalLinkPages: ExportPage[] = [
+    {
+        id: 'page-1',
+        title: 'Home',
+        parentId: null,
+        order: 0,
+        blocks: [
+            {
+                id: 'block-1',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-1',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content:
+                            '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'page-2',
+        title: 'About',
+        parentId: null,
+        order: 1,
+        blocks: [
+            {
+                id: 'block-2',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-2',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+];
+
+async function exportHtml5Zip(pages: ExportPage[]): Promise<MockZipProvider> {
+    const zip = new MockZipProvider();
+    const exporter = new Html5Exporter(
+        new MockDocument({}, pages),
+        new MockResourceProvider(),
+        new MockAssetProvider(),
+        zip,
+    );
+    await exporter.export();
+    return zip;
+}
+
+describe('Html5Exporter — internal link round-trip (#1927)', () => {
+    it('keeps exe-node: internal links in content.xml', async () => {
+        const zip = await exportHtml5Zip(internalLinkPages);
+        const contentXml = zip.files.get('content.xml') as string;
+
+        expect(contentXml).toContain('exe-node:page-2');
+        expect(contentXml).toContain('exe-node:page-1');
+        expect(contentXml).toContain('exe-node:page-2#sec');
+        expect(contentXml).not.toContain('html/about.html');
+        expect(contentXml).not.toContain('../index.html');
+    });
+
+    it('still renders the static path in the exported HTML pages', async () => {
+        const zip = await exportHtml5Zip(internalLinkPages);
+        const indexHtml = zip.files.get('index.html') as string;
+        const aboutHtml = zip.files.get('html/about.html') as string;
+
+        expect(indexHtml).toContain('href="html/about.html"');
+        expect(indexHtml).toContain('href="html/about.html#sec"');
+        expect(indexHtml).not.toContain('exe-node:');
+        expect(aboutHtml).toContain('href="../index.html"');
+        expect(aboutHtml).not.toContain('exe-node:');
     });
 });

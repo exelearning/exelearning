@@ -996,3 +996,147 @@ describe('three-d-viewer renderBehaviour — strips stale model-viewer src for S
         expect(mv.getAttribute('src')).toBe('asset://abc.glb');
     });
 });
+
+// Issue #1957 — in exported / preview content the ".viewer-empty" overlay
+// ("Select a 3D model to display") stayed on top of a rendered model because
+// toggleEmpty() only recognised blob:/http:/asset:// sources and missed the
+// relative `content/resources/...` path produced by the static export and the
+// preview URL-rewrite pipeline. The decision now lives in a pure helper.
+describe('three-d-viewer empty-state visibility (#1957)', () => {
+    let $threedviewer;
+    beforeEach(() => {
+        global.eXeLearning = { config: null, symfony: {}, app: { project: {} } };
+        global._ = (s) => s;
+        global.$threedviewer = undefined;
+        global.customElements = { get: () => undefined, whenDefined: () => Promise.resolve() };
+        const code = readFileSync(join(__dirname, 'three-d-viewer.js'), 'utf-8');
+        // eslint-disable-next-line no-eval
+        (0, eval)(code);
+        $threedviewer = global.$threedviewer;
+    });
+
+    describe('__computeEmptyStateDisplay (pure decision)', () => {
+        it('is exposed for testing', () => {
+            expect(typeof $threedviewer.__computeEmptyStateDisplay).toBe('function');
+        });
+
+        it('hides the overlay for a relative content/resources/...glb export path (the bug)', () => {
+            expect($threedviewer.__computeEmptyStateDisplay('content/resources/abc.glb', '')).toBe('none');
+        });
+
+        it('hides the overlay for a ../content/resources/...glb subpage export path', () => {
+            expect($threedviewer.__computeEmptyStateDisplay('../content/resources/abc.glb', '')).toBe('none');
+        });
+
+        it('hides the overlay for a relative content/resources/...stl export path', () => {
+            expect($threedviewer.__computeEmptyStateDisplay('content/resources/abc.stl', '')).toBe('none');
+        });
+
+        it('hides the overlay for an asset:// source (live editor / preview)', () => {
+            expect($threedviewer.__computeEmptyStateDisplay('asset://abc.glb', '')).toBe('none');
+        });
+
+        it('hides the overlay when the model-viewer already resolved a blob: src', () => {
+            expect($threedviewer.__computeEmptyStateDisplay('', 'blob:http://h/xyz')).toBe('none');
+        });
+
+        it('hides the overlay when the model-viewer already resolved an http(s) src', () => {
+            expect($threedviewer.__computeEmptyStateDisplay('', 'http://h/m.glb')).toBe('none');
+        });
+
+        it('shows the overlay when no source is configured', () => {
+            expect($threedviewer.__computeEmptyStateDisplay('', '')).toBe('grid');
+        });
+
+        it('shows the overlay for whitespace-only sources', () => {
+            expect($threedviewer.__computeEmptyStateDisplay('   ', '   ')).toBe('grid');
+        });
+
+        it('shows the overlay for null/undefined sources', () => {
+            expect($threedviewer.__computeEmptyStateDisplay(undefined, null)).toBe('grid');
+        });
+    });
+
+    describe('ThreeDViewerRuntime.toggleEmpty()', () => {
+        function makeInstance(configSrc, viewerSrcAttr) {
+            const RuntimeClass = $threedviewer.__ThreeDViewerRuntime;
+            const inst = Object.create(RuntimeClass.prototype);
+            inst.emptyState = { style: {} };
+            inst.modelViewer = { getAttribute: () => viewerSrcAttr ?? null, src: viewerSrcAttr || '' };
+            inst.config = { src: configSrc };
+            return inst;
+        }
+
+        it('exposes the runtime class for testing', () => {
+            expect(typeof $threedviewer.__ThreeDViewerRuntime).toBe('function');
+        });
+
+        it('hides the overlay for a relative content/resources export path', () => {
+            const inst = makeInstance('content/resources/x.glb', null);
+            inst.toggleEmpty();
+            expect(inst.emptyState.style.display).toBe('none');
+        });
+
+        it('shows the overlay when no model is configured', () => {
+            const inst = makeInstance('', null);
+            inst.toggleEmpty();
+            expect(inst.emptyState.style.display).toBe('grid');
+        });
+
+        it('is a no-op when there is no empty-state element', () => {
+            const RuntimeClass = $threedviewer.__ThreeDViewerRuntime;
+            const inst = Object.create(RuntimeClass.prototype);
+            inst.emptyState = null;
+            inst.config = { src: 'content/resources/x.glb' };
+            expect(() => inst.toggleEmpty()).not.toThrow();
+        });
+    });
+
+    describe('renderSTL hides the overlay after booting the shared runtime', () => {
+        let prevThree;
+        let prevViewer;
+        beforeEach(() => {
+            prevThree = global.THREE;
+            prevViewer = global.eXe3DViewer;
+            // Short-circuit the async loaders so renderSTL reaches the boot path.
+            global.THREE = { STLLoader: function () {}, OrbitControls: function () {} };
+        });
+        afterEach(() => {
+            global.THREE = prevThree;
+            global.eXe3DViewer = prevViewer;
+        });
+
+        it('clears the empty-state overlay once eXe3DViewer.init has run (#1957)', async () => {
+            let inited = false;
+            global.eXe3DViewer = {
+                destroy() {},
+                init() {
+                    inited = true;
+                },
+                getInstance() {
+                    return null;
+                },
+            };
+
+            const RuntimeClass = $threedviewer.__ThreeDViewerRuntime;
+            const inst = Object.create(RuntimeClass.prototype);
+            inst.wrapper = document.createElement('div');
+            inst.ideviceId = 'stl-x';
+            inst.emptyState = { style: {} };
+            inst.modelViewer = null;
+            inst.config = {
+                src: 'content/resources/x.stl',
+                modelColor: '#888888',
+                backgroundColor: '#f5f5f5',
+                cameraControls: true,
+                autoRotate: false,
+                autoRotateSpeed: 30,
+            };
+
+            await inst.renderSTL();
+
+            expect(inited).toBe(true);
+            expect(inst.emptyState.style.display).toBe('none');
+        });
+    });
+});

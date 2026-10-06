@@ -64,10 +64,12 @@ describe('AssetManager', () => {
     // Create mock IndexedDB store (now only stores blobs)
     const storedBlobs = new Map();
 
-    // The mock below is vestigial — AssetManager uses in-memory + Cache API now.
-    // Requests must still fire onsuccess asynchronously so the IndexedDB fallback
-    // introduced in #1710 resolves cleanly when tests simulate a missing Cache API
-    // (via `delete global.caches`). Without `queueMicrotask`, fallback awaits hang.
+    // Functional in-memory IndexedDB stand-in for the #1710 fallback. The real
+    // _putToIdb stores records keyed by the compound `key` (`${projectId}:${assetId}`)
+    // and _getFromIdb reads them back by that same key, so the mock keys on
+    // `blobRecord.key` (not `.id`) to faithfully support the fallback path the
+    // Cache API error handling now relies on (#H7). Requests still fire
+    // onsuccess asynchronously so awaits resolve cleanly.
     const fireRequestAsync = (request) => {
       queueMicrotask(() => {
         if (request.onsuccess) request.onsuccess({ target: request });
@@ -76,15 +78,15 @@ describe('AssetManager', () => {
     };
     mockStore = {
       put: mock((blobRecord) => {
-        storedBlobs.set(blobRecord.id, blobRecord);
+        storedBlobs.set(blobRecord.key, blobRecord);
         return fireRequestAsync({ result: undefined, error: null, onsuccess: null, onerror: null });
       }),
-      get: mock((id) => {
-        const result = storedBlobs.get(id) || null;
+      get: mock((key) => {
+        const result = storedBlobs.get(key) || null;
         return fireRequestAsync({ result, error: null, onsuccess: null, onerror: null });
       }),
-      delete: mock((id) => {
-        storedBlobs.delete(id);
+      delete: mock((key) => {
+        storedBlobs.delete(key);
         return fireRequestAsync({ result: undefined, error: null, onsuccess: null, onerror: null });
       }),
       index: mock(() => ({
@@ -301,6 +303,78 @@ describe('AssetManager', () => {
     });
   });
 
+  // Regression (#1941): collaborative image loss caused by corrupted asset UUIDs.
+  // In a non-secure context (HTTP on an IP / some desktop contexts) crypto.subtle
+  // is unavailable and calculateHash() falls back to a JS FNV expansion. One term,
+  // `(hash ^ sizeHash)`, was NOT forced unsigned, so a 32-bit value with bit 31 set
+  // becomes a NEGATIVE Int32 whose .toString(16) emits a leading '-'. That '-' lands
+  // in the 4th UUID group (hashToUUID uses substring(16,20)), producing ids like
+  // `…-7ede--7a4-…`. Those malformed ids no longer match the stored blobs, the export
+  // cannot resolve them, and the images silently vanish from the package.
+  // The fallback is now a pure-JS SHA-256 (which never emits '-'); these tests guard
+  // against any future fallback reintroducing the corruption. "exe-0" forced the old bug.
+  describe('calculateHash — non-secure fallback hash is clean (no sign chars)', () => {
+    const TRIGGER_BYTES = new Uint8Array([101, 120, 101, 45, 48]); // "exe-0"
+
+    const makeBlob = (bytes) => ({ arrayBuffer: async () => bytes.buffer });
+
+    beforeEach(() => {
+      // Remove crypto.subtle so calculateHash() takes the non-secure fallback branch.
+      global.crypto = { randomUUID: mockCrypto.randomUUID };
+    });
+
+    it('returns exactly 64 lowercase hex chars with no sign character', async () => {
+      const hash = await assetManager.calculateHash(makeBlob(TRIGGER_BYTES));
+      expect(hash).not.toContain('-');
+      expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('derives a well-formed asset UUID (no double dash) from the fallback hash', async () => {
+      const hash = await assetManager.calculateHash(makeBlob(TRIGGER_BYTES));
+      const uuid = assetManager.hashToUUID(hash);
+      expect(uuid).not.toContain('--');
+      expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    });
+  });
+
+  // The asset id is content-derived. If it depends on whether crypto.subtle is
+  // available (secure SHA-256 vs a different fallback), the SAME image gets a
+  // DIFFERENT id across desktop/online clients, so references diverge and assets
+  // are lost on collaborative/desktop round-trips (#1941). The fallback must be a
+  // real, context-independent SHA-256.
+  describe('calculateHash — context-independent id (#1941)', () => {
+    const bytesFor = (s) => new TextEncoder().encode(s);
+    const makeBlob = (bytes) => ({ arrayBuffer: async () => bytes.buffer });
+
+    it('produces real SHA-256 in the non-secure fallback (known vector "abc")', async () => {
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // no subtle -> fallback
+      const hash = await assetManager.calculateHash(makeBlob(bytesFor('abc')));
+      expect(hash).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+    });
+
+    it('yields the SAME hash with and without crypto.subtle', async () => {
+      const bytes = bytesFor('collab-image-payload');
+      global.crypto = require('crypto').webcrypto; // real secure context
+      const secure = await assetManager.calculateHash(makeBlob(bytes));
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // non-secure fallback
+      const fallback = await assetManager.calculateHash(makeBlob(bytes));
+      expect(fallback).toBe(secure);
+      expect(fallback).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('derives the SAME asset id across contexts → no duplicate on re-open', async () => {
+      const bytes = bytesFor('same-image-bytes');
+      global.crypto = require('crypto').webcrypto; // secure (desktop / HTTPS)
+      const secureId = assetManager.hashToUUID(await assetManager.calculateHash(makeBlob(bytes)));
+      global.crypto = { randomUUID: mockCrypto.randomUUID }; // non-secure (cloud over IP)
+      const fallbackId = assetManager.hashToUUID(await assetManager.calculateHash(makeBlob(bytes)));
+      // Same content-addressed id in every context, so the existing dedup
+      // (insertImage -> getAsset(id)) reuses it and never creates a duplicate
+      // when a project moves between desktop/HTTPS and a non-secure HTTP-on-IP cloud.
+      expect(fallbackId).toBe(secureId);
+    });
+  });
+
   describe('putAsset', () => {
     it('stores asset metadata in Yjs and blob in memory', async () => {
       const testBlob = new Blob(['test data']);
@@ -323,6 +397,176 @@ describe('AssetManager', () => {
 
       // Check blob was stored in memory (blobCache Map)
       expect(assetManager.blobCache.get('asset-1')).toBe(testBlob);
+    });
+  });
+
+  describe('putAsset type recovery (extension-less / octet-stream assets)', () => {
+    // %PDF-1.4 header bytes
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    it('recovers MIME, blob type and extension for an octet-stream PDF without extension', async () => {
+      const blob = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+      await assetManager.putAsset({
+        id: 'pdf-1',
+        filename: 'asset-e9e79be2-7b98-3e8c-0143-91e790c196f8',
+        folderPath: '',
+        mime: 'application/octet-stream',
+        size: PDF_BYTES.length,
+        hash: 'h1',
+        uploaded: false,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('pdf-1');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('asset-e9e79be2-7b98-3e8c-0143-91e790c196f8.pdf');
+      expect(assetManager.blobCache.get('pdf-1').type).toBe('application/pdf');
+    });
+
+    it('recovers when mime is missing entirely', async () => {
+      const blob = new Blob([PDF_BYTES]); // no type
+      await assetManager.putAsset({
+        id: 'pdf-2',
+        filename: 'document',
+        mime: '',
+        size: PDF_BYTES.length,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('pdf-2');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('document.pdf');
+    });
+
+    it('appends the correct extension when MIME is already known but filename has none', async () => {
+      const blob = new Blob(['x'], { type: 'image/png' });
+      await assetManager.putAsset({
+        id: 'png-1',
+        filename: 'logo',
+        mime: 'image/png',
+        size: 1,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('png-1');
+      expect(meta.filename).toBe('logo.png');
+      expect(meta.mime).toBe('image/png');
+    });
+
+    it('leaves well-formed assets untouched (no blob re-wrap)', async () => {
+      const blob = new Blob(['x'], { type: 'image/jpeg' });
+      await assetManager.putAsset({
+        id: 'jpg-ok',
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 1,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('jpg-ok');
+      expect(meta.filename).toBe('photo.jpg');
+      expect(meta.mime).toBe('image/jpeg');
+      // Same blob reference: untouched when already valid.
+      expect(assetManager.blobCache.get('jpg-ok')).toBe(blob);
+    });
+
+    it('leaves unknown binary content as octet-stream (no false positives)', async () => {
+      const blob = new Blob([new Uint8Array([0x01, 0x02, 0x03, 0x04])], { type: 'application/octet-stream' });
+      await assetManager.putAsset({
+        id: 'bin-1',
+        filename: 'asset-xyz',
+        mime: 'application/octet-stream',
+        size: 4,
+        blob,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('bin-1');
+      expect(meta.mime).toBe('application/octet-stream');
+      expect(meta.filename).toBe('asset-xyz');
+    });
+  });
+
+  describe('putBlob type normalization', () => {
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    it('aligns a received blob to the known metadata MIME', async () => {
+      mockYjsBridge._assetsMap.set('x', { filename: 'asset-x.pdf', mime: 'application/pdf', size: 9 });
+      const received = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+
+      await assetManager.putBlob('x', received);
+
+      expect(assetManager.blobCache.get('x').type).toBe('application/pdf');
+    });
+
+    it('sniffs and fixes metadata when the metadata MIME is unknown', async () => {
+      mockYjsBridge._assetsMap.set('y', { filename: 'asset-y', mime: 'application/octet-stream', size: 9 });
+      const received = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+
+      await assetManager.putBlob('y', received);
+
+      const meta = mockYjsBridge._assetsMap.get('y');
+      expect(meta.mime).toBe('application/pdf');
+      expect(meta.filename).toBe('asset-y.pdf');
+      expect(assetManager.blobCache.get('y').type).toBe('application/pdf');
+    });
+
+    it('does not throw when there is no metadata for the id', async () => {
+      const received = new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'application/octet-stream' });
+      await assetManager.putBlob('orphan', received);
+      expect(assetManager.blobCache.get('orphan')).toBeDefined();
+    });
+  });
+
+  describe('repairAssetsWithoutType (self-heal on open)', () => {
+    const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]);
+
+    beforeEach(() => {
+      // a) PDF stored as octet-stream without extension (the bug)
+      mockYjsBridge._assetsMap.set('a', { filename: 'asset-uuid-a', mime: 'application/octet-stream', size: 9 });
+      assetManager.blobCache.set('a', new Blob([PDF_BYTES], { type: 'application/octet-stream' }));
+      // b) well-formed asset — must stay untouched
+      const okBlob = new Blob(['x'], { type: 'image/jpeg' });
+      mockYjsBridge._assetsMap.set('b', { filename: 'photo.jpg', mime: 'image/jpeg', size: 1 });
+      assetManager.blobCache.set('b', okBlob);
+      assetManager._okBlobRef = okBlob;
+      // c) known MIME but missing extension — only the filename needs fixing
+      mockYjsBridge._assetsMap.set('c', { filename: 'pic', mime: 'image/png', size: 1 });
+      assetManager.blobCache.set('c', new Blob(['x'], { type: 'image/png' }));
+    });
+
+    it('repairs only the assets that lost their type/extension', async () => {
+      const repaired = await assetManager.repairAssetsWithoutType();
+
+      expect(repaired).toBe(2);
+
+      const a = mockYjsBridge._assetsMap.get('a');
+      expect(a.mime).toBe('application/pdf');
+      expect(a.filename).toBe('asset-uuid-a.pdf');
+      expect(assetManager.blobCache.get('a').type).toBe('application/pdf');
+
+      const b = mockYjsBridge._assetsMap.get('b');
+      expect(b.mime).toBe('image/jpeg');
+      expect(b.filename).toBe('photo.jpg');
+      expect(assetManager.blobCache.get('b')).toBe(assetManager._okBlobRef);
+
+      const c = mockYjsBridge._assetsMap.get('c');
+      expect(c.filename).toBe('pic.png');
+      expect(c.mime).toBe('image/png');
+    });
+
+    it('is idempotent (a second pass repairs nothing)', async () => {
+      await assetManager.repairAssetsWithoutType();
+      const repairedAgain = await assetManager.repairAssetsWithoutType();
+      expect(repairedAgain).toBe(0);
+    });
+
+    it('skips assets whose blob is not available', async () => {
+      mockYjsBridge._assetsMap.set('missing-blob', { filename: 'asset-mb', mime: 'application/octet-stream', size: 9 });
+      // no blob in cache for 'missing-blob'
+      const repaired = await assetManager.repairAssetsWithoutType();
+      // a + c repaired; missing-blob skipped (no blob to sniff)
+      expect(repaired).toBe(2);
+      expect(mockYjsBridge._assetsMap.get('missing-blob').mime).toBe('application/octet-stream');
     });
   });
 
@@ -577,6 +821,68 @@ describe('AssetManager', () => {
       expect(htmlWithAssetUrl).not.toContain('blob:');
       // Should NOT have corrupted double asset://
       expect(htmlWithAssetUrl).not.toContain('asset://asset://');
+    });
+  });
+
+  describe('insertImage — folder-sensitive bundles keep duplicates (#1951)', () => {
+    // Self-contained HTML bundles (e.g. Tumult Hype exports) reference their
+    // runtime by relative path from each bundle folder. Two byte-identical
+    // runtime files in different folders MUST stay as separate assets, or
+    // collapsing them by content hash breaks one bundle's relative links.
+    const sameHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    const makeFile = () => ({
+      name: 'HYPE-runtime.js',
+      type: 'text/javascript',
+      size: 3,
+      arrayBuffer: mock(() => undefined).mockResolvedValue(new Uint8Array([1, 2, 3]).buffer),
+    });
+
+    it('keeps byte-identical files at different paths as separate assets with forceNewId', async () => {
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue(sameHash);
+
+      const ids = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'];
+      const originalRandomUUID = global.crypto.randomUUID;
+      let next = 0;
+      global.crypto.randomUUID = mock(() => ids[next++]);
+
+      try {
+        const urlA = await assetManager.insertImage(makeFile(), {
+          folderPath: 'bundle-a/index.hyperesources',
+          forceNewId: true,
+        });
+        const urlB = await assetManager.insertImage(makeFile(), {
+          folderPath: 'bundle-b/index.hyperesources',
+          forceNewId: true,
+        });
+
+        const idA = assetManager.extractAssetId(urlA);
+        const idB = assetManager.extractAssetId(urlB);
+
+        // Distinct asset IDs even though the content (hash) is identical
+        expect(idA).not.toBe(idB);
+
+        const metaA = assetManager.getAssetMetadata(idA);
+        const metaB = assetManager.getAssetMetadata(idB);
+        expect(metaA).toBeTruthy();
+        expect(metaB).toBeTruthy();
+        // Both metadata entries exist with their own distinct folderPath
+        expect(metaA.folderPath).toBe('bundle-a/index.hyperesources');
+        expect(metaB.folderPath).toBe('bundle-b/index.hyperesources');
+        // Content hash is identical, but the asset IDs are different
+        expect(metaA.hash).toBe(metaB.hash);
+      } finally {
+        global.crypto.randomUUID = originalRandomUUID;
+      }
+    });
+
+    it('still deduplicates identical content by hash without forceNewId', async () => {
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue(sameHash);
+
+      const urlA = await assetManager.insertImage(makeFile(), { folderPath: 'images' });
+      const urlB = await assetManager.insertImage(makeFile(), { folderPath: 'images' });
+
+      // Ordinary uploads still collapse to a single content-addressed asset
+      expect(assetManager.extractAssetId(urlA)).toBe(assetManager.extractAssetId(urlB));
     });
   });
 
@@ -1165,6 +1471,137 @@ describe('AssetManager', () => {
 
     it('returns application/octet-stream for unknown extensions', () => {
       expect(assetManager.getMimeType('file.unknown')).toBe('application/octet-stream');
+    });
+
+    it('returns correct MIME types for subtitle files (.srt / .vtt) -- issue #2034', () => {
+      // Falls back to application/octet-stream today, which is why uploaded
+      // subtitle assets are force-downloaded / mis-typed instead of being
+      // usable as <track> resources.
+      expect(assetManager.getMimeType('subtitles.srt')).toBe('application/x-subrip');
+      expect(assetManager.getMimeType('subtitles.vtt')).toBe('text/vtt');
+    });
+  });
+
+  describe('subtitle SRT -> WebVTT for edition-mode display (issue #2034)', () => {
+    const SRT_TEXT = '1\n00:00:02,360 --> 00:00:05,760\nHola mundo\n';
+
+    describe('window.convertSrtToVtt / window.isWebVtt', () => {
+      it('detects an existing WEBVTT header', () => {
+        expect(window.isWebVtt('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nx')).toBe(true);
+        expect(window.isWebVtt('1\n00:00:01,000 --> 00:00:02,000\nx')).toBe(false);
+        expect(window.isWebVtt('')).toBe(false);
+      });
+
+      it('converts SRT cues to WebVTT (comma -> dot decimals, adds header)', () => {
+        const { vtt, converted } = window.convertSrtToVtt(SRT_TEXT);
+        expect(converted).toBe(true);
+        expect(vtt.startsWith('WEBVTT')).toBe(true);
+        expect(vtt).toContain('00:00:02.360 --> 00:00:05.760');
+        expect(vtt).toContain('Hola mundo');
+        expect(vtt).not.toContain(',360');
+      });
+
+      it('passes through already-valid WebVTT unchanged', () => {
+        const already = 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi\n';
+        const { vtt, converted } = window.convertSrtToVtt(already);
+        expect(converted).toBe(false);
+        expect(vtt).toBe(already);
+      });
+
+      it('degrades to a valid empty WebVTT document for unparseable input', () => {
+        const { vtt, error } = window.convertSrtToVtt('not a subtitle at all');
+        expect(vtt).toBe('WEBVTT\n');
+        expect(error).toBeTruthy();
+      });
+    });
+
+    describe('_isSrtSubtitleAsset', () => {
+      it('detects .srt by filename and by MIME, and ignores non-subtitles', () => {
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.srt' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ mime: 'application/x-subrip' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ mime: 'text/srt' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.vtt', mime: 'text/vtt' })).toBe(false);
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.png', mime: 'image/png' })).toBe(false);
+        expect(assetManager._isSrtSubtitleAsset(null)).toBe(false);
+      });
+    });
+
+    describe('_displayBlobURLForAsset', () => {
+      it('serves a .srt asset as a text/vtt blob (converted) without mutating the stored blob', async () => {
+        const srtBlob = new Blob([SRT_TEXT], { type: 'application/x-subrip' });
+        const asset = { id: 'a1', filename: 'subs.srt', mime: 'application/x-subrip', blob: srtBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        const served = mockObjectURLs.get(url);
+
+        expect(served).toBeInstanceOf(Blob);
+        expect(served.type).toBe('text/vtt');
+        const text = await served.text();
+        expect(text.startsWith('WEBVTT')).toBe(true);
+        expect(text).toContain('Hola mundo');
+
+        // The stored asset must stay the raw .srt (round-trips to server / export
+        // pipeline runs its own conversion) -- only the display blob is converted.
+        expect(asset.blob).toBe(srtBlob);
+        expect(await asset.blob.text()).toContain(',360');
+      });
+
+      it('serves a non-subtitle asset as its original blob (no conversion)', async () => {
+        const imgBlob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+        const asset = { id: 'a2', filename: 'p.png', mime: 'image/png', blob: imgBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        expect(mockObjectURLs.get(url)).toBe(imgBlob);
+      });
+
+      it('decodes a Windows-1252 .srt (Latin-1 accents) for display, matching the export decode', async () => {
+        // A real-world `.srt` saved as Windows-1252: the accented "ó" is the
+        // single byte 0xF3, NOT the two-byte UTF-8 sequence. `Blob.text()`
+        // always decodes as UTF-8 (0xF3 -> U+FFFD), so the display path must
+        // decode the bytes the same strict-UTF-8-then-Windows-1252 way the
+        // exporter (`BaseExporter.readAssetDataAsText`) does, or the live
+        // workarea editor shows mojibake while the export stays correct (#2035).
+        const win1252Bytes = () => {
+          const bytes = [];
+          const pushAscii = (s) => {
+            for (const ch of s) bytes.push(ch.charCodeAt(0));
+          };
+          pushAscii('1\n00:00:02,360 --> 00:00:05,760\n');
+          pushAscii('Canci');
+          bytes.push(0xf3); // "ó" in Windows-1252 (single high byte, invalid UTF-8)
+          pushAscii('n\n');
+          return new Uint8Array(bytes);
+        };
+        const srtBlob = new Blob([win1252Bytes()], { type: 'application/x-subrip' });
+        const asset = { id: 'a3', filename: 'cancion.srt', mime: 'application/x-subrip', blob: srtBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        const served = mockObjectURLs.get(url);
+        const text = await served.text();
+
+        expect(served.type).toBe('text/vtt');
+        expect(text).toContain('Canción');
+        expect(text).not.toContain('�');
+      });
+    });
+
+    describe('resolveAssetURL', () => {
+      it('caches a text/vtt blob URL for a .srt asset (native <track> shows cues)', async () => {
+        const srtBlob = new Blob([SRT_TEXT], { type: 'application/x-subrip' });
+        assetManager.getAsset = mock(() => undefined).mockResolvedValue({
+          id: 'srt-1',
+          filename: 'subs.srt',
+          mime: 'application/x-subrip',
+          blob: srtBlob,
+        });
+
+        const url = await assetManager.resolveAssetURL('asset://srt-1');
+        const served = mockObjectURLs.get(url);
+
+        expect(served.type).toBe('text/vtt');
+        expect((await served.text()).startsWith('WEBVTT')).toBe(true);
+        expect(assetManager.blobURLCache.get('srt-1')).toBe(url);
+      });
     });
   });
 
@@ -2088,6 +2525,33 @@ describe('AssetManager', () => {
 
       expect(assetManager.hasUnsavedAssets()).toBe(true);
     });
+
+    it('returns false after pending assets are included in a successful local save', () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test.jpg',
+        uploaded: false,
+      });
+
+      assetManager.markAssetsSavedLocally();
+
+      expect(assetManager.hasUnsavedAssets()).toBe(false);
+      expect(mockYjsBridge._assetsMap.get('asset-1').uploaded).toBe(false);
+    });
+
+    it('returns true again when a locally saved asset is modified', () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test.jpg',
+        uploaded: false,
+      });
+      assetManager.markAssetsSavedLocally();
+
+      assetManager.setAssetMetadata('asset-1', {
+        filename: 'renamed.jpg',
+        uploaded: false,
+      });
+
+      expect(assetManager.hasUnsavedAssets()).toBe(true);
+    });
   });
 
   describe('getUnsavedAssetCount', () => {
@@ -2983,6 +3447,182 @@ describe('prepareJsonForSync', () => {
 
     expect(result).toBe(json);
   });
+
+  // Regression tests for issue #2177. A blob URL inside an HTML attribute is
+  // serialized as src=\"blob:...\", so rewriting the serialized JSON textually
+  // ate the backslash escaping the closing quote and produced a payload that
+  // JSON.parse rejects — which then aborted page loading in the workarea.
+  describe('blob URLs inside HTML attributes (issue #2177)', () => {
+    it('keeps the payload parseable when clearing an unrecoverable blob', () => {
+      const json = JSON.stringify({
+        textTextarea:
+          '<audio controls="controls" src="blob:https://exelearning.net/unknown-blob"><a href="">audio.webm</a></audio>',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(result).not.toContain('blob:');
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<audio controls="controls" src=""><a href="">audio.webm</a></audio>'
+      );
+    });
+
+    it('recovers a registered blob instead of clearing it', () => {
+      const json = JSON.stringify({
+        textTextarea: '<img src="blob:http://localhost/abc123" alt="A photo">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      // The URL used to be captured with its trailing backslash, so the cache
+      // lookup missed and even recoverable assets were silently cleared.
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<img src="asset://asset-uuid-111" alt="A photo">'
+      );
+    });
+
+    it('keeps the payload parseable for a blob nested below the top level', () => {
+      // convertJsonProperties only walks top-level string values, so a nested
+      // blob reaches this method untouched.
+      const json = JSON.stringify({
+        ideviceId: 'gal-1',
+        img_0: { caption: '<img src="blob:http://localhost/abc123" alt="x">' },
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).img_0.caption).toBe(
+        '<img src="asset://asset-uuid-111" alt="x">'
+      );
+    });
+
+    it('leaves an unparseable payload untouched rather than corrupting it further', () => {
+      const broken = '{"textTextarea":"<img src=\\"blob:http://localhost/abc123\\">';
+
+      expect(assetManager.prepareJsonForSync(broken)).toBe(broken);
+    });
+  });
+
+  // Electron serves blobs from the app:// origin (issue #2186), which the old
+  // https?-only pattern silently skipped: those URLs were neither recovered
+  // nor cleared and died on the next reload.
+  describe('blob URLs from non-http origin schemes (Electron app://)', () => {
+    it('recovers a registered blob:app:// URL to its asset reference', () => {
+      assetManager.reverseBlobCache.set('blob:app://exelearning/electron-blob', 'asset-uuid-333');
+      const json = JSON.stringify({
+        textTextarea: '<img src="blob:app://exelearning/electron-blob" alt="x">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<img src="asset://asset-uuid-333" alt="x">'
+      );
+    });
+
+    it('clears an unrecoverable blob:app:// URL instead of persisting it', () => {
+      const json = JSON.stringify({ img: 'blob:app://exelearning/unknown' });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).img).toBe('');
+      expect(result).not.toContain('blob:');
+    });
+  });
+
+  // Documented non-targets and edge shapes. blob:null/… comes from opaque
+  // origins (sandboxed iframes) and carries no authority to recover from;
+  // uppercase BLOB: never leaves URL.createObjectURL. Both stay untouched
+  // rather than being half-rewritten.
+  describe('non-target blob shapes and edge cases', () => {
+    it('leaves opaque-origin blob:null URLs untouched', () => {
+      const json = JSON.stringify({ img: 'blob:null/0a1b2c3d', title: 'x' });
+
+      expect(assetManager.prepareJsonForSync(json)).toBe(json);
+    });
+
+    it('leaves uppercase BLOB: strings untouched', () => {
+      const json = JSON.stringify({ note: 'the literal text BLOB:https://host/id is not a URL the browser emits' });
+
+      expect(assetManager.prepareJsonForSync(json)).toBe(json);
+    });
+
+    it('clears a blob URL carrying a fragment without eating adjacent text', () => {
+      const json = JSON.stringify({
+        textTextarea: 'before <a href="blob:http://localhost/abc123#frag">link</a> after',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      // The fragment makes the exact-string cache lookup miss, so it clears —
+      // but the surrounding markup and text must survive intact.
+      expect(JSON.parse(result).textTextarea).toBe('before <a href="">link</a> after');
+    });
+
+    it('recovers a blob URL followed by punctuation without eating it', () => {
+      const json = JSON.stringify({
+        note: 'see blob:http://localhost/abc123, then continue',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(JSON.parse(result).note).toBe('see asset://asset-uuid-111, then continue');
+    });
+
+    it('replaces multiple blob URLs inside one string value', () => {
+      const json = JSON.stringify({
+        html: '<img src="blob:http://localhost/abc123"> and <img src="blob:https://example.com/xyz789">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      const html = JSON.parse(result).html;
+      expect(html).toContain('asset://asset-uuid-111');
+      expect(html).toContain('asset://asset-uuid-222');
+      expect(html).not.toContain('blob:');
+    });
+
+    it('does not rewrite object keys containing blob URLs', () => {
+      const json = JSON.stringify({ 'blob:http://localhost/abc123': 'value untouched' });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      // Keys are identifiers, not asset carriers; only values are rewritten.
+      expect(result).toBe(json);
+    });
+  });
+
+  // Gamified iDevices store their questions as arrays (questionsGame,
+  // questionsData), so blob URLs commonly sit inside array items — both as
+  // direct string entries and embedded in HTML of nested objects.
+  describe('blob URLs nested inside arrays', () => {
+    it('walks array items and preserves the array structure', () => {
+      const json = JSON.stringify({
+        questionsGame: [
+          { question: '<img src="blob:http://localhost/abc123" alt="q1">', solution: 1 },
+          'blob:https://example.com/xyz789',
+          ['blob:http://unknown/deep', { feedback: '<audio src="blob:http://unknown/deep2"></audio>' }],
+        ],
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      const parsed = JSON.parse(result);
+      expect(parsed.questionsGame[0].question).toBe('<img src="asset://asset-uuid-111" alt="q1">');
+      expect(parsed.questionsGame[0].solution).toBe(1);
+      expect(parsed.questionsGame[1]).toBe('asset://asset-uuid-222');
+      expect(parsed.questionsGame[2][0]).toBe('');
+      expect(parsed.questionsGame[2][1].feedback).toBe('<audio src=""></audio>');
+      expect(result).not.toContain('blob:');
+    });
+  });
 });
 
 describe('getAssetUrlFromBlobUrl', () => {
@@ -3044,6 +3684,7 @@ describe('getAssetUrlFromBlobUrl', () => {
 describe('extractAssetsFromZip', () => {
   let assetManager;
   let mockDB;
+  let savedCryptoForBlock;
 
   beforeEach(async () => {
     mockDB = {
@@ -3059,6 +3700,21 @@ describe('extractAssetsFromZip', () => {
 
     global.Logger = { log: mock(() => {}) };
 
+    // crypto.randomUUID is now exercised by extractAssetsFromZip for intra-import
+    // duplicates (#1951), so the whole block needs a working crypto regardless of
+    // leftover state from earlier suites. Saved/restored in afterEach to avoid leaks.
+    savedCryptoForBlock = global.crypto;
+    global.crypto = {
+      randomUUID: mock(() => 'mock-uuid-1234-5678-90ab-cdef12345678'),
+      subtle: {
+        digest: mock(async () => {
+          const buf = new Uint8Array(32);
+          for (let i = 0; i < 32; i++) buf[i] = i;
+          return buf.buffer;
+        }),
+      },
+    };
+
     assetManager = new AssetManager('project-123');
     // (In-memory storage - no db initialization needed)
     assetManager.getAsset = mock(() => Promise.resolve(null));
@@ -3070,6 +3726,7 @@ describe('extractAssetsFromZip', () => {
 
   afterEach(() => {
     delete global.Logger;
+    global.crypto = savedCryptoForBlock;
   });
 
   it('extracts image assets from resources/ folder', async () => {
@@ -3221,6 +3878,104 @@ describe('extractAssetsFromZip', () => {
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
 
     expect(assetMap.size).toBe(5);
+  });
+
+  // #1951: Self-contained HTML bundles (e.g. Tumult Hype exports) ship the SAME
+  // byte-identical resource file inside several bundle folders, each linked by a
+  // relative <script src> from its own folder. On .elpx re-import the second copy
+  // must NOT be content-deduped onto the first, or one bundle's relative link 404s.
+  describe('folder-sensitive bundles keep duplicates on import (#1951)', () => {
+    const sameHash = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    let randomIds;
+    let randomCallCount;
+
+    beforeEach(() => {
+      // hashToUUID derives from the (constant) hash; crypto.randomUUID hands out
+      // distinct ids per call so intra-import duplicates get verifiably different ids.
+      randomIds = [
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+      ];
+      randomCallCount = 0;
+      global.crypto.randomUUID = mock(() => randomIds[randomCallCount++]);
+      // Every file in these tests is byte-identical, so the hash is constant.
+      assetManager.calculateHash = mock(() => Promise.resolve(sameHash));
+    });
+
+    it('stores two byte-identical bundle files as distinct assets with their own folderPath', async () => {
+      const stored = [];
+      assetManager.putAsset = mock((asset) => {
+        stored.push(asset);
+        return Promise.resolve();
+      });
+
+      const zipData = {
+        'content/resources/bundle-a/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+        'content/resources/bundle-b/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      // Two distinct PATH keys, each resolving to a DISTINCT asset id.
+      expect(assetMap.size).toBe(2);
+      const idA = assetMap.get('content/resources/bundle-a/index.hyperesources/HYPE-runtime.js');
+      const idB = assetMap.get('content/resources/bundle-b/index.hyperesources/HYPE-runtime.js');
+      expect(idA).toBeTruthy();
+      expect(idB).toBeTruthy();
+      expect(idA).not.toBe(idB);
+
+      // The first occurrence keeps the content-addressed id, the second is forced new.
+      expect(idA).toBe(assetManager.hashToUUID(sameHash));
+      expect(idB).toBe('11111111-1111-4111-8111-111111111111');
+
+      // Both assets are stored, each with its own folderPath (so each bundle keeps a copy).
+      expect(assetManager.putAsset).toHaveBeenCalledTimes(2);
+      const folderA = stored.find((a) => a.id === idA)?.folderPath;
+      const folderB = stored.find((a) => a.id === idB)?.folderPath;
+      expect(folderA).toBe('bundle-a/index.hyperesources');
+      expect(folderB).toBe('bundle-b/index.hyperesources');
+      // Same content (hash) but distinct ids — this is the #1951 fix.
+      expect(stored[0].hash).toBe(stored[1].hash);
+    });
+
+    it('keeps the content-addressed id for a single (non-duplicated) bundle file', async () => {
+      const zipData = {
+        'content/resources/bundle-a/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(1);
+      const idA = assetMap.get('content/resources/bundle-a/index.hyperesources/HYPE-runtime.js');
+      // First (only) occurrence => content-addressed id, NOT a random one.
+      expect(idA).toBe(assetManager.hashToUUID(sameHash));
+      expect(randomCallCount).toBe(0);
+    });
+
+    it('forces a fresh id only for intra-import duplicates, preserving same-project skip on the first occurrence', async () => {
+      // First occurrence resolves to an existing same-project asset => skipped (no putAsset).
+      // Second occurrence (same hash) is an intra-import duplicate => stored as a new asset.
+      const contentId = assetManager.hashToUUID(sameHash);
+      assetManager.getAsset = mock((id) =>
+        Promise.resolve(id === contentId ? { projectId: 'project-123' } : null),
+      );
+
+      const zipData = {
+        'content/resources/bundle-a/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+        'content/resources/bundle-b/index.hyperesources/HYPE-runtime.js': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(2);
+      const idA = assetMap.get('content/resources/bundle-a/index.hyperesources/HYPE-runtime.js');
+      const idB = assetMap.get('content/resources/bundle-b/index.hyperesources/HYPE-runtime.js');
+      expect(idA).toBe(contentId); // existing same-project asset reused, not re-stored
+      expect(idB).toBe('11111111-1111-4111-8111-111111111111'); // forced-new duplicate
+      // Only the forced-new duplicate is stored; the first occurrence was skipped.
+      expect(assetManager.putAsset).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('skips index.html and other root system files', async () => {
@@ -5520,6 +6275,38 @@ describe('window.simplifyMediaElements global function', () => {
     expect(result).toContain('src="asset://uuid/video.mp4"');
     // Should not add controls (not processed by simplify)
     expect(result).not.toContain('controls');
+  });
+
+  // Issue #2034: dropping <track> children here silently loses subtitles
+  // wherever this simplified markup is rendered (ideviceNode.js exportHtmlView()).
+  it('preserves <track> subtitle children on video elements', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input =
+      '<video class="mediaelement"><source src="asset://uuid/video.mp4" type="video/mp4">' +
+      '<track kind="subtitles" srclang="es" label="Español" src="asset://uuid2/subtitles.vtt" default></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('<track');
+    expect(result).toContain('kind="subtitles"');
+    expect(result).toContain('srclang="es"');
+    expect(result).toContain('src="asset://uuid2/subtitles.vtt"');
+  });
+
+  it('preserves <track> subtitle children on audio elements', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input =
+      '<audio><source src="asset://uuid/audio.mp3" type="audio/mpeg">' +
+      '<track kind="captions" srclang="en" src="asset://uuid2/captions.vtt"></audio>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('<track');
+    expect(result).toContain('kind="captions"');
+    expect(result).toContain('src="asset://uuid2/captions.vtt"');
+  });
+
+  it('does not add a <track> element when the source video has none', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video class="mediaelement"><source src="asset://uuid/video.mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).not.toContain('<track');
   });
 });
 
@@ -8636,6 +9423,7 @@ describe('AssetManager - getAssetForUpload (line 4090)', () => {
 describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
   let assetManager;
   let mockYjsBridge;
+  let savedWindow;
 
   beforeEach(() => {
     global.Logger = { log: vi.fn() };
@@ -8644,7 +9432,26 @@ describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
       value: { randomUUID: vi.fn(() => 'uuid'), subtle: { digest: vi.fn(async () => new Uint8Array(32).buffer) } },
       writable: true, configurable: true,
     });
-    global.caches = { open: vi.fn(), delete: vi.fn() };
+    // Earlier tests may have run `delete global.window`; _getCacheRequestUrl()
+    // reads window.location.protocol, so ensure a window object is present.
+    savedWindow = global.window;
+    global.window = { location: { protocol: 'https:' } };
+    // Functional Cache API so _putToCache resolves via a real persistent write
+    // (storeAssetFromServer awaits _putToCache, which after #H7 must not resolve
+    // unless a persistent copy actually exists).
+    const cacheStorage = new Map();
+    global.caches = {
+      open: vi.fn(async (name) => {
+        if (!cacheStorage.has(name)) cacheStorage.set(name, new Map());
+        const cache = cacheStorage.get(name);
+        return {
+          put: async (url, response) => { cache.set(url, response); },
+          match: async (url) => cache.get(url),
+          delete: async (url) => cache.delete(url),
+        };
+      }),
+      delete: vi.fn(async (name) => cacheStorage.delete(name)),
+    };
     spyOn(console, 'warn').mockImplementation(() => {});
 
     mockYjsBridge = (() => {
@@ -8667,6 +9474,11 @@ describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
     delete global.Logger;
     delete global.URL;
     delete global.caches;
+    if (savedWindow === undefined) {
+      delete global.window;
+    } else {
+      global.window = savedWindow;
+    }
   });
 
   it('stores blob for existing asset without blob (lines 4119-4143)', async () => {
@@ -14512,6 +15324,7 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
   let originalIDBKeyRange;
   let originalCaches;
   let originalLogger;
+  let originalWindow;
   let fakeIdb;
 
   /**
@@ -14688,6 +15501,31 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     };
   };
 
+  // Cache API that opens fine but rejects writes with a real QuotaExceededError
+  // (message "Quota exceeded.", name "QuotaExceededError"). This is the exact
+  // shape the browser throws when storage is full — it matches NONE of the
+  // scheme/unsupported patterns, so before #H7 _putToCache swallowed it and
+  // resolved as success, letting putAsset/putBlob evict the only in-memory copy.
+  const installQuotaExceededCacheApi = () => {
+    global.caches = {
+      open: mock(async () => ({
+        put: mock(async () => {
+          throw Object.assign(new Error('Quota exceeded.'), { name: 'QuotaExceededError' });
+        }),
+        match: mock(async () => undefined),
+        delete: mock(async () => false),
+      })),
+      delete: mock(async () => true),
+    };
+  };
+
+  // Remove IndexedDB entirely so the Cache→IDB fallback has nowhere to land.
+  // Used to prove that when NO persistent store accepts the blob, _putToCache
+  // rejects (and callers keep the blob in memory) instead of silently losing it.
+  const disableIndexedDb = () => {
+    global.indexedDB = undefined;
+  };
+
   const installWorkingCacheApi = () => {
     const storage = new Map();
     global.caches = {
@@ -14710,6 +15548,11 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     originalIDBKeyRange = global.IDBKeyRange;
     originalCaches = global.caches;
     originalLogger = global.Logger;
+    // Earlier tests in this file run `delete global.window`, and happy-dom does
+    // not recreate `window` per test. _getCacheRequestUrl() reads
+    // window.location.protocol, so guarantee a window object exists here.
+    originalWindow = global.window;
+    global.window = { location: { protocol: 'https:' } };
     global.Logger = { log: () => {} };
     fakeIdb = installFakeIndexedDB();
     spyOn(console, 'log').mockImplementation(() => {});
@@ -14722,6 +15565,11 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     global.IDBKeyRange = originalIDBKeyRange;
     global.caches = originalCaches;
     global.Logger = originalLogger;
+    if (originalWindow === undefined) {
+      delete global.window;
+    } else {
+      global.window = originalWindow;
+    }
     fakeIdb = null;
   });
 
@@ -14801,5 +15649,96 @@ describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => 
     expect(global.caches.open).toHaveBeenCalledWith('exe-assets-project-secure');
     expect(mgr.cachePersistenceDisabled).toBe(false);
     expect(fakeIdb.entriesForProject('project-secure')).toEqual([]);
+  });
+
+  // =========================================================================
+  // QuotaExceededError handling — bug #H7
+  // =========================================================================
+  // When the Cache API rejects a write with QuotaExceededError (storage full),
+  // its message ("Quota exceeded.") and name ("QuotaExceededError") match none
+  // of the scheme/unsupported patterns the old catch checked. The old code
+  // therefore swallowed the error and let _putToCache resolve as success, so
+  // putAsset/putBlob evicted the only in-memory copy in their .then() — leaving
+  // the blob in no store at all (lost on save and on reload). The fix routes
+  // ANY Cache write failure through IndexedDB and only resolves once a
+  // persistent copy exists; otherwise it rejects so callers keep memory.
+  describe('QuotaExceededError on Cache API write (#H7)', () => {
+    it('falls back to IndexedDB when cache.put throws QuotaExceededError', async () => {
+      installQuotaExceededCacheApi();
+      const mgr = new AssetManager('project-quota');
+
+      const blob = new Blob(['quota-fallback'], { type: 'image/png' });
+      // Must resolve (a persistent copy exists in IDB) — not reject, not lose data.
+      await mgr._putToCache('asset-quota', blob);
+
+      // Blob was routed to IndexedDB instead of being silently dropped.
+      const idbEntries = fakeIdb.entriesForProject('project-quota');
+      expect(idbEntries.length).toBe(1);
+      expect(idbEntries[0].blob).toBeInstanceOf(Blob);
+
+      // And it is retrievable again (the real failure mode: getBlob returning null).
+      const retrieved = await mgr.getBlob('asset-quota');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('quota-fallback');
+    });
+
+    it('putAsset keeps the blob retrievable after a QuotaExceededError (no total loss)', async () => {
+      installQuotaExceededCacheApi();
+      const mgr = new AssetManager('project-quota-asset');
+      mgr.setYjsBridge(createMockYjsBridge());
+
+      const blob = new Blob(['must-survive-quota'], { type: 'image/png' });
+      await mgr.putAsset({
+        id: 'asset-pa',
+        filename: 'pic.png',
+        folderPath: '',
+        mime: 'image/png',
+        size: blob.size,
+        hash: 'h-pa',
+        blob,
+      });
+
+      // putAsset fires _putToCache asynchronously, then evicts memory on success.
+      // Eviction is legitimate here ONLY because the blob landed in IndexedDB.
+      await new Promise((r) => setTimeout(r, 50));
+
+      // The blob must still be retrievable — from memory or from the IDB fallback.
+      const retrieved = await mgr.getBlob('asset-pa');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('must-survive-quota');
+
+      // Confirm it actually persisted (not merely lingering in memory).
+      expect(fakeIdb.entriesForProject('project-quota-asset').length).toBe(1);
+    });
+
+    it('rejects (and caller keeps memory) when BOTH Cache API and IndexedDB fail', async () => {
+      installQuotaExceededCacheApi();
+      disableIndexedDb();
+      const mgr = new AssetManager('project-no-store');
+
+      const blob = new Blob(['nowhere-to-persist'], { type: 'image/png' });
+
+      // No persistent store accepted the blob → _putToCache must reject so the
+      // caller's .catch() can retain the in-memory copy.
+      await expect(mgr._putToCache('asset-orphan', blob)).rejects.toThrow();
+    });
+
+    it('putBlob retains the blob in memory when neither Cache API nor IndexedDB persist', async () => {
+      installQuotaExceededCacheApi();
+      disableIndexedDb();
+      const mgr = new AssetManager('project-keep-mem');
+
+      const blob = new Blob(['keep-me-in-ram'], { type: 'image/png' });
+      await mgr.putBlob('asset-keep', blob);
+
+      // Wait for the async _putToCache().catch() path to settle.
+      await new Promise((r) => setTimeout(r, 50));
+
+      // _putToCache rejected → the blob must NOT have been evicted from memory.
+      expect(mgr.blobCache.has('asset-keep')).toBe(true);
+      const retrieved = await mgr.getBlob('asset-keep');
+      expect(retrieved).toBeInstanceOf(Blob);
+      expect(await retrieved.text()).toBe('keep-me-in-ram');
+    });
   });
 });

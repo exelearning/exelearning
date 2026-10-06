@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
 import { DatabaseAssetProvider, type DatabaseAssetProviderQueries } from './DatabaseAssetProvider';
+import { tryResolveAssetStoragePath as tryResolveAssetStoragePathPure } from '../../../utils/asset-paths';
 import type { Kysely } from 'kysely';
 import type { Database, Asset } from '../../../db/types';
 import * as fs from 'fs-extra';
@@ -10,6 +11,11 @@ describe('DatabaseAssetProvider', () => {
     let tempDir: string;
     // Minimal mock database (actual queries are mocked)
     const mockDb = {} as Kysely<Database>;
+
+    // Pass-through resolver for tests that seed absolute storage_path values
+    // directly; resolution policy itself is covered by src/utils/asset-paths.spec.ts
+    // and the dedicated resolver tests below.
+    const identityResolve = (storedPath: string) => storedPath;
 
     // Mock database asset
     const createMockDbAsset = (overrides: Partial<Asset> = {}): Asset => ({
@@ -57,19 +63,19 @@ describe('DatabaseAssetProvider', () => {
 
     describe('constructor', () => {
         it('should create provider with database and project ID', () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries(), identityResolve);
             expect(provider).toBeDefined();
         });
 
         it('should create provider with optional session path', () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             expect(provider).toBeDefined();
         });
     });
 
     describe('getAsset', () => {
         it('should return null when asset not found in database or session', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries(), identityResolve);
             const result = await provider.getAsset('nonexistent-uuid/file.png');
             expect(result).toBeNull();
         });
@@ -89,7 +95,7 @@ describe('DatabaseAssetProvider', () => {
                     }),
             });
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries, identityResolve);
             const result = await provider.getAsset('db-asset-uuid/asset.png');
 
             expect(result).not.toBeNull();
@@ -98,19 +104,19 @@ describe('DatabaseAssetProvider', () => {
         });
 
         it('should normalize path by removing leading slash', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAsset('/asset-uuid-123/test-image.png');
             expect(result).not.toBeNull();
         });
 
         it('should normalize path by removing content/resources prefix', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAsset('content/resources/asset-uuid-123/test-image.png');
             expect(result).not.toBeNull();
         });
 
         it('should find asset in session path assets directory', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAsset('asset-uuid-123/test-image.png');
 
             expect(result).not.toBeNull();
@@ -120,7 +126,7 @@ describe('DatabaseAssetProvider', () => {
         });
 
         it('should cache assets after first lookup', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
 
             // First lookup
             const result1 = await provider.getAsset('asset-uuid-123/test-image.png');
@@ -132,7 +138,7 @@ describe('DatabaseAssetProvider', () => {
         });
 
         it('should find asset by client ID only (without filename)', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAsset('asset-uuid-123');
 
             expect(result).not.toBeNull();
@@ -154,7 +160,7 @@ describe('DatabaseAssetProvider', () => {
                     }),
             });
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, mockQueries);
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, mockQueries, identityResolve);
             const result = await provider.getAsset('asset-uuid-123/test-image.png');
 
             // Should get database content, not session content
@@ -164,7 +170,7 @@ describe('DatabaseAssetProvider', () => {
 
     describe('getAllAssets', () => {
         it('should return empty array when no assets found', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries(), identityResolve);
             const result = await provider.getAllAssets();
             expect(result).toEqual([]);
         });
@@ -184,7 +190,7 @@ describe('DatabaseAssetProvider', () => {
                 ],
             });
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries, identityResolve);
             const result = await provider.getAllAssets();
 
             expect(result.length).toBe(1);
@@ -192,7 +198,7 @@ describe('DatabaseAssetProvider', () => {
         });
 
         it('should collect assets from session path', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAllAssets();
 
             expect(result.length).toBeGreaterThan(0);
@@ -205,7 +211,7 @@ describe('DatabaseAssetProvider', () => {
             // Create empty asset directory
             await fs.ensureDir(path.join(tempDir, 'assets', 'empty-uuid'));
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAllAssets();
 
             // Should not include the empty directory
@@ -229,7 +235,7 @@ describe('DatabaseAssetProvider', () => {
                 ],
             });
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, mockQueries);
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, mockQueries, identityResolve);
             const result = await provider.getAllAssets();
 
             // Should have both DB asset and session asset
@@ -251,7 +257,7 @@ describe('DatabaseAssetProvider', () => {
                 ],
             });
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries, identityResolve);
             const result = await provider.getAllAssets();
 
             expect(result.length).toBe(0);
@@ -260,7 +266,7 @@ describe('DatabaseAssetProvider', () => {
 
     describe('getProjectAssets', () => {
         it('should delegate to getAllAssets', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const allAssets = await provider.getAllAssets();
             const projectAssets = await provider.getProjectAssets();
 
@@ -270,13 +276,13 @@ describe('DatabaseAssetProvider', () => {
 
     describe('exists', () => {
         it('should return true when asset exists', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.exists('asset-uuid-123/test-image.png');
             expect(result).toBe(true);
         });
 
         it('should return false when asset does not exist', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.exists('nonexistent/file.png');
             expect(result).toBe(false);
         });
@@ -284,7 +290,7 @@ describe('DatabaseAssetProvider', () => {
 
     describe('getContent', () => {
         it('should return buffer content', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getContent('asset-uuid-123/test-image.png');
 
             expect(result).not.toBeNull();
@@ -293,7 +299,7 @@ describe('DatabaseAssetProvider', () => {
         });
 
         it('should return null when asset not found', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getContent('nonexistent/file.png');
             expect(result).toBeNull();
         });
@@ -301,7 +307,7 @@ describe('DatabaseAssetProvider', () => {
 
     describe('getMimeType', () => {
         it('should return correct mime type for known extensions', () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries(), identityResolve);
 
             expect(provider.getMimeType('image.png')).toBe('image/png');
             expect(provider.getMimeType('image.jpg')).toBe('image/jpeg');
@@ -315,20 +321,20 @@ describe('DatabaseAssetProvider', () => {
         });
 
         it('should return default mime type for unknown extensions', () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries(), identityResolve);
             expect(provider.getMimeType('file.xyz')).toBe('application/octet-stream');
             expect(provider.getMimeType('file.unknown')).toBe('application/octet-stream');
         });
 
         it('should handle paths with directories', () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries(), identityResolve);
             expect(provider.getMimeType('some/path/to/image.png')).toBe('image/png');
         });
     });
 
     describe('clearCache', () => {
         it('should clear the asset cache', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
 
             // Populate cache
             await provider.getAsset('asset-uuid-123/test-image.png');
@@ -348,7 +354,7 @@ describe('DatabaseAssetProvider', () => {
 
     describe('forEachAsset', () => {
         it('should iterate over session assets sequentially', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const processed: string[] = [];
             const count = await provider.forEachAsset(async asset => {
                 processed.push(asset.id);
@@ -373,7 +379,7 @@ describe('DatabaseAssetProvider', () => {
                 ],
             });
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries, identityResolve);
             const processed: string[] = [];
             const count = await provider.forEachAsset(async asset => {
                 processed.push(asset.id);
@@ -384,9 +390,76 @@ describe('DatabaseAssetProvider', () => {
         });
 
         it('should return 0 for empty provider', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries(), identityResolve);
             const count = await provider.forEachAsset(async () => {});
             expect(count).toBe(0);
+        });
+    });
+
+    describe('storage path resolution (issue #2250)', () => {
+        // Real resolver semantics bound to tempDir as FILES_DIR.
+        const boundResolve = (storedPath: string) => tryResolveAssetStoragePathPure(tempDir, storedPath);
+
+        it('resolves FILES_DIR-relative sharded storage paths', async () => {
+            const stored = 'assets/ab/ab-project-uuid/rel-client-1.png';
+            const physical = path.join(tempDir, 'assets', 'ab', 'ab-project-uuid', 'rel-client-1.png');
+            await fs.ensureDir(path.dirname(physical));
+            await fs.writeFile(physical, Buffer.from('relative bytes'));
+
+            const mockQueries = createMockQueries({
+                findAllAssetsForProject: async () => [
+                    createMockDbAsset({
+                        client_id: 'rel-client-1',
+                        filename: 'rel-client-1.png',
+                        storage_path: stored,
+                    }),
+                ],
+            });
+
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries, boundResolve);
+            const assets = await provider.getAllAssets();
+            expect(assets.length).toBe(1);
+            expect(assets[0].data.toString()).toBe('relative bytes');
+        });
+
+        it('resolves legacy absolute storage paths via the assets suffix', async () => {
+            const physical = path.join(tempDir, 'assets', 'legacy-project', 'legacy-client.png');
+            await fs.ensureDir(path.dirname(physical));
+            await fs.writeFile(physical, Buffer.from('legacy bytes'));
+
+            const mockQueries = createMockQueries({
+                findAssetByClientId: async () =>
+                    createMockDbAsset({
+                        client_id: 'legacy-client',
+                        filename: 'legacy-client.png',
+                        // Absolute path from a FILES_DIR that no longer exists.
+                        storage_path: '/decommissioned/data/assets/legacy-project/legacy-client.png',
+                    }),
+            });
+
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries, boundResolve);
+            const asset = await provider.getAsset('legacy-client/legacy-client.png');
+            expect(asset).not.toBeNull();
+            expect(asset!.data.toString()).toBe('legacy bytes');
+        });
+
+        it('skips rows whose storage path cannot be resolved', async () => {
+            const mockQueries = createMockQueries({
+                findAllAssetsForProject: async () => [
+                    createMockDbAsset({
+                        client_id: 'bad-client',
+                        filename: 'bad.png',
+                        storage_path: '/somewhere/entirely/else/bad.png',
+                    }),
+                ],
+            });
+
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries, boundResolve);
+            const assets = await provider.getAllAssets();
+            expect(assets.length).toBe(0);
+
+            const metadata = await provider.listAssetMetadata();
+            expect(metadata.length).toBe(0);
         });
     });
 
@@ -407,7 +480,7 @@ describe('DatabaseAssetProvider', () => {
                 ],
             });
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries, identityResolve);
             const metadata = await provider.listAssetMetadata();
 
             expect(metadata.length).toBe(1);
@@ -418,7 +491,7 @@ describe('DatabaseAssetProvider', () => {
         });
 
         it('should return empty array for empty provider', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries(), identityResolve);
             const metadata = await provider.listAssetMetadata();
             expect(metadata).toEqual([]);
         });
@@ -426,7 +499,7 @@ describe('DatabaseAssetProvider', () => {
 
     describe('listAssetMetadata and forEachAsset consistency', () => {
         it('should return the same asset IDs from both methods with session path assets', async () => {
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
 
             const meta = await provider.listAssetMetadata();
             const idsFromMeta = new Set(meta.map(a => a.id));
@@ -454,7 +527,7 @@ describe('DatabaseAssetProvider', () => {
                 ],
             });
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, mockQueries);
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, mockQueries, identityResolve);
 
             const meta = await provider.listAssetMetadata();
             const idsFromMeta = new Set(meta.map(a => a.id));
@@ -477,7 +550,7 @@ describe('DatabaseAssetProvider', () => {
             await fs.ensureDir(assetDir);
             await fs.writeFile(path.join(assetDir, 'my image.png'), Buffer.from('spaced data'));
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAsset('space-uuid/my image.png');
 
             expect(result).not.toBeNull();
@@ -491,7 +564,7 @@ describe('DatabaseAssetProvider', () => {
             await fs.writeFile(path.join(assetDir, 'a-first.png'), Buffer.from('first'));
             await fs.writeFile(path.join(assetDir, 'b-second.png'), Buffer.from('second'));
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAsset('multi-uuid');
 
             expect(result).not.toBeNull();
@@ -503,7 +576,7 @@ describe('DatabaseAssetProvider', () => {
             // Remove assets directory
             await fs.remove(path.join(tempDir, 'assets'));
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAllAssets();
 
             expect(result).toEqual([]);
@@ -515,7 +588,7 @@ describe('DatabaseAssetProvider', () => {
             await fs.ensureDir(resourcesDir);
             await fs.writeFile(path.join(resourcesDir, 'direct-file.png'), Buffer.from('direct content'));
 
-            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries(), identityResolve);
             const result = await provider.getAsset('direct-file.png');
 
             expect(result).not.toBeNull();

@@ -13,6 +13,9 @@ import { vi, expect, afterEach, describe, it, beforeEach, beforeAll, afterAll } 
 import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import EditionLifecycle, {
+  setActiveEditionLifecycle,
+} from './app/workarea/project/idevices/content/editionLifecycle.js';
 
 // Get directory path for loading local files (jQuery, etc.)
 const __vitest_setup_filename = fileURLToPath(import.meta.url);
@@ -76,6 +79,44 @@ if (typeof window !== 'undefined') {
     });
   } else {
     globalThis.navigator = window.navigator;
+  }
+
+  // Vitest 5 propagates every assignment on the test global to happy-dom's own
+  // Window. There, localStorage/sessionStorage/CSS are getter-only (assignment
+  // throws) and `document` is writable, so a test fake would replace the
+  // document happy-dom uses internally and break innerHTML/DOMParser for the
+  // rest of the file. Tests swap these wholesale, so keep them as plain
+  // writable properties of the test global, as Vitest 4 did.
+  for (const key of ['document', 'localStorage', 'sessionStorage', 'CSS']) {
+    Object.defineProperty(globalThis, key, {
+      value: globalThis[key],
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+  }
+}
+
+// Bare `localStorage` is not exposed as a global by every Node and happy-dom
+// combination, and specs written against the browser call it unqualified.
+// Bridge it once, here, and only when it is missing: installing it from a
+// beforeEach would run ahead of every test in the suite and overwrite the
+// storage a spec had stubbed for itself — unsavedChangesHelper.test.js keeps
+// its own spies across the file and asserts on them.
+if (typeof globalThis.localStorage === 'undefined') {
+  const fromWindow = typeof window !== 'undefined' ? window.localStorage : undefined;
+  if (fromWindow) {
+    globalThis.localStorage = fromWindow;
+  } else {
+    const storage = new Map();
+    globalThis.localStorage = {
+      getItem: (key) => storage.get(String(key)) ?? null,
+      setItem: (key, value) => { storage.set(String(key), String(value)); },
+      removeItem: (key) => { storage.delete(String(key)); },
+      clear: () => { storage.clear(); },
+      key: (index) => Array.from(storage.keys())[index] ?? null,
+      get length() { return storage.size; },
+    };
   }
 }
 
@@ -815,7 +856,27 @@ global.loadIdevice = function (filePath) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
+};
+
+/**
+ * Give a loaded edition object the lifecycle it would receive from
+ * `IdeviceNode.initExeDeviceEdition()` in the real workarea.
+ *
+ * Edition scripts register their timers, handlers and disposers through
+ * `this.$lifecycle`, so tests that load a script directly need one too. It is a
+ * real `EditionLifecycle`, not a stub, so a test can close the edition with
+ * `$exeDevice.$lifecycle.destroy()` and assert on what actually happens.
+ *
+ * @param {Object} device
+ * @returns {Object|null} The attached lifecycle.
+ */
+global.attachEditionLifecycle = function (device) {
+  if (!device || typeof device !== 'object') return null;
+  device.$lifecycle = new EditionLifecycle({ device, name: 'test-idevice' });
+  setActiveEditionLifecycle(device.$lifecycle);
+  return device.$lifecycle;
 };
 
 // ============================================================================
@@ -1107,10 +1168,36 @@ const mockGamificationInstructions = {
 };
 
 const mockGamificationScorm = {
+  // Mirrors addButtonScoreNew in public/app/common/common.js: the save button
+  // for manual mode (isScorm 2), the message span alone for automatic mode, and
+  // an empty container otherwise. Rendered visible — the runtime does not have
+  // to reveal it — which is the contract the iDevices' markup relies on.
+  addButtonScoreNew: vi.fn(game => {
+    if (typeof game !== 'object' || game === null) return;
+    let html =
+      '<div class="Games-BottonContainer d-flex align-items-center justify-content-end mx-auto p-0 w-100">';
+    if (game.isScorm == 2) {
+      if (game.textButtonScorm != '') {
+        html +=
+          '<div class="Games-GetScore d-flex align-items-center justify-content-center w-100 mt-3">';
+        html += `<input type="button" value="${game.textButtonScorm}" class="Games-SendScore btn btn-primary btn-sm mx-1 my-1" /> <span class="Games-RepeatActivity"></span>`;
+        html += '</div>';
+      }
+    } else if (game.isScorm == 1) {
+      html +=
+        '<div class="Games-GetScore d-flex align-items-center justify-content-center w-100 mt-3"><span class="Games-RepeatActivity"></span></div>';
+    }
+    return `${html}</div>`;
+  }),
   getFieldset: vi.fn(() => '<fieldset class="exe-gamification-scorm"></fieldset>'),
   init: vi.fn(),
   save: vi.fn(() => ({})),
   load: vi.fn(),
+  // The Grading tab. The real one composes the pass score, the SCORM
+  // options and the progress report; the marker is enough for an iDevice's
+  // createForm to run, and the composition has its own tests.
+  getTab: vi.fn(() => '<div class="exe-form-tab mock-evaluation-tab"></div>'),
+  addEvents: vi.fn(),
   // Used by some iDevices like trueorfalse.js
   getValues: vi.fn(() => ({
     textButtonScorm: 'Save',
@@ -1127,6 +1214,14 @@ const mockGamificationCommon = {
   init: vi.fn(),
   save: vi.fn(() => ({})),
   load: vi.fn(),
+  // Mirrors public/app/common/common_edition.js: fills the custom-texts tab
+  // inputs from a msgs object, ignoring anything that is not an object.
+  setLanguageTabValues: vi.fn((obj) => {
+    if (typeof obj !== 'object' || obj === null) return;
+    for (const key in obj) {
+      if (obj[key] !== '') $(`#ci18n_${key}`).val(obj[key]);
+    }
+  }),
 };
 
 // Shared progress-report component used by every migrated gamified iDevice.
@@ -1158,11 +1253,65 @@ const mockGamificationProgressBar = {
   addEvents: vi.fn(),
 };
 
+// Minimum score to pass an activity. Mirrors the shared block in
+// common_edition.js closely enough that an iDevice's loadPreviousValues /
+// save round trip can be exercised: the mode and the customised mark travel,
+// and the project value is never among them.
+const mockGamificationPassScore = {
+  MODE_GLOBAL: 'global',
+  MODE_CUSTOM: 'custom',
+  getGlobalValue: vi.fn(() => 5),
+  normalize: vi.fn((value) => {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return 5;
+    return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+  }),
+  getContents: vi.fn(() => ''),
+  refreshGlobalValue: vi.fn(),
+  setValues: vi.fn((data) => {
+    const custom = !!(data && data.passScoreMode === 'custom');
+    if (typeof window !== 'undefined' && window.$) {
+      window.$('#eXePassScoreCustom').prop('checked', custom);
+      window.$('#eXePassScoreGlobal').prop('checked', !custom);
+      if (data && typeof data.passScoreCustom !== 'undefined' && data.passScoreCustom !== '') {
+        window.$('#eXePassScoreValue').val(data.passScoreCustom);
+      }
+    }
+  }),
+  getValues: vi.fn(() => {
+    if (typeof window === 'undefined' || !window.$) {
+      return { passScoreMode: 'global', passScoreCustom: 5 };
+    }
+    const custom = window.$('#eXePassScoreCustom').is(':checked');
+    const raw = Number.parseFloat(window.$('#eXePassScoreValue').val());
+    return {
+      passScoreMode: custom ? 'custom' : 'global',
+      passScoreCustom: Number.isFinite(raw) ? raw : 5,
+    };
+  }),
+  addEvents: vi.fn(),
+};
+
 const mockGamificationHelpers = {
   getFieldset: vi.fn((config) => {
     const title = config?.title || 'Gamification';
     return `<fieldset class="exe-gamification-helpers"><legend>${title}</legend></fieldset>`;
   }),
+  // Mirrors getQuestions in public/app/common/common.js: a non-array yields an
+  // empty array, and a full selection is returned untouched. The percentage /
+  // random subsetting is not reproduced; tests that need it should stub this.
+  getQuestions: vi.fn((questions) => (Array.isArray(questions) ? questions : [])),
+};
+
+/**
+ * Question import/export helpers for gamified iDevices
+ * (public/app/common/common_edition.js). The real methods only render and wire
+ * up DOM controls that the unit harness does not build, so no-ops are faithful.
+ */
+const mockGamificationShare = {
+  getTab: vi.fn(() => ''),
+  addEvents: vi.fn(),
+  downloadBlob: vi.fn(() => true),
 };
 
 const mockGamificationMath = {
@@ -1217,6 +1366,27 @@ const mockGamificationObservers = {
   }),
 };
 
+/**
+ * Local progress report, mirroring gamification.report in
+ * public/app/common/common.js. It has to be here rather than in each spec:
+ * addEvents() in several iDevices refreshes the icon from a 500 ms timer, so
+ * the call lands after the test that armed it has finished and cleared its own
+ * mocks. In a browser common.js has always defined this object; leaving it out
+ * of the harness turned that timer into an uncaught TypeError, which Vitest
+ * reports as an unhandled error and fails the whole run on — with every test
+ * still passing. A spec that wants to assert on the report installs its own.
+ */
+const mockGamificationReport = {
+  updateEvaluationIcon: vi.fn(),
+  showEvaluationIcon: vi.fn(),
+  updateEvaluation: vi.fn(),
+  getDateString: vi.fn(() => ''),
+  getNodeIdevice: vi.fn(() => ''),
+  getNameIdevice: vi.fn(() => ''),
+  saveEvaluation: vi.fn(),
+  showPassScoreNotice: vi.fn(() => null),
+};
+
 global.$exeDevices = {
   iDevice: {
     gamification: {
@@ -1226,17 +1396,25 @@ global.$exeDevices = {
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
       observers: mockGamificationObservers,
+      report: mockGamificationReport,
     },
   },
 };
 
 global.$exeDevicesEdition = {
   iDevice: {
+    // Wires the form's tab strip. Every iDevice with more than one tab calls
+    // it from createForm, so a stub has to exist for those forms to render.
+    tabs: {
+      init: vi.fn(),
+    },
     gamification: {
       instructions: mockGamificationInstructions,
       scorm: mockGamificationScorm,
       common: mockGamificationCommon,
       progressBar: mockGamificationProgressBar,
+      passScore: mockGamificationPassScore,
+      share: mockGamificationShare,
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
       observers: mockGamificationObservers,
@@ -1318,6 +1496,33 @@ global.$exe = {
   hasTooltips: vi.fn(() => {}),
   setMultimediaGalleries: vi.fn(() => {}),
   setModalWindowContentSize: vi.fn(() => {}),
+  /**
+   * The pass score resolver every scoring iDevice consults to decide whether
+   * the learner passed. Faithful to common.js rather than a stub returning a
+   * constant: a test that customises `passScoreMode` must see the customised
+   * mark, or it proves nothing about the code under test.
+   */
+  passScore: {
+    DEFAULT: 5,
+    MIN: 0,
+    MAX: 10,
+    normalize: (value) => {
+      const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
+      if (!Number.isFinite(parsed)) return 5;
+      return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+    },
+    get: () => global.$exe.passScore.normalize(global.$exe.passScore.DEFAULT),
+    resolve: (data) =>
+      data && data.passScoreMode === 'custom'
+        ? global.$exe.passScore.normalize(data.passScoreCustom)
+        : global.$exe.passScore.get(),
+    toPercent: (value) =>
+      Math.round(
+        (value === undefined
+          ? global.$exe.passScore.get()
+          : global.$exe.passScore.normalize(value)) * 1000
+      ) / 100,
+  },
 };
 
 if (typeof window !== 'undefined') {

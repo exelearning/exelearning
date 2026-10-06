@@ -22,11 +22,68 @@ import type {
     Html5ExportOptions,
     FaviconInfo,
     ThemeData,
+    ExportAsset,
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
+import { PRERENDERED_LATEX_CSS } from '../constants';
 
 export class Html5Exporter extends BaseExporter {
+    protected addAssetReferenceCandidates(assetPath: string, assetIds: Set<string>): void {
+        if (!assetPath) return;
+
+        assetIds.add(assetPath);
+
+        const basename = assetPath.includes('/') ? assetPath.split('/').pop() || assetPath : assetPath;
+        assetIds.add(basename);
+
+        const withoutExtension = basename.replace(/\.[a-z0-9]+$/i, '');
+        if (withoutExtension && withoutExtension !== basename) {
+            assetIds.add(withoutExtension);
+        }
+
+        const fullWithoutExtension = assetPath.replace(/\.[a-z0-9]+$/i, '');
+        if (fullWithoutExtension && fullWithoutExtension !== assetPath) {
+            assetIds.add(fullWithoutExtension);
+        }
+    }
+
+    private getReferencedAssetIds(pages: ExportPage[]): Set<string> {
+        const assetIds = new Set<string>();
+        const assetPattern = /asset:\/\/([^"')\s>]+)/gi;
+
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                const blockIconValue = block.icon?.source === 'asset' ? block.icon.value : block.iconName || '';
+                if (typeof blockIconValue === 'string' && blockIconValue.startsWith('asset://')) {
+                    const matches = blockIconValue.matchAll(assetPattern);
+                    for (const match of matches) {
+                        this.addAssetReferenceCandidates(match[1], assetIds);
+                    }
+                }
+
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        const matches = component.content.matchAll(assetPattern);
+                        for (const match of matches) {
+                            this.addAssetReferenceCandidates(match[1], assetIds);
+                        }
+                    }
+
+                    if (component.properties && Object.keys(component.properties).length > 0) {
+                        const propsStr = JSON.stringify(component.properties);
+                        const matches = propsStr.matchAll(assetPattern);
+                        for (const match of matches) {
+                            this.addAssetReferenceCandidates(match[1], assetIds);
+                        }
+                    }
+                }
+            }
+        }
+
+        return assetIds;
+    }
+
     private getBrowserLatexPreRenderer(): {
         preRender: (
             html: string,
@@ -46,6 +103,57 @@ export class Html5Exporter extends BaseExporter {
         };
 
         return browserGlobal.window?.LatexPreRenderer || null;
+    }
+
+    /**
+     * Pre-render LaTeX in a page's HTML to SVG+MathML so the export can drop the
+     * MathJax engine. Encrypted DataGame data is processed first, then the visible
+     * body (which also covers recursive JSON iDevices like adaptative-quiz and
+     * trueorfalse). Hooks come from `options` (server/CLI) or, as a fallback, from
+     * the browser-global LatexPreRenderer.
+     *
+     * The caller decides *whether* pre-rendering applies (typically only when
+     * MathJax is not bundled). Keeping this the single source of truth ensures the
+     * HTML5, single-page (PAGE) and ELPX exports render LaTeX identically.
+     *
+     * @returns the (possibly updated) HTML and whether any LaTeX was rendered.
+     */
+    protected async preRenderHtmlLatex(
+        html: string,
+        options: ExportOptions | undefined,
+    ): Promise<{ html: string; latexRendered: boolean }> {
+        let latexRendered = false;
+
+        // Encrypted DataGame divs store questions in encrypted JSON -- handle first.
+        const preRenderDataGameLatex =
+            options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
+        if (preRenderDataGameLatex) {
+            try {
+                const result = await preRenderDataGameLatex(html);
+                if (result.count > 0) {
+                    html = result.html;
+                    latexRendered = true;
+                }
+            } catch (error) {
+                console.warn('[Html5Exporter] DataGame LaTeX pre-render failed:', error);
+            }
+        }
+
+        // Visible body LaTeX + recursive JSON iDevices (data-idevice-json-data).
+        const preRenderLatex = options?.preRenderLatex || this.getBrowserLatexPreRenderer()?.preRender;
+        if (preRenderLatex) {
+            try {
+                const result = await preRenderLatex(html);
+                if (result.latexRendered) {
+                    html = result.html;
+                    latexRendered = true;
+                }
+            } catch (error) {
+                console.warn('[Html5Exporter] LaTeX pre-render failed:', error);
+            }
+        }
+
+        return { html, latexRendered };
     }
 
     /**
@@ -109,6 +217,8 @@ export class Html5Exporter extends BaseExporter {
 
             // Build asset export path map for URL transformation
             const assetExportPathMap = await this.buildAssetExportPathMap();
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
 
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
@@ -131,50 +241,16 @@ export class Html5Exporter extends BaseExporter {
                     faviconInfo,
                     pageFilenameMap,
                     assetExportPathMap,
+                    materialIconDataUris,
                     navLabels,
                 );
 
-                // Pre-render LaTeX ONLY if addMathJax is false
-                // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
                 if (!meta.addMathJax) {
-                    // Pre-render LaTeX in encrypted DataGame divs FIRST
-                    // (game iDevices store questions in encrypted JSON)
-                    const preRenderDataGameLatex =
-                        options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
-                    if (preRenderDataGameLatex) {
-                        try {
-                            const result = await preRenderDataGameLatex(html);
-                            if (result.count > 0) {
-                                html = result.html;
-                                latexWasRendered = true;
-                                console.log(
-                                    `[Html5Exporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
-                                );
-                            }
-                        } catch (error) {
-                            console.warn(
-                                '[Html5Exporter] DataGame LaTeX pre-render failed for page:',
-                                page.title,
-                                error,
-                            );
-                        }
-                    }
-
-                    // Pre-render visible LaTeX to SVG+MathML if hook is provided
-                    const preRenderLatex = options?.preRenderLatex || this.getBrowserLatexPreRenderer()?.preRender;
-                    if (preRenderLatex) {
-                        try {
-                            const result = await preRenderLatex(html);
-                            if (result.latexRendered) {
-                                html = result.html;
-                                latexWasRendered = true;
-                                console.log(
-                                    `[Html5Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
-                                );
-                            }
-                        } catch (error) {
-                            console.warn('[Html5Exporter] LaTeX pre-render failed for page:', page.title, error);
-                        }
+                    const latexResult = await this.preRenderHtmlLatex(html, options);
+                    html = latexResult.html;
+                    if (latexResult.latexRendered) {
+                        latexWasRendered = true;
                     }
                 }
 
@@ -215,11 +291,8 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
-            if (meta.exportSource !== false) {
-                const contentXml = this.generateContentXml(pages);
-                addFile('content.xml', contentXml);
-            }
+            // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
+            this.addEditableContentXml(pages, meta, addFile, options);
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -273,6 +346,8 @@ export class Html5Exporter extends BaseExporter {
             } catch {
                 // Base libraries not available - continue anyway
             }
+
+            this.addPrefixedFiles(materialIconFiles, 'libs/', addFile);
 
             // 7.5. Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');
@@ -388,7 +463,8 @@ export class Html5Exporter extends BaseExporter {
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
         assetExportPathMap?: Map<string, string>,
-        navLabels?: { previous: string; next: string },
+        materialIconDataUris?: Map<string, string>,
+        navLabels?: { previous: string; next: string; page: string },
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -434,7 +510,11 @@ export class Html5Exporter extends BaseExporter {
             addPagination: meta.addPagination ?? false,
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
-            addMathJax: meta.addMathJax ?? false,
+            addMathJax: meta.addMathJax === true,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes
@@ -446,6 +526,7 @@ export class Html5Exporter extends BaseExporter {
             pageFilenameMap,
             // Asset URL transformation map
             assetExportPathMap,
+            materialIconDataUris,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
             // Pre-translated nav button labels (resolved from XLF at export time)
@@ -514,15 +595,7 @@ export class Html5Exporter extends BaseExporter {
      * This CSS is needed when LaTeX is pre-rendered instead of using MathJax at runtime
      */
     protected getPreRenderedLatexCss(): string {
-        return `/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */
-.exe-math-rendered { display: inline-block; vertical-align: middle; }
-.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
-.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
-/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
-.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
-.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
-/* Hide MathML visually but keep accessible for screen readers */
-.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
+        return PRERENDERED_LATEX_CSS;
     }
 
     /**
@@ -533,6 +606,29 @@ export class Html5Exporter extends BaseExporter {
         return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
 .exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
 .exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
+    }
+
+    /**
+     * Add the re-editable ODE `content.xml` to the package, unless
+     * `shipsEditableSource` says this export omits it.
+     *
+     * Single source of truth shared by the HTML5 ZIP export and the Service
+     * Worker preview so both decide identically whether the output stays
+     * re-importable. During preview the file is registered through `addFile`,
+     * so it is automatically listed in `libs/elpx-manifest.js` when a
+     * download-source-file iDevice is present.
+     */
+    protected addEditableContentXml(
+        pages: ExportPage[],
+        meta: ExportMetadata,
+        addFile: (path: string, content: string) => void,
+        options?: ExportOptions,
+    ): void {
+        if (!this.shipsEditableSource(meta, options)) {
+            return;
+        }
+
+        addFile('content.xml', this.generateContentXml(pages));
     }
 
     /**
@@ -556,6 +652,10 @@ export class Html5Exporter extends BaseExporter {
 
             // Check for ELPX download support (looks for exe-package:elp in content)
             const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // Collect asset:// references before preprocessing rewrites them to
+            // {{context_path}}/content/resources/... paths the collector cannot see.
+            const referencedAssetIds = this.getReferencedAssetIds(pages);
 
             // Pre-process pages: add filenames to asset URLs, convert internal links
             pages = await this.preprocessPagesForExport(pages);
@@ -584,6 +684,8 @@ export class Html5Exporter extends BaseExporter {
 
             // Build asset export path map for URL transformation
             const assetExportPathMap = await this.buildAssetExportPathMap();
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
 
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
@@ -606,36 +708,16 @@ export class Html5Exporter extends BaseExporter {
                     faviconInfo,
                     pageFilenameMap,
                     assetExportPathMap,
+                    materialIconDataUris,
                     navLabels,
                 );
 
-                // Pre-render LaTeX ONLY if addMathJax is false
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
                 if (!meta.addMathJax) {
-                    const preRenderDataGameLatex =
-                        options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
-                    if (preRenderDataGameLatex) {
-                        try {
-                            const result = await preRenderDataGameLatex(html);
-                            if (result.count > 0) {
-                                html = result.html;
-                                latexWasRendered = true;
-                            }
-                        } catch {
-                            // Continue without pre-rendering
-                        }
-                    }
-
-                    const preRenderLatex = options?.preRenderLatex || this.getBrowserLatexPreRenderer()?.preRender;
-                    if (preRenderLatex) {
-                        try {
-                            const result = await preRenderLatex(html);
-                            if (result.latexRendered) {
-                                html = result.html;
-                                latexWasRendered = true;
-                            }
-                        } catch {
-                            // Continue without pre-rendering
-                        }
+                    const latexResult = await this.preRenderHtmlLatex(html, options);
+                    html = latexResult.html;
+                    if (latexResult.latexRendered) {
+                        latexWasRendered = true;
                     }
                 }
 
@@ -664,8 +746,9 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 3. Skip content.xml for preview (not needed for viewing)
-            // This saves space and prevents unnecessary file generation
+            // 3. Add content.xml (ODE format for re-import) when editable source is enabled.
+            // Registered via addFile, so it is automatically listed in the ELPX manifest below.
+            this.addEditableContentXml(pages, meta, addFile, options);
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -716,6 +799,8 @@ export class Html5Exporter extends BaseExporter {
             } catch {
                 // Base libraries not available - continue anyway
             }
+
+            this.addPrefixedFiles(materialIconFiles, 'libs/', addFile, filePath => files.has(filePath));
 
             // 7.5. Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');
@@ -776,7 +861,7 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 10. Add project assets
-            await this.addAssetsToPreviewFiles(files, fileList);
+            await this.addAssetsToPreviewFiles(files, fileList, referencedAssetIds);
 
             // 11. Generate ELPX manifest file and ensure required libraries if download-source-file is used
             if (needsElpxDownload && fileList) {
@@ -807,7 +892,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 12. Add all HTML pages to files map
             for (const entry of pageEntries) {
-                let { html } = entry;
+                let html = entry.html;
                 if (needsElpxDownload) {
                     html = this.injectElpxScripts(html, entry.page, entry.index === 0);
                 }
@@ -827,18 +912,26 @@ export class Html5Exporter extends BaseExporter {
     private async addAssetsToPreviewFiles(
         files: Map<string, ArrayBuffer>,
         trackingList?: string[] | null,
+        referencedAssetIds?: Set<string>,
     ): Promise<number> {
         let assetsAdded = 0;
 
         try {
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            const processAsset = async (asset: { id: string; data: Uint8Array | Blob }) => {
+            const processAsset = async (asset: ExportAsset) => {
+                if (referencedAssetIds && referencedAssetIds.size > 0 && !referencedAssetIds.has(asset.id)) {
+                    return;
+                }
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) return;
 
                 const filePath = `content/resources/${exportPath}`;
-                files.set(filePath, await this.toPreviewAssetBuffer(asset.data));
+                // .srt subtitle assets are converted to WebVTT here too, so the
+                // Preview panel (this method) matches the real Web/SCORM export
+                // pipeline (addAssetsToZipWithResourcePath) -- see issue #2034.
+                const data = await this.resolveAssetExportData(asset);
+                files.set(filePath, await this.toPreviewAssetBuffer(data));
                 if (trackingList) trackingList.push(filePath);
                 assetsAdded++;
             };
@@ -867,7 +960,7 @@ export class Html5Exporter extends BaseExporter {
         return content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength) as ArrayBuffer;
     }
 
-    private async toPreviewAssetBuffer(content: Uint8Array | Blob | ArrayBuffer): Promise<ArrayBuffer> {
+    private async toPreviewAssetBuffer(content: Uint8Array | Blob | ArrayBuffer | string): Promise<ArrayBuffer> {
         if (content instanceof Blob) {
             return content.arrayBuffer();
         }

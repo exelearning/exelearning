@@ -43,6 +43,19 @@ var $exeDevice = {
         this.createForm();
     },
 
+    /**
+     * The question list reaches the editor from two places — the activity's
+     * saved properties and an imported game file — and either can hand back a
+     * missing or non-array value: `transformObject` returns an already-migrated
+     * payload untouched, and an imported file is only checked for `typeGame`.
+     * Every read below assumes an array, so normalize at both boundaries. An
+     * empty list leaves the editor in the same state as a brand-new activity,
+     * which `addEvents` then seeds with one editable question.
+     */
+    toQuestionsArray: function (questions) {
+        return Array.isArray(questions) ? questions : [];
+    },
+
     transformObject: function (data) {
         if (data.typeGame && data.typeGame === 'TrueOrFalse') {
             return data;
@@ -62,6 +75,7 @@ var $exeDevice = {
             questionsRandom: false,
             percentageQuestions: 100,
             time: 0,
+            attemptsNumber: 1,
             questionsGame: questionsData.map((q) => ({
                 question: q.baseText || '',
                 feedback: q.feedback || '',
@@ -110,6 +124,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('True or false'),
             msgFeedback: c_('Feedback'),
             msgSuggestion: c_('Suggestion'),
@@ -127,6 +142,10 @@ var $exeDevice = {
             msgWeight: c_('Weight'),
             msgNext: c_('Next'),
             msgPrevious: c_('Previous'),
+            // The SCORM send button's caption. Missing here, it never went
+            // through c_() and the export's own default was the only value that
+            // ever reached the page — in Spanish, whatever the project language.
+            textButtonScorm: c_('Save score'),
         };
     },
     setMessagesInfo: function () {
@@ -363,6 +382,10 @@ var $exeDevice = {
                                     <label for="tofETime" class="mb-0">${_('Time (minutes)')}:</label>
                                     <input type="number" class="form-control" name="tofETime" id="tofETime" value="0" min="0" max="59" />
                                 </div>
+                                <div id="tofEAttemptsNumberDiv" class="d-none flex-nowrap align-items-center gap-2">
+                                    <label for="tofEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                                    <input type="number" class="form-control" name="tofEAttemptsNumber" id="tofEAttemptsNumber" value="1" min="1" max="9" />
+                                </div>
                             </div>
                             <div class="toggle-item mb-3">
                                 <span class="toggle-control">
@@ -375,9 +398,6 @@ var $exeDevice = {
                                 <label for="tofEPercentageQuestions" class="mb-0">%${_('Questions')}:</label>
                                 <input type="number" class="form-control" name="tofEPercentageQuestions" id="tofEPercentageQuestions" value="100" min="1" max="100" />
                                 <span id="tofENumeroPercentaje">1/1</span>
-                            </div>
-                            <div class="Games-Reportdiv d-none flex-wrap align-items-center gap-2 mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -429,7 +449,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}          
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 6, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(6)}
             </div>
@@ -442,8 +462,29 @@ var $exeDevice = {
 
     enable() {
         $exeDevice.loadPreviousValues();
+        $exeDevice.toggleProgressReport($('#tofEIsTest').is(':checked'));
         $exeDevice.addEvents();
         $exeDevice.showQuestion(0);
+    },
+
+    /**
+     * Offer the progress report only in quiz mode.
+     *
+     * Outside it the activity is a self-check: every answer is marked as it is
+     * given, there is no final score, `gameStarted` never rises and the shared
+     * gamification layer refuses every report. The control used to sit in a
+     * container this iDevice showed and hid with the mode; moving it to the
+     * Grading tab left it permanently on screen, so the author could switch it
+     * on, save, and have validateData drop it without a word.
+     *
+     * Hidden rather than merely ignored, and validateData still reads it only
+     * in quiz mode: a box ticked before the mode was turned off is stale, and
+     * saving it would promise a report that can never be written.
+     *
+     * @param {boolean} show Whether quiz mode is on.
+     */
+    toggleProgressReport(show) {
+        $('.exe-progress-report-wrapper').toggleClass('d-none', !show);
     },
 
     showEditor($activeEditor, $link) {
@@ -460,6 +501,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         if ($exeDevice.questionsGame.length == 0) {
             $exeDevice.active = 0;
             $exeDevice.questionsGame.push($exeDevice.getDefaultQuestion());
@@ -545,6 +589,8 @@ var $exeDevice = {
             });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         if (
             window.File &&
             window.FileReader &&
@@ -558,9 +604,10 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {
@@ -572,12 +619,13 @@ var $exeDevice = {
 
         $('#tofEIsTest').on('click', function () {
             const $timeDiv = $('#tofETimeDiv');
-            const $reportDiv = $('.Games-Reportdiv');
+            const $attemptsDiv = $('#tofEAttemptsNumberDiv');
 
             const show = $timeDiv.hasClass('d-none');
 
             $timeDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
-            $reportDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
+            $attemptsDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
+            $exeDevice.toggleProgressReport(show);
         });
 
         $('#tofEPercentageQuestions')
@@ -706,7 +754,9 @@ var $exeDevice = {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (game.typeGame === 'TrueOrFalse') {
-            $exeDevice.questionsGame = game.questionsGame;
+            $exeDevice.questionsGame = $exeDevice.toQuestionsArray(
+                game.questionsGame
+            );
             game.id = $exeDevice.id;
             $exeDevice.updateFieldGame(game);
             const eXeGameInstructions = game.eXeGameInstructions || '',
@@ -800,9 +850,12 @@ var $exeDevice = {
     },
 
     deleteEmptyQuestion: function () {
-        if (tinyMCE.get('tofEQuestionEditor')) {
-            question = tinyMCE.get('tofEQuestionEditor').getContent();
-        }
+        // `question` was an implicit global assigned only when the editor
+        // exists, so reading it without one threw a ReferenceError instead of
+        // treating the missing editor as empty content, which is what the
+        // no-editor case means here.
+        const editor = tinyMCE.get('tofEQuestionEditor');
+        const question = editor ? editor.getContent() : '';
         if (question.length === 0 && $exeDevice.questionsGame.length > 1) {
             $exeDevice.removeQuestion();
         }
@@ -815,7 +868,9 @@ var $exeDevice = {
             dataGame = $exeDevice.transformObject(dataGame);
 
             $exeDevice.active = 0;
-            $exeDevice.questionsGame = dataGame.questionsGame;
+            $exeDevice.questionsGame = $exeDevice.toQuestionsArray(
+                dataGame.questionsGame
+            );
 
             const instructions = dataGame.eXeGameInstructions || '';
 
@@ -835,21 +890,27 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#tofETime').val(game.time);
+        $('#tofEAttemptsNumber').val(game.attemptsNumber ?? 1);
         $('#tofEQuestionsRandom').prop('checked', game.questionsRandom);
         $('#tofEPercentageQuestions').val(game.percentageQuestions);
         $('#tofEShowSlider').prop('checked', game.showSlider || false);
         $('#tofEIsTest').prop('checked', game.isTest || false);
 
         if (game.isTest) {
-            $('#tofETimeDiv, .Games-Reportdiv')
+            $('#tofETimeDiv, #tofEAttemptsNumberDiv')
                 .removeClass('d-none')
                 .addClass('d-flex');
         } else {
-            $('#tofETimeDiv, .Games-Reportdiv')
+            $('#tofETimeDiv, #tofEAttemptsNumberDiv')
                 .removeClass('d-flex')
                 .addClass('d-none');
         }
+        $exeDevice.toggleProgressReport(!!game.isTest);
 
         $exeDevice.updateQuestionsNumber();
         game.weighted =
@@ -960,6 +1021,7 @@ var $exeDevice = {
             isTest = $('#tofEIsTest').is(':checked'),
             id = $exeDevice.id,
             time = parseInt($('#tofETime').val(), 10),
+            attemptsNumber = parseInt($('#tofEAttemptsNumber').val(), 10) || 1,
             questionsGame = $exeDevice.questionsGame,
             showSlider = $('#tofEShowSlider').is(':checked');
 
@@ -978,6 +1040,10 @@ var $exeDevice = {
             evaluation = progressBar.evaluation;
             evaluationID = progressBar.evaluationID;
         }
+        // Read outside the isTest branch: the pass mark applies to every mode,
+        // not only to the one that publishes a progress report.
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
         for (let i = 0; i < questionsGame.length; i++) {
             const mQuestion = questionsGame[i];
 
@@ -1024,6 +1090,7 @@ var $exeDevice = {
             percentageQuestions: percentageQuestions,
             isTest: isTest,
             time: time,
+            attemptsNumber: attemptsNumber,
             questionsGame: questionsGame,
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
@@ -1031,6 +1098,8 @@ var $exeDevice = {
             weighted: scorm.weighted || 100,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             showSlider: showSlider,
             ideviceId: id,
         };

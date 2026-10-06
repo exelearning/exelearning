@@ -89,6 +89,12 @@ async function editBlockTitle(page: Page, blockIndex: number, newTitle: string):
     const block = page.locator('#node-content article.box').nth(blockIndex);
     const header = block.locator('header.box-head').first();
 
+    // The pencil "Edit title" button is accessible-hidden by default and only
+    // revealed on hover / focus-within (see assets/styles/components/_buttons.scss).
+    // Hover the title container first so the button becomes actionable.
+    const titleContainer = header.locator('.content-editable-title').first();
+    await titleContainer.hover();
+
     // Find and click the edit button for the title ("Edit title" button with class btn-edit-title)
     const editBtn = header.locator('.btn-edit-title').first();
     await editBtn.click();
@@ -596,7 +602,8 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
                 const iconBtn = block.querySelector('header.box-head button.box-icon');
                 if (!iconBtn) return false;
                 const hasImg = iconBtn.querySelector('img') !== null;
-                return hasImg;
+                const hasMaterialIcon = iconBtn.querySelector('.exe-material-icon') !== null;
+                return hasImg || hasMaterialIcon;
             },
             undefined,
             { timeout: 10000 },
@@ -638,6 +645,31 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // Helper to normalize icon paths (remove leading ./)
         const normalizePath = (path: string | null) => path?.replace(/^\.\//, '/') || '';
+        const iconMatchScript = (expectedSrc: string) => {
+            const block = document.querySelector('#node-content article.box');
+            const iconBtn = block?.querySelector('header.box-head button.box-icon');
+            if (!iconBtn) return false;
+
+            const img = iconBtn.querySelector('img');
+            if (img?.getAttribute('src')) {
+                return img.getAttribute('src')?.replace(/^\.\//, '/') === expectedSrc;
+            }
+
+            const materialIcon = iconBtn.querySelector('.exe-material-icon');
+            if (!materialIcon) return false;
+
+            const computed = window.getComputedStyle(materialIcon);
+            const src =
+                materialIcon.style.webkitMaskImage ||
+                materialIcon.style.maskImage ||
+                materialIcon.style.backgroundImage ||
+                computed.webkitMaskImage ||
+                computed.maskImage ||
+                computed.backgroundImage ||
+                '';
+
+            return src === expectedSrc;
+        };
 
         // Change to icon 1
         await changeBlockIcon(page, 0, 1);
@@ -654,16 +686,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // Undo to icon 1 - poll for the specific icon src (normalized)
         await pressUndo(page);
-        await page.waitForFunction(
-            expectedSrc => {
-                const block = document.querySelector('#node-content article.box');
-                const img = block?.querySelector('header.box-head button.box-icon img');
-                const src = img?.getAttribute('src')?.replace(/^\.\//, '/') || '';
-                return src === expectedSrc;
-            },
-            iconSrc1,
-            { timeout: 10000 },
-        );
+        await page.waitForFunction(iconMatchScript, iconSrc1, { timeout: 10000 });
         expect(normalizePath(await getBlockIconSrc(page, 0))).toBe(iconSrc1);
 
         // Undo to empty - poll for empty state
@@ -683,30 +706,12 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // Redo to icon 1 - poll for the specific icon src (normalized)
         await pressRedo(page);
-        await page.waitForFunction(
-            expectedSrc => {
-                const block = document.querySelector('#node-content article.box');
-                const img = block?.querySelector('header.box-head button.box-icon img');
-                const src = img?.getAttribute('src')?.replace(/^\.\//, '/') || '';
-                return src === expectedSrc;
-            },
-            iconSrc1,
-            { timeout: 10000 },
-        );
+        await page.waitForFunction(iconMatchScript, iconSrc1, { timeout: 10000 });
         expect(normalizePath(await getBlockIconSrc(page, 0))).toBe(iconSrc1);
 
         // Redo to icon 2 - poll for the specific icon src (normalized)
         await pressRedo(page);
-        await page.waitForFunction(
-            expectedSrc => {
-                const block = document.querySelector('#node-content article.box');
-                const img = block?.querySelector('header.box-head button.box-icon img');
-                const src = img?.getAttribute('src')?.replace(/^\.\//, '/') || '';
-                return src === expectedSrc;
-            },
-            iconSrc2,
-            { timeout: 10000 },
-        );
+        await page.waitForFunction(iconMatchScript, iconSrc2, { timeout: 10000 });
         expect(normalizePath(await getBlockIconSrc(page, 0))).toBe(iconSrc2);
     });
 });

@@ -1,10 +1,11 @@
 /**
  * Shared route authentication helpers.
  *
- * Several route plugins repeat the same JWT bootstrap: `.use(cookie())`,
- * `.use(jwt({ ... }))`, and a `.derive()` that extracts a `JwtPayload` from
- * the `Authorization` header or `auth` cookie. This module centralises that
- * pattern so route files only have to call one helper.
+ * Several route plugins repeat the same JWT bootstrap: `.use(jwt({ ... }))`
+ * and a `.derive()` that extracts a `JwtPayload` from the `Authorization`
+ * header or the `auth` cookie (read from Elysia's built-in `cookie` jar).
+ * This module centralises that pattern so route files only have to call one
+ * helper.
  *
  * Usage:
  *
@@ -18,7 +19,6 @@
  */
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import type { Kysely } from 'kysely';
 import { getJwtSecret, type JwtPayload } from '../routes/auth';
 import { hasRole, ROLES, requireAuth, type AuthorizationError } from './guards';
@@ -38,7 +38,6 @@ import type { Database, Project } from '../db/types';
  */
 export function withJwtAuth() {
     return new Elysia({ name: 'route-auth' })
-        .use(cookie())
         .use(
             jwt({
                 name: 'jwt',

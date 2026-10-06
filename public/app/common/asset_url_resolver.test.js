@@ -8,12 +8,21 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// The resolver patches Element.prototype.getAttribute on import. Every re-import
+// (vi.resetModules() + await import) installs another layer on top of the previous
+// one, and each layer owns a separate resolvedCache. Stacked layers feed each
+// other's return value back through the asset://<->blob:// mapping, which produces
+// results no single layer would ever return. Capture the pristine method once and
+// restore it between tests so each test exercises exactly one layer.
+const nativeGetAttribute = Element.prototype.getAttribute;
+
 describe('AssetUrlResolver', () => {
   let mockAssetManager;
   let mockAssetWebSocketHandler;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    Element.prototype.getAttribute = nativeGetAttribute;
 
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -33,6 +42,7 @@ describe('AssetUrlResolver', () => {
     delete window.eXeLearningAssetResolver;
     delete window.jQuery;
     delete window.eXeLearning;
+    Element.prototype.getAttribute = nativeGetAttribute;
     vi.restoreAllMocks();
   });
 
@@ -253,8 +263,11 @@ describe('AssetUrlResolver', () => {
       });
 
       it('populates cache so getAttribute can return blob URL for asset:// href (SimpleLightbox support)', async () => {
-        // This test verifies the behavior for SimpleLightbox and similar libraries
-        // When they read the href of an anchor, they should get the resolved blob:// URL
+        // This test verifies the behavior for SimpleLightbox and similar libraries.
+        // When they read the href of an anchor *in the live document*, they should
+        // get the resolved blob:// URL. The anchor must be connected: detached
+        // anchors are parsing wrappers reading back stored HTML and must keep the
+        // persistent asset:// URL instead (see issue #2186).
         const assetUrl = 'asset://cached-uuid-test/lightbox-image.jpg';
         const blobUrl = 'blob:http://localhost/cached-blob-test';
         mockAssetManager.resolveAssetURL.mockResolvedValue(blobUrl);
@@ -263,13 +276,99 @@ describe('AssetUrlResolver', () => {
         const resolved = await resolver.resolve(assetUrl);
         expect(resolved).toBe(blobUrl);
 
-        // Now create an anchor with the asset:// href
+        // Now create an anchor with the asset:// href, live in the document
         const a = document.createElement('a');
         a.setAttribute('href', assetUrl);
+        document.body.appendChild(a);
 
-        // When reading the href, should get the cached blob URL
-        const result = a.getAttribute('href');
-        expect(result).toBe(blobUrl);
+        try {
+          // When reading the href, should get the cached blob URL
+          const result = a.getAttribute('href');
+          expect(result).toBe(blobUrl);
+        } finally {
+          a.remove();
+        }
+      });
+    });
+
+    describe('anchor href reads on detached wrappers (issue #2186)', () => {
+      const assetUrl = 'asset://2d982eb3-cow/COW2.jpg';
+      const blobUrl = 'blob:app://localhost/ephemeral-blob-uuid';
+
+      beforeEach(async () => {
+        // Populate resolvedCache the way page-view rendering does before editing
+        mockAssetManager.resolveAssetURL.mockResolvedValue(blobUrl);
+        await resolver.resolve(assetUrl);
+      });
+
+      it('returns the persistent asset:// URL for a detached anchor even when cached', () => {
+        // Reproduces how game iDevices read their media refs back: the stored
+        // HTML is parsed into a *detached* wrapper and hrefs are read from it.
+        // See public/files/perm/idevices/base/classify/edition/classify.js:681.
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `<a href="${assetUrl}" class="js-hidden clasifica-LinkImages">0</a>`;
+        const anchor = wrapper.querySelector('a');
+
+        expect(anchor.isConnected).toBe(false);
+        expect(anchor.getAttribute('href')).toBe(assetUrl);
+      });
+
+      it('returns the cached blob URL for a connected anchor (lightbox keeps working)', () => {
+        const anchor = document.createElement('a');
+        anchor.setAttribute('href', assetUrl);
+        document.body.appendChild(anchor);
+
+        try {
+          expect(anchor.isConnected).toBe(true);
+          expect(anchor.getAttribute('href')).toBe(blobUrl);
+        } finally {
+          anchor.remove();
+        }
+      });
+
+      it('returns asset:// for a detached anchor whose asset is not cached', () => {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = '<a href="asset://uncached-uuid/photo.jpg">1</a>';
+
+        expect(wrapper.querySelector('a').getAttribute('href')).toBe(
+          'asset://uncached-uuid/photo.jpg'
+        );
+      });
+
+      it('still maps blob href back to asset:// via data-asset-url when detached', () => {
+        // Branch 2 (persistence) stays ungated: a detached anchor carrying a
+        // resolved blob href must still report the persistent asset:// URL.
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `<a href="${blobUrl}" data-asset-url="${assetUrl}">0</a>`;
+
+        expect(wrapper.querySelector('a').getAttribute('href')).toBe(assetUrl);
+      });
+
+      it('still maps blob href back to asset:// via data-asset-url when connected', () => {
+        const anchor = document.createElement('a');
+        anchor.setAttribute('data-asset-url', assetUrl);
+        anchor.setAttribute('href', blobUrl);
+        document.body.appendChild(anchor);
+
+        try {
+          expect(anchor.getAttribute('href')).toBe(assetUrl);
+        } finally {
+          anchor.remove();
+        }
+      });
+
+      it('reads back every link anchor of a stored game iDevice as asset://', () => {
+        // Full classify-style read-back: the value written on save must be the
+        // same persistent reference that was stored, never a blob: URL.
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML =
+          `<a href="${assetUrl}" class="js-hidden clasifica-LinkImages">0</a>` +
+          `<a href="${assetUrl}" class="js-hidden clasifica-LinkAudios">1</a>`;
+
+        const hrefs = [...wrapper.querySelectorAll('a')].map((a) => a.getAttribute('href'));
+
+        expect(hrefs).toEqual([assetUrl, assetUrl]);
+        expect(hrefs.some((href) => href.startsWith('blob:'))).toBe(false);
       });
     });
 
@@ -633,6 +732,21 @@ describe('AssetUrlResolver', () => {
   });
 
   describe('getAttribute interception', () => {
+    beforeEach(async () => {
+      vi.resetModules();
+
+      window.jQuery = function() {
+        return { each: vi.fn(), length: 0 };
+      };
+      window.jQuery.fn = { attr: vi.fn(), prop: vi.fn() };
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+    });
+
     it('returns asset URL when data-asset-url exists and src is blob URL', () => {
       const img = document.createElement('img');
       img.setAttribute('data-asset-url', 'asset://uuid-123/image.png');

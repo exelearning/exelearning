@@ -13,6 +13,7 @@ import ModalLegalNotes from './modals/pages/modalLegalNotes.js';
 import ModalAbout from './modals/pages/modalAbout.js';
 import ModalEasterEgg from './modals/pages/modalEasterEgg.js';
 import ModalProperties from './modals/pages/modalProperties.js';
+import ModalChangePassword from './modals/pages/modalChangePassword.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
 import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
@@ -40,6 +41,7 @@ export default class ModalsManagement {
         this.about = null;
         this.easteregg = null;
         this.properties = null;
+        this.changepassword = null;
         this.openuserodefiles = null;
         this.templateselection = null;
         this.sessionlogout = null;
@@ -69,6 +71,7 @@ export default class ModalsManagement {
         this.about = new ModalAbout(this);
         this.easteregg = new ModalEasterEgg(this);
         this.properties = new ModalProperties(this);
+        this.changepassword = new ModalChangePassword(this);
         this.openuserodefiles = new ModalOpenUserOdeFiles(this);
         this.templateselection = new ModalTemplateSelection(this);
         this.sessionlogout = new ModalSessionLogout(this);
@@ -98,6 +101,7 @@ export default class ModalsManagement {
         this.about.behaviour();
         this.easteregg.behaviour();
         this.properties.behaviour();
+        this.changepassword.behaviour();
         this.openuserodefiles.behaviour();
         this.templateselection.behaviour();
         this.sessionlogout.behaviour();
@@ -129,6 +133,7 @@ export default class ModalsManagement {
             this.about,
             this.easteregg,
             this.properties,
+            this.changepassword,
             this.openuserodefiles,
             this.templateselection,
             this.sessionlogout,

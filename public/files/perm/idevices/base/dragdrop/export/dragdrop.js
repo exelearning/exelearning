@@ -56,6 +56,7 @@ var $eXeDragDrop = {
             const dadP = $eXeDragDrop.createInterfaceCards(i);
 
             dl.before(dadP).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#dadPGameContainer-' + i).show();
             $('#dadPGameMinimize-' + i)
                 .css({ cursor: 'pointer' })
@@ -339,14 +340,22 @@ var $eXeDragDrop = {
         ) {
             $('#dadPPTime-' + instance).show();
             $('#dadPImgTime-' + instance).show();
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#dadPMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'dadPMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (typeof mOptions != 'undefined' && mOptions.gameStarted) {
@@ -358,6 +367,7 @@ var $eXeDragDrop = {
                     }
                 }
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeDragDrop.updateTime(mOptions.time * 60, instance);
         }
         $eXeDragDrop.initializeDragAndDrop(instance);
@@ -366,6 +376,8 @@ var $eXeDragDrop = {
 
     initializeDragAndDrop: function (instance) {
         const mOptions = $eXeDragDrop.options[instance];
+        // The 200ms retry can fire after teardown removed the options
+        if (!mOptions) return;
 
         // Keep a retry counter to handle race conditions (jQuery UI or images not ready)
         mOptions._initRetries = mOptions._initRetries || 0;
@@ -718,7 +730,7 @@ var $eXeDragDrop = {
             msgs = mOptions.msgs,
             score = ((mOptions.hits * 10) / mOptions.numberCards).toFixed(2);
         let message = msgs.msgEndGameM.replace('%s', score),
-            messageColor = score >= 5 ? 2 : 1,
+            messageColor = score >= $exe.passScore.resolve(mOptions) ? 2 : 1,
             clueMessage = '';
 
         $eXeDragDrop.showMessage(messageColor, message, instance, true);
@@ -765,6 +777,11 @@ var $eXeDragDrop = {
 
     reboot: function (instance) {
         const mOptions = $eXeDragDrop.options[instance];
+        // Lowered before rebootDrags, which reaches startGame: that returns
+        // early on a game it believes is already running, so a restart while
+        // the flag was still up did none of its work — including the report
+        // that puts the LMS back to zero.
+        mOptions.gameStarted = false;
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
@@ -774,6 +791,7 @@ var $eXeDragDrop = {
         $eXeDragDrop.showScoreGame(instance);
         mOptions.gameStarted = true;
         mOptions.gameOver = false;
+        $eXeDragDrop.saveScormScore(instance);
 
         $('#dadPMessage-' + instance).hide();
     },
@@ -850,7 +868,6 @@ var $eXeDragDrop = {
         $('#dadPLinkMinimize-' + instance).off('click');
         $('#dadPCodeAccessButton-' + instance).off('click');
         $('#dadPCodeAccessE-' + instance).off('keydown');
-        $(window).off('unload.eXeDragDrop beforeunload.eXeDragDrop');
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
@@ -916,17 +933,6 @@ var $eXeDragDrop = {
         });
 
         $('#dadPPNumber-' + instance).text(mOptions.realNumberCards);
-
-        $(window).on(
-            'unload.eXeDragDrop beforeunload.eXeDragDrop',
-            function () {
-                if ($eXeDragDrop.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeDragDrop.mScorm
-                    );
-                }
-            }
-        );
 
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')
@@ -1067,6 +1073,14 @@ var $eXeDragDrop = {
                 `#dadPCodeAccessDiv-${instance}, #dadPCubierta-${instance}`
             ).hide();
             $(`#dadPLinkMaximize-${instance}`).trigger('click');
+            // A valid code is the learner opening the activity. startGame is
+            // silent by design — loading and minimizing also route through it —
+            // so the opening zero is published here instead. Starting first is
+            // what makes the report land: sendScoreNew drops a game that says
+            // it is neither started nor over, and startGame returns early when
+            // the maximize click above already started it.
+            $eXeDragDrop.startGame(instance);
+            $eXeDragDrop.saveScormScore(instance);
         } else {
             $(`#dadPMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
@@ -1123,10 +1137,27 @@ var $eXeDragDrop = {
         );
     },
 
+    /**
+     * Publish the freshly reset state only after the learner explicitly asks
+     * to play again.
+     *
+     * Loading/minimizing can route through startGame(), so reporting there
+     * submits a zero score before the learner interacts with the activity.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeDragDrop.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeDragDrop.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeDragDrop.options[instance];
-        mOptions.scorerp = score =
-            (mOptions.hits * 10) / mOptions.realNumberCards;
+        // Was assigning through an undeclared `score`, which wrote a global on
+        // every report and was read by nobody.
+        mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards;
         mOptions.previousScore = $eXeDragDrop.previousScore;
         mOptions.userName = $eXeDragDrop.userName;
 

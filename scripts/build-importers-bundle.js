@@ -55,6 +55,8 @@ const yjsExternalPlugin = {
 esbuild.build({
     entryPoints: [path.join(projectRoot, 'src/shared/import/browser/index.ts')],
     bundle: true,
+    // Production bundle: minified like app.bundle.js (sources live in git).
+    minify: true,
     outfile: path.join(projectRoot, 'public/app/yjs/importers.bundle.js'),
     format: 'iife',
     platform: 'browser',

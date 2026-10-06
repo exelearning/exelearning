@@ -19,7 +19,9 @@ import { db } from '../db/client';
 import type { Database } from '../db/types';
 import { createAssets, findAssetsByClientIds, bulkUpdateAssets, findProjectByUuid } from '../db/queries';
 
-import { getProjectAssetsDir } from '../services/file-helper';
+import { resolveAssetStoragePath, tryResolveAssetStoragePath, remove } from '../services/file-helper';
+import { isSafePathSegment, sanitizeFileExtension } from '../utils/safe-path';
+import { buildAssetStoragePath } from '../utils/asset-paths';
 import {
     uploadSessionManager,
     validateSession,
@@ -153,15 +155,66 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         };
                     }
 
-                    // Get base storage path using project UUID
-                    const baseStoragePath = getProjectAssetsDir(session.projectId);
-                    await fs.ensureDir(baseStoragePath);
+                    // Each effective clientId becomes an on-disk filename; reject traversal/separators
+                    // up front so nothing is written when any clientId is unsafe. The session JWT binds
+                    // only projectId, not the per-file clientId, so the metadata is untrusted input.
+                    // Mirror the per-file fallback used below: a missing metadata entry yields `file-${i}`.
+                    for (let i = 0; i < files.length; i++) {
+                        const clientId = (metadata[i] || { clientId: `file-${i}` }).clientId;
+                        if (!isSafePathSegment(clientId)) {
+                            set.status = 400;
+                            return { success: false, error: 'Invalid clientId in metadata' };
+                        }
+                    }
+
+                    // Enforce the total batch size BEFORE buffering any bytes into memory.
+                    // Blob/File expose `.size` and Buffer exposes `.length` without reading the
+                    // payload, so we can reject an oversized batch using the declared sizes and never
+                    // materialize the files. This closes a memory-amplification vector under concurrency
+                    // where many large batches would otherwise be fully buffered before the cap is hit.
+                    let declaredBatchBytes = 0;
+                    for (const file of files) {
+                        if (file instanceof Blob) {
+                            declaredBatchBytes += file.size;
+                        } else if (Buffer.isBuffer(file)) {
+                            declaredBatchBytes += file.length;
+                        }
+                        if (declaredBatchBytes > MAX_BATCH_BYTES) {
+                            set.status = 400;
+                            return {
+                                success: false,
+                                error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
+                            };
+                        }
+                    }
+
+                    // Storage paths are derived from the session's project UUID:
+                    // assets/<shard>/<projectUuid>/<clientId>.<ext> relative to
+                    // FILES_DIR, resolved to a physical path per file below.
 
                     // =====================================================
-                    // PHASE 1: Convert all files to buffers in parallel
+                    // PHASE 1: Convert files to buffers sequentially, aborting early
                     // Emit progress for each file as we process it
                     // =====================================================
-                    const fileDataPromises = files.map(async (file, i) => {
+                    // Buffer one file at a time and track the running total instead of materializing
+                    // the whole set with Promise.all. This bounds peak memory and lets us abort as soon
+                    // as the actual buffered bytes exceed MAX_BATCH_BYTES, even when a declared `.size`
+                    // was missing or under-reported above.
+                    type BufferedFile = {
+                        clientId: string;
+                        filename: string;
+                        mimeType: string;
+                        folderPath: string;
+                        fileBuffer: Buffer;
+                        filePath: string;
+                        storagePath: string;
+                        flatFilename: string;
+                    };
+                    const fileData: BufferedFile[] = [];
+                    let bufferedBatchBytes = 0;
+
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
                         const fileMeta = metadata[i] || {
                             clientId: `file-${i}`,
                             filename: 'unknown',
@@ -182,32 +235,43 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                             fileBuffer = Buffer.from(file as unknown as ArrayBuffer);
                         }
 
-                        // Use clientId as filename with original extension
-                        const ext = path.extname(filename).toLowerCase();
-                        const flatFilename = `${fileMeta.clientId}${ext}`;
-                        const filePath = path.join(baseStoragePath, flatFilename);
+                        // Abort as soon as the actual buffered total exceeds the cap. Releasing the
+                        // already-buffered files (and not buffering the rest) keeps peak memory bounded.
+                        bufferedBatchBytes += fileBuffer.length;
+                        if (bufferedBatchBytes > MAX_BATCH_BYTES) {
+                            fileData.length = 0;
+                            set.status = 400;
+                            return {
+                                success: false,
+                                error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
+                            };
+                        }
 
-                        return {
+                        // Use clientId as filename with original extension. clientId was validated as a
+                        // safe path segment above; buildAssetStoragePath re-validates every segment and
+                        // resolveAssetStoragePath asserts containment, so a crafted clientId or extension
+                        // cannot escape the project assets directory.
+                        const ext = sanitizeFileExtension(filename);
+                        const flatFilename = `${fileMeta.clientId}${ext}`;
+                        const storagePath = buildAssetStoragePath(session.projectId, flatFilename);
+                        const filePath = resolveAssetStoragePath(storagePath);
+
+                        fileData.push({
                             clientId: fileMeta.clientId,
                             filename,
                             mimeType,
                             folderPath,
                             fileBuffer,
                             filePath,
+                            storagePath,
                             flatFilename,
-                        };
-                    });
+                        });
+                    }
 
-                    const fileData = await Promise.all(fileDataPromises);
-
-                    // Check total batch size
-                    const totalBatchBytes = fileData.reduce((sum, f) => sum + f.fileBuffer.length, 0);
-                    if (totalBatchBytes > MAX_BATCH_BYTES) {
-                        set.status = 400;
-                        return {
-                            success: false,
-                            error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
-                        };
+                    // Lazy directory creation: the sharded project directory is
+                    // created only when there is something to write.
+                    if (fileData.length > 0) {
+                        await fs.ensureDir(path.dirname(fileData[0].filePath));
                     }
 
                     // =====================================================
@@ -314,10 +378,19 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         const existing = existingMap.get(data.clientId);
 
                         if (existing) {
+                            // A relocating update (row still pointing at a legacy
+                            // or conflict-parked location) must not leave the
+                            // superseded file behind as an untracked orphan.
+                            if (existing.storage_path && existing.storage_path !== data.storagePath) {
+                                const oldPath = tryResolveAssetStoragePath(existing.storage_path);
+                                if (oldPath && oldPath !== data.filePath) {
+                                    await remove(oldPath).catch(() => {});
+                                }
+                            }
                             toUpdate.push({
                                 id: existing.id,
                                 data: {
-                                    storage_path: data.filePath,
+                                    storage_path: data.storagePath,
                                     file_size: String(data.fileBuffer.length),
                                     folder_path: data.folderPath,
                                 },
@@ -331,7 +404,7 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                             toCreate.push({
                                 project_id: session.projectIdNum,
                                 filename: data.filename,
-                                storage_path: data.filePath,
+                                storage_path: data.storagePath,
                                 mime_type: data.mimeType,
                                 file_size: String(data.fileBuffer.length),
                                 component_id: null,

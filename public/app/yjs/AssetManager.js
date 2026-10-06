@@ -41,6 +41,20 @@
 
 // Logger is defined globally by yjs-loader.js before this file loads
 
+/**
+ * A blob: URL as it appears inside a decoded string — either the whole value
+ * ("blob:http://host/id") or embedded in markup (src="blob:http://host/id").
+ * The scheme part accepts any origin scheme (http, https, app for Electron —
+ * see #2186), and the class stops at the characters that delimit a URL in
+ * those contexts, so the surrounding quotes are never part of the match. The
+ * final character must not be sentence punctuation: a blob URL always ends in
+ * an identifier character, so "see blob:…/abc123, then" must not capture the
+ * comma (it would break the exact-string cache lookup and eat the comma).
+ * Note: opaque-origin URLs ("blob:null/...") are not a target — they cannot
+ * be recovered and never appear in stored content.
+ */
+const BLOB_URL_IN_TEXT = /blob:[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)\\]*[^\s"'<>)\\.,;:!?]/g;
+
 class AssetManager {
   // IndexedDB fallback constants (#1710) — used when Cache API is unavailable
   // (non-secure contexts such as HTTP on a non-loopback host). A single shared
@@ -73,6 +87,11 @@ class AssetManager {
 
     // Yjs bridge reference (set externally) - source of truth for metadata
     this.yjsBridge = null;
+
+    // Assets included in the latest successful local ELPX/folder save. These
+    // remain uploaded=false because no server upload occurred, but they are no
+    // longer unsaved from the user's point of view.
+    this.locallySavedAssetIds = new Set();
 
     // Cache API persistence may be unavailable under custom schemes such as
     // app:// in Electron. Disable repeated attempts after the first hard failure
@@ -234,9 +253,33 @@ class AssetManager {
       await cache.put(this._getCacheRequestUrl(id), response);
     } catch (e) {
       console.warn('[AssetManager] Cache API write failed:', e.message);
-      if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
-        this._disableCachePersistence(e);
-        await this._putToIdb(id, blob);
+
+      const isQuotaExceeded = !!e && (e.name === 'QuotaExceededError' || /quota/i.test(e.message || ''));
+      if (isQuotaExceeded) {
+        // Browser Cache API storage is full. Surface a clear operator signal;
+        // the IDB fallback below takes over as the persistence layer.
+        console.warn('[AssetManager] Cache API storage full (QuotaExceededError) — falling back to IndexedDB:', id);
+      }
+
+      // For ANY Cache write failure (unsupported scheme, quota exceeded,
+      // transient, or unknown), the blob is NOT yet persisted. The Cache API has
+      // proven unreliable for this write, so disable it and route persistence to
+      // IndexedDB. Disabling also makes _getFromCache read from IDB, keeping the
+      // write and read paths consistent — otherwise the IDB-persisted blob would
+      // be unreadable (still effectively lost).
+      this._disableCachePersistence(e);
+
+      // Fall back to IndexedDB and verify a persistent copy actually landed
+      // there. _putToCache must never resolve as success without a confirmed
+      // persistent write — otherwise its callers (putAsset/putBlob) evict the
+      // only in-memory copy in their .then(), destroying the blob in every store
+      // at once (#H7).
+      await this._putToIdb(id, blob);
+      const persisted = await this._getFromIdb(id);
+      if (!persisted) {
+        // Neither Cache API nor IndexedDB hold the blob. Re-throw so the
+        // caller's .catch() keeps the blob in memory instead of evicting it.
+        throw e;
       }
     }
   }
@@ -547,6 +590,9 @@ class AssetManager {
       uploaded: metadata.uploaded || false,
       createdAt: metadata.createdAt || new Date().toISOString()
     });
+    if (metadata.uploaded !== true) {
+      this.locallySavedAssetIds.delete(assetId);
+    }
     Logger.log(`[AssetManager] Set metadata for ${assetId.substring(0, 8)}... in Yjs`);
   }
 
@@ -558,6 +604,7 @@ class AssetManager {
     const assetsMap = this.getAssetsYMap();
     if (!assetsMap) return;
     assetsMap.delete(assetId);
+    this.locallySavedAssetIds.delete(assetId);
     Logger.log(`[AssetManager] Deleted metadata for ${assetId.substring(0, 8)}... from Yjs`);
   }
 
@@ -667,30 +714,81 @@ class AssetManager {
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // Fallback: Simple FNV-1a hash (32-bit) expanded to 64 chars
-    // Not cryptographically secure, but sufficient for asset deduplication
-    const data = new Uint8Array(arrayBuffer);
-    let hash = 2166136261; // FNV offset basis
-    for (let i = 0; i < data.length; i++) {
-      hash ^= data[i];
-      hash = (hash * 16777619) >>> 0; // FNV prime, keep as 32-bit unsigned
+    // Fallback for non-secure contexts (e.g. HTTP on a bare IP address) where
+    // crypto.subtle is unavailable. Use a pure-JS SHA-256 that returns the SAME
+    // digest as crypto.subtle, so an asset's content-derived id is IDENTICAL in
+    // every context (desktop/localhost/HTTPS and HTTP-on-IP). The previous FNV
+    // fallback diverged from SHA-256 (different id per context) and a signed-XOR
+    // term could emit a '-' that corrupted the UUID — both silently lost images
+    // on collaborative/desktop round-trips. See #1941.
+    return this._sha256Hex(new Uint8Array(arrayBuffer));
+  }
+
+  /**
+   * Pure-JS SHA-256 (FIPS 180-4) over a byte array. Returns a 64-char lowercase
+   * hex string identical to crypto.subtle.digest('SHA-256', ...). Used only as the
+   * non-secure-context fallback for calculateHash() so asset ids stay consistent
+   * across contexts. See #1941.
+   * @param {Uint8Array} bytes
+   * @returns {string} 64-char lowercase hex
+   */
+  _sha256Hex(bytes) {
+    const K = [
+      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    ];
+    let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+    let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+
+    // Padding: append 0x80, then zeros, then the 64-bit big-endian bit length.
+    const l = bytes.length;
+    const bitLen = l * 8;
+    const withOne = l + 1;
+    const k = (56 - (withOne % 64) + 64) % 64;
+    const total = withOne + k + 8;
+    const m = new Uint8Array(total);
+    m.set(bytes);
+    m[l] = 0x80;
+    const hi = Math.floor(bitLen / 0x100000000);
+    const lo = bitLen >>> 0;
+    m[total - 8] = (hi >>> 24) & 0xff; m[total - 7] = (hi >>> 16) & 0xff;
+    m[total - 6] = (hi >>> 8) & 0xff; m[total - 5] = hi & 0xff;
+    m[total - 4] = (lo >>> 24) & 0xff; m[total - 3] = (lo >>> 16) & 0xff;
+    m[total - 2] = (lo >>> 8) & 0xff; m[total - 1] = lo & 0xff;
+
+    const w = new Uint32Array(64);
+    const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+    for (let i = 0; i < total; i += 64) {
+      for (let t = 0; t < 16; t++) {
+        w[t] = ((m[i + 4 * t] << 24) | (m[i + 4 * t + 1] << 16) | (m[i + 4 * t + 2] << 8) | m[i + 4 * t + 3]) >>> 0;
+      }
+      for (let t = 16; t < 64; t++) {
+        const s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+        const s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
+      }
+      let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+      for (let t = 0; t < 64; t++) {
+        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const ch = (e & f) ^ (~e & g);
+        const temp1 = (h + S1 + ch + K[t] + w[t]) >>> 0;
+        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const temp2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e; e = (d + temp1) >>> 0;
+        d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+      }
+      h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0;
+      h4 = (h4 + e) >>> 0; h5 = (h5 + f) >>> 0; h6 = (h6 + g) >>> 0; h7 = (h7 + h) >>> 0;
     }
-    // Expand to 64 hex chars by combining hash with size and sampling
-    const sizeHash = (data.length * 2654435761) >>> 0;
-    const sample1 = data.length > 0 ? data[0] : 0;
-    const sample2 = data.length > 100 ? data[100] : 0;
-    const sample3 = data.length > 1000 ? data[1000] : 0;
-    const combined = [
-      hash.toString(16).padStart(8, '0'),
-      sizeHash.toString(16).padStart(8, '0'),
-      (hash ^ sizeHash).toString(16).padStart(8, '0'),
-      ((hash + sample1 + sample2 + sample3) >>> 0).toString(16).padStart(8, '0'),
-      data.length.toString(16).padStart(8, '0'),
-      ((hash * 31 + sizeHash) >>> 0).toString(16).padStart(8, '0'),
-      ((sizeHash ^ sample1 ^ sample2 ^ sample3) >>> 0).toString(16).padStart(8, '0'),
-      ((hash ^ data.length) >>> 0).toString(16).padStart(8, '0'),
-    ].join('');
-    return combined;
+    const hex = (x) => (x >>> 0).toString(16).padStart(8, '0');
+    return hex(h0) + hex(h1) + hex(h2) + hex(h3) + hex(h4) + hex(h5) + hex(h6) + hex(h7);
   }
 
   /**
@@ -742,11 +840,199 @@ class AssetManager {
   }
 
   /**
+   * Whether an asset is a raw SubRip (`.srt`) subtitle file, detected from its
+   * stored MIME or filename. The Blob's own `type` is unreliable here --
+   * browsers frequently report an empty type for `.srt` uploads -- so we key on
+   * `asset.mime`/`asset.filename`. Mirrors `BaseExporter.isSrtSubtitleAsset()`
+   * on the export side (issue #2034).
+   * @param {{mime?: string, filename?: string, blob?: Blob}} asset
+   * @returns {boolean}
+   */
+  _isSrtSubtitleAsset(asset) {
+    if (!asset) return false;
+    const mime = (asset.mime || (asset.blob && asset.blob.type) || '').toLowerCase();
+    const filename = (asset.filename || '').toLowerCase();
+    return (
+      filename.endsWith('.srt') ||
+      mime === 'application/x-subrip' ||
+      mime === 'application/srt' ||
+      mime === 'text/srt'
+    );
+  }
+
+  /**
+   * Decode a subtitle blob's raw bytes to text. `.srt` files are usually UTF-8
+   * but very frequently Windows-1252/Latin-1 in the wild (accented cues). A
+   * non-fatal UTF-8 decode would silently replace every high byte with U+FFFD,
+   * so we decode UTF-8 strictly first and fall back to Windows-1252 -- keeping
+   * accented captions readable in the live workarea editor. This mirrors the
+   * export/preview decode in `BaseExporter.readAssetDataAsText()` so the editor
+   * display and the downloaded/preview export never diverge (issue #2035).
+   *
+   * `Blob.text()` cannot be used here: per the Blob spec it always decodes as
+   * UTF-8, turning every Latin-1 byte into mojibake. Read the raw bytes instead.
+   * @param {Blob} blob
+   * @returns {Promise<string>}
+   */
+  async _readSubtitleBlobAsText(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      return new TextDecoder('windows-1252').decode(bytes);
+    }
+  }
+
+  /**
+   * Create a *display* blob URL for an asset. Raw `.srt` subtitle assets are
+   * converted to WebVTT on the fly and served as a `text/vtt` blob, so the
+   * native `<video><track>` renders cues in the live workarea editor -- the
+   * `<track>` element only understands WebVTT, so a raw `.srt` blob produces
+   * zero cues (issue #2034).
+   *
+   * The stored asset is never mutated: it stays `.srt` so it round-trips to the
+   * server and the export pipeline (`BaseExporter`) runs its own conversion.
+   * Every `blobURLCache` population site must go through here so no path can
+   * cache the un-converted `.srt` blob URL first (cache-first lookups would
+   * then keep serving it). Single source of truth (AGENTS.md).
+   * @param {{mime?: string, filename?: string, blob: Blob}} asset
+   * @returns {Promise<string>} blob: (or data:) URL
+   */
+  async _displayBlobURLForAsset(asset) {
+    if (
+      asset &&
+      asset.blob &&
+      this._isSrtSubtitleAsset(asset) &&
+      typeof window !== 'undefined' &&
+      typeof window.convertSrtToVtt === 'function'
+    ) {
+      try {
+        const text = await this._readSubtitleBlobAsText(asset.blob);
+        const { vtt } = window.convertSrtToVtt(text);
+        return this.createBlobURL(new Blob([vtt], { type: 'text/vtt' }));
+      } catch (e) {
+        console.warn('[AssetManager] Failed to convert .srt subtitle to WebVTT for display:', e);
+      }
+    }
+    return this.createBlobURL(asset && asset.blob ? asset.blob : asset);
+  }
+
+  /**
+   * Whether a filename ends with a plausible file extension (1-8 alnum chars).
+   * `asset-<uuid>` → false; `report.pdf` → true.
+   * @param {string|undefined|null} filename
+   * @returns {boolean}
+   */
+  _filenameHasExtension(filename) {
+    return typeof filename === 'string' && /\.[a-z0-9]{1,8}$/i.test(filename);
+  }
+
+  /**
+   * Whether a MIME type is missing or the generic binary fallback.
+   * @param {string|undefined|null} mime
+   * @returns {boolean}
+   */
+  _isMimeUnknown(mime) {
+    return !mime || mime === 'application/octet-stream';
+  }
+
+  /**
+   * Whether an asset needs MIME/extension recovery (synchronous pre-check, so
+   * the well-formed path stays fully synchronous).
+   * @param {Object} asset
+   * @returns {boolean}
+   */
+  _needsTypeRecovery(asset) {
+    return !!asset && (this._isMimeUnknown(asset.mime) || !this._filenameHasExtension(asset.filename));
+  }
+
+  /**
+   * Resolve the mime-sniff helpers. In the browser they arrive via the
+   * window.eXeMimeSniff global (mime-sniff.js is a classic <script> loaded by
+   * yjs-loader.js); under Vitest they arrive via CommonJS require. Resolved on
+   * demand inside methods so this classic-script file declares no top-level
+   * binding that could clash with sibling scripts.
+   * @returns {{ sniffMimeFromBytes?: Function, extensionForMime?: Function }}
+   */
+  _mimeSniff() {
+    if (typeof window !== 'undefined' && window.eXeMimeSniff) return window.eXeMimeSniff;
+    if (typeof require === 'function') {
+      try {
+        return require('../common/mime-sniff');
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  }
+
+  /**
+   * Recover a usable MIME type and filename extension for an asset whose type
+   * information was lost. Mutates `asset` in place:
+   * - If `mime` is missing/`application/octet-stream`, sniff the blob's magic
+   *   bytes; on a hit, set the real MIME and re-type the blob (so `<iframe>`/
+   *   `<object>` embeds render inline instead of being downloaded).
+   * - If the filename lacks an extension and the MIME is known, append it
+   *   (so `getAssetUrl()` produces `asset://<id>.<ext>` and exports keep a name).
+   *
+   * No-op for assets that already have a known MIME and an extension, so the
+   * blob of well-formed assets is never copied.
+   *
+   * @param {Object} asset - asset with at least `{ mime, filename, blob }`
+   * @returns {Promise<Object>} the same asset (mutated)
+   */
+  async _recoverAssetType(asset) {
+    if (!asset) return asset;
+
+    const mimeUnknown = this._isMimeUnknown(asset.mime);
+    if (!mimeUnknown && this._filenameHasExtension(asset.filename)) {
+      return asset; // already well-formed — do not touch the blob
+    }
+
+    const { sniffMimeFromBytes, extensionForMime } = this._mimeSniff();
+
+    if (mimeUnknown && asset.blob && typeof sniffMimeFromBytes === 'function') {
+      try {
+        const buf = await asset.blob.arrayBuffer();
+        const detected = sniffMimeFromBytes(new Uint8Array(buf));
+        if (detected) {
+          asset.mime = detected;
+          if (asset.blob.type !== detected) {
+            asset.blob = new Blob([buf], { type: detected });
+          }
+        }
+      } catch (e) {
+        // Unable to read the blob — keep the asset as-is.
+        if (typeof Logger?.warn === 'function') {
+          Logger.warn(`[AssetManager] MIME sniff failed for ${asset.id}:`, e);
+        }
+      }
+    }
+
+    if (asset.filename && !this._filenameHasExtension(asset.filename) && typeof extensionForMime === 'function') {
+      const ext = extensionForMime(asset.mime);
+      if (ext) asset.filename = `${asset.filename}.${ext}`;
+    }
+
+    return asset;
+  }
+
+  /**
    * Store asset - metadata to Yjs, blob to in-memory cache
    * @param {Object} asset - Full asset object with blob and metadata
    * @returns {Promise<void>}
    */
   async putAsset(asset) {
+    // 0. Recover a real MIME type / extension when they were lost (e.g. assets
+    //    exported as `asset-<uuid>` without extension → octet-stream). Without
+    //    this, a PDF embedded in an <iframe> is force-downloaded by the browser
+    //    instead of rendered. See public/app/common/mime-sniff.js.
+    //    Gate on a synchronous pre-check so well-formed assets keep populating
+    //    blobCache within the same tick (callers may not await putAsset()).
+    if (this._needsTypeRecovery(asset)) {
+      await this._recoverAssetType(asset);
+    }
+
     // 1. Store metadata in Yjs (instant sync to other clients)
     this.setAssetMetadata(asset.id, {
       filename: asset.filename,
@@ -782,6 +1068,12 @@ class AssetManager {
    * @returns {Promise<void>}
    */
   async putBlob(id, blob) {
+    // Align the blob's type with the asset's MIME (or recover it by sniffing)
+    // so iframe/object embeds render inline instead of being downloaded. This
+    // matters for peer/server transfers where the received blob may be
+    // application/octet-stream even though the metadata knows the real type.
+    blob = await this._normalizeBlobType(id, blob);
+
     this.blobCache.set(id, blob);
     // Persist to Cache API, then evict from memory to save RAM
     this._putToCache(id, blob).then(() => {
@@ -791,6 +1083,104 @@ class AssetManager {
     }).catch(() => {
       // Keep in memory if Cache API fails
     });
+  }
+
+  /**
+   * Return a blob whose `type` matches the asset's real MIME.
+   * - Known metadata MIME: align the blob's type to it (cheap; re-wrap only if
+   *   it differs).
+   * - Unknown metadata MIME: sniff the bytes; on a hit, fix the metadata
+   *   (MIME + filename extension) and re-type the blob.
+   *
+   * @param {string} id - Asset UUID
+   * @param {Blob} blob - Incoming blob
+   * @returns {Promise<Blob>} possibly re-typed blob
+   */
+  async _normalizeBlobType(id, blob) {
+    if (!blob) return blob;
+    const meta = this.getAssetMetadata(id);
+
+    if (!this._isMimeUnknown(meta?.mime)) {
+      if (blob.type === meta.mime) return blob;
+      try {
+        const buf = await blob.arrayBuffer();
+        return new Blob([buf], { type: meta.mime });
+      } catch {
+        return blob;
+      }
+    }
+
+    const { sniffMimeFromBytes, extensionForMime } = this._mimeSniff();
+    if (typeof sniffMimeFromBytes !== 'function') return blob;
+    try {
+      const buf = await blob.arrayBuffer();
+      const detected = sniffMimeFromBytes(new Uint8Array(buf));
+      if (!detected) return blob;
+      if (meta) {
+        const ext =
+          !this._filenameHasExtension(meta.filename) && typeof extensionForMime === 'function'
+            ? extensionForMime(detected)
+            : null;
+        this.setAssetMetadata(id, {
+          ...meta,
+          mime: detected,
+          filename: ext ? `${meta.filename}.${ext}` : meta.filename,
+        });
+      }
+      return blob.type === detected ? blob : new Blob([buf], { type: detected });
+    } catch {
+      return blob;
+    }
+  }
+
+  /**
+   * Self-heal assets whose type information was lost (e.g. older projects whose
+   * assets were saved as `asset-<uuid>` without extension and therefore resolve
+   * to application/octet-stream). Scans every asset's metadata; for those that
+   * need recovery and whose blob is available, sniffs the content and fixes the
+   * MIME, filename extension and cached blob type. Idempotent.
+   *
+   * Intended to run once when a project is opened (and after .elpx import).
+   *
+   * @returns {Promise<number>} number of assets repaired
+   */
+  async repairAssetsWithoutType() {
+    const all = this.getAllAssetsMetadata();
+    let repaired = 0;
+
+    for (const meta of all) {
+      if (!this._needsTypeRecovery(meta)) continue;
+
+      let blob = null;
+      try {
+        blob = await this.getBlob(meta.id);
+      } catch {
+        blob = null;
+      }
+      if (!blob) continue; // can't sniff without the bytes — skip for now
+
+      const asset = { id: meta.id, mime: meta.mime, filename: meta.filename, blob };
+      await this._recoverAssetType(asset);
+
+      const metaChanged = asset.mime !== meta.mime || asset.filename !== meta.filename;
+      const blobChanged = asset.blob !== blob;
+
+      if (metaChanged) {
+        this.setAssetMetadata(meta.id, { ...meta, mime: asset.mime, filename: asset.filename });
+      }
+      if (blobChanged) {
+        this.blobCache.set(meta.id, asset.blob);
+        if (typeof this._putToCache === 'function') {
+          this._putToCache(meta.id, asset.blob).catch(() => {});
+        }
+      }
+      if (metaChanged || blobChanged) repaired++;
+    }
+
+    if (repaired > 0) {
+      Logger.log(`[AssetManager] Repaired ${repaired} asset(s) missing a usable type/extension`);
+    }
+    return repaired;
   }
 
   /**
@@ -2227,6 +2617,7 @@ class AssetManager {
       ...metadata,
       uploaded: true
     });
+    this.locallySavedAssetIds.delete(id);
 
     // Evict from memory cache - blob is safely on server + Cache API
     this.releaseUploadedBlob(id);
@@ -2316,7 +2707,7 @@ class AssetManager {
         // Asset with blob exists for THIS project - safe to skip
         // Ensure blob URL is in cache for immediate availability
         if (!this.blobURLCache.has(assetId)) {
-          const blobUrl = URL.createObjectURL(existing.blob);
+          const blobUrl = await this._displayBlobURLForAsset(existing);
           this.blobURLCache.set(assetId, blobUrl);
           this.reverseBlobCache.set(blobUrl, assetId);
           Logger.log(`[AssetManager] Cached existing blob URL for ${assetId}`);
@@ -2348,8 +2739,8 @@ class AssetManager {
       };
       await this.putAsset(newAsset);
 
-      // Cache blob URL
-      const blobUrl = URL.createObjectURL(newAsset.blob);
+      // Cache blob URL (subtitle-aware; see _displayBlobURLForAsset)
+      const blobUrl = await this._displayBlobURLForAsset(newAsset);
       this.blobURLCache.set(assetId, blobUrl);
       this.reverseBlobCache.set(blobUrl, assetId);
 
@@ -2377,7 +2768,8 @@ class AssetManager {
     Logger.log(`[AssetManager] Stored new asset ${assetId}`);
 
     // 6. Add to blob URL cache immediately for instant availability
-    const blobUrl = URL.createObjectURL(blob);
+    //    (subtitle-aware; see _displayBlobURLForAsset)
+    const blobUrl = await this._displayBlobURLForAsset(asset);
     this.blobURLCache.set(assetId, blobUrl);
     this.reverseBlobCache.set(blobUrl, assetId);
     Logger.log(`[AssetManager] Cached blob URL for ${assetId}`);
@@ -2493,7 +2885,7 @@ class AssetManager {
     }
 
     // Create blob URL (with fallback to data URL if blocked by extensions)
-    const blobURL = await this.createBlobURL(asset.blob);
+    const blobURL = await this._displayBlobURLForAsset(asset);
 
     // Cache both directions
     this.blobURLCache.set(assetId, blobURL);
@@ -2981,25 +3373,62 @@ class AssetManager {
    */
   prepareJsonForSync(json) {
     if (!json || typeof json !== 'string') return json;
+    if (!json.includes('blob:')) return json;
 
-    // Pattern to match blob:// URLs inside JSON string values (quoted strings)
-    // Matches: "blob:http://..." or "blob:https://..."
-    // This captures blob URLs within JSON property values
-    const blobUrlPattern = /"(blob:https?:\/\/[^"]+)"/g;
+    let parsed;
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      // A payload we cannot parse is one we cannot rewrite safely. Hand it back
+      // untouched rather than guessing at its structure.
+      Logger.warn('[AssetManager] JSON: payload is not valid JSON, leaving blob URLs untouched');
+      return json;
+    }
 
-    return json.replace(blobUrlPattern, (match, blobUrl) => {
-      // Try to recover asset ID from reverseBlobCache
-      const assetId = this.reverseBlobCache.get(blobUrl);
-      if (assetId) {
-        Logger.log(`[AssetManager] JSON: Converted blob→asset: ${assetId.substring(0, 8)}...`);
-        return `"asset://${assetId}"`;
+    return JSON.stringify(this.replaceBlobUrlsInValue(parsed));
+  }
+
+  /**
+   * Replace every blob: URL found in the strings of a parsed jsonProperties tree.
+   *
+   * Walks the parsed value rather than rewriting the serialized JSON. A blob URL
+   * inside an HTML attribute is serialized as src=\"blob:...\", so a textual
+   * rewrite consumes the backslash that escapes the closing quote and silently
+   * corrupts the payload — that is issue #2177.
+   *
+   * @param {*} value - Parsed JSON value (object, array, string or primitive)
+   * @returns {*} The value with blob URLs replaced by asset:// references
+   */
+  replaceBlobUrlsInValue(value) {
+    if (typeof value === 'string') {
+      return value.replace(BLOB_URL_IN_TEXT, (blobUrl) => {
+        // Try to recover asset ID from reverseBlobCache
+        const assetId = this.reverseBlobCache.get(blobUrl);
+        if (assetId) {
+          Logger.log(`[AssetManager] JSON: Converted blob→asset: ${assetId.substring(0, 8)}...`);
+          return `asset://${assetId}`;
+        }
+
+        // If we can't recover, clear it to avoid persisting a broken blob URL
+        // This is safer than leaving a blob URL that will definitely break after reload
+        Logger.warn(`[AssetManager] JSON: Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
+        return '';
+      });
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.replaceBlobUrlsInValue(item));
+    }
+
+    if (value && typeof value === 'object') {
+      const replaced = {};
+      for (const [key, item] of Object.entries(value)) {
+        replaced[key] = this.replaceBlobUrlsInValue(item);
       }
+      return replaced;
+    }
 
-      // If we can't recover, return empty string to avoid persisting broken blob URL
-      // This is safer than leaving a blob URL that will definitely break after reload
-      Logger.warn(`[AssetManager] JSON: Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
-      return '""';
-    });
+    return value;
   }
 
   /**
@@ -3117,6 +3546,19 @@ class AssetManager {
     const totalAssets = assetFiles.length;
     let currentAsset = 0;
 
+    // #1951: Self-contained HTML bundles (e.g. Tumult Hype exports) ship the SAME
+    // byte-identical resource (HYPE-runtime.js, …) inside several bundle folders, each
+    // referenced by a relative <script src> from its own folder. Content-addressed dedup
+    // would collapse them onto one asset and overwrite its folderPath, breaking every
+    // bundle but the first (404). Track hashes seen within THIS import: the first
+    // occurrence keeps the content-addressed id (incl. cross-project blob reuse and the
+    // same-project skip below); any subsequent occurrence of the SAME hash in the SAME
+    // import gets a fresh random id so it is stored as a distinct asset with its own
+    // folderPath. Safe because references resolve BY PATH (assetMap is Map<path,id>) and
+    // bundle resources are linked only by relative paths inside the stored .html asset,
+    // never by asset:// in content.xml — so a fresh id still resolves.
+    const seenHashesThisImport = new Set();
+
     for (const { path, fileData } of assetFiles) {
       currentAsset++;
 
@@ -3135,16 +3577,24 @@ class AssetManager {
         // Calculate hash
         const hash = await this.calculateHash(blob);
 
-        // Generate deterministic ID from hash (content-addressable)
-        const assetId = this.hashToUUID(hash);
+        // #1951: first occurrence of a hash within this import is content-addressed;
+        // a subsequent occurrence of the same hash is forced to a new id so byte-identical
+        // bundle files at different relative paths stay separate assets.
+        const isIntraImportDuplicate = seenHashesThisImport.has(hash);
+        seenHashesThisImport.add(hash);
+
+        // Generate ID: deterministic from hash (content-addressable) for the first
+        // occurrence, or a fresh random id for an intra-import duplicate (#1951).
+        const assetId = isIntraImportDuplicate ? crypto.randomUUID() : this.hashToUUID(hash);
 
         // Extract filename and folderPath from the path
         // Path can be: "mywebsite/css/style.css", "content/resources/uuid/file.jpg", "uuid/file.jpg"
         const filename = path.split('/').pop();
         const folderPath = this._extractFolderPathFromImport(path, assetId);
 
-        // Check if already exists (same content = same ID)
-        const existing = await this.getAsset(assetId);
+        // Check if already exists (same content = same ID). Skipped for intra-import
+        // duplicates so they are always stored as a new asset (#1951).
+        const existing = isIntraImportDuplicate ? null : await this.getAsset(assetId);
         if (existing) {
           // Check if asset belongs to current project
           if (existing.projectId === this.projectId) {
@@ -3348,7 +3798,7 @@ class AssetManager {
           continue;
         }
         // Use createBlobURL with fallback for blocked extensions
-        const blobURL = await this.createBlobURL(asset.blob);
+        const blobURL = await this._displayBlobURLForAsset(asset);
         this.blobURLCache.set(asset.id, blobURL);
         this.reverseBlobCache.set(blobURL, asset.id);
         count++;
@@ -3599,6 +4049,9 @@ class AssetManager {
       json: 'application/json',
       csv: 'text/csv',
       rtf: 'application/rtf',
+      // Subtitles
+      srt: 'application/x-subrip',
+      vtt: 'text/vtt',
       // Open Document
       odt: 'application/vnd.oasis.opendocument.text',
       ods: 'application/vnd.oasis.opendocument.spreadsheet',
@@ -3843,7 +4296,7 @@ class AssetManager {
     // Try to load from memory
     const asset = await this.getAsset(assetId);
     if (asset?.blob && typeof asset.blob.arrayBuffer === 'function') {
-      const blobURL = await this.createBlobURL(asset.blob);
+      const blobURL = await this._displayBlobURLForAsset(asset);
       this.blobURLCache.set(assetId, blobURL);
       this.reverseBlobCache.set(blobURL, assetId);
       return {
@@ -3909,7 +4362,7 @@ class AssetManager {
     // Try to load from memory
     const asset = await this.getAsset(assetId);
     if (asset?.blob && typeof asset.blob.arrayBuffer === 'function') {
-      const blobURL = await this.createBlobURL(asset.blob);
+      const blobURL = await this._displayBlobURLForAsset(asset);
       this.blobURLCache.set(assetId, blobURL);
       this.reverseBlobCache.set(blobURL, assetId);
       return {
@@ -4071,7 +4524,7 @@ class AssetManager {
     }
 
     // Use createBlobURL with fallback for blocked extensions
-    const blobURL = await this.createBlobURL(asset.blob);
+    const blobURL = await this._displayBlobURLForAsset(asset);
 
     return new Promise((resolve) => {
       const img = new Image();
@@ -4438,8 +4891,8 @@ class AssetManager {
       // Skip if already in memory (just not loaded to URL cache yet)
       const existingAsset = await this.getAsset(assetId);
       if (existingAsset?.blob) {
-        // Load it to URL cache (use createBlobURL with fallback)
-        const blobURL = await this.createBlobURL(existingAsset.blob);
+        // Load it to URL cache (subtitle-aware; see _displayBlobURLForAsset)
+        const blobURL = await this._displayBlobURLForAsset(existingAsset);
         this.blobURLCache.set(assetId, blobURL);
         this.reverseBlobCache.set(blobURL, assetId);
         this.missingAssets.delete(assetId);
@@ -4517,8 +4970,8 @@ class AssetManager {
 
         await this.putAsset(asset);
 
-        // Create blob URL and update cache (with fallback for blocked extensions)
-        const blobURL = await this.createBlobURL(blob);
+        // Create blob URL and update cache (subtitle-aware; see _displayBlobURLForAsset)
+        const blobURL = await this._displayBlobURLForAsset(asset);
         this.blobURLCache.set(assetId, blobURL);
         this.reverseBlobCache.set(blobURL, assetId);
 
@@ -4687,9 +5140,9 @@ class AssetManager {
         await this.putAsset(updatedAsset);
         await this._putToCache(assetId, blob);
 
-        // Create blob URL and cache it
+        // Create blob URL and cache it (subtitle-aware; see _displayBlobURLForAsset)
         try {
-          const blobUrl = URL.createObjectURL(blob);
+          const blobUrl = await this._displayBlobURLForAsset(updatedAsset);
           this.blobURLCache.set(assetId, blobUrl);
           this.reverseBlobCache.set(blobUrl, assetId);
         } catch (e) {
@@ -4799,7 +5252,7 @@ class AssetManager {
         // Load to cache
         const asset = await this.getAsset(assetId);
         if (asset && asset.blob) {
-          const blobURL = await this.createBlobURL(asset.blob);
+          const blobURL = await this._displayBlobURLForAsset(asset);
           this.blobURLCache.set(assetId, blobURL);
           this.reverseBlobCache.set(blobURL, assetId);
           this.missingAssets.delete(assetId);
@@ -4836,7 +5289,7 @@ class AssetManager {
             // Asset should now be in memory - load to URL cache
             const asset = await this.getAsset(assetId);
             if (asset && asset.blob) {
-              const blobURL = await this.createBlobURL(asset.blob);
+              const blobURL = await this._displayBlobURLForAsset(asset);
               this.blobURLCache.set(assetId, blobURL);
               this.reverseBlobCache.set(blobURL, assetId);
               this.missingAssets.delete(assetId);
@@ -4927,7 +5380,7 @@ class AssetManager {
     // blobs may have been evicted from blobCache to save memory.
     const allMetadata = this.getAllAssetsMetadata();
     for (const meta of allMetadata) {
-      if (!meta.uploaded) {
+      if (!meta.uploaded && !this.locallySavedAssetIds.has(meta.id)) {
         return true;
       }
     }
@@ -4942,11 +5395,23 @@ class AssetManager {
     const allMetadata = this.getAllAssetsMetadata();
     let count = 0;
     for (const meta of allMetadata) {
-      if (!meta.uploaded) {
+      if (!meta.uploaded && !this.locallySavedAssetIds.has(meta.id)) {
         count++;
       }
     }
     return count;
+  }
+
+  /**
+   * Record that every current asset was included in a completed local save.
+   * This does not claim that assets were uploaded to a server.
+   */
+  markAssetsSavedLocally() {
+    this.locallySavedAssetIds = new Set(
+      this.getAllAssetsMetadata()
+        .filter(meta => !meta.uploaded)
+        .map(meta => meta.id)
+    );
   }
 }
 
@@ -5060,6 +5525,89 @@ window.addMediaTypes = function(html) {
 };
 
 /**
+ * Browser twin of `src/shared/utils/srt-to-vtt.ts` `isWebVtt()`. AssetManager.js
+ * is a classic <script> (see yjs-loader.js) and cannot `import` from `src/`, so
+ * -- exactly like window.simplifyMediaElements / window.addMediaTypes -- the
+ * converter is hand-mirrored here. Keep the two in sync (issue #2034).
+ *
+ * Detect whether `content` is already valid WebVTT (has a `WEBVTT` header),
+ * tolerating a leading UTF-8 BOM.
+ * @param {string} content
+ * @returns {boolean}
+ */
+window.isWebVtt = function(content) {
+  if (!content) return false;
+  const BOM = '﻿';
+  const stripped = content.startsWith(BOM) ? content.slice(1) : content;
+  return /^WEBVTT(\s|$)/.test(stripped.trimStart());
+};
+
+/**
+ * Browser twin of `src/shared/utils/srt-to-vtt.ts` `convertSrtToVtt()`.
+ * Converts raw SRT subtitle text to WebVTT. Content that is already valid
+ * WebVTT is passed through unchanged (`converted: false`). Never throws --
+ * malformed, empty, or binary input yields an empty WebVTT document with
+ * `error` set. Native `<video><track>` only understands WebVTT (issue #2034).
+ * @param {string} content
+ * @returns {{vtt: string, converted: boolean, error?: string}}
+ */
+window.convertSrtToVtt = function(content) {
+  const BOM = '﻿';
+  const CUE_TIMESTAMP_RE = /^(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})(.*)$/;
+  const CUE_INDEX_RE = /^\d+$/;
+  try {
+    const raw = typeof content === 'string' ? content : '';
+    const withoutBom = raw.startsWith(BOM) ? raw.slice(1) : raw;
+
+    if (window.isWebVtt(withoutBom)) {
+      return { vtt: withoutBom, converted: false };
+    }
+
+    const normalized = withoutBom.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const blocks = normalized.split(/\n\s*\n/);
+    const cues = [];
+
+    for (const rawBlock of blocks) {
+      const lines = rawBlock.split('\n').map((line) => line.trim());
+
+      let timestampIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (CUE_TIMESTAMP_RE.test(lines[i])) {
+          timestampIndex = i;
+          break;
+        }
+      }
+      if (timestampIndex === -1) continue;
+
+      const match = lines[timestampIndex].match(CUE_TIMESTAMP_RE);
+      if (!match) continue;
+
+      const start = match[1].replace(',', '.');
+      const end = match[2].replace(',', '.');
+      const settings = match[3] ? match[3].trim() : '';
+      const timestampLine = settings ? `${start} --> ${end} ${settings}` : `${start} --> ${end}`;
+
+      const indexLine = timestampIndex > 0 && CUE_INDEX_RE.test(lines[0]) ? lines[0] : null;
+      const text = lines
+        .slice(timestampIndex + 1)
+        .join('\n')
+        .trim();
+
+      const cueParts = [indexLine, timestampLine, text].filter((part) => !!part);
+      cues.push(cueParts.join('\n'));
+    }
+
+    if (cues.length === 0) {
+      return { vtt: 'WEBVTT\n', converted: true, error: 'No subtitle cues could be parsed from the input' };
+    }
+
+    return { vtt: `WEBVTT\n\n${cues.join('\n\n')}\n`, converted: true };
+  } catch (e) {
+    return { vtt: 'WEBVTT\n', converted: true, error: e instanceof Error ? e.message : String(e) };
+  }
+};
+
+/**
  * Global helper to simplify MediaElement.js video structures to native HTML5 video.
  * Converts complex <video class="mediaelement"><source src="..."></video> structures
  * to simple <video src="..." controls> that browsers handle natively.
@@ -5119,6 +5667,14 @@ window.simplifyMediaElements = function(html) {
     newVideo.style.maxWidth = '100%';
     newVideo.style.height = 'auto';
 
+    // Preserve <track> children (subtitles/captions) -- dropping them here
+    // silently loses subtitles wherever this simplified markup is rendered
+    // (issue #2034). Keep this symmetric with the isomorphic twin in
+    // src/shared/utils/media-helpers.ts simplifyMediaElements().
+    video.querySelectorAll('track').forEach((track) => {
+      newVideo.appendChild(track.cloneNode(true));
+    });
+
     // Replace the old video with the new simple one
     video.parentNode.replaceChild(newVideo, video);
     modified++;
@@ -5149,6 +5705,11 @@ window.simplifyMediaElements = function(html) {
 
     if (type) newAudio.setAttribute('type', type);
     if (className) newAudio.className = className;
+
+    // Preserve <track> children (subtitles/captions), same as for video.
+    audio.querySelectorAll('track').forEach((track) => {
+      newAudio.appendChild(track.cloneNode(true));
+    });
 
     audio.parentNode.replaceChild(newAudio, audio);
     modified++;

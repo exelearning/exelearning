@@ -8,7 +8,10 @@
 import SSEClient from '../../rest/SSEClient.js';
 
 /**
- * @typedef {'pending' | 'validating' | 'valid' | 'broken'} LinkStatus
+ * @typedef {'pending' | 'validating' | 'valid' | 'broken' | 'unknown'} LinkStatus
+ *
+ * 'unknown' means the check was inconclusive (typically client-side validation,
+ * where cross-origin responses are opaque) and the link needs a manual review.
  */
 
 /**
@@ -30,6 +33,7 @@ import SSEClient from '../../rest/SSEClient.js';
  * @property {number} validated - Number of validated links
  * @property {number} valid - Number of valid links
  * @property {number} broken - Number of broken links
+ * @property {number} unknown - Number of links needing a manual review
  * @property {number} pending - Number of pending links
  */
 
@@ -226,6 +230,10 @@ export default class LinkValidationManager {
 
         const adapter = eXeLearning.app.api.getAdapter('linkValidation');
 
+        // The same URL can appear in several iDevices (one row each): check it
+        // once per run so every row agrees and each host is probed only once.
+        const resultsByUrl = new Map();
+
         for (const link of links) {
             // Check if validation was cancelled
             if (this.isCancelled) {
@@ -247,10 +255,15 @@ export default class LinkValidationManager {
             // Validate using adapter (or mark as valid if no adapter)
             let result = { status: 'valid', error: null };
             if (adapter?.validateLink) {
-                try {
-                    result = await adapter.validateLink(link.url);
-                } catch (err) {
-                    result = { status: 'broken', error: err.message };
+                if (resultsByUrl.has(link.url)) {
+                    result = resultsByUrl.get(link.url);
+                } else {
+                    try {
+                        result = await adapter.validateLink(link.url);
+                    } catch (err) {
+                        result = { status: 'broken', error: err.message };
+                    }
+                    resultsByUrl.set(link.url, result);
                 }
             }
 
@@ -275,6 +288,30 @@ export default class LinkValidationManager {
     }
 
     /**
+     * True when this flavor of eXeLearning can only run browser-side checks:
+     * no server validation stream and no Electron main-process checker.
+     * Browser security restrictions (CORS) then hide the status of external
+     * links, so none of them can be verified automatically.
+     *
+     * Static so UI outside a validation run (menu tooltips) can ask too.
+     *
+     * @returns {boolean}
+     */
+    static isBrowserLimited() {
+        const streamUrl =
+            typeof eXeLearning !== 'undefined'
+                ? (eXeLearning?.app?.api?.getLinkValidationStreamUrl?.() ?? null)
+                : null;
+        const electronApi = typeof window !== 'undefined' ? window.electronAPI : undefined;
+        return !streamUrl && typeof electronApi?.checkLink !== 'function';
+    }
+
+    /** Instance convenience for {@link LinkValidationManager.isBrowserLimited}. */
+    isBrowserLimited() {
+        return LinkValidationManager.isBrowserLimited();
+    }
+
+    /**
      * Cancel the validation process
      */
     cancel() {
@@ -293,6 +330,7 @@ export default class LinkValidationManager {
     getStats() {
         let valid = 0;
         let broken = 0;
+        let unknown = 0;
         let pending = 0;
 
         for (const link of this.links.values()) {
@@ -303,6 +341,9 @@ export default class LinkValidationManager {
                 case 'broken':
                     broken++;
                     break;
+                case 'unknown':
+                    unknown++;
+                    break;
                 case 'pending':
                 case 'validating':
                     pending++;
@@ -311,9 +352,9 @@ export default class LinkValidationManager {
         }
 
         const total = this.links.size;
-        const validated = valid + broken;
+        const validated = valid + broken + unknown;
 
-        return { total, validated, valid, broken, pending };
+        return { total, validated, valid, broken, unknown, pending };
     }
 
     /**
@@ -341,6 +382,15 @@ export default class LinkValidationManager {
      */
     getValidLinks() {
         return this.getAllLinks().filter((link) => link.status === 'valid');
+    }
+
+    /**
+     * Get only links whose check was inconclusive (need a manual review)
+     *
+     * @returns {Array<LinkState>}
+     */
+    getUnknownLinks() {
+        return this.getAllLinks().filter((link) => link.status === 'unknown');
     }
 
     /**

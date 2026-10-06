@@ -4,9 +4,30 @@ import {
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
 import { parseCssClassList } from './cssClassHelper.js';
+import EditionLifecycle, {
+    getActiveEditionLifecycle,
+    setActiveEditionLifecycle,
+} from './editionLifecycle.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
+
+export function parseIdeviceJsonProperties(value) {
+    if (value === undefined || value === null || value === '') {
+        return { value: {}, error: null };
+    }
+
+    if (typeof value !== 'string') {
+        return { value, error: null };
+    }
+
+    try {
+        return { value: JSON.parse(value), error: null };
+    } catch (error) {
+        return { value: {}, error };
+    }
+}
+
 /**
  * eXeLearning
  *
@@ -159,9 +180,19 @@ export default class IdeviceNode {
             let defaultValue =
                 this.default[param] != undefined ? this.default[param] : null;
             let value = data[param] ? data[param] : defaultValue;
-            this[param] = this.parseParams.includes(param)
-                ? JSON.parse(value)
-                : value;
+            if (this.parseParams.includes(param)) {
+                const parsed = parseIdeviceJsonProperties(value);
+                this[param] = parsed.value;
+                this.jsonPropertiesParseError = parsed.error;
+                this.malformedJsonPropertiesRaw = parsed.error ? value : null;
+                if (parsed.error) {
+                    Logger.warn(
+                        `[IdeviceNode] Ignoring malformed jsonProperties for ${data.odeIdeviceId || data.id || 'unknown component'}: ${parsed.error.message}`
+                    );
+                }
+            } else {
+                this[param] = value;
+            }
         }
         // Debug: Log htmlView to verify it's being set
         if (data.htmlView !== undefined) {
@@ -917,6 +948,19 @@ export default class IdeviceNode {
         });
     }
 
+    preventEditingMalformedJsonProperties() {
+        if (!this.jsonPropertiesParseError) return false;
+
+        eXeLearning.app.modals.alert.show({
+            title: _('iDevice error'),
+            body: _(
+                'This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.'
+            ),
+            contentId: 'error',
+        });
+        return true;
+    }
+
     /**
      *
      */
@@ -965,6 +1009,7 @@ export default class IdeviceNode {
             .addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (e.target.disabled) return;
+                if (this.preventEditingMalformedJsonProperties()) return;
                 // Check if locked by another user - don't allow editing
                 if (this.isLockedByOtherUser()) {
                     const lockInfo = this.getLockInfo();
@@ -1038,6 +1083,7 @@ export default class IdeviceNode {
         this.timeIdeviceEditing = new Date().getTime();
         this.ideviceBody.addEventListener('dblclick', (element) => {
             if (this.mode == 'export') {
+                if (this.preventEditingMalformedJsonProperties()) return;
                 // Check if locked by another user - don't allow editing
                 if (this.isLockedByOtherUser()) {
                     const lockInfo = this.getLockInfo();
@@ -1600,10 +1646,8 @@ export default class IdeviceNode {
     async loadEditionIdevice() {
         // Remove head scripts/styles elements
         this.clearFilesElements();
-        // Restart $exeDevice value
-        if (typeof $exeDevice !== 'undefined') {
-            $exeDevice = undefined;
-        }
+        // Dispose any edition still open before its global is replaced
+        this.destroyEditionInstance({ anyOpenEdition: true });
         // Load idevice edition files
         this.loadScriptsEdition();
         await this.loadStylesEdition();
@@ -1720,12 +1764,19 @@ export default class IdeviceNode {
     restartExeIdeviceValue() {
         // Check sync idevice
         if (this.isSync == true) {
+            // A synchronized reload keeps the open editor alive on purpose, so
+            // its instance and everything it owns must survive untouched.
             this.isSync = false;
-        } else {
-            if (typeof $exeDevice !== 'undefined') {
-                $exeDevice = undefined;
-            }
+            return;
         }
+        // $exeDevice is the edition object of the iDevice being edited locally.
+        // Rendering another iDevice in export mode (e.g. one just received from
+        // a collaborator) must not clear it, or the open editor saves the last
+        // saved data instead of its current content (#2427). This also covers
+        // an edition whose script loaded but has no lifecycle yet.
+        const editing = this.engine?.isIdeviceInEdition?.();
+        if (editing && editing !== this) return;
+        this.destroyEditionInstance();
     }
 
     /**
@@ -2125,6 +2176,8 @@ export default class IdeviceNode {
      * @returns {Array}
      */
     async apiSaveIdeviceJson(saveIdevice) {
+        if (this.preventEditingMalformedJsonProperties()) return false;
+
         let params = ['odeComponentsSyncId', 'jsonProperties'];
         if (saveIdevice && typeof $exeDevice !== 'undefined' && $exeDevice) {
             this.jsonProperties = $exeDevice.save();
@@ -2953,6 +3006,14 @@ export default class IdeviceNode {
      * @returns {Array}
      */
     getJsonProperties(json) {
+        if (
+            json &&
+            this.jsonPropertiesParseError &&
+            typeof this.malformedJsonPropertiesRaw === 'string'
+        ) {
+            return this.malformedJsonPropertiesRaw;
+        }
+
         let data = {};
         if (this.jsonProperties) {
             data = this.jsonProperties;
@@ -3089,6 +3150,8 @@ export default class IdeviceNode {
      */
     edition() {
         clearInterval(this.checkDeviceLoadInterval);
+        if (this.preventEditingMalformedJsonProperties()) return;
+
         // Stop any playing audio when entering edition mode
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice?.gamification?.media?.stopSound) {
             $exeDevices.iDevice.gamification.media.stopSound();
@@ -3157,9 +3220,7 @@ export default class IdeviceNode {
             // Release Yjs editing lock
             this.releaseYjsEditingLock();
 
-            if (typeof $exeDevice !== 'undefined') {
-                $exeDevice = undefined;
-            }
+            this.destroyEditionInstance();
         }
         // Remove content element
         this.ideviceContent.remove();
@@ -3268,6 +3329,17 @@ export default class IdeviceNode {
     initExeDeviceEdition() {
         // Remove tinymce active editors
         tinymce.remove();
+        // Give the edition an explicit lifecycle before it can register
+        // anything, so every resource it creates has a known owner.
+        $exeDevice.$lifecycle = setActiveEditionLifecycle(
+            new EditionLifecycle({
+                device: $exeDevice,
+                name: this.odeIdeviceTypeName || 'idevice',
+                formElement: this.ideviceBody,
+                ownerNode: this,
+                logger: Logger,
+            })
+        );
         // Init idevice edition script
         $exeDevice.init(
             this.ideviceBody,
@@ -3276,6 +3348,124 @@ export default class IdeviceNode {
         );
         // Init tinymce editors
         $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
+    }
+
+    /**
+     * Centralized teardown of an iDevice edition.
+     *
+     * Every path that closes, replaces or deletes an editor goes through here:
+     * saving, discarding, deleting, and opening a different iDevice. It is
+     * idempotent, so overlapping paths are safe.
+     *
+     * The order is what makes it correct. The lifecycle is disposed first,
+     * while the edition instance and its form are both still available, so the
+     * iDevice's own hook and its registered disposers can still reach what they
+     * own. TinyMCE editors are removed next, before their target elements are
+     * detached. The form is then unbound through `jQuery.cleanData`, which drops
+     * the event and data registry jQuery keeps for every node in the subtree —
+     * something neither native removal nor an `innerHTML` assignment does. Only
+     * once all of that has happened is the global `$exeDevice` released.
+     *
+     * Teardown is scoped by ownership. By default a node disposes only the
+     * edition it opened itself, because export paths run on nodes that do not
+     * own the open editor — a collaborative sync rendering a remote iDevice
+     * reaches `restartExeIdeviceValue()` while a different iDevice is being
+     * edited locally, and must not dismantle it. Only opening an editor passes
+     * `anyOpenEdition`, since whatever was still open is genuinely obsolete.
+     *
+     * @param {Object} [options]
+     * @param {Boolean} [options.anyOpenEdition] Dispose the open edition even
+     *        when another node owns it.
+     */
+    destroyEditionInstance(options = {}) {
+        // A partially initialized edition must not finish loading into an
+        // editor that is being torn down.
+        clearInterval(this.checkDeviceLoadInterval);
+        this.checkDeviceLoadInterval = null;
+
+        const openEdition = getActiveEditionLifecycle();
+        // The open edition is this node's when the lifecycle says so; a node
+        // never holds a reference of its own, so it cannot go stale.
+        const ownEdition = openEdition && openEdition.ownerNode === this ? openEdition : null;
+        const lifecycle = options.anyOpenEdition ? ownEdition || openEdition : ownEdition;
+
+        if (lifecycle) {
+            const formElement = lifecycle.formElement;
+            lifecycle.destroy();
+            this.removeEditionEditors(formElement);
+            this.clearEditionFormHandlers(formElement);
+
+            if (getActiveEditionLifecycle() === lifecycle) {
+                setActiveEditionLifecycle(null);
+            }
+        }
+
+        // Releasing the global belongs to whoever owns the edition. A node that
+        // owns none must leave another node's open editor alone: collaborative
+        // sync renders remote iDevices through the export path while a
+        // different iDevice is being edited locally, and clearing the global
+        // there would strand that editor with `$exeDevice` undefined.
+        // An edition whose script loaded but never reached
+        // `initExeDeviceEdition()` has no lifecycle either, so it is still
+        // released — nothing else would.
+        const foreignEditionOpen = openEdition !== null && openEdition !== lifecycle && openEdition.isActive();
+
+        // Released last, so nothing above ran against a cleared global.
+        if (!foreignEditionOpen && typeof $exeDevice !== 'undefined') {
+            $exeDevice = undefined;
+        }
+    }
+
+    /**
+     * Remove the TinyMCE editors that belong to an edition form.
+     *
+     * Editors must be removed while their target element is still in the
+     * document: TinyMCE 5 cannot detach the listeners and iframes it created
+     * once the target is gone.
+     *
+     * @param {Element} formElement
+     */
+    removeEditionEditors(formElement) {
+        if (typeof tinymce === 'undefined' || !Array.isArray(tinymce.editors)) return;
+        // Copy first: removing an editor mutates tinymce.editors in place.
+        const editors = tinymce.editors.slice();
+        editors.forEach((editor) => {
+            try {
+                const target = editor.getElement ? editor.getElement() : null;
+                const owned = !formElement || !target || formElement.contains(target);
+                if (owned) editor.remove();
+            } catch (error) {
+                Logger.warn('[IdeviceNode] Failed to remove a TinyMCE editor:', error);
+            }
+        });
+    }
+
+    /**
+     * Drop the jQuery event and data registry held for an edition form and
+     * everything inside it.
+     *
+     * `jQuery.cleanData` is what actually unbinds those handlers; jQuery only
+     * runs it when jQuery itself removes the nodes, so the native removal and
+     * `innerHTML` assignment used elsewhere in this class would leave them
+     * bound. Calling it directly unbinds the form in place, which lets the
+     * caller keep showing the current content until it has something to replace
+     * it with — emptying the form here would blank the iDevice for as long as
+     * the export view takes to load.
+     *
+     * @param {Element} formElement
+     */
+    clearEditionFormHandlers(formElement) {
+        const jq = window.jQuery;
+        if (!formElement || typeof jq !== 'function') return;
+        try {
+            if (typeof jq.cleanData === 'function') {
+                jq.cleanData(jq(formElement).find('*').addBack());
+            } else {
+                jq(formElement).empty();
+            }
+        } catch (error) {
+            Logger.warn('[IdeviceNode] Failed to clear edition form handlers:', error);
+        }
     }
 
     /**
@@ -3515,18 +3705,23 @@ export default class IdeviceNode {
                 let isImage = e.classList.contains('exe-image-picker');
                 let css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
 
-                // Determine accept filter based on class and id
-                let accept = null;
-                if (isImage) {
-                    accept = 'image';
-                } else if (id.toLowerCase().includes('audio')) {
-                    accept = 'audio';
-                } else if (id.toLowerCase().includes('video')) {
-                    accept = 'video';
-                } else if (id.toLowerCase().includes('3d') || id.toLowerCase().includes('model')) {
-                    accept = '3d';
+                // Determine accept filter. An explicit data-filemanager-accept
+                // on the input wins, so an iDevice can opt into a specific
+                // filter (e.g. 3Dmol -> 'molecule') without relying on the id
+                // heuristic below.
+                let accept = e.dataset.filemanagerAccept || null;
+                if (!accept) {
+                    if (isImage) {
+                        accept = 'image';
+                    } else if (id.toLowerCase().includes('audio')) {
+                        accept = 'audio';
+                    } else if (id.toLowerCase().includes('video')) {
+                        accept = 'video';
+                    } else if (id.toLowerCase().includes('3d') || id.toLowerCase().includes('model')) {
+                        accept = '3d';
+                    }
+                    // If generic exe-file-picker, accept = null (show all files)
                 }
-                // If generic exe-file-picker, accept = null (show all files)
 
                 // Input button element
                 let buttonElement = document.createElement('input');

@@ -24,7 +24,23 @@
  */
 
 // Import ElpxImporter
-import { ElpxImporter } from '../ElpxImporter';
+import { ElpxImporter, inspectZipArchive } from '../ElpxImporter';
+
+// Import runtime policy: single source of truth for decompression limits and
+// the desktop-compatibility check. See #2193.
+import {
+    CONSERVATIVE_ZIP_LIMITS,
+    DESKTOP_ZIP_LIMITS,
+    DESKTOP_CONFIRM_ENTRY_BYTES,
+    getZipLimitsForRuntime,
+    validateZipLimits,
+    assertInspectionWithinLimits,
+    getDesktopExportCompatibility,
+    formatBytes,
+    ZipLimitError,
+    ImportCancelledError,
+} from '../importPolicy';
+import type { ZipDecompressionLimits } from '../importPolicy';
 
 // Import types and interfaces
 import type { AssetHandler, ElpxImportOptions, ElpxImportResult, ImportProgress, Logger } from '../interfaces';
@@ -110,6 +126,46 @@ function getBrowserLogger(): Logger {
 }
 
 /**
+ * Details passed to an {@link ImportFromFileOptions.onConfirmLargeEntry}
+ * callback when an archive contains an entry in the controlled large range.
+ */
+export interface LargeEntryConfirmInfo {
+    /** Name of the largest entry (the one triggering confirmation). */
+    entryName: string;
+    /** Declared uncompressed size of that entry, in bytes. */
+    entryBytes: number;
+    /** Total declared uncompressed size of the archive, in bytes. */
+    totalBytes: number;
+    /** Number of entries in the archive. */
+    entryCount: number;
+    /** Threshold above which confirmation is required, in bytes. */
+    confirmThreshold: number;
+    /** Hard per-entry limit for this runtime, in bytes. */
+    hardLimitBytes: number;
+}
+
+/** Options accepted by {@link BrowserElpxImporter.importFromFile}. */
+export type ImportFromFileOptions = ElpxImportOptions & {
+    clearIndexedDB?: boolean;
+    /**
+     * Explicit decompression limits for the current runtime. Injected by the
+     * caller (desktop vs hosted); the adapter never detects the runtime itself.
+     * Defaults to the conservative limits when omitted.
+     */
+    zipLimits?: Partial<ZipDecompressionLimits>;
+    /** Per-entry size above which confirmation is requested. Defaults to the
+     * resolved per-entry hard limit (i.e. no confirmation window). */
+    confirmEntryThreshold?: number;
+    /** Confirmation callback for a controlled large import (desktop only).
+     * Returning false cancels the import before any mutation. */
+    onConfirmLargeEntry?: (info: LargeEntryConfirmInfo) => Promise<boolean> | boolean;
+    /** Hook run once the preflight gate passes but before inflation/mutation
+     * (e.g. clearing the previous project's assets). Never runs on rejection or
+     * cancellation, guaranteeing the current project is left unchanged. */
+    beforeImport?: () => Promise<void> | void;
+};
+
+/**
  * Browser-compatible ElpxImporter adapter
  *
  * This class provides the same API as the old browser ElpxImporter.js
@@ -118,7 +174,6 @@ function getBrowserLogger(): Logger {
 class BrowserElpxImporter {
     private manager: YjsDocumentManagerLike;
     private assetManager: AssetManagerLike | null;
-    private importer: ElpxImporter | null = null;
     private logger: Logger;
 
     /**
@@ -132,34 +187,74 @@ class BrowserElpxImporter {
     }
 
     /**
-     * Initialize the underlying ElpxImporter with Y.Doc
+     * Build the underlying core ElpxImporter with the resolved limits.
+     *
+     * A fresh instance is created for every import so a previously-used runtime
+     * policy can never be retained (a cached importer bakes its limits in at
+     * construction). Imports happen once per file open, so this has no
+     * meaningful cost.
      */
-    private getImporter(): ElpxImporter {
-        if (!this.importer) {
-            const ydoc = this.manager.getDoc() as Parameters<typeof ElpxImporter>[0];
-            const assetHandler = this.assetManager ? createBrowserAssetHandler(this.assetManager) : null;
-            this.importer = new ElpxImporter(ydoc, assetHandler, this.logger);
-        }
-        return this.importer;
+    private buildImporter(limits: ZipDecompressionLimits): ElpxImporter {
+        const ydoc = this.manager.getDoc() as Parameters<typeof ElpxImporter>[0];
+        const assetHandler = this.assetManager ? createBrowserAssetHandler(this.assetManager) : null;
+        return new ElpxImporter(ydoc, assetHandler, this.logger, limits);
     }
 
     /**
      * Import an .elpx file (browser File API)
      * Compatible with the old ElpxImporter.importFromFile() API
      *
+     * The archive is inspected (central directory only, no inflation) and
+     * validated against the resolved limits BEFORE anything is decompressed or
+     * any project state is mutated. When the largest entry is in the controlled
+     * range (above `confirmEntryThreshold` but within the hard limit) and a
+     * confirmation callback is supplied, the user is asked before proceeding.
+     *
      * @param file - The .elpx file to import
-     * @param options - Import options
+     * @param options - Import options (see {@link ImportFromFileOptions})
      * @returns Import statistics
      */
-    async importFromFile(
-        file: File,
-        options: ElpxImportOptions & { clearIndexedDB?: boolean } = {},
-    ): Promise<ElpxImportResult> {
+    async importFromFile(file: File, options: ImportFromFileOptions = {}): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null, onProgress = null, clearIndexedDB = false } = options;
 
         this.logger.log(`[BrowserElpxImporter] Importing ${file.name}...`);
 
-        // Optional: Clear IndexedDB (for debugging)
+        // Read file as ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = new Uint8Array(arrayBuffer);
+
+        // Resolve and validate the runtime limits at this boundary.
+        const label = 'ELP/ELPX archive';
+        const limits = validateZipLimits({ ...CONSERVATIVE_ZIP_LIMITS, ...(options.zipLimits ?? {}) });
+
+        // Preflight: read the central directory (no inflation) and reject an
+        // over-limit archive with a structured error before any mutation.
+        const inspection = inspectZipArchive(buffer, label);
+        assertInspectionWithinLimits(inspection, limits, label);
+
+        // Controlled large import: confirm before proceeding (desktop only —
+        // hosted callers pass no callback and conservative limits already
+        // rejected anything oversized above).
+        const confirmThreshold = options.confirmEntryThreshold ?? limits.maxEntryBytes;
+        if (
+            inspection.largestEntry &&
+            inspection.largestEntry.size > confirmThreshold &&
+            typeof options.onConfirmLargeEntry === 'function'
+        ) {
+            const confirmed = await options.onConfirmLargeEntry({
+                entryName: inspection.largestEntry.name,
+                entryBytes: inspection.largestEntry.size,
+                totalBytes: inspection.totalBytes,
+                entryCount: inspection.entryCount,
+                confirmThreshold,
+                hardLimitBytes: limits.maxEntryBytes,
+            });
+            if (!confirmed) {
+                throw new ImportCancelledError('Large ELPX import cancelled by user');
+            }
+        }
+
+        // Optional: Clear IndexedDB (for debugging). Only after the gate passes.
         if (clearIndexedDB && this.assetManager && 'projectId' in this.manager) {
             const dbName = `exelearning-project-${this.manager.projectId}`;
             this.logger.log(`[BrowserElpxImporter] Clearing IndexedDB: ${dbName}`);
@@ -175,12 +270,15 @@ class BrowserElpxImporter {
             }
         }
 
-        // Read file as ArrayBuffer
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = new Uint8Array(arrayBuffer);
+        // Post-gate hook (e.g. clear previous project assets). Runs only when the
+        // import is actually going to proceed, so a cancelled/rejected import
+        // leaves the current project untouched.
+        if (typeof options.beforeImport === 'function') {
+            await options.beforeImport();
+        }
 
-        // Get the importer and import
-        const importer = this.getImporter();
+        // Build a fresh importer with the resolved limits and import.
+        const importer = this.buildImporter(limits);
         return importer.importFromBuffer(buffer, { clearExisting, parentId, onProgress });
     }
 }
@@ -198,6 +296,27 @@ function createBrowserImporter(
 ): BrowserElpxImporter {
     return new BrowserElpxImporter(documentManager, assetManager);
 }
+
+/**
+ * Import-policy surface exposed to the frontend (as `window.ExeImportPolicy`
+ * and `window.SharedImporters.importPolicy`). Bundles the shared limits, the
+ * runtime selector, the preflight inspector, the desktop export-compatibility
+ * check, the structured error / cancellation types, and the byte formatter so
+ * the frontend uses ONE source of truth. See #2193.
+ */
+const importPolicyNamespace = {
+    CONSERVATIVE_ZIP_LIMITS,
+    DESKTOP_ZIP_LIMITS,
+    DESKTOP_CONFIRM_ENTRY_BYTES,
+    getZipLimitsForRuntime,
+    validateZipLimits,
+    inspectZipArchive,
+    assertInspectionWithinLimits,
+    getDesktopExportCompatibility,
+    formatBytes,
+    ZipLimitError,
+    ImportCancelledError,
+};
 
 // ============================================================================
 // Window Exposure
@@ -228,6 +347,11 @@ if (typeof window !== 'undefined') {
     (window as unknown as { createBrowserImporter: typeof createBrowserImporter }).createBrowserImporter =
         createBrowserImporter;
 
+    // Expose the import policy so the frontend (YjsProjectBridge) can select the
+    // runtime limits, run the preflight, and format sizes from ONE source of
+    // truth shared with the core importer and the ELPX export warning (#2193).
+    (window as unknown as { ExeImportPolicy: typeof importPolicyNamespace }).ExeImportPolicy = importPolicyNamespace;
+
     // Also expose as a namespace for organization
     const windowExports = {
         // ElpxImporter
@@ -236,6 +360,9 @@ if (typeof window !== 'undefined') {
         BrowserAssetHandler,
         createBrowserImporter,
         createBrowserAssetHandler,
+
+        // Import policy (single source of truth for limits + export warning)
+        importPolicy: importPolicyNamespace,
 
         // Registry
         LegacyHandlerRegistry,
@@ -278,6 +405,23 @@ export type { AssetHandler, ElpxImportOptions, ElpxImportResult, ImportProgress,
 
 // Export ElpxImporter classes
 export { ElpxImporter, BrowserAssetHandler, createBrowserAssetHandler };
+
+// Export the browser import adapter, its factory, and its option types so they
+// can be unit-tested and referenced by TypeScript consumers.
+export { BrowserElpxImporter, createBrowserImporter };
+export type { LargeEntryConfirmInfo, ImportFromFileOptions };
+
+// Re-export the import policy for TypeScript consumers of the browser barrel.
+export {
+    CONSERVATIVE_ZIP_LIMITS,
+    DESKTOP_ZIP_LIMITS,
+    DESKTOP_CONFIRM_ENTRY_BYTES,
+    getZipLimitsForRuntime,
+    getDesktopExportCompatibility,
+    formatBytes,
+    ZipLimitError,
+    ImportCancelledError,
+};
 
 // Export main registry and utilities
 export { LegacyHandlerRegistry, LEGACY_TYPE_MAP, getLegacyTypeName };

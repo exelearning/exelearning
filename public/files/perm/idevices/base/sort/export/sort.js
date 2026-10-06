@@ -67,6 +67,7 @@ var $eXeOrdena = {
             const ordena = $eXeOrdena.createInterfaceOrdena(i);
 
             dl.before(ordena).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ordenaGameMinimize-' + i).hide();
             $('#ordenaGameContainer-' + i).hide();
@@ -94,7 +95,13 @@ var $eXeOrdena = {
                 (mOption.startAutomatically ||
                     (mOption.type == 0 && mOption.time == 0))
             ) {
-                $('#ordenaStartGame-' + i).click();
+                // Opened by the page, not by the learner. Going through the
+                // button's click handler would publish the opening zero over
+                // the mark the LMS is holding from a previous visit, and
+                // nobody has touched the activity yet. The handler's other
+                // job, hiding the button, is done here instead.
+                $eXeOrdena.startGame(i);
+                $('#ordenaStartGame-' + i).hide();
             }
 
             $('#ordenaMainContainer-' + i).show();
@@ -755,6 +762,22 @@ var $eXeOrdena = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors, the score and gameOver, but nothing
+     * told the LMS, so the menu kept the previous attempt's grade and status
+     * until the learner finished the new one.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeOrdena.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeOrdena.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeOrdena.options[instance];
 
@@ -1018,7 +1041,7 @@ var $eXeOrdena = {
                 $(`#ordenaGameMinimize-${instance}`).hide();
                 if (!mOptions.gameStarted && !mOptions.gameOver) {
                     $eXeOrdena.refreshCards(instance);
-                    $eXeOrdena.startGame(instance);
+                    $eXeOrdena.startGame(instance, true);
                     $(`#ordenaStartGame-${instance}`).hide();
                 }
             }
@@ -1085,10 +1108,6 @@ var $eXeOrdena = {
 
         $(`#ordenaPNumber-${instance}`).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeOrdena beforeunload.eXeOrdena', function () {
-            $exeDevices.iDevice.gamification.scorm.endScorm($eXeOrdena.mScorm);
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1103,9 +1122,11 @@ var $eXeOrdena = {
 
         $(`#ordenaImage-${instance}`).hide();
 
+        // The learner pressing start, or enterCodeAccess() standing in for them
+        // once a valid code is accepted. Both open an attempt, so both publish.
         $(`#ordenaStartGame-${instance}`).on('click', function (e) {
             e.preventDefault();
-            $eXeOrdena.startGame(instance);
+            $eXeOrdena.startGame(instance, true);
             $(this).hide();
         });
 
@@ -1116,7 +1137,7 @@ var $eXeOrdena = {
                     mOptions.phrasesGame
                 );
             $eXeOrdena.showPhrase(0, instance);
-            $eXeOrdena.startGame(instance);
+            $eXeOrdena.startGame(instance, true);
             $(`#ordenaCubierta-${instance}`).hide();
             $(`#ordenaMultimedia-${instance}`)
                 .find('.ODNP-NewCard')
@@ -1164,10 +1185,7 @@ var $eXeOrdena = {
                         ? $eXeOrdena.checkPhraseColumns(instance)
                         : $eXeOrdena.checkPhrase(instance);
             }
-            const valids =
-                mOptions.type > 0 && mOptions.orderedColumns
-                    ? response.valids.length - mOptions.gameColumns
-                    : response.valids.length;
+            const valids = $eXeOrdena.getCorrectPositionsCount(response);
             let msg = `${$eXeOrdena.updateScore(response.correct, instance)} ${mOptions.msgs.msgPositions}: ${valids}. `;
             let color = $eXeOrdena.borderColors.red;
             if (response.correct) {
@@ -1247,8 +1265,6 @@ var $eXeOrdena = {
         $(`#ordenaStartGameEnd-${instance}`).off('click');
         $(`#ordenaClueButton-${instance}`).off('click');
         $(`#ordenaValidatePhrase-${instance}`).off('click');
-
-        $(window).off('unload.eXeOrdena beforeunload.eXeOrdena');
 
         $eXeOrdena.removeTouchDragAndDrop(instance);
         $eXeOrdena.removeTouchPhraseDragAndDrop(instance);
@@ -1438,6 +1454,15 @@ var $eXeOrdena = {
     nextPhrase: function (instance) {
         const mOptions = $eXeOrdena.options[instance];
         $exeDevices.iDevice.gamification.media.stopSound();
+        // Advancing past the last phrase finishes the activity, so raise the
+        // flag here and not only in the gameOver() that runs after the
+        // timeShowSolution delay. The validate handler reports right after
+        // this call returns: without the flag that report carries the final
+        // score with completed: false, and a learner who leaves during the
+        // delay is left at 100% on a page the LMS still calls incomplete.
+        if (mOptions.active >= mOptions.phrasesGame.length - 1) {
+            mOptions.gameOver = true;
+        }
         setTimeout(() => {
             const $histsGame = $(`#ordenaHistsGame-${instance}`);
             $histsGame.html('');
@@ -1859,7 +1884,7 @@ var $eXeOrdena = {
         $eXeOrdena.setSize(instance);
     },
 
-    startGame: function (instance) {
+    startGame: function (instance, reportScorm = false) {
         const mOptions = $eXeOrdena.options[instance];
 
         if (mOptions.gameStarted) return;
@@ -1897,14 +1922,22 @@ var $eXeOrdena = {
         }
 
         if (mOptions.time > 0) {
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#ordenaMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'ordenaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (mOptions.gameStarted) {
@@ -1916,6 +1949,7 @@ var $eXeOrdena = {
                 }
                 $eXeOrdena.uptateTime(mOptions.counter, instance);
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeOrdena.uptateTime(mOptions.time * 60, instance);
         }
         if (mOptions.type === 1) {
@@ -1937,6 +1971,13 @@ var $eXeOrdena = {
         }
 
         mOptions.gameStarted = true;
+        // Only a learner action opens a new scored attempt. loadGame() also
+        // starts untimed phrase boards while the page loads, and that one must
+        // leave the LMS mark alone. After gameStarted, never before:
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        if (reportScorm) {
+            $eXeOrdena.saveScormScore(instance);
+        }
     },
 
     uptateTime: function (tiempo, instance) {
@@ -2151,6 +2192,21 @@ var $eXeOrdena = {
             : mOptions.msgs.msgFailures;
         sMessages = sMessages.split('|');
         return sMessages[Math.floor(Math.random() * sMessages.length)];
+    },
+
+    /**
+     * How many positions the learner got right, for the feedback message.
+     *
+     * `response.valids` already holds exactly those positions. The count used
+     * to subtract `gameColumns` from it in the ordered-columns mode, which
+     * undercounted the learner's own result — with three columns, three
+     * correct positions were reported as none.
+     *
+     * @param {Object} response The result of checkPhrase / checkPhraseColumns.
+     * @returns {number} The number of correct positions.
+     */
+    getCorrectPositionsCount: function (response) {
+        return Array.isArray(response?.valids) ? response.valids.length : 0;
     },
 
     updateScore: function (correctAnswer, instance) {

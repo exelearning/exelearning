@@ -7,6 +7,8 @@
 
 import {
     SW_VERSION,
+    SW_APP_VERSION,
+    resolveServiceWorkerVersion,
     MIME_TYPES,
     EXTERNAL_LINK_HANDLER_SCRIPT,
     PREVIEW_REFRESH_SCRIPT,
@@ -21,6 +23,8 @@ import {
     createNotFoundResponse,
     createSuccessResponse,
     createPdfViewerResponse,
+    sniffMimeFromBytes,
+    resolveServedMime,
 } from './preview-sw.js';
 
 describe('Preview Service Worker', () => {
@@ -36,7 +40,21 @@ describe('Preview Service Worker', () => {
 
     describe('Constants', () => {
         it('should have SW_VERSION defined', () => {
-            expect(SW_VERSION).toBe('1.0.0');
+            expect(SW_VERSION).toBe('1.2.0');
+        });
+
+        it('should report the app version as unversioned when no version query is present', () => {
+            // The test environment loads the script without ?v=, like a build that does
+            // not expose eXeLearning.version.
+            expect(SW_APP_VERSION).toBe('unversioned');
+        });
+
+        it('should derive the app version from the registration URL query', () => {
+            expect(resolveServiceWorkerVersion('?v=4.0.5')).toBe('4.0.5');
+            expect(resolveServiceWorkerVersion('?x=1&v=v4.0.5-em')).toBe('v4.0.5-em');
+            expect(resolveServiceWorkerVersion('')).toBe('unversioned');
+            expect(resolveServiceWorkerVersion('?v=')).toBe('unversioned');
+            expect(resolveServiceWorkerVersion(undefined)).toBe('unversioned');
         });
 
         it('should have MIME_TYPES with common file types', () => {
@@ -131,8 +149,8 @@ describe('Preview Service Worker', () => {
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain('iframe[src$=".pdf"]');
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain('[data-exe-pdf-src]');
             // Should load PDF.js
-            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.min.mjs');
-            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.worker.min.mjs');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.min.js');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.worker.min.js');
             // Should render to canvas
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain("createElement('canvas')");
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain("getContext('2d')");
@@ -206,6 +224,50 @@ describe('Preview Service Worker', () => {
             expect(getMimeType('archive.zip')).toBe('application/zip');
             expect(getMimeType('animation.swf')).toBe('application/x-shockwave-flash');
             expect(getMimeType('schema.dtd')).toBe('application/xml-dtd');
+        });
+    });
+
+    describe('sniffMimeFromBytes', () => {
+        const ascii = (s) => Array.from(s, (c) => c.charCodeAt(0));
+        const bytes = (vals, len) => {
+            const a = new Uint8Array(len ?? vals.length);
+            a.set(vals);
+            return a;
+        };
+
+        it('detects PDF from the %PDF- signature', () => {
+            expect(sniffMimeFromBytes(bytes(ascii('%PDF-1.4'), 16))).toBe('application/pdf');
+        });
+
+        it('detects common image signatures', () => {
+            expect(sniffMimeFromBytes(bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 16))).toBe('image/png');
+            expect(sniffMimeFromBytes(bytes([0xff, 0xd8, 0xff, 0xe0], 16))).toBe('image/jpeg');
+        });
+
+        it('returns null for unrecognized or empty input', () => {
+            expect(sniffMimeFromBytes(bytes([0x01, 0x02, 0x03, 0x04], 16))).toBeNull();
+            expect(sniffMimeFromBytes(new Uint8Array(0))).toBeNull();
+            expect(sniffMimeFromBytes(null)).toBeNull();
+        });
+    });
+
+    describe('resolveServedMime', () => {
+        const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]);
+
+        it('trusts a known extension and ignores the body', () => {
+            // .png extension wins even if the bytes look like a PDF.
+            expect(resolveServedMime('photo.png', pdfBytes)).toBe('image/png');
+            expect(resolveServedMime('doc.pdf', pdfBytes)).toBe('application/pdf');
+        });
+
+        it('sniffs the body when the extension is unknown/missing (octet-stream)', () => {
+            expect(resolveServedMime('content/resources/asset-e9e79be2-7b98-3e8c', pdfBytes)).toBe('application/pdf');
+            expect(resolveServedMime('mystery.xyz', pdfBytes)).toBe('application/pdf');
+        });
+
+        it('falls back to octet-stream when the body is unrecognized', () => {
+            const junk = new Uint8Array([0x01, 0x02, 0x03, 0x04]);
+            expect(resolveServedMime('content/resources/asset-abc', junk)).toBe('application/octet-stream');
         });
     });
 
@@ -527,8 +589,8 @@ describe('Preview Service Worker', () => {
         it('should contain PDF.js import with basePath', async () => {
             const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
             const text = await response.text();
-            expect(text).toContain('import("/libs/pdfjs/pdf.min.mjs")');
-            expect(text).toContain('workerSrc="/libs/pdfjs/pdf.worker.min.mjs"');
+            expect(text).toContain('import("/libs/pdfjs/pdf.min.js")');
+            expect(text).toContain('workerSrc="/libs/pdfjs/pdf.worker.min.js"');
         });
 
         it('should use window.location.href as PDF source', async () => {
@@ -605,8 +667,8 @@ describe('Preview Service Worker', () => {
         it('should use basePath for PDF.js library paths', async () => {
             const response = createPdfViewerResponse('doc.pdf', '/app/viewer/doc.pdf', '/app/');
             const text = await response.text();
-            expect(text).toContain('import("/app/libs/pdfjs/pdf.min.mjs")');
-            expect(text).toContain('workerSrc="/app/libs/pdfjs/pdf.worker.min.mjs"');
+            expect(text).toContain('import("/app/libs/pdfjs/pdf.min.js")');
+            expect(text).toContain('workerSrc="/app/libs/pdfjs/pdf.worker.min.js"');
         });
 
         it('should set Cache-Control and X-Served-By headers', async () => {
@@ -624,7 +686,7 @@ describe('Preview Service Worker', () => {
         it('should default basePath to "/" when not provided', async () => {
             const response = createPdfViewerResponse('doc.pdf', '/viewer/doc.pdf');
             const text = await response.text();
-            expect(text).toContain('import("/libs/pdfjs/pdf.min.mjs")');
+            expect(text).toContain('import("/libs/pdfjs/pdf.min.js")');
         });
     });
 

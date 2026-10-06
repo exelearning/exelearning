@@ -1,24 +1,21 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-Italic.woff2) format("woff2"),
-        url(fonts/Nunito-Italic.woff) format("woff");
+    src: url(fonts/Nunito-Italic.woff2) format("woff2");
     font-style: italic;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-Regular.woff2) format("woff2"),
-        url(fonts/Nunito-Regular.woff) format("woff");
+    src: url(fonts/Nunito-Regular.woff2) format("woff2");
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-BoldItalic.woff2) format("woff2"),
-        url(fonts/Nunito-BoldItalic.woff) format("woff");
+    src: url(fonts/Nunito-BoldItalic.woff2) format("woff2");
     font-weight: bold;
     font-style: italic;
     font-display: swap;
@@ -26,8 +23,7 @@
 
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-Bold.woff2) format("woff2"),
-        url(fonts/Nunito-Bold.woff) format("woff");
+    src: url(fonts/Nunito-Bold.woff2) format("woff2");
     font-weight: bold;
     font-style: normal;
     font-display: swap;
@@ -279,10 +275,20 @@ body#tinymce {
     border-bottom: 1px solid #e4e4e4;
 }
 
-.exe-content .box-head .box-title {
+.exe-content .box-head .box-title,
+.exe-content .box-head .box-icon {
     color: #002702;
     font-size: 1.65rem !important;
     font-weight: 700;
+}
+
+/* General icons (Material Symbols) */
+.exe-content {
+    --exe-icon-color: #1a7d1e;
+}
+
+.exe-content .box-head .box-icon {
+    color: var(--exe-icon-color);
 }
 
 /* Teacher mode visual indicator */
@@ -362,7 +368,6 @@ body.exe-export.exe-epub .exe-content {
 
 /* siteNav */
 #siteNav {
-    float: left;
     padding: 100px 16px 48px 16px;
     background-color: #4caf50;
     height: calc(100vh - 100px);
@@ -673,6 +678,26 @@ body.siteNav-off button#siteNavToggler .sr-av {
     height: auto;
 }
 
+/* General icons (Material Symbols) */
+.exe-export .box-icon .exe-material-icon {
+    display: block;
+    float: left;
+    margin-right: 10px;
+    width: 40px;
+    height: 40px;
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-material-icon-url);
+    mask-image: var(--exe-material-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons */
+    transform: scale(1.2);
+}
+
 .exe-export .box-title {
     padding-top: 5px;
 }
@@ -817,8 +842,8 @@ body.siteNav-off button#siteNavToggler .sr-av {
 }
 
 /* Search bar */
-body.siteNav-off.exe-search-on button#searchBarTogger,
-body.exe-search-on button#searchBarTogger {
+body.siteNav-off.exe-search-on button#searchBarToggler,
+body.exe-search-on button#searchBarToggler {
     display: inline-block;
 }
 #exe-client-search-form p {
@@ -832,7 +857,7 @@ body.exe-search-on button#searchBarTogger {
     gap: 6px;
 }
 
-button#searchBarTogger {
+button#searchBarToggler {
     right: auto;
     left: 260px;
     top: 136px;
@@ -841,7 +866,7 @@ button#searchBarTogger {
     height: 48px;
     display: none;
 }
-body.siteNav-off button#searchBarTogger {
+body.siteNav-off button#searchBarToggler {
     top: 220px;
     left: 0px;
     padding-left: 50px;
@@ -1041,7 +1066,6 @@ body.siteNav-off button#searchBarTogger {
     }
 
     #siteNav {
-        float: none;
         border-right: 0;
         width: 100%;
         height: auto;
@@ -1120,8 +1144,8 @@ body.siteNav-off button#searchBarTogger {
         right: 100px;
         height: 30px;
     }
-    body.siteNav-off button#searchBarTogger,
-    body button#searchBarTogger {
+    body.siteNav-off button#searchBarToggler,
+    body button#searchBarToggler {
         left: auto;
         right: 20px;
         top: 120px;
@@ -1207,8 +1231,8 @@ body.siteNav-off button#searchBarTogger {
         width: 32px;
         height: 32px;
     }
-    body.siteNav-off button#searchBarTogger,
-    body button#searchBarTogger {
+    body.siteNav-off button#searchBarToggler,
+    body button#searchBarToggler {
         height: 60px;
     }
 

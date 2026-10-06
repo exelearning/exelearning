@@ -177,6 +177,7 @@ describe('Admin Upload Validator', () => {
             expect(SUPPORTED_LOCALES).toContain('es');
             expect(SUPPORTED_LOCALES).toContain('fr');
             expect(SUPPORTED_LOCALES).toContain('de');
+            expect(SUPPORTED_LOCALES).toContain('ro');
         });
 
         test('BASE_THEME_NAMES should include default themes', () => {

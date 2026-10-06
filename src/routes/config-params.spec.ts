@@ -60,6 +60,65 @@ describe('buildConfigParams', () => {
         });
     });
 
+    describe('pp_passScore project property', () => {
+        const passScore = () =>
+            buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES })
+                .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties.pp_passScore;
+
+        it('is a numeric field with a 0-10 one-decimal domain', () => {
+            expect(passScore()).toBeDefined();
+            expect(passScore().type).toBe('number');
+            expect(passScore().min).toBe(0);
+            expect(passScore().max).toBe(10);
+            expect(passScore().step).toBe(0.1);
+        });
+
+        it('defaults to 5, as a number the form can feed straight to the input', () => {
+            expect(passScore().value).toBe(5);
+        });
+
+        it('lives in the export options group', () => {
+            expect(Object.keys(passScore().groups)).toEqual(['export']);
+        });
+
+        it('carries the translation prefix on its user-facing strings', () => {
+            const T = 'TRANSLATABLE_TEXT:';
+            const prefixed = buildConfigParams({ TRANS_PREFIX: T, LICENSES, PACKAGE_LOCALES, LOCALES })
+                .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties.pp_passScore;
+
+            expect(prefixed.title).toBe(`${T}Minimum score to pass`);
+            expect(prefixed.help.startsWith(T)).toBe(true);
+        });
+    });
+
+    describe('pp_passScoreEveryActivity project property', () => {
+        const properties = () =>
+            buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES })
+                .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties;
+        const everyActivity = () => properties().pp_passScoreEveryActivity;
+
+        it('is a checkbox, unchecked by default so pages keep the weighted mean', () => {
+            expect(everyActivity()).toBeDefined();
+            expect(everyActivity().type).toBe('checkbox');
+            expect(everyActivity().value).toBe('false');
+        });
+
+        it('sits right after the minimum score, in the export options group', () => {
+            const keys = Object.keys(properties());
+            expect(keys.indexOf('pp_passScoreEveryActivity')).toBe(keys.indexOf('pp_passScore') + 1);
+            expect(Object.keys(everyActivity().groups)).toEqual(['export']);
+        });
+
+        it('carries the translation prefix on its user-facing strings', () => {
+            const T = 'TRANSLATABLE_TEXT:';
+            const prefixed = buildConfigParams({ TRANS_PREFIX: T, LICENSES, PACKAGE_LOCALES, LOCALES })
+                .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties.pp_passScoreEveryActivity;
+
+            expect(prefixed.title).toBe(`${T}Each SCORM activity must reach its minimum score`);
+            expect(prefixed.help.startsWith(T)).toBe(true);
+        });
+    });
+
     describe('defaultTheme preference', () => {
         it('exposes defaultTheme as a select between defaultLicense and defaultAI', () => {
             const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });
@@ -123,6 +182,27 @@ describe('buildConfigParams', () => {
             expect(result.USER_PREFERENCES_CONFIG.theme).toBeDefined();
             expect(result.USER_PREFERENCES_CONFIG.theme.hide).toBe(true);
             expect(result.USER_PREFERENCES_CONFIG.theme.type).toBe('text');
+        });
+    });
+
+    describe('teacher-only hint', () => {
+        it('adds a help hint to both teacherOnly definitions warning it is hidden by default', () => {
+            const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });
+            const blockHelp = result.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG.teacherOnly.help;
+            const componentHelp = result.ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG.teacherOnly.help;
+
+            expect(blockHelp).toContain('hidden by default');
+            expect(blockHelp).toContain('?exe-teacher=1');
+            // Same hint shown for both block-level and component-level teacher-only.
+            expect(componentHelp).toBe(blockHelp);
+        });
+
+        it('prefixes the hint so it is registered for translation', () => {
+            const T = 'TRANSLATABLE_TEXT:';
+            const result = buildConfigParams({ TRANS_PREFIX: T, LICENSES, PACKAGE_LOCALES, LOCALES });
+
+            expect(result.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG.teacherOnly.help.startsWith(T)).toBe(true);
+            expect(result.ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG.teacherOnly.help.startsWith(T)).toBe(true);
         });
     });
 });

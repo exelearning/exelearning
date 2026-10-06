@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
 import {
     createTestDb,
@@ -39,7 +38,6 @@ describe('Assets Routes Integration', () => {
 
         // Create assets routes for testing
         app = new Elysia({ name: 'assets-test', prefix: '/api/projects' })
-            .use(cookie())
             .use(jwt({ name: 'jwt', secret: TEST_JWT_SECRET, exp: '1h' }))
             .derive(async ({ jwt, cookie, request }) => {
                 let token: string | undefined;

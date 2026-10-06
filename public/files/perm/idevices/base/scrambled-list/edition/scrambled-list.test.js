@@ -7,6 +7,8 @@
  */
 
 /* eslint-disable no-undef */
+import '../../../../../../../public/vitest.setup.js';
+
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -24,6 +26,8 @@ function loadIdevice(code) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  // Give the edition the lifecycle IdeviceNode publishes in the real workarea.
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -64,5 +68,264 @@ describe('scrambled-list iDevice', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.addQuestions).toBe('function');
     });
+  });
+
+  describe('normalizeOptions', () => {
+    it('normalizes legacy object and nested option shapes', () => {
+      expect(
+        $exeDevice.normalizeOptions([
+          { text: ' First ' },
+          { value: '<em>Second</em>' },
+          [' Third ', false],
+          null,
+        ]),
+      ).toEqual(['First', '<em>Second</em>', 'Third']);
+    });
+  });
+
+  describe('normalizePreviousData', () => {
+    it('extracts previous data from legacy htmlView when jsonProperties is empty', () => {
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <div class="exe-sortableList">
+          <div class="exe-sortableList-instructions"><p>Order items</p></div>
+          <ul class="exe-sortableList-list">
+            <li>One</li>
+            <li><strong>Two</strong></li>
+            <li>Three</li>
+          </ul>
+          <p class="exe-sortableList-buttonText">Check legacy</p>
+          <p class="exe-sortableList-rightText"><em>Right</em></p>
+          <p class="exe-sortableList-wrongText">Wrong</p>
+        </div>`;
+
+      const data = $exeDevice.normalizePreviousData({}, element);
+
+      expect(data.options).toEqual(['One', '<strong>Two</strong>', 'Three']);
+      expect(data.instructions).toBe('<p>Order items</p>');
+      expect(data.buttonText).toBe('Check legacy');
+      expect(data.rightText).toBe('Right');
+      expect(data.wrongText).toBe('Wrong');
+    });
+  });
+
+  describe('loadPreviousValues', () => {
+    const buildEditorBody = () => {
+      const fields = Array.from({ length: $exeDevice.items_no }, (_, index) => {
+        return `<input id="sortableListFormList${index}" />`;
+      }).join('');
+      document.body.innerHTML = `
+        <div id="editor">
+          <div id="sortableListFormList">${fields}</div>
+          <input id="sortableListButtonText" />
+          <input id="sortableListRightText" />
+          <input id="sortableListWrongText" />
+          <input id="eXeGameInstructions" />
+          <input id="eXeIdeviceTextAfter" />
+          <input id="sortableShowSolutions" type="checkbox" />
+          <input id="sortableAttemptsNumber" />
+        </div>`;
+      return document.getElementById('editor');
+    };
+
+    it('loads legacy option objects into the list inputs', () => {
+      const previousEdition = global.$exeDevicesEdition;
+      global.$exeDevicesEdition = {
+        iDevice: {
+          gamification: {
+            progressBar: { setValues: vi.fn() },
+            passScore: {
+              setValues: vi.fn(),
+              getValues: vi.fn(() => ({ passScoreMode: 'global', passScoreCustom: 5 })),
+            },
+            scorm: { setValues: vi.fn() },
+            common: { setLanguageTabValues: vi.fn() },
+          },
+        },
+      };
+      $exeDevice.ideviceBody = buildEditorBody();
+      $exeDevice.idevicePreviousData = {
+        options: [{ text: 'One' }, { html: '<strong>Two</strong>' }, ['Three']],
+        buttonText: 'Check',
+        rightText: 'Right',
+        wrongText: 'Wrong',
+        instructions: 'Order',
+      };
+
+      try {
+        $exeDevice.loadPreviousValues();
+
+        expect(document.getElementById('sortableListFormList0').value).toBe('One');
+        expect(document.getElementById('sortableListFormList1').value).toBe('<strong>Two</strong>');
+        expect(document.getElementById('sortableListFormList2').value).toBe('Three');
+      } finally {
+        global.$exeDevicesEdition = previousEdition;
+      }
+    });
+  });
+
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(join(__dirname, 'scrambled-list.js'), 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            // This iDevice restores from `data`, not `game`.
+            expect(source).toContain('passScoreMode: data.passScoreMode');
+            expect(source).toContain('passScoreCustom: data.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            // It parks the values on the instance before writing them out.
+            expect(source).toContain('this.passScoreMode = passScore.passScoreMode');
+            expect(source).toContain('this.passScoreCustom = passScore.passScoreCustom');
+            expect(source).toContain('passScoreMode: this.passScoreMode');
+            expect(source).toContain('passScoreCustom: this.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
+
+  /**
+   * Importing a word list is asynchronous, so the read can finish after the
+   * editor closed. The callback used to reach `$exeDevice` through the global,
+   * which by then holds whatever iDevice the author opened next.
+   */
+  describe('edition lifecycle teardown', () => {
+    /** FileReader double that fires only when a test says so. */
+    class FakeFileReader {
+      constructor() {
+        FakeFileReader.instances.push(this);
+        this.readyState = 0;
+        this.onload = null;
+        this.abort = vi.fn(() => {
+          this.readyState = 2;
+        });
+      }
+
+      readAsText() {
+        this.readyState = 1;
+      }
+
+      fire(result) {
+        this.readyState = 2;
+        if (this.onload) this.onload({ target: { result } });
+      }
+    }
+
+    let originalFileReader;
+
+    const selectFile = () => {
+      const input = document.getElementById('eXeGameImportGame');
+      Object.defineProperty(input, 'files', {
+        value: [{ name: 'words.txt', type: 'text/plain' }],
+        configurable: true,
+      });
+      $(input).trigger('change');
+    };
+
+    beforeEach(() => {
+      FakeFileReader.instances = [];
+      originalFileReader = global.FileReader;
+      global.FileReader = FakeFileReader;
+      window.FileReader = FakeFileReader;
+
+      document.body.innerHTML = `
+        <div id="eXeGameExportImport">
+          <span class="exe-field-instructions"></span>
+        </div>
+        <input type="file" id="eXeGameImportGame" />
+        <input id="sortableAttemptsNumber" />
+        <input id="sortableShowSolutions" type="checkbox" />`;
+      $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+      if ($exeDevice && $exeDevice.$lifecycle) $exeDevice.$lifecycle.destroy();
+      global.FileReader = originalFileReader;
+      window.FileReader = originalFileReader;
+    });
+
+    it('imports the list while the edition is open', () => {
+      const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+
+      selectFile();
+      FakeFileReader.instances[0].fire('one\ntwo');
+
+      expect(importGame).toHaveBeenCalledWith('one\ntwo', 'text/plain');
+      importGame.mockRestore();
+    });
+
+    it('aborts an in-flight read when the edition closes', () => {
+      selectFile();
+      const reader = FakeFileReader.instances[0];
+      expect(reader.readyState).toBe(1);
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(reader.abort).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a late read callback instead of importing into a closed edition', () => {
+      const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+
+      selectFile();
+      const reader = FakeFileReader.instances[0];
+      $exeDevice.$lifecycle.destroy();
+      reader.fire('one\ntwo');
+
+      expect(importGame).not.toHaveBeenCalled();
+      importGame.mockRestore();
+    });
+
+    it('never imports into the iDevice that replaced this one', () => {
+      const first = $exeDevice;
+      selectFile();
+      const reader = FakeFileReader.instances[0];
+      first.$lifecycle.destroy();
+
+      const second = { importGame: vi.fn() };
+      global.$exeDevice = second;
+      reader.fire('one\ntwo');
+
+      expect(second.importGame).not.toHaveBeenCalled();
+      global.$exeDevice = first;
+    });
+  });
+});
+
+describe('scrambled-list minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'scrambled-list.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });

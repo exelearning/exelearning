@@ -184,6 +184,54 @@ describe('UnsavedChangesHelper', () => {
 
       expect(result).toBe(false);
     });
+
+    it('warns with collaborative copy in a collaborative session (confirm fallback)', async () => {
+      mockDocumentManager.isDirty = true;
+      mockApp.modals = null;
+      mockYjsBridge.collaborativeAutosave = { isEligible: vi.fn(() => true) };
+      window.confirm.mockReturnValue(true);
+
+      await UnsavedChangesHelper.promptIfUnsavedChanges();
+
+      expect(window.confirm).toHaveBeenCalledWith(
+        'Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.'
+      );
+    });
+
+    it('warns with generic copy outside a collaborative session (confirm fallback)', async () => {
+      mockDocumentManager.isDirty = true;
+      mockApp.modals = null;
+      mockYjsBridge.collaborativeAutosave = null;
+      window.confirm.mockReturnValue(true);
+
+      await UnsavedChangesHelper.promptIfUnsavedChanges();
+
+      expect(window.confirm).toHaveBeenCalledWith(
+        'You have unsaved changes. Are you sure you want to leave?'
+      );
+    });
+  });
+
+  describe('isCollaborativeSession', () => {
+    it('returns false when there is no collaborative autosave manager', () => {
+      mockYjsBridge.collaborativeAutosave = null;
+      expect(UnsavedChangesHelper.isCollaborativeSession()).toBe(false);
+    });
+
+    it('returns true when the autosave manager reports the session is eligible', () => {
+      mockYjsBridge.collaborativeAutosave = { isEligible: vi.fn(() => true) };
+      expect(UnsavedChangesHelper.isCollaborativeSession()).toBe(true);
+    });
+
+    it('returns false when the autosave manager is not eligible', () => {
+      mockYjsBridge.collaborativeAutosave = { isEligible: vi.fn(() => false) };
+      expect(UnsavedChangesHelper.isCollaborativeSession()).toBe(false);
+    });
+
+    it('returns false when there is no Yjs bridge', () => {
+      mockApp.project._yjsBridge = null;
+      expect(UnsavedChangesHelper.isCollaborativeSession()).toBe(false);
+    });
   });
 
   describe('saveProject', () => {

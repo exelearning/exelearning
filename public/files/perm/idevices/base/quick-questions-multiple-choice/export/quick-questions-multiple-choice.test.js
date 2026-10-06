@@ -172,4 +172,413 @@ describe('quick-questions-multiple-choice export', () => {
             expect(question.solution).toBe('');
         });
     });
+
+    // The automatic report used to happen only from showQuestion(), i.e. once
+    // the setTimeout that reveals the next question had elapsed. That put the
+    // mark in the LMS seconds late, and a learner who left during that window
+    // lost the answer: the timer never fired.
+    describe('reporting in the same turn the learner answered', () => {
+        const idevice = () => global.$quickquestionsmultiplechoice;
+
+        function setupAnswer(overrides) {
+            document.body.innerHTML =
+                '<div id="seleccionaMainContainer-0">' +
+                '<div id="seleccionaPShowClue-0"></div>' +
+                '<div id="seleccionaLinkAudio-0"></div>' +
+                '</div>';
+            idevice().initialScore = '';
+            idevice().options[0] = Object.assign(
+                {
+                    id: 0,
+                    isScorm: 1,
+                    repeatActivity: true,
+                    gameStarted: true,
+                    gameActived: true,
+                    gameOver: false,
+                    order: 0,
+                    hits: 1,
+                    errors: 0,
+                    numberQuestions: 4,
+                    activeQuestion: 0,
+                    activeCounter: true,
+                    showSolution: false,
+                    audioFeedBach: false,
+                    obtainedClue: false,
+                    selectsGame: [
+                        { audio: '' },
+                        { audio: '' },
+                        { audio: '' },
+                        { audio: '' },
+                    ],
+                    itinerary: { showClue: false, percentageClue: 0 },
+                    msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn(idevice(), 'updateScore').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'showMessage').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports before the reveal timer runs, not after it', () => {
+            vi.useFakeTimers();
+            setupAnswer();
+
+            idevice().answerQuestionBoard(true, 0);
+
+            // No timer has been advanced: the report has to have gone out.
+            expect(idevice().sendScore).toHaveBeenCalledWith(true, 0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('does not report outside automatic SCORM mode', () => {
+            vi.useFakeTimers();
+            setupAnswer({ isScorm: 0 });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().sendScore).not.toHaveBeenCalled();
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // An intermediate answer must not close the attempt: the page would go
+        // to passed/failed while the learner is still playing.
+        it('leaves the activity unfinished while questions remain', () => {
+            vi.useFakeTimers();
+            setupAnswer({ activeQuestion: 0, numberQuestions: 4 });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(false);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // The last answer must carry the completion, so leaving during the
+        // reveal delay still records a finished activity.
+        it('marks the activity finished on the last question, before reporting', () => {
+            vi.useFakeTimers();
+            setupAnswer({ activeQuestion: 3, numberQuestions: 4 });
+            let flagWhenReported;
+            idevice().sendScore.mockImplementation(() => {
+                flagWhenReported = idevice().options[0].gameOver;
+            });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(flagWhenReported).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // In itinerary mode the next question is whatever the answered one
+        // points at, so the index of the active question decides nothing: a
+        // learner can finish on the second question of four, or still be
+        // playing on the last.
+        it('finishes where the itinerary says, not on the last index', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                order: 2,
+                activeQuestion: 1,
+                numberQuestions: 4,
+                selectsGame: [
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -2, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                ],
+            });
+            vi.spyOn(idevice(), 'updateScoreThree').mockImplementation(() => {});
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('keeps playing on the last index when the itinerary jumps back', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                order: 2,
+                activeQuestion: 3,
+                numberQuestions: 4,
+                selectsGame: [
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: 0, error: 0 },
+                ],
+            });
+            vi.spyOn(idevice(), 'updateScoreThree').mockImplementation(() => {});
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(false);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // Running out of lives ends the attempt in every mode. newQuestion
+        // checks it before anything else, and the score update has already
+        // spent this answer's life by the time the flag is decided.
+        it('finishes when the last life is gone, whatever question it was', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                activeQuestion: 0,
+                numberQuestions: 4,
+                useLives: true,
+                livesLeft: 0,
+            });
+
+            idevice().answerQuestionBoard(false, 0);
+
+            expect(idevice().options[0].gameOver).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // showQuestion applies the same lock; the new path must not bypass it
+        // and score a non-repeatable activity twice.
+        // No "score only once" lock any more: every report goes out. The one
+        // that used to sit here could never close anyway — registerActivity
+        // forces repeatActivity to true at page load (common.js
+        // updateScormNew) — and a stale mark in the LMS is worse than a
+        // repeated one.
+        it('reports again after a previous score, with repeating disabled', () => {
+            setupAnswer({ repeatActivity: false });
+            idevice().options[0].initialScore = '5.00';
+
+            idevice().saveScormScore(0);
+
+            expect(idevice().sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+    });
+
+    // Replaying a finished attempt from the New game link: its sibling
+    // quick-questions lowers gameOver in startGame, this one did not, so the
+    // opening report carried the previous attempt's completion and the LMS
+    // never went back to incomplete.
+    describe('replaying a finished attempt', () => {
+        const idevice = () => global.$quickquestionsmultiplechoice;
+
+        function setupReplay(overrides) {
+            document.body.innerHTML = `
+                <div id="seleccionaMainContainer-0">
+                    <div id="seleccionaGameContainer-0">
+                        <div class="SLCNP-StartGame"></div>
+                    </div>
+                    <div id="seleccionaVideoIntroContainer-0"></div>
+                    <div id="seleccionaLinkVideoIntroShow-0"></div>
+                    <div id="seleccionaPShowClue-0"></div>
+                    <div id="seleccionaQuestion-0"></div>
+                    <div id="seleccionaQuestionDiv-0"></div>
+                    <div id="seleccionaWordDiv-0"></div>
+                    <div id="seleccionaPNumber-0"></div>
+                    <div id="seleccionaGamerOver-0"></div>
+                    <div id="seleccionaPHits-0"></div>
+                    <div id="seleccionaPErrors-0"></div>
+                    <div id="seleccionaPScore-0"></div>
+                </div>`;
+            idevice().options[0] = Object.assign(
+                {
+                    id: 0,
+                    isScorm: 1,
+                    order: 0,
+                    // What gameOver() left behind: finished, with a grade.
+                    gameStarted: false,
+                    gameOver: true,
+                    hits: 4,
+                    errors: 0,
+                    score: 10,
+                    scoreGame: 4,
+                    scoreTotal: 4,
+                    numberQuestions: 4,
+                    numberLives: 3,
+                    time: 0,
+                    selectsGame: [{}, {}, {}, {}],
+                    itinerary: { showClue: false },
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn(idevice(), 'updateLives').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'updateTime').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.clearAllTimers();
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+        });
+
+        it('reports the replay as unfinished, with the counts cleared', () => {
+            vi.useFakeTimers();
+            setupReplay();
+            let stateWhenReported;
+            idevice().sendScore.mockImplementation(() => {
+                const { hits, errors, scoreGame, gameOver, gameStarted } =
+                    idevice().options[0];
+                stateWhenReported = {
+                    hits,
+                    errors,
+                    scoreGame,
+                    gameOver,
+                    gameStarted,
+                };
+            });
+
+            idevice().startGame(0);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                scoreGame: 0,
+                // The whole point: sendScoreNew reads gameOver as "the learner
+                // finished", and a replay has not.
+                gameOver: false,
+                gameStarted: true,
+            });
+        });
+    });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. Each clock used to find that game by id and run it — the game
+    // clock counting down on its display and moving it on to the next
+    // question, the video clocks driving its player.
+    describe('the clocks of a game', () => {
+        const instance = 0;
+
+        /** The author moves to another page, whose first game is numbered the same. */
+        function moveToNextPage(options) {
+            document.body.innerHTML = `<div id="seleccionaMainContainer-${instance}"></div>`;
+            $quickquestionsmultiplechoice.options[instance] = options;
+        }
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `<div id="seleccionaMainContainer-${instance}"></div>`;
+            $quickquestionsmultiplechoice.options = [
+                {
+                    gameStarted: false,
+                    numberQuestions: 1,
+                    numberLives: 3,
+                    selectsGame: [{}],
+                    localPlayer: { play: vi.fn() },
+                    localPlayerIntro: { play: vi.fn() },
+                },
+            ];
+            for (const method of [
+                'updateLives',
+                'updateTime',
+                'updateSoundVideo',
+                'saveScormScore',
+                'newQuestion',
+                'drawSolution',
+                'drawPhrase',
+                'updateTimerDisplayLocal',
+                'updateTimerDisplayLocalIntro',
+            ]) {
+                vi.spyOn($quickquestionsmultiplechoice, method).mockImplementation(() => {});
+            }
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        /** Start the game and put its first question on the clock, as newQuestion does. */
+        function startGame() {
+            $quickquestionsmultiplechoice.startGame(instance);
+            Object.assign($quickquestionsmultiplechoice.options[instance], { activeCounter: true, counter: 30 });
+        }
+
+        it('counts down on its own game', () => {
+            startGame();
+
+            vi.advanceTimersByTime(3000);
+
+            expect($quickquestionsmultiplechoice.updateTime).toHaveBeenLastCalledWith(27, instance);
+        });
+
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            startGame();
+            vi.advanceTimersByTime(1000);
+
+            moveToNextPage({ gameStarted: true, activeCounter: true, counter: 30 });
+            $quickquestionsmultiplechoice.updateTime.mockClear();
+            $quickquestionsmultiplechoice.newQuestion.mockClear();
+            vi.advanceTimersByTime(60000);
+
+            expect($quickquestionsmultiplechoice.updateTime).not.toHaveBeenCalled();
+            expect($quickquestionsmultiplechoice.newQuestion).not.toHaveBeenCalled();
+            expect($quickquestionsmultiplechoice.options[instance].counter).toBe(30);
+        });
+
+        it("stops following a question's video once its game leaves the page", () => {
+            $quickquestionsmultiplechoice.startVideo('clip.mp4', 0, 10, instance, 1);
+            vi.advanceTimersByTime(1000);
+            expect($quickquestionsmultiplechoice.updateTimerDisplayLocal).toHaveBeenCalledTimes(1);
+
+            moveToNextPage({ localPlayer: { play: vi.fn() } });
+            vi.advanceTimersByTime(5000);
+
+            expect($quickquestionsmultiplechoice.updateTimerDisplayLocal).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops following the introduction video once its game leaves the page', () => {
+            $quickquestionsmultiplechoice.startVideoIntro('intro.mp4', 0, 10, instance, 1);
+            vi.advanceTimersByTime(1000);
+            expect($quickquestionsmultiplechoice.updateTimerDisplayLocalIntro).toHaveBeenCalledTimes(1);
+
+            moveToNextPage({ localPlayerIntro: { play: vi.fn() } });
+            vi.advanceTimersByTime(5000);
+
+            expect($quickquestionsmultiplechoice.updateTimerDisplayLocalIntro).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops while the page is being edited', () => {
+            startGame();
+            document.body.insertAdjacentHTML('beforeend', '<div id="node-content" mode="edition"></div>');
+
+            vi.advanceTimersByTime(3000);
+
+            expect($quickquestionsmultiplechoice.updateTime).not.toHaveBeenCalledWith(29, instance);
+        });
+    });
+});
+
+describe('quick-questions-multiple-choice minimum score notice', () => {
+    it('asks for the notice right after its interface replaces the stored data', () => {
+        const source = readFileSync(join(__dirname, 'quick-questions-multiple-choice.js'), 'utf-8');
+        const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+        // The main container comes with the interface, so from that line on the
+        // notice can go right before it, below the instructions.
+        expect(loadGame).toMatch(
+            /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+        );
+    });
 });

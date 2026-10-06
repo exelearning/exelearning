@@ -107,9 +107,26 @@ const UnsavedChangesHelper = {
       }
     }
 
-    // Fallback to browser confirm dialog
-    const message = options.message || _('You have unsaved changes. Are you sure you want to leave?');
+    // Fallback to browser confirm dialog. In a collaborative session, make the
+    // risk explicit: live shared changes are not persisted until someone saves.
+    const defaultMessage = this.isCollaborativeSession()
+      ? _('Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.')
+      : _('You have unsaved changes. Are you sure you want to leave?');
+    const message = options.message || defaultMessage;
     return window.confirm(message);
+  },
+
+  /**
+   * Whether the current project is an online collaborative session that is
+   * eligible for collaborative autosave (issue #1592). Used to surface clearer
+   * leave/close warnings to collaborators.
+   *
+   * @returns {boolean}
+   */
+  isCollaborativeSession() {
+    const app = window.eXeLearning?.app;
+    const autosave = app?.project?._yjsBridge?.collaborativeAutosave;
+    return !!(autosave && typeof autosave.isEligible === 'function' && autosave.isEligible());
   },
 
   /**

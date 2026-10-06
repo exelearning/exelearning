@@ -4,6 +4,7 @@
 
 /* eslint-disable no-undef */
 
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -361,6 +362,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
   it('openCellEditModal shows assessment criteria title and performance level from selected cell', () => {
     document.body.innerHTML = `
+      <div id="ri_IdeviceForm">
       <div id="ri_TableEditor"></div>
       <table id="ri_Table">
         <thead>
@@ -379,6 +381,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
           </tr>
         </tbody>
       </table>
+      </div>
     `;
 
     $exeDevice.ensureCellEditModal();
@@ -440,6 +443,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
   it('applyRowEditModal saves current draft and closes the row modal', () => {
     document.body.innerHTML = `
+      <div id="ri_IdeviceForm">
       <div id="ri_TableEditor"></div>
       <table id="ri_Table">
         <thead>
@@ -458,6 +462,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
           </tr>
         </tbody>
       </table>
+      </div>
     `;
 
     $exeDevice.ensureRowEditModal();
@@ -474,8 +479,352 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     expect(descriptorInput.val()).toBe('Descriptor actualizado');
     expect(scoreInput.val()).toBe('5');
-    expect($('#ri_RowEditModal').css('display')).toBe('none');
+    expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
     expect($exeDevice.rowEditState).toBeNull();
+  });
+
+  describe('edit dialogs', () => {
+    const buildTable = () => {
+      document.body.innerHTML = `
+        <div id="ri_IdeviceForm">
+          <div id="ri_TableEditor"></div>
+          <table id="ri_Table">
+            <thead>
+              <tr>
+                <th><input type="text" value="" /></th>
+                <th><input type="text" value="Nivel Alto" /></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th><input type="text" value="Contenido" /></th>
+                <td>
+                  <input type="text" value="Descriptor inicial" />
+                  <input type="text" class="ri_Weight" value="2" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    };
+
+    it('mounts the cell dialog and its backdrop inside the iDevice form', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      const dialog = document.getElementById('ri_CellEditModal');
+      const backdrop = document.getElementById('ri_CellEditModalBackdrop');
+      const form = document.getElementById('ri_IdeviceForm');
+
+      expect(dialog.parentElement).toBe(form);
+      // The backdrop covers the form, so only the rubric controls are blocked.
+      expect(backdrop.parentElement).toBe(form);
+      expect($('#ri_CellEditModal').hasClass('show')).toBe(true);
+      expect(dialog.getAttribute('aria-hidden')).toBe('false');
+
+      $exeDevice.closeCellEditModal();
+
+      expect($('#ri_CellEditModal').hasClass('show')).toBe(false);
+      expect(dialog.getAttribute('aria-hidden')).toBe('true');
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
+      expect($exeDevice.cellEditTarget).toBeNull();
+    });
+
+    it('leaves the rest of the page untouched: no scroll lock, no page-level backdrop', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      // The dialog belongs to the iDevice, so it must not claim the whole page.
+      expect(document.body.classList.contains('modal-open')).toBe(false);
+      expect(document.querySelectorAll('body > .ri-edit-backdrop').length).toBe(0);
+      expect(document.getElementById('ri_CellEditModal').hasAttribute('aria-modal')).toBe(false);
+    });
+
+    it('removes every dialog and backdrop when the iDevice form is discarded', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+      $exeDevice.closeCellEditModal();
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+
+      // What the app does when edition ends: the form subtree goes away.
+      $('#ri_IdeviceForm').remove();
+
+      expect(document.getElementById('ri_CellEditModal')).toBeNull();
+      expect(document.getElementById('ri_RowEditModal')).toBeNull();
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
+    });
+
+    it('makes the rubric inert while a dialog is open, but not the dialog itself', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      const editor = document.getElementById('ri_TableEditor');
+      const table = document.getElementById('ri_Table');
+      const dialog = document.getElementById('ri_CellEditModal');
+      const backdrop = document.getElementById('ri_CellEditModalBackdrop');
+
+      expect(editor.hasAttribute('inert')).toBe(true);
+      expect(table.hasAttribute('inert')).toBe(true);
+      expect(dialog.hasAttribute('inert')).toBe(false);
+      expect(backdrop.hasAttribute('inert')).toBe(false);
+
+      $exeDevice.closeCellEditModal();
+
+      expect(editor.hasAttribute('inert')).toBe(false);
+      expect(table.hasAttribute('inert')).toBe(false);
+    });
+
+    it('keeps the rubric inert while another dialog is still open', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+
+      $exeDevice.closeCellEditModal();
+
+      expect(document.getElementById('ri_Table').hasAttribute('inert')).toBe(true);
+
+      $exeDevice.closeRowEditModal();
+
+      expect(document.getElementById('ri_Table').hasAttribute('inert')).toBe(false);
+    });
+
+    it('returns the focus to the control that opened the dialog', () => {
+      buildTable();
+
+      const cell = $('#ri_Table tbody tr td').first();
+      const opener = document.createElement('a');
+      opener.href = '#';
+      cell[0].appendChild(opener);
+
+      $exeDevice.openCellEditModal(cell, opener);
+      expect(document.activeElement).not.toBe(opener);
+
+      $exeDevice.closeCellEditModal();
+
+      expect(document.activeElement).toBe(opener);
+      expect($exeDevice.editModalOpener).toBeNull();
+    });
+
+    it('does not restore the focus when the opener is gone from the DOM', () => {
+      buildTable();
+
+      const cell = $('#ri_Table tbody tr td').first();
+      const opener = document.createElement('a');
+      opener.href = '#';
+      cell[0].appendChild(opener);
+
+      $exeDevice.openCellEditModal(cell, opener);
+      opener.remove();
+
+      expect(() => $exeDevice.closeCellEditModal()).not.toThrow();
+      expect(document.activeElement).not.toBe(opener);
+    });
+
+    it('commitOpenEditModal writes back what the cell dialog is holding', () => {
+      buildTable();
+
+      const cell = $('#ri_Table tbody tr td').first();
+      $exeDevice.openCellEditModal(cell);
+      $('#ri_CellEditContent').val('Descriptor pendiente');
+      $('#ri_CellEditScore').val('9');
+
+      $exeDevice.commitOpenEditModal();
+
+      expect(cell.find('input[type="text"]').not('.ri_Weight').first().val()).toBe('Descriptor pendiente');
+      expect(cell.find('input.ri_Weight').first().val()).toBe('9');
+      expect($('#ri_CellEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.cellEditTarget).toBeNull();
+    });
+
+    it('commitOpenEditModal writes back every draft of the row dialog', () => {
+      buildTable();
+
+      const row = $('#ri_Table tbody tr').first();
+      $exeDevice.openRowEditModal(row);
+      $('#ri_RowEditContent').val('Fila pendiente');
+      $('#ri_RowEditScore').val('7');
+
+      $exeDevice.commitOpenEditModal();
+
+      expect(row.find('td input[type="text"]').not('.ri_Weight').first().val()).toBe('Fila pendiente');
+      expect(row.find('td input.ri_Weight').first().val()).toBe('7');
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.rowEditState).toBeNull();
+    });
+
+    it('commitOpenEditModal does nothing when no dialog is open', () => {
+      buildTable();
+
+      const cell = $('#ri_Table tbody tr td').first();
+
+      expect(() => $exeDevice.commitOpenEditModal()).not.toThrow();
+      expect(cell.find('input[type="text"]').not('.ri_Weight').first().val()).toBe('Descriptor inicial');
+    });
+
+    it('saving the iDevice keeps the edits pending in an open dialog', () => {
+      buildTable();
+
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+      $('#ri_RowEditContent').val('Descriptor sin aceptar');
+
+      // save() bails out on this minimal fixture, but the drafts must already
+      // have reached the table by then.
+      $exeDevice.save();
+
+      expect(
+        $('#ri_Table tbody tr').first().find('td input[type="text"]').not('.ri_Weight').first().val()
+      ).toBe('Descriptor sin aceptar');
+      expect($exeDevice.rowEditState).toBeNull();
+    });
+
+    it('row dialog confirms before closing when there are unsaved changes', () => {
+      buildTable();
+
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+      $('#ri_RowEditContent').val('Descriptor modificado');
+
+      let acceptClose = null;
+      const confirmSpy = vi
+        .spyOn(eXe.app, 'confirm')
+        .mockImplementation((title, message, onAccept) => {
+          acceptClose = onAccept;
+        });
+
+      $exeDevice.closeRowEditModal();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Attention',
+        'There are unsaved changes in this row. Close and lose them?',
+        expect.any(Function)
+      );
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(true);
+      expect($exeDevice.rowEditState).not.toBeNull();
+
+      acceptClose();
+
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
+      expect($exeDevice.rowEditState).toBeNull();
+      expect($exeDevice.rowEditClosing).toBe(false);
+
+      confirmSpy.mockRestore();
+    });
+
+    it('row dialog closes without confirmation when drafts are untouched', () => {
+      buildTable();
+
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+
+      const confirmSpy = vi.spyOn(eXe.app, 'confirm');
+
+      $exeDevice.closeRowEditModal();
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.rowEditState).toBeNull();
+
+      confirmSpy.mockRestore();
+    });
+
+    it('the Esc key goes through the same unsaved-changes guard as the buttons', () => {
+      buildTable();
+
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+      $('#ri_RowEditContent').val('Descriptor modificado');
+
+      let acceptClose = null;
+      const confirmSpy = vi
+        .spyOn(eXe.app, 'confirm')
+        .mockImplementation((title, message, onAccept) => {
+          acceptClose = onAccept;
+        });
+
+      document
+        .getElementById('ri_RowEditModal')
+        .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(confirmSpy).toHaveBeenCalled();
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(true);
+
+      acceptClose();
+
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.rowEditState).toBeNull();
+
+      confirmSpy.mockRestore();
+    });
+
+    it('column dialog confirms before closing when there are unsaved changes', () => {
+      buildTable();
+
+      $exeDevice.openColumnEditModal($('#ri_Table thead th').eq(1));
+      $('#ri_ColumnEditScore').val('9');
+
+      let acceptClose = null;
+      const confirmSpy = vi
+        .spyOn(eXe.app, 'confirm')
+        .mockImplementation((title, message, onAccept) => {
+          acceptClose = onAccept;
+        });
+
+      $exeDevice.closeColumnEditModal();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Attention',
+        'There are unsaved changes in this column. Close and lose them?',
+        expect.any(Function)
+      );
+      expect($('#ri_ColumnEditModal').hasClass('show')).toBe(true);
+      expect($exeDevice.columnEditState).not.toBeNull();
+
+      acceptClose();
+
+      expect($('#ri_ColumnEditModal').hasClass('show')).toBe(false);
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
+      expect($exeDevice.columnEditState).toBeNull();
+      expect($exeDevice.columnEditClosing).toBe(false);
+
+      confirmSpy.mockRestore();
+    });
+
+    it('column dialog closes without confirmation when drafts are untouched', () => {
+      buildTable();
+
+      $exeDevice.openColumnEditModal($('#ri_Table thead th').eq(1));
+
+      const confirmSpy = vi.spyOn(eXe.app, 'confirm');
+
+      $exeDevice.closeColumnEditModal();
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect($('#ri_ColumnEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.columnEditState).toBeNull();
+
+      confirmSpy.mockRestore();
+    });
+
+    it('showEditModal and hideEditModal ignore dialogs that are not in the DOM', () => {
+      document.body.innerHTML = '';
+
+      expect(() => $exeDevice.showEditModal('ri_MissingModal')).not.toThrow();
+      expect(() => $exeDevice.hideEditModal('ri_MissingModal')).not.toThrow();
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
+    });
+
+    it('hideEditModal ignores dialogs that were never shown', () => {
+      buildTable();
+
+      $exeDevice.ensureCellEditModal();
+
+      expect(() => $exeDevice.hideEditModal('ri_CellEditModal')).not.toThrow();
+      expect($('#ri_CellEditModal').hasClass('show')).toBe(false);
+    });
   });
 
   it('getTableHTML does not leak implicit loop variables to global scope', () => {
@@ -622,5 +971,221 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect($exeDevice.ci18n.msgScore).toBe('Score');
       expect($exeDevice.ci18n.msgWeight).toBe('Weight');
     });
+  });
+
+  // Only 1-100 is stored. The previous `value || 100` let -1 through — which
+  // is exactly what the shared SCORM tab returns for an emptied weight field —
+  // and any number above 100 as well.
+  describe('normalizeWeight', () => {
+    it('keeps every weight inside the range, including the ends', () => {
+      expect($exeDevice.normalizeWeight(1)).toBe(1);
+      expect($exeDevice.normalizeWeight(40)).toBe(40);
+      expect($exeDevice.normalizeWeight(100)).toBe(100);
+    });
+
+    it('falls back to 100 outside the range or when unreadable', () => {
+      expect($exeDevice.normalizeWeight(0)).toBe(100);
+      expect($exeDevice.normalizeWeight(-1)).toBe(100);
+      expect($exeDevice.normalizeWeight(101)).toBe(100);
+      expect($exeDevice.normalizeWeight(undefined)).toBe(100);
+      expect($exeDevice.normalizeWeight('abc')).toBe(100);
+    });
+  });
+
+  /**
+   * The rubric grades on its own scale -- 0 to whatever the first level adds up
+   * to -- so its pass mark is set in those units rather than out of ten, right
+   * below the maximum the author is already reading.
+   */
+  /**
+   * The rubric used to be the one scoring iDevice that never registered in the
+   * progress report, so a course mixing rubrics with other activities produced
+   * a report the rubrics were simply missing from.
+   */
+  /**
+   * The rubric grades on its own 0..maximum scale internally, but the mark the
+   * author sets is the shared 0-10 one, like every other activity. That is what
+   * lets a page mixing a rubric with other scoring iDevices judge them all
+   * alike -- and it matches what the learner is shown, since the rubric already
+   * reports its score out of ten.
+   */
+  describe('pass score', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'rubric.js'), 'utf-8');
+    });
+
+    it('uses the shared control, with no scale of its own', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain('gamification.passScore.addEvents()');
+      expect(source).not.toContain('ri_PassScore');
+      expect(source).not.toContain('getPassScoreField');
+    });
+
+    it('stores the same two fields as every other iDevice', () => {
+      expect(source).toContain('data.passScoreMode = passScore.passScoreMode');
+      expect(source).toContain('data.passScoreCustom = passScore.passScoreCustom');
+      expect(source).not.toContain('data.passScore =');
+    });
+
+    it('takes the tab with no opt-out', () => {
+      expect(source).toContain('gamification.scorm.getTab($exeDevice.idevicePath)');
+      expect(source).not.toContain('passScore: false');
+    });
+  });
+
+  describe('progress report', () => {
+    let source;
+    let runtime;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'rubric.js'), 'utf-8');
+      runtime = readFileSync(join(__dirname, '..', 'export', 'rubric.js'), 'utf-8');
+    });
+
+    it('offers the shared control and wires its events', () => {
+      expect(source).toContain('gamification.progressBar.setValues(');
+      expect(source).toContain('gamification.progressBar.getValues()');
+      expect(source).toContain('gamification.progressBar.addEvents()');
+    });
+
+    it('stores what the author chose', () => {
+      expect(source).toContain('data.evaluation = progressBar.evaluation');
+      expect(source).toContain('data.evaluationID = progressBar.evaluationID');
+    });
+
+    it('translates the strings the report shows', () => {
+      // showEvaluationIcon reads these; without them the learner would see the
+      // English fallbacks whatever the project language.
+      expect(source).toContain('msgTypeGame: c_(');
+      expect(source).toContain('msgSuccessfulActivity: c_(');
+      expect(source).toContain('msgUnsuccessfulActivity: c_(');
+      expect(source).toContain('msgUncompletedActivity: c_(');
+    });
+
+    it('does not tie the report to SCORM', () => {
+      // initScorm returns early when the author chose not to save the score.
+      // Showing the verdict from there would make "do not save" silently switch
+      // the report off as well.
+      expect(runtime).toContain('initProgressReport: function');
+      expect(runtime).toContain('self.initProgressReport(data)');
+      expect(runtime).toContain('updateProgressReport: function');
+    });
+  });
+
+  describe('edition lifecycle', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    describe('readCSVFile', () => {
+      function csvFile() {
+        return new File(['A,B\n1,2'], 'rubric.csv', { type: 'text/csv' });
+      }
+
+      it('imports the CSV while the edition is open', async () => {
+        const importCSV = vi.spyOn($exeDevice, 'importCSV').mockImplementation(() => {});
+
+        $exeDevice.readCSVFile(csvFile());
+        await vi.waitFor(() => expect(importCSV).toHaveBeenCalledTimes(1));
+      });
+
+      it('aborts a read still in flight when the edition closes', () => {
+        const abort = vi.spyOn(window.FileReader.prototype, 'abort');
+
+        $exeDevice.readCSVFile(csvFile());
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not import a CSV that arrives after the edition closed', async () => {
+        const importCSV = vi.spyOn($exeDevice, 'importCSV').mockImplementation(() => {});
+
+        $exeDevice.readCSVFile(csvFile());
+        $exeDevice.$lifecycle.destroy();
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(importCSV).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("CEDEC's rubrics download", () => {
+      let handlers;
+      let abort;
+
+      function openTemplateControls() {
+        document.body.innerHTML = '<div id="ri_RubricsEditor"></div>';
+        delete $exeDevice.cedecRubrics;
+        $exeDevice.renderRubricTemplateControls();
+        $('#ri_LoadCEDECRubrics').trigger('click');
+      }
+
+      beforeEach(() => {
+        handlers = null;
+        abort = vi.fn();
+        vi.spyOn($, 'ajax').mockImplementation((options) => {
+          handlers = options;
+          return { abort };
+        });
+      });
+
+      it('stores the rubrics when the download answers while the editor is open', () => {
+        const complete = vi
+          .spyOn($exeDevice, 'completeRubricModels')
+          .mockImplementation(() => {});
+
+        openTemplateControls();
+        handlers.success({ rubrics: [{ title: 'x' }] });
+
+        expect($exeDevice.cedecRubrics).toEqual({ rubrics: [{ title: 'x' }] });
+        expect(complete).toHaveBeenCalledTimes(1);
+      });
+
+      it('aborts the pending download when the edition closes', () => {
+        openTemplateControls();
+        expect(abort).not.toHaveBeenCalled();
+
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      it('ignores a download that answers after the edition closed', () => {
+        const complete = vi
+          .spyOn($exeDevice, 'completeRubricModels')
+          .mockImplementation(() => {});
+
+        openTemplateControls();
+        $exeDevice.$lifecycle.destroy();
+        handlers.success({ rubrics: [{ title: 'x' }] });
+
+        expect($exeDevice.cedecRubrics).toBeUndefined();
+        expect(complete).not.toHaveBeenCalled();
+      });
+
+      it('does not alert for an error raised by its own abort', () => {
+        const alert = vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
+
+        openTemplateControls();
+        // jQuery calls the error handler synchronously when a request is aborted.
+        abort.mockImplementation(() => handlers.error());
+        $exeDevice.$lifecycle.destroy();
+
+        expect(alert).not.toHaveBeenCalled();
+      });
+    });
+  });
+});
+
+describe('rubric minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'rubric.js'));
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });

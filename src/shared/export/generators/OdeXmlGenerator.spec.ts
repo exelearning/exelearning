@@ -123,6 +123,15 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('</odeProperties>');
         });
 
+        it('should save the every-activity pass rule so it survives a reopen', () => {
+            const xml = generateOdeXml({ title: 'T', passScoreEveryActivity: true }, []);
+
+            expect(xml).toContain(`<odeProperty>
+    <key>pp_passScoreEveryActivity</key>
+    <value>true</value>
+  </odeProperty>`);
+        });
+
         it('should include empty odeNavStructures for no pages', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [];
@@ -316,6 +325,43 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('<jsonProperties><![CDATA[');
             expect(xml).toContain('textFeedbackInput');
             expect(xml).toContain('Show Feedback');
+        });
+
+        it('should write a malformed payload verbatim instead of an empty element (#2190)', () => {
+            const malformed = '{"questionsData":[{"baseText":"<audio src="broken.webm"></audio>"}]}';
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'trueorfalse',
+                                    order: 0,
+                                    content: '<p>Damaged</p>',
+                                    properties: {},
+                                    malformedProperties: malformed,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            // The damaged payload is the only copy of the activity's data: it
+            // must survive export instead of collapsing to <jsonProperties/>.
+            expect(xml).toContain(`<jsonProperties><![CDATA[${malformed}]]></jsonProperties>`);
+            expect(xml).not.toContain('<jsonProperties></jsonProperties>');
         });
 
         it('should use custom odeId and versionId when provided', () => {

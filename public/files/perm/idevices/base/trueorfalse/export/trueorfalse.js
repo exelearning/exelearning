@@ -22,6 +22,22 @@ var $trueorfalse = {
     scormFunctions: 'libs/SCOFunctions.js',
     userName: '',
     previousScore: '',
+    /**
+     * The mark this SCO already held when the page opened.
+     *
+     * Kept for a use it does not yet have: nothing reads it, here or in the
+     * shared runtime — `previousScore` is what carries the restored mark into
+     * a report, and common.js's own `initialScore` is a local variable of
+     * createScoreScormHtml with no relation to this one. Every game iDevice
+     * declares it and writes it, and none reads it.
+     *
+     * Two blocks used to sit on top of it and look as if they protected
+     * something: `initialScore = typeof initialScore === 'undefined' ? '' :
+     * initialScore` on a property declared right here as an empty string —
+     * an assignment that could not change anything — and a copy of the result
+     * onto the options object, which nothing reads either. Those are gone. The
+     * property stays.
+     */
     initialScore: '',
     mScorm: null,
 
@@ -36,9 +52,6 @@ var $trueorfalse = {
         const content = htmlContent + medias;
 
         const html = template.replace('{content}', content);
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.exe-trueorfalse-container'
-        );
 
         return html;
     },
@@ -73,6 +86,7 @@ var $trueorfalse = {
 
         $('#tofPMultimedia-' + ldata.id).empty();
         $('#tofPMultimedia-' + ldata.id).append(questionsHtml);
+        $trueorfalse.showPassScoreNotice(ldata);
 
         if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
@@ -93,11 +107,44 @@ var $trueorfalse = {
 
         $trueorfalse.addEvents(ldata);
 
-        const dataString = JSON.stringify(ldata);
-        if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
-            $exeDevices.iDevice.gamification.math.updateLatex(
-                '#tofPMainContainer-' + ldata.id
-            );
+        $trueorfalse.updateLatexInView(ldata.id);
+    },
+
+    /**
+     * Ask for the notice of the minimum score, in quiz mode only.
+     *
+     * Outside quiz mode nothing judges the mark: no SCORM score can be saved
+     * (see updateConfig) and the editor offers the progress report only in
+     * quiz mode, so a notice there would announce a mark nothing applies.
+     *
+     * @param {Object} data - iDevice options, with its main container on the page
+     * @returns {jQuery|null} The notice, or null when none is shown.
+     */
+    showPassScoreNotice: function (data) {
+        if (!data.isTest) return null;
+        return $exeDevices.iDevice.gamification.report.showPassScoreNotice(data);
+    },
+
+    /**
+     * Re-typesets the iDevice LaTeX once the runtime HTML is in the DOM.
+     *
+     * The instructions (.TOFP-instructions) and the "after" text (.TOFP-After)
+     * are rendered as SIBLINGS of #tofPMainContainer, so targeting that
+     * container alone leaves their LaTeX untouched. We target the wrapping
+     * .exe-trueorfalse-container instead: the single element that holds the
+     * whole iDevice (instructions, questions and after-text) and that is
+     * present both in exports and in the preview.
+     *
+     * @param {String} id - iDevice instance id
+     */
+    updateLatexInView: function (id) {
+        const container = document
+            .querySelector('#tofPMainContainer-' + id)
+            ?.closest('.exe-trueorfalse-container');
+        if (!container) return;
+        const math = $exeDevices.iDevice.gamification.math;
+        if (math.hasLatex(container.innerHTML)) {
+            math.updateLatex(container);
         }
     },
 
@@ -128,7 +175,7 @@ var $trueorfalse = {
     },
 
     updateConfig: function (odata, ideviceId) {
-        const data = JSON.parse(JSON.stringify(odata));
+        const data = JSON.parse(JSON.stringify(odata || {}));
 
         data.isInExe = eXe.app.isInExe() ?? false;
         data.idevicePath = data.isInExe
@@ -136,7 +183,13 @@ var $trueorfalse = {
             : $('.idevice_node.trueorfalse').eq(0).attr('data-idevice-path');
         data.id = ideviceId ?? data.ideviceId;
         data.main = 'tofPMainContainer-' + data.id;
-        data.idevice = 'idevice_node';
+        // The container the progress report icon and its anchor go into, found
+        // with closest() from `main`: the activity's own wrapper, which exists in
+        // the editor, the preview and an exported package alike. addEvents used
+        // to overwrite it with 'trueorfalseIdevice', a class only the editor adds
+        // to the iDevice body, so outside the editor the learner never saw their
+        // result.
+        data.idevice = 'exe-trueorfalse-container';
         data.title = 'Verdadero o falso';
 
         const $idevice = $('#' + data.id);
@@ -153,6 +206,36 @@ var $trueorfalse = {
         data.ideviceNumber = $idevices.index($('#' + data.id)) + 1;
 
         data.isTest = typeof data.isTest === 'undefined' ? false : data.isTest;
+
+        // Number of attempts (checks) in test mode: 1 means one check and no
+        // retry. The activity is still marked completed on the first Comprobar
+        // regardless of remaining attempts; this only limits how many times the
+        // learner can retry to improve the score.
+        //
+        // An activity authored before this field existed has no value here and
+        // gets 1. That is a product decision, not backward compatibility: the
+        // retry button used to be shown unconditionally at the end of a check,
+        // so such an activity offered unlimited retries and now offers none.
+        // Already-exported packages are unaffected — the runtime travels inside
+        // the ZIP — but an old .elp reopened and exported today does change.
+        data.attemptsNumber =
+            typeof data.attemptsNumber === 'undefined'
+                ? 1
+                : parseInt(data.attemptsNumber, 10) || 1;
+
+        // Saving a SCORM score needs quiz mode: outside it `startGame()` is
+        // unreachable (createInterfaceTrueOrFalse hides both the start and the
+        // check controls), so `gameStarted` never becomes true and the shared
+        // gamification layer refuses every score. The edition form rejects this
+        // pair on save, but content written straight through the REST API can
+        // still carry it, and the activity then looks fine while silently never
+        // reporting. Say so rather than failing mutely.
+        if (data.isScorm > 0 && !data.isTest) {
+            console.warn(
+                `[trueorfalse] "${data.id}" asks for a SCORM score with quiz mode off; ` +
+                    'no score can ever be saved. Enable quiz mode (isTest) or turn the SCORM option off.'
+            );
+        }
 
         data.hits = 0;
         data.errors = 0;
@@ -176,7 +259,10 @@ var $trueorfalse = {
             data.eXeGameInstructions = data.eXeFormInstructions ?? '';
             data.eXeIdeviceTextAfter = '';
             data.msgs = $trueorfalse.msgsdefault;
-            data.questionsGame = data.questionsData.map((q) => ({
+            const questionsData = Array.isArray(data.questionsData)
+                ? data.questionsData
+                : [];
+            data.questionsGame = questionsData.map((q) => ({
                 question: q.baseText || '',
                 answer: q.answer || '',
                 feedback: q.feedback || '',
@@ -186,9 +272,11 @@ var $trueorfalse = {
             data.gameStarted = true;
             data.showSlider = false;
         }
+        // getQuestions() returns non-array input unchanged, so an activity saved
+        // without questions would otherwise reach the .length read below as undefined.
         data.questionsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
-                data.questionsGame,
+                Array.isArray(data.questionsGame) ? data.questionsGame : [],
                 data.percentageQuestions,
                 data.questionsRandom
             );
@@ -344,7 +432,6 @@ var $trueorfalse = {
             !mOptions.isTest || (mOptions.isTest && mOptions.time > 0)
                 ? 'TOFP-EHidden'
                 : '';
-        const display = mOptions.isScorm == 2 ? 'block' : 'none';
         const html = `
     <div class="game-evaluation-ids js-hidden" data-id="${mOptions.id}" data-evaluationb="${mOptions.evaluation}" data-evaluationid="${mOptions.evaluationID}"></div>
         <div class="TOFP-instructions">${mOptions.eXeGameInstructions}</div>
@@ -369,11 +456,8 @@ var $trueorfalse = {
                     <button id="tofRebootTest-${instance}" type="button" class="btn btn-primary TOFP-EHidden">${msgs.msgReboot}</button>
                 </div>
         </div> 
-        <div class="Games-BottonContainer">
-            <div class="Games-GetScore">
-                <input id="tofPSendScore-${instance}" type="button" value="${mOptions.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:${display}"/> <span class="Games-RepeatActivity"></span>
-            </div>
         </div>
+        ${$exeDevices.iDevice.gamification.scorm.addButtonScoreNew(mOptions)}
         <div class="TOFP-After">${mOptions.eXeIdeviceTextAfter}</div>
         `;
         return html;
@@ -496,9 +580,10 @@ var $trueorfalse = {
 
     removeEvents: function (data) {
         const instance = data.id;
-        $(window).off('unload.eXeTOF beforeunload.eXeTOF');
 
-        $(`#tofPSendScore-${instance}`).off('click');
+        $(`#tofPMainContainer-${instance}`)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore');
         $(`#tofPStartGame-${instance}`).off('click');
         $(`#tofPCheckTest-${instance}`).off('click');
         $(`#tofRebootTest-${instance}`).off('click');
@@ -645,31 +730,32 @@ var $trueorfalse = {
         const msgs = mOptions.msgs;
         $trueorfalse.removeEvents(data);
 
-        $(window).on('unload.eXeTOF beforeunload.eXeTOF', () => {
-            if (mOptions.gameStarted || mOptions.gameOver) {
-                $trueorfalse.sendScore(true, mOptions);
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $trueorfalse.mScorm
-                );
-            }
-        });
-
         mOptions.gameOver = false;
         mOptions.gameStarted = false;
+        // Remaining retries for this play. Consumed on each Comprobar (gameOver);
+        // the "Try again" button is only shown while there are attempts left. Not
+        // reset on reboot, so the attempts run down across retries.
+        mOptions.pendingAttempts = mOptions.attemptsNumber;
         mOptions.counter = parseInt(mOptions.tofPTime) * 60;
         mOptions.active = 0;
         mOptions.scorep = 0;
         mOptions.main = `tofPMainContainer-${instance}`;
-        mOptions.idevice = 'trueorfalseIdevice';
 
-        $(`#tofPSendScore-${instance}`).attr('value', mOptions.textButtonScorm);
-        $(`#tofPSendScore-${instance}`).hide();
-
-        $(`#tofPSendScore-${instance}`).on('click', function (e) {
-            e.preventDefault();
-            $trueorfalse.sendScore(false, mOptions);
-            return true;
-        });
+        // The shared addButtonScoreNew emits the save button for isScorm 2
+        // alone, already visible and carrying the author's caption, so there is
+        // nothing here to caption, reveal or hide. This used to hide it
+        // unconditionally, and addEvents runs after registerActivity — which
+        // was what revealed it — so the button vanished the moment the runtime
+        // showed it, and under SCORM the winner depended on how fast the API
+        // wrapper loaded.
+        $(`#tofPMainContainer-${instance}`)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $trueorfalse.sendScore(false, mOptions);
+                return true;
+            });
 
         $('#tofPGameContainer-' + instance).on(
             'click',
@@ -696,13 +782,8 @@ var $trueorfalse = {
                     .css({ 'background-color': bgcolor, color: color })
                     .fadeIn('fast');
                 if (mOptions.isScorm == 1) {
-                    mOptions.initialScore =
-                        typeof $trueorfalse.initialScore === 'undefined'
-                            ? ''
-                            : $trueorfalse.initialScore;
                     $trueorfalse.updateScoreData(mOptions);
                     $trueorfalse.sendScore(true, mOptions);
-                    $trueorfalse.initialScore = score;
                 }
             }
         );
@@ -736,12 +817,17 @@ var $trueorfalse = {
             if (mOptions.showSlider) {
                 $trueorfalse.addEventsSlideShow(mOptions);
             }
-            $trueorfalse.startGame(mOptions);
+            // Play again is the learner's own start, like the play button
+            // below: it clears the answers and the score, so it has to say so.
+            // Restarting silently left the LMS holding the finished attempt's
+            // mark and status while a blank quiz sat at zero on screen, and a
+            // learner who walked away there left the previous grade standing.
+            $trueorfalse.startGame(mOptions, true);
         });
 
         $(`#tofPStartGame-${instance}`).val(msgs.tofPStartGame);
         $(`#tofPStartGame-${instance}`).on('click', function () {
-            $trueorfalse.startGame(mOptions);
+            $trueorfalse.startGame(mOptions, true);
         });
 
         $('#tofPGameContainer-' + instance).on(
@@ -801,6 +887,13 @@ var $trueorfalse = {
         mOptions.gameStarted = false;
         mOptions.gameOver = true;
 
+        // Pressing Comprobar (or running out of time) consumes one attempt. The
+        // activity is already completed (gameOver=true); attempts only gate the
+        // "Try again" button shown at the end of gameOver.
+        if (typeof mOptions.pendingAttempts === 'number') {
+            mOptions.pendingAttempts -= 1;
+        }
+
         $('#tofPCheckTest-' + instance).hide();
         $trueorfalse.stopCounter(mOptions);
         let hits = 0;
@@ -849,29 +942,29 @@ var $trueorfalse = {
             });
 
         mOptions.hits = hits;
-        mOptions.errors = hits;
-        score = (mOptions.hist * 10) / mOptions.numberQuestions;
+        mOptions.errors = errors;
+        mOptions.scorep = (10 * mOptions.hits) / mOptions.numberQuestions;
 
-        $('#tofPMultimedia').data('score', score);
+        $('#tofPMultimedia').data('score', mOptions.scorep);
         $('#tofPMultimedia').data('isscorm', mOptions.isScorm);
         $('#tofPMultimedia').data('evaluation', mOptions.evaluation);
         $('#tofPMultimedia').data('evaluationID', mOptions.evaluationID);
 
-        mOptions.scorep = (10 * mOptions.hits) / mOptions.numberQuestions;
         const message =
             mOptions.msgs.msgYouScore + ': ' + mOptions.scorep.toFixed(2);
-        const type = mOptions.scorep < 5 ? 1 : 2;
+        const type = mOptions.scorep < $exe.passScore.resolve(mOptions) ? 1 : 2;
 
         $trueorfalse.showMessage(type, message, instance);
         $trueorfalse.saveEvaluation(mOptions);
-        $('#tofRebootTest-' + instance).show();
+        // Offer a retry only while attempts remain (default 1 -> no retry after
+        // the first Comprobar). The activity is completed regardless.
+        if (mOptions.pendingAttempts > 0) {
+            $('#tofRebootTest-' + instance).show();
+        } else {
+            $('#tofRebootTest-' + instance).hide();
+        }
         if (mOptions.isScorm == 1) {
-            $trueorfalse.initialScore =
-                typeof $trueorfalse.initialScore === 'undefined'
-                    ? ''
-                    : $trueorfalse.initialScore;
             $trueorfalse.sendScore(true, data);
-            $trueorfalse.initialScore = score;
         }
     },
 
@@ -903,7 +996,7 @@ var $trueorfalse = {
         mOptions.errors = errors;
     },
 
-    startGame: function (data) {
+    startGame: function (data, reportScorm = false) {
         const mOptions = data,
             instance = mOptions.id;
 
@@ -913,6 +1006,7 @@ var $trueorfalse = {
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.scorerp = 0;
+        mOptions.gameOver = false;
 
         $(`#tofPMultimedia-${instance}`).removeClass('TOFP-EHidden');
         $(`#tofPCheckTestDiv-${instance}`).removeClass('TOFP-EHidden');
@@ -946,18 +1040,32 @@ var $trueorfalse = {
                     return;
                 }
                 if (mOptions && mOptions.isTest && mOptions.gameStarted) {
-                    mOptions.counter--;
+                    mOptions.counter = Math.max(0, mOptions.counter - 1);
                     $trueorfalse.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
-                        $trueorfalse.gameOver(mOptions);
+                        $trueorfalse.finishByTime(mOptions);
                     }
                 }
             }, 1000);
         }
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMainContainer-' + instance
-        );
+        const startHtml = $('#tofPMainContainer-' + instance).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(startHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#tofPMainContainer-' + instance
+            );
+        }
         mOptions.gameStarted = true;
+        if (reportScorm && mOptions.isScorm == 1) {
+            $trueorfalse.sendScore(true, mOptions);
+        }
+    },
+
+    finishByTime: function (data) {
+        const mOptions = data;
+        mOptions.counter = 0;
+        mOptions.gameStarted = false;
+        mOptions.gameOver = true;
+        $trueorfalse.gameOver(mOptions);
     },
 
     stopCounter: function (data) {
@@ -986,29 +1094,40 @@ var $trueorfalse = {
             color: color,
             'font-size': '1.1em',
         });
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMessage-' + instance
-        );
+        if ($exeDevices.iDevice.gamification.math.hasLatex(message)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#tofPMessage-' + instance
+            );
+        }
     },
 
+    /**
+     * Fallback texts for any key the saved content does not carry.
+     *
+     * English, and word for word the source strings the edition passes through
+     * c_() (edition/trueorfalse.js refreshTranslations). Literals because this
+     * file runs inside the exported package, where c_() does not exist, so the
+     * source language is the only honest fallback. They used to be Spanish,
+     * which imposed Spanish on every project whose content missed a key.
+     */
     msgsdefault: {
-        msgNoImage: 'Sin imagen',
-        msgFeedback: 'Retroalimentación',
-        msgSuggestion: 'Sugerencia',
-        msgSolution: 'Respuesta',
-        msgQuestion: 'Pregunta',
-        msgTrue: 'Verdadero',
-        msgFalse: 'Falso',
-        msgOk: 'Correcto',
-        msgKO: 'Incorrecto',
-        msgShow: 'Mostrar',
-        msgHide: 'Ocultar',
-        msgReboot: 'Volver a intentar',
-        msgCheck: 'Comprobar',
-        msgStartGame: 'Haz clic aquí para comenzar',
-        msgYouScore: 'Tu puntuación',
-        textButtonScorm: 'Guardar puntuación',
-        msgNext: 'Siguiente',
-        msgPrevious: 'Anterior',
+        msgNoImage: 'No picture question',
+        msgFeedback: 'Feedback',
+        msgSuggestion: 'Suggestion',
+        msgSolution: 'Solution',
+        msgQuestion: 'Question',
+        msgTrue: 'True',
+        msgFalse: 'False',
+        msgOk: 'Correct',
+        msgKO: 'Incorrect',
+        msgShow: 'Show',
+        msgHide: 'Hide',
+        msgReboot: 'Try again!',
+        msgCheck: 'Check',
+        msgStartGame: 'Click here to start',
+        msgYouScore: 'Your score',
+        textButtonScorm: 'Save score',
+        msgNext: 'Next',
+        msgPrevious: 'Previous',
     },
 };

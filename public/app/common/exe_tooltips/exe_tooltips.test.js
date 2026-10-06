@@ -211,9 +211,18 @@ describe('exe_tooltips (app/common)', () => {
   });
 
   describe('init', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('initializes when tooltips are present and loads assets', () => {
       document.body.innerHTML = '<a class="exe-tooltip plain-tt" title="title | text"></a>';
       exeTooltips.init('/assets/');
+      vi.runAllTimers();
       expect(exeTooltips.path).toBe('/assets/');
       expect(exeTooltips.links?.length).toBe(1);
       expect(loadScriptMock).toHaveBeenCalledWith('/assets/jquery.qtip.min.css');
@@ -226,12 +235,14 @@ describe('exe_tooltips (app/common)', () => {
     it('does not load assets when no tooltips present', () => {
       document.body.innerHTML = '<a class="regular-link">Link</a>';
       exeTooltips.init('/assets/');
+      vi.runAllTimers();
       expect(loadScriptMock).not.toHaveBeenCalled();
     });
 
     it('sets viewport to window', () => {
       document.body.innerHTML = '<a class="exe-tooltip plain-tt" title="text"></a>';
       exeTooltips.init('/path/');
+      vi.runAllTimers();
       expect(exeTooltips.viewport).toBeDefined();
     });
 
@@ -242,6 +253,7 @@ describe('exe_tooltips (app/common)', () => {
       });
       document.body.innerHTML = '<a class="exe-tooltip plain-tt" title="text"></a>';
       exeTooltips.init('/path/');
+      vi.runAllTimers();
       expect(exeTooltips.isAJAXAllowed).toBe(true);
     });
 
@@ -252,6 +264,7 @@ describe('exe_tooltips (app/common)', () => {
       });
       document.body.innerHTML = '<a class="exe-tooltip plain-tt" title="text"></a>';
       exeTooltips.init('/path/');
+      vi.runAllTimers();
       expect(exeTooltips.isAJAXAllowed).toBe(true);
     });
 
@@ -263,6 +276,7 @@ describe('exe_tooltips (app/common)', () => {
       document.body.className = 'exe-single-page';
       document.body.innerHTML = '<a class="exe-tooltip plain-tt" title="text"></a>';
       exeTooltips.init('/');
+      vi.runAllTimers();
       expect(exeTooltips.isAJAXAllowed).toBe(false);
     });
 
@@ -274,6 +288,7 @@ describe('exe_tooltips (app/common)', () => {
       document.body.innerHTML = '<a class="exe-tooltip plain-tt" title="text"></a>';
       exeTooltips.isAJAXAllowed = undefined;
       exeTooltips.init('/path/');
+      vi.runAllTimers();
       // isAJAXAllowed should remain undefined for file protocol
       expect(exeTooltips.isAJAXAllowed).toBeUndefined();
     });

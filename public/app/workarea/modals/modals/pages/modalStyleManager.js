@@ -655,12 +655,9 @@ export default class ModalStyleManager extends Modal {
         actionExportTd.classList.add('theme-action-export');
         actionExportTd.title = _('Download');
         actionExportTd.innerHTML = 'download';
-        // Downloadable
-        if (theme.downloadable) {
-            actionExportTd.setAttribute('downloadable', true);
-        } else {
-            actionExportTd.setAttribute('downloadable', false);
-        }
+        // Issue #1893: every style is downloadable, so the export action is
+        // always enabled regardless of the legacy <downloadable> flag.
+        actionExportTd.setAttribute('downloadable', true);
         // Click event
         actionExportTd.addEventListener('click', (event) => {
             this.downloadThemeZip(theme);
@@ -1294,15 +1291,15 @@ export default class ModalStyleManager extends Modal {
      */
     async downloadThemeFromBundle(theme) {
         try {
-            const basePath = eXeLearning.config?.basePath || '';
-            const bundleUrl = `${basePath}/bundles/themes/${theme.dirName}.zip`;
-
-            const response = await fetch(bundleUrl);
-            if (!response.ok) {
-                throw new Error(`Theme bundle not found: ${response.status}`);
+            const fetcher = eXeLearning.app?.resourceFetcher;
+            if (!fetcher) {
+                throw new Error('Theme could not be assembled from loose files');
             }
+            // Single source of truth for resolving the theme zip across modes
+            // (static assemble-from-loose, server bundle). Shared with the
+            // navbar "download style" action via ResourceFetcher.
+            const blob = await fetcher.fetchThemeBundleBlob(theme);
 
-            const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;

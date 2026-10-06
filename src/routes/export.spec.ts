@@ -10,8 +10,10 @@ import * as path from 'path';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 
+import * as Y from 'yjs';
 import {
     createExportRoutes,
+    populateYDocFromStructure,
     type ExportDependencies,
     type ExportSessionManagerDeps,
     type ExportFileHelperDeps,
@@ -164,6 +166,66 @@ function createMockDependencies(): ExportDependencies {
         publicDir: path.join(testDir, 'public'),
     };
 }
+
+describe('populateYDocFromStructure block icons', () => {
+    const buildStructure = (block: {
+        iconName?: string;
+        icon?: { source: 'material' | 'asset' | 'theme' | 'none'; value: string };
+    }): YjsExportStructure => ({
+        meta: { title: 'T' },
+        pages: [
+            {
+                id: 'page-1',
+                pageName: 'Page 1',
+                parentId: null,
+                blocks: [{ id: 'block-1', blockName: 'B', ...block, components: [] }],
+            },
+        ],
+        navigation: [],
+    });
+
+    const readBlockIcon = (structure: YjsExportStructure): unknown => {
+        const ydoc = new Y.Doc();
+        populateYDocFromStructure(ydoc, structure);
+        const navigation = ydoc.getArray<Y.Map<unknown>>('navigation');
+        const pageMap = navigation.get(0);
+        const blocks = pageMap.get('blocks') as Y.Array<Y.Map<unknown>>;
+        return blocks.get(0).get('icon');
+    };
+
+    it('derives a material icon from a mi- iconName', () => {
+        expect(readBlockIcon(buildStructure({ iconName: 'mi-lightbulb' }))).toEqual({
+            source: 'material',
+            value: 'lightbulb',
+        });
+    });
+
+    it('derives an asset icon from an asset:// iconName (consistent with the other paths)', () => {
+        // The old export.ts copy mislabeled this as `theme`; it now matches
+        // the renderer / structure-binding behavior via the shared derivation.
+        expect(readBlockIcon(buildStructure({ iconName: 'asset://uuid/icon.png' }))).toEqual({
+            source: 'asset',
+            value: 'asset://uuid/icon.png',
+        });
+    });
+
+    it('derives a theme icon from a plain iconName', () => {
+        expect(readBlockIcon(buildStructure({ iconName: 'objectives' }))).toEqual({
+            source: 'theme',
+            value: 'objectives',
+        });
+    });
+
+    it('derives none when there is no iconName', () => {
+        expect(readBlockIcon(buildStructure({}))).toEqual({ source: 'none', value: '' });
+    });
+
+    it('lets an explicit block.icon win over the iconName derivation', () => {
+        expect(
+            readBlockIcon(buildStructure({ iconName: 'mi-lightbulb', icon: { source: 'theme', value: 'objectives' } })),
+        ).toEqual({ source: 'theme', value: 'objectives' });
+    });
+});
 
 describe('Export Routes', () => {
     let app: Elysia;
@@ -397,6 +459,81 @@ describe('Export Routes', () => {
             );
 
             expect(postRes.headers.get('content-type')).toBe(getRes.headers.get('content-type'));
+        });
+    });
+
+    describe('path-traversal hardening (C2)', () => {
+        // A traversal odeSessionId (decoded from %2F by Elysia) must be rejected
+        // with 400 BEFORE any filesystem path is built, so an attacker cannot
+        // coerce getOdeSessionTempDir/getOdeSessionDistDir into escaping FILES_DIR.
+        const traversalId = '..%2F..%2F..%2Ftmp%2Fpwned';
+
+        it('should reject a traversal odeSessionId with 400 (GET) and write nothing outside FILES_DIR', async () => {
+            const pwnedPath = path.join(testDir, '..', '..', '..', 'tmp', 'pwned.zip');
+
+            const res = await handle(new Request(`http://localhost/api/export/${traversalId}/html5/download`));
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+            // No ZIP was written outside the intended base directory.
+            expect(await fs.pathExists(pwnedPath)).toBe(false);
+        });
+
+        it('should reject a traversal odeSessionId with 400 (POST) and write nothing outside FILES_DIR', async () => {
+            const pwnedPath = path.join(testDir, '..', '..', '..', 'tmp', 'pwned.zip');
+
+            const res = await handle(
+                new Request(`http://localhost/api/export/${traversalId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+            expect(await fs.pathExists(pwnedPath)).toBe(false);
+        });
+
+        it('should reject a plain (non-encoded) traversal odeSessionId with 400', async () => {
+            const res = await handle(new Request('http://localhost/api/export/..%2Fevil/html5/download'));
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+        });
+
+        it('should still accept a legitimate timestamp session id', async () => {
+            // testSessionId ('20250116testexport') is a normal id and must keep working.
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should still accept a legitimate UUID session id', async () => {
+            const uuidSessionId = 'aaa54536-d8d2-4a7b-bf6d-c809321ccc2a';
+            mockSessions.set(uuidSessionId, {
+                id: uuidSessionId,
+                sessionId: uuidSessionId,
+                fileName: 'uuid-project.elp',
+                userId: OWNER_USER_ID,
+                structure: mockParsedStructure,
+            });
+            await fs.ensureDir(path.join(testDir, 'tmp', uuidSessionId));
+            await fs.ensureDir(path.join(testDir, 'dist', uuidSessionId));
+            await fs.writeFile(
+                path.join(testDir, 'tmp', uuidSessionId, 'content.xml'),
+                '<?xml version="1.0"?><ode></ode>',
+            );
+
+            const res = await handle(new Request(`http://localhost/api/export/${uuidSessionId}/html5/download`));
+
+            expect(res.status).toBe(200);
         });
     });
 

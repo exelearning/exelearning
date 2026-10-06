@@ -22,10 +22,37 @@ import {
     getLicenseClass,
     formatLicenseText,
     shouldShowLicenseFooter,
+    hasSiteFooterContent,
+    hasUserFooterContent,
     getLicenseUrl,
     formatShortLicenseText,
 } from '../constants';
 import { trans } from '../../../services/translation';
+import { PASS_SCORE_EVERY_ACTIVITY_META_NAME, PASS_SCORE_META_NAME, normalizePassScore } from '../metadata-properties';
+import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
+
+/**
+ * Precomputed lookups shared across a single navigation render so each nav node
+ * costs O(1) instead of re-scanning the whole page array. See
+ * PageRenderer.buildNavRenderContext.
+ */
+interface NavRenderContext {
+    /** id → page. */
+    idIndex: Map<string, ExportPage>;
+    /** parentId (or null for roots) → children, in original page order. */
+    childrenByParent: Map<string | null, ExportPage[]>;
+    /** Memoized visibility check (same semantics as isPageVisible). */
+    isVisible: (page: ExportPage) => boolean;
+    /** Strict ancestors of the current page. */
+    ancestorsOfCurrent: Set<string>;
+}
+
+// Matches an opening <a> tag that is a *named anchor* (has id or name) and is NOT a link
+// (no href). Used by single-page export to namespace anchor ids so they don't collide when
+// every page is merged into one document.
+const NAMED_ANCHOR_RE = /<a\s+(?=[^>]*(?:\bid\b|\bname\b)=)(?![^>]*\bhref\b=)[^>]*>/gi;
+const ID_NAME_ATTR_RE = /\b(id|name)="([^"]+)"/gi;
+
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
@@ -96,6 +123,8 @@ export class PageRenderer {
             addSearchBox = false,
             addAccessibilityToolbar = false,
             addMathJax = false,
+            passScore,
+            passScoreEveryActivity = false,
             // Custom head content
             extraHeadContent = '',
             // SCORM-specific options
@@ -113,25 +142,35 @@ export class PageRenderer {
             hideNavButtons = false,
             // Asset URL transformation map
             assetExportPathMap,
+            materialIconDataUris,
             // Application version for generator meta tag
             version,
         } = options;
 
         const pageTitle = this.buildDocumentTitle(page, projectTitle, isIndex);
 
-        // Detect libraries from ORIGINAL content (before transformation)
-        // This is important for exe-package:elp links which get transformed during rendering
-        const originalContent = this.collectPageContent(page);
-        const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
+        // Detect libraries from original component content and nested JSON rich text.
+        // This happens before rendering because protocols and data are transformed later.
+        const detectedLibraries = providedDetectedLibraries ?? this.detectLibrariesForPage(page);
 
-        // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
-            author: options.author,
-            description: options.description,
-            license: options.license,
-            language: options.language,
-            translatedLicense: options.navLabels?.license,
-        });
+        // Render page content (includes exe-package:elp → onclick transformation and,
+        // because allPages is provided, the render-time exe-node: → static path rewrite)
+        const pageContent = this.renderPageContent(
+            page,
+            basePath,
+            projectTitle,
+            assetExportPathMap,
+            {
+                author: options.author,
+                description: options.description,
+                license: options.license,
+                language: options.language,
+                translatedLicense: options.navLabels?.license,
+            },
+            materialIconDataUris,
+            allPages,
+            options.pageFilenameMap,
+        );
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -176,7 +215,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, passScore, passScoreEveryActivity, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -217,6 +256,8 @@ ${madeWithExeHtml}
         faviconType?: string;
         version?: string;
         isEpub?: boolean;
+        passScore?: number;
+        passScoreEveryActivity?: boolean;
     }): string {
         const {
             pageTitle,
@@ -237,13 +278,20 @@ ${madeWithExeHtml}
             faviconType = 'image/x-icon',
             version,
             isEpub = false,
+            passScore,
+            passScoreEveryActivity = false,
         } = options;
 
         // Meta tags
+        //
+        // The pass score travels as a META rather than an inline script because
+        // it has to survive EPUB, whose Content Security Policy forbids inline
+        // SCRIPT tags, and because the parser sees it before libs/common.js runs.
         let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
+<meta name="${PASS_SCORE_META_NAME}" content="${normalizePassScore(passScore)}">
+${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
 
         // Favicon
         head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
@@ -370,11 +418,20 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         pageFilenameMap?: Map<string, string>,
     ): string {
-        const rootPages = allPages.filter(p => !p.parentId);
+        // Precompute indices ONCE per navigation render. The previous
+        // implementation re-scanned the full page array for every nav node
+        // (children filter + recursive visibility/ancestry walks, each doing an
+        // O(n) find per level), making rendering O(n²·depth) per page and the
+        // whole HTML5 export/preview O(n³·depth). For courses with hundreds of
+        // pages that dominated export time on the browser main thread. The
+        // precomputed structures below make navigation O(n) per page with
+        // identical output.
+        const ctx = this.buildNavRenderContext(allPages, currentPageId);
+        const rootPages = ctx.childrenByParent.get(null) ?? [];
 
         let html = '<nav id="siteNav">\n<ul>\n';
         for (const page of rootPages) {
-            html += this.renderNavItem(page, allPages, currentPageId, basePath, pageFilenameMap);
+            html += this.renderNavItemFast(page, allPages, currentPageId, basePath, pageFilenameMap, ctx);
         }
         html += '</ul>\n</nav>';
 
@@ -382,7 +439,118 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
     }
 
     /**
-     * Render a single navigation item (recursive for children)
+     * Build the per-render navigation index: an id→page map, a parentId→children
+     * map (preserving page array order; root pages keyed under `null`), a
+     * memoized visibility cache, and the set of the current page's ancestors.
+     * This collapses the repeated O(n) scans in renderNavItem/isPageVisible/
+     * isAncestorOf into a single O(n) pass with O(1) lookups thereafter.
+     */
+    private buildNavRenderContext(allPages: ExportPage[], currentPageId: string): NavRenderContext {
+        const idIndex = new Map<string, ExportPage>();
+        const childrenByParent = new Map<string | null, ExportPage[]>();
+        const rootId = allPages[0]?.id;
+
+        for (const page of allPages) {
+            idIndex.set(page.id, page);
+            const key = page.parentId ?? null;
+            const bucket = childrenByParent.get(key);
+            if (bucket) {
+                bucket.push(page);
+            } else {
+                childrenByParent.set(key, [page]);
+            }
+        }
+
+        const visibleCache = new Map<string, boolean>();
+        const isVisible = (page: ExportPage): boolean => {
+            const cached = visibleCache.get(page.id);
+            if (cached !== undefined) return cached;
+            let result: boolean;
+            if (page.id === rootId) {
+                result = true;
+            } else if (this.isFalsyProperty(page.properties?.visibility)) {
+                result = false;
+            } else if (page.parentId) {
+                const parent = idIndex.get(page.parentId);
+                result = parent ? isVisible(parent) : true;
+            } else {
+                result = true;
+            }
+            visibleCache.set(page.id, result);
+            return result;
+        };
+
+        // Ancestor chain of the current page (strict ancestors only), with a
+        // cycle guard so malformed parent links cannot loop forever.
+        const ancestorsOfCurrent = new Set<string>();
+        let cursor = idIndex.get(currentPageId);
+        while (cursor?.parentId && !ancestorsOfCurrent.has(cursor.parentId)) {
+            ancestorsOfCurrent.add(cursor.parentId);
+            cursor = idIndex.get(cursor.parentId);
+        }
+
+        return { idIndex, childrenByParent, isVisible, ancestorsOfCurrent };
+    }
+
+    /**
+     * Optimized counterpart to renderNavItem that uses the precomputed
+     * NavRenderContext. Output is byte-for-byte identical to renderNavItem;
+     * only the lookups differ (O(1) map access instead of O(n) array scans).
+     */
+    private renderNavItemFast(
+        page: ExportPage,
+        allPages: ExportPage[],
+        currentPageId: string,
+        basePath: string,
+        pageFilenameMap: Map<string, string> | undefined,
+        ctx: NavRenderContext,
+    ): string {
+        if (!ctx.isVisible(page)) {
+            return '';
+        }
+
+        const children = (ctx.childrenByParent.get(page.id) ?? []).filter(child => ctx.isVisible(child));
+        const isCurrent = page.id === currentPageId;
+        const hasChildren = children.length > 0;
+        const isAncestor = ctx.ancestorsOfCurrent.has(page.id);
+        const isFirstPage = page.id === allPages[0]?.id;
+
+        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
+        const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
+
+        const linkClasses: string[] = [];
+        if (isCurrent) linkClasses.push('active');
+        if (isFirstPage) linkClasses.push('main-node');
+        linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
+
+        if (this.isPageHighlighted(page)) {
+            linkClasses.push('highlighted-link');
+        }
+
+        let html = `<li${liClass}>`;
+        html += ` <a href="${link}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
+
+        if (hasChildren) {
+            html += '<ul class="other-section">\n';
+            for (const child of children) {
+                html += this.renderNavItemFast(child, allPages, currentPageId, basePath, pageFilenameMap, ctx);
+            }
+            html += '</ul>\n';
+        }
+
+        html += '</li>\n';
+        return html;
+    }
+
+    /**
+     * Render a single navigation item (recursive for children).
+     *
+     * Public entry point kept for backward compatibility; it builds a
+     * NavRenderContext on demand and delegates to the optimized renderer so
+     * there is a single source of truth for the markup. Callers rendering a
+     * whole tree should prefer renderNavigation, which builds the context once
+     * and reuses it across every node.
+     *
      * @param page - Page to render
      * @param allPages - All pages
      * @param currentPageId - Current page ID
@@ -397,46 +565,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         pageFilenameMap?: Map<string, string>,
     ): string {
-        // Skip hidden pages (except we check at parent level to preserve hierarchy)
-        if (!this.isPageVisible(page, allPages)) {
-            return '';
-        }
-
-        // Filter children to only visible ones
-        const children = allPages.filter(p => p.parentId === page.id && this.isPageVisible(p, allPages));
-        const isCurrent = page.id === currentPageId;
-        const hasChildren = children.length > 0;
-        const isAncestor = this.isAncestorOf(page.id, currentPageId, allPages);
-        const isFirstPage = page.id === allPages[0]?.id;
-
-        // Build li class attribute
-        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
-        const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
-
-        // Build link classes: main-node for first page, daddy/no-ch for children, active if current
-        const linkClasses: string[] = [];
-        if (isCurrent) linkClasses.push('active');
-        if (isFirstPage) linkClasses.push('main-node');
-        linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
-
-        // Add highlighted-link class if page is highlighted
-        if (this.isPageHighlighted(page)) {
-            linkClasses.push('highlighted-link');
-        }
-
-        let html = `<li${liClass}>`;
-        html += ` <a href="${link}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
-
-        if (hasChildren) {
-            html += '<ul class="other-section">\n';
-            for (const child of children) {
-                html += this.renderNavItem(child, allPages, currentPageId, basePath, pageFilenameMap);
-            }
-            html += '</ul>\n';
-        }
-
-        html += '</li>\n';
-        return html;
+        const ctx = this.buildNavRenderContext(allPages, currentPageId);
+        return this.renderNavItemFast(page, allPages, currentPageId, basePath, pageFilenameMap, ctx);
     }
 
     /**
@@ -632,6 +762,9 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             language?: string;
             translatedLicense?: string;
         },
+        materialIconDataUris?: Map<string, string>,
+        allPages?: ExportPage[],
+        pageFilenameMap?: Map<string, string>,
     ): string {
         let html = '';
 
@@ -640,6 +773,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 basePath,
                 includeDataAttributes: true,
                 assetExportPathMap,
+                materialIconDataUris,
             });
         }
 
@@ -647,6 +781,16 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // This is done here at render time, not during preprocessing, so the XML keeps the original protocol
         if (projectTitle) {
             html = this.replaceElpxProtocol(html, projectTitle);
+        }
+
+        // Rewrite exe-node: internal links to their static export paths. Like the
+        // exe-package:elp transform above, this happens at render time (not during
+        // preprocessing) so the re-editable content.xml keeps the original exe-node:
+        // references and survives an export → re-import round trip (#1927).
+        // Only applies for multi-page exports, which pass allPages; the single-page
+        // export handles its own anchor-based rewrite in renderSinglePage().
+        if (allPages && allPages.length > 0) {
+            html = this.replaceInternalLinks(html, allPages, basePath, pageFilenameMap);
         }
 
         // Sync project properties for download-source-file and similar iDevices
@@ -726,6 +870,22 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
     }
 
     /**
+     * Collect string values nested in JSON iDevice properties.
+     * Rich text fields can appear at different depths depending on the iDevice.
+     */
+    private collectPagePropertyContent(page: ExportPage): string {
+        const parts: string[] = [];
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                for (const value of iterateJsonPropertyStrings(component.properties)) {
+                    parts.push(value);
+                }
+            }
+        }
+        return parts.join('\n');
+    }
+
+    /**
      * Replace exe-package:elp protocol with client-side download handler
      * This enables the download-source-file iDevice to generate ELPX files on-the-fly
      *
@@ -746,6 +906,100 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
 
         return result;
+    }
+
+    /**
+     * Rewrite exe-node: internal links to their static export paths at render time.
+     *
+     * Reuses getPageLink() — the same helper that builds navigation links — so internal
+     * links and nav links stay consistent (single source of truth). basePath already
+     * encodes from-subpage relativity ('' on index, '../' on subpages). The #anchor
+     * fragment, if any, is preserved. Unknown targets are left untouched (external link
+     * or stale reference) so nothing is silently dropped.
+     *
+     * Kept out of preprocessPagesForExport so the source HTML that feeds content.xml
+     * keeps the exe-node: protocol and survives an export → re-import round trip (#1927).
+     *
+     * @param content - Rendered page HTML
+     * @param allPages - All export pages (used to resolve the target and its filename)
+     * @param basePath - Base path of the current page ('' for index, '../' for subpages)
+     * @param pageFilenameMap - Collision-safe page id → filename map
+     * @returns HTML with exe-node: links replaced by static export paths
+     */
+    replaceInternalLinks(
+        content: string,
+        allPages: ExportPage[],
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
+
+            const target = allPages.find(p => p.id === pageId);
+            if (!target) {
+                console.warn(`[PageRenderer] Internal link target not found: ${pageId}`);
+                return match;
+            }
+
+            const url = this.getPageLink(target, allPages, basePath, pageFilenameMap);
+            return `href="${url}${anchorFragment}"`;
+        });
+    }
+
+    /**
+     * Prefix id/name attributes on named anchors (<a> without href) with the page id.
+     * Single-page export merges every page into one document, so anchor ids like "intro"
+     * on different pages would collide; e.g. <a id="intro"> on page "page-2" becomes
+     * <a id="page-2--intro">. Applied at render time so content.xml keeps the raw ids.
+     *
+     * @param content - Rendered page HTML
+     * @param pageId - Id of the page the content belongs to
+     * @returns HTML with named-anchor ids/names namespaced
+     */
+    namespaceSinglePageAnchors(content: string, pageId: string): string {
+        if (!content) return content;
+        return content.replace(NAMED_ANCHOR_RE, match =>
+            match.replace(ID_NAME_ATTR_RE, (_, attr, value) => `${attr}="${pageId}--${value}"`),
+        );
+    }
+
+    /**
+     * Rewrite exe-node: internal links to in-page anchors for single-page export.
+     * A link carrying its own anchor (exe-node:pageId#anchor) resolves to the namespaced
+     * anchor (#pageId--anchor, matching namespaceSinglePageAnchors); without an anchor it
+     * resolves to the page section (#section-pageId). Unknown targets are left untouched.
+     * Applied at render time so content.xml keeps the raw exe-node: references (#1927).
+     *
+     * @param content - Rendered page HTML
+     * @param allPages - All export pages (used to validate the target id)
+     * @returns HTML with exe-node: links replaced by in-page anchors
+     */
+    replaceSinglePageInternalLinks(content: string, allPages: ExportPage[]): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        const pageIds = new Set(allPages.map(p => p.id));
+
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchor = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx + 1) : '';
+
+            if (!pageIds.has(pageId)) {
+                console.warn(`[PageRenderer] Internal link target not found: ${pageId}`);
+                return match;
+            }
+
+            // With an anchor: jump to the namespaced anchor; without: jump to the section.
+            return anchor ? `href="#${pageId}--${anchor}"` : `href="#section-${pageId}"`;
+        });
     }
 
     /**
@@ -825,7 +1079,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         const { license, licenseUrl = '', userFooterContent, language = 'en', navLabels } = options;
 
         let userFooterHtml = '';
-        if (userFooterContent) {
+        // Whitespace-only footer content is treated as no content at all
+        if (hasUserFooterContent(userFooterContent)) {
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
@@ -833,7 +1088,9 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // - Empty license (no license specified, legacy content with unknown license)
         // - "propietary license" and "not appropriate" (no meaningful license to display)
         if (!shouldShowLicenseFooter(license)) {
-            return `<footer id="siteFooter"><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
+            // Tag footers with neither license nor user content so CSS can hide them
+            const emptyClass = hasSiteFooterContent(license, userFooterContent) ? '' : ' class="siteFooter-empty"';
+            return `<footer id="siteFooter"${emptyClass}><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
         }
 
         const licenseText = formatLicenseText(license);
@@ -979,6 +1236,18 @@ ${userFooterHtml}</div></footer>`;
     }
 
     /**
+     * META telling the SCORM runtimes to pass a page only when every activity
+     * reaches its own mark. Written only when the author asked for it: a page
+     * without it is judged by the weighted mean of the marks, as every page was
+     * before the option existed.
+     * @param enabled - The project's passScoreEveryActivity option
+     * @returns The META tag and a line break, or an empty string
+     */
+    renderPassScoreEveryActivityMeta(enabled?: boolean): string {
+        return enabled ? `<meta name="${PASS_SCORE_EVERY_ACTIVITY_META_NAME}" content="true">\n` : '';
+    }
+
+    /**
      * Render a single-page HTML document with all pages
      * @param allPages - All pages in the project
      * @param options - Rendering options
@@ -1001,10 +1270,13 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries?: string[];
             addMathJax?: boolean;
             addAccessibilityToolbar?: boolean;
+            passScore?: number;
+            passScoreEveryActivity?: boolean;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
             navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            materialIconDataUris?: Map<string, string>;
         } = {},
     ): string {
         const {
@@ -1024,7 +1296,10 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries = [],
             addMathJax = false,
             addAccessibilityToolbar = false,
+            passScore,
+            passScoreEveryActivity = false,
             navLabels,
+            materialIconDataUris,
         } = options;
 
         let contentHtml = '';
@@ -1040,6 +1315,27 @@ ${userFooterHtml}</div></footer>`;
             // moves the .page-title element out of .page-header via movePageTitle()
             const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
+            // Render the section content WITHOUT allPages so the multi-page exe-node:
+            // rewrite is skipped; single-page uses its own anchor-based rewrite instead.
+            let sectionContent = this.renderPageContent(
+                page,
+                '',
+                projectTitle,
+                undefined,
+                {
+                    author: options.author,
+                    description: options.description,
+                    license: options.license,
+                    language: options.language,
+                    translatedLicense: navLabels?.license,
+                },
+                materialIconDataUris,
+            );
+            // Namespace this page's named anchors, then resolve exe-node: links to in-page
+            // anchors — both at render time so content.xml keeps the raw source (#1927).
+            sectionContent = this.namespaceSinglePageAnchors(sectionContent, page.id);
+            sectionContent = this.replaceSinglePageInternalLinks(sectionContent, allPages);
+
             // Single-page sections use main-header > page-header structure for CSS compatibility
             contentHtml += `<section id="section-${page.id}">
 <header class="main-header">
@@ -1048,13 +1344,7 @@ ${userFooterHtml}</div></footer>`;
 </div>
 </header>
 <div class="page-content">
-${this.renderPageContent(page, '', projectTitle, undefined, {
-    author: options.author,
-    description: options.description,
-    license: options.license,
-    language: options.language,
-    translatedLicense: navLabels?.license,
-})}
+${sectionContent}
 </div>
 </section>\n`;
         }
@@ -1071,27 +1361,35 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
             }
         }
 
+        // Stylesheet order must match the multi-page export (see buildHead): content-detected
+        // libraries and the accessibility toolbar first, then base.css, then the theme last.
+        // exe_effects.css styles components with the same specificity the theme uses, so the
+        // theme only wins the tie when its sheet comes last (#2282).
+        const libraryIncludes = this.renderDetectedLibraries(effectiveDetectedLibraries, '');
+        const atoolsIncludes = addAccessibilityToolbar
+            ? '\n<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">'
+            : '';
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
 <meta charset="utf-8">
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${this.escapeHtml(projectTitle)}</title>
+<meta name="${PASS_SCORE_META_NAME}" content="${normalizePassScore(passScore)}">
+${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}<title>${this.escapeHtml(projectTitle)}</title>
+${this.renderFavicon('', faviconPath, faviconType)}
 <script>document.querySelector("html").classList.add("js");</script>
 <script src="libs/jquery/jquery.min.js"> </script>
 <script src="libs/common_i18n.js"> </script>
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
-<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
+<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libraryIncludes}${atoolsIncludes}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
-${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
-${this.renderDetectedLibraries(effectiveDetectedLibraries, '')}
-${addAccessibilityToolbar ? `<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">` : ''}
 ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
 <body class="exe-export exe-single-page">
@@ -1171,10 +1469,14 @@ ${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
      * @param html - HTML content to scan
      * @returns Array of library names detected
      */
-    detectContentLibraries(html: string): string[] {
+    detectContentLibraries(html: string, excludedLibraries: ReadonlySet<string> = new Set()): string[] {
         const detectedLibs: Set<string> = new Set();
 
         for (const lib of LIBRARY_PATTERNS) {
+            if (excludedLibraries.has(lib.name)) {
+                continue;
+            }
+
             let found = false;
 
             switch (lib.type) {
@@ -1208,10 +1510,24 @@ ${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
         return Array.from(detectedLibs);
     }
 
+    private detectLibrariesForPage(page: ExportPage): string[] {
+        const detectedLibs = new Set(this.detectContentLibraries(this.collectPageContent(page)));
+        const propertyContent = this.collectPagePropertyContent(page);
+
+        // Math in JSON iDevices is handled by the selective pre-rendering pipeline.
+        // Scanning raw properties for these patterns would force MathJax for
+        // unsupported iDevices and undo that optimization.
+        for (const libName of this.detectContentLibraries(propertyContent, JSON_PROPERTY_LIBRARY_EXCLUSIONS)) {
+            detectedLibs.add(libName);
+        }
+
+        return Array.from(detectedLibs);
+    }
+
     private detectContentLibrariesForPages(pages: ExportPage[]): string[] {
         const detectedLibs = new Set<string>();
         for (const page of pages) {
-            for (const libName of this.detectContentLibraries(this.collectPageContent(page))) {
+            for (const libName of this.detectLibrariesForPage(page)) {
                 detectedLibs.add(libName);
             }
         }

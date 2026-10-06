@@ -4,6 +4,7 @@
 
 /* eslint-disable no-undef */
 
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -155,5 +156,325 @@ describe('geogebra-activity iDevice (edition)', () => {
 
     expect($('#eXeProgressReport').prop('checked')).toBe(false);
     expect($('#eXeProgressReportID').val()).toBe('');
+  });
+
+  describe('display size controls', () => {
+    function buildSizeFieldsDom() {
+      return `
+        <input id="geogebraActivityLang" value="en" />
+        <input id="geogebraActivityURL" value="" />
+        <input id="geogebraActivitySCORM" type="checkbox" />
+        <div id="geogebraActivitySCORMoptions" class="d-none"></div>
+        <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
+        <div id="geogebraActivityWeightDiv" class="d-none"></div>
+        <textarea id="geogebraActivityInstructions"></textarea>
+        <textarea id="eXeIdeviceTextAfter"></textarea>
+        <span id="geogebraActivityAuthorURL"></span>
+        <span id="geogebraActivityTitle"></span>
+        <input id="geogebraActivityShowTitle" type="checkbox" />
+        <input id="geogebraActivityShowAuthor" type="checkbox" />
+        <input id="geogebraActivityEvaluation" type="checkbox" />
+        <input id="geogebraActivityEvaluationID" value="" />
+        <input id="geogebraActivityWidth" />
+        <input id="geogebraActivityHeight" />
+      `;
+    }
+
+    it('renders createForm() with the size controls visible (not hidden)', () => {
+      document.body.innerHTML = '<div id="geogebra_body_create_form"></div>';
+      $exeDevice.ideviceBody = document.getElementById('geogebra_body_create_form');
+
+      globalThis.$exeDevicesEdition.iDevice.common = {
+        getIdeviceDescription: vi.fn(() => '<div class="alert alert-info"></div>'),
+        getTextFieldset: vi.fn(() => ''),
+      };
+
+      $exeDevice.createForm();
+
+      const sizeBlock = $exeDevice.ideviceBody.querySelector('#geogebraActivitySize');
+      expect(sizeBlock).not.toBeNull();
+      expect(sizeBlock.classList.contains('d-none')).toBe(false);
+      expect(sizeBlock.classList.contains('d-flex')).toBe(true);
+
+      const widthInput = $exeDevice.ideviceBody.querySelector('#geogebraActivityWidth');
+      const heightInput = $exeDevice.ideviceBody.querySelector('#geogebraActivityHeight');
+      expect(widthInput).not.toBeNull();
+      expect(heightInput).not.toBeNull();
+    });
+
+    it('restores width and height from saved size classes', () => {
+      document.body.innerHTML = buildSizeFieldsDom();
+
+      $exeDevice.idevicePreviousData = `
+        <div class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-width-800 auto-geogebra-height-600"></div>
+      `;
+
+      $exeDevice.loadPreviousValues();
+
+      expect($('#geogebraActivityWidth').val()).toBe('800');
+      expect($('#geogebraActivityHeight').val()).toBe('600');
+    });
+
+    it('leaves width and height empty for legacy content without explicit size classes', () => {
+      document.body.innerHTML = buildSizeFieldsDom();
+
+      $exeDevice.idevicePreviousData = `
+        <div class="auto-geogebra auto-geogebra-VgHhQXCC"></div>
+      `;
+
+      $exeDevice.loadPreviousValues();
+
+      expect($('#geogebraActivityWidth').val()).toBe('');
+      expect($('#geogebraActivityHeight').val()).toBe('');
+    });
+
+    function buildSaveDom({ width, height }) {
+      return `
+        <input id="geogebraActivityLang" value="en" />
+        <input id="geogebraActivityURL" value="VgHhQXCC" />
+        <input id="geogebraActivitySCORM" type="checkbox" />
+        <input id="geogebraActivityBorderColor" value="" />
+        <input id="geogebraActivityScale" value="100" />
+        <input id="geogebraActivityWeight" value="100" />
+        <input id="geogebraActivityWidth" value="${width}" />
+        <input id="geogebraActivityHeight" value="${height}" />
+        <span id="geogebraActivityAuthorURL"></span>
+        <span id="geogebraActivityTitle"></span>
+      `;
+    }
+
+    it('save() emits auto-geogebra-width/height classes for provided values', () => {
+      document.body.innerHTML = buildSaveDom({ width: '800', height: '600' });
+
+      const previousEditors = global.tinymce.editors;
+      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+
+      try {
+        const html = $exeDevice.save();
+        expect(html).toContain('auto-geogebra-width-800');
+        expect(html).toContain('auto-geogebra-height-600');
+      } finally {
+        global.tinymce.editors = previousEditors;
+      }
+    });
+
+    it('save() omits size classes when width and height are left blank', () => {
+      document.body.innerHTML = buildSaveDom({ width: '', height: '' });
+
+      const previousEditors = global.tinymce.editors;
+      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+
+      try {
+        const html = $exeDevice.save();
+        expect(html).not.toContain('auto-geogebra-width-');
+        expect(html).not.toContain('auto-geogebra-height-');
+      } finally {
+        global.tinymce.editors = previousEditors;
+      }
+    });
+
+    // Like every other text this iDevice shows the learner: translated when it
+    // is saved, and kept in the positional list the export reads.
+    it('save() appends the minimum score notice to the evaluation messages', () => {
+      document.body.innerHTML = buildSaveDom({ width: '', height: '' });
+
+      const previousEditors = global.tinymce.editors;
+      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+
+      try {
+        const container = document.createElement('div');
+        container.innerHTML = $exeDevice.save();
+        const messages = container
+          .querySelector('.auto-geogebra-messages-evaluation')
+          .textContent.split(',')
+          .map(message => unescape(message));
+
+        // Last, after the save button's caption, so older content keeps its positions.
+        expect(messages).toHaveLength(5);
+        expect(messages[3]).toBe('Save score');
+        expect(messages[4]).toBe('Minimum score needed to pass this activity: %s');
+      } finally {
+        global.tinymce.editors = previousEditors;
+      }
+    });
+  });
+
+  /**
+   * This iDevice stores nothing as JSON: its options live as CSS classes on its
+   * own markup. The pass score follows that convention, and the asymmetry is
+   * deliberate -- the class is written only for a customised mark, so "global"
+   * leaves no trace and content saved before the option existed reads as global
+   * without a migration.
+   */
+  describe('pass score wiring', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'geogebra-activity.js'), 'utf-8');
+    });
+
+    it('delegates the evaluation controls to the shared tab', () => {
+      // It renders neither control itself any more: the Grading tab does.
+      expect(source).not.toContain('passScore.getContents(');
+      expect(source).not.toContain('progressBar.getContents(');
+      expect(source).toContain('gamification.scorm.getTab(');
+    });
+
+    it('hides the automatic mode, which this activity cannot do', () => {
+      // A GeoGebra construction has no end of its own -- the learner may keep
+      // dragging it forever -- so there is no moment at which to report on its
+      // own. Only "do not save" and "show a button" are reachable.
+      expect(source).toContain('hideautosave: true');
+    });
+
+    /**
+     * Storage is the interesting part of this iDevice: it has no JSON options
+     * block, so the SCORM settings ride on the same CSS classes as everything
+     * else. Nothing new had to be invented for the Grading tab, because the
+     * set of reachable states did not grow -- it is still "button" or nothing,
+     * which auto-geogebra-scorm already encoded. That is what keeps existing
+     * content readable without a migration.
+     */
+    /**
+     * The editor re-injects an iDevice's edition file with a <script> tag every
+     * time the author opens it, so a second edition re-runs the whole file in
+     * the same realm. `var $exeDevice` is redeclarable and survives that; a
+     * top-level `const` throws "Identifier has already been declared" and the
+     * form never renders again until the page is reloaded.
+     *
+     * This bit the pass-score class, which shipped as a module-level const and
+     * broke the second edition of any GeoGebra activity.
+     */
+    it('declares nothing at the top level that a re-run would clash with', () => {
+      const topLevelBindings = source.match(/^(const|let|class)\s/gm) ?? [];
+
+      expect(topLevelBindings).toHaveLength(0);
+      expect(source).toContain('var $exeDevice');
+    });
+
+    it('keeps storing the mode in the class it always used', () => {
+      expect(source).toContain("css += ' auto-geogebra-scorm'");
+      expect(source).toContain("div.hasClass('auto-geogebra-scorm')");
+      // No second class for the mode: presence means button, absence means off.
+      expect(source).not.toContain('auto-geogebra-scorm-mode');
+    });
+
+    it('takes the mode, the button text and the weight from the shared block', () => {
+      expect(source).toContain('gamification.scorm.getValues()');
+      expect(source).toContain('scorm.isScorm > 0');
+      expect(source).toContain('buttonText = scorm.textButtonScorm');
+      expect(source).toContain('weight = scorm.weighted');
+    });
+
+    it('feeds them back into the shared block when reopened', () => {
+      expect(source).toContain('gamification.scorm.setValues(');
+      expect(source).toContain('scormMode = 2');
+      expect(source).toContain("scormWeight = part.replace('auto-geogebra-weight-'");
+    });
+
+    it('no longer keeps a save-score toggle of its own', () => {
+      // Two controls for one setting is how they end up contradicting.
+      expect(source).not.toContain('geogebraActivitySCORM');
+      expect(source).not.toContain('geogebraActivityWeight');
+    });
+
+    it('writes a class only for a customised mark', () => {
+      expect(source).toContain("if (passScore.passScoreMode === 'custom')");
+      expect(source).toContain("css += ' ' + $exeDevice.passScoreClass + passScore.passScoreCustom");
+    });
+
+    it('reads the class back as the custom mode', () => {
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain("passScoreMode: 'custom'");
+      expect(source).toContain('part.replace($exeDevice.passScoreClass');
+    });
+
+    it('takes the mark from the shared control when saving', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+    });
+
+    it('wires the radio and input handlers', () => {
+      expect(source).toContain('gamification.passScore.addEvents()');
+    });
+  });
+
+  describe('edition lifecycle', () => {
+    let handlers;
+    let abort;
+
+    beforeEach(() => {
+      document.body.innerHTML = `
+        <input id="geogebraActivityURL" value="VgHhQXCC" />
+        <input id="geogebraActivityWidth" value="" />
+        <input id="geogebraActivityHeight" value="" />
+        <span id="geogebraActivityAuthorURL"></span>
+        <span id="geogebraActivityTitle"></span>
+      `;
+      handlers = null;
+      abort = vi.fn();
+      vi.spyOn($, 'ajax').mockImplementation((options) => {
+        handlers = options;
+        return { abort };
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    const answer = {
+      responses: {
+        response: {
+          item: {
+            width: '800',
+            height: '600',
+            author: 'Ada Lovelace',
+            url: 'https://www.geogebra.org/m/VgHhQXCC',
+            title: 'Pendiente de una recta',
+            visibility: 'O',
+          },
+        },
+      },
+    };
+
+    it('fills the form when the lookup answers while the editor is open', () => {
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+
+      handlers.success(answer);
+
+      expect($('#geogebraActivityWidth').val()).toBe('800');
+      expect($('#geogebraActivityAuthorURL').text()).toBe('Ada Lovelace');
+    });
+
+    it('aborts the pending lookup when the edition closes', () => {
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+
+      expect(abort).not.toHaveBeenCalled();
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(abort).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a lookup that answers after the edition closed', () => {
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+      $exeDevice.$lifecycle.destroy();
+
+      handlers.success(answer);
+
+      expect($('#geogebraActivityWidth').val()).toBe('');
+      expect($('#geogebraActivityAuthorURL').text()).toBe('');
+    });
+
+    it('does not report an error raised by its own abort', () => {
+      const errorMessage = vi.spyOn($exeDevice, 'errorMessage');
+
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+      // jQuery calls the error handler synchronously when a request is aborted.
+      abort.mockImplementation(() => handlers.error());
+      $exeDevice.$lifecycle.destroy();
+
+      expect(errorMessage).not.toHaveBeenCalled();
+    });
   });
 });

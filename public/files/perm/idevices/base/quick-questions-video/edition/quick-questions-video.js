@@ -151,6 +151,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Video test'),
         };
     },
@@ -229,8 +230,16 @@ var $exeDevice = {
 
     loadYoutubeApi: function () {
         if (typeof YT == 'undefined') {
-            onYouTubeIframeAPIReady = $exeDevice.youTubeReady;
-            let tag = document.createElement('script');
+            // The YouTube API calls this global whenever it finishes loading,
+            // which can be long after this edition closed. Bind it to this
+            // edition and restore the previous value on teardown.
+            const ready = $exeDevice.youTubeReady;
+            const previousReady = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = typeof ready === 'function' ? $exeDevice.$lifecycle.bind(ready) : ready;
+            $exeDevice.$lifecycle.own(() => {
+                window.onYouTubeIframeAPIReady = previousReady;
+            });
+            const tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
             let firstScriptTag = document.getElementsByTagName('script')[0];
@@ -241,6 +250,7 @@ var $exeDevice = {
     },
 
     loadPlayerYoutube: function () {
+        const lifecycle = $exeDevice.$lifecycle;
         $exeDevice.player = new YT.Player('vquextEVideo', {
             width: '100%',
             height: '100%',
@@ -251,22 +261,24 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.clickPlay,
-                onError: $exeDevice.onPlayerError,
+                onReady: lifecycle.bind($exeDevice.clickPlay),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
             },
         });
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
     },
 
     clickPlay: function () {
         const $player = $('#vquextEVIURL');
         if ($player.length == 1) {
             const idv = $player.val().trim();
-            if (idv !== '') $exeDevice.loadVideo(idv);
+            if (idv !== '') $exeDevice?.loadVideo(idv);
         }
     },
 
     youTubeReady: function () {
-        if (typeof YT == 'undefined') return false;
+        if (typeof YT == 'undefined' || !$exeDevice) return false;
+        const lifecycle = $exeDevice.$lifecycle;
         $('#vquextMediaVideo').prop('disabled', false);
         $exeDevice.player = new YT.Player('vquextEVideo', {
             width: '100%',
@@ -278,15 +290,16 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.onPlayerReady,
-                onError: $exeDevice.onPlayerError,
-                onStateChange: $exeDevice.onPlayerStateChange,
+                onReady: lifecycle.bind($exeDevice.onPlayerReady),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
+                onStateChange: lifecycle.bind($exeDevice.onPlayerStateChange),
             },
         });
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
     },
 
     onPlayerStateChange() {
-        if ($exeDevice.videoType > 0) return;
+        if (!$exeDevice || $exeDevice.videoType > 0) return;
         const lduration = Math.floor($exeDevice.player.getDuration());
         if (!isNaN(lduration) && lduration > 0) {
             $exeDevice.durationVideo = lduration;
@@ -305,7 +318,7 @@ var $exeDevice = {
     },
 
     onPlayerReady: function () {
-        if ($exeDevice.videoType > 0) return;
+        if (!$exeDevice || $exeDevice.videoType > 0) return;
 
         $exeDevice.youtubeLoaded = true;
         const url = $('#vquextEVIURL').val(),
@@ -467,6 +480,7 @@ var $exeDevice = {
     startVideoLocal: function (url, start, end) {
         if ($exeDevice.localPlayer) {
             $exeDevice.pointEnd = end;
+            const lifecycle = $exeDevice.$lifecycle;
             const player = $exeDevice.localPlayer;
             const startTime = parseFloat(start);
 
@@ -478,19 +492,28 @@ var $exeDevice = {
                 // Use the global asset resolver if available
                 const resolver = window.eXeLearningAssetResolver;
                 if (resolver && typeof resolver.resolve === 'function') {
-                    resolver.resolve(url).then(blobUrl => {
-                        if (blobUrl) {
-                            // Set src directly without going through interceptor
-                            player.src = blobUrl;
-                            // Wait for canplay event to set time and play
-                            // This works better with the existing loadedmetadata listener from initClock
-                            player.addEventListener('canplay', function onCanPlay() {
-                                player.removeEventListener('canplay', onCanPlay);
-                                player.currentTime = startTime;
-                                player.play().catch(() => {});
-                            }, { once: true });
-                        }
-                    });
+                    // The resolution can land after the editor closed, so the
+                    // continuation is bound to this edition and the canplay
+                    // listener is owned by it.
+                    resolver.resolve(url).then(
+                        lifecycle.bind(blobUrl => {
+                            if (blobUrl) {
+                                // Set src directly without going through interceptor
+                                player.src = blobUrl;
+                                // Wait for canplay event to set time and play
+                                // This works better with the existing loadedmetadata listener from initClock
+                                lifecycle.addEventListener(
+                                    player,
+                                    'canplay',
+                                    () => {
+                                        player.currentTime = startTime;
+                                        player.play().catch(() => {});
+                                    },
+                                    { once: true },
+                                );
+                            }
+                        }),
+                    );
                 } else {
                     console.warn('[quick-questions-video] Asset resolver not available for:', url);
                 }
@@ -520,7 +543,7 @@ var $exeDevice = {
     },
 
     getDataVideoLocal: function () {
-        if ($exeDevice.videoType > 0 && this.duration > 0) {
+        if ($exeDevice?.videoType > 0 && this.duration > 0) {
             $exeDevice.durationVideo = Math.floor(this.duration);
             const endVideo =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
@@ -987,7 +1010,6 @@ var $exeDevice = {
                                     <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                                 </div>
                                 <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
-                                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                                 </div>
                             </div>
                         </fieldset>
@@ -1170,7 +1192,7 @@ var $exeDevice = {
                          ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                     </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 </div>
             `;
@@ -1197,6 +1219,7 @@ var $exeDevice = {
             this.showSolution(0);
         }
         $exeDevice.localPlayer = document.getElementById('vquextEVideoLocal');
+        $exeDevice.$lifecycle.ownMedia($exeDevice.localPlayer);
         $exeDevice.showTypeQuestion(0);
         this.active = 0;
     },
@@ -1378,14 +1401,23 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#vquextEGlobalTimes').val(game.globalTime);
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
+        // The weight too: setValues defaults it to 100 when the argument is
+        // missing, so the stored value never reached the field — and the next
+        // save read that 100 back out of the form and overwrote it. Every
+        // other iDevice passes four arguments here.
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
-            game.repeatActivity
+            game.repeatActivity,
+            game.weighted
         );
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.videoType =
@@ -1473,17 +1505,7 @@ var $exeDevice = {
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
-        clearInterval($exeDevice.timeUpdateInterval);
-        $exeDevice.timeUpdateInterval = null;
-        $exeDevice.localPlayer.removeEventListener(
-            'timeupdate',
-            $exeDevice.timeUpdateVideoLocal,
-            false
-        );
-        $exeDevice.localPlayer.removeEventListener(
-            'loadedmetadata',
-            $exeDevice.getDataVideoLocal
-        );
+        $exeDevice.releaseClock();
 
         $exeDevice.changesSaved = true;
 
@@ -1721,6 +1743,8 @@ var $exeDevice = {
             modeBoard = $('#vquextEModeBoard').is(':checked'),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#vquextEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
@@ -1826,6 +1850,8 @@ var $exeDevice = {
             modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             globalTime,
             id,
         };
@@ -1862,7 +1888,7 @@ var $exeDevice = {
 
         $('.VDQXTE-EPanel').on('click', 'input.VDQXTE-Number', function () {
             const number = parseInt($(this).val());
-            $exeDevice.showOptions(number);
+            $exeDevice?.showOptions(number);
         });
 
         $('.VDQXTE-EPanel').on(
@@ -1870,43 +1896,43 @@ var $exeDevice = {
             'input.VDQXTE-TypeQuestion',
             function () {
                 const type = parseInt($(this).val());
-                $exeDevice.showTypeQuestion(type);
+                $exeDevice?.showTypeQuestion(type);
             }
         );
 
         $('#vquextEAdd').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.addQuestion();
+            $exeDevice?.addQuestion();
         });
 
         $('#vquextEFirst').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.firstQuestion();
+            $exeDevice?.firstQuestion();
         });
 
         $('#vquextEPrevious').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.previousQuestion();
+            $exeDevice?.previousQuestion();
         });
 
         $('#vquextENext').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.nextQuestion();
+            $exeDevice?.nextQuestion();
         });
 
         $('#vquextELast').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.lastQuestion();
+            $exeDevice?.lastQuestion();
         });
 
         $('#vquextEDelete').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.removeQuestion();
+            $exeDevice?.removeQuestion();
         });
 
         $('#vquextEPlayVideo').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.playQuestionVideo();
+            $exeDevice?.playQuestionVideo();
         });
 
         $('#vquextENumberLives').on('keyup', function () {
@@ -1928,19 +1954,19 @@ var $exeDevice = {
             v = v.substring(0, 3);
             this.value = v;
             if (this.value > 0 && this.value < 101) {
-                $exeDevice.updateQuestionsNumber();
+                $exeDevice?.updateQuestionsNumber();
             }
         });
 
         $('#vquextEPercentajeQuestions').on('click', function () {
-            $exeDevice.updateQuestionsNumber();
+            $exeDevice?.updateQuestionsNumber();
         });
 
         $('#vquextEPercentajeQuestions').on('focusout', function () {
             this.value = this.value.trim() == '' ? 100 : this.value;
             this.value = this.value > 100 ? 100 : this.value;
             this.value = this.value < 1 ? 1 : this.value;
-            $exeDevice.updateQuestionsNumber();
+            $exeDevice?.updateQuestionsNumber();
         });
 
         $('#vquextETimeShowSolution').on('keyup', function () {
@@ -1959,6 +1985,7 @@ var $exeDevice = {
         $('#vquextPoint, #vquextEVIStart, #vquextEVIEnd').on(
             'focusout',
             function () {
+                if (!$exeDevice) return;
                 if (!$exeDevice.validTime(this.value)) {
                     $(this).css({
                         'background-color': 'red',
@@ -1981,6 +2008,7 @@ var $exeDevice = {
         $('#vquextPoint').css('color', '#2c6d2c');
 
         $('#vquextPoint').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVIFocus = 0;
             $('#vquextPoint').css('color', '#2c6d2c');
@@ -1989,6 +2017,7 @@ var $exeDevice = {
         });
 
         $('#vquextEVIStart').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVIFocus = 1;
             $('#vquextPoint').css('color', '#000000');
@@ -1997,6 +2026,7 @@ var $exeDevice = {
         });
 
         $('#vquextEVIEnd').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVIFocus = 2;
             $('#vquextEVIEnd').css('color', '#2c6d2c');
@@ -2005,6 +2035,7 @@ var $exeDevice = {
         });
 
         $('#vquextEVITime').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             if ($exeDevice.timeVIFocus == 0) {
                 $('#vquextPoint').val($('#vquextEVITime').text());
@@ -2038,6 +2069,7 @@ var $exeDevice = {
         });
 
         $('#vquextEVIURL').change(function () {
+            if (!$exeDevice) return;
             const url = $(this).val().trim(),
                 id = $exeDevices.iDevice.gamification.media.getIDYoutube(url);
             $('#vquextEVIEnd').val('00:00:00');
@@ -2050,6 +2082,7 @@ var $exeDevice = {
         });
 
         $('#vquextEPlayStart').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             const url = $('#vquextEVIURL').val().trim(),
                 id = $exeDevices.iDevice.gamification.media.getIDYoutube(url);
@@ -2077,7 +2110,7 @@ var $exeDevice = {
                 const gm = parseInt($(this).val()),
                     fb = $('#vquextEHasFeedBack').is(':checked'),
                     ul = $('#vquextEUseLives').is(':checked');
-                $exeDevice.updateGameMode(gm, fb, ul);
+                $exeDevice?.updateGameMode(gm, fb, ul);
             }
         );
 
@@ -2097,7 +2130,7 @@ var $exeDevice = {
 
         $('#vquextECustomMessages').on('change', function () {
             const messages = $(this).is(':checked');
-            $exeDevice.showSelectOrder(messages);
+            $exeDevice?.showSelectOrder(messages);
         });
 
         $('#vquextENavigable').on('change', function () {
@@ -2106,6 +2139,7 @@ var $exeDevice = {
         });
 
         $('#vquextNumberQuestion').keyup(function (e) {
+            if (!$exeDevice) return;
             if (e.keyCode == 13) {
                 const num = parseInt($(this).val());
                 if (!isNaN(num) && num > 0) {
@@ -2124,8 +2158,10 @@ var $exeDevice = {
             }
         });
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#vquextGlobalTimeButton').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             const selectedTime = parseInt($('#vquextEGlobalTimes').val(), 10);
             for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
@@ -2147,31 +2183,42 @@ var $exeDevice = {
         });
     },
 
+    /**
+     * Stop the clock: cancel the polling timer and detach the local player
+     * listeners this edition attached. Safe to call when nothing is running.
+     */
+    releaseClock: function () {
+        const lifecycle = $exeDevice.$lifecycle;
+        lifecycle.clearInterval($exeDevice.timeUpdateInterval);
+        $exeDevice.timeUpdateInterval = null;
+        if (typeof $exeDevice.removeLocalPlayerListeners === 'function') {
+            $exeDevice.removeLocalPlayerListeners();
+            $exeDevice.removeLocalPlayerListeners = null;
+        }
+    },
+
     initClock: function (type) {
         $exeDevice.endVideoQuExt = 0;
-        const { localPlayer, timeUpdateVideoLocal, getDataVideoLocal } =
-            $exeDevice;
+        const lifecycle = $exeDevice.$lifecycle;
+        const { localPlayer, timeUpdateVideoLocal, getDataVideoLocal } = $exeDevice;
 
-        localPlayer.removeEventListener(
-            'timeupdate',
-            timeUpdateVideoLocal,
-            false
-        );
-        localPlayer.removeEventListener('loadedmetadata', getDataVideoLocal);
-
-        clearInterval($exeDevice.timeUpdateInterval);
+        $exeDevice.releaseClock();
 
         if (type > 0) {
-            localPlayer.addEventListener('loadedmetadata', getDataVideoLocal);
-            localPlayer.addEventListener(
-                'timeupdate',
-                timeUpdateVideoLocal,
-                false
-            );
+            // `getDataVideoLocal` reads `this.duration`, so it must keep
+            // running with the media element as `this`.
+            const removeMetadata = lifecycle.addEventListener(localPlayer, 'loadedmetadata', event => {
+                getDataVideoLocal.call(event.currentTarget, event);
+            });
+            const removeTimeUpdate = lifecycle.addEventListener(localPlayer, 'timeupdate', timeUpdateVideoLocal);
+            $exeDevice.removeLocalPlayerListeners = () => {
+                removeMetadata();
+                removeTimeUpdate();
+            };
         } else {
-            $exeDevice.timeUpdateInterval = setInterval(() => {
-                if ($exeDevice?.videoType === 0) {
-                    $exeDevice.updateTimerDisplayYT();
+            $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
+                if (this.videoType === 0) {
+                    this.updateTimerDisplayYT();
                 }
             }, 1000);
         }

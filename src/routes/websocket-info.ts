@@ -13,7 +13,6 @@
  */
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { getJwtSecret, type JwtPayload } from './auth';
 import { hasRole, ROLES, requireAdmin, requireAuth } from '../utils/guards';
 import { getServerInfo, getActiveRooms } from '../websocket/yjs-websocket';
@@ -39,7 +38,6 @@ const defaultDependencies: WebSocketInfoDependencies = {
 export function createWebSocketInfoRoutes(deps: WebSocketInfoDependencies = defaultDependencies) {
     return (
         new Elysia({ name: 'websocket-info-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

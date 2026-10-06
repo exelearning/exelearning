@@ -83,6 +83,12 @@ var $azquizgame = {
 
             const rosco = $azquizgame.createInterfaceRosco(i);
             dl.before(rosco).remove();
+            // Before .rosco-Main rather than inside it: its scoreboard is
+            // positioned absolutely at its top and would sit on the notice.
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+                option,
+                '#roscoMain-' + i
+            );
 
             const msg = $azquizgame.options[i].msgs.msgPlayStart;
 
@@ -405,8 +411,6 @@ var $azquizgame = {
         $('#roscoShowErrors-' + instance).off('click');
         $('#roscoShowUnanswered-' + instance).off('click');
         $('#roscoCubierta-' + instance).off('click', '.rosco-audioicon');
-
-        $(window).off('unload.eXeRosco beforeunload.eXeRosco');
     },
 
     addEvents: function (instance) {
@@ -592,15 +596,6 @@ var $azquizgame = {
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
-
-        $(window).on('unload.eXeRosco beforeunload.eXeRosco', function () {
-            if (typeof $azquizgame.mScorm !== 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $azquizgame.mScorm
-                );
-                $azquizgame.gameOver(1, instance);
-            }
-        });
 
         $roscoTypeGame.show();
 
@@ -790,24 +785,33 @@ var $azquizgame = {
         $azquizgame.updateTime(mOptions.durationGame, instance);
         $azquizgame.drawRosco(instance);
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#roscoMainContainer-' + instance);
-            let $content = $('#node-content');
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and ending it when its own
+        // time ran out.
+        const container = document.getElementById(
+            'roscoMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
             $azquizgame.updateTime(mOptions.counter, instance);
             mOptions.counter--;
             if (mOptions.counter <= 0) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 $azquizgame.gameOver(1, instance);
                 return;
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $('#roscoPShowClue-' + instance)
             .text('')
@@ -848,6 +852,7 @@ var $azquizgame = {
 
         mOptions.gameActived = true;
         mOptions.gameStarted = true;
+        $azquizgame.saveScormScore(instance);
         $azquizgame.newWord(instance);
     },
 
@@ -1058,6 +1063,10 @@ var $azquizgame = {
             .attr('src', '')
             .attr('src', url)
             .on('load', function () {
+                // A picture that finishes loading after the page has changed
+                // belongs to a game that is gone; its number now names the
+                // next page's game.
+                if (!this.isConnected) return;
                 if (
                     !this.complete ||
                     typeof this.naturalWidth === 'undefined' ||
@@ -1087,8 +1096,10 @@ var $azquizgame = {
 
     positionPointer: function (instance) {
         const mOptions = $azquizgame.options[instance],
-            mWord = mOptions.wordsGame[mOptions.activeWord],
-            x = parseFloat(mWord.x) || 0,
+            mWord = mOptions.wordsGame[mOptions.activeWord];
+        // No word on the board, as before the game starts or once it is over.
+        if (!mWord) return;
+        const x = parseFloat(mWord.x) || 0,
             y = parseFloat(mWord.y) || 0,
             $cursor = $('#roscoCursor-' + instance);
 
@@ -1144,7 +1155,17 @@ var $azquizgame = {
                 $azquizgame.showImageNeo(mWord.url, instance);
             } else {
                 $('#roscoCursor-' + instance).hide();
-                setTimeout(() => $azquizgame.positionPointer(instance), 1000);
+                // Only for this game: in the editor the next page's first game
+                // takes the same number, and a pointer placed a second later
+                // by number landed on that one.
+                setTimeout(() => {
+                    if (
+                        imgElement?.isConnected &&
+                        $azquizgame.options[instance] === mOptions
+                    ) {
+                        $azquizgame.positionPointer(instance);
+                    }
+                }, 1000);
             }
         }
     },
@@ -1297,8 +1318,27 @@ var $azquizgame = {
 
         $azquizgame.drawRosco(instance);
 
+        // Answering the last word ends the attempt. Raise the flag before the
+        // report, so a learner who leaves during the reveal below still has
+        // the activity recorded as finished.
+        //
+        // answeredWords >= validWords is the condition updateNumberWord() uses
+        // itself, and the only correct one: the rosco comes back to the words
+        // the learner skipped, so the index of the active letter says nothing
+        // about how many are left.
+        const attemptFinished = mOptions.answeredWords >= mOptions.validWords;
+        if (attemptFinished) mOptions.gameOver = true;
+        $azquizgame.saveScormScore(instance);
+
         setTimeout(() => {
-            $azquizgame.newWord(instance);
+            // Called directly, not through newWord(): that one returns at once
+            // while gameOver is up, so routing the ending through it would
+            // leave the rosco with no closing message and no start button.
+            if (attemptFinished) {
+                $azquizgame.gameOver(0, instance);
+            } else {
+                $azquizgame.newWord(instance);
+            }
         }, timeShowSolution);
 
         $azquizgame.drawMessage(Hit, word, clue, instance);
@@ -1372,8 +1412,27 @@ var $azquizgame = {
 
         $azquizgame.drawRosco(instance);
 
+        // Answering the last word ends the attempt. Raise the flag before the
+        // report, so a learner who leaves during the reveal below still has
+        // the activity recorded as finished.
+        //
+        // answeredWords >= validWords is the condition updateNumberWord() uses
+        // itself, and the only correct one: the rosco comes back to the words
+        // the learner skipped, so the index of the active letter says nothing
+        // about how many are left.
+        const attemptFinished = mOptions.answeredWords >= mOptions.validWords;
+        if (attemptFinished) mOptions.gameOver = true;
+        $azquizgame.saveScormScore(instance);
+
         setTimeout(() => {
-            $azquizgame.newWord(instance);
+            // Called directly, not through newWord(): that one returns at once
+            // while gameOver is up, so routing the ending through it would
+            // leave the rosco with no closing message and no start button.
+            if (attemptFinished) {
+                $azquizgame.gameOver(0, instance);
+            } else {
+                $azquizgame.newWord(instance);
+            }
         }, timeShowSolution);
 
         $azquizgame.drawMessage(Hit, word, clue, instance);
@@ -1731,6 +1790,23 @@ var $azquizgame = {
             mOptions,
             $azquizgame.isInExe
         );
+    },
+
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen from showWord(), i.e. once the
+     * setTimeout that reveals the next word had elapsed. That put the mark in
+     * the LMS one to four seconds late — so the SCORM menu still showed the
+     * previous score right after answering — and a learner who left during
+     * that window lost the answer entirely, because the timer never fired.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $azquizgame.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        $azquizgame.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {

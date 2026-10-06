@@ -1,3 +1,6 @@
+import createTooltip from '../../../../common/app_tooltip.js';
+import LinkValidationManager from '../../../utils/LinkValidationManager.js';
+
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
@@ -7,6 +10,11 @@ export default class NavbarFile {
         this.button = this.menu.navbar.querySelector('#dropdownUtilities');
         this.preferencesButton = document.querySelector(
             '#navbar-button-preferences'
+        );
+        // Rendered only when the server says the session may change its password
+        // (user.canChangePassword), so this can legitimately be absent.
+        this.changePasswordButton = document.querySelector(
+            '#navbar-button-change-password'
         );
         this.ideviceManagerButton = this.menu.navbar.querySelector(
             '#navbar-button-idevice-manager'
@@ -40,6 +48,7 @@ export default class NavbarFile {
     setEvents() {
         this.setTooltips();
         this.setPreferencesEvent();
+        this.setChangePasswordEvent();
         this.setIdeviceManagerEvent();
         this.setFileManagerEvent();
         this.setOdeBrokenLinksEvent();
@@ -61,9 +70,10 @@ export default class NavbarFile {
     setTooltips() {
         // See eXeLearning.app.common.initTooltips
         // Avoid binding tooltips to dropdown toggles to prevent Bootstrap instance conflicts
-        $('.main-menu-right > button')
-            .attr('data-bs-placement', 'bottom')
-            .tooltip();
+        document.querySelectorAll('.main-menu-right > button').forEach((button) => {
+            button.setAttribute('data-bs-placement', 'bottom');
+            createTooltip(button);
+        });
     }
 
     /**
@@ -79,6 +89,20 @@ export default class NavbarFile {
             }
             this.preferencesEvent();
             e.preventDefault();
+        });
+    }
+
+    /**
+     * Change password form
+     * User menu -> Change password
+     *
+     */
+    setChangePasswordEvent() {
+        if (!this.changePasswordButton) return;
+        this.changePasswordButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (eXeLearning.app.project.checkOpenIdevice()) return false;
+            this.changePasswordEvent();
         });
     }
 
@@ -112,6 +136,16 @@ export default class NavbarFile {
     setOdeBrokenLinksEvent() {
         this.brokenLinksButton.addEventListener('click', () => {
             this.odeBrokenLinksEvent();
+        });
+        // Anticipate the browser limitation before the dialog opens (review of
+        // PR #2208). Evaluated lazily when the dropdown opens: the static-mode
+        // adapters this depends on register after the menu is built.
+        this.button?.addEventListener('click', () => {
+            if (LinkValidationManager.isBrowserLimited()) {
+                this.brokenLinksButton.title = _(
+                    'External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.'
+                );
+            }
         });
     }
 
@@ -183,6 +217,14 @@ export default class NavbarFile {
      */
     preferencesEvent() {
         eXeLearning.app.user.preferences.showModalPreferences();
+    }
+
+    /**
+     * Show change password modal
+     *
+     */
+    changePasswordEvent() {
+        eXeLearning.app.modals.changepassword.show();
     }
 
     /**

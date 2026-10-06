@@ -48,6 +48,30 @@ var $quickquestionsmultiplechoice = {
         $quickquestionsmultiplechoice.loadGame();
     },
 
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen only from showQuestion(), i.e. once
+     * the setTimeout that reveals the next question had elapsed. That put the
+     * mark in the LMS seconds late, and a learner who left during that window
+     * lost the answer: the timer never fired.
+     *
+     * Carries the same non-repeat lock showQuestion applies, so an activity
+     * that may only be scored once is not scored twice through this path.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        // No "score only once" lock: every answer is reported. The lock this
+        // used to carry could never close anyway — registerActivity forces
+        // `repeatActivity` to true at page load (common.js updateScormNew), so
+        // it short-circuited the condition before the learner touched
+        // anything. The activity registry owns what has been recorded.
+        $quickquestionsmultiplechoice.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
 
@@ -88,6 +112,7 @@ var $quickquestionsmultiplechoice = {
             const selecciona =
                 $quickquestionsmultiplechoice.createInterfaceSelecciona(i);
             dl.before(selecciona).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#seleccionaGameMinimize-' + i).hide();
             $('#seleccionaGameContainer-' + i).hide();
@@ -585,6 +610,27 @@ var $quickquestionsmultiplechoice = {
         );
     },
 
+    /**
+     * Whether a clock's game is still on the page, and the page is not being
+     * edited.
+     *
+     * A clock holds the element its game had when it started, not the
+     * element's id. The editor never reloads the document between pages and
+     * ids are numbered by position, so the next page's first game takes the
+     * same ones: a clock that looked its game up by id each second found that
+     * game and ran it.
+     *
+     * @param {Element|null} container - The game's element when the clock started
+     * @returns {boolean}
+     */
+    isClockLive: function (container) {
+        const $content = $('#node-content');
+        return (
+            !!container?.isConnected &&
+            !($content.length && $content.attr('mode') === 'edition')
+        );
+    },
+
     startVideoIntro: function (id, start, end, instance, type) {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             mstart = start < 1 ? 0.1 : start;
@@ -601,20 +647,19 @@ var $quickquestionsmultiplechoice = {
                 }
             }
             clearInterval(mOptions.timeUpdateIntervalIntro);
-            mOptions.timeUpdateIntervalIntro = setInterval(() => {
-                let $node = $('#seleccionaMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.timeUpdateIntervalIntro);
+            const container = document.getElementById(
+                'seleccionaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$quickquestionsmultiplechoice.isClockLive(container)) {
+                    clearInterval(clock);
                     return;
                 }
                 $quickquestionsmultiplechoice.updateTimerDisplayLocalIntro(
                     instance
                 );
             }, 1000);
+            mOptions.timeUpdateIntervalIntro = clock;
             $('#seleccionaVideoIntroLocal-' + instance).show();
             return;
         }
@@ -646,18 +691,17 @@ var $quickquestionsmultiplechoice = {
                 }
             }
             clearInterval(mOptions.timeUpdateInterval);
-            mOptions.timeUpdateInterval = setInterval(() => {
-                let $node = $('#seleccionaMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.timeUpdateInterval);
+            const container = document.getElementById(
+                'seleccionaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$quickquestionsmultiplechoice.isClockLive(container)) {
+                    clearInterval(clock);
                     return;
                 }
                 $quickquestionsmultiplechoice.updateTimerDisplayLocal(instance);
             }, 1000);
+            mOptions.timeUpdateInterval = clock;
             return;
         }
 
@@ -788,7 +832,6 @@ var $quickquestionsmultiplechoice = {
     onPlayerError: function () {},
 
     removeEvents: function (instance) {
-        $(window).off('unload.exeSelecciona beforeunload.exeSelecciona');
         $(`#seleccionaLinkMaximize-${instance}`).off('click touchstart');
         $(`#seleccionaLinkMinimize-${instance}`).off('click touchstart');
         $('#seleccionaMainContainer-' + instance)
@@ -820,11 +863,6 @@ var $quickquestionsmultiplechoice = {
         mOptions.respuesta = '';
 
         $quickquestionsmultiplechoice.removeEvents(instance);
-        $(window).on('unload.exeSelecciona beforeunload.exeSelecciona', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $quickquestionsmultiplechoice.mScorm
-            );
-        });
 
         mOptions.localPlayer = document.getElementById(
             `seleccionaVideoLocal-${instance}`
@@ -1391,6 +1429,12 @@ var $quickquestionsmultiplechoice = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
+        // gameOver() leaves this true; a replay starts as unfinished before the
+        // automatic zero-score report is sent to SCORM. Without it the report
+        // below carries gameOver, and sendScoreNew reads that as a finished
+        // attempt: the activity stayed complete in the LMS instead of going
+        // back to incomplete.
+        mOptions.gameOver = false;
         mOptions.livesLeft = mOptions.numberLives;
 
         $quickquestionsmultiplechoice.updateLives(instance);
@@ -1400,17 +1444,15 @@ var $quickquestionsmultiplechoice = {
             question.answerScore = -1;
         });
 
-        mOptions.counterClock = setInterval(() => {
+        const container = document.getElementById(
+            'seleccionaMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            if (!$quickquestionsmultiplechoice.isClockLive(container)) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#seleccionaMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $quickquestionsmultiplechoice.updateTime(
                     mOptions.counter,
@@ -1459,6 +1501,7 @@ var $quickquestionsmultiplechoice = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $quickquestionsmultiplechoice.updateTime(0, instance);
         $(`#seleccionaGamerOver-${instance}`).hide();
@@ -1467,6 +1510,7 @@ var $quickquestionsmultiplechoice = {
         $(`#seleccionaPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        $quickquestionsmultiplechoice.saveScormScore(instance);
         $quickquestionsmultiplechoice.newQuestion(instance, false, true);
     },
 
@@ -1525,20 +1569,15 @@ var $quickquestionsmultiplechoice = {
         mOptions.gameOver = true;
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsmultiplechoice.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestionsmultiplechoice.sendScore(true, instance);
-                $(`#seleccionaRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $quickquestionsmultiplechoice.initialScore = score;
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $quickquestionsmultiplechoice.sendScore(true, instance);
+            $(`#seleccionaRepeatActivity-${instance}`).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
+            mOptions.initialScore = score;
         }
         $quickquestionsmultiplechoice.saveEvaluation(instance);
         $quickquestionsmultiplechoice.showFeedBack(instance);
@@ -1788,19 +1827,14 @@ var $quickquestionsmultiplechoice = {
         }
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsmultiplechoice.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestionsmultiplechoice.sendScore(true, instance);
-                $(`#seleccionaRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $quickquestionsmultiplechoice.sendScore(true, instance);
+            $(`#seleccionaRepeatActivity-${instance}`).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
         }
 
         if (q.audio.length > 4 && q.type !== 2 && !mOptions.audioFeedBach) {
@@ -1920,6 +1954,48 @@ var $quickquestionsmultiplechoice = {
         return numActiveQuestion;
     },
 
+    /**
+     * Whether the answer just given ends the attempt.
+     *
+     * Mirrors the conditions newQuestion() and updateNumberQuestion() apply a
+     * moment later, because neither can be asked directly: updateNumberQuestion
+     * advances mOptions.activeQuestion as it computes, so calling it here to
+     * look ahead would skip a question.
+     *
+     * The index of the active question decides nothing on its own. In itinerary
+     * mode (order === 2) the next one is whatever the answered question points
+     * at — -2 ends the attempt wherever it falls, -1 steps to the next, a
+     * non-negative value jumps — so a learner can finish on the second question
+     * of ten, or still be playing on the last. Running out of lives ends the
+     * attempt in every mode, and the score update that runs before this has
+     * already spent this answer's life.
+     *
+     * @param {boolean} correct - Whether the answer just given was right.
+     * @param {number|string} instance - Instance key in options.
+     * @returns {boolean} True when the next newQuestion() will end the game.
+     */
+    attemptEnds: function (correct, instance) {
+        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        if (mOptions.useLives && mOptions.livesLeft <= 0) return true;
+
+        const numq = mOptions.activeQuestion;
+        if (mOptions.order !== 2) {
+            return numq + 1 >= mOptions.numberQuestions;
+        }
+
+        const question = mOptions.selectsGame[numq];
+        if (!question) return true;
+
+        const target = correct ? question.hit : question.error;
+        if (target === -2) return true;
+        // Anything that is neither an end, a step nor a jump leaves the learner
+        // on the same question, exactly as updateNumberQuestion does.
+        if (target !== -1 && !(target >= 0)) return false;
+
+        const next = target === -1 ? numq + 1 : target;
+        return next >= mOptions.numberQuestions || !mOptions.selectsGame[next];
+    },
+
     getRetroFeedMessages: function (iHit, instance) {
         const msgs = $quickquestionsmultiplechoice.options[instance].msgs,
             sMessages = iHit ? msgs.msgSuccesses : msgs.msgFailures,
@@ -1980,6 +2056,15 @@ var $quickquestionsmultiplechoice = {
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(correct, instance);
         }
+
+        // Raise the flag before the report so it carries the completion, and so
+        // a learner who leaves during the reveal delay below still has the
+        // activity recorded as finished. See attemptEnds for why the index of
+        // the active question cannot answer this on its own.
+        if ($quickquestionsmultiplechoice.attemptEnds(correct, instance)) {
+            mOptions.gameOver = true;
+        }
+        $quickquestionsmultiplechoice.saveScormScore(instance);
 
         if (
             mOptions.showSolution &&
@@ -2052,6 +2137,15 @@ var $quickquestionsmultiplechoice = {
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(value, instance);
         }
+
+        // Raise the flag before the report so it carries the completion, and so
+        // a learner who leaves during the reveal delay below still has the
+        // activity recorded as finished. See attemptEnds for why the index of
+        // the active question cannot answer this on its own.
+        if ($quickquestionsmultiplechoice.attemptEnds(value, instance)) {
+            mOptions.gameOver = true;
+        }
+        $quickquestionsmultiplechoice.saveScormScore(instance);
 
         if (
             mOptions.showSolution &&

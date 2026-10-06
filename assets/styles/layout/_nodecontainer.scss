@@ -69,10 +69,38 @@
         margin-right: -5px;
         z-index: 997;
     }
+    #page-title-node-content + .btn-edit-title {
+        margin-left: .5em;
+    }
     #node-content {
         height: auto;
+        // Page title with inline rename affordance (single click on the title
+        // or the pencil button), mirroring box/iDevice title editing.
+        .content-editable-title {
+            display: flex;
+            flex-flow: row nowrap;
+            align-items: center;
+            gap: 4px;
+            .btn-edit-title {
+                cursor: pointer;
+                .small-icon {
+                    width: 16px;
+                    height: 16px;
+                }
+            }
+            // Hide the pencil when the page title itself is hidden/empty.
+            .page-title.hidden ~ .btn-edit-title {
+                display: none;
+            }
+        }
         .page-title {
             margin-top: 15px;
+            cursor: text;
+            &[contenteditable="true"] {
+                outline: 2px solid var(--dark-exe-color);
+                outline-offset: 4px;
+                border-radius: 2px;
+            }
         }
         &[mode="edition"] {
             #eXeAddContentBtnWrapper {

@@ -271,4 +271,53 @@ describe('simplifyMediaElements', () => {
 
         expect(result).toContain('class="my-audio"');
     });
+
+    // Issue #2034: dropping <track> children here silently loses subtitles
+    // wherever this simplified markup is rendered (see the isomorphic
+    // twin's callers, e.g. AssetManager.js's window.simplifyMediaElements
+    // used by ideviceNode.js exportHtmlView()).
+    it('should preserve <track> subtitle children on video elements', () => {
+        const html =
+            '<video class="mediaelement"><source src="video.mp4" type="video/mp4">' +
+            '<track kind="subtitles" srclang="es" label="Español" src="subtitles.vtt" default></video>';
+        const result = simplifyMediaElements(html, domParser);
+
+        expect(result).toContain('<track');
+        expect(result).toContain('kind="subtitles"');
+        expect(result).toContain('srclang="es"');
+        expect(result).toContain('label="Español"');
+        expect(result).toContain('src="subtitles.vtt"');
+    });
+
+    it('should preserve multiple <track> children on video elements, in order', () => {
+        const html =
+            '<video class="mediaelement"><source src="video.mp4">' +
+            '<track kind="subtitles" srclang="es" src="es.vtt">' +
+            '<track kind="subtitles" srclang="en" src="en.vtt"></video>';
+        const result = simplifyMediaElements(html, domParser);
+
+        const esIndex = result.indexOf('src="es.vtt"');
+        const enIndex = result.indexOf('src="en.vtt"');
+        expect(esIndex).toBeGreaterThan(-1);
+        expect(enIndex).toBeGreaterThan(-1);
+        expect(esIndex).toBeLessThan(enIndex);
+    });
+
+    it('should preserve <track> subtitle children on audio elements', () => {
+        const html =
+            '<audio><source src="audio.mp3" type="audio/mpeg">' +
+            '<track kind="captions" srclang="en" src="captions.vtt"></audio>';
+        const result = simplifyMediaElements(html, domParser);
+
+        expect(result).toContain('<track');
+        expect(result).toContain('kind="captions"');
+        expect(result).toContain('src="captions.vtt"');
+    });
+
+    it('should not add a <track> element when the source video has none', () => {
+        const html = '<video class="mediaelement"><source src="video.mp4"></video>';
+        const result = simplifyMediaElements(html, domParser);
+
+        expect(result).not.toContain('<track');
+    });
 });

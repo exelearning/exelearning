@@ -70,12 +70,42 @@ export class LibraryDetector {
         return this.finalizeDetection(options);
     }
 
-    private scanHtmlFragment(html: string | null | undefined, options: LibraryDetectionOptions): void {
+    /**
+     * Detect libraries across groups of fragments with group-specific exclusions.
+     * This allows nested JSON rich text to participate in HTML library detection
+     * without bypassing dedicated processing such as selective MathJax handling.
+     */
+    detectLibrariesFromFragmentGroups(
+        groups: Iterable<{
+            fragments: Iterable<string | null | undefined>;
+            excludedLibraries?: Iterable<string>;
+        }>,
+        options: LibraryDetectionOptions = {},
+    ): LibraryDetectionResult {
+        this.resetDetection();
+        for (const group of groups) {
+            const excludedLibraries = new Set(group.excludedLibraries || []);
+            for (const html of group.fragments) {
+                this.scanHtmlFragment(html, options, excludedLibraries);
+            }
+        }
+        return this.finalizeDetection(options);
+    }
+
+    private scanHtmlFragment(
+        html: string | null | undefined,
+        options: LibraryDetectionOptions,
+        excludedLibraries: ReadonlySet<string> = new Set(),
+    ): void {
         if (!html || typeof html !== 'string') {
             return;
         }
 
         for (const lib of LIBRARY_PATTERNS) {
+            if (excludedLibraries.has(lib.name)) {
+                continue;
+            }
+
             // Skip MathJax libraries if LaTeX was pre-rendered
             if (options.skipMathJax && (lib.name === 'exe_math' || lib.name === 'exe_math_datagame')) {
                 continue;
@@ -265,6 +295,20 @@ export class LibraryDetector {
         options: LibraryDetectionOptions = {},
     ): { files: string[]; patterns: LibraryPattern[] } {
         const detected = this.detectLibrariesFromFragments(htmlFragments, options);
+        return this.buildRequiredFilesResult(detected, options);
+    }
+
+    /**
+     * Get required files from fragment groups with group-specific exclusions.
+     */
+    getAllRequiredFilesWithPatternsFromFragmentGroups(
+        groups: Iterable<{
+            fragments: Iterable<string | null | undefined>;
+            excludedLibraries?: Iterable<string>;
+        }>,
+        options: LibraryDetectionOptions = {},
+    ): { files: string[]; patterns: LibraryPattern[] } {
+        const detected = this.detectLibrariesFromFragmentGroups(groups, options);
         return this.buildRequiredFilesResult(detected, options);
     }
 

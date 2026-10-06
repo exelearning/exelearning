@@ -2,7 +2,8 @@
  * Scorm2004Exporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Scorm2004Exporter } from './Scorm2004Exporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -41,6 +42,14 @@ class MockDocument implements ExportDocument {
     }
 }
 
+// Document that exposes an editable ODE source, like YjsDocumentAdapter does.
+// Kept separate from MockDocument so existing expectations stay unchanged.
+class MockDocumentWithSource extends MockDocument {
+    async getContentXml(): Promise<string> {
+        return '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE ode SYSTEM "content.dtd">\n<ode/>';
+    }
+}
+
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
@@ -62,7 +71,23 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        if (_files.includes('material-icons/material-icons.svg')) {
+            files.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -198,12 +223,118 @@ describe('Scorm2004Exporter', () => {
     let zip: MockZipProvider;
     let exporter: Scorm2004Exporter;
 
+    // Every JSON iDevice that carries LaTeX now pre-renders it to SVG, so the only
+    // remaining trigger for bundling MathJax is the author explicitly requesting it
+    // (addMathJax: true). A form with raw LaTeX keeps its delimiters in that case.
+    const mathJaxRequestedPages = (): ExportPage[] => [
+        {
+            id: 'page-explicit-mathjax',
+            title: 'Explicit MathJax',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-explicit-mathjax',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-explicit-mathjax',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
     beforeEach(() => {
         document = new MockDocument({}, samplePages);
         resources = new MockResourceProvider();
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new Scorm2004Exporter(document, resources, assets, zip);
+    });
+
+    describe('MathJax when explicitly requested (addMathJax)', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        it('bundles and references MathJax without pre-rendering the page', async () => {
+            document = new MockDocument({ addMathJax: true }, mathJaxRequestedPages());
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            let requestedFiles: string[] = [];
+            resources.fetchLibraryFiles = async files => {
+                requestedFiles = files;
+                return new Map(
+                    files.map(file => [
+                        file === 'exe_math' ? 'exe_math/tex-mml-svg.js' : file,
+                        Buffer.from('// mock lib'),
+                    ]),
+                );
+            };
+            let preRenderCalled = false;
+
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            expect(preRenderCalled).toBe(false);
+            expect(requestedFiles.some(file => file.includes('exe_math'))).toBe(true);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(true);
+            expect(zip.files.get('index.html') as string).toContain('libs/exe_math/tex-mml-svg.js');
+        });
+    });
+
+    describe('Accessibility toolbar (addAccessibilityToolbar)', () => {
+        // Regression test for #1978: when the author enables the accessibility toolbar,
+        // every exported page must load exe_atools (JS + CSS) in its <head>, and the
+        // files must be bundled and referenced in imsmanifest.xml.
+        const mockToolbarLibFiles = () => {
+            resources.fetchLibraryFiles = async files => new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+        };
+
+        it('references the toolbar JS and CSS in the page head when enabled', async () => {
+            document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            mockToolbarLibFiles();
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('libs/exe_atools/exe_atools.js');
+            expect(indexHtml).toContain('libs/exe_atools/exe_atools.css');
+        });
+
+        it('bundles the toolbar files and references them in imsmanifest.xml when enabled', async () => {
+            document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            mockToolbarLibFiles();
+
+            await exporter.export();
+
+            expect(zip.files.has('libs/exe_atools/exe_atools.js')).toBe(true);
+            expect(zip.files.has('libs/exe_atools/exe_atools.css')).toBe(true);
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).toContain('libs/exe_atools/exe_atools.js');
+            expect(manifest).toContain('libs/exe_atools/exe_atools.css');
+        });
+
+        it('does not reference the toolbar when disabled (default)', async () => {
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('exe_atools');
+        });
     });
 
     describe('Basic Properties', () => {
@@ -321,6 +452,24 @@ describe('Scorm2004Exporter', () => {
             expect(html).toContain('page-counter');
         });
 
+        it('should publish the project pass score for the runtime to read', () => {
+            document = new MockDocument({ passScore: 7.5 }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+        });
+
+        it('should publish the every-activity pass rule only when the project asks for it', () => {
+            const off = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const on = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(off).not.toContain('exe-pass-score-every-activity');
+            expect(on).toContain('<meta name="exe-pass-score-every-activity" content="true">');
+        });
+
         it('should NOT include made-with-eXe link when addExeLink is false', () => {
             document = new MockDocument({ addExeLink: false }, samplePages);
             exporter = new Scorm2004Exporter(document, resources, assets, zip);
@@ -333,6 +482,43 @@ describe('Scorm2004Exporter', () => {
             const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('made-with-eXe');
+        });
+
+        it('should inline material icon SVGs as data URIs in SCORM 2004 HTML', () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            const html = exporter.generateScorm2004PageHtml(
+                pagesWithBootstrapIcon[0],
+                pagesWithBootstrapIcon,
+                document.getMetadata(),
+                true,
+                [],
+                0,
+                null,
+                undefined,
+                undefined,
+                new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            );
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
         });
     });
 
@@ -578,6 +764,52 @@ describe('Scorm2004Exporter', () => {
 
             const indexHtml = zip.files.get('index.html') as string;
             expect(indexHtml).toContain('theme/icons/activity.png');
+        });
+    });
+
+    describe('editable source (exportSource, #2415)', () => {
+        it('includes content.xml and content.dtd by default', async () => {
+            document = new MockDocumentWithSource({}, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('does NOT include content.xml or content.dtd when exportSource is false', async () => {
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(false);
+            expect(zip.files.has('content.dtd')).toBe(false);
+        });
+
+        it('includes content.xml when a host forces the editable source', async () => {
+            // A host that stores the package AS the project and re-opens it
+            // later (Moodle mod_exescorm) must never get a package it cannot
+            // read back, whatever the author chose.
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export({ forceEditableSource: true });
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('does NOT reference content.xml in the manifest when exportSource is false', async () => {
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).not.toContain('<file href="content.xml"/>');
+            expect(manifest).not.toContain('<file href="content.dtd"/>');
         });
     });
 });

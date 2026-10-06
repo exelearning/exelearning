@@ -1,7 +1,7 @@
 /**
  * ServerLatexPreRenderer
  *
- * Pre-renders LaTeX expressions to SVG+MathML using MathJax v3's Node.js API.
+ * Pre-renders LaTeX expressions to SVG+MathML using MathJax's Node.js API.
  * This allows CLI exports to include pre-rendered math without bundling MathJax (~1MB).
  *
  * Output format:
@@ -14,13 +14,13 @@
  * MathJax's liteAdaptor (no DOM required).
  */
 
-import { mathjax } from 'mathjax-full/js/mathjax';
-import { TeX } from 'mathjax-full/js/input/tex';
-import { SVG } from 'mathjax-full/js/output/svg';
-import { liteAdaptor } from 'mathjax-full/js/adaptors/liteAdaptor';
-import { RegisterHTMLHandler } from 'mathjax-full/js/handlers/html';
-import { AllPackages } from 'mathjax-full/js/input/tex/AllPackages';
+import { mathjax } from '@mathjax/src/js/mathjax.js';
+import { TeX } from '@mathjax/src/js/input/tex.js';
+import { SVG } from '@mathjax/src/js/output/svg.js';
+import { liteAdaptor } from '@mathjax/src/js/adaptors/liteAdaptor.js';
+import { RegisterHTMLHandler } from '@mathjax/src/js/handlers/html.js';
 import type { LatexPreRenderResult, ServerLatexPreRendererInterface } from './interfaces';
+import { TEX_PACKAGES } from './mathjax-packages';
 
 // LaTeX detection patterns (for hasLatex quick check)
 const HAS_LATEX_PATTERN = /\\\(|\\\[|\$\$|\\begin\{|\\(?:eq)?ref\{/;
@@ -44,6 +44,22 @@ const NUMBERED_EQUATION_ENVS = new Set(['equation', 'align', 'gather', 'multline
 
 // Tags that should skip LaTeX processing
 const SKIP_CONTENT_TAGS = new Set(['script', 'style', 'code', 'pre', 'textarea', 'noscript']);
+
+// JSON iDevices whose LaTeX lives in NESTED fields (questions/answers/feedback)
+// and must be pre-rendered recursively inside data-idevice-json-data. Mirrors
+// RECURSIVE_JSON_LATEX_IDEVICES in public/app/common/LatexPreRenderer.js.
+const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz', 'scrambled-list', 'form']);
+
+// JSON keys whose values are compared/used verbatim at runtime, or rendered in a
+// context that cannot show an SVG (access codes, identifiers, button labels placed
+// in an <input value="">). These must never be turned into pre-rendered <span>
+// markup -- even if they contain LaTeX-like delimiters. Otherwise the substituted
+// SVG would change the literal (e.g. adaptative-quiz enterCodeAccess() matches
+// itinerary.codeAccess), appear as raw markup (scrambled-list buttonText), or
+// corrupt an <option value=""> while breaking the value/answer comparison
+// (form dropdown wrongAnswersValue).
+// Mirrors NON_RENDERABLE_JSON_KEYS in public/app/common/LatexPreRenderer.js.
+const NON_RENDERABLE_JSON_KEYS = new Set(['codeAccess', 'buttonText', 'wrongAnswersValue']);
 
 // XOR encryption key (same as common.js)
 const ENCRYPT_KEY = 146;
@@ -125,6 +141,19 @@ function cleanLatexDelimiters(latex: string): string {
  */
 function escapeHtmlAttribute(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Decode an HTML attribute value escaped by escapeHtmlAttribute (and the
+ * browser's setAttribute). Reverses the entity replacements; &amp; is decoded
+ * last so sequences like &amp;lt; round-trip correctly.
+ */
+function decodeHtmlAttribute(text: string): string {
+    return text
+        .replace(/&gt;/g, '>')
+        .replace(/&lt;/g, '<')
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&');
 }
 
 /**
@@ -233,7 +262,7 @@ interface LatexMatch {
 }
 
 /**
- * Server-side LaTeX Pre-renderer using MathJax v3 Node.js API
+ * Server-side LaTeX Pre-renderer using the MathJax 4 Node.js API
  */
 export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
     private adaptor: ReturnType<typeof liteAdaptor>;
@@ -242,13 +271,22 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
     private htmlDoc: ReturnType<typeof mathjax.document>;
 
     constructor() {
+        // MathJax 4 splits the font into a base set plus ranges it fetches on demand
+        // (calligraphic, fraktur, double-struck, script, cyrillic...). The combined
+        // component the browser loads carries the base set only — verified by bytes:
+        // none of svg/dynamic/*.js appears inside tex-mml-svg.js — so the browser needs
+        // the ranges on disk (vendored under exe_math/fonts, see scripts/vendor-mathjax.ts)
+        // and a Node consumer needs a loader. Without either, the glyph silently
+        // disappears from the output.
+        mathjax.asyncLoad = (name: string) => import(name);
+
         // Create adaptor for Node.js (no DOM)
         this.adaptor = liteAdaptor();
         RegisterHTMLHandler(this.adaptor);
 
-        // Create TeX input processor with all packages
+        // Create TeX input processor with the same packages the browser enables
         this.tex = new TeX({
-            packages: AllPackages,
+            packages: TEX_PACKAGES,
             // Enable equation numbering and tagging
             tags: 'ams',
         });
@@ -256,6 +294,12 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         // Create SVG output processor
         this.svg = new SVG({
             fontCache: 'local',
+            // MathJax 4 breaks in-line formulas at every top-level operator and emits
+            // one <svg> per fragment; renderLatexExpression keeps a single <svg>, so
+            // `\( x = 3 = 4 = 5 \)` exported as a lone `x` (issue #2440). Pre-rendered
+            // SVG cannot reflow, so ask for one <svg> per formula. Mirrors
+            // `svg.linebreaks.inline` in public/app/common/common.js.
+            linebreaks: { inline: false },
         });
 
         // Create document for processing
@@ -275,15 +319,20 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
     /**
      * Render a single LaTeX expression to SVG+MathML
      */
-    private renderLatexExpression(latex: string, display: 'inline' | 'block'): { svg: string; mathml: string } {
+    private async renderLatexExpression(
+        latex: string,
+        display: 'inline' | 'block',
+    ): Promise<{ svg: string; mathml: string }> {
         const cleanLatex = cleanLatexDelimiters(latex);
 
         try {
             // Reset the document for fresh rendering
             this.htmlDoc.clear();
 
-            // Convert to MathML first for accessibility
-            const node = this.htmlDoc.convert(cleanLatex, { display: display === 'block' });
+            // Convert to MathML first for accessibility. convertPromise, not convert, so
+            // MathJax can await a font range it does not have yet; the synchronous call
+            // drops the glyph instead.
+            const node = await this.htmlDoc.convertPromise(cleanLatex, { display: display === 'block' });
 
             // Get SVG output
             const svgOutput = this.adaptor.outerHTML(node);
@@ -295,7 +344,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
             // Generate MathML using tex2mml
             let mathmlHtml = '';
             try {
-                const mmlNode = this.htmlDoc.convert(cleanLatex, {
+                const mmlNode = await this.htmlDoc.convertPromise(cleanLatex, {
                     display: display === 'block',
                     em: 16,
                     ex: 8,
@@ -334,9 +383,78 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
     }
 
     /**
-     * Pre-render all LaTeX expressions in HTML
+     * Pre-render all LaTeX expressions in HTML.
+     *
+     * Runs two passes: first the data-idevice-json-data attributes of nested-field
+     * JSON iDevices (the body pass skips attribute values), then the visible body.
      */
     async preRender(html: string): Promise<LatexPreRenderResult> {
+        const jsonPass = await this.preRenderJsonDataAttributes(html);
+        const bodyResult = await this.preRenderHtmlBody(jsonPass.html);
+
+        return {
+            html: bodyResult.html,
+            hasLatex: bodyResult.hasLatex || jsonPass.count > 0,
+            latexRendered: bodyResult.latexRendered || jsonPass.count > 0,
+            count: bodyResult.count + jsonPass.count,
+        };
+    }
+
+    /**
+     * Pre-render LaTeX stored inside data-idevice-json-data attributes.
+     *
+     * Only iDevices in RECURSIVE_JSON_LATEX_IDEVICES are processed; others
+     * escape/transform their text at runtime and must not receive pre-rendered
+     * SVG in their properties. Mirrors preRenderPerIdevice in the browser renderer.
+     */
+    private async preRenderJsonDataAttributes(html: string): Promise<{ html: string; count: number }> {
+        if (!html || typeof html !== 'string') {
+            return { html, count: 0 };
+        }
+
+        // Opening div tags exposing both the iDevice type and its JSON payload.
+        // IdeviceRenderer emits data-idevice-type before data-idevice-json-data,
+        // and attribute values are entity-escaped (no raw " or > inside them).
+        const tagPattern = /<div\b[^>]*\bdata-idevice-type="([^"]+)"[^>]*\bdata-idevice-json-data="([^"]*)"[^>]*>/g;
+        const matches = [...html.matchAll(tagPattern)];
+        if (matches.length === 0) {
+            return { html, count: 0 };
+        }
+
+        let result = html;
+        let count = 0;
+
+        for (const match of matches) {
+            const ideviceType = match[1];
+            const escapedJson = match[2];
+            if (!RECURSIVE_JSON_LATEX_IDEVICES.has(ideviceType)) continue;
+
+            const jsonStr = decodeHtmlAttribute(escapedJson);
+            if (!this.hasLatex(jsonStr)) continue;
+
+            try {
+                const data = JSON.parse(jsonStr);
+                const newJsonStr = JSON.stringify(await this.preRenderLatexInGameData(data));
+                if (newJsonStr === jsonStr) continue;
+
+                const newTag = match[0].replace(
+                    `data-idevice-json-data="${escapedJson}"`,
+                    `data-idevice-json-data="${escapeHtmlAttribute(newJsonStr)}"`,
+                );
+                result = result.replace(match[0], newTag);
+                count++;
+            } catch (error) {
+                console.warn('[ServerLatexPreRenderer] Failed to process JSON data attribute:', error);
+            }
+        }
+
+        return { html: result, count };
+    }
+
+    /**
+     * Pre-render all LaTeX expressions in the visible HTML body.
+     */
+    private async preRenderHtmlBody(html: string): Promise<LatexPreRenderResult> {
         // Quick check: any LaTeX at all?
         if (!html || !HAS_LATEX_PATTERN.test(html)) {
             return {
@@ -422,7 +540,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         for (const m of equations) {
             const cleanLatex = cleanLatexFromHtml(m.matchWithHtml);
             try {
-                const { svg, mathml } = this.renderLatexExpression(cleanLatex, m.display);
+                const { svg, mathml } = await this.renderLatexExpression(cleanLatex, m.display);
                 m.rendered = this.createRenderedWrapperHtml(m.matchWithHtml, cleanLatex, m.display, svg, mathml);
                 totalReplaced++;
             } catch (error) {
@@ -436,7 +554,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         for (const m of withReferences) {
             const cleanLatex = cleanLatexFromHtml(m.matchWithHtml);
             try {
-                const { svg, mathml } = this.renderLatexExpression(cleanLatex, m.display);
+                const { svg, mathml } = await this.renderLatexExpression(cleanLatex, m.display);
                 m.rendered = this.createRenderedWrapperHtml(m.matchWithHtml, cleanLatex, m.display, svg, mathml);
                 totalReplaced++;
             } catch (error) {
@@ -450,7 +568,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         for (const m of others) {
             const cleanLatex = cleanLatexFromHtml(m.matchWithHtml);
             try {
-                const { svg, mathml } = this.renderLatexExpression(cleanLatex, m.display);
+                const { svg, mathml } = await this.renderLatexExpression(cleanLatex, m.display);
                 m.rendered = this.createRenderedWrapperHtml(m.matchWithHtml, cleanLatex, m.display, svg, mathml);
                 totalReplaced++;
             } catch (error) {
@@ -486,7 +604,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
             return text;
         }
 
-        const result = await this.preRender(text);
+        const result = await this.preRenderHtmlBody(text);
         return result.html;
     }
 
@@ -507,7 +625,8 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         if (typeof data === 'object' && data !== null) {
             const result: Record<string, unknown> = {};
             for (const [key, value] of Object.entries(data)) {
-                result[key] = await this.preRenderLatexInGameData(value);
+                // Leave literal-compared fields (codes/identifiers) untouched.
+                result[key] = NON_RENDERABLE_JSON_KEYS.has(key) ? value : await this.preRenderLatexInGameData(value);
             }
             return result;
         }

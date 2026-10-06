@@ -1,7 +1,17 @@
 import ApiCallManager from './apiCallManager.js';
 import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
 
+const YjsStructureBinding = require('../yjs/YjsStructureBinding');
+
 vi.mock('./apiCallBaseFunctions.js');
+
+/**
+ * The real validator, borrowed from the binding's prototype (it does not use
+ * `this`). Stubbing it instead would make these tests pass even with validation
+ * removed, since they would only ever exercise the stub.
+ */
+const realSerializeAndValidateJsonProperties =
+    YjsStructureBinding.prototype.serializeAndValidateJsonProperties;
 
 describe('ApiCallManager', () => {
   let apiManager;
@@ -604,6 +614,7 @@ describe('ApiCallManager', () => {
       const createBlock = vi.fn(() => 'block-new');
       const createComponent = vi.fn(() => 'comp-new');
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => null),
         getBlockMap: vi.fn(() => null),
         createBlock,
@@ -636,6 +647,7 @@ describe('ApiCallManager', () => {
     it('should update existing component', () => {
       const updateComponent = vi.fn();
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -670,6 +682,7 @@ describe('ApiCallManager', () => {
         html.replace('blob:http://localhost/xyz', 'asset://uuid-123/image.jpg')
       );
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => null),
         getBlockMap: vi.fn(() => null),
         createBlock,
@@ -709,6 +722,7 @@ describe('ApiCallManager', () => {
         html.replace('blob:http://localhost/abc', 'asset://uuid-456/photo.png')
       );
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -736,6 +750,7 @@ describe('ApiCallManager', () => {
     it('should not fail if assetManager is not available in _saveIdeviceToYjs', () => {
       const updateComponent = vi.fn();
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -767,6 +782,7 @@ describe('ApiCallManager', () => {
         })
       );
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -809,6 +825,7 @@ describe('ApiCallManager', () => {
         html.replace('blob:http://localhost/new-img', 'asset://new-uuid/photo.jpg')
       );
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => null),
         getBlockMap: vi.fn(() => null),
         createBlock,
@@ -845,6 +862,7 @@ describe('ApiCallManager', () => {
       const updateComponent = vi.fn();
       const convertBlobURLsToAssetRefs = vi.fn((html) => html);
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -874,12 +892,13 @@ describe('ApiCallManager', () => {
       expect(savedJsonProps.someNumber).toBe(42);
     });
 
-    it('should handle invalid JSON in jsonProperties gracefully', () => {
+    it('should reject invalid JSON without updating the existing component', () => {
       const updateComponent = vi.fn();
       const convertBlobURLsToAssetRefs = vi.fn((html) => html);
       const structureBinding = {
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
       };
       mockApp.project = {
         _yjsEnabled: true,
@@ -889,7 +908,6 @@ describe('ApiCallManager', () => {
         },
       };
 
-      // Invalid JSON that contains 'blob:' - should not crash
       const invalidJson = 'not valid json blob:http://localhost/xyz';
 
       const result = apiManager._saveIdeviceToYjs({
@@ -897,11 +915,219 @@ describe('ApiCallManager', () => {
         jsonProperties: invalidJson,
       });
 
-      // Should still save (pass through unchanged on parse error)
-      expect(updateComponent).toHaveBeenCalledWith('comp-1', {
-        jsonProperties: invalidJson,
+      expect(updateComponent).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        responseMessage: 'ERROR',
+        error: 'Invalid iDevice data. The save was discarded.',
       });
+    });
+
+    // Validation must be mandatory, not feature-detected: a binding without
+    // the validator must make the save fail rather than silently proceed with
+    // an unvalidated payload (this is the regression an optional typeof guard
+    // would reintroduce).
+    it('should fail the save instead of skipping validation when the validator is missing', () => {
+      const updateComponent = vi.fn();
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: '{"question":"broken"',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(updateComponent).not.toHaveBeenCalled();
+    });
+
+    it('should validate JSON before creating a block or component', () => {
+      const createBlock = vi.fn(() => 'block-new');
+      const createComponent = vi.fn(() => 'comp-new');
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock,
+        createComponent,
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"broken"',
+      });
+
+      expect(createBlock).not.toHaveBeenCalled();
+      expect(createComponent).not.toHaveBeenCalled();
+      expect(result.responseMessage).toBe('ERROR');
+    });
+
+    it('leaves asset normalization to the binding instead of preparing twice', () => {
+      const updateComponent = vi.fn();
+      const prepareJsonPropertiesForSync = vi.fn(value => value);
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+        prepareJsonPropertiesForSync,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      // updateComponent prepares the value itself, so preparing it here as well
+      // would run assetManager.prepareJsonForSync twice on every save.
+      expect(prepareJsonPropertiesForSync).not.toHaveBeenCalled();
+      expect(updateComponent).toHaveBeenCalledTimes(1);
       expect(result.responseMessage).toBe('OK');
+    });
+
+    it('should report an error when component creation fails after validation', () => {
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => ({})),
+        createComponent: vi.fn(() => {
+          throw new Error('Yjs component creation failed');
+        }),
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'block-1',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toContain('save was discarded');
+    });
+
+    it('should remove the block it created when component creation fails', () => {
+      const deleteBlock = vi.fn();
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock: vi.fn(() => 'block-created-here'),
+        createComponent: vi.fn(() => {
+          throw new Error('Yjs component creation failed');
+        }),
+        deleteBlock,
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(deleteBlock).toHaveBeenCalledWith('page-1', 'block-created-here');
+    });
+
+    it('should not remove a pre-existing block when component creation fails', () => {
+      const deleteBlock = vi.fn();
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => ({})),
+        createComponent: vi.fn(() => {
+          throw new Error('Yjs component creation failed');
+        }),
+        deleteBlock,
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'block-1',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(deleteBlock).not.toHaveBeenCalled();
+    });
+
+    it('should still report ERROR when the orphan-block cleanup itself fails', () => {
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock: vi.fn(() => 'block-created-here'),
+        createComponent: vi.fn(() => {
+          throw new Error('Yjs component creation failed');
+        }),
+        deleteBlock: vi.fn(() => {
+          throw new Error('deleteBlock also failed');
+        }),
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'trueorfalse',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(structureBinding.deleteBlock).toHaveBeenCalled();
+      expect(result.responseMessage).toBe('ERROR');
+    });
+
+    it('should report an error when component update fails after validation', () => {
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent: vi.fn(() => {
+          throw new Error('Yjs component update failed');
+        }),
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: '{"question":"Valid"}',
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toContain('save was discarded');
     });
 
     it('should convert multiple blob URLs in different jsonProperties fields', () => {
@@ -914,6 +1140,7 @@ describe('ApiCallManager', () => {
           .replace('blob:http://localhost/img2', 'asset://uuid-2/img2.jpg');
       });
       const structureBinding = {
+        serializeAndValidateJsonProperties: realSerializeAndValidateJsonProperties,
         getComponentMap: vi.fn(() => ({})),
         updateComponent,
       };
@@ -1022,6 +1249,61 @@ describe('ApiCallManager', () => {
       // updateBlock should NOT be called since values are the same
       expect(updateBlock).not.toHaveBeenCalled();
       expect(result.responseMessage).toBe('OK');
+    });
+
+    it('should sync structured icon updates via Yjs and include icon in response payload', async () => {
+      const updateBlock = vi.fn();
+      const getBlock = vi.fn().mockReturnValue({
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock, getBlock } },
+      };
+
+      const result = await apiManager.putSaveBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Title',
+        iconName: 'asset://uuid-123/icon.jpg',
+        icon: { source: 'asset', value: 'asset://uuid-123/icon.jpg' },
+        order: 2,
+      });
+
+      expect(updateBlock).toHaveBeenCalledWith('block-1', {
+        icon: { source: 'asset', value: 'asset://uuid-123/icon.jpg' },
+        iconName: 'asset://uuid-123/icon.jpg',
+      });
+      expect(result.odePagStructureSync.icon).toEqual({
+        source: 'asset',
+        value: 'asset://uuid-123/icon.jpg',
+      });
+    });
+
+    it('should skip structured icon sync when icon object is unchanged', async () => {
+      const updateBlock = vi.fn();
+      const getBlock = vi.fn().mockReturnValue({
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock, getBlock } },
+      };
+
+      await apiManager.putSaveBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+
+      expect(updateBlock).not.toHaveBeenCalled();
     });
   });
 
@@ -1308,6 +1590,236 @@ describe('ApiCallManager', () => {
       expect(result.responseMessage).toBe('ERROR');
     });
 
+    it('surfaces the server error detail on a failed public-view request', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: vi.fn().mockResolvedValue({
+          responseMessage: 'FORBIDDEN',
+          detail: 'Only the project owner can change this',
+        }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result).toEqual({ responseMessage: 'ERROR', detail: 'Only the project owner can change this' });
+    });
+
+    it('should enable the public read-only link via PATCH /public-view', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ responseMessage: 'OK', publicViewEnabled: true, publicViewId: 'pv-1' }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      const [url, options] = global.fetch.mock.calls[0];
+      expect(url).toContain('/api/projects/1/public-view');
+      expect(options.method).toBe('PATCH');
+      expect(JSON.parse(options.body)).toEqual({ enabled: true });
+      expect(result.publicViewId).toBe('pv-1');
+    });
+
+    it('should return error when updatePublicViewAccess fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: vi.fn().mockResolvedValue({ message: 'forbidden' }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, false);
+
+      expect(result.responseMessage).toBe('ERROR');
+    });
+
+    it('should regenerate the public link via POST /public-view/regenerate', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ responseMessage: 'OK', publicViewId: 'pv-new' }),
+      });
+
+      const result = await apiManager.regeneratePublicViewId('uuid-abc-123');
+
+      const [url, options] = global.fetch.mock.calls[0];
+      expect(url).toContain('/api/projects/uuid/uuid-abc-123/public-view/regenerate');
+      expect(options.method).toBe('POST');
+      expect(result.publicViewId).toBe('pv-new');
+    });
+
+    it('should fall back to HTTP status when updatePublicViewAccess error body is empty', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: vi.fn().mockRejectedValue(new Error('no body')),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('HTTP 401');
+    });
+
+    it('should return error when updatePublicViewAccess throws (network error)', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('network down'));
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('network down');
+    });
+
+    it('should return error when regeneratePublicViewId fails (non-ok response)', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn().mockResolvedValue({ message: 'not found' }),
+      });
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('not found');
+    });
+
+    it('should fall back to HTTP status when regeneratePublicViewId error body is empty', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: vi.fn().mockRejectedValue(new Error('no body')),
+      });
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('HTTP 500');
+    });
+
+    it('should return error when regeneratePublicViewId throws (network error)', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('offline'));
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('offline');
+    });
+
+    describe('_resolveAuthToken (shared token resolution)', () => {
+      it('prefers the Yjs bridge token over all other sources', () => {
+        eXeLearning.app.project = { _yjsBridge: { authToken: 'bridge-token' } };
+        eXeLearning.app.auth = { getToken: () => 'auth-token' };
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('bridge-token');
+      });
+
+      it('falls back to the auth service token when no bridge token', () => {
+        eXeLearning.app.project = { _yjsBridge: {} };
+        eXeLearning.app.auth = { getToken: () => 'auth-token' };
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('auth-token');
+      });
+
+      it('falls back to localStorage when no bridge or auth token', () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('ls-token');
+      });
+
+      it('returns null when no token is available anywhere', () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.removeItem('authToken');
+
+        expect(apiManager._resolveAuthToken()).toBeNull();
+      });
+    });
+
+    describe('_jsonRequest (shared fetch wrapper)', () => {
+      it('sends a JSON body and an Authorization header when a token exists', async () => {
+        localStorage.setItem('authToken', 'tok-123');
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ ok: 1 }),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', {
+          method: 'PATCH',
+          body: { enabled: true },
+          label: 'test',
+        });
+
+        const [url, options] = global.fetch.mock.calls[0];
+        expect(url).toBe('http://x/y');
+        expect(options.method).toBe('PATCH');
+        expect(options.credentials).toBe('include');
+        expect(options.headers['Content-Type']).toBe('application/json');
+        expect(options.headers.Authorization).toBe('Bearer tok-123');
+        expect(JSON.parse(options.body)).toEqual({ enabled: true });
+        expect(result).toEqual({ ok: 1 });
+      });
+
+      it('omits the body and the Authorization header when there is no body or token', async () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.removeItem('authToken');
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ ok: 1 }),
+        });
+
+        await apiManager._jsonRequest('http://x/y', { method: 'POST' });
+
+        const [, options] = global.fetch.mock.calls[0];
+        expect(options.method).toBe('POST');
+        expect(options.body).toBeUndefined();
+        expect('Authorization' in options.headers).toBe(false);
+      });
+
+      it('defaults to a GET request', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({}),
+        });
+
+        await apiManager._jsonRequest('http://x/y');
+
+        const [, options] = global.fetch.mock.calls[0];
+        expect(options.method).toBe('GET');
+      });
+
+      it('returns an error envelope with the server message on a non-ok response', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 403,
+          json: vi.fn().mockResolvedValue({ message: 'denied' }),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'denied' });
+      });
+
+      it('falls back to the HTTP status when the error body cannot be parsed', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 500,
+          json: vi.fn().mockRejectedValue(new Error('no body')),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'HTTP 500' });
+      });
+
+      it('returns an error envelope on a network error', async () => {
+        global.fetch = vi.fn().mockRejectedValue(new Error('boom'));
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'boom' });
+      });
+    });
+
     it('should map collaborator errors', async () => {
       global.fetch = vi.fn()
         .mockResolvedValueOnce({
@@ -1421,6 +1933,15 @@ describe('ApiCallManager', () => {
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/lopd');
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/prefs');
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
+    });
+
+    it('should not call post when the idevice upload endpoint is missing', async () => {
+      delete apiManager.endpoints.api_idevices_upload;
+
+      const response = await apiManager.postUploadIdevice({ data: 'idevice' });
+
+      expect(response.responseMessage).toBe('Error');
+      expect(mockFunc.post).not.toHaveBeenCalledWith(undefined, { data: 'idevice' });
     });
 
     it('should call structure and diagnostics endpoints', async () => {
@@ -1752,6 +2273,58 @@ describe('ApiCallManager', () => {
         expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('window.__EXE_STATIC_DATA__'));
 
         delete window.__EXE_STATIC_DATA__;
+        logSpy.mockRestore();
+      });
+
+      it('should prefer bundle.json.zst when window.fzstd is available', async () => {
+        const mockBundleData = {
+          parameters: { routes: { api_test: { path: '/api/test' } } },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        };
+        const jsonBytes = new TextEncoder().encode(JSON.stringify(mockBundleData));
+        // Pretend-compressed payload; the mocked decompressor returns the JSON bytes.
+        const compressed = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd, 1, 2, 3]);
+        window.fzstd = { decompress: vi.fn(() => jsonBytes) };
+        global.fetch = vi.fn().mockResolvedValueOnce({
+          ok: true,
+          arrayBuffer: () => Promise.resolve(compressed.buffer),
+        });
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(global.fetch).toHaveBeenCalledWith('./data/bundle.json.zst');
+        expect(window.fzstd.decompress).toHaveBeenCalled();
+        expect(apiManager.staticData).toEqual(mockBundleData);
+
+        delete window.fzstd;
+        logSpy.mockRestore();
+      });
+
+      it('should fall back to plain bundle.json when the .zst tier is unavailable', async () => {
+        const mockBundleData = {
+          parameters: { routes: {} },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        };
+        window.fzstd = { decompress: vi.fn() };
+        global.fetch = vi
+          .fn()
+          .mockResolvedValueOnce({ ok: false, status: 404 }) // bundle.json.zst missing
+          .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockBundleData) });
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(global.fetch).toHaveBeenNthCalledWith(1, './data/bundle.json.zst');
+        expect(global.fetch).toHaveBeenNthCalledWith(2, './data/bundle.json');
+        expect(window.fzstd.decompress).not.toHaveBeenCalled();
+        expect(apiManager.staticData).toEqual(mockBundleData);
+
+        delete window.fzstd;
         logSpy.mockRestore();
       });
 

@@ -21,6 +21,7 @@ import {
     deleteAllUpdates,
     deleteUpdatesBefore,
     getLatestVersion,
+    getDocumentVersion,
     countUpdates,
     documentExists,
     // Full state operations
@@ -558,6 +559,55 @@ describe('Yjs Queries', () => {
             });
         });
 
+        describe('getDocumentVersion', () => {
+            it('returns 0 when there is no snapshot and no updates', async () => {
+                const version = await getDocumentVersion(db, testProjectId);
+                expect(version).toBe('0');
+            });
+
+            it('returns the latest update version when newer than the snapshot', async () => {
+                await upsertSnapshot(db, testProjectId, new Uint8Array([1]), '100');
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '500',
+                    client_id: null,
+                });
+
+                const version = await getDocumentVersion(db, testProjectId);
+                expect(version).toBe('500');
+            });
+
+            it('returns the snapshot version when newer than all updates (post-compaction)', async () => {
+                // After compaction, older updates are folded into the snapshot and
+                // removed, so the snapshot version may exceed any remaining update.
+                await upsertSnapshot(db, testProjectId, new Uint8Array([1]), '900');
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '300',
+                    client_id: null,
+                });
+
+                const version = await getDocumentVersion(db, testProjectId);
+                expect(version).toBe('900');
+            });
+
+            it('advances when a new full state is persisted (drives public-view cache invalidation)', async () => {
+                const before = await getDocumentVersion(db, testProjectId);
+                await saveFullState(db, testProjectId, new Uint8Array([1, 2, 3]));
+                const after = await getDocumentVersion(db, testProjectId);
+
+                expect(parseInt(after, 10)).toBeGreaterThan(parseInt(before, 10));
+            });
+
+            it('uses the snapshot version when only a snapshot exists', async () => {
+                await upsertSnapshot(db, testProjectId, new Uint8Array([1]), '777');
+                const version = await getDocumentVersion(db, testProjectId);
+                expect(version).toBe('777');
+            });
+        });
+
         describe('countUpdates', () => {
             it('should count updates', async () => {
                 await createUpdate(db, {
@@ -628,7 +678,9 @@ describe('Yjs Queries', () => {
                 const newState = new Uint8Array([10, 20, 30]);
                 const update = await saveFullState(db, testProjectId, newState, 'client-1');
 
-                expect(update.version).toBe('1');
+                // Version is a monotonic millisecond timestamp, not the old
+                // hardcoded '1' (which got filtered out below newer snapshots).
+                expect(/^\d{10,}$/.test(update.version)).toBe(true);
                 expect(update.update_data).toEqual(newState);
                 expect(update.client_id).toBe('client-1');
 
@@ -641,6 +693,21 @@ describe('Yjs Queries', () => {
                 const update = await saveFullState(db, testProjectId, state);
 
                 expect(update.client_id).toBeNull();
+            });
+
+            it('writes a version newer than an existing snapshot so the update is not filtered out (C6)', async () => {
+                // Simulate a browser save: a snapshot stamped with an earlier timestamp.
+                const snapshotVersion = (Date.now() - 1000).toString();
+                await upsertSnapshot(db, testProjectId, new Uint8Array([9]), snapshotVersion);
+
+                // A REST-API-style full-state save must land AFTER the snapshot.
+                await saveFullState(db, testProjectId, new Uint8Array([10, 20, 30]), 'client-1');
+
+                const { snapshot, updates } = await loadDocumentWithUpdates(db, testProjectId);
+                expect(snapshot?.snapshot_version).toBe(snapshotVersion);
+                // The full-state update must survive the snapshot-version filter.
+                expect(updates.length).toBe(1);
+                expect(parseInt(updates[0].version, 10)).toBeGreaterThan(parseInt(snapshotVersion, 10));
             });
         });
 

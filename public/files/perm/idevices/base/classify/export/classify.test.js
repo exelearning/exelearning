@@ -122,6 +122,47 @@ describe('classify iDevice export', () => {
     });
   });
 
+  // sendScore and saveEvaluation carried the same formula written twice, and
+  // the same 0/0 in it. One function now, and the edge cases with it.
+  describe('computeScore', () => {
+    it('scores a solved board out of ten', () => {
+      expect($eXeClasifica.computeScore(4, 4, 4, 2)).toBe(10);
+    });
+
+    it('scores half a board at five', () => {
+      expect($eXeClasifica.computeScore(2, 2, 4, 2)).toBe(5);
+    });
+
+    // The essential level is the only one that weighs how many moves the board
+    // took: the same four hits are worth less if they took eight drops.
+    it('penalises the moves it took, at the essential level only', () => {
+      expect($eXeClasifica.computeScore(4, 8, 4, 0)).toBe(5);
+      expect($eXeClasifica.computeScore(4, 8, 4, 1)).toBe(10);
+      expect($eXeClasifica.computeScore(4, 8, 4, 2)).toBe(10);
+    });
+
+    it('gives a flawless essential board the full mark', () => {
+      expect($eXeClasifica.computeScore(4, 4, 4, 0)).toBe(10);
+    });
+
+    // The opening report: nothing moved, so hits and attempts are both zero.
+    // This used to be 0 * (0/0) — NaN — and only sendScoreNew's non-finite
+    // guard kept it from travelling to the LMS as the learner's grade.
+    it('returns a finite zero before the learner has moved anything', () => {
+      const score = $eXeClasifica.computeScore(0, 0, 4, 0);
+
+      expect(Number.isFinite(score)).toBe(true);
+      expect(score).toBe(0);
+    });
+
+    // An activity saved with no cards: the divisor used to be numberQuestions,
+    // undefended, so this was 0/0 as well.
+    it('survives a deck with no cards', () => {
+      expect($eXeClasifica.computeScore(0, 0, 0, 0)).toBe(0);
+      expect($eXeClasifica.computeScore(0, 0, 0, 2)).toBe(0);
+    });
+  });
+
   describe('init', () => {
     it('exists as a function', () => {
       expect(typeof $eXeClasifica.init).toBe('function');
@@ -486,5 +527,184 @@ describe('classify iDevice export', () => {
       expect($eXeClasifica.options[0].idevice).toBe('clasifica-IDevice');
       expect($eXeClasifica.options[1].idevice).toBe('clasifica-IDevice');
     });
+  });
+
+  // Reporting as soon as the learner starts puts the attempt in the LMS menu
+  // from the first move, rather than only once a card has been placed.
+  describe('ending the attempt at any level', () => {
+    function setupGameOver(overrides) {
+      document.body.innerHTML = `
+        <div id="clasificaMainContainer-0">
+          <div id="clasificaMultimedia-0"></div>
+          <div id="clasificaSlide-0"></div>
+        </div>`;
+      $eXeClasifica.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: false,
+          gameLevel: 2,
+          hits: 3,
+          errors: 0,
+          numberQuestions: 3,
+          cardsGame: [{}, {}, {}],
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeClasifica, 'showLevel0Score').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showLevel1Score').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showCustomScore').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'checkClueGame').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showFeedBack').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it.each([0, 1, 2])('reports the finished attempt at level %s', level => {
+      setupGameOver({ gameLevel: level });
+
+      $eXeClasifica.gameOver(0);
+
+      expect($eXeClasifica.sendScore).toHaveBeenCalledWith(true, 0);
+      expect($eXeClasifica.options[0].gameOver).toBe(true);
+    });
+
+    // The comparisons are strict and the field is only written by the editor,
+    // so an activity saved before it existed carries `undefined` and used to
+    // match no branch at all: the attempt ended with no report to carry the
+    // completion, and the page stayed `incomplete` in the LMS forever.
+    it('still reports when the activity carries no game level', () => {
+      setupGameOver({ gameLevel: undefined });
+
+      $eXeClasifica.gameOver(0);
+
+      expect($eXeClasifica.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+  });
+
+  describe('reporting when the game starts', () => {
+    function setupStart(overrides) {
+      document.body.innerHTML = `
+        <div id="clasificaMainContainer-0">
+          <div id="clasificaGameContainer-0"></div>
+          <div id="clasificaStartGame-0"></div>
+          <div id="clasificaSlide-0"></div>
+        </div>`;
+      $eXeClasifica.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: false,
+          cardsGame: [],
+          time: 0,
+          msgs: { mgsGameStart: 'start' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeClasifica, 'addCards').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'initializeDragAndDrop').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports the attempt on start', () => {
+      setupStart();
+
+      $eXeClasifica.startGame(0);
+
+      expect($eXeClasifica.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+    it('does not report outside automatic SCORM mode', () => {
+      setupStart({ isScorm: 0 });
+
+      $eXeClasifica.startGame(0);
+
+      expect($eXeClasifica.sendScore).not.toHaveBeenCalled();
+    });
+
+    // Starting is not finishing: the page must not go to passed/failed here.
+    it('does not mark the activity finished', () => {
+      setupStart();
+
+      $eXeClasifica.startGame(0);
+
+      expect($eXeClasifica.options[0].gameOver).toBe(false);
+    });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. The clock used to find that game by id and run it, counting
+    // down on its display and ending it when its own time ran out.
+    describe('the clock of a timed game', () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+        setupStart({ time: 1, isScorm: 0 });
+        vi.spyOn($eXeClasifica, 'uptateTime').mockImplementation(() => {});
+        vi.spyOn($eXeClasifica, 'gameOver').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('counts down on its own game', () => {
+        $eXeClasifica.startGame(0);
+
+        vi.advanceTimersByTime(3000);
+
+        expect($eXeClasifica.uptateTime).toHaveBeenLastCalledWith(57, 0);
+      });
+
+      it('ends its own game when the time runs out', () => {
+        $eXeClasifica.startGame(0);
+
+        vi.advanceTimersByTime(60000);
+
+        expect($eXeClasifica.gameOver).toHaveBeenCalledWith(0);
+      });
+
+      it("leaves the next page's game alone, though it takes the same ids", () => {
+        $eXeClasifica.startGame(0);
+        vi.advanceTimersByTime(1000);
+
+        // The author moves to another page, whose first game is numbered the same.
+        document.body.innerHTML = '<div id="clasificaMainContainer-0"></div>';
+        $eXeClasifica.options[0] = { time: 4, counter: 240, gameStarted: true };
+        $eXeClasifica.uptateTime.mockClear();
+        vi.advanceTimersByTime(120000);
+
+        expect($eXeClasifica.uptateTime).not.toHaveBeenCalled();
+        expect($eXeClasifica.gameOver).not.toHaveBeenCalled();
+        expect($eXeClasifica.options[0].counter).toBe(240);
+      });
+    });
+  });
+});
+
+describe('classify minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'classify.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
   });
 });

@@ -28,7 +28,10 @@ var $exeDevice = {
     init: function (element, previousData, path) {
         //** eXeLearning idevice engine data ***************************
         this.ideviceBody = element;
-        this.idevicePreviousData = previousData;
+        this.idevicePreviousData = this.normalizePreviousData(
+            previousData,
+            element
+        );
         this.idevicePath = path;
         //**************************************************************
         this.refreshTranslations();
@@ -42,6 +45,9 @@ var $exeDevice = {
                 "The score can't be saved because this page is not part of a SCORM package."
             ),
             msgYouScore: c_('Your score'),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
             msgYouLastScore: c_('The last score saved is'),
@@ -63,6 +69,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Scrambled list'),
             msgStartGame: c_('Click here to start'),
             msgSubmit: c_('Submit'),
@@ -74,6 +81,57 @@ var $exeDevice = {
             msgRetryAttempts: c_(
                 'You made %s errors. You have %s attempts left. Do you want to try again?'
             ),
+        };
+    },
+
+    normalizePreviousData: function (previousData, element) {
+        if (previousData && Object.keys(previousData).length > 0) {
+            return previousData;
+        }
+        return this.extractLegacyDataFromHtml(element?.innerHTML || '') || previousData;
+    },
+
+    extractLegacyDataFromHtml: function (html) {
+        if (!html || !html.includes('exe-sortableList')) return null;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        const activity = wrapper.querySelector('.exe-sortableList');
+        const options = Array.from(
+            activity?.querySelectorAll('.exe-sortableList-list > li') || []
+        )
+            .map((item) => item.innerHTML.trim() || item.textContent.trim())
+            .filter((option) => option !== '');
+        if (options.length === 0) return null;
+
+        const textAfter =
+            activity
+                ?.querySelector('.exe-sortableList-textAfter')
+                ?.innerHTML.trim() || '';
+
+        return {
+            instructions:
+                activity
+                    ?.querySelector('.exe-sortableList-instructions')
+                    ?.innerHTML.trim() || '',
+            options,
+            buttonText:
+                activity
+                    ?.querySelector('.exe-sortableList-buttonText')
+                    ?.textContent.trim() || c_('Check'),
+            rightText:
+                activity
+                    ?.querySelector('.exe-sortableList-rightText')
+                    ?.textContent.trim() || c_('Right!'),
+            wrongText:
+                activity
+                    ?.querySelector('.exe-sortableList-wrongText')
+                    ?.textContent.trim() ||
+                c_("Sorry, that's incorrect... The right answer is:"),
+            textAfter,
+            afterElement: textAfter
+                ? `<div class="exe-sortableList-textAfter">${textAfter}</div>`
+                : '',
         };
     },
 
@@ -122,6 +180,10 @@ var $exeDevice = {
         if (!progressBar) return false;
         this.evaluationID = progressBar.evaluationID;
         this.evaluation = progressBar.evaluation;
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        this.passScoreMode = passScore.passScoreMode;
+        this.passScoreCustom = passScore.passScoreCustom;
         this.showSolutions = !!(
             this.ideviceBody.querySelector('#sortableShowSolutions') || {}
         ).checked;
@@ -177,6 +239,8 @@ var $exeDevice = {
             weighted: scorm.weighted || 100,
             evaluation: this.evaluation,
             evaluationID: this.evaluationID,
+            passScoreMode: this.passScoreMode,
+            passScoreCustom: this.passScoreCustom,
             main: 'sl' + this.id,
             msgs: this.msgs,
             scorerp: 0,
@@ -286,7 +350,6 @@ var $exeDevice = {
                                     <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
                                 </div>
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(this.idevicePath)}
                                 </div>
                             </div>
                         </div>
@@ -295,7 +358,7 @@ var $exeDevice = {
 
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(this.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
             </div>`;
@@ -306,7 +369,11 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#sortableAttemptsNumber')
             .on('keyup', function () {
@@ -348,9 +415,10 @@ var $exeDevice = {
                 }
 
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
         } else {
@@ -485,11 +553,13 @@ var $exeDevice = {
         // Set form values
         let data = this.idevicePreviousData;
         if (!data || Object.keys(data).length === 0) return;
-        if (data.options) {
-            for (let i = 0; i < data.options.length; i++) {
-                this.ideviceBody.querySelector(
+        const options = this.normalizeOptions(data.options);
+        if (options.length > 0) {
+            for (let i = 0; i < options.length && i < this.items_no; i++) {
+                const input = this.ideviceBody.querySelector(
                     '#sortableListFormList' + i
-                ).value = data.options[i];
+                );
+                if (input) input.value = options[i];
             }
         }
 
@@ -509,6 +579,10 @@ var $exeDevice = {
             evaluation: evalChecked,
             evaluationID: evalIDValue,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: data.passScoreMode,
+            passScoreCustom: data.passScoreCustom,
+        });
 
         this.ideviceBody.querySelector('#eXeGameInstructions').value =
             data.instructions ||
@@ -525,7 +599,7 @@ var $exeDevice = {
             this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1);
 
         data.weighted = data.weighted || 100;
-        data.repeatActivity = data.repeatActivity || false;
+        data.repeatActivity = true;
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 
@@ -538,6 +612,52 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
             data.msgs
         );
+    },
+
+    normalizeOptions: function (options) {
+        if (!Array.isArray(options)) return [];
+        return options
+            .map((option) => this.normalizeOptionItem(option))
+            .filter((option) => option !== '');
+    },
+
+    normalizeOptionItem: function (option) {
+        if (option === null || typeof option === 'undefined') return '';
+        if (typeof option === 'string' || typeof option === 'number') {
+            return String(option).trim();
+        }
+        if (Array.isArray(option)) {
+            for (let i = 0; i < option.length; i++) {
+                const value = this.normalizeOptionItem(option[i]);
+                if (value !== '') return value;
+            }
+            return '';
+        }
+        if (typeof option !== 'object') return '';
+
+        const preferredKeys = [
+            'text',
+            'option',
+            'content',
+            'html',
+            'value',
+            'label',
+            'title',
+            'name',
+        ];
+        for (let i = 0; i < preferredKeys.length; i++) {
+            const key = preferredKeys[i];
+            if (Object.prototype.hasOwnProperty.call(option, key)) {
+                const value = this.normalizeOptionItem(option[key]);
+                if (value !== '') return value;
+            }
+        }
+        for (const key in option) {
+            if (!Object.prototype.hasOwnProperty.call(option, key)) continue;
+            const value = this.normalizeOptionItem(option[key]);
+            if (value !== '') return value;
+        }
+        return '';
     },
 
     getBoundedIntValue: function (value, min, max, fallback) {

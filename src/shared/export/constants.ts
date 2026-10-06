@@ -197,23 +197,6 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         ],
     },
 
-    // Media player via audio/video file links with lightbox
-    {
-        name: 'exe_media_link',
-        type: 'regex',
-        pattern: /href="[^"]*\.(mp3|mp4|flv|ogg|ogv)"[^>]*rel="[^"]*lightbox/i,
-        files: [
-            'exe_media/exe_media.js',
-            'exe_media/exe_media.css',
-            'exe_media/exe_media_background.png',
-            'exe_media/exe_media_bigplay.png',
-            'exe_media/exe_media_bigplay.svg',
-            'exe_media/exe_media_controls.png',
-            'exe_media/exe_media_controls.svg',
-            'exe_media/exe_media_loading.gif',
-        ],
-    },
-
     // ABC Music notation (abcjs)
     {
         name: 'abcjs',
@@ -345,9 +328,7 @@ export const BASE_LIBRARIES = [
     'exe_export.js',
     // Bootstrap (JS bundle includes Popper)
     'bootstrap/bootstrap.bundle.min.js',
-    'bootstrap/bootstrap.bundle.min.js.map',
     'bootstrap/bootstrap.min.css',
-    'bootstrap/bootstrap.min.css.map',
 ] as const;
 
 /**
@@ -389,6 +370,8 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
     'text/css': '.css',
     'application/javascript': '.js',
     'application/octet-stream': '.bin',
+    'application/x-subrip': '.srt',
+    'text/vtt': '.vtt',
 };
 
 /**
@@ -778,6 +761,34 @@ export function shouldShowLicenseFooter(licenseName: string): boolean {
     return true;
 }
 
+/**
+ * Check whether the "Page footer" project property holds anything renderable.
+ * Whitespace-only values count as empty.
+ *
+ * @param userFooterContent - Raw HTML from the "Page footer" project property
+ * @returns true when there is user content to render
+ */
+export function hasUserFooterContent(userFooterContent?: string): boolean {
+    return (userFooterContent ?? '').trim().length > 0;
+}
+
+/**
+ * Check whether the site footer has any content to display.
+ *
+ * The footer is considered empty when there is no license to show (empty,
+ * propietary or "not appropriate") and the user-defined "Page footer" property
+ * holds nothing but whitespace. Empty footers are still rendered — themes give
+ * them a background and border — so they are tagged with the `siteFooter-empty`
+ * class and hidden via CSS.
+ *
+ * @param license - The license name from metadata
+ * @param userFooterContent - Raw HTML from the "Page footer" project property
+ * @returns true when the footer has license or user content, false when empty
+ */
+export function hasSiteFooterContent(license: string, userFooterContent?: string): boolean {
+    return shouldShowLicenseFooter(license) || hasUserFooterContent(userFooterContent);
+}
+
 // =============================================================================
 // XML Namespaces
 // =============================================================================
@@ -836,6 +847,36 @@ export const EPUB3_NAMESPACES = {
  * EPUB3 MIME type
  */
 export const EPUB3_MIMETYPE = 'application/epub+zip';
+
+// =============================================================================
+// Pre-rendered Content CSS
+// =============================================================================
+
+/**
+ * CSS for pre-rendered LaTeX (SVG + assistive MathML).
+ *
+ * Shipped with exports when MathJax is NOT bundled (`addMathJax = false`) so the
+ * pre-rendered `<span class="exe-math-rendered">` wrappers render correctly.
+ *
+ * Baseline alignment is intentionally driven by the SVG's own inline
+ * `vertical-align: -X.XXXex` (set by MathJax), exactly like the runtime MathJax
+ * render. The wrapper must NOT set `vertical-align: middle`: that centres the box on
+ * the line and breaks baseline alignment for fractions, sub/superscripts and radicals
+ * (glyphs with depth below the baseline). See issue #1919.
+ *
+ * Single source of truth: used by Html5Exporter (and its subclasses SCORM 1.2/2004,
+ * IMS, Page, ELPX) and Epub3Exporter.
+ */
+export const PRERENDERED_LATEX_CSS = `/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */
+.exe-math-rendered { display: inline-block; line-height: 0; }
+.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
+.exe-math-rendered svg { max-width: 100%; height: auto; }
+/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
+.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
+.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
+/* Hide assistive MathML visually but keep it accessible for screen readers.
+   position:absolute removes it from layout so it never shifts the SVG baseline. */
+.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); clip-path: inset(50%); }`;
 
 // =============================================================================
 // iDevice Type Mappings

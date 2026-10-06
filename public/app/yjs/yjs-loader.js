@@ -73,6 +73,7 @@
     // Contains LegacyHandlerRegistry, LegacyXmlParser, ElpxImporter, and all legacy iDevice handlers
     [
       '/app/yjs/importers.bundle.js',  // Compiled from src/shared/import/browser/index.ts
+      '/app/common/mime-sniff.js',  // window.eXeMimeSniff — must load before AssetManager.js (Group 1)
     ],
     // Group 1: Core managers (no dependencies between them)
     [
@@ -97,8 +98,10 @@
     ],
     // Group 4: Bridge components (depend on exporters)
     [
+      '/app/common/blockIconRuntime.js',
       'SaveManager.js',
-      'YjsTinyMCEBinding.js',
+      'CollaborativeAutosaveManager.js',  // Collaborative autosave coordinator (issue #1592), used by the bridge
+      'CollaborativeSaveStatusView.js',  // Renders the compact collaborative autosave status (issue #1592)
       'YjsStructureTreeAdapter.js',
       'YjsPropertiesBinding.js',
     ],

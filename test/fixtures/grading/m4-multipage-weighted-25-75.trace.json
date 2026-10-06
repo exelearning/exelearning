@@ -1,0 +1,864 @@
+{
+  "traceVersion": 1,
+  "scenario": "m4-multipage-weighted-25-75",
+  "recordedFrom": {
+    "repo": "exelearning",
+    "ref": "64df99f22685b9e0ec1b72e61c223416960f59c8",
+    "exportFormat": "html5"
+  },
+  "fixtureRepairs": {
+    "isTest": true
+  },
+  "servingModel": {
+    "scormInjector": true,
+    "idevicePatch": [
+      "idevices/form/form.js"
+    ]
+  },
+  "package": {
+    "odeId": "GRADING-FIXTURE-M4",
+    "pageCount": 2
+  },
+  "pages": [
+    {
+      "index": 0,
+      "url": "index.html",
+      "ideviceNodes": [
+        "m4-p1"
+      ]
+    },
+    {
+      "index": 1,
+      "url": "html/m4-page-two.html",
+      "ideviceNodes": [
+        "m4-p2"
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "page": 0,
+      "idevice": "m4-p1",
+      "type": "trueorfalse",
+      "clicked": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "hits": 4,
+      "of": 4
+    },
+    {
+      "page": 1,
+      "idevice": "m4-p2",
+      "type": "form",
+      "clicked": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "hits": 0,
+      "of": 4
+    }
+  ],
+  "scorm": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSInitialize",
+      "args": [
+        ""
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.lesson_status"
+      ],
+      "ret": "",
+      "navPage": 0
+    },
+    {
+      "seq": 2,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "",
+      "navPage": 0
+    },
+    {
+      "seq": 3,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "",
+      "navPage": 0
+    },
+    {
+      "seq": 4,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "",
+      "navPage": 0
+    },
+    {
+      "seq": 5,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M4 Activity A\"; Puntuación: 0%; Peso: 25%"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 6,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 7,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 8,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M4 Activity A\"; Puntuación: 0%; Peso: 25%",
+      "navPage": 0
+    },
+    {
+      "seq": 9,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M4 Activity A\"; Puntuación: 100%; Peso: 25%"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 10,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "100"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 11,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 12,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M4 Activity A\"; Puntuación: 100%; Peso: 25%",
+      "navPage": 1
+    },
+    {
+      "seq": 13,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M4 Activity A\"; Puntuación: 100%; Peso: 25%"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 14,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "100"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 15,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 16,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M4 Activity A\"; Puntuación: 100%; Peso: 25%",
+      "navPage": 1
+    },
+    {
+      "seq": 17,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M4 Activity A\"; Puntuación: 100%; Peso: 25%"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 18,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "100"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 19,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 20,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSInitialize",
+      "args": [
+        ""
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 21,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.lesson_status"
+      ],
+      "ret": "passed",
+      "navPage": 1
+    },
+    {
+      "seq": 22,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "100",
+      "navPage": 1
+    },
+    {
+      "seq": 23,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M4 Activity A\"; Puntuación: 100%; Peso: 25%",
+      "navPage": 1
+    },
+    {
+      "seq": 24,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "100"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 25,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 26,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M4 Activity A\"; Puntuación: 100%; Peso: 25%",
+      "navPage": 1
+    },
+    {
+      "seq": 27,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M4 Activity B\"; Puntuación: 0%; Weight: 75%"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 28,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 29,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    }
+  ],
+  "xapi": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "statement": {
+        "id": "0ddb67b8-15a6-47b8-82c7-fbbcedeaa206",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/initialized",
+          "display": {
+            "en-US": "initialized"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M4 two pages, one gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:47.073Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "statement": {
+        "id": "cc0fc62e-cf60-42d2-8d20-5ef8d38e682b",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4/idevice/m4-p1",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "M4 Activity A"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:47.319Z",
+        "result": {
+          "score": {
+            "scaled": 1,
+            "raw": 10,
+            "min": 0,
+            "max": 10
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4",
+            "https://exelearning.net/xapi/extensions/idevice-id": "m4-p1",
+            "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 2,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "statement": {
+        "id": "909dc6af-d485-46dd-9231-fb9390d2b9ff",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/completed",
+          "display": {
+            "en-US": "completed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M4 two pages, one gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:47.320Z",
+        "result": {
+          "score": {
+            "scaled": 1,
+            "raw": 100,
+            "min": 0,
+            "max": 100
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 3,
+      "page": 0,
+      "href": "http://exe-matrix-m4.local/index.html",
+      "statement": {
+        "id": "0dbfbf11-15cc-4bd1-aca6-415741b632d7",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/passed",
+          "display": {
+            "en-US": "passed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M4 two pages, one gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:47.320Z",
+        "result": {
+          "score": {
+            "scaled": 1,
+            "raw": 100,
+            "min": 0,
+            "max": 100
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 4,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "statement": {
+        "id": "57a81307-f290-4aec-a21f-0e213f0f720a",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/terminated",
+          "display": {
+            "en-US": "terminated"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M4 two pages, one gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:47.749Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 5,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "statement": {
+        "id": "e87305fc-409e-4983-a393-e2030ac1b923",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/initialized",
+          "display": {
+            "en-US": "initialized"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M4 two pages, one gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:47.769Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 6,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "statement": {
+        "id": "e79102b0-65a3-4ebe-95cb-6efb775d858b",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4/idevice/m4-p2",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "M4 Activity B"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "form-IDevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:48.200Z",
+        "result": {
+          "score": {
+            "scaled": 0,
+            "raw": 0,
+            "min": 0,
+            "max": 10
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4",
+            "https://exelearning.net/xapi/extensions/idevice-id": "m4-p2",
+            "https://exelearning.net/xapi/extensions/idevice-type": "form-IDevice"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 7,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "statement": {
+        "id": "1f908c22-7f10-4965-9d05-2ca4560cb0f3",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/completed",
+          "display": {
+            "en-US": "completed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M4 two pages, one gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:48.200Z",
+        "result": {
+          "score": {
+            "scaled": 0,
+            "raw": 0,
+            "min": 0,
+            "max": 100
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 8,
+      "page": 1,
+      "href": "http://exe-matrix-m4.local/html/m4-page-two.html",
+      "statement": {
+        "id": "a5d49210-043f-41b8-99f2-1d3526d9fc9f",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/failed",
+          "display": {
+            "en-US": "failed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M4",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M4 two pages, one gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:48.200Z",
+        "result": {
+          "score": {
+            "scaled": 0,
+            "raw": 0,
+            "min": 0,
+            "max": 100
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M4"
+          }
+        }
+      },
+      "navPage": 1
+    }
+  ],
+  "finalCmi": {
+    "cmi.suspend_data": "1. \"M4 Activity B\"; Puntuación: 0%; Weight: 75%",
+    "cmi.core.score.raw": "0",
+    "cmi.core.lesson_status": "failed"
+  },
+  "consoleErrors": [
+    "pageerror: $exe_i18n is not defined",
+    "pageerror: $exe_i18n is not defined"
+  ],
+  "expected": {
+    "perItem": {
+      "m4-p1": 100,
+      "m4-p2": 0
+    },
+    "weights": {
+      "m4-p1": 25,
+      "m4-p2": 75
+    },
+    "overall": 25,
+    "note": "By hand: page 1 tof 4/4 = 100, page 2 form 0/4 = 0. (100*25 + 0*75)/100 = 25."
+  }
+}

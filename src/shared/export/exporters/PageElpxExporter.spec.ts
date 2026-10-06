@@ -516,6 +516,66 @@ describe('PageElpxExporter Unit Tests', () => {
             expect(resourceFiles.some(f => f.includes('test.jpg'))).toBe(true);
         });
 
+        it('converts a referenced .srt subtitle to WebVTT in a filtered subtree export (issue #2034)', async () => {
+            const SRT_UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+            const subsDocument: ExportDocument = {
+                getMetadata: () => ({
+                    title: 'Subtitle Subtree Test',
+                    author: 'Test',
+                    language: 'en',
+                    description: '',
+                    license: 'CC-BY-SA',
+                    theme: 'base',
+                }),
+                getNavigation: () => [
+                    { id: 'root', title: 'Root', parentId: null, order: 0, blocks: [] },
+                    {
+                        id: 'page-subs',
+                        title: 'Page with subtitles',
+                        parentId: 'root',
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'block-subs',
+                                components: [
+                                    {
+                                        id: 'comp-subs',
+                                        type: 'text',
+                                        content: `<video controls><track kind="subtitles" src="asset://${SRT_UUID}.srt" /></video>`,
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const srtAsset = {
+                id: SRT_UUID,
+                filename: 'subs.srt',
+                mime: 'application/x-subrip',
+                data: new TextEncoder().encode('1\n00:00:01,000 --> 00:00:02,000\nHola\n'),
+            };
+            const subsAssets: AssetProvider = {
+                getAsset: async (id: string) => (id === SRT_UUID ? srtAsset : null),
+                getAllAssets: async () => [srtAsset],
+                getProjectAssets: async () => [srtAsset],
+            };
+
+            const subsZip = new CapturingZipProvider();
+            const subsExporter = new PageElpxExporter(subsDocument, resources, subsAssets, subsZip);
+
+            const result = await subsExporter.export({ rootPageId: 'page-subs', filename: 'subs_export' });
+            expect(result.success).toBe(true);
+
+            const vttPath = subsZip.getFilePaths().find(f => f.startsWith('content/resources/') && f.endsWith('.vtt'));
+            expect(vttPath, 'filtered subtree export must ship a converted .vtt subtitle').toBeTruthy();
+            const text = subsZip.getFileAsString(vttPath as string) ?? '';
+            expect(text.startsWith('WEBVTT')).toBe(true);
+            expect(text).toContain('Hola');
+            expect(subsZip.getFilePaths().some(f => f.endsWith('.srt'))).toBe(false);
+        });
+
         it('should extract assets with legacy format (asset://uuid/filename)', async () => {
             // The existing tests use legacy format, but let's be explicit
             const legacyFormatDocument: ExportDocument = {

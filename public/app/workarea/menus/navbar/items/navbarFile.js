@@ -1,7 +1,9 @@
+import createTooltip from '../../../../common/app_tooltip.js';
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
 import ImportProgress from '../../../interface/importProgress.js';
+import { isImportCancelled } from '../../../interface/importResult.js';
 import {
     supportsFileSystemAccess,
     openProjectFolderInBrowser,
@@ -37,6 +39,10 @@ export default class NavbarFile {
         );
         this.saveOfflineButton = this.menu.navbar.querySelector(
             '#navbar-button-save-offline'
+        );
+        // Electron-only "Close" entry (hidden by default in the offline markup).
+        this.closeFileButton = this.menu.navbar.querySelector(
+            '#navbar-button-close-file'
         );
         this.recentProjectsButton = this.menu.navbar.querySelector(
             '#navbar-button-dropdown-recent-projects'
@@ -132,6 +138,7 @@ export default class NavbarFile {
         this.setRecentProjectsEvent();
         this.setDownloadProjectEvent();
         this.setSaveProjectOfflineEvent();
+        this.setCloseFileEvent();
         this.setDownloadProjectAsEvent();
         this.setExportHTML5Event();
         this.setExportHTML5AsEvent();
@@ -349,6 +356,7 @@ export default class NavbarFile {
             }
 
             toast.toastBody.innerHTML = _('Folder saved.');
+            yjsBridge.assetManager?.markAssetsSavedLocally?.();
             const docManager = yjsBridge.documentManager;
             if (docManager?.markClean) docManager.markClean();
         } catch (error) {
@@ -729,6 +737,46 @@ export default class NavbarFile {
     }
 
     /**
+     * Close the current file/window.
+     * File -> Close (Electron desktop only)
+     *
+     * The static browser/PWA build and the Electron app both run in the same
+     * static/offline runtime, so `config.isOfflineInstallation` cannot tell
+     * them apart. We gate visibility on the Electron-only `window.electronAPI`
+     * bridge instead: the entry stays hidden in the browser and is revealed
+     * only when the desktop app exposes `closeCurrentWindow`.
+     *
+     * Closing goes through `BrowserWindow.close()` in the main process, so the
+     * existing close guard still prompts for unsaved changes.
+     */
+    setCloseFileEvent() {
+        if (!this.closeFileButton) return;
+
+        // Browser/PWA build: no Electron bridge, keep the entry hidden.
+        if (typeof window.electronAPI?.closeCurrentWindow !== 'function') {
+            return;
+        }
+
+        // Reveal the entry (its wrapper <li> is hidden by default).
+        const wrapper = this.closeFileButton.closest('li') || this.closeFileButton;
+        wrapper.classList.remove('d-none');
+
+        // Reveal the preceding separator too. It shares the exe-electron-only
+        // marker and is hidden by default so the browser/PWA build never shows
+        // a stray divider above a missing entry.
+        const divider = wrapper.previousElementSibling;
+        if (divider && divider.classList.contains('exe-electron-only')) {
+            divider.classList.remove('d-none');
+        }
+
+        this.closeFileButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            window.electronAPI.closeCurrentWindow();
+        });
+    }
+
+    /**
      * Download project (ELP) As... (offline)
      */
     setDownloadProjectAsEvent() {
@@ -1085,6 +1133,16 @@ export default class NavbarFile {
                                     { clearExisting: false }
                                 );
 
+                                // Import was cancelled (large-file confirmation
+                                // declined) or rejected (over the applicable limit).
+                                // The bridge already surfaced any actionable error;
+                                // the project is unchanged, so skip the success UI.
+                                if (isImportCancelled(stats)) {
+                                    Logger.log('[NavbarFile] Yjs import cancelled/rejected:', file.name);
+                                    progressModal.hide();
+                                    return;
+                                }
+
                                 Logger.log('[NavbarFile] Yjs import complete:', stats);
                                 progressModal.setComplete(
                                     true,
@@ -1254,11 +1312,11 @@ export default class NavbarFile {
         this.initMobileLayout();
 
         // See eXeLearning.app.common.initTooltips
+        this.leftPanelsTogglerButton.setAttribute('data-bs-placement', 'bottom');
+        const tooltip = createTooltip(this.leftPanelsTogglerButton);
         $(this.leftPanelsTogglerButton)
-            .attr('data-bs-placement', 'bottom')
-            .tooltip()
             .on('click', function () {
-                $(this).tooltip('hide');
+                tooltip.hide();
                 $('body').toggleClass('left-column-hidden');
             });
 
@@ -1380,10 +1438,16 @@ export default class NavbarFile {
             yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
         if (hasUnsaved) {
-            // Show confirmation modal with save option
+            // Show confirmation modal with contextual, action-specific labels.
+            // Functional transition logic is unchanged: Save -> skipSave:false,
+            // Don't Save -> skipSave:true (handled by ModalSessionLogout).
             const data = {
                 title: _('New file'),
-                forceOpen: _('Create new file without saving'),
+                body: _(
+                    'Do you want to save changes before creating a new file?'
+                ),
+                saveButtonText: _('Save'),
+                notSaveButtonText: _("Don't Save"),
                 pendingAction: { action: 'new' },
             };
             eXeLearning.app.modals.sessionlogout.show(data);
@@ -2113,7 +2177,8 @@ export default class NavbarFile {
             const capabilities = eXeLearning?.app?.capabilities;
             const isOfflineLike = window.electronAPI || (capabilities && capabilities.storage?.remote === false);
             if (isOfflineLike) {
-                const docManager = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+                const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+                const docManager = yjsBridge?.documentManager;
                 if (docManager?.markClean) {
                     docManager.markClean();
                 }

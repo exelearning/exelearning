@@ -4,7 +4,6 @@
  * Requires ROLE_ADMIN for all routes
  */
 import { Elysia, t } from 'elysia';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
@@ -13,12 +12,13 @@ import { invalidateMaintenanceCache } from '../services/maintenance';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 import { parseRoles } from '../db/types';
-import type { JwtPayload } from './auth';
+import { getJwtSecret, type JwtPayload } from './auth';
 import {
     findUserById as findUserByIdDefault,
     findUsersByIds as findUsersByIdsDefault,
     findUserByEmail as findUserByEmailDefault,
     updateUserRoles as updateUserRolesDefault,
+    updateUserPassword as updateUserPasswordDefault,
     deleteUser as deleteUserDefault,
 } from '../db/queries/users';
 import {
@@ -41,6 +41,7 @@ import {
 } from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
+import { hashPassword, isPasswordAccount, validateNewPassword, EXTERNAL_ACCOUNT_MESSAGE } from '../services/password';
 import { trans } from '../services/translation';
 import { getBasePath } from '../utils/basepath.util';
 import { logActivity } from '../services/activity-logger';
@@ -89,6 +90,7 @@ export interface AdminQueries {
     findUsersPaginated: typeof findUsersPaginatedDefault;
     countAdmins: typeof countAdminsDefault;
     updateUserRoles: typeof updateUserRolesDefault;
+    updateUserPassword: typeof updateUserPasswordDefault;
     updateUserStatus: typeof updateUserStatusDefault;
     createUserAsAdmin: typeof createUserAsAdminDefault;
     updateUserQuota: typeof updateUserQuotaDefault;
@@ -131,6 +133,7 @@ const defaultDependencies: AdminDependencies = {
         findUsersPaginated: findUsersPaginatedDefault,
         countAdmins: countAdminsDefault,
         updateUserRoles: updateUserRolesDefault,
+        updateUserPassword: updateUserPasswordDefault,
         updateUserStatus: updateUserStatusDefault,
         createUserAsAdmin: createUserAsAdminDefault,
         updateUserQuota: updateUserQuotaDefault,
@@ -151,11 +154,6 @@ const defaultDependencies: AdminDependencies = {
     },
     fileHelper: createFileHelper(),
     getConnectedClientsDetail: getConnectedClientsDetail,
-};
-
-// Get JWT secret (same as auth.ts)
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
 };
 
 // ============================================================================
@@ -278,6 +276,29 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         impersonation_failed: trans('Failed to start impersonation', {}, locale),
         confirm_delete: trans('Are you sure you want to delete this user?', {}, locale),
         confirm_delete_bulk: trans('Are you sure you want to delete {count} users?', {}, locale),
+        // Password reset (local accounts only)
+        reset_password: trans('Reset password', {}, locale),
+        new_password: trans('New password', {}, locale),
+        confirm_new_password: trans('Confirm new password', {}, locale),
+        passwords_do_not_match: trans('Passwords do not match', {}, locale),
+        password_empty: trans('The new password cannot be empty.', {}, locale),
+        password_reset_success: trans('Password reset successfully', {}, locale),
+        password_reset_failed: trans('Failed to reset the password', {}, locale),
+        password_hint: trans(
+            'At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.',
+            {},
+            locale,
+        ),
+        password_strength_too_short: trans('Password strength: too short', {}, locale),
+        password_strength_weak: trans('Password strength: weak', {}, locale),
+        password_strength_fair: trans('Password strength: fair', {}, locale),
+        password_strength_good: trans('Password strength: good', {}, locale),
+        password_strength_strong: trans('Password strength: strong', {}, locale),
+        reset_password_help: trans(
+            'Only for accounts that authenticate with an eXeLearning password. The user is not asked for their current password.',
+            {},
+            locale,
+        ),
         // Project management
         project_management: trans('Project Management', {}, locale),
         owner: trans('Owner', {}, locale),
@@ -315,6 +336,19 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         enabled_auth_methods: trans('Enabled authentication methods.', {}, locale),
         allows_install_themes_online: trans('Allows installing styles online.', {}, locale),
         allows_install_idevices_online: trans('Allows installing iDevices online.', {}, locale),
+        // Settings — sharing
+        sharing: trans('Sharing', {}, locale),
+        public_view_links: trans('Public read-only links', {}, locale),
+        allows_public_view_links: trans(
+            'Allows project owners to publish a public read-only link to their projects.',
+            {},
+            locale,
+        ),
+        public_view_links_disabled_note: trans(
+            'When disabled, the option is hidden from the Share dialog and existing public links stop working. They work again if the option is re-enabled.',
+            {},
+            locale,
+        ),
         // Settings — storage & quotas
         storage_and_quotas: trans('Storage and quotas', {}, locale),
         quota_mb: trans('Quota (MB)', {}, locale),
@@ -530,12 +564,17 @@ export const ALLOWED_ASSET_MIME_TYPES = new Set([
 
 /**
  * Sanitize user for API response (remove password)
+ *
+ * Adds `can_reset_password`, a derived capability the admin UI uses to decide
+ * whether to offer "Reset password". The password hash itself is never exposed,
+ * and the reset endpoint re-checks eligibility regardless of this field.
  */
-function sanitizeUser(user: User): Omit<User, 'password'> & { roles: string[] } {
+function sanitizeUser(user: User): Omit<User, 'password'> & { roles: string[]; can_reset_password: boolean } {
     const { password: _password, ...rest } = user;
     return {
         ...rest,
         roles: parseRoles(user.roles),
+        can_reset_password: isPasswordAccount(user),
     };
 }
 
@@ -560,6 +599,12 @@ const updateStatusSchema = t.Object({
 
 const updateQuotaSchema = t.Object({
     quota_mb: t.Union([t.Number(), t.Null()]),
+});
+
+// Administrative reset: the administrator does not know (and does not need) the
+// target's current password, so only the new one is accepted.
+const resetPasswordSchema = t.Object({
+    newPassword: t.String({ minLength: 1 }),
 });
 
 const startImpersonationSchema = t.Object({
@@ -588,6 +633,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     ONLINE_IDEVICES_INSTALL: { value: process.env.ONLINE_IDEVICES_INSTALL ?? '0', type: 'boolean' },
     APP_AUTH_METHODS: { value: process.env.APP_AUTH_METHODS || 'password,cas,openid,guest', type: 'string' },
     VERSION_CONTROL: { value: process.env.VERSION_CONTROL ?? 'true', type: 'boolean' },
+    PUBLIC_VIEW_ENABLED: { value: process.env.PUBLIC_VIEW_ENABLED ?? 'false', type: 'boolean' },
     DEFAULT_PROJECT_VISIBILITY: { value: process.env.DEFAULT_PROJECT_VISIBILITY || 'private', type: 'string' },
     USER_RECENT_ODE_FILES_AMOUNT: { value: process.env.USER_RECENT_ODE_FILES_AMOUNT ?? '3', type: 'number' },
     COLLABORATIVE_BLOCK_LEVEL: { value: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice', type: 'string' },
@@ -646,7 +692,6 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
     return (
         new Elysia({ name: 'admin-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
@@ -1149,6 +1194,47 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 { body: updateQuotaSchema },
             )
 
+            // PATCH /api/admin/users/:id/password - Reset a local user's password
+            //
+            // Administrative reset: no current password is required, but the
+            // target must be an eXeLearning password account. SSO and guest
+            // accounts must never be converted into local-password accounts.
+            .patch(
+                '/api/admin/users/:id/password',
+                async ({ params, body, set }) => {
+                    const parsed = parseAndValidateId(params.id, set);
+                    if ('error' in parsed) return parsed;
+
+                    const targetUser = await queries.findUserById(db, parsed.id);
+                    if (!targetUser) {
+                        set.status = 404;
+                        return { error: 'NOT_FOUND', message: 'User not found' };
+                    }
+
+                    if (!isPasswordAccount(targetUser)) {
+                        set.status = 403;
+                        return { error: 'FORBIDDEN', message: EXTERNAL_ACCOUNT_MESSAGE };
+                    }
+
+                    const validation = validateNewPassword(body.newPassword);
+                    if (!validation.valid) {
+                        set.status = 422;
+                        return { error: 'INVALID_PASSWORD', message: validation.message! };
+                    }
+
+                    const hashedPassword = await hashPassword(body.newPassword);
+                    const updatedUser = await queries.updateUserPassword(db, parsed.id, hashedPassword);
+
+                    if (!updatedUser) {
+                        set.status = 500;
+                        return { error: 'UPDATE_FAILED', message: 'Failed to reset the password' };
+                    }
+
+                    return { success: true, message: 'Password reset successfully' };
+                },
+                { body: resetPasswordSchema },
+            )
+
             // =====================================================
             // PROJECT MANAGEMENT
             // =====================================================
@@ -1247,15 +1333,18 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
                 const yjsDoc = await reconstructDocument(project.id);
                 const publicDir = pathModule.resolve(__dirname, '../../public');
-                const assetsDir = fileHelper!.getProjectAssetsDir(project.uuid);
+                // Sharded directory first, legacy unsharded directory second, so
+                // filename-addressed files without database rows still export
+                // while an installation converges after the storage migration.
+                const assetDirs = fileHelper!.getProjectAssetsDirCandidates(project.uuid);
 
                 const wrapper = new ServerYjsDocumentWrapper(yjsDoc, project.uuid);
                 const document = new YjsDocumentAdapter(wrapper);
                 const resources = new FileSystemResourceProvider(publicDir);
                 const zip = new FflateZipProvider();
-                const fsAssets = new FileSystemAssetProvider(assetsDir);
-                const dbAssets = new DatabaseAssetProvider(db, project.id, assetsDir);
-                const assets = new CombinedAssetProvider([dbAssets, fsAssets]);
+                const fsAssets = assetDirs.map(dir => new FileSystemAssetProvider(dir));
+                const dbAssets = new DatabaseAssetProvider(db, project.id, assetDirs[0]);
+                const assets = new CombinedAssetProvider([dbAssets, ...fsAssets]);
 
                 const exporter = new ElpxExporter(document, resources, assets, zip);
                 const result = await exporter.export();
@@ -1317,18 +1406,28 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 const userProjects = await queries.findProjectsByOwnerId(db, userId);
                 const deletedProjectsCount = userProjects.length;
 
-                // Clean up asset directories for each project
-                // Continue even if some cleanups fail - the DB cascade will still remove records
+                // Clean up asset directories for each project (both the sharded
+                // and the legacy unsharded location, so pre-sharding projects
+                // are fully cleaned up). Errors are isolated per candidate so a
+                // failure on one directory never skips the other, and per
+                // project so a failure never skips the remaining projects — the
+                // DB cascade will still remove the records either way.
                 for (const project of userProjects) {
+                    let candidates: string[] = [];
                     try {
-                        const assetsDir = fileHelper.getProjectAssetsDir(project.uuid);
-                        const exists = await fileHelper.fileExists(assetsDir);
-                        if (exists) {
-                            await fileHelper.remove(assetsDir);
-                        }
+                        candidates = fileHelper.getProjectAssetsDirCandidates(project.uuid);
                     } catch (err) {
-                        console.error(`Failed to clean up assets for project ${project.uuid}:`, err);
-                        // Continue with deletion - DB cascade will handle records
+                        console.error(`Failed to compute asset directories for project ${project.uuid}:`, err);
+                    }
+                    for (const assetsDir of candidates) {
+                        try {
+                            const exists = await fileHelper.fileExists(assetsDir);
+                            if (exists) {
+                                await fileHelper.remove(assetsDir);
+                            }
+                        } catch (err) {
+                            console.error(`Failed to clean up assets for project ${project.uuid}:`, err);
+                        }
                     }
                 }
 

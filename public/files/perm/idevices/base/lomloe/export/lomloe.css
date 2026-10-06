@@ -78,8 +78,8 @@
     background-color: var(--lomloe-stripe, rgba(0, 0, 0, 0.025));
 }
 
-.lomloe-export-table tr:hover td,
-.lomloe-export-table tr:hover th {
+.lomloe-export-table tbody tr:hover td,
+.lomloe-export-table tbody tr:hover th {
     background-color: var(--lomloe-hover, rgba(0, 0, 0, 0.055));
 }
 

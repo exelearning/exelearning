@@ -137,6 +137,90 @@ describe('exe_effects (app/common)', () => {
     ).toBe(true);
   });
 
+  // Regression: #2191 — LaTeX rendering issue in FX Tabs.
+  // When a tab heading contains an equation that has already been pre-rendered
+  // to SVG + assistive MathML (class "exe-math-rendered", as stored by the
+  // workarea and by exports), the tab navigation label must keep the rendered
+  // equation. Building the label from h2.text() strips the SVG and leaves only
+  // the concatenated MathML text (e.g. "sumn=110n"), which is the bug.
+  const preRenderedHeading = (latex, mml, salt) =>
+    `<span class="exe-math-rendered" data-latex="${latex}">` +
+    '<svg role="img" aria-hidden="true"><defs>' +
+    `<path id="MJX-${salt}-A" d="M0 0"></path></defs>` +
+    `<g><use xlink:href="#MJX-${salt}-A"></use></g></svg>` +
+    `<math xmlns="http://www.w3.org/1998/Math/MathML">${mml}</math>` +
+    '</span>';
+
+  it('keeps pre-rendered equations visible in tab labels (#2191)', () => {
+    const heading = preRenderedHeading(
+      '\\(sum_{n=1}^{10}n\\)',
+      '<mi>s</mi><mi>u</mi><mi>m</mi><mi>n</mi><mo>=</mo><mn>1</mn><mn>10</mn><mi>n</mi>',
+      1
+    );
+    const container = document.createElement('div');
+    container.innerHTML = `<h2>${heading}</h2><p>Content A</p><h2>Plain title</h2><p>Content B</p>`;
+    document.body.appendChild(container);
+
+    exeFX.tabs.rft($(container), 7);
+
+    const labels = container.querySelectorAll('.fx-tabs a');
+    // The rendered equation must survive into the first (visible) tab label.
+    expect(labels[0].querySelector('.exe-math-rendered')).not.toBeNull();
+    expect(labels[0].querySelector('svg')).not.toBeNull();
+    // Plain-text titles keep working unchanged.
+    expect(labels[1].textContent.trim()).toBe('Plain title');
+  });
+
+  it('keeps raw LaTeX delimiters in tab labels so MathJax can render them (#2191)', () => {
+    // Contexts that ship MathJax store the raw formula in the heading; the tab
+    // label must keep the \(...\) delimiters so MathJax typesets the label too.
+    const container = document.createElement('div');
+    container.innerHTML =
+      '<h2>\\(a^2+b^2\\)</h2><p>A</p><h2>Second</h2><p>B</p>';
+    document.body.appendChild(container);
+
+    exeFX.tabs.rft($(container), 2);
+
+    const firstLabel = container.querySelector('.fx-tabs a');
+    expect(firstLabel.textContent).toContain('\\(a^2+b^2\\)');
+  });
+
+  it('avoids duplicate element ids when copying a pre-rendered equation into the label (#2191)', () => {
+    const heading = preRenderedHeading(
+      '\\(x\\)',
+      '<mi>x</mi>',
+      9
+    );
+    const container = document.createElement('div');
+    container.innerHTML = `<h2>${heading}</h2><p>A</p><h2>Plain</h2><p>B</p>`;
+    document.body.appendChild(container);
+
+    exeFX.tabs.rft($(container), 4);
+
+    // The original id lives once (in the sr-only panel heading); the copy in
+    // the navigation label was suffixed, so no id is duplicated in the DOM.
+    const originalId = 'MJX-9-A';
+    expect(container.querySelectorAll(`#${originalId}`).length).toBe(1);
+    // The label's <use> reference points at the suffixed id, not the original.
+    const label = container.querySelector('.fx-tabs a');
+    const use = label.querySelector('use');
+    expect(use.getAttribute('xlink:href')).toBe(`#${originalId}-exe-tabs-4-0`);
+  });
+
+  it('does not duplicate tab controls when initialization runs twice (#2191)', () => {
+    const container = document.createElement('div');
+    container.className = 'exe-fx exe-tabs';
+    container.innerHTML =
+      '<h2>First</h2><p>A</p><h2>Second</h2><p>B</p>';
+    document.body.appendChild(container);
+
+    exeFX.tabs.init(container, 0);
+    exeFX.tabs.init(container, 0);
+
+    expect(container.querySelectorAll('ul.fx-tabs').length).toBe(1);
+    expect(container.querySelectorAll('ul.fx-tabs > li').length).toBe(2);
+  });
+
   it('builds pagination and updates prev/next states', () => {
     const container = document.createElement('div');
     container.innerHTML = '<h2>First</h2><p>A</p><h2>Second</h2><p>B</p>';

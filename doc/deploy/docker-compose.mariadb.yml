@@ -17,6 +17,7 @@ services:
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForMariaDBDeployment}"
       APP_ONLINE_MODE: 1
       ONLINE_THEMES_INSTALL: ${ONLINE_THEMES_INSTALL:-0}
+      PUBLIC_VIEW_ENABLED: ${PUBLIC_VIEW_ENABLED:-false}
 
       # Database settings
       DB_DRIVER: pdo_mysql
@@ -44,7 +45,7 @@ services:
       - mariadb
 
   mariadb:
-    image: mariadb:12.3
+    image: mariadb:13.0
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-root}"

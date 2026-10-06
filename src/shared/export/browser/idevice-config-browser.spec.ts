@@ -159,6 +159,16 @@ describe('idevice-config-browser', () => {
             const config = getIdeviceConfig('some-type');
             expect(config.template).toBe(`${config.cssClass}.html`);
         });
+
+        // file-attachment ships <component-type>json</component-type> in its
+        // config.xml, so the browser shim must agree with the server loader.
+        // Otherwise IdeviceRenderer never emits data-idevice-component-type="json"
+        // and the browser preview/export skips renderView()/renderBehaviour().
+        it('marks file-attachment as a json component (matches config.xml)', () => {
+            const config = getIdeviceConfig('file-attachment');
+            expect(config.cssClass).toBe('file-attachment');
+            expect(config.componentType).toBe('json');
+        });
     });
 
     describe('isJsonIdevice', () => {

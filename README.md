@@ -112,6 +112,7 @@ The project supports multiple languages using [i18n](https://www.npmjs.com/packa
 * Español
 * Català
 * Euskara
+* Français
 * Galego
 * Valencià
 * Esperanto

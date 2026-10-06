@@ -97,6 +97,33 @@ describe('SaveManager', () => {
     delete window.electronAPI;
   });
 
+  describe('collaborative autosave coordination', () => {
+    it('cancels a pending collaborative autosave when a manual save starts', async () => {
+      const cancel = vi.fn();
+      mockBridge.collaborativeAutosave = { cancel };
+      const manager = new SaveManager(mockBridge);
+      manager._isStaticMode = true; // short-circuit to keep the test focused
+      await manager.save();
+      expect(cancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not cancel autosave when the save IS the collaborative autosave', async () => {
+      const cancel = vi.fn();
+      mockBridge.collaborativeAutosave = { cancel };
+      const manager = new SaveManager(mockBridge);
+      manager._isStaticMode = true;
+      await manager.save({ reason: 'collaborative-autosave' });
+      expect(cancel).not.toHaveBeenCalled();
+    });
+
+    it('tolerates a bridge without a collaborative autosave coordinator', async () => {
+      const manager = new SaveManager(mockBridge); // no collaborativeAutosave
+      manager._isStaticMode = true;
+      const result = await manager.save();
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('constructor', () => {
     it('sets bridge reference', () => {
       const manager = new SaveManager(mockBridge);
@@ -606,6 +633,19 @@ describe('SaveManager', () => {
       const passedAssets = uploadSpy.mock.calls[0][2];
       expect(passedAssets).toEqual(pendingMeta);
       expect(passedAssets[0].blob).toBeUndefined();
+    });
+
+    it('keeps the document dirty when an asset upload is incomplete', async () => {
+      const manager = new SaveManager(mockBridge);
+      mockBridge.assetManager.getPendingAssetsMetadata.mockReturnValue([
+        { id: 'asset-1', filename: 'test.txt', size: 4, uploaded: false },
+      ]);
+      vi.spyOn(manager, 'uploadAssets').mockResolvedValue({ uploaded: 0, failed: 1 });
+
+      const result = await manager.save();
+
+      expect(result.success).toBe(false);
+      expect(mockBridge.documentManager.markClean).not.toHaveBeenCalled();
     });
 
     it('handles save errors gracefully', async () => {
@@ -1326,8 +1366,8 @@ describe('SaveManager', () => {
 
       const result = await manager.save();
 
-      // Should still succeed overall (asset errors are caught in the try-catch)
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(mockBridge.documentManager.markClean).not.toHaveBeenCalled();
     });
 
     it('does not create toast when showProgress is false', async () => {
@@ -1600,6 +1640,24 @@ describe('SaveManager', () => {
       // Verify listeners were unregistered
       expect(mockWsHandler.off).toHaveBeenCalledWith('uploadFileProgress', expect.any(Function));
       expect(mockWsHandler.off).toHaveBeenCalledWith('uploadBatchComplete', expect.any(Function));
+    });
+
+    it('marks successful session uploads before resolving', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.setWebSocketHandler(mockWsHandler);
+      const assets = [{ id: 'a', blob: new Blob(['test']), filename: 'a.txt', mime: 'text/plain' }];
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          uploaded: 1,
+          failed: 0,
+          results: [{ clientId: 'a', success: true }],
+        }),
+      });
+
+      await manager.uploadWithSession('project-123', mockBridge.assetManager, assets, null);
+
+      expect(mockBridge.assetManager.markAssetUploaded).toHaveBeenCalledWith('a');
     });
 
     it('includes session token in HTTP headers', async () => {

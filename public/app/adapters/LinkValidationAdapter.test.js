@@ -264,91 +264,144 @@ describe('LinkValidationAdapter', () => {
             });
         });
 
-        describe('external URLs (http/https)', () => {
-            it('should validate external URLs using fetch', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
-
-                const result = await adapter.validateLink('https://example.com');
-
-                expect(result.status).toBe('valid');
-                expect(global.fetch).toHaveBeenCalled();
-            });
-
-            it('should return broken for HTTP URL on an HTTPS page (mixed content)', async () => {
+        describe('external URLs in a plain browser (static web flavor)', () => {
+            /**
+             * A cross-origin response is opaque under CORS, so the browser cannot
+             * tell a 200 from a 404 — a live YouTube channel and a deleted one look
+             * identical (issue #2207, review of PR #2208 by @ignaciogros). No probe
+             * can improve on that, so the adapter performs no network traffic at
+             * all and reports every external link as needing a manual review.
+             */
+            it('should report external URLs as needing manual review without fetching', async () => {
                 global.fetch = vi.fn();
-                global.window = { location: { protocol: 'https:' } };
 
-                const result = await adapter.validateLink('http://example.com');
+                const result = await adapter.validateLink('https://www.youtube.com/@thisisjustanexample');
 
-                expect(result.status).toBe('broken');
-                expect(result.error).toBe('Could not be checked: HTTP content is blocked on HTTPS pages.');
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Not checked automatically: open the link to review it');
                 expect(global.fetch).not.toHaveBeenCalled();
             });
 
-            it('should NOT block HTTP URL when page is served over HTTP', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
-                global.window = { location: { protocol: 'http:' } };
+            it('should never claim an external URL is valid', async () => {
+                const result = await adapter.validateLink('https://example.com/does-not-exist');
 
-                const result = await adapter.validateLink('http://example.com');
-
-                expect(result.status).toBe('valid');
-                expect(global.fetch).toHaveBeenCalled();
+                expect(result.status).toBe('unknown');
             });
 
-            it('should NOT block HTTP URL when window is undefined (non-browser context)', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
-                const originalWindow = global.window;
-                delete global.window;
-
-                const result = await adapter.validateLink('http://example.com');
-
-                expect(result.status).toBe('valid');
-                expect(global.fetch).toHaveBeenCalled();
-                global.window = originalWindow;
-            });
-
-            it('should handle protocol-relative URL on HTTPS page by converting to HTTPS and fetching', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
-                global.window = { location: { protocol: 'https:' } };
-
+            it('should treat protocol-relative URLs like any external URL', async () => {
                 const result = await adapter.validateLink('//cdn.example.com/file.js');
 
-                // Protocol-relative URLs become https://, which is fine on an HTTPS page
-                expect(result.status).toBe('valid');
-                expect(global.fetch).toHaveBeenCalledWith('https://cdn.example.com/file.js', expect.any(Object));
+                expect(result.status).toBe('unknown');
+            });
+        });
+
+        describe('external URLs in the desktop app (Electron main-process check)', () => {
+            let checkLink;
+
+            beforeEach(() => {
+                checkLink = vi.fn();
+                global.window.electronAPI = { checkLink };
             });
 
-            it('should handle fetch network errors', async () => {
-                global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+            it('should report the main-process result for a valid link', async () => {
+                checkLink.mockResolvedValue({ status: 'valid', error: null });
 
-                const result = await adapter.validateLink('https://nonexistent.invalid');
+                const result = await adapter.validateLink('https://www.youtube.com/@bbc');
 
-                expect(result.status).toBe('broken');
-                expect(result.error).toBe('Network error');
+                expect(result).toEqual({ status: 'valid', error: null });
+                expect(checkLink).toHaveBeenCalledWith('https://www.youtube.com/@bbc');
             });
 
-            it('should handle fetch timeout', async () => {
-                const abortError = new Error('Aborted');
-                abortError.name = 'AbortError';
-                global.fetch = vi.fn().mockRejectedValue(abortError);
+            it('should report the main-process result for a broken link', async () => {
+                checkLink.mockResolvedValue({ status: 'broken', error: '404' });
 
-                const result = await adapter.validateLink('https://slow-site.com');
+                const result = await adapter.validateLink('https://www.youtube.com/@thisisjustanexample');
 
-                expect(result.status).toBe('broken');
-                expect(result.error).toBe('Timeout');
+                expect(result).toEqual({ status: 'broken', error: '404' });
             });
 
-            it('should handle protocol-relative URLs', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
+            it('should normalize protocol-relative URLs before delegating', async () => {
+                checkLink.mockResolvedValue({ status: 'valid', error: null });
 
-                const result = await adapter.validateLink('//cdn.example.com/file.js');
+                await adapter.validateLink('//cdn.example.com/file.js');
 
-                expect(result.status).toBe('valid');
-                // Should have converted to https://
-                expect(global.fetch).toHaveBeenCalledWith(
-                    'https://cdn.example.com/file.js',
-                    expect.any(Object)
+                expect(checkLink).toHaveBeenCalledWith('https://cdn.example.com/file.js');
+            });
+
+            it('should fall back to manual review when the IPC call fails', async () => {
+                checkLink.mockRejectedValue(new Error('IPC channel not available'));
+
+                const result = await adapter.validateLink('https://example.com');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Not checked automatically: open the link to review it');
+            });
+
+            it('should fall back to manual review on a malformed IPC result', async () => {
+                checkLink.mockResolvedValue({ status: 'weird' });
+
+                const result = await adapter.validateLink('https://example.com');
+
+                expect(result.status).toBe('unknown');
+            });
+
+            it('should explain when the main process refused a local/private address', async () => {
+                checkLink.mockResolvedValue({ status: 'unknown', reason: 'private-address', error: null });
+
+                const result = await adapter.validateLink('http://192.168.1.1/admin');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Local or private address: open the link to review it manually');
+            });
+
+            it('should explain a cross-host redirect (consent gates, shorteners) with the final host', async () => {
+                checkLink.mockResolvedValue({
+                    status: 'unknown',
+                    reason: 'cross-host-redirect',
+                    detail: 'consent.youtube.com',
+                    error: null,
+                });
+
+                const result = await adapter.validateLink('https://www.youtube.com/@bbc');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe(
+                    'Redirects to another site — open the link to verify it (consent.youtube.com)',
                 );
+            });
+
+            it('should explain a 2xx that could only be obtained through the system proxy', async () => {
+                checkLink.mockResolvedValue({ status: 'unknown', reason: 'unverified-proxy', error: null });
+
+                const result = await adapter.validateLink('https://example.com');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Could not be fully verified: open the link to confirm it');
+            });
+
+            it('should explain an unresolved redirect', async () => {
+                checkLink.mockResolvedValue({ status: 'unknown', reason: 'unresolved-redirect', error: null });
+
+                const result = await adapter.validateLink('https://example.com/moved');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Redirects could not be followed: open the link to review it');
+            });
+
+            it('should use the generic review message for unknown results without a reason', async () => {
+                checkLink.mockResolvedValue({ status: 'unknown', error: null });
+
+                const result = await adapter.validateLink('https://example.com');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Not checked automatically: open the link to review it');
+            });
+
+            it('should not delegate internal URLs to the main process', async () => {
+                const result = await adapter.validateLink('exe-node:page1');
+
+                expect(result.status).toBe('valid');
+                expect(checkLink).not.toHaveBeenCalled();
             });
         });
 

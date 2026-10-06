@@ -97,7 +97,7 @@ The generator iterates a fixed key list (`OdeXmlGenerator.ts:213`) and emits onl
 | Key | Type | Description |
 |---|---|---|
 | `visibility` | boolean string | Whether the block is visible |
-| `teacherOnly` | boolean string | Restrict block to teacher view |
+| `teacherOnly` | boolean string | Restrict block to teacher view (hidden by default in exports; the `?exe-teacher=1` in-page toggle reveals it) |
 | `allowToggle` | boolean string | Allow block to be collapsed/expanded |
 | `minimized` | boolean string | Block starts in collapsed state |
 | `cssClass` | string | Optional extra CSS class(es) |
@@ -150,7 +150,7 @@ The generator iterates a fixed key list (`OdeXmlGenerator.ts:285`) and emits onl
 | Key | Type | Description |
 |---|---|---|
 | `visibility` | boolean string | Whether the iDevice is visible |
-| `teacherOnly` | boolean string | Restrict iDevice to teacher view |
+| `teacherOnly` | boolean string | Restrict iDevice to teacher view (hidden by default in exports; the `?exe-teacher=1` in-page toggle reveals it) |
 | `cssClass` | string | Optional extra CSS class(es) |
 
 ---

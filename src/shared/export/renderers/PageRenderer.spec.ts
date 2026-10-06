@@ -54,6 +54,83 @@ describe('PageRenderer', () => {
             expect(html).toContain('id="siteNav"'); // navigation present
         });
 
+        describe('pass score META', () => {
+            it('should publish the project value so iDevices can read it at runtime', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScore: 7.5 });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+            });
+
+            it('should publish the default when the project never set a value', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page] });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<meta name="exe-pass-score" content="5">');
+            });
+
+            it('should publish zero rather than treating it as unset', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScore: 0 });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<meta name="exe-pass-score" content="0">');
+            });
+
+            it('should clamp a value outside the 0-10 domain', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScore: 42 });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<meta name="exe-pass-score" content="10">');
+            });
+
+            it('should publish it on single-page exports too', () => {
+                const html = renderer.renderSinglePage([createTestPage()], { passScore: 7.5 });
+
+                expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+            });
+        });
+
+        describe('every-activity pass rule META', () => {
+            const META = '<meta name="exe-pass-score-every-activity" content="true">';
+
+            it('should publish it when the author requires every activity to reach its own mark', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScoreEveryActivity: true });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain(`<meta name="exe-pass-score" content="5">\n${META}\n`);
+            });
+
+            it.each([
+                ['off', false],
+                ['never set', undefined],
+            ])('should leave it out when the option is %s, so the page keeps the weighted mean', (_label, value) => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScoreEveryActivity: value });
+
+                const html = renderer.render(page, options);
+
+                expect(html).not.toContain('exe-pass-score-every-activity');
+            });
+
+            it('should publish it on single-page exports too', () => {
+                const on = renderer.renderSinglePage([createTestPage()], { passScoreEveryActivity: true });
+                const off = renderer.renderSinglePage([createTestPage()], {});
+
+                expect(on).toContain(META);
+                expect(off).not.toContain('exe-pass-score-every-activity');
+            });
+        });
+
         it('should render index page <title> as project title only', () => {
             const page = createTestPage({ title: 'Home' });
             const options = createDefaultOptions({ allPages: [page], isIndex: true });
@@ -378,6 +455,88 @@ describe('PageRenderer', () => {
 
             // First page gets main-node class too
             expect(html).toContain('class="active main-node daddy"');
+        });
+
+        it('should mark ancestors of the current page with current-page-parent', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'section', title: 'Section', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'leaf', title: 'Leaf', parentId: 'section', order: 2 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'leaf', '');
+
+            // The middle ancestor is highlighted; the deep current page is active.
+            expect(html).toContain('class="current-page-parent"');
+            expect(html).toContain('class="active"');
+            expect(html).toContain('Leaf');
+        });
+
+        it('should exclude a hidden subtree and its descendants from navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden-parent',
+                    title: 'HiddenParent',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+                createTestPage({ id: 'hidden-child', title: 'HiddenChild', parentId: 'hidden-parent', order: 2 }),
+                createTestPage({ id: 'visible', title: 'VisiblePage', parentId: 'root', order: 3 }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'root', '');
+
+            expect(html).toContain('VisiblePage');
+            // Both the hidden page and its (otherwise visible) child are dropped.
+            expect(html).not.toContain('HiddenParent');
+            expect(html).not.toContain('HiddenChild');
+        });
+
+        it('should produce identical output across repeated renders (memoization is stateless per call)', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'a', title: 'A', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'b', title: 'B', parentId: 'a', order: 2 }),
+                createTestPage({ id: 'c', title: 'C', parentId: 'root', order: 3 }),
+            ];
+
+            const first = renderer.renderNavigation(pages, 'b', '');
+            const second = renderer.renderNavigation(pages, 'b', '');
+
+            expect(first).toBe(second);
+        });
+    });
+
+    describe('renderNavItem (public entry point)', () => {
+        it('should render a single item with its visible children', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({ id: 'parent', title: 'Parent', parentId: 'root', order: 1 }),
+                createTestPage({ id: 'child', title: 'Child', parentId: 'parent', order: 2 }),
+            ];
+
+            const html = renderer.renderNavItem(pages[1], pages, 'child', '');
+
+            expect(html).toContain('Parent');
+            expect(html).toContain('Child');
+            expect(html).toContain('class="other-section"');
+        });
+
+        it('should return empty string for a hidden page', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'root', title: 'Root' }),
+                createTestPage({
+                    id: 'hidden',
+                    title: 'Hidden',
+                    parentId: 'root',
+                    order: 1,
+                    properties: { visibility: false },
+                }),
+            ];
+
+            expect(renderer.renderNavItem(pages[1], pages, 'root', '')).toBe('');
         });
     });
 
@@ -706,6 +865,59 @@ describe('PageRenderer', () => {
             // But no license section
             expect(html).not.toContain('id="packageLicense"');
         });
+
+        describe('siteFooter-empty class', () => {
+            it('should tag the footer as empty when there is no license and no user content', () => {
+                const html = renderer.renderFooterSection({ license: '' });
+
+                expect(html).toBe(
+                    '<footer id="siteFooter" class="siteFooter-empty"><div id="siteFooterContent"></div></footer>',
+                );
+            });
+
+            it('should tag the footer as empty for licenses hidden from the footer', () => {
+                for (const license of ['propietary license', 'not appropriate']) {
+                    const html = renderer.renderFooterSection({ license, licenseUrl: 'https://example.com' });
+
+                    expect(html).toContain('class="siteFooter-empty"');
+                }
+            });
+
+            it('should tag the footer as empty when user content is only whitespace', () => {
+                const html = renderer.renderFooterSection({ license: '', userFooterContent: '  \n  ' });
+
+                expect(html).toContain('class="siteFooter-empty"');
+                expect(html).not.toContain('id="siteUserFooter"');
+            });
+
+            it('should not tag the footer when user content is present without a license', () => {
+                const html = renderer.renderFooterSection({
+                    license: 'not appropriate',
+                    userFooterContent: '<p>Custom footer</p>',
+                });
+
+                expect(html).not.toContain('siteFooter-empty');
+                expect(html).toContain('id="siteUserFooter"');
+            });
+
+            it('should not tag the footer when a license is displayed', () => {
+                const html = renderer.renderFooterSection({
+                    license: 'creative commons: attribution 4.0',
+                    licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+                });
+
+                expect(html).not.toContain('siteFooter-empty');
+            });
+
+            it('should tag the empty footer in a full page render', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], license: '' });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<footer id="siteFooter" class="siteFooter-empty">');
+            });
+        });
     });
 
     describe('renderMadeWithEXe', () => {
@@ -750,9 +962,9 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('exe-single-page');
-            // Sections have id="section-{pageId}" for anchor navigation
-            expect(html).toContain('id="section-page-1"');
-            expect(html).toContain('id="section-page-2"');
+            // Sections are anchored for single-page navigation
+            expect(html).toContain('<section id="section-page-1">');
+            expect(html).toContain('<section id="section-page-2">');
             expect(html).toContain('First');
             expect(html).toContain('Second');
         });
@@ -780,9 +992,9 @@ describe('PageRenderer', () => {
 
             // No nav tree with nested structure
             expect(html).not.toContain('class="other-section"');
-            // Sections have id="section-{pageId}" for anchor navigation
-            expect(html).toContain('id="section-parent"');
-            expect(html).toContain('id="section-child"');
+            // Sections are anchored for single-page navigation
+            expect(html).toContain('<section id="section-parent">');
+            expect(html).toContain('<section id="section-child">');
             expect(html).toContain('class="page-title">Child</h1>');
         });
 
@@ -866,6 +1078,57 @@ describe('PageRenderer', () => {
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('<span class="license">');
             expect(html).not.toContain('href="https://creativecommons.org/licenses/by/4.0/"');
+        });
+
+        it('should load the theme stylesheet last, after libraries and base.css (#2282)', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                detectedLibraries: ['exe_effects', 'exe_highlighter'],
+                addAccessibilityToolbar: true,
+            });
+
+            const themeIndex = html.indexOf('<link rel="stylesheet" href="theme/style.css">');
+            expect(themeIndex).toBeGreaterThan(-1);
+            for (const earlier of [
+                'href="libs/bootstrap/bootstrap.min.css"',
+                'href="libs/exe_effects/exe_effects.css"',
+                'href="libs/exe_highlighter/exe_highlighter.css"',
+                'href="libs/exe_atools/exe_atools.css"',
+                'href="content/css/base.css"',
+            ]) {
+                const index = html.indexOf(earlier);
+                expect(index).toBeGreaterThan(-1);
+                expect(index).toBeLessThan(themeIndex);
+            }
+        });
+
+        it('should keep custom styles after the theme stylesheet', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, { customStyles: '.custom { color: red; }' });
+
+            expect(html.indexOf('.custom { color: red; }')).toBeGreaterThan(
+                html.indexOf('<link rel="stylesheet" href="theme/style.css">'),
+            );
+        });
+
+        it('should match the multi-page stylesheet order for theme, libraries and base.css', () => {
+            const pages = [createTestPage()];
+            const options = { detectedLibraries: ['exe_effects'], addAccessibilityToolbar: true };
+            const singlePageHtml = renderer.renderSinglePage(pages, options);
+            const multiPageHtml = renderer.render(pages[0], {
+                projectTitle: 'Test',
+                basePath: '',
+                allPages: pages,
+                themeFiles: ['style.css', 'style.js'],
+                ...options,
+            });
+
+            const sheetOrder = (html: string): string[] =>
+                Array.from(html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g))
+                    .map(match => match[1])
+                    .filter(href => !href.startsWith('idevices/'));
+
+            expect(sheetOrder(singlePageHtml)).toEqual(sheetOrder(multiPageHtml));
         });
     });
 
@@ -1841,6 +2104,125 @@ describe('PageRenderer', () => {
             // Both icons should be resolved
             expect(html).toContain('theme/icons/info.svg');
             expect(html).toContain('theme/icons/warning.png');
+        });
+    });
+
+    // Render-time internal-link rewrites for #1927. These run on the rendered HTML so the
+    // source feeding content.xml keeps the original exe-node: references.
+    describe('replaceInternalLinks (multi-page)', () => {
+        const allPages: ExportPage[] = [
+            { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+            { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+        ];
+
+        it('resolves exe-node to html/<file> from the index', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2">About</a>', allPages, '');
+            expect(out).toBe('<a href="html/about.html">About</a>');
+        });
+
+        it('resolves exe-node to the index from a subpage (basePath ../)', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-1">Home</a>', allPages, '../');
+            expect(out).toBe('<a href="../index.html">Home</a>');
+        });
+
+        it('preserves the #anchor fragment', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2#sec">Sec</a>', allPages, '');
+            expect(out).toBe('<a href="html/about.html#sec">Sec</a>');
+        });
+
+        it('uses the collision-safe filename from pageFilenameMap', () => {
+            const map = new Map([['page-2', 'about-2.html']]);
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-2">About</a>', allPages, '', map);
+            expect(out).toBe('<a href="html/about-2.html">About</a>');
+        });
+
+        it('leaves an unknown target unchanged', () => {
+            const out = renderer.replaceInternalLinks('<a href="exe-node:page-999">X</a>', allPages, '');
+            expect(out).toBe('<a href="exe-node:page-999">X</a>');
+        });
+
+        it('returns content without exe-node links unchanged', () => {
+            const content = '<a href="https://example.com">Ext</a>';
+            expect(renderer.replaceInternalLinks(content, allPages, '')).toBe(content);
+        });
+
+        it('handles empty content', () => {
+            expect(renderer.replaceInternalLinks('', allPages, '')).toBe('');
+        });
+
+        it('replaces multiple links in a single pass', () => {
+            const out = renderer.replaceInternalLinks(
+                '<a href="exe-node:page-2">A</a> <a href="exe-node:page-1">H</a>',
+                allPages,
+                '',
+            );
+            expect(out).toBe('<a href="html/about.html">A</a> <a href="index.html">H</a>');
+        });
+    });
+
+    describe('namespaceSinglePageAnchors', () => {
+        it('prefixes id on named anchors (a without href)', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p><a id="intro">I</a></p>', 'page-2')).toBe(
+                '<p><a id="page-2--intro">I</a></p>',
+            );
+        });
+
+        it('prefixes name on named anchors', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p><a name="s1">S</a></p>', 'page-2')).toBe(
+                '<p><a name="page-2--s1">S</a></p>',
+            );
+        });
+
+        it('does not touch anchors that have href (regular links)', () => {
+            const c = '<a href="https://example.com" id="link1">E</a>';
+            expect(renderer.namespaceSinglePageAnchors(c, 'page-2')).toBe(c);
+        });
+
+        it('does not touch non-anchor elements with id', () => {
+            const c = '<div id="mydiv">C</div>';
+            expect(renderer.namespaceSinglePageAnchors(c, 'page-2')).toBe(c);
+        });
+
+        it('handles empty and null content', () => {
+            expect(renderer.namespaceSinglePageAnchors('', 'page-1')).toBe('');
+            expect((renderer as any).namespaceSinglePageAnchors(null, 'page-1')).toBe(null);
+        });
+
+        it('handles content without anchors', () => {
+            expect(renderer.namespaceSinglePageAnchors('<p>Just text</p>', 'page-1')).toBe('<p>Just text</p>');
+        });
+    });
+
+    describe('replaceSinglePageInternalLinks', () => {
+        const allPages: ExportPage[] = [
+            { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+            { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+        ];
+
+        it('resolves a plain exe-node link to the page section', () => {
+            expect(renderer.replaceSinglePageInternalLinks('<a href="exe-node:page-2">A</a>', allPages)).toBe(
+                '<a href="#section-page-2">A</a>',
+            );
+        });
+
+        it('resolves an anchored exe-node link to the namespaced anchor', () => {
+            expect(renderer.replaceSinglePageInternalLinks('<a href="exe-node:page-2#intro">A</a>', allPages)).toBe(
+                '<a href="#page-2--intro">A</a>',
+            );
+        });
+
+        it('leaves an unknown target unchanged', () => {
+            const c = '<a href="exe-node:nope">X</a>';
+            expect(renderer.replaceSinglePageInternalLinks(c, allPages)).toBe(c);
+        });
+
+        it('returns content without exe-node links unchanged', () => {
+            const c = '<a href="https://example.com">E</a>';
+            expect(renderer.replaceSinglePageInternalLinks(c, allPages)).toBe(c);
+        });
+
+        it('handles empty content', () => {
+            expect(renderer.replaceSinglePageInternalLinks('', allPages)).toBe('');
         });
     });
 });

@@ -190,6 +190,69 @@ describe('form iDevice export', () => {
     });
   });
 
+  describe('updateConfig', () => {
+    beforeEach(() => {
+      eXe.app.isInExe = vi.fn(() => false);
+      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+      document.body.innerHTML = '';
+    });
+
+    // An activity whose saved data was lost or discarded arrives as {}, and the
+    // shared getQuestions helper hands back an empty array for it.
+    it('normalises missing questions to an empty list', () => {
+      let result;
+
+      expect(() => {
+        result = $form.updateConfig({}, 'form-1');
+      }).not.toThrow();
+
+      expect(result.questionsData).toEqual([]);
+      expect(result.numberQuestions).toBe(0);
+    });
+
+    it('does not throw when there is no saved data at all', () => {
+      expect(() => $form.updateConfig(undefined, 'form-1')).not.toThrow();
+    });
+
+    // The mode used to be flattened to 1 here, and this line — not the editor —
+    // was what actually kept manual mode out of this iDevice: hiding the radio
+    // was CSS, which anyone could undo and save a 2 through. The option is
+    // offered now, so a 2 has to survive the load or the button would never
+    // appear and the activity would grade the learner behind it.
+    it.each([
+      [2, 2],
+      [1, 1],
+      [0, 0],
+    ])('keeps a stored SCORM mode of %s', (stored, expected) => {
+      expect($form.updateConfig({ isScorm: stored }, 'form-1').isScorm).toBe(expected);
+    });
+
+    // The legacy shape carries a boolean, which can only ever mean automatic.
+    it('falls back to the legacy saveScore flag when no mode is stored', () => {
+      expect($form.updateConfig({ scorm: { saveScore: true } }, 'form-1').isScorm).toBe(1);
+      expect($form.updateConfig({ scorm: { saveScore: false } }, 'form-1').isScorm).toBe(0);
+    });
+  });
+
+  describe('renderBehaviour', () => {
+    beforeEach(() => {
+      eXe.app.isInExe = vi.fn(() => false);
+      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+      document.body.innerHTML = '<div id="form-questions-form-1"></div>';
+    });
+
+    // getQuestions now yields [] rather than undefined, so the early return has
+    // to test for emptiness instead of falsiness.
+    it('renders nothing when the activity has no questions', () => {
+      const getHtmlFormView = vi.spyOn($form, 'getHtmlFormView');
+
+      expect(() => $form.renderBehaviour({}, 0, 'form-1')).not.toThrow();
+
+      expect(getHtmlFormView).not.toHaveBeenCalled();
+      getHtmlFormView.mockRestore();
+    });
+  });
+
   describe('mergeFields', () => {
     it('returns obj2 if obj1 is null', () => {
       const obj2 = { a: 1, b: 2 };
@@ -298,9 +361,29 @@ describe('form iDevice export', () => {
     });
   });
 
-  describe('passRate', () => {
-    it('is initially empty', () => {
-      expect($form.passRate).toBe('');
+  describe('showScore verdict', () => {
+    // The threshold used to be a hardcoded 50 while $form.passRate, the
+    // author's own dropdown, was never read. Both are gone: the mark now comes
+    // from the shared pass score.
+    it('no longer carries a pass rate of its own', () => {
+      expect($form.passRate).toBeUndefined();
+    });
+
+    it('treats a mark of zero as a verdict, not as "no mark"', () => {
+      // Everyone passes at 0, which is a verdict; a truthiness check on the
+      // percentage would have hidden the result instead of showing it.
+      document.body.innerHTML =
+        '<div id="form-result-test-q"></div><div id="form-score-q"></div>';
+      const data = {
+        id: 'q',
+        rightQuestions: 0,
+        totalQuestions: 4,
+        msgs: { msgTestResultPass: 'Passed', msgTestResultNotPass: 'Not passed', msgYouScore: 'Score' },
+      };
+
+      $form.showScore(0, data);
+
+      expect(document.getElementById('form-result-test-q').textContent).toBe('Passed');
     });
   });
 
@@ -318,5 +401,717 @@ describe('form iDevice export', () => {
     it('has scorm functions path', () => {
       expect($form.scormFunctions).toBe('libs/SCOFunctions.js');
     });
+  });
+
+  describe('escapeHtmlButKeepRenderedMath', () => {
+    const RENDERED_MATH =
+      '<span class="exe-math-rendered" data-latex="x^2"><svg><use></use></svg></span>';
+
+    it('keeps a valid pre-rendered math span raw while escaping surrounding plain text', () => {
+      const out = $form.escapeHtmlButKeepRenderedMath(`a<b ${RENDERED_MATH} c>d`);
+      // Plain-text angle brackets are escaped...
+      expect(out).toContain('a&lt;b');
+      expect(out).toContain('c&gt;d');
+      // ...but the math span survives verbatim so the SVG renders.
+      expect(out).toContain(RENDERED_MATH);
+    });
+
+    it('escapes a forged span carrying an unsafe event handler', () => {
+      const forged =
+        '<span class="exe-math-rendered" data-latex="x"><svg onload="alert(1)"></svg></span>';
+      const out = $form.escapeHtmlButKeepRenderedMath(forged);
+      expect(out).not.toContain('<svg onload');
+      expect(out).toContain('&lt;span');
+    });
+
+    it('handles null/undefined as empty string', () => {
+      expect($form.escapeHtmlButKeepRenderedMath(null)).toBe('');
+      expect($form.escapeHtmlButKeepRenderedMath(undefined)).toBe('');
+    });
+  });
+
+  describe('LaTeX pre-render compatibility', () => {
+    const RENDERED_MATH =
+      '<span class="exe-math-rendered" data-latex="x^2"><svg><use></use></svg></span>';
+    let data;
+
+    beforeEach(() => {
+      // Isolate the pure HTML builders from jQuery/eXe DOM lookups.
+      $form.replaceResourceDirectoryPaths = (_data, html) => html;
+      data = { msgs: $form.msgs };
+    });
+
+    it('escapes a pre-rendered option in the selection value but keeps it visible in the label', () => {
+      const html = $form.getProcessTextSelectionQuestion(
+        'Which equals four?',
+        'radio',
+        [
+          [true, RENDERED_MATH],
+          [false, 'plain'],
+        ],
+        data
+      );
+
+      // The hidden input value is escaped so the SVG quotes cannot corrupt it...
+      expect(html).toContain('value="&lt;span class=&quot;exe-math-rendered');
+      expect(html).not.toContain('value="<span');
+      // ...while the visible label still renders the math span as innerHTML.
+      expect(html).toContain(`<label for=`);
+      expect(html).toContain(RENDERED_MATH);
+      // Grading stays index-based: the first option (index 0) is the right answer.
+      expect(html).toMatch(/class="selectionAnswer"[^>]*>0</);
+    });
+
+    it('renders stem LaTeX but keeps the plain fill blank answer intact', () => {
+      const html = $form.getProcessTextFillQuestion(
+        `Compute ${RENDERED_MATH} then write <u>four</u>`,
+        false,
+        false,
+        data
+      );
+
+      // Stem math survives as a pre-rendered span...
+      expect(html).toContain('exe-math-rendered');
+      // ...and the blank answer is the plain word, not the SVG markup.
+      expect(html).toMatch(/class="fillAnswer"[^>]*>four<\/span>/);
+      expect(html).not.toMatch(/class="fillAnswer"[^>]*>\s*<span/);
+    });
+
+    it('renders stem LaTeX but keeps the plain dropdown answer/options intact', () => {
+      const html = $form.getProcessTextDropdownQuestion(
+        `Pick ${RENDERED_MATH} <u>four</u>`,
+        'five|six',
+        data
+      );
+
+      // Stem math survives...
+      expect(html).toContain('exe-math-rendered');
+      // ...the correct answer is the plain word (compared verbatim at runtime)...
+      expect(html).toMatch(/class="dropdownAnswer"[^>]*>four<\/span>/);
+      // ...and every option value matches its plain text (no SVG injected).
+      expect(html).toContain('<option value="four">four</option>');
+      expect(html).toContain('<option value="five">five</option>');
+    });
+  });
+
+  describe('renderBehaviour button binding', () => {
+    /**
+     * The behaviour used to be bound only from a setInterval(..., 200) polling
+     * for the iDevice element. The questions are appended into a descendant of
+     * that element immediately before, so it is already in the document and the
+     * poll only costs time: for up to 200 ms "Comprobar" is rendered but has no
+     * click handler, and a learner clicking in that window gets no score, no
+     * feedback and no error.
+     */
+    it('binds Comprobar synchronously when the iDevice is already in the document', () => {
+      const id = 'form-race';
+      document.body.innerHTML =
+        `<div id="${id}">` +
+        `<div id="form-questions-${id}"></div>` +
+        `<input id="form-button-check-${id}" type="button">` +
+        `</div>`;
+
+      let gameOverCalls = 0;
+      $form.gameOver = () => {
+        gameOverCalls += 1;
+      };
+      // Keep the test on the binding itself: the siblings the bind step also
+      // calls are covered by their own tests.
+      for (const name of [
+        'setBehaviourButtonResetQuestions',
+        'setBehaviourButtonShowAnswers',
+        'setBehaviourOptions',
+        'hideScore',
+        'setBehaviourTest',
+        'addEventsSlideShow',
+      ]) {
+        $form[name] = () => {};
+      }
+
+      $form.renderBehaviour({
+        id,
+        questionsData: [{ question: 'q', options: [], typeQuestion: 'text' }],
+      });
+
+      // No timer is advanced: this is the click that used to be swallowed.
+      document.getElementById(`form-button-check-${id}`).click();
+
+      expect(gameOverCalls).toBe(1);
+    });
+
+    // The save button is wired in the same step, and it is the only thing that
+    // publishes a grade in manual mode: leave it out of the bind step and the
+    // learner presses a button that does nothing.
+    it('binds the save-score button in the same step', () => {
+      const id = 'form-send';
+      document.body.innerHTML =
+        `<div id="${id}">` +
+        `<div id="form-questions-${id}"></div>` +
+        `<input type="button" class="Games-SendScore">` +
+        `</div>`;
+
+      let bound;
+      $form.setBehaviourButtonSendScore = data => {
+        bound = data.id;
+      };
+      for (const name of [
+        'setBehaviourButtonResetQuestions',
+        'setBehaviourButtonCheckQuestions',
+        'setBehaviourButtonShowAnswers',
+        'setBehaviourOptions',
+        'hideScore',
+        'setBehaviourTest',
+        'addEventsSlideShow',
+      ]) {
+        $form[name] = () => {};
+      }
+
+      $form.renderBehaviour({
+        id,
+        questionsData: [{ question: 'q', options: [], typeQuestion: 'text' }],
+      });
+
+      expect(bound).toBe(id);
+    });
+  });
+
+  // The SCORM bootstrap reaches a just-loaded script through an
+  // eXe.app.loadScript callback, which is a string. Sending the whole ldata
+  // through it as JSON and parsing it back handed registerActivity a COPY:
+  // it resolved the iDevice identity onto that copy while the object the
+  // Comprobar button is bound to kept none of it, and reportActivity then
+  // refused every score with its `!game.ideviceId` guard — silently. Only the
+  // id travels now.
+  describe('SCORM bootstrap keeps the live instance', () => {
+    function liveInstance() {
+      const ldata = { id: 'f1', main: 'frmMainContainer-f1', isScorm: 1, msgs: {} };
+      $form.instances[ldata.id] = ldata;
+      return ldata;
+    }
+
+    afterEach(() => {
+      $form.instances = {};
+      delete global.scorm;
+      vi.restoreAllMocks();
+    });
+
+    it('resolves an id back to the object the activity is bound to', () => {
+      const ldata = liveInstance();
+
+      expect($form.resolveInstance('f1')).toBe(ldata);
+    });
+
+    it('passes an object straight through', () => {
+      const ldata = liveInstance();
+
+      expect($form.resolveInstance(ldata)).toBe(ldata);
+    });
+
+    // A package built before the id-only callback still sends JSON. A copy is
+    // worse than the live object but far better than dropping the activity.
+    it('still accepts a legacy JSON payload', () => {
+      expect($form.resolveInstance('{"id":"old"}')).toEqual({ id: 'old' });
+    });
+
+    it('answers null for an unknown id or malformed payload', () => {
+      expect($form.resolveInstance('not-json-and-not-registered{')).toBeNull();
+      expect($form.resolveInstance(undefined)).toBeNull();
+    });
+
+    // The defect end to end: after the asynchronous bootstrap,
+    // registerActivity must have been handed the very object the Comprobar
+    // button holds, not a copy of it.
+    it('registers the bound object, not a copy, through the async path', () => {
+      const ldata = liveInstance();
+      let registered = null;
+      global.scorm = { init: vi.fn(() => false) };
+      vi.spyOn($form, 'initScormData').mockImplementation(data => {
+        registered = data;
+      });
+
+      // What the loadScript callback sends: the id, not the payload.
+      $form.loadSCOFunctions('f1');
+
+      expect(registered).toBe(ldata);
+    });
+
+    // Opening the session is bindSession's job (common.js); initSCORM must not
+    // gate the binding on anything it sees first. init() answers false when the
+    // session is already open, which inside a SCORM package is the normal case
+    // — loadPage() opens it first.
+    it('binds even when the session is already open', () => {
+      const ldata = liveInstance();
+      global.scorm = { init: vi.fn(() => false) };
+      const initScormData = vi
+        .spyOn($form, 'initScormData')
+        .mockImplementation(() => {});
+
+      $form.initSCORM(ldata);
+
+      expect(initScormData).toHaveBeenCalledWith(ldata);
+    });
+
+    it('does nothing when there is no SCORM wrapper at all', () => {
+      const initScormData = vi
+        .spyOn($form, 'initScormData')
+        .mockImplementation(() => {});
+
+      expect(() => $form.initSCORM(liveInstance())).not.toThrow();
+      expect(initScormData).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('restarting the form', () => {
+    function gameData(overrides = {}) {
+      return Object.assign(
+        {
+          id: 'f1',
+          main: 'frmMainContainer-f1',
+          isScorm: 1,
+          time: 0,
+          gameStarted: false,
+          gameOver: true,
+          totalQuestions: 3,
+          rightQuestions: 3,
+          wrongQuestions: 0,
+          msgs: {},
+        },
+        overrides
+      );
+    }
+
+    beforeEach(() => {
+      document.body.className = 'exe-scorm';
+      vi.spyOn($form, 'sendScore').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      document.body.className = '';
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // The defect: Reiniciar cleared the answers on screen, but the LMS menu
+    // kept the finished attempt's grade and its terminal status until the
+    // learner pressed Comprobar again.
+    it('publishes the cleared state, with the attempt reopened', () => {
+      const data = gameData();
+      let stateWhenReported;
+      $form.sendScore.mockImplementation(() => {
+        stateWhenReported = {
+          rightQuestions: data.rightQuestions,
+          gameOver: data.gameOver,
+          gameStarted: data.gameStarted,
+        };
+      });
+
+      $form.rebootGame(data);
+
+      expect(stateWhenReported).toEqual({
+        rightQuestions: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    // A timed form restarts the clock through startGame, which is what marks
+    // the attempt as running; the untimed branch has to do it itself.
+    it('reports a timed form too, once startGame has restarted it', () => {
+      const data = gameData({ time: 5 });
+      vi.spyOn($form, 'startGame').mockImplementation(d => {
+        d.gameStarted = true;
+      });
+
+      $form.rebootGame(data);
+
+      expect($form.startGame).toHaveBeenCalledWith(data);
+      expect($form.sendScore).toHaveBeenCalledWith(data);
+    });
+
+    it('saveScormScore stays quiet outside a SCORM package', () => {
+      document.body.className = '';
+
+      $form.saveScormScore(gameData());
+
+      expect($form.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('saveScormScore stays quiet on an untracked activity', () => {
+      $form.saveScormScore(gameData({ isScorm: 0 }));
+
+      expect($form.sendScore).not.toHaveBeenCalled();
+    });
+
+    // This gate only asks whether the activity is tracked at all. Which mode it
+    // is gets decided once, in sendScoreNew, which drops the automatic report a
+    // manual-mode activity makes — so the restart still offers its score and
+    // the runtime is what refuses it.
+    it('saveScormScore leaves the mode decision to the runtime', () => {
+      const data = gameData({ isScorm: 2 });
+
+      $form.saveScormScore(data);
+
+      expect($form.sendScore).toHaveBeenCalledWith(data);
+    });
+
+    it('publishes the cleared state when the learner clicks the start button', () => {
+      const data = gameData({
+        time: 5,
+        gameStarted: false,
+        gameOver: true,
+        rightQuestions: 2,
+      });
+      document.body.innerHTML = `
+        <div id="frmMainContainer-f1">
+          <div id="frmStartGameDiv-f1">
+            <button id="frmStartGame-f1" type="button">Click here to start</button>
+          </div>
+          <div id="frmBody-f1"></div>
+          <input id="form-button-check-f1" type="button">
+          <input id="form-button-reset-f1" type="button">
+        </div>`;
+      vi.spyOn($form, 'resizeSlideShow').mockImplementation(() => {});
+      let stateWhenReported;
+      $form.sendScore.mockImplementation(() => {
+        stateWhenReported = {
+          rightQuestions: data.rightQuestions,
+          gameOver: data.gameOver,
+          gameStarted: data.gameStarted,
+        };
+      });
+
+      $form.setBehaviourTest(data);
+      document.getElementById('frmStartGame-f1').click();
+      clearInterval(data.clock);
+
+      expect(stateWhenReported).toEqual({
+        rightQuestions: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+  });
+
+  describe('the countdown of a timed form', () => {
+    let previousDevices;
+
+    beforeEach(() => {
+      document.body.innerHTML = '<div id="frmMainContainer-f1"></div>';
+      // Put the shared mock back afterwards. Deleting it left every later
+      // describe in this file without it, which is a trap for the next test
+      // that needs a helper it does not stub itself.
+      previousDevices = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            math: { hasLatex: () => false, updateLatex: () => {} },
+          },
+        },
+      };
+      vi.spyOn($form, 'resizeSlideShow').mockImplementation(() => {});
+      vi.spyOn($form, 'gameOver').mockImplementation(() => {});
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      document.body.innerHTML = '';
+      global.$exeDevices = previousDevices;
+      vi.restoreAllMocks();
+    });
+
+    // Guards the tempting wrong fix for the stray global that used to sit in
+    // this loop: qualifying it as `data.gameStarted = false` fails the gate on
+    // the next tick, so the clock freezes one second in and the time never
+    // runs out.
+    it('keeps counting past the first tick and ends when the time is up', () => {
+      const data = { id: 'f1', time: 3 / 60, gameStarted: false, msgs: {} };
+
+      $form.startGame(data);
+
+      vi.advanceTimersByTime(1000);
+      expect(data.counter).toBe(2);
+
+      vi.advanceTimersByTime(2000);
+      expect(data.counter).toBe(0);
+      expect($form.gameOver).toHaveBeenCalledWith(data);
+    });
+  });
+
+  // Issue #2263: these defaults were Spanish, and mergeFields hands them to any
+  // key the saved content lacks — the whole block when it carries no `msgs` at
+  // all. A Polish project got Spanish buttons and feedback.
+  describe('the fallback texts', () => {
+    it('is in the source language', () => {
+      expect($form.msgs.msgCheck).toBe('Check');
+      expect($form.msgs.msgTestResultNotPass).toBe('Sorry. You failed the test');
+      expect($form.msgs.msgYouScore).toBe('You scores is');
+    });
+
+    // These two had no c_() counterpart in the edition, so the default was the
+    // only value that ever reached the page: per-question feedback was Spanish
+    // for everyone, in every language.
+    it('covers the per-question feedback the edition now translates', () => {
+      expect($form.msgs.msgOk).toBe('Correct');
+      expect($form.msgs.msgKO).toBe('Incorrect');
+    });
+
+    it('covers the suggestion toggle that used an inline literal', () => {
+      expect($form.msgs.msgHide).toBe('Hide');
+    });
+
+    // The fallback is only useful if it is the same text the translator sees,
+    // so no default may be left in another language. Accented characters are a
+    // cheap, reliable proxy for the Spanish this replaced.
+    it('leaves no default in another language', () => {
+      const nonEnglish = Object.entries($form.msgs).filter(
+        ([, value]) => typeof value === 'string' && /[áéíóúñ¿¡]/i.test(value)
+      );
+      expect(nonEnglish).toEqual([]);
+    });
+  });
+
+  // The defect the unification left behind: this iDevice wrote its own markup
+  // with `display:none` and relied on updateScormNew to reveal the button,
+  // which only runs inside a SCORM package. So the button was missing from the
+  // editor and from every other export format, while the other thirty iDevices
+  // showed it — the author enabled the option and saw nothing.
+  describe('renderView, the save-score button', () => {
+    function render(isScorm) {
+      eXe.app.isInExe = vi.fn(() => false);
+      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+      return $form.renderView(
+        {
+          id: 'f2',
+          ideviceId: 'f2',
+          isScorm,
+          textButtonScorm: 'Guardar',
+          time: 0,
+          questionsData: [],
+          msgs: {},
+        },
+        0,
+        '{content}',
+        'f2'
+      );
+    }
+
+    it('renders it visible, not waiting on the SCORM runtime', () => {
+      const html = render(2);
+
+      expect(html).toContain('Games-SendScore');
+      expect(html).not.toContain('display:none"/> <span class="Games-RepeatActivity"');
+    });
+
+    // Its own markup also gave the button this iDevice's grey `feedbackbutton`
+    // class, so it did not even look like the same control as everywhere else.
+    it('renders the same green control as every other iDevice', () => {
+      const html = render(2);
+
+      expect(html).toContain('btn btn-primary');
+      expect(html).not.toContain('feedbackbutton Games-SendScore');
+    });
+
+    it('renders no button in automatic mode', () => {
+      const html = render(1);
+
+      expect(html).not.toContain('Games-SendScore');
+      // The runtime still needs somewhere to put its message.
+      expect(html).toContain('Games-RepeatActivity');
+    });
+  });
+
+  /**
+   * The save button the learner owns in manual mode, which this iDevice used to
+   * render and never wire: it was visible in the package and did nothing.
+   */
+  describe('the save-score button', () => {
+    function data(overrides = {}) {
+      return Object.assign(
+        {
+          id: 'f1',
+          main: 'frmMainContainer-f1',
+          isScorm: 2,
+          totalQuestions: 4,
+          rightQuestions: 2,
+          gameStarted: true,
+          msgs: {},
+        },
+        overrides
+      );
+    }
+
+    let sendScoreNew;
+    let previousDevices;
+
+    beforeEach(() => {
+      // Its own recorder rather than the shared mock, because what reaches the
+      // runtime is the whole point here.
+      sendScoreNew = vi.fn();
+      previousDevices = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: { gamification: { scorm: { sendScoreNew } } },
+      };
+      document.body.innerHTML = `
+        <div class="idevice_node">
+          <div id="frmMainContainer-f1">
+            <div class="Games-BottonContainer">
+              <div class="Games-GetScore">
+                <input type="button" class="Games-SendScore" />
+                <span class="Games-RepeatActivity"></span>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      global.$exeDevices = previousDevices;
+      vi.restoreAllMocks();
+    });
+
+    it('reports what the learner asked for, as a hand-sent score', () => {
+      $form.setBehaviourButtonSendScore(data());
+
+      $('.Games-SendScore').trigger('click');
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(1);
+      expect(sendScoreNew.mock.calls[0][0]).toBe(false);
+      expect(sendScoreNew.mock.calls[0][1].scorerp).toBe(5);
+    });
+
+    // Binding twice is the normal path: renderBehaviour binds immediately and
+    // the poll may bind again. Two handlers would put the same score on the
+    // wire twice for one press.
+    it('binds once however many times the behaviour is wired', () => {
+      vi.spyOn($form, 'sendScore').mockImplementation(() => {});
+      const activity = data();
+
+      $form.setBehaviourButtonSendScore(activity);
+      $form.setBehaviourButtonSendScore(activity);
+
+      $('.Games-SendScore').trigger('click');
+
+      expect($form.sendScore).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * Starting a timed activity in automatic mode must leave the LMS holding a
+     * zero and an unfinished attempt — the page reads `incomplete`, because a
+     * required activity has yet to be answered.
+     *
+     * Runs the real sendScore, not a spy: the mark it computes divides by
+     * `totalQuestions`, which startGame has just zeroed, so this is where a NaN
+     * would appear. It used to, and only sendScoreNew's Number.isFinite guard
+     * — several files away — kept it out of the LMS.
+     */
+    it('publishes a zero and an unfinished attempt when a timed game starts', () => {
+      const activity = data({ time: 5, gameStarted: false, gameOver: true, rightQuestions: 2 });
+      document.body.innerHTML += `
+        <div id="frmMainContainer-f1">
+          <div id="frmStartGameDiv-f1">
+            <button id="frmStartGame-f1" type="button">Start</button>
+          </div>
+          <div id="frmBody-f1"></div>
+        </div>`;
+      document.body.className = 'exe-scorm';
+      global.$exeDevices.iDevice.gamification.math = {
+        hasLatex: () => false,
+        updateLatex: () => {},
+      };
+      vi.spyOn($form, 'resizeSlideShow').mockImplementation(() => {});
+
+      $form.setBehaviourTest(activity);
+      document.getElementById('frmStartGame-f1').click();
+      clearInterval(activity.clock);
+      document.body.className = '';
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(1);
+      const [auto, published] = sendScoreNew.mock.calls[0];
+      expect(auto).toBe(true);
+      expect(published.scorerp).toBe(0);
+      // Not finished: the runtime derives completion from this alone, and the
+      // page stays incomplete while a required activity is unanswered.
+      expect(published.gameOver).toBe(false);
+      expect(published.gameStarted).toBe(true);
+    });
+
+    // The other modes render no button at all, so there is nothing to bind and
+    // nothing to blow up on.
+    it('stands down when the activity renders no button', () => {
+      document.body.innerHTML = '';
+
+      expect(() => $form.setBehaviourButtonSendScore(data())).not.toThrow();
+    });
+
+    // Every other report in this iDevice is the activity speaking for itself.
+    it('sendScore reports automatically unless told otherwise', () => {
+      $form.sendScore(data());
+
+      expect(sendScoreNew.mock.calls[0][0]).toBe(true);
+    });
+  });
+});
+
+describe('form minimum score notice', () => {
+  const ANCHOR = '#frmMainContainer-f3 > .FRMP-GameScoreBoard';
+  let $form;
+
+  beforeEach(() => {
+    global.$form = undefined;
+    $form = loadExportIdevice(readFileSync(join(__dirname, 'form.js'), 'utf-8'));
+    eXe.app.isInExe = vi.fn(() => false);
+    eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  // The instructions live inside the main container here, so the notice is
+  // placed before what follows them rather than before the container.
+  it('places it below the instructions, inside the main container', () => {
+    document.body.innerHTML = $form.renderView(
+      { id: 'f3', ideviceId: 'f3', eXeFormInstructions: '<p>Instructions</p>', time: 0, questionsData: [], msgs: {} },
+      0,
+      '{content}',
+      'f3'
+    );
+
+    const anchor = document.querySelector(ANCHOR);
+    expect(anchor.previousElementSibling.className).toBe('form-instructions');
+    expect(anchor.parentElement.id).toBe('frmMainContainer-f3');
+  });
+
+  it('asks for the notice there once the questions are on the page', () => {
+    document.body.innerHTML = '<div id="f3"><div id="form-questions-f3"></div></div>';
+    const showPassScoreNotice = vi.spyOn($exeDevices.iDevice.gamification.report, 'showPassScoreNotice');
+    for (const name of [
+      'setBehaviourButtonResetQuestions',
+      'setBehaviourButtonCheckQuestions',
+      'setBehaviourButtonSendScore',
+      'setBehaviourButtonShowAnswers',
+      'setBehaviourOptions',
+      'hideScore',
+      'setBehaviourTest',
+      'addEventsSlideShow',
+    ]) {
+      $form[name] = () => {};
+    }
+
+    $form.renderBehaviour(
+      { id: 'f3', passScoreMode: 'custom', passScoreCustom: 7, questionsData: [{ question: 'q', options: [], typeQuestion: 'text' }] },
+      0,
+      'f3'
+    );
+
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    expect(showPassScoreNotice).toHaveBeenCalledWith(
+      expect.objectContaining({ main: 'frmMainContainer-f3', passScoreCustom: 7 }),
+      ANCHOR
+    );
   });
 });

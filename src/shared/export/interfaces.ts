@@ -68,6 +68,8 @@ export interface ExportMetadata {
     addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
     globalFont?: string; // Global font for accessibility
+    passScore?: number; // Project-wide mark out of 10 an activity needs to be passed
+    passScoreEveryActivity?: boolean; // Pass a SCORM page only when every activity reaches its own mark
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>
@@ -106,6 +108,10 @@ export interface ExportBlock {
 
     // Block icon name (for themed icons)
     iconName?: string;
+    icon?: {
+        source: 'material' | 'asset' | 'theme' | 'none';
+        value: string;
+    };
 
     // Block-level properties
     properties?: ExportBlockProperties;
@@ -132,6 +138,14 @@ export interface ExportComponent {
     order: number;
     content: string; // HTML content
     properties: Record<string, unknown>;
+
+    /**
+     * Raw jsonProperties payload stored in the document that could not be
+     * parsed (#2190). When set, `properties` is {} and content.xml must carry
+     * this string verbatim so a save/export does not destroy the damaged
+     * activity's data.
+     */
+    malformedProperties?: string;
 
     // Component-level structure properties (visibility, teacherOnly, cssClass)
     structureProperties?: ExportComponentProperties;
@@ -203,9 +217,12 @@ export interface ResourceProvider {
     fetchContentCss(): Promise<Map<string, Uint8Array>>;
 
     /**
-     * Fetch SCORM API wrapper files (SCORM_API_wrapper.js, SCOFunctions.js)
+     * Fetch SCORM runtime source files. For '1.2' this is the vendored
+     * pipwerks wrapper plus the project runtime layers (assembled into the
+     * package files by Scorm12Runtime.buildScorm12RuntimeFiles); for '2004'
+     * it is the legacy SCORM_API_wrapper.js/SCOFunctions.js pair.
      * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of relative path -> content buffer
+     * @returns Map of scorm/-relative path -> content buffer
      */
     fetchScormFiles(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
 
@@ -411,6 +428,20 @@ export interface ExportOptions {
     /** Output filename (without extension) */
     filename?: string;
 
+    /**
+     * Version of the eXeLearning that is producing this export.
+     *
+     * Stamped into the assembled SCORM 1.2 runtime so a consumer can say which
+     * runtime it is carrying — the Moodle plugin above all, which vendors the
+     * same file and must be able to prove it matches the release it claims to.
+     * There is one runtime per eXeLearning version, so this is that version.
+     *
+     * Distinct from `ExportMetadata.exelearningVersion`, which records the
+     * version that AUTHORED the project. An old project exported by a new
+     * eXeLearning carries a new runtime and an old authoring version.
+     */
+    runtimeVersion?: string;
+
     /** Include data-* attributes for JS initialization */
     includeDataAttributes?: boolean;
 
@@ -459,6 +490,22 @@ export interface ExportOptions {
      * Browser-only: renders HTML in a hidden iframe and captures with html2canvas.
      */
     generateScreenshot?: (firstPageHtml: string) => Promise<string>;
+
+    /**
+     * Ship the re-editable ODE source (`content.xml`) even when the project's
+     * `exportSource` property ("Editable export") is off.
+     *
+     * For an author, `exportSource` is the last word (#2415). This overrides it
+     * for the one case where the exported package IS the project's storage
+     * rather than a publication artefact: a host that saves the package and
+     * later re-opens it for editing, such as the Moodle `mod_exescorm`
+     * embedded editor, which round-trips the SCORM 1.2 package it wrote. Such a
+     * host must never be handed a package it cannot read back.
+     *
+     * Hosts request it through the embedding bridge's `REQUEST_EXPORT` options.
+     * A plain author-driven export never sets it.
+     */
+    forceEditableSource?: boolean;
 }
 
 /**
@@ -622,6 +669,13 @@ export interface PageRenderOptions {
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
+    /** Project-wide pass score (0-10). Published to the page so iDevices can read it at runtime. */
+    passScore?: number;
+    /**
+     * Pass a SCORM page only when every activity reaches its own mark. Published
+     * to the page only when true, so the SCORM runtimes can read it.
+     */
+    passScoreEveryActivity?: boolean;
 
     // Custom head content
     extraHeadContent?: string;
@@ -684,6 +738,9 @@ export interface PageRenderOptions {
      * Used to convert asset:// URLs to content/resources/ paths in export output.
      */
     assetExportPathMap?: Map<string, string>;
+
+    /** Optional inline SVG data URIs for Material Icons keyed by icon name. */
+    materialIconDataUris?: Map<string, string>;
 }
 
 /**
@@ -702,6 +759,8 @@ export interface ComponentRenderOptions {
 export interface BlockRenderOptions extends ComponentRenderOptions {
     /** Base path for theme icons (e.g., '/files/perm/themes/base/base/icons/' for preview) */
     themeIconBasePath?: string;
+    /** Optional inline SVG data URIs for Material Icons keyed by icon name. */
+    materialIconDataUris?: Map<string, string>;
 }
 
 // =============================================================================

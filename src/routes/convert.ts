@@ -14,7 +14,6 @@
 
 import { Elysia, t } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
@@ -46,6 +45,7 @@ import {
 // Import system (ELP → Y.Doc)
 import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
 import * as Y from 'yjs';
+import { getAppVersion } from '../utils/version';
 
 // =============================================================================
 // Types and Interfaces
@@ -196,13 +196,14 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     ): Promise<ExportResult & { filename?: string }> {
         let ydoc: Y.Doc | null = null;
         let wrapper: InstanceType<typeof ServerYjsDocumentWrapper> | null = null;
+        let extractDir: string | null = null;
 
         try {
             // Read ELP file
             const elpBuffer = await fs.readFile(elpFilePath);
 
             // Create extraction directory for assets
-            const extractDir = path.join(tempDir!, `extract-${randomUUID()}`);
+            extractDir = path.join(tempDir!, `extract-${randomUUID()}`);
             await fs.ensureDir(extractDir);
 
             // Import ELP to Y.Doc using unified import system
@@ -249,8 +250,9 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                     return { success: false, error: `Unsupported export format: ${exportType}` };
             }
 
-            // Run export
-            const result = await exporter.export(options);
+            // Run export. runtimeVersion stamps the SCORM 1.2 runtime with the release
+            // doing the exporting; a caller-supplied value wins.
+            const result = await exporter.export({ runtimeVersion: getAppVersion(), ...options });
             return result;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -261,6 +263,13 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
             if (wrapper) {
                 wrapper.destroy();
             }
+            // Remove the per-conversion extraction directory. The route-level
+            // finally only removes the upload dir (convert-*), so without this
+            // every convert/export call would permanently leak an extract-*
+            // directory full of extracted assets under FILES_DIR/tmp.
+            if (extractDir) {
+                await fs.remove(extractDir).catch(() => {});
+            }
         }
     }
 
@@ -270,7 +279,6 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
 
     return (
         new Elysia({ name: 'convert-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

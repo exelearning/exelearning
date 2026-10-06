@@ -17,6 +17,7 @@ import * as path from 'path';
 import type { ResourceProvider, LibraryPattern } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
 import { parseXlfTranslations } from '../generators/I18nGenerator';
+import { SCORM12_RUNTIME_SOURCE_PATHS } from '../utils/Scorm12Runtime';
 
 /**
  * Resource file entry
@@ -52,27 +53,16 @@ export class FileSystemResourceProvider implements ResourceProvider {
      * @returns Map of file paths to content
      */
     async fetchTheme(themeName: string): Promise<Map<string, Buffer>> {
-        // 1. Check for embedded theme in extracted directory (custom themes from ELPX)
+        // 1. Check for embedded theme in extracted directory (custom themes from ELPX).
+        // Styles embedded in an opened/imported .elpx are always available: the legacy
+        // <downloadable> flag must not make export ignore the embedded theme (issue #1893).
+        // A config.xml is still required so incomplete theme folders fall back to base.
         if (this.extractedDir) {
             const extractedThemePath = path.join(this.extractedDir, 'theme');
-            if (await fs.pathExists(extractedThemePath)) {
-                // Check config.xml for downloadable flag
-                const configPath = path.join(extractedThemePath, 'config.xml');
-                if (await fs.pathExists(configPath)) {
-                    try {
-                        const configContent = await fs.readFile(configPath, 'utf-8');
-                        const downloadableMatch = configContent.match(/<downloadable>(\d)<\/downloadable>/);
-                        const isDownloadable = downloadableMatch && downloadableMatch[1] === '1';
-
-                        if (isDownloadable) {
-                            // Use embedded theme
-                            console.log(`[FileSystemResourceProvider] Using embedded theme from ${extractedThemePath}`);
-                            return this.readDirectoryRecursive(extractedThemePath, '');
-                        }
-                    } catch (e) {
-                        console.warn(`[FileSystemResourceProvider] Error reading theme config.xml:`, e);
-                    }
-                }
+            const configPath = path.join(extractedThemePath, 'config.xml');
+            if ((await fs.pathExists(extractedThemePath)) && (await fs.pathExists(configPath))) {
+                console.log(`[FileSystemResourceProvider] Using embedded theme from ${extractedThemePath}`);
+                return this.readDirectoryRecursive(extractedThemePath, '');
             }
         }
 
@@ -150,9 +140,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Bootstrap
             { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js' },
             { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css' },
-            // Bootstrap source maps (for debugging)
-            { src: 'libs/bootstrap/bootstrap.bundle.min.js.map', dest: 'bootstrap/bootstrap.bundle.min.js.map' },
-            { src: 'libs/bootstrap/bootstrap.min.css.map', dest: 'bootstrap/bootstrap.min.css.map' },
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
@@ -200,7 +187,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
             'exe_magnify',
             'exe_highlighter',
             'exe_slidesjs',
-            'exe_media_link',
             'exe_math', // MathJax library
             'mermaid', // Mermaid diagram library
         ]);
@@ -294,21 +280,26 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch SCORM API wrapper files
-     * @param version - SCORM version: '1.2' or '2004' (files are the same for both)
+     * @param version - `'1.2'` returns the vendored wrapper plus runtime layers; `'2004'` returns the legacy pair
      * @returns Map of file paths to content
      */
-    async fetchScormFiles(_version: '1.2' | '2004' = '1.2'): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(version: '1.2' | '2004' = '1.2'): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
 
         // SCORM API files are in app/common/scorm/
         const scormPath = path.join(this.publicDir, 'app', 'common', 'scorm');
-        const scormFileNames = ['SCORM_API_wrapper.js', 'SCOFunctions.js'];
+        // 1.2 uses the vendored pipwerks wrapper plus the project runtime
+        // layers (assembled by the exporter, see Scorm12Runtime.ts); 2004
+        // keeps the legacy pair.
+        const scormFileNames =
+            version === '1.2' ? SCORM12_RUNTIME_SOURCE_PATHS : ['SCORM_API_wrapper.js', 'SCOFunctions.js'];
 
         for (const fileName of scormFileNames) {
-            const fullPath = path.join(scormPath, fileName);
+            const fullPath = path.join(scormPath, ...fileName.split('/'));
             if (await fs.pathExists(fullPath)) {
                 const content = await fs.readFile(fullPath);
-                // Store with just the filename (caller will add libs/ prefix)
+                // Store with the scorm/-relative path (caller assembles or
+                // adds the libs/ prefix)
                 files.set(fileName, content);
             }
         }

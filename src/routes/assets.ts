@@ -10,7 +10,7 @@ import * as mimeTypes from 'mime-types';
 
 import { db } from '../db/client';
 import { buildContentDisposition, encodeHeaderValue } from '../shared/http/headers';
-import type { Asset, Database } from '../db/types';
+import type { Asset, Database, Project } from '../db/types';
 import {
     createAsset,
     createAssets,
@@ -29,8 +29,10 @@ import type { Kysely } from 'kysely';
 import { withJwtAuth, enforceProjectAccess } from '../utils/route-auth';
 
 import {
+    getFilesDir as getFilesDirDefault,
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
-    getProjectAssetsDir as getProjectAssetsDirDefault,
+    resolveAssetStoragePath as resolveAssetStoragePathDefault,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathDefault,
     fileExists as fileExistsDefault,
     readFile as readFileDefault,
     writeFile as writeFileDefault,
@@ -43,6 +45,8 @@ import {
 import { getSession as getSessionDefault } from '../services/session-manager';
 import { serverPriorityQueue as serverPriorityQueueDefault } from '../services/asset-priority-queue';
 import type { AssetUploadRequest } from './types/request-payloads';
+import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../utils/safe-path';
+import { buildAssetStoragePath } from '../utils/asset-paths';
 
 /**
  * File with optional name property (for Blob/File uploads)
@@ -73,8 +77,10 @@ export interface AssetsQueries {
  * File helper dependencies for assets routes
  */
 export interface AssetsFileHelperDeps {
+    getFilesDir: typeof getFilesDirDefault;
     getOdeSessionTempDir: typeof getOdeSessionTempDirDefault;
-    getProjectAssetsDir: typeof getProjectAssetsDirDefault;
+    resolveAssetStoragePath: typeof resolveAssetStoragePathDefault;
+    tryResolveAssetStoragePath: typeof tryResolveAssetStoragePathDefault;
     fileExists: typeof fileExistsDefault;
     readFile: typeof readFileDefault;
     writeFile: typeof writeFileDefault;
@@ -114,8 +120,10 @@ export interface AssetsDependencies {
  * Default file helper dependencies
  */
 const defaultFileHelper: AssetsFileHelperDeps = {
+    getFilesDir: getFilesDirDefault,
     getOdeSessionTempDir: getOdeSessionTempDirDefault,
-    getProjectAssetsDir: getProjectAssetsDirDefault,
+    resolveAssetStoragePath: resolveAssetStoragePathDefault,
+    tryResolveAssetStoragePath: tryResolveAssetStoragePathDefault,
     fileExists: fileExistsDefault,
     readFile: readFileDefault,
     writeFile: writeFileDefault,
@@ -164,19 +172,122 @@ const defaultDependencies: AssetsDependencies = {
     priorityQueue: defaultPriorityQueue,
 };
 
+/**
+ * Tracked state for a single in-progress chunked upload.
+ */
+interface ChunkUploadEntry {
+    projectId: string;
+    filename: string;
+    totalChunks: number;
+    uploadedChunks: Set<number>;
+    chunkDir: string;
+    createdAt: Date;
+    initialized: boolean; // Flag to track if directory has been created
+}
+
 // In-memory storage for chunked uploads
-const chunkUploads = new Map<
-    string,
-    {
-        projectId: string;
-        filename: string;
-        totalChunks: number;
-        uploadedChunks: Set<number>;
-        chunkDir: string;
-        createdAt: Date;
-        initialized: boolean; // Flag to track if directory has been created
+const chunkUploads = new Map<string, ChunkUploadEntry>();
+
+// =====================================================
+// Chunked upload limits & abandoned-upload sweeper (BUG H9)
+// =====================================================
+
+/**
+ * Maximum accepted size for a single uploaded chunk (20 MB).
+ * Prevents an attacker from writing arbitrarily large files via one chunk.
+ */
+export const MAX_CHUNK_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Maximum number of chunks a single upload may declare (10000).
+ * Prevents an attacker from declaring an enormous chunk count that would
+ * never complete while keeping the Map entry and on-disk directory alive.
+ */
+export const MAX_TOTAL_CHUNKS = 10_000;
+
+/**
+ * Time-to-live for an in-progress chunked upload (1 hour). Uploads that are
+ * neither finalized nor explicitly cancelled within this window are considered
+ * abandoned and are reaped by the sweeper, freeing both the Map entry and the
+ * on-disk chunk directory.
+ */
+export const CHUNK_UPLOAD_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * How often the background sweeper runs (15 minutes).
+ */
+export const CHUNK_UPLOAD_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+
+/**
+ * Module-level handle for the background sweeper interval, if running.
+ */
+let chunkUploadSweeperHandle: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Remove abandoned chunked uploads whose `createdAt` is older than `ttlMs`.
+ * Deletes both the in-memory Map entry and the on-disk chunk directory.
+ * Pure-ish and directly callable so it can be unit tested without timers.
+ *
+ * @param now - Reference timestamp in ms (defaults to Date.now()).
+ * @param ttlMs - Maximum age before an upload is considered abandoned.
+ * @returns Number of upload entries swept.
+ */
+export function sweepStaleChunkUploads(now: number = Date.now(), ttlMs: number = CHUNK_UPLOAD_TTL_MS): number {
+    let swept = 0;
+    for (const [uploadKey, upload] of chunkUploads) {
+        const age = now - upload.createdAt.getTime();
+        if (age <= ttlMs) {
+            continue;
+        }
+        chunkUploads.delete(uploadKey);
+        swept += 1;
+        // Best-effort on-disk cleanup; ignore errors (dir may already be gone).
+        void fs.remove(upload.chunkDir).catch(() => {});
     }
->();
+    return swept;
+}
+
+/**
+ * Start the background sweeper that periodically reaps abandoned chunked
+ * uploads. Idempotent: a second call while running is a no-op. The interval is
+ * `unref()`'d (when available) so it never keeps the process alive on its own.
+ * The orchestrator (src/index.ts) is responsible for calling this on startup.
+ *
+ * @param intervalMs - Sweep cadence in ms (defaults to CHUNK_UPLOAD_SWEEP_INTERVAL_MS).
+ */
+export function startChunkUploadSweeper(intervalMs: number = CHUNK_UPLOAD_SWEEP_INTERVAL_MS): void {
+    if (chunkUploadSweeperHandle !== null) {
+        return;
+    }
+    chunkUploadSweeperHandle = setInterval(() => {
+        sweepStaleChunkUploads();
+    }, intervalMs);
+    // Avoid keeping the event loop (and the process) alive solely for sweeping.
+    if (typeof chunkUploadSweeperHandle.unref === 'function') {
+        chunkUploadSweeperHandle.unref();
+    }
+}
+
+/**
+ * Stop the background sweeper if it is running. Idempotent. The orchestrator
+ * (src/index.ts) is responsible for calling this on shutdown.
+ */
+export function stopChunkUploadSweeper(): void {
+    if (chunkUploadSweeperHandle === null) {
+        return;
+    }
+    clearInterval(chunkUploadSweeperHandle);
+    chunkUploadSweeperHandle = null;
+}
+
+/**
+ * Test-only accessor for the module-level chunkUploads Map. Lets specs seed
+ * entries, backdate `createdAt`, and assert on sweep behaviour without coupling
+ * to the HTTP layer. Not part of the public/runtime API surface.
+ */
+export function __getChunkUploadsForTest(): Map<string, ChunkUploadEntry> {
+    return chunkUploads;
+}
 
 /**
  * Factory function to create assets routes with injected dependencies
@@ -186,8 +297,10 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
     // Variable shadowing for file-helper functions
     const {
+        getFilesDir,
         getOdeSessionTempDir: _getOdeSessionTempDir, // Kept for DI interface, unused for asset storage
-        getProjectAssetsDir,
+        resolveAssetStoragePath,
+        tryResolveAssetStoragePath,
         fileExists,
         readFile,
         writeFile,
@@ -204,20 +317,46 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
     const serverPriorityQueue = deps.priorityQueue ?? defaultPriorityQueue;
 
     /**
-     * Helper to get numeric project ID from UUID or numeric string
-     * @param projectIdOrUuid - Project UUID or numeric ID string
-     * @returns Numeric project ID or null if not found
+     * Resolve the project row from a URL parameter that may be either the
+     * project UUID or a numeric database id. Asset storage paths are always
+     * derived from the canonical `projects.uuid`, never from the raw URL
+     * value, so every project has exactly one on-disk directory.
      */
-    async function getNumericProjectId(projectIdOrUuid: string): Promise<number | null> {
-        // Check if it's already a numeric ID (must be digits only to avoid UUID prefix collisions)
+    async function resolveProject(projectIdOrUuid: string): Promise<Project | undefined> {
+        // Digits-only check avoids misparsing UUIDs that start with a digit.
         if (/^\d+$/.test(projectIdOrUuid)) {
-            const numericId = parseInt(projectIdOrUuid, 10);
-            return numericId;
+            return queries.findProjectById(database, parseInt(projectIdOrUuid, 10));
         }
+        return queries.findProjectByUuid(database, projectIdOrUuid);
+    }
 
-        // It's a UUID - look up the project
-        const project = await queries.findProjectByUuid(database, projectIdOrUuid);
-        return project?.id ?? null;
+    /**
+     * Resolve a stored `assets.storage_path` value to an absolute path,
+     * returning null when the value is unresolvable or the row has no path.
+     * Callers treat null exactly like a missing file.
+     */
+    function resolveAssetFile(asset: Pick<Asset, 'storage_path'>): string | null {
+        return asset.storage_path ? tryResolveAssetStoragePath(asset.storage_path) : null;
+    }
+
+    /**
+     * When an update relocates an asset's storage path (e.g. a re-upload of a
+     * row still pointing at a legacy or conflict-parked location), remove the
+     * file at the previous location so superseded copies never linger as
+     * untracked orphans. No-op when the location is unchanged.
+     */
+    async function removeSupersededAssetFile(
+        existing: Pick<Asset, 'storage_path'>,
+        newStoragePath: string,
+    ): Promise<void> {
+        if (!existing.storage_path || existing.storage_path === newStoragePath) {
+            return;
+        }
+        const oldPath = tryResolveAssetStoragePath(existing.storage_path);
+        const newPath = tryResolveAssetStoragePath(newStoragePath);
+        if (oldPath && oldPath !== newPath) {
+            await remove(oldPath).catch(() => {});
+        }
     }
 
     return (
@@ -253,12 +392,13 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const { projectId } = params;
                     const data = body as AssetUploadRequest;
 
-                    // Get numeric project ID (handles both UUID and numeric strings)
-                    const projectIdNum = await getNumericProjectId(projectId);
-                    if (projectIdNum === null) {
+                    // Resolve the project row (handles both UUID and numeric strings)
+                    const project = await resolveProject(projectId);
+                    if (!project) {
                         set.status = 404;
                         return { success: false, error: 'Project not found' };
                     }
+                    const projectIdNum = project.id;
 
                     if (!data.file) {
                         set.status = 400;
@@ -269,6 +409,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const componentId = data.componentId;
                     // Support clientId from form body OR query parameter (bulk upload uses query param)
                     const clientId = data.clientId || (query as { clientId?: string }).clientId || uuidv4();
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
                     const folderPath = sanitizeFolderPath(data.folderPath);
 
                     // Get file data
@@ -290,15 +435,14 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         mimetype = data.mimetype || 'application/octet-stream';
                     }
 
-                    // Flat UUID-based storage: assets/{projectUuid}/{clientId}.{ext}
-                    // No folder hierarchy on disk - folderPath is only stored in database for UI/export
-                    const baseStoragePath = getProjectAssetsDir(projectId);
-                    await fs.ensureDir(baseStoragePath);
-
-                    // Use clientId as filename with original extension
-                    const ext = path.extname(filename).toLowerCase();
-                    const flatFilename = `${clientId}${ext}`;
-                    const filePath = path.join(baseStoragePath, flatFilename);
+                    // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
+                    // The database stores the FILES_DIR-relative path; the physical
+                    // path is derived from it through the shared resolver. No folder
+                    // hierarchy on disk - folderPath is only stored for UI/export.
+                    const ext = sanitizeFileExtension(filename);
+                    const storagePath = buildAssetStoragePath(project.uuid, `${clientId}${ext}`);
+                    const filePath = resolveAssetStoragePath(storagePath);
+                    await fs.ensureDir(path.dirname(filePath));
 
                     // Write file using Bun.write for optimal performance
                     if (typeof Bun !== 'undefined' && Bun.write) {
@@ -313,9 +457,10 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                     if (existingAsset) {
                         // Asset already exists - update it (idempotent)
+                        await removeSupersededAssetFile(existingAsset, storagePath);
                         const updatedAsset = await queries.updateAsset(database, existingAsset.id, {
                             filename: filename,
-                            storage_path: filePath,
+                            storage_path: storagePath,
                             mime_type: mimetype,
                             file_size: String(fileBuffer.length),
                             folder_path: folderPath,
@@ -331,7 +476,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const asset = await queries.createAsset(database, {
                         project_id: projectIdNum,
                         filename: filename,
-                        storage_path: filePath,
+                        storage_path: storagePath,
                         mime_type: mimetype,
                         file_size: String(fileBuffer.length),
                         component_id: componentId || null,
@@ -394,6 +539,37 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         return { success: false, error: 'Missing required parameters' };
                     }
 
+                    // identifier is used to build the on-disk chunk directory; reject traversal.
+                    if (!isSafePathSegment(identifier)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid identifier' };
+                    }
+
+                    // Reject an absurd / non-numeric declared chunk count up front. An attacker
+                    // could otherwise declare an enormous totalChunks so the upload can never be
+                    // finalized, leaving the Map entry and on-disk chunks around indefinitely.
+                    if (!Number.isInteger(totalChunks) || totalChunks < 1 || totalChunks > MAX_TOTAL_CHUNKS) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid resumableTotalChunks' };
+                    }
+
+                    // Resolve the chunk buffer early so we can enforce the per-chunk size cap
+                    // BEFORE creating any tracking state or touching disk.
+                    let chunkBuffer: Buffer;
+                    if (chunk instanceof Blob) {
+                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
+                    } else if (Buffer.isBuffer(chunk)) {
+                        chunkBuffer = chunk;
+                    } else {
+                        chunkBuffer = Buffer.from(chunk as ArrayBuffer | Uint8Array);
+                    }
+
+                    // Cap the size of an individual chunk to bound disk/memory usage.
+                    if (chunkBuffer.length > MAX_CHUNK_BYTES) {
+                        set.status = 413;
+                        return { success: false, error: 'Chunk exceeds maximum allowed size' };
+                    }
+
                     const uploadKey = `${projectId}:${identifier}`;
 
                     // Initialize upload tracking SYNCHRONOUSLY to prevent race condition
@@ -401,7 +577,10 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     // BEFORE any async operation, otherwise multiple chunks enter the if block
                     // and overwrite each other's uploadedChunks Set
                     if (!chunkUploads.has(uploadKey)) {
-                        const chunkDir = path.join(process.cwd(), 'data', 'chunks', projectId, identifier);
+                        // Chunks are staged under the configured files directory so they
+                        // stay on the persistent data volume (#2283).
+                        const chunksRoot = path.join(getFilesDir(), 'chunks');
+                        const chunkDir = safeJoin(chunksRoot, projectId, identifier);
                         chunkUploads.set(uploadKey, {
                             projectId,
                             filename,
@@ -419,16 +598,6 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     if (!upload.initialized) {
                         await fs.ensureDir(upload.chunkDir);
                         upload.initialized = true;
-                    }
-
-                    // Get chunk buffer
-                    let chunkBuffer: Buffer;
-                    if (chunk instanceof Blob) {
-                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
-                    } else if (Buffer.isBuffer(chunk)) {
-                        chunkBuffer = chunk;
-                    } else {
-                        chunkBuffer = Buffer.from(chunk);
                     }
 
                     // Write chunk to disk using Bun.write for optimal performance
@@ -468,6 +637,12 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const componentId = data.componentId;
                     const clientId = data.clientId || uuidv4();
 
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
+
                     const uploadKey = `${projectId}:${identifier}`;
                     const upload = chunkUploads.get(uploadKey);
 
@@ -485,21 +660,19 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         };
                     }
 
-                    // Get numeric project ID (handles both UUID and numeric strings)
-                    const projectIdNum = await getNumericProjectId(projectId);
-                    if (projectIdNum === null) {
+                    // Resolve the project row (handles both UUID and numeric strings)
+                    const project = await resolveProject(projectId);
+                    if (!project) {
                         set.status = 404;
                         return { success: false, error: 'Project not found' };
                     }
+                    const projectIdNum = project.id;
 
-                    // Flat UUID-based storage: assets/{projectUuid}/{clientId}.{ext}
-                    const storagePath = getProjectAssetsDir(projectId);
-                    await fs.ensureDir(storagePath);
-
-                    // Use clientId as filename with original extension
-                    const ext = path.extname(upload.filename).toLowerCase();
-                    const flatFilename = `${clientId}${ext}`;
-                    const finalPath = path.join(storagePath, flatFilename);
+                    // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
+                    const ext = sanitizeFileExtension(upload.filename);
+                    const storagePath = buildAssetStoragePath(project.uuid, `${clientId}${ext}`);
+                    const finalPath = resolveAssetStoragePath(storagePath);
+                    await fs.ensureDir(path.dirname(finalPath));
 
                     // Write combined file with parallel chunk reads
                     const writeStream = fs.createWriteStream(finalPath);
@@ -548,23 +721,28 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     let asset: Asset | undefined;
                     if (existingAsset) {
                         // Update existing asset
+                        await removeSupersededAssetFile(existingAsset, storagePath);
                         asset = await queries.updateAsset(database, existingAsset.id, {
                             filename: upload.filename,
-                            storage_path: finalPath,
+                            storage_path: storagePath,
                             mime_type: mimetype as string,
                             file_size: String(stats?.size || 0),
                             component_id: componentId || null,
                         });
                         // Fallback to existing asset if update doesn't return the record
                         if (!asset) {
-                            asset = { ...existingAsset, storage_path: finalPath, file_size: String(stats?.size || 0) };
+                            asset = {
+                                ...existingAsset,
+                                storage_path: storagePath,
+                                file_size: String(stats?.size || 0),
+                            };
                         }
                     } else {
                         // Create new asset record
                         asset = await queries.createAsset(database, {
                             project_id: projectIdNum,
                             filename: upload.filename,
-                            storage_path: finalPath,
+                            storage_path: storagePath,
                             mime_type: mimetype as string,
                             file_size: String(stats?.size || 0),
                             component_id: componentId || null,
@@ -610,16 +788,16 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .get('/', async ({ params }) => {
                 const { projectId } = params;
 
-                // Get numeric project ID (handles both UUID and numeric strings)
-                const projectIdNum = await getNumericProjectId(projectId);
-                if (projectIdNum === null) {
+                // Resolve the project row (handles both UUID and numeric strings)
+                const project = await resolveProject(projectId);
+                if (!project) {
                     return {
                         success: true,
                         data: [],
                     };
                 }
 
-                const assets = await queries.findAllAssetsForProject(database, projectIdNum);
+                const assets = await queries.findAllAssetsForProject(database, project.id);
                 return {
                     success: true,
                     data: assets.map(serializeAsset),
@@ -630,23 +808,24 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .get('/by-client-id/:clientId', async ({ params, set }) => {
                 const { projectId, clientId } = params;
 
-                // Get numeric project ID (handles both UUID and numeric strings)
-                const projectIdNum = await getNumericProjectId(projectId);
+                // Resolve the project row (handles both UUID and numeric strings)
+                const project = await resolveProject(projectId);
 
-                const asset = await queries.findAssetByClientId(database, clientId, projectIdNum ?? undefined);
+                const asset = await queries.findAssetByClientId(database, clientId, project?.id);
                 if (!asset) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
                 }
 
                 // Check if file exists
-                if (!(await fileExists(asset.storage_path))) {
+                const absPath = resolveAssetFile(asset);
+                if (!absPath || !(await fileExists(absPath))) {
                     set.status = 404;
                     return { success: false, error: 'Asset file not found on disk' };
                 }
 
                 // Return file blob with metadata headers for collaborative sync
-                const fileBuffer = await readFile(asset.storage_path);
+                const fileBuffer = await readFile(absPath);
                 set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
                 set.headers['content-disposition'] = buildContentDisposition(asset.filename);
                 // Add metadata headers for AssetWebSocketHandler prefetch
@@ -661,12 +840,13 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .get('/:assetId', async ({ params, set }) => {
                 const { projectId, assetId } = params;
 
-                // Get numeric project ID (handles both UUID and numeric strings)
-                const projectIdNum = await getNumericProjectId(projectId);
-                if (projectIdNum === null) {
+                // Resolve the project row (handles both UUID and numeric strings)
+                const project = await resolveProject(projectId);
+                if (!project) {
                     set.status = 404;
                     return { success: false, error: 'Project not found' };
                 }
+                const projectIdNum = project.id;
 
                 // IMPORTANT:
                 // AssetManager uses UUID-like client IDs in asset:// URLs and calls this endpoint.
@@ -693,13 +873,14 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 }
 
                 // Check if file exists
-                if (!(await fileExists(asset.storage_path))) {
+                const absPath = resolveAssetFile(asset);
+                if (!absPath || !(await fileExists(absPath))) {
                     set.status = 404;
                     return { success: false, error: 'Asset file not found' };
                 }
 
                 // Return file
-                const fileBuffer = await readFile(asset.storage_path);
+                const fileBuffer = await readFile(absPath);
                 set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
                 set.headers['content-disposition'] = buildContentDisposition(asset.filename);
                 return fileBuffer;
@@ -707,6 +888,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // GET /:assetId/metadata - Get asset metadata
             .get('/:assetId/metadata', async ({ params, set }) => {
+                const { projectId } = params;
                 const assetId = parseInt(params.assetId, 10);
 
                 if (isNaN(assetId)) {
@@ -714,8 +896,17 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     return { success: false, error: 'Invalid asset ID' };
                 }
 
+                // Resolve the URL project so we can enforce asset ownership.
+                const project = await resolveProject(projectId);
+                if (!project) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+
                 const asset = await queries.findAssetById(database, assetId);
-                if (!asset) {
+                // findAssetById is a global lookup; the asset must belong to the
+                // project named in the URL or this leaks other tenants' metadata.
+                if (!asset || asset.project_id !== project.id) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
                 }
@@ -731,13 +922,13 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .delete('/by-client-id/:clientId', async ({ params, set }) => {
                 const { projectId, clientId } = params;
 
-                const projectIdNum = await getNumericProjectId(projectId);
-                if (projectIdNum === null) {
+                const project = await resolveProject(projectId);
+                if (!project) {
                     set.status = 404;
                     return { success: false, error: 'Project not found' };
                 }
 
-                const asset = await queries.findAssetByClientId(database, clientId, projectIdNum);
+                const asset = await queries.findAssetByClientId(database, clientId, project.id);
                 if (!asset) {
                     // Asset not on server - that's OK, just return success
                     // (asset may have been deleted locally but never uploaded)
@@ -745,7 +936,10 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 }
 
                 // Delete file from disk
-                await remove(asset.storage_path).catch(() => {});
+                const absPath = resolveAssetFile(asset);
+                if (absPath) {
+                    await remove(absPath).catch(() => {});
+                }
 
                 // Delete database record
                 await queries.deleteAsset(database, asset.id);
@@ -763,17 +957,20 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     return { success: true, deleted: 0 };
                 }
 
-                const projectIdNum = await getNumericProjectId(projectId);
-                if (projectIdNum === null) {
+                const project = await resolveProject(projectId);
+                if (!project) {
                     set.status = 404;
                     return { success: false, error: 'Project not found' };
                 }
 
-                const assets = await queries.findAssetsByClientIds(database, clientIds, projectIdNum);
+                const assets = await queries.findAssetsByClientIds(database, clientIds, project.id);
 
                 // Delete files and database records
                 for (const asset of assets) {
-                    await remove(asset.storage_path).catch(() => {});
+                    const absPath = resolveAssetFile(asset);
+                    if (absPath) {
+                        await remove(absPath).catch(() => {});
+                    }
                     await queries.deleteAsset(database, asset.id);
                 }
 
@@ -782,6 +979,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // DELETE /:assetId - Delete asset by numeric ID (legacy)
             .delete('/:assetId', async ({ params, set }) => {
+                const { projectId } = params;
                 const assetId = parseInt(params.assetId, 10);
 
                 if (isNaN(assetId)) {
@@ -789,14 +987,28 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     return { success: false, error: 'Invalid asset ID' };
                 }
 
+                // Resolve the URL project so we can enforce asset ownership.
+                const project = await resolveProject(projectId);
+                if (!project) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+
                 const asset = await queries.findAssetById(database, assetId);
-                if (!asset) {
+                // findAssetById is a global lookup; without scoping the asset to
+                // the URL project, any authenticated user could delete another
+                // tenant's asset (file + DB row) by numeric ID. Mirror the
+                // ownership guard used by GET '/:assetId'.
+                if (!asset || asset.project_id !== project.id) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
                 }
 
                 // Delete file
-                await remove(asset.storage_path).catch(() => {});
+                const absPath = resolveAssetFile(asset);
+                if (absPath) {
+                    await remove(absPath).catch(() => {});
+                }
 
                 // Delete record
                 await queries.deleteAsset(database, assetId);
@@ -808,16 +1020,16 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .get('/storage-usage', async ({ params }) => {
                 const { projectId } = params;
 
-                // Get numeric project ID (handles both UUID and numeric strings)
-                const projectIdNum = await getNumericProjectId(projectId);
-                if (projectIdNum === null) {
+                // Resolve the project row (handles both UUID and numeric strings)
+                const project = await resolveProject(projectId);
+                if (!project) {
                     return {
                         success: true,
                         data: { totalAssets: 0, totalSize: 0, totalSizeMB: '0.00' },
                     };
                 }
 
-                const assets = await queries.findAllAssetsForProject(database, projectIdNum);
+                const assets = await queries.findAllAssetsForProject(database, project.id);
                 const totalSize = assets.reduce((sum, a) => sum + parseInt(a.file_size || '0', 10), 0);
 
                 return {
@@ -840,12 +1052,13 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const { projectId } = params;
                     const data = body as AssetUploadRequest;
 
-                    // Get numeric project ID (handles both UUID and numeric strings)
-                    const projectIdNum = await getNumericProjectId(projectId);
-                    if (projectIdNum === null) {
+                    // Resolve the project row (handles both UUID and numeric strings)
+                    const project = await resolveProject(projectId);
+                    if (!project) {
                         set.status = 404;
                         return { success: false, error: 'Project not found' };
                     }
+                    const projectIdNum = project.id;
 
                     // Parse metadata from JSON string
                     let metadata: Array<{
@@ -867,16 +1080,19 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         metadata = data.metadata;
                     }
 
+                    // Each clientId becomes an on-disk filename; reject traversal/separators up front.
+                    for (const meta of metadata) {
+                        if (!isSafePathSegment(meta?.clientId)) {
+                            set.status = 400;
+                            return { success: false, error: 'Invalid clientId in metadata' };
+                        }
+                    }
+
                     // Get files from FormData
                     let files: (Blob | Buffer)[] = [];
                     if (data.files) {
                         files = Array.isArray(data.files) ? data.files : [data.files];
                     }
-
-                    // Get base storage path using project UUID
-                    const baseStoragePath = getProjectAssetsDir(projectId);
-
-                    await fs.ensureDir(baseStoragePath);
 
                     // =====================================================
                     // PHASE 1: Convert all files to buffers in parallel
@@ -898,13 +1114,14 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                             fileBuffer = Buffer.from(file);
                         }
 
-                        // Flat UUID-based storage: assets/{projectUuid}/{clientId}.{ext}
+                        // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
                         // folderPath is only stored in database for UI/export, not on disk
 
                         // Use clientId as filename with original extension
-                        const ext = path.extname(filename).toLowerCase();
+                        const ext = sanitizeFileExtension(filename);
                         const flatFilename = `${fileMeta.clientId}${ext}`;
-                        const filePath = path.join(baseStoragePath, flatFilename);
+                        const storagePath = buildAssetStoragePath(project.uuid, flatFilename);
+                        const filePath = resolveAssetStoragePath(storagePath);
 
                         return {
                             clientId: fileMeta.clientId,
@@ -913,6 +1130,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                             folderPath,
                             fileBuffer,
                             filePath,
+                            storagePath,
                             flatFilename,
                         };
                     });
@@ -922,6 +1140,12 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     // =====================================================
                     // PHASE 2: Write all files to disk in parallel (Bun.write)
                     // =====================================================
+                    // Lazy directory creation: the project shard directory is
+                    // created only when there is something to write.
+                    const targetDirs = new Set(fileData.map(f => path.dirname(f.filePath)));
+                    for (const dir of targetDirs) {
+                        await fs.ensureDir(dir);
+                    }
                     const writeResults = await Promise.allSettled(
                         fileData.map(({ filePath, fileBuffer }) =>
                             typeof Bun !== 'undefined' && Bun.write
@@ -986,10 +1210,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                         const existing = existingMap.get(data.clientId);
                         if (existing) {
+                            await removeSupersededAssetFile(existing, data.storagePath);
                             toUpdate.push({
                                 id: existing.id,
                                 data: {
-                                    storage_path: data.filePath,
+                                    storage_path: data.storagePath,
                                     file_size: String(data.fileBuffer.length),
                                     folder_path: data.folderPath,
                                 },
@@ -1003,7 +1228,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                             toCreate.push({
                                 project_id: projectIdNum,
                                 filename: data.filename,
-                                storage_path: data.filePath,
+                                storage_path: data.storagePath,
                                 mime_type: data.mimeType,
                                 file_size: String(data.fileBuffer.length),
                                 component_id: null,
@@ -1066,14 +1291,20 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 try {
                     const { projectId } = params;
 
-                    // Get numeric project ID (handles both UUID and numeric strings)
-                    const projectIdNum = await getNumericProjectId(projectId);
-                    if (projectIdNum === null) {
+                    // Resolve the project row (handles both UUID and numeric strings)
+                    const project = await resolveProject(projectId);
+                    if (!project) {
                         set.status = 404;
                         return { success: false, error: 'Project not found' };
                     }
+                    const projectIdNum = project.id;
 
                     const clientId = request.headers.get('x-client-id') || uuidv4();
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
                     const filename = request.headers.get('x-filename') || 'uploaded_file';
                     const priority = parseInt(request.headers.get('x-priority') || '0', 10);
                     const contentType = request.headers.get('content-type') || 'application/octet-stream';
@@ -1094,14 +1325,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         }
                     }
 
-                    // Flat UUID-based storage: assets/{projectUuid}/{clientId}.{ext}
-                    const baseStoragePath = getProjectAssetsDir(projectId);
-                    await fs.ensureDir(baseStoragePath);
-
-                    // Use clientId as filename with original extension
-                    const ext = path.extname(filename).toLowerCase();
-                    const flatFilename = `${clientId}${ext}`;
-                    const filePath = path.join(baseStoragePath, flatFilename);
+                    // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
+                    const ext = sanitizeFileExtension(filename);
+                    const storagePath = buildAssetStoragePath(project.uuid, `${clientId}${ext}`);
+                    const filePath = resolveAssetStoragePath(storagePath);
+                    await fs.ensureDir(path.dirname(filePath));
 
                     // Stream body directly to disk
                     const body = request.body;
@@ -1139,7 +1367,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const asset = await queries.createAsset(database, {
                         project_id: projectIdNum,
                         filename,
-                        storage_path: filePath,
+                        storage_path: storagePath,
                         mime_type: contentType,
                         file_size: String(fileSize),
                         component_id: null,

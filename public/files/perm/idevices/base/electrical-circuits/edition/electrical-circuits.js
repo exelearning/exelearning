@@ -27,6 +27,15 @@ var $exeDevice = {
     version: 3.1,
     renderedTikzPreview: null,
     tikzFinishedHandler: null,
+    tikzCapturePromise: null,
+
+    // Per-circuit TikZJax compile budget for the AI save flow. The very first
+    // circuit also pays TikZJax's one-time WebAssembly cold start, which on a
+    // slow browser (e.g. Firefox CI) easily exceeds the warm budget, so give it
+    // a much longer window before treating a valid circuit as un-renderable;
+    // every later circuit renders on the warm engine and uses the normal budget.
+    tikzRenderTimeoutMs: 15000,
+    tikzColdStartTimeoutMs: 60000,
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
@@ -120,13 +129,10 @@ var $exeDevice = {
             msgMinimize: c_('Minimize'),
             msgMaximize: c_('Maximize'),
             msgTime: c_('Time per question'),
-            msgLive: c_('Life'),
             msgFullScreen: c_('Full Screen'),
             msgNumQuestions: c_('Number of questions'),
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
-            msgLoseLive: c_('You lost one life'),
-            msgLostLives: c_('You lost all your lives!'),
             msgAllQuestions: c_('You answered all the questions.'),
             msgSuccesses: c_(
                 'Right! | Excellent! | Great! | Very good! | Perfect!'
@@ -163,6 +169,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Electrical Circuits Quiz'),
         };
     },
@@ -200,6 +207,14 @@ var $exeDevice = {
         );
         msgs.msgIDLenght = _(
             'The report identifier must have at least 5 characters'
+        );
+        msgs.msgGeneratingCircuitsTitle = _('Please wait');
+        msgs.msgGeneratingCircuits = _(
+            'Generating the circuit images, this may take a few minutes, please wait…'
+        );
+        msgs.msgQuestionsAdded = _('The questions have been added successfully');
+        msgs.msgEQuestionsNotAdded = _(
+            'Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.'
         );
     },
 
@@ -467,12 +482,258 @@ var $exeDevice = {
         return new XMLSerializer().serializeToString(parsedSvg);
     },
 
+    // Unicode symbols TikZJax's bundled LaTeX cannot parse (its inputenc is not
+    // set up for utf8), mapped to their LaTeX commands. Authors routinely type
+    // these glyphs directly — e.g. the ohm sign Ω in "R=1 kΩ" or micro µ in
+    // "1 µF" — which otherwise aborts compilation with
+    // "Unicode character ... not set up for use with LaTeX" and leaves the
+    // circuit unrendered.
+    tikzUnicodeReplacements: {
+        // Uppercase Greek letters
+        Ω: '\\Omega',
+        Γ: '\\Gamma',
+        Δ: '\\Delta',
+        Θ: '\\Theta',
+        Λ: '\\Lambda',
+        Π: '\\Pi',
+        Σ: '\\Sigma',
+        Φ: '\\Phi',
+        Ψ: '\\Psi',
+        // Lowercase Greek letters
+        α: '\\alpha',
+        β: '\\beta',
+        γ: '\\gamma',
+        δ: '\\delta',
+        ε: '\\varepsilon',
+        η: '\\eta',
+        θ: '\\theta',
+        λ: '\\lambda',
+        µ: '\\mu', // U+00B5 micro sign
+        μ: '\\mu', // U+03BC greek small letter mu
+        ν: '\\nu',
+        π: '\\pi',
+        ρ: '\\rho',
+        σ: '\\sigma',
+        τ: '\\tau',
+        φ: '\\varphi',
+        χ: '\\chi',
+        ψ: '\\psi',
+        ω: '\\omega',
+        // Operators and units
+        '×': '\\times',
+        '÷': '\\div',
+        '±': '\\pm',
+        '∓': '\\mp',
+        '·': '\\cdot',
+        '≤': '\\leq',
+        '≥': '\\geq',
+        '≠': '\\neq',
+        '≈': '\\approx',
+        '∞': '\\infty',
+        '√': '\\surd',
+        '∝': '\\propto',
+        '∠': '\\angle',
+        '°': '^\\circ',
+        // Arrows
+        '→': '\\rightarrow',
+        '←': '\\leftarrow',
+        '↔': '\\leftrightarrow',
+        '⇒': '\\Rightarrow',
+    },
+
+    // siunitx/gensymb unit and SI-prefix macros the AI emits but TikZJax's loaded
+    // packages (circuitikz, amsmath, amssymb) do NOT define, so they abort the
+    // compile with "Undefined control sequence" (e.g. \ohm, \volt, \kilo). Mapped
+    // to plain-text/Unicode equivalents: \ohm/\micro flow into the Ω/µ handling
+    // (the Unicode net above and the R=/C= label rules below); the rest are ASCII
+    // unit letters that are always valid inside a label.
+    tikzUnitMacroReplacements: {
+        ohm: 'Ω',
+        kohm: 'kΩ',
+        megohm: 'MΩ',
+        volt: 'V',
+        millivolt: 'mV',
+        kilovolt: 'kV',
+        ampere: 'A',
+        milliampere: 'mA',
+        microampere: 'µA',
+        watt: 'W',
+        milliwatt: 'mW',
+        kilowatt: 'kW',
+        farad: 'F',
+        microfarad: 'µF',
+        nanofarad: 'nF',
+        picofarad: 'pF',
+        henry: 'H',
+        millihenry: 'mH',
+        microhenry: 'µH',
+        hertz: 'Hz',
+        kilohertz: 'kHz',
+        megahertz: 'MHz',
+        siemens: 'S',
+        coulomb: 'C',
+        joule: 'J',
+        kelvin: 'K',
+        newton: 'N',
+        pascal: 'Pa',
+        tesla: 'T',
+        weber: 'Wb',
+        second: 's',
+        metre: 'm',
+        meter: 'm',
+        gram: 'g',
+        // SI prefixes
+        kilo: 'k',
+        milli: 'm',
+        micro: 'µ',
+        mega: 'M',
+        giga: 'G',
+        nano: 'n',
+        pico: 'p',
+        centi: 'c',
+        deci: 'd',
+    },
+
+    /**
+     * Replace bare Unicode symbols with their LaTeX equivalents wrapped in
+     * \ensuremath{} so they compile under TikZJax regardless of whether they
+     * appear in text or math context. Pure helper consumed by normalizeTikzCode
+     * (the single source of truth), so the rendered LaTeX, the cache key and the
+     * saved code all stay LaTeX-safe.
+     */
+    sanitizeTikzUnicode: function (code) {
+        if (!code) {
+            return '';
+        }
+
+        let result = '';
+        for (const char of code) {
+            const replacement = $exeDevice.tikzUnicodeReplacements[char];
+            result += replacement ? '\\ensuremath{' + replacement + '}' : char;
+        }
+        return result;
+    },
+
+    sanitizeTikzRendererSyntax: function (code) {
+        if (!code) {
+            return '';
+        }
+
+        const formatNumber = (value) =>
+            String(value).trim().replace(/(\d),(\d)/g, '$1{,}$2');
+
+        return code
+            .replace(/\\\\,/g, '\\,')
+            // Drop angle brackets the AI wraps around a unit macro (<\ohm> -> \ohm)
+            // and replace siunitx/gensymb unit/prefix macros TikZJax cannot compile
+            // with plain-text/Unicode equivalents, so the label rules below (and the
+            // Unicode net) render them instead of aborting with "Undefined control
+            // sequence".
+            .replace(/<\s*(\\[a-zA-Z]+)\s*>/g, '$1')
+            .replace(/\\([a-zA-Z]+)\b/g, (match, name) =>
+                Object.hasOwn($exeDevice.tikzUnitMacroReplacements, name)
+                    ? $exeDevice.tikzUnitMacroReplacements[name]
+                    : match
+            )
+            .replace(/\bto\s*\[\s*lD\b/g, 'to[leD')
+            // Repair clear circuitikz component-name mistakes the AI makes: the
+            // symbol is unambiguous, only the key is wrong. "open switch" /
+            // "closed switch" are not valid keys (pgfkeys "I do not know the key"
+            // → abort); circuitikz uses "opening switch" / "closing switch". Only
+            // rewrite right after to[ so a {label} mentioning the words is untouched.
+            .replace(/\bto\s*\[\s*open\s+switch\b/gi, 'to[opening switch')
+            .replace(/\bto\s*\[\s*closed\s+switch\b/gi, 'to[closing switch')
+            .replace(
+                /\bto\s*\[\s*(battery1|battery2)\s*,\s*l\s*=\s*([0-9]+(?:\{,\}[0-9]+|[.,][0-9]+)?)\s*V\s*\]/g,
+                (_match, component, value) =>
+                    `to[${component},l={$${formatNumber(value)}\\,\\mathrm{V}$}]`
+            )
+            .replace(
+                /\bto\s*\[\s*R\s*=\s*([0-9]+(?:\{,\}[0-9]+|[.,][0-9]+)?)\s*(k?)\s*(?:Ω|\\Omega)\s*\]/g,
+                (_match, value, prefix) => {
+                    const unit = prefix ? '\\mathrm{k}\\Omega' : '\\Omega';
+                    return `to[R,l={$${formatNumber(value)}\\,${unit}$}]`;
+                }
+            )
+            .replace(
+                /\bto\s*\[\s*C\s*=\s*([0-9]+(?:\{,\}[0-9]+|[.,][0-9]+)?)\s*(?:\\mu|µ|μ|u)\s*F\s*\]/g,
+                (_match, value) =>
+                    `to[C,l={$${formatNumber(value)}\\,\\mu\\mathrm{F}$}]`
+            )
+            .replace(/(^|[^\\]),\s*(?=\\(?:mathrm|Omega|mu)\b)/g, '$1\\,')
+            // Brace any math label that still holds a *bare* comma so TikZ's
+            // `to[...]` parser stops reading it as an option separator
+            // (e.g. l=$9,V$ -> l={$9\,V$}; otherwise it errors with an unknown
+            // key like '/tikz/V$'). The \, thin space is left alone; a
+            // digit,digit comma stays a {,} thousands separator and any other
+            // bare comma becomes a thin space.
+            .replace(/=\s*\$([^$]*)\$/g, (match, content) => {
+                if (!/(^|[^\\]),/.test(content)) return match;
+                const fixed = content.replace(/\s*,\s*/g, (comma, offset, str) => {
+                    const prev = str[offset - 1];
+                    const next = str[offset + comma.length];
+                    if (prev === '\\') return comma;
+                    if (prev === '{' && next === '}') return comma;
+                    return /\d/.test(prev) && /\d/.test(next) ? '{,}' : '\\,';
+                });
+                return `={$${fixed}$}`;
+            })
+            // Repair logic-gate syntax: the AI emits pgf's shapes.gates.logic
+            // names (node[and gate], anchors .input/.output) from a library that
+            // is not loaded here, while circuitikz uses `... port` shapes with
+            // .in/.out anchors. Rewrite the shape only inside [...] and the
+            // anchors only inside (...), so node labels ({...}), transistor .gate
+            // anchors and any other code are left untouched.
+            .replace(/\[([^\]]*)\]/g, (_match, options) =>
+                '[' +
+                options.replace(
+                    /\b(and|or|not|nand|nor|xnor|xor|buffer)\s+gate\b/g,
+                    '$1 port'
+                ) +
+                ']'
+            )
+            .replace(/\(([^)]*)\)/g, (_match, reference) =>
+                '(' + reference.replace(/\.input\b/g, '.in').replace(/\.output\b/g, '.out') + ')'
+            );
+    },
+
     normalizeTikzCode: function (code) {
         // Single source of truth: collapse line breaks (and the surrounding
-        // indentation) into single spaces. TikZJax fails on multi-line input,
-        // and using this everywhere keeps the rendered-SVG cache key aligned
-        // with what validateQuestion/save look up.
-        return (code || '').trim().replace(/\s*\r?\n\s*/g, ' ');
+        // indentation), repair known AI-generated CircuiTikZ patterns, then
+        // replace Unicode symbols TikZJax cannot parse. TikZJax fails on
+        // multi-line input, and using this everywhere keeps the rendered-SVG
+        // cache key aligned with what validateQuestion/save look up.
+        const collapsed = (code || '').trim().replace(/\s*\r?\n\s*/g, ' ');
+        return $exeDevice.sanitizeTikzUnicode(
+            $exeDevice.sanitizeTikzRendererSyntax(collapsed)
+        );
+    },
+
+    normalizeVisibleCircuitText: function (text) {
+        if (!text) {
+            return '';
+        }
+
+        return String(text)
+            .trim()
+            .replace(/^\\\((.*)\\\)$/g, '$1')
+            .replace(/^\{\$(.*)\$\}$/g, '$1')
+            .replace(/^\$(.*)\$$/g, '$1')
+            .replace(/\{,\}/g, ',')
+            .replace(/(^|[^\\]),\s*(?=\\(?:mathrm|Omega|mu)\b)/g, '$1 ')
+            .replace(/\\mathrm\{([^{}]*)\}/g, '$1')
+            .replace(/\\\\,/g, ' ')
+            .replace(/\\,/g, ' ')
+            .replace(/\\Omega/g, 'Ω')
+            .replace(/\\mu/g, 'µ')
+            .replace(/\\times\b/g, '×')
+            .replace(/\\cdot\b/g, '·')
+            .replace(/\\pm\b/g, '±')
+            .replace(/\^\{?\\circ\}?/g, '°')
+            .replace(/\\degree\b/g, '°')
+            .replace(/[{}$]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
     },
 
     setRenderedTikzSvg: function (code, svg) {
@@ -507,6 +768,414 @@ var $exeDevice = {
 
     invalidateTikzSvgPreview: function () {
         $exeDevice.renderedTikzPreview = null;
+    },
+
+    // Parsed Computer Modern fonts, keyed by font-family, reused across renders.
+    tikzFontCache: {},
+    tikzFontPackPromise: null,
+
+    // TikZJax emits one Unicode code point per glyph from its own font-encoding
+    // table. That mapping for the operators-font uppercase Omega is off by one:
+    // it emits U+00AC (¬) although the Computer Modern fonts carry the Omega
+    // glyph at U+00AD. Correct it before looking the glyph up — otherwise the
+    // ohm sign is the not-sign, the code point the browser also refuses to draw.
+    tikzGlyphCodepointFixups: new Map([[0x00ac, 0x00ad]]),
+
+    /**
+     * Minimal big-endian TrueType reader: just enough to turn the Computer
+     * Modern glyphs TikZJax references into vector outlines. Returns a font
+     * object exposing unitsPerEm, a code-point -> glyph-index Map, per-glyph
+     * advance widths and the contours of a glyph, or null when a required table
+     * is missing or the buffer is not a recognizable font.
+     */
+    parseTikzFont: function (buffer) {
+        const view = new DataView(
+            buffer instanceof ArrayBuffer ? buffer : buffer.buffer
+        );
+        if (view.byteLength < 12) return null;
+
+        const u8 = (offset) => view.getUint8(offset);
+        const u16 = (offset) => view.getUint16(offset);
+        const i16 = (offset) => view.getInt16(offset);
+        const u32 = (offset) => view.getUint32(offset);
+
+        const tables = {};
+        const numTables = u16(4);
+        for (let i = 0; i < numTables; i++) {
+            const record = 12 + i * 16;
+            const tag = String.fromCharCode(
+                u8(record),
+                u8(record + 1),
+                u8(record + 2),
+                u8(record + 3)
+            );
+            tables[tag] = u32(record + 8);
+        }
+
+        if (
+            tables.head == null ||
+            tables.maxp == null ||
+            tables.loca == null ||
+            tables.glyf == null ||
+            tables.cmap == null
+        ) {
+            return null;
+        }
+
+        const cmap = $exeDevice.parseTikzCmap(view, tables.cmap);
+        if (!cmap) return null;
+
+        const unitsPerEm = u16(tables.head + 18);
+        const longLoca = i16(tables.head + 50) === 1;
+        const numGlyphs = u16(tables.maxp + 4);
+        const numberOfHMetrics =
+            tables.hhea != null ? u16(tables.hhea + 34) : 0;
+
+        const glyphOffsets = new Array(numGlyphs + 1);
+        for (let i = 0; i <= numGlyphs; i++) {
+            glyphOffsets[i] = longLoca
+                ? u32(tables.loca + i * 4)
+                : u16(tables.loca + i * 2) * 2;
+        }
+
+        const advanceWidth = (glyphIndex) => {
+            if (tables.hmtx == null || numberOfHMetrics === 0) return 0;
+            const index =
+                glyphIndex < numberOfHMetrics
+                    ? glyphIndex
+                    : numberOfHMetrics - 1;
+            return u16(tables.hmtx + index * 4);
+        };
+
+        const glyphContours = (glyphIndex) => {
+            if (glyphIndex < 0 || glyphIndex >= numGlyphs) return [];
+            if (glyphOffsets[glyphIndex] === glyphOffsets[glyphIndex + 1]) {
+                return [];
+            }
+
+            const start = tables.glyf + glyphOffsets[glyphIndex];
+            const numberOfContours = i16(start);
+            // The shipped Computer Modern fonts use only simple glyphs; composite
+            // glyphs (negative contour count) never occur, so leave them empty.
+            if (numberOfContours < 0) return [];
+
+            let pointer = start + 10;
+            const endPoints = [];
+            for (let i = 0; i < numberOfContours; i++) {
+                endPoints.push(u16(pointer));
+                pointer += 2;
+            }
+            const pointCount = numberOfContours
+                ? endPoints[numberOfContours - 1] + 1
+                : 0;
+            pointer += 2 + u16(pointer); // skip hinting instructions
+
+            const flags = [];
+            while (flags.length < pointCount) {
+                const flag = u8(pointer++);
+                flags.push(flag);
+                if (flag & 0x08) {
+                    let repeat = u8(pointer++);
+                    while (repeat-- > 0) flags.push(flag);
+                }
+            }
+
+            const readDeltas = (shortBit, sameBit) => {
+                const values = [];
+                let value = 0;
+                for (let i = 0; i < pointCount; i++) {
+                    const flag = flags[i];
+                    if (flag & shortBit) {
+                        const delta = u8(pointer++);
+                        value += flag & sameBit ? delta : -delta;
+                    } else if (!(flag & sameBit)) {
+                        value += i16(pointer);
+                        pointer += 2;
+                    }
+                    values.push(value);
+                }
+                return values;
+            };
+            const xs = readDeltas(0x02, 0x10);
+            const ys = readDeltas(0x04, 0x20);
+
+            const contours = [];
+            let from = 0;
+            for (let c = 0; c < numberOfContours; c++) {
+                const to = endPoints[c];
+                const points = [];
+                for (let i = from; i <= to; i++) {
+                    points.push({
+                        x: xs[i],
+                        y: ys[i],
+                        on: !!(flags[i] & 0x01),
+                    });
+                }
+                contours.push(points);
+                from = to + 1;
+            }
+            return contours;
+        };
+
+        return {
+            unitsPerEm: unitsPerEm,
+            cmap: cmap,
+            advanceWidth: advanceWidth,
+            glyphContours: glyphContours,
+        };
+    },
+
+    // Parse a TrueType `cmap` table, returning a code-point -> glyph-index Map.
+    // Only the Windows Unicode BMP subtable (platform 3, encoding 1, format 4)
+    // is needed for the bundled Computer Modern fonts.
+    parseTikzCmap: function (view, cmapOffset) {
+        const u16 = (offset) => view.getUint16(offset);
+        const u32 = (offset) => view.getUint32(offset);
+
+        const subtableCount = u16(cmapOffset + 2);
+        let subtable = -1;
+        for (let i = 0; i < subtableCount; i++) {
+            const record = cmapOffset + 4 + i * 8;
+            if (u16(record) === 3 && u16(record + 2) === 1) {
+                subtable = cmapOffset + u32(record + 4);
+                break;
+            }
+        }
+        if (subtable < 0 || u16(subtable) !== 4) return null;
+
+        const map = new Map();
+        const segCount = u16(subtable + 6) / 2;
+        const endCodes = subtable + 14;
+        const startCodes = endCodes + segCount * 2 + 2;
+        const deltas = startCodes + segCount * 2;
+        const ranges = deltas + segCount * 2;
+        for (let s = 0; s < segCount; s++) {
+            const end = u16(endCodes + s * 2);
+            const start = u16(startCodes + s * 2);
+            const delta = u16(deltas + s * 2);
+            const rangeOffset = u16(ranges + s * 2);
+            for (let code = start; code <= end && code !== 0xffff; code++) {
+                let glyph;
+                if (rangeOffset === 0) {
+                    glyph = (code + delta) & 0xffff;
+                } else {
+                    glyph = u16(ranges + s * 2 + rangeOffset + (code - start) * 2);
+                    if (glyph !== 0) glyph = (glyph + delta) & 0xffff;
+                }
+                if (glyph) map.set(code, glyph);
+            }
+        }
+        return map;
+    },
+
+    // Turn a glyph's TrueType contours (quadratic on/off-curve points, font
+    // units, Y axis up) into SVG path data placed at the baseline origin
+    // (penX, baselineY), matching how the original <text> element sat.
+    tikzContoursToPathData: function (contours, penX, baselineY, scale) {
+        const tx = (value) => Number((penX + value * scale).toFixed(2));
+        const ty = (value) => Number((baselineY - value * scale).toFixed(2));
+        let data = '';
+
+        for (const contour of contours) {
+            const count = contour.length;
+            if (count === 0) continue;
+
+            let current = contour[count - 1];
+            let next = contour[0];
+            if (current.on) {
+                data += 'M' + tx(current.x) + ' ' + ty(current.y);
+            } else if (next.on) {
+                data += 'M' + tx(next.x) + ' ' + ty(next.y);
+            } else {
+                data +=
+                    'M' +
+                    tx((current.x + next.x) / 2) +
+                    ' ' +
+                    ty((current.y + next.y) / 2);
+            }
+
+            for (let i = 0; i < count; i++) {
+                current = next;
+                next = contour[(i + 1) % count];
+                if (current.on) {
+                    data += 'L' + tx(current.x) + ' ' + ty(current.y);
+                    continue;
+                }
+                let endX = next.x;
+                let endY = next.y;
+                if (!next.on) {
+                    endX = (current.x + next.x) / 2;
+                    endY = (current.y + next.y) / 2;
+                }
+                data +=
+                    'Q' +
+                    tx(current.x) +
+                    ' ' +
+                    ty(current.y) +
+                    ' ' +
+                    tx(endX) +
+                    ' ' +
+                    ty(endY);
+            }
+            data += 'Z';
+        }
+        return data;
+    },
+
+    // Build the SVG path data for `text` rendered with `font` at baseline origin
+    // (x, y) and the given font size, advancing the pen per glyph.
+    tikzGlyphStringToPath: function (font, text, x, y, fontSize) {
+        const scale = fontSize / font.unitsPerEm;
+        let penX = x;
+        let data = '';
+        for (const character of text) {
+            const codePoint = character.codePointAt(0);
+            const fixedCodePoint =
+                $exeDevice.tikzGlyphCodepointFixups.get(codePoint) ?? codePoint;
+            const glyphIndex = font.cmap.get(fixedCodePoint);
+            if (glyphIndex) {
+                data += $exeDevice.tikzContoursToPathData(
+                    font.glyphContours(glyphIndex),
+                    penX,
+                    y,
+                    scale
+                );
+                penX += font.advanceWidth(glyphIndex) * scale;
+            }
+        }
+        return data;
+    },
+
+    // The static build packs the whole fonts/ directory into one
+    // zstd-compressed sidecar (fonts.pack.zst) so 140 loose TTFs are not
+    // shipped twice-compressible. Fetch and decode it once, lazily; resolve
+    // to null when the pack (or the fzstd decoder) is unavailable — the
+    // server runtime keeps serving the loose files.
+    // Format: u32le header length + JSON {family: [offset, length]} + payload.
+    loadTikzFontPack: function () {
+        // Both caches belong to the edition that fills them; the async work
+        // below must never read or reset the `$exeDevice` that replaced it.
+        const self = this;
+        if (!self.tikzFontPackPromise) {
+            self.tikzFontPackPromise = (async () => {
+                if (!window.fzstd) return null;
+                const url = (self.idevicePath || '') + 'fonts.pack.zst';
+                const response = await fetch(url);
+                // A missing pack (server mode serves the loose TTFs instead)
+                // is a stable answer worth caching for the session.
+                if (!response.ok) return null;
+                const packed = new Uint8Array(await response.arrayBuffer());
+                const bytes = window.fzstd.decompress(packed);
+                const headerLength = new DataView(
+                    bytes.buffer,
+                    bytes.byteOffset,
+                    4
+                ).getUint32(0, true);
+                const header = JSON.parse(
+                    new TextDecoder().decode(bytes.subarray(4, 4 + headerLength))
+                );
+                return { header, payload: bytes.subarray(4 + headerLength) };
+            })().catch(() => {
+                // Transient failure (network blip): let a later call retry
+                // instead of degrading fonts for the whole session.
+                self.tikzFontPackPromise = null;
+                return null;
+            });
+        }
+        return self.tikzFontPackPromise;
+    },
+
+    // Fetch and parse a Computer Modern font shipped next to this iDevice,
+    // caching the (promise of the) result. Overridable in tests.
+    loadTikzFont: function (family) {
+        const self = this;
+        if (!self.tikzFontCache[family]) {
+            // Capture the edition's signal now: the pack lookup is async, and
+            // a later edition must not own this fallback fetch.
+            const signal = this.$lifecycle && this.$lifecycle.signal;
+            self.tikzFontCache[family] = self
+                .loadTikzFontPack()
+                .then((pack) => {
+                    const entry = pack && pack.header[family];
+                    if (entry) {
+                        // .slice() copies into a fresh buffer, matching the
+                        // ArrayBuffer shape parseTikzFont expects.
+                        const bytes = pack.payload.slice(entry[0], entry[0] + entry[1]);
+                        return self.parseTikzFont(bytes.buffer);
+                    }
+                    const url =
+                        (self.idevicePath || '') + 'fonts/' + family + '.ttf';
+                    // Loose-file fallback is aborted with the edition. The zstd
+                    // pack is session-wide and must not be cancelled here.
+                    return fetch(url, { signal })
+                        .then((response) =>
+                            response.ok ? response.arrayBuffer() : null
+                        )
+                        .then((buffer) =>
+                            buffer ? self.parseTikzFont(buffer) : null
+                        );
+                })
+                .catch(() => null);
+        }
+        return self.tikzFontCache[family];
+    },
+
+    /**
+     * Replace every <text> TikZJax produced with a self-contained <path> built
+     * from the real glyph outlines. This makes the stored/exported SVG render
+     * correctly without the Computer Modern web fonts (which are never
+     * registered as @font-face) and draws the ohm sign — whose code point the
+     * browser otherwise refuses to render. Falls back to leaving a <text>
+     * untouched when its font cannot be loaded.
+     */
+    convertTikzTextToPaths: function (svg) {
+        if (!svg) return Promise.resolve();
+        const texts = [...svg.querySelectorAll('text')];
+        if (texts.length === 0) return Promise.resolve();
+
+        const families = [
+            ...new Set(
+                texts.map((text) => text.getAttribute('font-family')).filter(Boolean)
+            ),
+        ];
+
+        // Font loading is async: the continuation must keep using the edition
+        // that started it, never whatever `$exeDevice` holds by then.
+        const self = this;
+        return Promise.all(
+            families.map((family) =>
+                self
+                    .loadTikzFont(family)
+                    .then((font) => [family, font])
+            )
+        ).then((entries) => {
+            const fonts = Object.fromEntries(entries);
+            texts.forEach((text) => {
+                const font = fonts[text.getAttribute('font-family')];
+                if (!font) return;
+
+                const x = parseFloat(text.getAttribute('x')) || 0;
+                const y = parseFloat(text.getAttribute('y')) || 0;
+                const fontSize = parseFloat(text.getAttribute('font-size')) || 10;
+                const data = self.tikzGlyphStringToPath(
+                    font,
+                    text.textContent,
+                    x,
+                    y,
+                    fontSize
+                );
+                if (!data) return;
+
+                const path = document.createElementNS(
+                    'http://www.w3.org/2000/svg',
+                    'path'
+                );
+                path.setAttribute('d', data);
+                const fill = text.getAttribute('fill');
+                if (fill) path.setAttribute('fill', fill);
+                text.replaceWith(path);
+            });
+        });
     },
 
     captureRenderedTikzPreview: function (code, preview) {
@@ -565,7 +1234,9 @@ var $exeDevice = {
         const tikzScript = document.createElement('script');
         tikzScript.type = 'text/tikz';
         tikzScript.dataset.texPackages = JSON.stringify({'circuitikz': '', 'amsmath': '', 'amssymb': ''});
-        tikzScript.dataset.showConsole = 'true';
+        // Keep TikZJax quiet in production: 'true' makes it console.log the raw
+        // TikZ source on every render, which is debug noise for end users.
+        tikzScript.dataset.showConsole = 'false';
         tikzScript.textContent = '\\begin{document}' + code + '\\end{document}';
 
         // While compiling, TikZJax inserts a loading-spinner <svg> placeholder
@@ -573,15 +1244,126 @@ var $exeDevice = {
         // (both for cached and freshly compiled results). Grabbing any <svg>
         // captured the spinner by mistake and required a second click, so wait
         // for that event and then capture the real circuit.
-        const onFinished = () => {
+        // TikZJax answers long after the render was requested and keeps the
+        // <script> node alive even once the form is detached, so the handler is
+        // bound to this edition and its registration is dropped on teardown.
+        const lifecycle = this.$lifecycle;
+        const onFinished = lifecycle.bind(function () {
             preview.removeEventListener('tikzjax-load-finished', onFinished);
             $exeDevice.tikzFinishedHandler = null;
-            $exeDevice.captureRenderedTikzPreview(code, preview);
-        };
+            // TikZJax renders glyphs as <text> referencing Computer Modern fonts
+            // that are never registered, so convert them to self-contained
+            // <path>s before capturing. Conversion is async (it fetches fonts);
+            // expose the promise so the rest of the flow (and tests) can await.
+            // bind() guards only this callback's entry: the conversion it
+            // starts can finish after the edition closed, so its continuation
+            // is bound too and runs on this instance (`this`), never on the
+            // `$exeDevice` that replaced it.
+            const renderedSvg = preview.querySelector('svg');
+            this.tikzCapturePromise = Promise.resolve(
+                renderedSvg ? this.convertTikzTextToPaths(renderedSvg) : null
+            )
+                .catch(() => {})
+                .then(
+                    lifecycle.bind(function () {
+                        return this.captureRenderedTikzPreview(code, preview);
+                    })
+                );
+        });
         $exeDevice.tikzFinishedHandler = onFinished;
         preview.addEventListener('tikzjax-load-finished', onFinished);
+        lifecycle.own(() =>
+            preview.removeEventListener('tikzjax-load-finished', onFinished)
+        );
 
         preview.appendChild(tikzScript);
+    },
+
+    /**
+     * Compile a single TikZ circuit to a sanitized SVG string and resolve with
+     * it (or '' on failure/timeout).
+     *
+     * Used by the AI save flow to pre-render every circuit before inserting its
+     * question. It renders through the exact same proven path as the manual
+     * preview — the persistent #elceTikzPreview element that TikZJax already
+     * compiles reliably — instead of a throwaway container, which TikZJax did
+     * not always finish for back-to-back renders. It does NOT touch the
+     * single-slot SVG cache; addQuestions() re-renders the active question
+     * afterwards, restoring the preview. Resolves '' when the code is empty,
+     * when TikZJax produces no <svg>, or when it does not finish within the
+     * timeout — callers treat an empty result as "this circuit could not be
+     * generated". TikZJax gives no reliable error event, so a circuit that never
+     * compiles relies on that timeout.
+     */
+    renderTikzCodeToSvg: function (code, timeoutMs = $exeDevice.tikzRenderTimeoutMs) {
+        const normalized = $exeDevice.normalizeTikzCode(code);
+        const preview = document.getElementById('elceTikzPreview');
+        if (!normalized || !preview) {
+            return Promise.resolve('');
+        }
+
+        // Drop any listener still pending from a manual preview render so it
+        // does not also fire on our script.
+        if ($exeDevice.tikzFinishedHandler) {
+            preview.removeEventListener(
+                'tikzjax-load-finished',
+                $exeDevice.tikzFinishedHandler
+            );
+            $exeDevice.tikzFinishedHandler = null;
+        }
+
+        // Same ownership as the manual preview: the timeout and the TikZJax
+        // answer both outlive the render request, so they belong to this
+        // edition and stop with it.
+        // `lifecycle.promise()` rejects with an AbortError on teardown, which
+        // cancels the timeout and the listener that would otherwise settle it.
+        const lifecycle = this.$lifecycle;
+        return lifecycle.promise((resolve) => {
+            let settled = false;
+            const finish = (svg) => {
+                if (settled) return;
+                settled = true;
+                lifecycle.clearTimeout(timer);
+                preview.removeEventListener('tikzjax-load-finished', onFinished);
+                resolve(svg || '');
+            };
+
+            const timer = lifecycle.setTimeout(() => finish(''), timeoutMs);
+
+            const onFinished = lifecycle.bind(function () {
+                const renderedSvg = preview.querySelector('svg');
+                Promise.resolve(
+                    renderedSvg ? this.convertTikzTextToPaths(renderedSvg) : null
+                )
+                    .catch(() => {})
+                    .then(
+                        lifecycle.bind(function () {
+                            const finalSvg = preview.querySelector('svg');
+                            finish(
+                                finalSvg ? this.sanitizeTikzSvg(finalSvg) : ''
+                            );
+                        })
+                    );
+            });
+
+            preview.innerHTML = '';
+            preview.addEventListener('tikzjax-load-finished', onFinished);
+            lifecycle.own(() =>
+                preview.removeEventListener('tikzjax-load-finished', onFinished)
+            );
+
+            const tikzScript = document.createElement('script');
+            tikzScript.type = 'text/tikz';
+            tikzScript.dataset.texPackages = JSON.stringify({
+                circuitikz: '',
+                amsmath: '',
+                amssymb: '',
+            });
+            tikzScript.dataset.showConsole = 'false';
+            tikzScript.textContent =
+                '\\begin{document}' + normalized + '\\end{document}';
+            preview.appendChild(tikzScript);
+        });
     },
 
     clearQuestion: function () {
@@ -732,25 +1514,6 @@ var $exeDevice = {
                                 </select>
                                 <button id="elceGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item" data-target="elceEvaluation">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="elceEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="elceEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center flex-nowrap gap-2 ms-2 ELCE-EEvaluationFields">
-                                    <label for="elceEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" class="form-control" id="elceEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                                    <a href="#elceEvaluationHelp" id="elceEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </div>
-                            </div>
-                            <p id="elceEvaluationHelp" class="exe-block-info ELCE-TypeGameHelp">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -909,7 +1672,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(11)}
 
@@ -1032,11 +1795,16 @@ var $exeDevice = {
         $('#elceHasFeedBack').prop('checked', game.feedBack);
         $('#elcePercentajeFB').val(game.percentajeFB);
         $('#elcePercentajeQuestionsValue').val(game.percentajeQuestions);
-        $('#elceEvaluation').prop('checked', game.evaluation);
-        $('#elceEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#elceGlobalTimes').val(game.globalTime);
 
-        $('#elceEvaluationID').prop('disabled', !game.evaluation);
 
         for (let i = 0; i < game.selectsGame.length; i++) {
             game.selectsGame[i].typeSelect =
@@ -1229,13 +1997,16 @@ var $exeDevice = {
             return;
         }
         const data = window.URL.createObjectURL(newBlob);
+        // Owned by the edition, so the blob is released even when the editor
+        // closes before the cleanup timer runs.
+        this.$lifecycle.own(() => window.URL.revokeObjectURL(data));
         const link = document.createElement('a');
         link.href = data;
         link.download = `${_('test')}.txt`;
 
         document.getElementById('electricalCircuitsIdeviceForm').appendChild(link);
         link.click();
-        setTimeout(() => {
+        this.$lifecycle.setTimeout(() => {
             document
                 .getElementById('electricalCircuitsIdeviceForm')
                 .removeChild(link);
@@ -1290,12 +2061,23 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#elcePercentajeQuestionsValue').val())
             ),
-            evaluation = $('#elceEvaluation').is(':checked'),
-            evaluationID = $('#elceEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            evaluation = progressBar.evaluation,
+            evaluationID = progressBar.evaluationID,
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#elceGlobalTimes').val(), 10);
 
         if (!itinerary) return false;
+        // getValues() warns and returns false on a report identifier that is
+        // too short. Without this the form carried on and saved the activity
+        // with the report silently switched off, because reading `.evaluation`
+        // off `false` yields undefined rather than throwing. The check this
+        // replaces only ran in test mode, so a bad identifier went through
+        // unchallenged in every other one.
+        if (!progressBar) return false;
 
         if (activityMode === 'test') {
             if (feedBack && textFeedBack.trim().length == 0) {
@@ -1304,10 +2086,6 @@ var $exeDevice = {
             }
             if (showSolution && timeShowSolution.length == 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-                return false;
-            }
-            if (evaluation && evaluationID.length < 5) {
-                eXe.app.alert($exeDevice.msgs.msgIDLenght);
                 return false;
             }
         }
@@ -1370,8 +2148,6 @@ var $exeDevice = {
             questionsRandom: questionsRandom,
             showSolution: showSolution,
             timeShowSolution: timeShowSolution,
-            useLives: false,
-            numberLives: 3,
             itinerary: itinerary,
             selectsGame: selectsGame,
             isScorm: scorm.isScorm,
@@ -1390,6 +2166,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
             globalTime: globalTime,
         };
@@ -1438,6 +2216,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         const $elcePaste = $('#elcePaste'),
             $elceTimeShowSolution = $('#elceTimeShowSolution'),
             $elceShowSolution = $('#elceShowSolution'),
@@ -1466,8 +2245,8 @@ var $exeDevice = {
                 )
                     return;
                 if (
-                    $(e.target).is('#elceEvaluationID') ||
-                    $(e.target).closest('#elceEvaluationHelpLnk').length
+                    $(e.target).is('#eXeProgressReportID') ||
+                    $(e.target).closest('#eXeProgressReportHelpLnk').length
                 )
                     return;
                 const $input = $(this).find('input.toggle-input').first();
@@ -1480,14 +2259,7 @@ var $exeDevice = {
 
         $electricalCircuitsForm.on(
             'click',
-            '#elceEvaluationID',
-            function (e) {
-                e.stopPropagation();
-            }
-        );
-        $electricalCircuitsForm.on(
-            'click',
-            '#elceEvaluationHelpLnk, #elceEvaluationHelpLnk *',
+            '#eXeProgressReportID',
             function (e) {
                 e.stopPropagation();
             }
@@ -1641,10 +2413,15 @@ var $exeDevice = {
                         );
                         return;
                     }
+                    // A read still in flight is aborted when the editor
+                    // closes, and the callback is bound to this edition, so an
+                    // import that completes late never lands in another
+                    // iDevice.
                     const reader = new FileReader();
-                    reader.onload = function (e) {
-                        $exeDevice.importGame(e.target.result, file.type);
-                    };
+                    lifecycle.ownFileReader(reader);
+                    reader.onload = lifecycle.bind(function (e) {
+                        this.importGame(e.target.result, file.type);
+                    });
                     reader.readAsText(file);
                 });
             $('#eXeGameExportQuestions').on('click', () => {
@@ -1709,20 +2486,12 @@ var $exeDevice = {
             }
         });
 
-        $('#elceEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#elceEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#elceEvaluationHelpLnk').on('click', function () {
-            $('#elceEvaluationHelp').toggle();
-            return false;
-        });
-
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
-            10,
-            $exeDevice.insertQuestions
+            11,
+            $exeDevice.insertAIQuestions
         );
 
         //eXe 3.0 Dismissible messages
@@ -1978,17 +2747,28 @@ var $exeDevice = {
         $exeDevice.insertQuestions(lines);
     },
 
-    insertQuestions: function (lines) {
+    // Pure parser shared by the file-import path (insertQuestions) and the AI
+    // save path (insertAIQuestions). Returns the parsed question objects, the
+    // source line each one came from (parallel to `questions`, so a question
+    // that later fails to render can be put back verbatim for the user to fix),
+    // and the lines that matched no supported format.
+    parseAIQuestions: function (lines) {
         // Format: Description#TikzCode#Solution#Question#OptionA#OptionB[#OptionC][#OptionD]
         const lineFormat =
                 /^([^#]+)#([^#]+)#([0-3]|[ABCD]{1,4})#([^#]+)#([^#]+)#([^#]+)(#([^#]*))?(#([^#]*))?$/i,
             lineFormat1 = /^([^#]+)#([^#]+)$/;
-        let questions = [];
+        const questions = [],
+            sourceLines = [],
+            invalidLines = [];
 
-        lines.forEach((line) => {
+        (lines || []).forEach((line) => {
+            if (typeof line !== 'string' || line.trim().length === 0) {
+                return;
+            }
+            const trimmed = line.trim();
             const p = $exeDevice.getCuestionDefault();
             if (lineFormat.test(line)) {
-                const linarray = line.trim().split('#'),
+                const linarray = trimmed.split('#'),
                     description = linarray[0],
                     tikzCode = linarray[1],
                     solution = linarray[2];
@@ -2000,29 +2780,127 @@ var $exeDevice = {
                         solutionChar = letters.charAt(index);
                     }
                 }
-                p.description = description;
-                p.tikzCode = tikzCode;
+                p.description = $exeDevice.normalizeVisibleCircuitText(description);
+                p.tikzCode = $exeDevice.normalizeTikzCode(tikzCode);
                 p.solution = solutionChar;
-                p.quextion = linarray[3];
-                p.options[0] = linarray[4] || '';
-                p.options[1] = linarray[5] || '';
-                p.options[2] = linarray[6] || '';
-                p.options[3] = linarray[7] || '';
+                p.quextion = $exeDevice.normalizeVisibleCircuitText(linarray[3]);
+                p.options[0] = $exeDevice.normalizeVisibleCircuitText(linarray[4]);
+                p.options[1] = $exeDevice.normalizeVisibleCircuitText(linarray[5]);
+                p.options[2] = $exeDevice.normalizeVisibleCircuitText(linarray[6]);
+                p.options[3] = $exeDevice.normalizeVisibleCircuitText(linarray[7]);
                 p.numberOptions = linarray.length - 4;
                 questions.push(p);
+                sourceLines.push(trimmed);
             } else if (lineFormat1.test(line)) {
-                const linarray1 = line.trim().split('#');
+                const linarray1 = trimmed.split('#');
                 p.typeSelect = 2;
                 p.solutionQuestion = linarray1[0];
                 p.quextion = linarray1[1];
                 p.percentageShow = 35;
                 if (p.quextion && p.solutionQuestion) {
                     questions.push(p);
+                    sourceLines.push(trimmed);
+                } else {
+                    invalidLines.push(trimmed);
                 }
+            } else {
+                invalidLines.push(trimmed);
             }
         });
 
+        return { questions, lines: sourceLines, invalidLines };
+    },
+
+    insertQuestions: function (lines) {
+        const { questions } = $exeDevice.parseAIQuestions(lines);
         $exeDevice.addQuestions(questions);
+    },
+
+    // Callback for the AI "save questions" button. Unlike insertQuestions (used
+    // by file import), it renders every circuit before inserting: a blocking
+    // "please wait" modal is shown while each TikZ code is compiled to SVG, and a
+    // question whose circuit cannot be generated is discarded. The rejected lines
+    // (verbatim, plus any that had an invalid format) are returned as
+    // `remainingLines` so the shared handler can put them back in the text box
+    // for the user to fix and try again. Returns { handledMessaging: true } so
+    // the shared handler skips its generic alert.
+    insertAIQuestions: async function (validLines, invalidLines = []) {
+        // Passed as a bare callback, so `this` is not the device. Capture the
+        // edition that asked now: every await below can outlive it.
+        const self = $exeDevice;
+        const parsed = self.parseAIQuestions(validLines);
+        const remainingLines = [...(invalidLines || []), ...parsed.invalidLines];
+
+        self.showCircuitGenerationModal();
+        try {
+            const validQuestions = [];
+            let isFirstRender = true;
+            for (let i = 0; i < parsed.questions.length; i++) {
+                const question = parsed.questions[i];
+                const code = (question.tikzCode || '').trim();
+                if (!code) {
+                    // Word/phrase questions carry no circuit; nothing to render.
+                    validQuestions.push(question);
+                    continue;
+                }
+                // Absorb TikZJax's one-time WASM cold start on the first compiled
+                // circuit so a valid circuit is not wrongly discarded on a slow
+                // browser; the engine is warm for the rest.
+                const timeoutMs = isFirstRender
+                    ? self.tikzColdStartTimeoutMs
+                    : self.tikzRenderTimeoutMs;
+                isFirstRender = false;
+                let svg;
+                try {
+                    svg = await self.renderTikzCodeToSvg(code, timeoutMs);
+                } catch (error) {
+                    // The editor closed mid-render: nothing is left to add the
+                    // questions to or to report into. `finally` still closes
+                    // the app-level modal.
+                    if (self.$lifecycle.isAbortError(error)) {
+                        return { handledMessaging: true };
+                    }
+                    throw error;
+                }
+                if (svg) {
+                    question.tikzSvg = svg;
+                    validQuestions.push(question);
+                } else {
+                    remainingLines.push(parsed.lines[i]);
+                }
+            }
+
+            if (validQuestions.length > 0) {
+                self.addQuestions(validQuestions);
+            }
+        } finally {
+            self.hideCircuitGenerationModal();
+        }
+
+        if (remainingLines.length > 0) {
+            self.showMessage(self.msgs.msgEQuestionsNotAdded);
+        } else {
+            self.showMessage(self.msgs.msgQuestionsAdded);
+        }
+
+        return { handledMessaging: true, remainingLines };
+    },
+
+    showCircuitGenerationModal: function () {
+        const modals = window.eXeLearning?.app?.modals;
+        if (modals && modals.info && typeof modals.info.show === 'function') {
+            modals.info.show({
+                title: $exeDevice.msgs.msgGeneratingCircuitsTitle,
+                body: $exeDevice.msgs.msgGeneratingCircuits,
+            });
+        }
+    },
+
+    hideCircuitGenerationModal: function () {
+        const modals = window.eXeLearning?.app?.modals;
+        if (modals && modals.info && typeof modals.info.close === 'function') {
+            modals.info.close();
+        }
     },
 
     addQuestions: function (questions) {

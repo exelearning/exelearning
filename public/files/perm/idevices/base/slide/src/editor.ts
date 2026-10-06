@@ -18,6 +18,7 @@ import { SlideAssetService } from './assetService.js';
 import { SlideCanvasAdapter, type SelectionInfo } from './canvasAdapter.js';
 import { SlideCanvasControls } from './canvasControls.js';
 import { SlideHistoryManager } from './history.js';
+import { resolveKeyboardAction, type EditorKeyState } from './keyboardActions.js';
 import { clampDimensions, parsePrevious, type AnyObj, type ParsedSlide } from './serializer.js';
 import { buildSnapshot, readSnapshot } from './snapshot.js';
 import type { ShapeKind } from './shapes.js';
@@ -468,59 +469,63 @@ export class SlideEditor implements EditorAPI {
     private attachKeyboard(): void {
         const onKey = (event: KeyboardEvent) => {
             if (this.destroyed) return;
-            // In code mode the canvas is hidden and the textarea owns input
-            // (it handles undo/delete natively). Skip canvas shortcuts.
-            if (this.codeMode) return;
             const tgt = event.target as HTMLElement | null;
             const tag = tgt?.tagName;
-            const editingInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-            if (editingInput) return;
-            // Crop mode: Enter applies, Escape cancels. Both swallow the
-            // event so Fabric's default selection-cleanup doesn't fire.
-            if (this.adapter.isCropping()) {
-                if (event.key === 'Enter') {
+            const state: EditorKeyState = {
+                // In code mode the canvas is hidden and the textarea owns
+                // input (it handles undo/delete natively).
+                codeMode: this.codeMode,
+                editingInput: tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT',
+                cropping: this.adapter.isCropping(),
+                editingText: this.adapter.selectionIsEditingText(),
+            };
+            const action = resolveKeyboardAction(event, state);
+            switch (action.kind) {
+                case 'crop-apply':
                     event.preventDefault();
                     this.adapter.applyCrop();
                     this.toolbar.contextual.update(this.adapter.getSelectionInfo());
-                    return;
-                }
-                if (event.key === 'Escape') {
+                    break;
+                case 'crop-cancel':
                     event.preventDefault();
                     this.adapter.cancelCrop();
                     this.toolbar.contextual.update(this.adapter.getSelectionInfo());
-                    return;
-                }
-                // Block destructive shortcuts so the overlay isn't deleted.
-                if (event.key === 'Delete' || event.key === 'Backspace') {
+                    break;
+                case 'crop-block':
+                    // Swallow destructive shortcuts so the overlay isn't deleted.
                     event.preventDefault();
-                    return;
-                }
-                return;
-            }
-            if (this.adapter.selectionIsEditingText()) {
-                if (event.key === 'Escape') {
+                    break;
+                case 'escape-text':
+                    event.preventDefault();
                     this.adapter.discardSelection();
+                    break;
+                case 'delete':
+                    if (this.adapter.deleteSelection()) event.preventDefault();
+                    break;
+                case 'undo':
                     event.preventDefault();
-                }
-                return;
-            }
-            if (event.key === 'Delete' || event.key === 'Backspace') {
-                if (this.adapter.deleteSelection()) event.preventDefault();
-                return;
-            }
-            const meta = event.ctrlKey || event.metaKey;
-            if (meta && !event.shiftKey && (event.key === 'z' || event.key === 'Z')) {
-                event.preventDefault();
-                void this.handleUndo();
-                return;
-            }
-            if (meta && ((event.shiftKey && (event.key === 'z' || event.key === 'Z')) || event.key === 'y' || event.key === 'Y')) {
-                event.preventDefault();
-                void this.handleRedo();
-                return;
-            }
-            if (event.key === 'Escape') {
-                this.adapter.discardSelection();
+                    void this.handleUndo();
+                    break;
+                case 'redo':
+                    event.preventDefault();
+                    void this.handleRedo();
+                    break;
+                case 'duplicate':
+                    // Only swallow Ctrl/Cmd+D when there is a selection to
+                    // duplicate; otherwise leave the browser shortcut alone.
+                    if (this.adapter.getSelectionInfo().kind !== 'none') {
+                        event.preventDefault();
+                        void this.adapter.duplicateSelection();
+                    }
+                    break;
+                case 'nudge':
+                    if (this.adapter.nudgeSelection(action.dx, action.dy)) event.preventDefault();
+                    break;
+                case 'escape':
+                    this.adapter.discardSelection();
+                    break;
+                default:
+                    break;
             }
         };
         document.addEventListener('keydown', onKey);

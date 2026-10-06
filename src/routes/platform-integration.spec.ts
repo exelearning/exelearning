@@ -4,7 +4,11 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { SignJWT } from 'jose';
-import { platformIntegrationRoutes } from './platform-integration';
+import {
+    platformIntegrationRoutes,
+    configurePlatformIntegrationRoutes,
+    resetPlatformIntegrationRoutesDependencies,
+} from './platform-integration';
 import {
     configure as configureService,
     resetDependencies as resetServiceDependencies,
@@ -30,6 +34,10 @@ describe('Platform Integration Routes', () => {
         delete process.env.PROVIDER_IDS;
         delete process.env.PROVIDER_TOKENS;
         delete process.env.PROVIDER_URLS;
+        // Provider URL validation now fails closed (bug M3): an empty allow-list rejects every
+        // returnurl. Configure a default allow-list matching the happy-path return URLs so the
+        // many 200-expecting tests keep passing. Tests that set their own PROVIDER_URLS override this.
+        process.env.PROVIDER_URLS = 'https://moodle.example.com';
     });
 
     afterEach(() => {
@@ -37,6 +45,8 @@ describe('Platform Integration Routes', () => {
         globalThis.fetch = originalFetch;
         // Reset service dependencies
         resetServiceDependencies();
+        // Reset route-level dependencies (ownership check lookup)
+        resetPlatformIntegrationRoutesDependencies();
         // Restore original environment variables
         Object.keys(originalEnv).forEach(key => {
             if (originalEnv[key] !== undefined) {
@@ -303,6 +313,12 @@ describe('Platform Integration Routes', () => {
         it('should return error when project not found', async () => {
             const token = await createValidToken();
 
+            // Route ownership lookup also sees no project, so the gate defers
+            // to the service, which returns the canonical "Project not found".
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => undefined,
+            });
+
             // Configure service with mock that returns null for project
             configureService({
                 findProjectByUuid: async () => null,
@@ -328,6 +344,12 @@ describe('Platform Integration Routes', () => {
         it('should return success when upload succeeds', async () => {
             const token = await createValidToken();
             const mockSnapshot = createMockSnapshot();
+
+            // Project is already linked to the same platform module (cmid '456'
+            // from the JWT), so the ownership gate must allow the export.
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'test-uuid', platform_id: '456' }),
+            });
 
             // Configure service with mocks
             configureService({
@@ -372,6 +394,11 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken();
             const mockSnapshot = createMockSnapshot();
 
+            // Unlinked project (platform_id null) passes the ownership gate.
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'test-uuid', platform_id: null }),
+            });
+
             configureService({
                 findProjectByUuid: async () => ({
                     id: 1,
@@ -408,6 +435,11 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken();
             const mockSnapshot = createMockSnapshot();
 
+            // Unlinked project (platform_id null) passes the ownership gate.
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'test-uuid', platform_id: null }),
+            });
+
             configureService({
                 findProjectByUuid: async () => ({
                     id: 1,
@@ -439,6 +471,113 @@ describe('Platform Integration Routes', () => {
 
             const data = await response.json();
             expect(data.responseMessage).toContain('Connection refused');
+        });
+
+        it('returns 403 and performs no export/post-back when the project belongs to another platform module (IDOR)', async () => {
+            // Attacker holds a valid JWT for their own course module (cmid '456'),
+            // but supplies a victim's projectUuid that is bound to a different
+            // module (cmid '999'). The ownership gate must deny the request.
+            const token = await createValidToken({ cmid: '456' });
+
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'victim-uuid', platform_id: '999' }),
+            });
+
+            // Spy on the export/post-back dependencies. None of them must run.
+            let snapshotLookupCalled = false;
+            let updateCalled = false;
+            configureService({
+                findProjectByUuid: async () => {
+                    throw new Error('service.findProjectByUuid must not run when access is denied');
+                },
+                findSnapshotByProjectId: async () => {
+                    snapshotLookupCalled = true;
+                    return createMockSnapshot();
+                },
+                updateProjectByUuid: async () => {
+                    updateCalled = true;
+                    return undefined;
+                },
+            });
+
+            // Network must never be touched (no ZIP shipped to the platform).
+            let fetchCalled = false;
+            globalThis.fetch = async () => {
+                fetchCalled = true;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectUuid: 'victim-uuid',
+                        jwt_token: token,
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(403);
+
+            const data = await response.json();
+            expect(data.responseMessage).toContain('Forbidden');
+
+            // Critically: no export was generated and nothing was posted back.
+            expect(fetchCalled).toBe(false);
+            expect(snapshotLookupCalled).toBe(false);
+            expect(updateCalled).toBe(false);
+        });
+
+        it('proceeds when the project is bound to the same platform module as the JWT', async () => {
+            // Project's platform_id matches the JWT cmid: legitimate re-save.
+            const token = await createValidToken({ cmid: '456' });
+            const mockSnapshot = createMockSnapshot();
+
+            let snapshotLookupCalled = false;
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'owned-uuid', platform_id: '456' }),
+            });
+            configureService({
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'owned-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                findSnapshotByProjectId: async () => {
+                    snapshotLookupCalled = true;
+                    return mockSnapshot;
+                },
+                updateProjectByUuid: async () => undefined,
+            });
+
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectUuid: 'owned-uuid',
+                        jwt_token: token,
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.responseMessage).toBe('OK');
+            // The gate let the export proceed.
+            expect(snapshotLookupCalled).toBe(true);
         });
     });
 
@@ -506,6 +645,23 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken({
                 returnurl: 'https://other-moodle.com/mod/exescorm/view.php',
             });
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/openPlatformElp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: token }),
+                }),
+            );
+
+            expect(response.status).toBe(401);
+        });
+
+        it('should reject valid-signature tokens when PROVIDER_URLS is unset (fail closed)', async () => {
+            // Bug M3: an empty allow-list must reject every return URL instead of allowing all.
+            delete process.env.PROVIDER_URLS;
+
+            const token = await createValidToken();
 
             const response = await app.handle(
                 new Request('http://localhost/api/platform/integration/openPlatformElp', {
@@ -690,6 +846,32 @@ describe('Platform Integration Routes', () => {
         });
     });
 });
+
+/**
+ * Build a minimal project row for the route-level ownership lookup.
+ *
+ * Only the fields read by the ownership gate matter; the rest are filled with
+ * representative defaults so the object satisfies the Project shape.
+ */
+function makeProjectRow(overrides: { uuid?: string; platform_id?: string | null } = {}) {
+    return {
+        id: 1,
+        uuid: overrides.uuid ?? 'test-uuid',
+        title: 'Test Project',
+        description: null,
+        owner_id: 1,
+        status: 'active',
+        visibility: 'private',
+        language: 'en',
+        author: null,
+        license: null,
+        last_accessed_at: null,
+        saved_once: 1,
+        platform_id: overrides.platform_id ?? null,
+        created_at: Date.now(),
+        updated_at: Date.now(),
+    };
+}
 
 /**
  * Create a minimal mock Yjs document with the required structure

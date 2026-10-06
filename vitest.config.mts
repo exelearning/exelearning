@@ -14,6 +14,23 @@ export default defineConfig({
         // Use happy-dom for all frontend tests (provides window, document, etc.)
         environment: 'happy-dom',
 
+        // Prevent happy-dom from fetching external resources referenced by the
+        // HTML that tests parse/inject (e.g. `<link rel="stylesheet">`). Those
+        // fetches are fire-and-forget async tasks; when a worker tears down its
+        // frame before they settle, the rejection escapes as an "Unhandled
+        // Rejection" and fails the whole run even though every test passed.
+        // Disabling file loading removes the async task entirely and resolves
+        // the element as a successful (no-op) load. See HTMLLinkElement.#loadStyleSheet.
+        environmentOptions: {
+            happyDOM: {
+                settings: {
+                    disableCSSFileLoading: true,
+                    disableJavaScriptFileLoading: true,
+                    handleDisabledFileLoadingAsSuccess: true,
+                },
+            },
+        },
+
         // Setup file for mocks
         setupFiles: ['./public/vitest.setup.js'],
 
@@ -44,7 +61,6 @@ export default defineConfig({
 
         // Worker isolation - critical for memory management
         pool: 'threads',
-        singleFork: false,
         isolate: true,
 
         // Limit concurrent tests to prevent memory explosion
@@ -65,10 +81,14 @@ export default defineConfig({
             exclude: [
                 '**/node_modules/**',
                 '**/*.test.js',
+                '**/*.test-util.js',
                 '**/vitest.setup.js',
                 '**/libs/**',
                 '**/*.min.js',
                 '**/*.bundle.js',
+                // Vendored third-party code (never edited locally, see
+                // THIRD-PARTY-NOTICES.md)
+                'public/app/common/scorm/scorm12/vendor/**',
                 'public/app/common/mermaid/**',
                 'public/app/common/mindmaps/**',
                 'public/app/common/fix_webm_duration/**',

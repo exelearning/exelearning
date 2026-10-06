@@ -7,6 +7,7 @@ import type { Kysely } from 'kysely';
 import type { Database, Project, NewProject, ProjectUpdate, User } from '../types';
 import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn, insertIgnore } from '../helpers';
 
 // ============================================================================
@@ -71,6 +72,8 @@ function buildProjectWithOwner(result: ProjectWithOwnerRow): Project & { owner: 
         license: result.license,
         last_accessed_at: result.last_accessed_at,
         saved_once: result.saved_once,
+        public_view_id: result.public_view_id,
+        public_view_enabled: result.public_view_enabled,
         created_at: result.created_at,
         updated_at: result.updated_at,
         owner: extractOwnerFromResult(result),
@@ -113,6 +116,26 @@ export async function findProjectByUuid(db: Kysely<Database>, uuid: string): Pro
 
 export async function findProjectByPlatformId(db: Kysely<Database>, platformId: string): Promise<Project | undefined> {
     return db.selectFrom('projects').selectAll().where('platform_id', '=', platformId).executeTakeFirst();
+}
+
+/**
+ * Find a project by its opaque public view id.
+ * This is used only by public viewer/export routes. It never accepts the
+ * internal project UUID, so the editing identifier cannot be used as a
+ * public token.
+ */
+export async function findProjectByPublicViewId(
+    db: Kysely<Database>,
+    publicViewId: string,
+): Promise<Project | undefined> {
+    return db.selectFrom('projects').selectAll().where('public_view_id', '=', publicViewId).executeTakeFirst();
+}
+
+/**
+ * Generate a new opaque public view id, distinct from the project UUID.
+ */
+export function generatePublicViewId(): string {
+    return randomUUID();
 }
 
 export async function findProjectWithOwner(
@@ -533,46 +556,52 @@ export async function transferOwnership(
     projectId: number,
     newOwnerId: number,
 ): Promise<TransferOwnershipResult> {
-    // 1. Get current project to find previous owner
-    const project = await findProjectById(db, projectId);
-    if (!project) {
-        throw new Error('Project not found');
-    }
+    // Wrap read-verify and all writes in a single transaction so the multi-row
+    // mutation (remove collaborator + add collaborator + update owner_id) either
+    // fully commits or fully rolls back. A mid-sequence failure must never leave
+    // inconsistent ownership state.
+    return db.transaction().execute(async trx => {
+        // 1. Get current project to find previous owner
+        const project = await findProjectById(trx, projectId);
+        if (!project) {
+            throw new Error('Project not found');
+        }
 
-    const previousOwnerId = project.owner_id;
+        const previousOwnerId = project.owner_id;
 
-    // 2. Cannot transfer to self
-    if (previousOwnerId === newOwnerId) {
-        throw new Error('Cannot transfer ownership to current owner');
-    }
+        // 2. Cannot transfer to self
+        if (previousOwnerId === newOwnerId) {
+            throw new Error('Cannot transfer ownership to current owner');
+        }
 
-    // 3. Verify new owner is a collaborator
-    const newOwnerIsCollaborator = await isCollaborator(db, projectId, newOwnerId);
-    if (!newOwnerIsCollaborator) {
-        throw new Error('New owner must be a current collaborator');
-    }
+        // 3. Verify new owner is a collaborator
+        const newOwnerIsCollaborator = await isCollaborator(trx, projectId, newOwnerId);
+        if (!newOwnerIsCollaborator) {
+            throw new Error('New owner must be a current collaborator');
+        }
 
-    // 4. Remove new owner from collaborators (they become owner)
-    await removeCollaborator(db, projectId, newOwnerId);
+        // 4. Remove new owner from collaborators (they become owner)
+        await removeCollaborator(trx, projectId, newOwnerId);
 
-    // 5. Add previous owner as collaborator
-    await addCollaborator(db, projectId, previousOwnerId);
+        // 5. Add previous owner as collaborator
+        await addCollaborator(trx, projectId, previousOwnerId);
 
-    // 6. Update owner_id
-    await db
-        .updateTable('projects')
-        .set({
-            owner_id: newOwnerId,
-            updated_at: now(),
-        })
-        .where('id', '=', projectId)
-        .execute();
+        // 6. Update owner_id
+        await trx
+            .updateTable('projects')
+            .set({
+                owner_id: newOwnerId,
+                updated_at: now(),
+            })
+            .where('id', '=', projectId)
+            .execute();
 
-    return {
-        success: true,
-        previousOwnerId,
-        newOwnerId,
-    };
+        return {
+            success: true,
+            previousOwnerId,
+            newOwnerId,
+        };
+    });
 }
 
 /**
@@ -595,19 +624,14 @@ export async function transferOwnershipByUuid(
     return transferOwnership(db, project.id, newOwnerId);
 }
 
+// Visibility governs edit access only. The public read-only viewer link is
+// controlled independently via public_view_enabled (see setPublicViewEnabled).
 export async function updateProjectVisibility(
     db: Kysely<Database>,
     projectId: number,
     visibility: string,
 ): Promise<void> {
-    await db
-        .updateTable('projects')
-        .set({
-            visibility,
-            updated_at: now(),
-        })
-        .where('id', '=', projectId)
-        .execute();
+    await db.updateTable('projects').set({ visibility, updated_at: now() }).where('id', '=', projectId).execute();
 }
 
 export async function updateProjectVisibilityByUuid(
@@ -615,14 +639,77 @@ export async function updateProjectVisibilityByUuid(
     uuid: string,
     visibility: string,
 ): Promise<void> {
+    await db.updateTable('projects').set({ visibility, updated_at: now() }).where('uuid', '=', uuid).execute();
+}
+
+/**
+ * Enable or disable the public read-only viewer link for a project.
+ *
+ * Independent of `visibility` (edit access). When enabling and the project has
+ * no public_view_id yet, an opaque one is generated. The id is never cleared on
+ * disable, so the previous link is preserved if the project is re-enabled.
+ */
+async function setPublicViewEnabledWhere(
+    db: Kysely<Database>,
+    existing: Project | undefined,
+    enabled: boolean,
+    column: 'id' | 'uuid',
+    value: number | string,
+): Promise<void> {
+    const update: ProjectUpdate = {
+        public_view_enabled: enabled ? 1 : 0,
+        updated_at: now(),
+    };
+    if (enabled && !existing?.public_view_id) {
+        update.public_view_id = generatePublicViewId();
+    }
     await db
         .updateTable('projects')
-        .set({
-            visibility,
-            updated_at: now(),
-        })
+        .set(update)
+        .where(column, '=', value as never)
+        .execute();
+}
+
+export async function setPublicViewEnabled(
+    db: Kysely<Database>,
+    projectId: number,
+    enabled: boolean,
+): Promise<Project | undefined> {
+    const existing = await findProjectById(db, projectId);
+    await setPublicViewEnabledWhere(db, existing, enabled, 'id', projectId);
+    return findProjectById(db, projectId);
+}
+
+export async function setPublicViewEnabledByUuid(
+    db: Kysely<Database>,
+    uuid: string,
+    enabled: boolean,
+): Promise<Project | undefined> {
+    const existing = await findProjectByUuid(db, uuid);
+    await setPublicViewEnabledWhere(db, existing, enabled, 'uuid', uuid);
+    return findProjectByUuid(db, uuid);
+}
+
+/**
+ * Generate a fresh public_view_id, invalidating any previously shared public
+ * link. Does not change public_view_enabled.
+ */
+export async function regeneratePublicViewId(db: Kysely<Database>, projectId: number): Promise<Project | undefined> {
+    await db
+        .updateTable('projects')
+        .set({ public_view_id: generatePublicViewId(), updated_at: now() })
+        .where('id', '=', projectId)
+        .execute();
+    return findProjectById(db, projectId);
+}
+
+export async function regeneratePublicViewIdByUuid(db: Kysely<Database>, uuid: string): Promise<Project | undefined> {
+    await db
+        .updateTable('projects')
+        .set({ public_view_id: generatePublicViewId(), updated_at: now() })
         .where('uuid', '=', uuid)
         .execute();
+    return findProjectByUuid(db, uuid);
 }
 
 // ============================================================================
@@ -633,37 +720,84 @@ export async function updateProjectVisibilityByUuid(
  * Find unsaved projects older than specified age
  * Used for cleanup of abandoned projects that were never saved
  *
+ * Safety guard (#1932): a project is only eligible for auto-deletion when it is
+ * private AND has no collaborators. A shared/public project — or one with
+ * collaborators — can hold real collaborative work even while `saved_once = 0`
+ * (the flag is flipped by a best-effort, client-driven save when collaboration
+ * starts, which may not complete), so such projects are never returned here.
+ *
+ * The collaborator guard uses a correlated EXISTS rather than `id NOT IN (subquery)`
+ * for cross-database portability and to avoid the NULL pitfalls of `NOT IN` (a single
+ * NULL in the subquery makes `NOT IN` return no rows on SQLite/PostgreSQL/MySQL alike).
+ *
  * @param db - Kysely database instance
  * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
- * @returns Array of projects with saved_once = 0 older than maxAgeMs
+ * @returns Array of private, collaborator-free projects with saved_once = 0 older than maxAgeMs
  */
 export async function findUnsavedProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
     const cutoffTime = now() - maxAgeMs;
-    return db
-        .selectFrom('projects')
-        .selectAll()
-        .where('saved_once', '=', 0)
-        .where('created_at', '<', cutoffTime)
-        .execute();
+    return (
+        db
+            .selectFrom('projects')
+            .selectAll()
+            .where('saved_once', '=', 0)
+            .where('created_at', '<', cutoffTime)
+            // Never auto-delete shared work: only private projects are eligible.
+            .where('visibility', '=', 'private')
+            // ...and only when nobody else has been granted access.
+            .where(eb =>
+                eb.not(
+                    eb.exists(
+                        eb
+                            .selectFrom('project_collaborators')
+                            .select('project_collaborators.project_id')
+                            .whereRef('project_collaborators.project_id', '=', 'projects.id'),
+                    ),
+                ),
+            )
+            .execute()
+    );
 }
 
 /**
  * Find projects owned by guest users older than specified age
  * Guest users have email pattern: guest_*@guest.local
  *
+ * Safety guard (#1932): mirrors findUnsavedProjectsOlderThan — a guest project is
+ * only eligible for hard-deletion when it is private AND has no collaborators. A
+ * shared/public guest project, or one with collaborators, can hold real
+ * collaborative work and must never be auto-deleted. The collaborator guard uses a
+ * correlated EXISTS (not `id NOT IN (subquery)`) for cross-database portability and
+ * to avoid the NULL pitfalls of `NOT IN`.
+ *
  * @param db - Kysely database instance
  * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
- * @returns Array of projects owned by guest users older than maxAgeMs
+ * @returns Array of private, collaborator-free guest projects older than maxAgeMs
  */
 export async function findGuestProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
     const cutoffTime = now() - maxAgeMs;
-    return db
-        .selectFrom('projects')
-        .innerJoin('users', 'projects.owner_id', 'users.id')
-        .selectAll('projects')
-        .where('users.email', 'like', 'guest_%@guest.local')
-        .where('projects.updated_at', '<', cutoffTime)
-        .execute();
+    return (
+        db
+            .selectFrom('projects')
+            .innerJoin('users', 'projects.owner_id', 'users.id')
+            .selectAll('projects')
+            .where('users.email', 'like', 'guest_%@guest.local')
+            .where('projects.updated_at', '<', cutoffTime)
+            // Never auto-delete shared work: only private projects are eligible.
+            .where('projects.visibility', '=', 'private')
+            // ...and only when nobody else has been granted access.
+            .where(eb =>
+                eb.not(
+                    eb.exists(
+                        eb
+                            .selectFrom('project_collaborators')
+                            .select('project_collaborators.project_id')
+                            .whereRef('project_collaborators.project_id', '=', 'projects.id'),
+                    ),
+                ),
+            )
+            .execute()
+    );
 }
 
 /**

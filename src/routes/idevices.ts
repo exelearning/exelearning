@@ -12,6 +12,7 @@ import { getBasePath } from '../utils/basepath.util';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
 import { requireAuth } from '../utils/guards';
+import { isSafePathSegment, safeJoin, UnsafePathError } from '../utils/safe-path';
 
 /**
  * Response data for file upload
@@ -292,14 +293,34 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     .get('/api/idevices/installed/:ideviceId', ({ params, set }) => {
         const { ideviceId } = params;
 
-        // Check user iDevices first
-        let configPath = path.join(IDEVICES_USERS_PATH, ideviceId, 'config.xml');
-        let basePath = path.join(IDEVICES_USERS_PATH, ideviceId);
+        // Security: iDevice ids are slugs (alphanumeric, `_`, `-`). Reject any
+        // value that could traverse outside the iDevices directories (e.g.
+        // `../../etc/passwd` or URL-encoded separators) before it reaches a
+        // filesystem sink. See src/utils/safe-path.ts.
+        if (!isSafePathSegment(ideviceId)) {
+            set.status = 404;
+            return { error: 'Not Found', message: `iDevice ${ideviceId} not found` };
+        }
+
+        // Check user iDevices first. safeJoin re-validates each segment and
+        // asserts the resolved path stays within the base directory.
+        let basePath: string;
+        let configPath: string;
+        try {
+            basePath = safeJoin(IDEVICES_USERS_PATH, ideviceId);
+            configPath = safeJoin(IDEVICES_USERS_PATH, ideviceId, 'config.xml');
+        } catch (err) {
+            if (err instanceof UnsafePathError) {
+                set.status = 404;
+                return { error: 'Not Found', message: `iDevice ${ideviceId} not found` };
+            }
+            throw err;
+        }
 
         if (!fs.existsSync(configPath)) {
             // Fall back to base iDevices
-            configPath = path.join(IDEVICES_BASE_PATH, ideviceId, 'config.xml');
-            basePath = path.join(IDEVICES_BASE_PATH, ideviceId);
+            basePath = safeJoin(IDEVICES_BASE_PATH, ideviceId);
+            configPath = safeJoin(IDEVICES_BASE_PATH, ideviceId, 'config.xml');
         }
 
         if (!fs.existsSync(configPath)) {
@@ -437,9 +458,20 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             cleanFilename = 'file_' + Date.now();
         }
 
-        // Get iDevice directory
+        // Get iDevice directory. odeSessionId and odeIdeviceId are attacker
+        // controlled; build the path with safeJoin so traversal segments
+        // (e.g. '../../etc') are rejected before any filesystem write.
         const filesDir = getFilesDir();
-        const iDeviceDir = path.join(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+        let iDeviceDir: string;
+        try {
+            iDeviceDir = safeJoin(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+        } catch (err) {
+            if (err instanceof UnsafePathError) {
+                set.status = 400;
+                return { code: 'error: invalid identifier' };
+            }
+            throw err;
+        }
 
         // Ensure directory exists
         await fse.ensureDir(iDeviceDir);
@@ -545,9 +577,20 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             cleanFilename = 'file_' + Date.now();
         }
 
-        // Get iDevice directory
+        // Get iDevice directory. odeSessionId and odeIdeviceId are attacker
+        // controlled; build the path with safeJoin so traversal segments
+        // (e.g. '../../etc') are rejected before any filesystem write.
         const filesDir = getFilesDir();
-        const iDeviceDir = path.join(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+        let iDeviceDir: string;
+        try {
+            iDeviceDir = safeJoin(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+        } catch (err) {
+            if (err instanceof UnsafePathError) {
+                set.status = 400;
+                return { code: 'error: invalid identifier' };
+            }
+            throw err;
+        }
 
         // Ensure directory exists
         await fse.ensureDir(iDeviceDir);

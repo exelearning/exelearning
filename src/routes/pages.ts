@@ -5,7 +5,7 @@
  * Uses Dependency Injection pattern for testability
  */
 import { Elysia } from 'elysia';
-import { cookie } from '@elysiajs/cookie';
+import { getJwtSecret } from './auth';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
@@ -19,6 +19,7 @@ import {
     findPreference as findPreferenceDefault,
     setPreference as setPreferenceDefault,
     findProjectByUuid as findProjectByUuidDefault,
+    findProjectByPublicViewId as findProjectByPublicViewIdDefault,
     findProjectByPlatformId as findProjectByPlatformIdDefault,
     checkProjectAccess as checkProjectAccessDefault,
     createProject as createProjectDefault,
@@ -26,14 +27,24 @@ import {
 import { db as dbDefault } from '../db/client';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { getPublicViewFile } from '../services/public-view-content';
+import {
+    PUBLIC_VIEW_SANDBOX,
+    publicViewCspHeader,
+    publicViewPermissionsPolicy,
+    resolvePublicViewCspProfile,
+} from '../shared/security/publicViewSandbox';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
+import { isOfflineMode } from '../utils/offline.util';
 import { getAppVersion } from '../utils/version';
+import { canChangePassword } from '../services/password';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
 import { buildAdminTranslations } from './admin';
 import {
     getAuthMethods as getAuthMethodsFromSettings,
     getSettingBoolean as getSettingBooleanFromSettings,
     getSettingString as getSettingStringFromSettings,
+    isPublicViewFeatureEnabled as isPublicViewFeatureEnabledFromSettings,
     parseBoolean as parseAppSettingBoolean,
 } from '../services/app-settings';
 type AppSettingsTable = {
@@ -111,6 +122,7 @@ export interface PagesQueriesDeps {
     findPreference: typeof findPreferenceDefault;
     setPreference: typeof setPreferenceDefault;
     findProjectByUuid: typeof findProjectByUuidDefault;
+    findProjectByPublicViewId: typeof findProjectByPublicViewIdDefault;
     findProjectByPlatformId: typeof findProjectByPlatformIdDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
     createProject: typeof createProjectDefault;
@@ -154,6 +166,7 @@ export interface PagesSettingsDeps {
     getAuthMethods: typeof getAuthMethodsFromSettings;
     getSettingBoolean: typeof getSettingBooleanFromSettings;
     getSettingString: typeof getSettingStringFromSettings;
+    isPublicViewFeatureEnabled: typeof isPublicViewFeatureEnabledFromSettings;
 }
 
 /**
@@ -177,6 +190,7 @@ const defaultQueries: PagesQueriesDeps = {
     findPreference: findPreferenceDefault,
     setPreference: setPreferenceDefault,
     findProjectByUuid: findProjectByUuidDefault,
+    findProjectByPublicViewId: findProjectByPublicViewIdDefault,
     findProjectByPlatformId: findProjectByPlatformIdDefault,
     checkProjectAccess: checkProjectAccessDefault,
     createProject: createProjectDefault,
@@ -213,6 +227,7 @@ const defaultSettings: PagesSettingsDeps = {
     getAuthMethods: getAuthMethodsFromSettings,
     getSettingBoolean: getSettingBooleanFromSettings,
     getSettingString: getSettingStringFromSettings,
+    isPublicViewFeatureEnabled: isPublicViewFeatureEnabledFromSettings,
 };
 
 // Default dependencies
@@ -224,13 +239,6 @@ const defaultDependencies: PagesDependencies = {
     template: defaultTemplate,
     utils: defaultUtils,
     settings: defaultSettings,
-};
-
-const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
-
-// Get JWT secret
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
 };
 
 // ============================================================================
@@ -250,6 +258,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         findPreference,
         setPreference,
         findProjectByUuid,
+        findProjectByPublicViewId,
         findProjectByPlatformId,
         checkProjectAccess,
         createProject,
@@ -258,7 +267,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
     const { renderTemplate, setRenderLocale: setLocale } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
-    const { getAuthMethods, getSettingBoolean, getSettingString } = deps.settings ?? defaultSettings;
+    const { getAuthMethods, getSettingBoolean, getSettingString, isPublicViewFeatureEnabled } =
+        deps.settings ?? defaultSettings;
     const { fileExists, readFile } = deps.fileHelper ?? defaultFileHelper;
 
     /**
@@ -309,7 +319,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
      */
     return (
         new Elysia({ name: 'pages-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
@@ -326,7 +335,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         cookie.impersonator_auth.remove();
                         cookie.impersonation_session.remove();
                     }
-                    return { currentUser: null, isGuest: false, impersonation: null as ImpersonationContext | null };
+                    return {
+                        currentUser: null,
+                        isGuest: false,
+                        impersonation: null as ImpersonationContext | null,
+                        authMethod: undefined as JwtPayload['authMethod'],
+                        isImpersonated: false,
+                    };
                 }
 
                 let impersonationBase: {
@@ -356,7 +371,20 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 try {
                     const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) return { currentUser: null, isGuest: false, impersonation: null };
+                    if (!payload) {
+                        return {
+                            currentUser: null,
+                            isGuest: false,
+                            impersonation: null,
+                            authMethod: undefined,
+                            isImpersonated: false,
+                        };
+                    }
+
+                    // An impersonated token inherits the administrator's
+                    // authMethod, so this flag must be carried separately.
+                    const authMethod = payload.authMethod;
+                    const isImpersonated = payload.isImpersonated || false;
 
                     const isGuest = payload.isGuest || false;
                     if (isGuest) {
@@ -368,6 +396,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             },
                             isGuest: true,
                             impersonation: null,
+                            authMethod,
+                            isImpersonated,
                         };
                     }
 
@@ -384,9 +414,15 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                               }
                             : null;
 
-                    return { currentUser: user || null, isGuest: false, impersonation };
+                    return { currentUser: user || null, isGuest: false, impersonation, authMethod, isImpersonated };
                 } catch {
-                    return { currentUser: null, isGuest: false, impersonation: null };
+                    return {
+                        currentUser: null,
+                        isGuest: false,
+                        impersonation: null,
+                        authMethod: undefined,
+                        isImpersonated: false,
+                    };
                 }
             })
 
@@ -575,9 +611,119 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             })
 
             // =====================================================
+            // Public viewer loader (opaque-origin sandbox host page)
+            // =====================================================
+            // Renders the shell page that hosts the untrusted author content in a
+            // sandboxed iframe. The actual content bytes are served separately by
+            // the isolated `/view/:publicViewId/_/*` content route below.
+            .get('/view/:publicViewId', async ({ params, currentUser, request, set, impersonation }) => {
+                const { publicViewId } = params;
+
+                // Public viewer: look up strictly by the opaque public view id.
+                // The internal project UUID is never accepted here, and the
+                // project must have the public read-only link enabled (this is
+                // independent of edit visibility). We return 404 (not 403) for
+                // missing or disabled projects so the route does not reveal
+                // whether a private project exists. The same 404 is returned when
+                // the administrator has disabled public links site-wide.
+                const project = (await isPublicViewFeatureEnabled(db))
+                    ? await findProjectByPublicViewId(db, publicViewId)
+                    : undefined;
+                if (!project?.public_view_enabled) {
+                    set.status = 404;
+                    const html = renderTemplate('workarea/error', {
+                        basePath: getBasePath(),
+                        locale: 'en',
+                        impersonation,
+                        error: 'Project not found.',
+                    });
+                    set.headers['Content-Type'] = 'text/html';
+                    return html;
+                }
+
+                // Get preferred locale
+                let userLocale = null;
+                if (currentUser) {
+                    const pref = await findPreference(db, currentUser.id, 'locale');
+                    if (pref) userLocale = pref.value;
+                }
+
+                const appLocale = process.env.APP_LOCALE;
+                const acceptLanguage = request.headers.get('accept-language');
+                const browserLocale = detectLocaleFromHeader(acceptLanguage);
+                const locale = userLocale || appLocale || browserLocale || DEFAULT_LOCALE;
+
+                setRenderLocale(locale);
+
+                const viewModel = {
+                    basePath: getBasePath(),
+                    publicViewId,
+                    title: project.title || 'Untitled Project',
+                    lang: locale,
+                    impersonation,
+                    // Tokens for the isolating iframe (opaque origin: no
+                    // allow-same-origin). Single source of truth shared with the
+                    // CSP emitted on the content responses below.
+                    sandboxTokens: PUBLIC_VIEW_SANDBOX,
+                };
+
+                const html = renderTemplate('viewer/viewer', viewModel);
+                set.headers['Content-Type'] = 'text/html';
+                return html;
+            })
+
+            // =====================================================
+            // Public viewer content (isolated, opaque origin)
+            // =====================================================
+            // Serves the individual files of a public project's HTML5 export so
+            // the untrusted author content runs inside a sandboxed iframe with an
+            // opaque origin. The `sandbox` directive is emitted in the response
+            // CSP (not only in the iframe attribute) so the document stays opaque
+            // even if the content URL is opened directly (new tab, fullscreen,
+            // raw URL). It must never reach the authenticated session.
+            .get('/view/:publicViewId/_/*', async ({ params, set }) => {
+                const { publicViewId } = params;
+                const relPath = (params as Record<string, string>)['*'] ?? '';
+
+                const project = (await isPublicViewFeatureEnabled(db))
+                    ? await findProjectByPublicViewId(db, publicViewId)
+                    : undefined;
+                if (!project?.public_view_enabled) {
+                    set.status = 404;
+                    return 'Not found';
+                }
+
+                let file;
+                try {
+                    file = await getPublicViewFile(project, relPath);
+                } catch (err) {
+                    console.error('[Public viewer content] Error building export:', err);
+                    set.status = 500;
+                    return 'Error building preview';
+                }
+
+                if (!file) {
+                    set.status = 404;
+                    return 'Not found';
+                }
+
+                return new Response(file.content, {
+                    headers: {
+                        'Content-Type': file.contentType,
+                        'Content-Security-Policy': publicViewCspHeader(resolvePublicViewCspProfile()),
+                        'Permissions-Policy': publicViewPermissionsPolicy(),
+                        'X-Content-Type-Options': 'nosniff',
+                        'Cache-Control': 'no-store',
+                    },
+                });
+            })
+
+            // =====================================================
             // Workarea Page
             // =====================================================
-            .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request, impersonation }) => {
+            .get('/workarea', async ctx => {
+                const { currentUser, isGuest, query, set, jwt, request, impersonation } = ctx;
+                const { authMethod, isImpersonated } = ctx;
                 // Check if user is authenticated
                 if (!currentUser) {
                     // Preserve the original URL for post-login redirect
@@ -849,6 +995,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         ? JSON.parse(currentUser.roles || '[]')
                         : currentUser.roles || [];
 
+                const appAuthMethods = await getAuthMethods(
+                    db,
+                    process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
+                );
+                const isOfflineInstallation = isOfflineMode() || appAuthMethods.includes('none');
+
                 const user = {
                     id: userId,
                     username: email,
@@ -859,13 +1011,17 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     gravatarUrl: createGravatarUrl(email, null, email),
                     roles: workareaRoles,
                     isAdmin: workareaRoles.includes('ROLE_ADMIN'),
+                    // Server-computed capability: the "Change password" menu entry
+                    // renders only when this is true. `PATCH /api/user/password`
+                    // re-checks every rule — this only controls rendering.
+                    canChangePassword: canChangePassword({
+                        authMethod,
+                        isGuest,
+                        isImpersonated,
+                        offlineMode: isOfflineInstallation,
+                        user: currentUser,
+                    }),
                 };
-
-                const appAuthMethods = await getAuthMethods(
-                    db,
-                    process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
-                );
-                const isOfflineInstallation = isOfflineMode() || appAuthMethods.includes('none');
 
                 const basePath = getBasePath();
 
@@ -959,6 +1115,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     import_elpx: trans('Import (.elpx...)', {}, locale),
                     save: trans('Save', {}, locale),
                     save_as: trans('Save as', {}, locale),
+                    close: trans('Close', {}, locale),
                     download_as: trans('Download as...', {}, locale),
                     export_as: trans('Export as...', {}, locale),
                     exelearning_content: trans('eXeLearning content (.elpx)', {}, locale),
@@ -994,6 +1151,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     private: trans('Private', {}, locale),
                     public: trans('Public', {}, locale),
                     preferences: trans('Preferences', {}, locale),
+                    change_password: trans('Change password', {}, locale),
                     admin_panel: 'Admin', // Admin panel is English-only; replace 'en' with `locale` to re-enable translations
                     logout: trans('Logout', {}, locale),
                     toggle_panels: trans('Toggle panels', {}, locale),
@@ -1049,12 +1207,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     const fallbackHtml = `<!doctype html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <title>eXeLearning Workarea</title>
-    <script>window.eXeLearning = { version: "${getAppVersion()}", user: ${JSON.stringify(user)}, config: ${JSON.stringify(config)} };</script>
+<meta charset="utf-8" />
+<title>eXeLearning Workarea</title>
+<script>window.eXeLearning = { version: "${getAppVersion()}", user: ${JSON.stringify(user)}, config: ${JSON.stringify(config)} };</script>
   </head>
   <body>
-    <div id="root">eXeLearning workarea - Template error: ${errorMessage}</div>
+<div id="root">eXeLearning workarea - Template error: ${errorMessage}</div>
   </body>
 </html>`;
                     return new Response(fallbackHtml, {
@@ -1128,6 +1286,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         online_idevices_install: parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
                         app_auth_methods: process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
                         version_control: parseBoolean(process.env.VERSION_CONTROL, true),
+                        public_view_enabled: parseBoolean(process.env.PUBLIC_VIEW_ENABLED, false),
                         default_project_visibility: process.env.DEFAULT_PROJECT_VISIBILITY || 'private',
                         user_recent_ode_files_amount: parseNumber(process.env.USER_RECENT_ODE_FILES_AMOUNT, 3),
                         collaborative_block_level: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice',
@@ -1189,6 +1348,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     ONLINE_IDEVICES_INSTALL: { path: ['general', 'online_idevices_install'], type: 'boolean' },
                     APP_AUTH_METHODS: { path: ['general', 'app_auth_methods'], type: 'string' },
                     VERSION_CONTROL: { path: ['general', 'version_control'], type: 'boolean' },
+                    PUBLIC_VIEW_ENABLED: { path: ['general', 'public_view_enabled'], type: 'boolean' },
                     DEFAULT_PROJECT_VISIBILITY: { path: ['general', 'default_project_visibility'], type: 'string' },
                     USER_RECENT_ODE_FILES_AMOUNT: { path: ['general', 'user_recent_ode_files_amount'], type: 'number' },
                     COLLABORATIVE_BLOCK_LEVEL: { path: ['general', 'collaborative_block_level'], type: 'string' },

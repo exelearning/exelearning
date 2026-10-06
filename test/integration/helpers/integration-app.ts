@@ -6,7 +6,6 @@ import { Elysia } from 'elysia';
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -191,7 +190,6 @@ export interface TestAppContext {
  */
 export function createMinimalTestApp(db: Kysely<Database>): Elysia {
     return new Elysia({ name: 'test-app' })
-        .use(cookie())
         .use(
             jwt({
                 name: 'jwt',

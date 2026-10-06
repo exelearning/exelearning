@@ -1,5 +1,259 @@
 # CHANGELOG
 
+## v4.0.6 – Unreleased
+
+### Fixed
+
+- Preview: the first preview after opening a project no longer waits about 5 seconds, and the preview now recovers by itself when its worker stops responding during a session
+
+## v4.0.5 – 2026-09-16
+
+### Added
+
+- iDevice boxes: you can now choose between the icons provided by the current style and the new General icons catalogue (Google's Material Icons); included styles have been updated to support both icon catalogues
+- Math editor: added fullscreen and settings controls, reworked the menu and updated texts
+- New EducaBlue style: a modern responsive blue design with dark mode and colours and typography meeting WCAG 2.2 level AA
+- Local users can now change their password from the user menu
+- Administrators can now reset local account passwords from Admin → Users
+- Added `make change-password EMAIL=user@example.com` command to change a user's password without showing it on screen
+- Password changes are unavailable for guest accounts; users signed in through CAS, OpenID Connect or SAML change their password with their identity provider
+- Form, True/False, Scrambled list, Complete and Before/After iDevices: added the option to show a button to save the score
+- True/False iDevice: added configurable number of attempts
+- Word Search iDevice: added the option to hide the time icon in timed activities
+- Platform integration: `PROVIDER_URLS` now supports wildcard subdomains and matches against the address host, allowing multi-tenant deployments to be authorised without widening the allow-list
+- Added `assets:conflicts` command to list and resolve asset storage conflicts, keeping either the old or new copy
+- Updated development documentation and improved development tools
+- Reviewed and completed the Spanish (ES) and Galician (GL) translations
+- Restored the French (FR) translation from version 3, corrected its errors and added new automatic placeholder translations for previously untranslated strings
+- Added automatic placeholder translations for new strings in incomplete translations
+
+### Changed
+
+- Project assets are now stored in sharded folders with paths relative to the data directory, improving scalability and allowing the data directory to be moved, remounted or restored without invalidating projects; existing installations are converted automatically at startup
+- SCORM 1.2: rewritten the runtime shipped in exported packages, with clear licensing and a full regression suite, keeping the same LMS behaviour while removing `onunload` and `onbeforeunload` handlers
+- SCORM, IMS: exported packages now group pages under a project root entry, which appears above the pages in the LMS table of contents
+- SCORM: page status and score are now based on learner interaction with its activities; pages remain incomplete until every activity has been finished, are marked failed while the score is below 50 and passed from there on, while pages without activities are completed when the learner leaves them
+- SCORM: activities that save the score automatically now send and commit it on every answer, so the platform index updates while the learner is still working on the page
+- SCORM: opening or leaving a page no longer decides its result on its own; only what the learner does with the activities does
+- SCORM: entering the access code now starts the activity and records it as started, just like clicking the start button
+- SCORM: activities without a set weight now count the same as other activities, which may change scores on pages combining both types
+- iDevices: activities can always be repeated
+- Base and Universal styles: fully revised for accessibility, presentation and third-party licences, meeting WCAG 2.2 level AA
+- Effects: improved accessibility and presentation of accordion, tab, pagination, carousel and timeline controls, with clearer focus indicators and improved contrast
+- Styles: improved accessibility of menu and search controls in exported websites
+- Universal style: dark mode is now disabled by default, except when exporting as a website
+- Math: accessibility is now provided through browser MathML support, with hidden MathML always enabled so screen readers can announce formulas; removed the non-functional expression explorer, braille and read-aloud options from the MathJax menu
+- Static distribution: removed unused resources, duplicated bundles and unreachable third-party files, and improved compression of the largest datasets
+- Static Docker image: compressed content is now served, reducing download sizes by around 65%
+- The "Import iDevice" button is now hidden until the feature is available
+
+### Fixed
+
+- SCORM 1.2: exported pages no longer rely on browser `onunload` and `onbeforeunload` handlers, preventing scores from being lost in Moodle
+- SCORM: opening a page no longer records a score of zero and a failed result
+- SCORM: leaving an untouched page no longer prevents the rest of the package from saving its results
+- SCORM: results now reach the platform index without requiring the whole page to be completed
+- SCORM: pass or fail results no longer depend on the order of activities on the page
+- SCORM: fixed the buttons that jump to the previous and next page of the same level in Moodle, for projects with nested pages
+- SCORM: activity weights are now correctly applied to the page score
+- SCORM: restarting an activity now clears its previous score and result in the platform
+- SCORM: pages completed after resuming are now correctly marked as finished in the platform index
+- SCORM: Interactive Video now registers when the page loads, ensuring all its activities are included in the page score
+- SCORM: activities no longer score automatically when the page loads or lose their score when they finish
+- SCORM: moving between page contents no longer marks the page as completed
+- Workarea: fixed failures when dragging an iDevice into a page while its content is being refreshed
+- Workarea: selecting a different page while an iDevice editor is opening no longer shows an unsaved-changes alert
+- iDevices: activities made up of several scripts, such as the 360° panorama viewer and Select media files, now load correctly
+- iDevices: closing an activity editor no longer causes errors from actions that are still in progress
+- iDevices: Before-After, Hidden image, Map and Drag & Drop activities no longer fail when the page is left while they are loading
+- TinyMCE: fixed failures in the paste-code, media and definition-list tools when the editor or dialog has already been closed
+- True/False iDevice: iDevices placed after it in the same block are no longer lost in exported content
+- True/False iDevice: fixed errors when answering and corrected score reporting
+- True/False iDevice: activities imported from eXeLearning 2.x now use the project's language instead of English
+- Form iDevice: the Check button now works as soon as the activity is displayed
+- Progress Report iDevice: fixed course maps in exported packages, scores on duplicated pages, activity order and page links
+- Sort iDevice: fixed its height and the count of correctly positioned items
+- iDevice editing: fixed digit limits in time and percentage fields in eight iDevices
+- Export and preview: after upgrading eXeLearning, the browser no longer reuses cached files from the previous version
+- Export and preview: cached libraries and styles are now reused between reloads, and outdated copies are removed automatically
+- Export: the theme stylesheet is now loaded last in single-page exports, preventing it from being overridden
+- Export: the `nav=false` parameter no longer discards teacher mode, xAPI credentials or other URL parameters, and search results now preserve the parameters used to open the page
+- Effects: fixed the timeline opening and closing again on a single click
+- Neo and Flux styles: fixed responsive layout detection
+- Styles: fixed a misnamed icon in Neo; all styles except Universal now provide the same 50 icons under the same names
+- Styles: theme icons are always sorted alphabetically in the block icon picker
+- Styles: reviewed the licences of third-party materials used in styles, updated their credits and include the required licences with every style
+- File → Open: fixed the colours of the Delete button
+- Admin panel: fixed the contrast of the Source column in Styles Management
+- Preview: PDFs embedded in a Text iDevice are now displayed correctly in Docker and static deployments
+- Preview: fixed timeouts caused by outdated preview workers after upgrading eXeLearning
+- Math: fixed inconsistencies caused by mixing incompatible MathJax versions and reduced the size of exports containing formulas
+- Math editor: formula previews are now announced correctly by screen readers instead of as unlabelled images
+- Math editor: the menu editor no longer downloads part of its interface from external services, so it also works in offline and desktop installations
+- Mermaid: the library is now loaded while the diagram is being edited, preventing delays when the activity is closed or saved
+- Import: activities with damaged data now retain their original content instead of being emptied, and the user is notified
+- Import: the "Missing files" notice no longer lists files that only existed in an outdated copy of html-type activities (Map, Flipcards, Select media files…)
+- Uploads: large files are now staged in the configured data directory instead of the application folder
+- Sign-in no longer slows down the rest of the server when many users log in simultaneously
+- OpenID Connect: consent is now handled entirely by the identity provider, avoiding repeated consent prompts and allowing non-administrative users to sign in
+- Collaboration: closed connections are now released, preventing servers from accumulating them
+- Fixed misaligned translations that showed unrelated texts in Catalan (CA), German (DE), Esperanto (EO), Galician (GL), Italian (IT), Portuguese (PT), Romanian (RO) and Valencian (VA), affecting True/False activities, the AI question generator, the math editor, rubrics and download blocks
+- Basque (EU) translation: fixed typos, wording and missing formatting placeholders
+- Italian (IT) and Portuguese (PT) translations: restored missing formatting placeholders
+
+### Upgraded
+
+- fast-xml-parser: 5.4.1 → 5.11.1
+- mathjax: 3.2.2 → 4.1.3
+- edicuatex: 1.4.1 → 1.5.5
+- pdfjs-dist: 6.2.108 → 6.3.289
+- mermaid: 11.12.3 → 11.17.2
+- @xmldom/xmldom: 0.9.10 → 0.9.12
+- jose: 6.1.3 → 6.2.10
+- i18n: 0.15.3 → 0.15.4
+- sass: 1.97.3 → 1.103.1
+- electron: 43.2.0 → 44.2.0
+- electron-context-menu: 4.1.2 → 5.0.0
+- @biomejs/biome: 2.4.5 → 2.5.11
+- mysql2: 3.18.2 → 3.23.4
+- y-websocket: 3.0.0 → 3.1.0
+
+### Removed
+
+- Deprecated `@elysiajs/cookie` dependency and unnecessary type stub packages
+- Exported packages no longer emit xAPI statements. The emitter had no known consumer after Moodle tracking was consolidated on SCORM; SCORM tracking and grading are unchanged, and already-exported packages keep working because they bundle their own runtime
+
+---
+
+## v4.0.4
+
+404 Not Found. The requested release was not found in this project.
+
+---
+
+## v4.0.3 – 2026-08-06
+
+### Added
+
+- New File Attachments iDevice for attaching one or more files to a page
+- GeoGebra iDevice: width and height controls are now available in General Settings
+- LOMLOE iDevice: added official curriculum dataset for Euskadi / País Vasco (ES-PV)
+- Slide iDevice: added keyboard undo/redo, multi-object selection and fine positioning with the keyboard
+- Link Validator: improved link validation with more reliable results
+- Import: activities with missing asset files now report the affected references
+- Reviewed and completed Spanish (ES) translation
+- Added automated placeholder translations for new strings in incomplete translations
+
+### Changed
+
+- Collaboration: improved the autosave status indicator and reduced the autosave delay
+
+### Fixed
+
+- The unsaved-changes warning no longer appears when closing a project immediately after saving
+- Rubric iDevice: restored cell editing from the pencil button and prevented edit dialogs from blocking the rest of the work area
+- iDevices: fixed activity data corruption caused by image references stored in HTML attributes
+- iDevices: invalid or damaged activities no longer prevent the rest of the page from loading
+- iDevices: invalid activity data is now rejected before saving, preserving the last valid version of the activity
+- Game iDevices: interrupted or invalid saves no longer erase activity content, preserving the last valid version
+- Game iDevices: activities with missing questions now render correctly without breaking the page
+- Game iDevices: media references are no longer stored as temporary links that become invalid after reloading
+- Classify iDevice: cards containing only audio can now be saved correctly
+- Slide iDevice: fixed text cursor positioning while editing
+- Workarea: iDevices can now be edited correctly when sharing a block with videos or other large content
+- File Manager: the Insert button is now enabled only while editing an iDevice
+- Image Optimizer: the confirmation button now matches the size of the other modal buttons
+- Text iDevice: subtitle files can now be uploaded for videos, with `.srt` files automatically converted to WebVTT for correct display in preview and exported content
+- Media: fixed YouTube and Vimeo embeds failing with Error 153 in exported content
+- Import: legacy Dropdown and Cloze iDevice images are now displayed correctly
+- Import: fixed page content assignment when importing legacy projects
+- Import: LaTeX control sequences are now preserved correctly when importing legacy `.elp` projects
+- Desktop: `.elpx` projects containing large assets, such as long videos, can now be imported
+- Desktop: fixed a startup crash caused by a missing internal module
+- Export: the Download Source File iDevice now generates complete `.elpx` projects that can be reopened and edited
+- Export: LaTeX now renders correctly in FX tab labels
+- Export: FX effects such as tabs and accordions now work correctly in Form and Magnifier iDevices
+- The page footer is now hidden by default when it contains no content or license information
+- Link Validator: fixed false broken-link reports for links that cannot be checked by the browser
+- LOMLOE iDevice: restored competencia-level operational descriptors in the curriculum browser
+- LOMLOE iDevice: fixed display issues between adjacent PDF sections
+
+### Upgraded
+
+- ioredis: 5.11.1 → 6.0.0
+- jsdom: 29.1.1 → 30.0.1
+- kysely-bun-worker: 1.2.1 → 2.0.1
+- pdfjs-dist: 6.1.200 → 6.2.108
+- typescript: 6.0.3 → 7.0.2
+
+---
+
+## v4.0.2 – 2026-07-07
+
+### Added
+
+- iDevice edit mode now expands to fill the work area, keeping the toolbar visible and preventing background page scrolling
+- Page titles can now be renamed directly from the workspace
+- LOMLOE iDevice: added official curriculum datasets for Navarra (ES-NC) and Comunitat Valenciana (ES-VC)
+- Mermaid iDevice: added configurable maximum diagram width and height
+- Exported packages now emit xAPI statements for LMS activity tracking and direct LRS reporting
+- File → New: improved the unsaved-changes confirmation dialog with clearer wording and action labels
+- Desktop: added a new File → Close menu option
+- Authentication: OIDC endpoints are now automatically discovered from `OIDC_ISSUER` when not configured individually
+- Reviewed and completed Spanish (ES) translation
+- Added automated placeholder translations for new strings in incomplete translations
+
+### Changed
+
+- LOMLOE iDevice: the Galicia (ES-GA) and Extremadura (ES-EX) curriculum datasets are temporarily disabled pending confirmation for reactivation
+
+### Fixed
+
+- Security: multiple hardening improvements across path validation, authentication, SSRF protection, XSS sanitisation, data persistence and resource limits
+- Security: enhanced protections against cross-tenant asset deletion and unauthorised file uploads; improved export filename handling for non-Latin titles
+- Collaboration: shared Yjs changes are now saved correctly during collaborative sessions
+- Collaboration: shared assets are now identified consistently, preventing image loss
+- Collaboration: fixed data loss affecting collaborative editing across day changes
+- Collaboration: shared and collaborative projects are no longer deleted during session cleanup
+- Collaboration: the file manager no longer loses the current selection when a remote change refreshes the asset list
+- Assets without a file extension are now served with the correct MIME type, preventing unintended PDF downloads
+- Share dialog: the people-with-access list now scrolls correctly within the modal
+- Link Validator and Resource Report: Download CSV now works correctly
+- The iDevices panel is now disabled when the selected page is the document root
+- LOMLOE iDevice: improved table header hover contrast for better readability
+- Electrical Circuits iDevice: corrected the AI prompt identifier and fixed rendering of Ω and other Greek and mathematical symbols
+- Electrical Circuits iDevice: fixed iDevice name translations
+- Magnifier iDevice: fixed image paths in exports so images are displayed correctly in HTML output
+- 3DMol iDevice: molecule files are now supported in the file manager and viewer
+- 3DMol iDevice: the Add iDevice menu is no longer obscured by the 3D viewer canvas
+- 3D Viewer iDevice: fixed a display issue affecting models in exported content
+- Preferences: improved the language-change warning in static and offline mode so it accurately describes the required steps before reloading
+- Tooltips and lightbox links inside accordions and other effects now initialise correctly
+- iDevice icon selector: improved contrast across all styles
+- Styles from `.elpx` projects can now be downloaded from the style manager
+- Nova style: teacher-only iDevices are now highlighted with a yellow border in the work area
+- Export: iDevice structure properties are now preserved when single-box content is exported and re-imported
+- Export: internal page links in `content.xml` are now preserved across exports and imports
+- Export: LaTeX now renders correctly in interactive iDevices in preview and all export formats
+- Export: pre-rendered LaTeX equations are now aligned correctly with surrounding text
+- Export: the license footer no longer inherits the global content font
+- Export: the accessibility toolbar is now included in IMS, SCORM and EPUB exports
+- Export: duplicate assets are no longer included in self-contained HTML exports
+- Desktop: fixed a duplicate Save As dialog when downloading PDF files generated from HTML assets in Electron
+
+### Upgraded
+
+- electron: 42.5.2 → 43.0.0
+- esbuild: 0.27.7 → 0.28.1
+- pdfjs-dist: 6.0.227 → 6.1.200
+
+### Removed
+
+- Removed the `<downloadable>` option from style `config.xml`; styles are now always downloadable
+- `lightbox` links no longer use the JavaScript media player for video and audio playback
+
+---
+
 ## v4.0.1 – 2026-06-09
 
 ### Added
@@ -20,6 +274,7 @@
 - Screenshot selector added to the Project Properties dialog
 - Preferences: personal default style for new projects
 - Admin panel: support for updating styles
+- Exports and static editor bundle size reduced by optimising bundled raster image assets
 - Reviewed and completed Spanish (ES) translation
 - Reviewed existing Basque (EU) translation
 - Added automated placeholder translations for new strings in incomplete translations
@@ -33,6 +288,7 @@
 - Export: removed duplicate assets in saved and exported packages
 - Export issues when the assets directory is missing
 - Export: consistent license footer across single-page exports
+- Export: "Made with eXeLearning" link now displayed in the content language instead of always in Spanish
 - BASE_PATH compatibility with workarea assets
 - TinyMCE relative URL resolution issues
 - Legacy .elp import: preserved indentation inside `<pre>` blocks
@@ -51,6 +307,7 @@
 - Quick Questions iDevice: shuffle issues in order-type options
 - API v1 updateComponent endpoint issues
 - API v1 project UUID assignment issues
+- CI: improved reliability and diagnostics of Windows installer tests to prevent silent installation failures
 
 ### Upgraded
 

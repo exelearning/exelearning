@@ -79,6 +79,9 @@ var $exeDevice = {
                 'Your score will be automatically saved after each question.'
             ),
             msgYouScore: c_('Your score'),
+            msgEndGameScore: c_(
+                'Please start the activity before saving your score.'
+            ),
             msgSeveralScore: c_(
                 'You can save the score as many times as you want'
             ),
@@ -90,6 +93,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Before/After'),
             msgPlayStart: c_('Click here to play'),
         };
@@ -130,7 +134,6 @@ var $exeDevice = {
                                 <label for="bfafEAuthory">${_('Authorship')}: </label>
                                 <input id="bfafEAuthory" type="text" class="form-control" />
                             </div>
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -273,7 +276,7 @@ var $exeDevice = {
                     ${$exeDevice.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
@@ -715,7 +718,9 @@ var $exeDevice = {
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues();
 
         if (!progressBar) return false;
         if (!itinerary) return;
@@ -733,6 +738,8 @@ var $exeDevice = {
             version: $exeDevice.version,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
     },
@@ -834,6 +841,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#beforeAfterQIdeviceForm').on(
             'change',
@@ -943,6 +951,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#bfafEPosition').val(game.position);
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(

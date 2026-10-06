@@ -58,19 +58,71 @@ API_JWT_SECRET=dev_secret_change_me
 - Form Login: Login form at `/login` posts credentials to `/login_check`.
 - CAS: Clicking "CAS" sends the browser to your CAS login. The auth handler extracts the service ticket from the `ticket` query parameter and validates it.
 - OIDC:
-  - The app builds the Authorization URL from `OIDC_AUTHORIZATION_ENDPOINT` and redirects the user to the provider.
-  - The callback `/login/openid/callback` exchanges the `code` for tokens using `OIDC_TOKEN_ENDPOINT`.
+  - The app resolves the provider endpoints (authorization, token, userinfo, end_session) from `OIDC_ISSUER` via OIDC Discovery, falling back to the explicit `OIDC_*_ENDPOINT` variables. See [OIDC endpoint resolution](#oidc-endpoint-resolution-discovery) below.
+  - The app builds the Authorization URL from the resolved authorization endpoint and redirects the user to the provider.
+  - The authorization request uses Authorization Code + PKCE (`code_challenge_method=S256`) with `state` and `nonce`. It does **not** send the optional `prompt` parameter, so the provider applies its own authentication and consent policy (existing tenant-wide admin consent is honoured; see the Microsoft Entra ID section below).
+  - The callback `/login/openid/callback` exchanges the `code` for tokens using the resolved token endpoint.
   - The app forwards the browser to the target page appending `?access_token=...`.
-  - The JWT middleware validates the token and resolves the user via the OIDC UserInfo endpoint.
-  - The UserInfo endpoint URL is discovered automatically from `OIDC_ISSUER` using OIDC Discovery (`/.well-known/openid-configuration`).
+  - The JWT middleware validates the token and resolves the user via the resolved UserInfo endpoint.
 - Logout:
   - CAS: Redirects to `CAS_LOGOUT_PATH` with `service` back to the app.
-  - OIDC: If the provider exposes `end_session_endpoint` (Duende/Keycloak), we redirect there. Google does not expose it; we revoke the access token and return to the app.
+  - OIDC: If the provider exposes `end_session_endpoint` (Duende/Keycloak) — either configured explicitly or discovered — we redirect there. Google does not expose it; we revoke the access token and return to the app.
 
 Notes
 
 - The user identity claim used for matching is `sub` (stable across providers). If user creation is enabled, missing users are created with that `sub` as external identifier and the best email found in claims.
 - Tokens are accepted from: `Authorization: Bearer <token>` header, `?access_token=` query param, and CAS `?ticket=`.
+
+## OIDC endpoint resolution (Discovery)
+
+eXeLearning resolves the OIDC endpoints — `authorization_endpoint`, `token_endpoint`, `userinfo_endpoint`, `end_session_endpoint`, and `jwks_uri` — by combining your explicit configuration with **OpenID Connect Discovery**.
+
+### Minimal configuration (discovery)
+
+For any standards-compliant provider, the issuer plus client credentials is enough:
+
+```
+OIDC_ISSUER=https://idp.example.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_SCOPE="openid email"
+```
+
+On the first login the backend fetches `${OIDC_ISSUER}/.well-known/openid-configuration` and derives the endpoints it needs. This includes the `jwks_uri`, so **id_token signatures are verified out of the box** without configuring `OIDC_JWKS_URI` by hand.
+
+### Explicit configuration (manual override)
+
+You can still pin any endpoint explicitly. This is useful for providers with non-standard layouts or to avoid the discovery request entirely:
+
+```
+OIDC_AUTHORIZATION_ENDPOINT=https://idp.example.com/connect/authorize
+OIDC_TOKEN_ENDPOINT=https://idp.example.com/connect/token
+OIDC_USERINFO_ENDPOINT=https://idp.example.com/connect/userinfo
+OIDC_END_SESSION_ENDPOINT=https://idp.example.com/connect/endsession
+OIDC_JWKS_URI=https://idp.example.com/.well-known/jwks.json
+```
+
+### Precedence rules
+
+- **Explicit endpoint settings always win.** Discovery never overrides a value you configured.
+- **Discovery only fills the gaps** — endpoints you left blank.
+- **An empty `OIDC_ISSUER` disables discovery.** All required endpoints must then be configured explicitly.
+- If every endpoint is already explicit, no discovery request is made.
+
+### Failure behavior
+
+- If discovery **fails** (issuer unreachable, non-200, malformed/incomplete metadata, or issuer mismatch) the app falls back to whatever endpoints are configured explicitly. Logins still work if those cover the required endpoints; otherwise the route returns a clear "OpenID Connect is misconfigured" error.
+- The discovered `issuer` must match `OIDC_ISSUER` (a trailing-slash difference is tolerated). A mismatched issuer is rejected to prevent metadata substitution.
+- Discovery requires **HTTPS**, except for local development issuers (`http://localhost`, `http://127.0.0.1`, `http://[::1]`).
+- Discovery uses a short timeout and the result is **cached in memory per issuer with a TTL** (one hour), so it does not run on every login but rotated endpoints and signing keys are eventually re-fetched.
+
+### Optional logout endpoint
+
+`end_session_endpoint` is optional. When present in the discovery document it is used for OIDC logout unless `OIDC_END_SESSION_ENDPOINT` is set explicitly (explicit wins). Providers that do not publish it (e.g. Google) fall back to access-token revocation. Because it is optional, a blank `end_session_endpoint` alone does **not** trigger a discovery request — discovery runs only when a required endpoint (authorization, token, userinfo, or jwks_uri) is missing.
+
+### id_token signature verification (JWKS)
+
+The id_token returned from the token endpoint is verified against the provider's published JSON Web Key Set. The JWKS URI is resolved like the other endpoints: an explicit `OIDC_JWKS_URI` wins, otherwise the `jwks_uri` from the discovery document is used. When neither is available the signature **cannot** be verified — the app falls back to decoding the token unverified and logs a loud warning. Configure `OIDC_ISSUER` (so discovery supplies `jwks_uri`) or set `OIDC_JWKS_URI` explicitly to enable verification in production.
 
 ## OpenID Connect: Provider Setup
 
@@ -81,6 +133,30 @@ Common prerequisites
   - Development: `http://localhost:8080/login/openid/callback`
   - Production: `https://<your-domain>/login/openid/callback`
 - Scopes: `OIDC_SCOPE="openid email"` is recommended. Add `profile` if you want name/picture.
+- Consent: eXeLearning does not send the `prompt` parameter, so consent is handled entirely by the provider. Versions up to 4.0.3 forced `prompt=consent`, which made every login re-run the consent flow.
+
+### Microsoft Entra ID (Azure AD)
+
+1) Register a single-tenant application (Entra admin center → App registrations), add the Redirect URI `https://<your-domain>/login/openid/callback` (type *Web*) and create a client secret.
+
+2) Optionally require assignment (Enterprise applications → Properties → *Assignment required* = Yes) and assign the allowed users or groups.
+
+3) Grant tenant-wide admin consent for the delegated permissions the app requests (`openid`, `email`, `profile`) so non-administrative users are not asked to consent. Entra adds `User.Read` to every registration by default; eXeLearning does not request it, but it is harmless to leave it in the grant.
+
+4) Configure environment variables:
+
+```
+# Replace <tenant-id> with the directory (tenant) ID; endpoints are discovered from the issuer
+OIDC_ISSUER=https://login.microsoftonline.com/<tenant-id>/v2.0
+OIDC_SCOPE="openid email profile"
+OIDC_CLIENT_ID=your-application-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+```
+
+5) Logout:
+- Discovery provides `end_session_endpoint`; the backend redirects there with `post_logout_redirect_uri` and `id_token_hint`.
+
+If non-administrative users see *"Approval required"* (sign-in error 90095) even though admin consent is granted, check that you are running 4.0.5 or later: earlier versions forced `prompt=consent`, which Entra rejects in tenants where users cannot self-consent.
 
 ### Google (Identity Platform)
 
@@ -182,6 +258,71 @@ See [Deployment: Reverse Proxy Configuration](../deployment.md#reverse-proxy-con
 ## Guest Mode
 
 Include `guest` in `APP_AUTH_METHODS` to enable `/login/guest`. It creates a temporary user and logs in with role `ROLE_GUEST`.
+
+## Changing Passwords
+
+Password changes are available only for local accounts authenticated with the
+eXeLearning password method. Accounts authenticated through CAS, OpenID Connect,
+SAML, guest access, or other external identity providers must change their
+password through their identity provider.
+
+This applies to every route into the feature — the user menu, the admin panel and
+the command line all refuse the same accounts. eXeLearning never turns an
+externally authenticated account into a local-password one.
+
+### For users: the Change password option
+
+**User menu → Change password**
+
+Open the avatar menu in the top-right corner of the workarea and choose **Change
+password**. The dialog asks for the current password, the new password, and a
+confirmation of the new password. The current password is always verified on the
+server, so a mistyped one is reported without ending the session.
+
+The menu item is only shown when the current session uses local password
+authentication. It is not displayed for guest users, for users signed in through
+CAS, OpenID Connect or SAML, for offline/desktop installations where there is no
+real login, or while an administrator is impersonating another user.
+
+A password must be at least 4 characters long. The dialog shows a strength
+indicator as a guide — it never blocks a password that meets the minimum, but
+longer passwords mixing letters, numbers and symbols are considerably safer.
+
+### For administrators: resetting a user's password
+
+In **Admin → Users**, open the actions menu (⋮) on the user's row and choose
+**Reset password**. The administrator sets a new password directly and is not
+asked for the user's current one.
+
+The action only appears for accounts that own an eXeLearning password. Guest
+accounts and accounts managed by an external identity provider never show it,
+and the API rejects such a request even if it is issued by hand.
+
+### From the command line
+
+Recovery and scripted administration go through the CLI. The recommended form
+asks for the new password interactively, twice, without echoing it — so it never
+reaches the shell history or a process listing:
+
+```bash
+make change-password EMAIL=user@example.com
+```
+
+The Make target is a thin wrapper around the underlying CLI command:
+
+```bash
+bun cli user:password user@example.com
+```
+
+Both refuse CAS, OpenID Connect, SAML, guest and other externally managed
+accounts, and report why. For automation where no terminal is available, the
+password can be piped in instead:
+
+```bash
+echo "$NEW_PASSWORD" | bun cli user:password user@example.com --password-stdin
+```
+
+The password is never accepted as a command-line argument.
 
 ## Local API JWT (optional)
 

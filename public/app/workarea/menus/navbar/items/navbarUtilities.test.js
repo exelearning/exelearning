@@ -1,3 +1,5 @@
+vi.mock('../../../../common/app_tooltip.js', () => ({ default: vi.fn(() => ({ hide: vi.fn() })) }));
+import createTooltip from '../../../../common/app_tooltip.js';
 /**
  * navbarUtilities Tests
  *
@@ -16,9 +18,12 @@ describe('NavbarUtilities', () => {
     let navbarUtilities;
     let originalTooltip;
     let navbarElement;
+    // The menu entry only exists when the server grants canChangePassword.
+    let changePasswordButtonPresent;
 
     beforeEach(() => {
         vi.clearAllMocks();
+        changePasswordButtonPresent = true;
 
         const createButton = (id) => {
             const button = document.createElement('button');
@@ -31,6 +36,7 @@ describe('NavbarUtilities', () => {
         mockButtons = {
             dropdownUtilities: createButton('dropdownUtilities'),
             preferencesButton: createButton('navbar-button-preferences'),
+            changePasswordButton: createButton('navbar-button-change-password'),
             ideviceManagerButton: createButton('navbar-button-idevice-manager'),
             brokenLinksButton: createButton('navbar-button-odebrokenlinks'),
             filemanagerButton: createButton('navbar-button-filemanager'),
@@ -57,6 +63,7 @@ describe('NavbarUtilities', () => {
 
         vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
             if (selector === '#navbar-button-preferences') return mockButtons.preferencesButton;
+            if (selector === '#navbar-button-change-password') return changePasswordButtonPresent ? mockButtons.changePasswordButton : null;
             if (selector === '#head-top-settings-button') return mockButtons.projectPreferencesButton;
             if (selector === '[nav-id="root"]') return rootNav;
             return null;
@@ -93,6 +100,7 @@ describe('NavbarUtilities', () => {
                     showModalIdeviceManager: vi.fn(),
                 },
                 modals: {
+                    changepassword: { show: vi.fn() },
                     filemanager: { show: vi.fn() },
                     odebrokenlinks: { show: vi.fn() },
                     odeusedfiles: { show: vi.fn() },
@@ -172,6 +180,85 @@ describe('NavbarUtilities', () => {
             navbarUtilities = new NavbarFile(mockMenu);
             expect(document.querySelector).toHaveBeenCalledWith('#head-top-settings-button');
         });
+
+        it('should query for the change password button from document', () => {
+            navbarUtilities = new NavbarFile(mockMenu);
+            expect(document.querySelector).toHaveBeenCalledWith('#navbar-button-change-password');
+        });
+    });
+
+    describe('change password menu entry', () => {
+        it('should open the change password modal when clicked', () => {
+            navbarUtilities = new NavbarFile(mockMenu);
+            navbarUtilities.setChangePasswordEvent();
+
+            const [event, handler] = mockButtons.changePasswordButton.addEventListener.mock.calls[0];
+            expect(event).toBe('click');
+
+            const clickEvent = { preventDefault: vi.fn() };
+            handler(clickEvent);
+
+            expect(clickEvent.preventDefault).toHaveBeenCalled();
+            expect(global.eXeLearning.app.modals.changepassword.show).toHaveBeenCalled();
+        });
+
+        it('should not open the modal while an iDevice is being edited', () => {
+            global.eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+            navbarUtilities = new NavbarFile(mockMenu);
+            navbarUtilities.setChangePasswordEvent();
+
+            const [, handler] = mockButtons.changePasswordButton.addEventListener.mock.calls[0];
+            handler({ preventDefault: vi.fn() });
+
+            expect(global.eXeLearning.app.modals.changepassword.show).not.toHaveBeenCalled();
+        });
+
+        it('should do nothing when the entry is not rendered (external/guest session)', () => {
+            changePasswordButtonPresent = false;
+            navbarUtilities = new NavbarFile(mockMenu);
+
+            expect(navbarUtilities.changePasswordButton).toBeNull();
+            expect(() => navbarUtilities.setChangePasswordEvent()).not.toThrow();
+            expect(mockButtons.changePasswordButton.addEventListener).not.toHaveBeenCalled();
+        });
+
+        it('should be wired by setEvents', () => {
+            navbarUtilities = new NavbarFile(mockMenu);
+            const spy = vi.spyOn(navbarUtilities, 'setChangePasswordEvent');
+
+            navbarUtilities.setEvents();
+
+            expect(spy).toHaveBeenCalled();
+        });
+    });
+
+    describe('setOdeBrokenLinksEvent browser-limited tooltip', () => {
+        beforeEach(() => {
+            navbarUtilities = new NavbarFile(mockMenu);
+        });
+
+        // The tooltip is evaluated lazily when the Utilities dropdown opens,
+        // because the static-mode adapters register after the menu is built.
+        const openUtilitiesDropdown = () => {
+            const call = mockButtons.dropdownUtilities.addEventListener.mock.calls.find(
+                ([event]) => event === 'click'
+            );
+            expect(call).toBeDefined();
+            call[1]();
+        };
+
+        it('should warn on the menu entry when links cannot be checked in this flavor', () => {
+            navbarUtilities.setOdeBrokenLinksEvent();
+            openUtilitiesDropdown();
+            expect(mockButtons.brokenLinksButton.title).toContain('cannot be checked automatically');
+        });
+
+        it('should not add the warning when a validation backend is available', () => {
+            eXeLearning.app.api.getLinkValidationStreamUrl = vi.fn(() => '/api/validate-stream');
+            navbarUtilities.setOdeBrokenLinksEvent();
+            openUtilitiesDropdown();
+            expect(mockButtons.brokenLinksButton.title).toBe('');
+        });
     });
 
     describe('setEvents', () => {
@@ -203,11 +290,16 @@ describe('NavbarUtilities', () => {
     });
 
     describe('setTooltips', () => {
-        it('should initialize jQuery tooltips on menu buttons', () => {
+        it('should initialize guarded tooltips on menu buttons', () => {
+            const menu = document.createElement('div');
+            menu.className = 'main-menu-right';
+            menu.innerHTML = '<button title=Utilities>Utilities</button>';
+            document.body.appendChild(menu);
             navbarUtilities = new NavbarFile(mockMenu);
             navbarUtilities.setTooltips();
 
-            expect(global.$.fn.tooltip).toHaveBeenCalled();
+            expect(createTooltip).toHaveBeenCalledWith(menu.firstElementChild);
+            expect(menu.firstElementChild.getAttribute('data-bs-placement')).toBe('bottom');
         });
     });
 

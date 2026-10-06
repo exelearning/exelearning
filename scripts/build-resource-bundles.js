@@ -34,11 +34,23 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.j
 const buildVersion = `v${packageJson.version}`;
 
 // Paths - bundles stored without version (version is virtual cache buster in URLs)
+const PUBLIC_PATH = path.join(projectRoot, 'public');
 const THEMES_BASE_PATH = path.join(projectRoot, 'public/files/perm/themes/base');
 const IDEVICES_BASE_PATH = path.join(projectRoot, 'public/files/perm/idevices/base');
 const LIBS_PATH = path.join(projectRoot, 'public/libs');
 const COMMON_PATH = path.join(projectRoot, 'public/app/common');
 const OUTPUT_PATH = path.join(projectRoot, 'public/bundles');
+
+/**
+ * Path of a file relative to public/ (the static distribution root), using
+ * forward slashes. This is the URL the static client fetches to assemble a
+ * bundle from the loose files instead of downloading a pre-built zip.
+ * @param {string} fullPath
+ * @returns {string}
+ */
+function relToPublic(fullPath) {
+  return path.relative(PUBLIC_PATH, fullPath).split(path.sep).join('/');
+}
 
 // Base libraries to include (matching resources.ts)
 // Content-specific libraries (exe_lightbox, exe_tooltips, exe_effects, jquery-ui, etc.)
@@ -47,8 +59,6 @@ const BASE_LIBS = [
   { src: 'libs/jquery/jquery.min.js', dest: 'jquery/jquery.min.js' },
   { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js' },
   { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css' },
-  { src: 'libs/bootstrap/bootstrap.bundle.min.js.map', dest: 'bootstrap/bootstrap.bundle.min.js.map' },
-  { src: 'libs/bootstrap/bootstrap.min.css.map', dest: 'bootstrap/bootstrap.min.css.map' },
   { src: 'app/common/common.js', dest: 'common.js' },
   { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
   { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
@@ -77,6 +87,10 @@ function scanDirectory(dirPath, basePath = '') {
 
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
+    // Exclude colocated test sources so manifests match the dist/static copy,
+    // which drops these files (excludePatterns=['.test.js','.spec.js']). Listing
+    // them would 404 on every fetch during static bundle assembly.
+    if (entry.isFile() && /\.(test|spec)\.js$/.test(entry.name)) continue;
 
     const fullPath = path.join(dirPath, entry.name);
     const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
@@ -128,6 +142,7 @@ function buildThemeBundles(manifest) {
     .map(d => d.name);
 
   manifest.themes = {};
+  manifest.staticFiles.themes = {};
 
   for (const themeName of themes) {
     const themePath = path.join(THEMES_BASE_PATH, themeName);
@@ -141,6 +156,13 @@ function buildThemeBundles(manifest) {
     const zipBuffer = createZip(files);
     const outputFile = path.join(themesOutputPath, `${themeName}.zip`);
     fs.writeFileSync(outputFile, zipBuffer);
+
+    // Static distribution: list the loose source URL (s) and the in-bundle
+    // target path (t) so the static client can assemble the theme on demand.
+    manifest.staticFiles.themes[themeName] = files.map(f => ({
+      s: relToPublic(f.fullPath),
+      t: f.relativePath,
+    }));
 
     manifest.themes[themeName] = {
       files: files.length,
@@ -169,6 +191,7 @@ function buildIdevicesBundle(manifest) {
 
   const allFiles = [];
   manifest.idevices = {};
+  manifest.staticFiles.idevices = {};
 
   for (const ideviceName of idevices) {
     const exportPath = path.join(IDEVICES_BASE_PATH, ideviceName, 'export');
@@ -186,6 +209,14 @@ function buildIdevicesBundle(manifest) {
         relativePath: `${ideviceName}/${file.relativePath}`,
       });
     }
+
+    // Static distribution: per-iDevice loose source URL (s) and the in-bundle
+    // target path (t, relative to export/) so the static client assembles only
+    // the requested iDevice instead of the whole 11 MB zip.
+    manifest.staticFiles.idevices[ideviceName] = files.map(file => ({
+      s: relToPublic(file.fullPath),
+      t: file.relativePath,
+    }));
 
     manifest.idevices[ideviceName] = files.length;
   }
@@ -232,6 +263,12 @@ function buildLibsBundle(manifest) {
     return;
   }
 
+  // Static distribution: loose source URL (s) → in-bundle target path (t).
+  manifest.staticFiles.libs = files.map(f => ({
+    s: relToPublic(f.fullPath),
+    t: f.relativePath,
+  }));
+
   const zipBuffer = createZip(files);
   const outputFile = path.join(OUTPUT_PATH, 'libs.zip');
   fs.writeFileSync(outputFile, zipBuffer);
@@ -264,6 +301,7 @@ function buildCommonLibsBundle(manifest) {
   ];
 
   const allFiles = [];
+  manifest.staticFiles.common = {};
 
   for (const libName of commonLibs) {
     // Some libraries live in public/libs/ (e.g. exe_atools, exe_elpx_download),
@@ -286,6 +324,13 @@ function buildCommonLibsBundle(manifest) {
         relativePath: `${libName}/${file.relativePath}`,
       });
     }
+
+    // Static distribution: per-library loose source URL (s) → in-bundle target
+    // path (t, prefixed with the library name to match fetchLibraryDirectory).
+    manifest.staticFiles.common[libName] = files.map(file => ({
+      s: relToPublic(file.fullPath),
+      t: `${libName}/${file.relativePath}`,
+    }));
   }
 
   if (allFiles.length === 0) {
@@ -334,6 +379,13 @@ function buildContentCssBundle(manifest) {
     relativePath: `content/css/${f.relativePath}`,
   }));
 
+  // Static distribution: loose source URL (s) → in-bundle target path (t, with
+  // the content/css/ prefix the exporters expect).
+  manifest.staticFiles.contentCss = files.map(f => ({
+    s: relToPublic(f.fullPath),
+    t: f.relativePath,
+  }));
+
   const zipBuffer = createZip(files);
   const outputFile = path.join(OUTPUT_PATH, 'content-css.zip');
   fs.writeFileSync(outputFile, zipBuffer);
@@ -362,6 +414,9 @@ function build() {
   const manifest = {
     buildVersion, // Version at build time (for reference)
     builtAt: new Date().toISOString(),
+    // Per-bundle loose-file mappings ({ s: sourceUrl, t: targetPath }) used by
+    // the static client to assemble bundles on demand without shipping the zips.
+    staticFiles: {},
   };
 
   // Build all bundles

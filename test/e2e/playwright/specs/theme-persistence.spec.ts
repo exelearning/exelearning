@@ -4,25 +4,6 @@ import type { Page } from '@playwright/test';
 import { gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
- * Helper function to wait for app initialization
- */
-async function waitForAppReady(page: Page): Promise<void> {
-    await page.waitForLoadState('networkidle');
-
-    // Wait for Yjs bridge initialization
-    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, undefined, {
-        timeout: 30000,
-    });
-
-    // Wait for loading screen to disappear
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        undefined,
-        { timeout: 30000 },
-    );
-}
-
-/**
  * Helper function to open styles panel and navigate to Imported tab
  */
 async function openImportedStylesTab(page: Page): Promise<void> {

@@ -159,6 +159,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Multiple Choice Quiz'),
         };
     },
@@ -221,7 +222,18 @@ var $exeDevice = {
 
     loadYoutubeApi: function () {
         if (typeof YT == 'undefined') {
-            onYouTubeIframeAPIReady = $exeDevice.youTubeReady;
+            // The YouTube API calls this global whenever it finishes loading,
+            // which can be long after this edition closed. Bind it to this
+            // edition and restore the previous value on teardown.
+            const ready = $exeDevice.youTubeReady;
+            const previousReady = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady =
+                typeof ready === 'function'
+                    ? $exeDevice.$lifecycle.bind(ready)
+                    : ready;
+            $exeDevice.$lifecycle.own(() => {
+                window.onYouTubeIframeAPIReady = previousReady;
+            });
             let tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
@@ -233,6 +245,7 @@ var $exeDevice = {
     },
 
     loadPlayerYoutube: function () {
+        const lifecycle = $exeDevice.$lifecycle;
         $exeDevice.player = new YT.Player('seleccionaEVideo', {
             width: '100%',
             height: '100%',
@@ -243,10 +256,11 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.clickPlay,
-                onError: $exeDevice.onPlayerError,
+                onReady: lifecycle.bind($exeDevice.clickPlay),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
             },
         });
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
         $exeDevice.playerIntro = new YT.Player('seleccionaEVI', {
             width: '100%',
             height: '100%',
@@ -257,9 +271,11 @@ var $exeDevice = {
                 controls: 1,
             },
         });
+        lifecycle.ownInstance($exeDevice.playerIntro, 'destroy');
     },
 
     clickPlay: function () {
+        if (!$exeDevice) return;
         const ulrvideo = $('#seleccionaEURLYoutube');
         if (
             !ulrvideo ||
@@ -364,6 +380,8 @@ var $exeDevice = {
     },
 
     youTubeReady: function () {
+        if (!$exeDevice) return;
+        const lifecycle = $exeDevice.$lifecycle;
         $exeDevice.player = new YT.Player('seleccionaEVideo', {
             width: '100%',
             height: '100%',
@@ -374,10 +392,11 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.onPlayerReady,
-                onError: $exeDevice.onPlayerError,
+                onReady: lifecycle.bind($exeDevice.onPlayerReady),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
             },
         });
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
         $exeDevice.playerIntro = new YT.Player('seleccionaEVI', {
             width: '100%',
             height: '100%',
@@ -388,14 +407,15 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.onPlayerReady,
-                onError: $exeDevice.onPlayerError,
+                onReady: lifecycle.bind($exeDevice.onPlayerReady),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
             },
         });
+        lifecycle.ownInstance($exeDevice.playerIntro, 'destroy');
     },
 
     onPlayerReady: function () {
-        if ($exeDevice.isVideoType) {
+        if ($exeDevice?.isVideoType) {
             $exeDevice.showVideoQuestion();
         }
     },
@@ -430,26 +450,33 @@ var $exeDevice = {
         start: function (type) {
             this.stop();
             this.type = type;
-            this.intervalID = setInterval(this.update.bind(this), 1000);
+            // Capture the edition that started the clock: a tick must never
+            // drive a later one through the mutable $exeDevice global.
+            this.device = $exeDevice;
+            this.lifecycle = $exeDevice.$lifecycle;
+            this.intervalID = this.lifecycle.setInterval(
+                this.update.bind(this),
+                1000
+            );
         },
         update: function () {
-            if (typeof $exeDevice === 'undefined') {
-                clearInterval(this.intervalID);
+            if (!this.device) {
+                this.stop();
             } else {
                 if (this.type === 'local') {
-                    $exeDevice.updateTimerDisplayLocal();
+                    this.device.updateTimerDisplayLocal();
                 } else if (this.type === 'remote') {
-                    $exeDevice.updateTimerDisplay();
+                    this.device.updateTimerDisplay();
                 } else if (this.type === 'vlocal') {
-                    $exeDevice.updateTimerDisplayVILocal();
+                    this.device.updateTimerDisplayVILocal();
                 } else if (this.type === 'viremote') {
-                    $exeDevice.updateTimerVIDisplay();
+                    this.device.updateTimerVIDisplay();
                 }
             }
         },
         stop: function () {
             if (this.intervalID) {
-                clearInterval(this.intervalID);
+                this.lifecycle.clearInterval(this.intervalID);
                 this.intervalID = null;
             }
         },
@@ -726,9 +753,14 @@ var $exeDevice = {
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
-        });
+        $exeDevice.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
+        $exeDevice.$lifecycle.addEventListener(
+            $exeDevice.playerAudio,
+            'canplaythrough',
+            function () {
+                this.playerAudio.play();
+            }
+        );
     },
 
     stopSound() {
@@ -1046,6 +1078,7 @@ var $exeDevice = {
         $image
             .prop('src', url)
             .on('load', function () {
+                if (!$exeDevice) return false;
                 if (
                     !this.complete ||
                     typeof this.naturalWidth == 'undefined' ||
@@ -1070,7 +1103,7 @@ var $exeDevice = {
             })
             .on('error', function () {
                 if (type == 1) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                    $exeDevice?.showMessage($exeDevice.msgs.msgEURLValid);
                 }
                 return false;
             });
@@ -1408,7 +1441,6 @@ var $exeDevice = {
                                 <button id="seleccionaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -1697,7 +1729,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 3, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(3)}
@@ -1723,7 +1755,7 @@ var $exeDevice = {
             statusbar: false,
             setup: function (ed) {
                 ed.on('init', function () {
-                    $exeDevice.enableForm();
+                    $exeDevice?.enableForm();
                 });
             },
         });
@@ -1752,6 +1784,8 @@ var $exeDevice = {
         this.active = 0;
         this.localPlayer = document.getElementById('seleccionaEVideoLocal');
         this.localPlayerIntro = document.getElementById('seleccionaEVILocal');
+        this.$lifecycle.ownMedia(this.localPlayer);
+        this.$lifecycle.ownMedia(this.localPlayerIntro);
     },
 
     getCuestionDefault: function () {
@@ -1977,6 +2011,10 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#seleccionaEGlobalTimes').val(game.globalTime);
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
@@ -2124,13 +2162,15 @@ var $exeDevice = {
         eXe.app.confirm(
             $exeDevice.msgs.msgTitleAltImageWarning,
             $exeDevice.msgs.msgAltImageWarning,
-            () => {
-                $exeDevice.checkAltImage = false;
+            // The dialog can be answered after the editor closed; the reply
+            // must not save whatever iDevice is open by then.
+            $exeDevice.$lifecycle.bind(function () {
+                this.checkAltImage = false;
                 const saveButton = document.getElementsByClassName(
                     'button-save-idevice'
                 )[0];
                 saveButton.click();
-            }
+            })
         );
         return false;
     },
@@ -2405,6 +2445,8 @@ var $exeDevice = {
             ),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#seleccionaEGlobalTimes').val(), 10);
 
@@ -2519,6 +2561,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
             globalTime: globalTime,
         };
@@ -2612,6 +2656,7 @@ var $exeDevice = {
             .add($seleccionaEEndVideo)
             .add($seleccionaESilenceVideo)
             .on('focusout', function () {
+                if (!$exeDevice) return;
                 if (!$exeDevice.validTime(this.value)) {
                     $(this).css({
                         'background-color': 'red',
@@ -2636,65 +2681,66 @@ var $exeDevice = {
 
         $('.SLCNE-EPanel').on('click', 'input.SLCNE-Type', function () {
             const type = parseInt($(this).val(), 10);
-            $exeDevice.changeTypeQuestion(type);
+            $exeDevice?.changeTypeQuestion(type);
         });
 
         $('.SLCNE-EPanel').on('click', 'input.SLCNE-TypeSelect', function () {
             const type = parseInt($(this).val(), 10);
-            $exeDevice.showTypeQuestion(type);
+            $exeDevice?.showTypeQuestion(type);
         });
 
         $('.SLCNE-EPanel').on('click', 'input.SLCNE-Number', function () {
             const number = parseInt($(this).val(), 10);
-            $exeDevice.showOptions(number);
+            $exeDevice?.showOptions(number);
         });
 
         $('#seleccionaEAdd').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.addQuestion();
+            $exeDevice?.addQuestion();
         });
 
         $('#seleccionaEFirst').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.firstQuestion();
+            $exeDevice?.firstQuestion();
         });
 
         $('#seleccionaEPrevious').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.previousQuestion();
+            $exeDevice?.previousQuestion();
         });
 
         $('#seleccionaENext').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.nextQuestion();
+            $exeDevice?.nextQuestion();
         });
 
         $('#seleccionaELast').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.lastQuestion();
+            $exeDevice?.lastQuestion();
         });
 
         $('#seleccionaEDelete').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.removeQuestion();
+            $exeDevice?.removeQuestion();
         });
 
         $('#seleccionaECopy').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.copyQuestion();
+            $exeDevice?.copyQuestion();
         });
 
         $('#seleccionaECut').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.cutQuestion();
+            $exeDevice?.cutQuestion();
         });
 
         $('#seleccionaEPaste').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.pasteQuestion();
+            $exeDevice?.pasteQuestion();
         });
 
         $('#seleccionaGlobalTimeButton').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             const selectedTime = parseInt(
                 $('#seleccionaEGlobalTimes').val(),
@@ -2710,13 +2756,13 @@ var $exeDevice = {
 
         $('#seleccionaEPlayVideo').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.playVideoQuestion();
+            $exeDevice?.playVideoQuestion();
         });
 
         $('#seleccionaECheckSoundVideo, #seleccionaECheckImageVideo').on(
             'change',
             () => {
-                $exeDevice.playVideoQuestion();
+                $exeDevice?.playVideoQuestion();
             }
         );
 
@@ -2743,7 +2789,7 @@ var $exeDevice = {
             });
 
         $('#seleccionaETimeSilence').on('keyup', function () {
-            let v = this.value.replace(/\D/g, '').substring(0, 1);
+            let v = this.value.replace(/\D/g, '').substring(0, 3);
             this.value = v;
         });
 
@@ -2759,6 +2805,7 @@ var $exeDevice = {
             });
 
         $('#seleccionaEScoreQuestion').on('focusout', function () {
+            if (!$exeDevice) return;
             if (!$exeDevice.validateScoreQuestion($(this).val())) {
                 $(this).val(1);
             }
@@ -2786,6 +2833,7 @@ var $exeDevice = {
             $('#eXeGameImportGame')
                 .attr('accept', '.txt, .xml')
                 .on('change', function (e) {
+                    if (!$exeDevice) return;
                     const file = e.target.files[0];
                     if (!file) {
                         $exeDevice.showMessage(
@@ -2808,19 +2856,21 @@ var $exeDevice = {
                         return;
                     }
                     const reader = new FileReader();
-                    reader.onload = function (e) {
-                        $exeDevice.importGame(e.target.result, file.type);
-                    };
+                    $exeDevice.$lifecycle.ownFileReader(reader);
+                    reader.onload = $exeDevice.$lifecycle.bind(function (e) {
+                        this.importGame(e.target.result, file.type);
+                    });
                     reader.readAsText(file);
                 });
             $('#eXeGameExportQuestions').on('click', () => {
-                $exeDevice.exportQuestions();
+                $exeDevice?.exportQuestions();
             });
         } else {
             $('#eXeGameExportImport').hide();
         }
 
         $seleccionaEInitVideo.css('color', '#2c6d2c').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVideoFocus = 0;
             $seleccionaEInitVideo.css('color', '#2c6d2c');
@@ -2830,6 +2880,7 @@ var $exeDevice = {
         });
 
         $seleccionaEEndVideo.on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVideoFocus = 1;
             $seleccionaEEndVideo.css('color', '#2c6d2c');
@@ -2839,6 +2890,7 @@ var $exeDevice = {
         });
 
         $seleccionaESilenceVideo.on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVideoFocus = 2;
             $seleccionaESilenceVideo.css('color', '#2c6d2c');
@@ -2848,6 +2900,7 @@ var $exeDevice = {
         });
 
         $('#seleccionaEVideoTime').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             let $timeV;
             switch ($exeDevice.timeVideoFocus) {
@@ -2872,6 +2925,7 @@ var $exeDevice = {
         $('#seleccionaEVIStart')
             .css('color', '#2c6d2c')
             .on('click', (e) => {
+                if (!$exeDevice) return;
                 e.preventDefault();
                 $exeDevice.timeVIFocus = true;
                 $('#seleccionaEVIStart').css('color', '#2c6d2c');
@@ -2879,6 +2933,7 @@ var $exeDevice = {
             });
 
         $('#seleccionaEVIEnd').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVIFocus = false;
             $('#seleccionaEVIEnd').css('color', '#2c6d2c');
@@ -2886,6 +2941,7 @@ var $exeDevice = {
         });
 
         $('#seleccionaEVITime').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             const $timeV = $exeDevice.timeVIFocus
                 ? $('#seleccionaEVIStart')
@@ -2901,7 +2957,7 @@ var $exeDevice = {
         $('.SLCNE-ESolution').on('change', function () {
             const marcado = $(this).is(':checked'),
                 value = $(this).val();
-            $exeDevice.clickSolution(marcado, value);
+            $exeDevice?.clickSolution(marcado, value);
         });
 
         $('#seleccionaECustomScore').on('change', function () {
@@ -2912,6 +2968,7 @@ var $exeDevice = {
         });
 
         $('#seleccionaEURLImage').on('change', function () {
+            if (!$exeDevice) return;
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
@@ -2929,6 +2986,7 @@ var $exeDevice = {
         });
 
         $('#seleccionaEPlayImage').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $('#seleccionaEURLImage').val(),
@@ -2947,17 +3005,17 @@ var $exeDevice = {
         });
 
         $('#seleccionaEImage').on('click', function (e) {
-            $exeDevice.clickImage(this, e.pageX, e.pageY);
+            $exeDevice?.clickImage(this, e.pageX, e.pageY);
         });
 
         $('#seleccionaEVideoIntroPlay').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.playVideoIntro1();
+            $exeDevice?.playVideoIntro1();
         });
 
         $('#seleccionaEVIPlayI').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.playVideoIntro2();
+            $exeDevice?.playVideoIntro2();
         });
 
         $('#seleccionaEVIClose').on('click', (e) => {
@@ -2965,7 +3023,7 @@ var $exeDevice = {
             $('#seleccionaEVideoIntro').val($('#seleccionaEVIURL').val());
             $('#seleccionaEVIDiv').hide();
             $('#seleccionaENumQuestionDiv').show();
-            $exeDevice.stopVideoIntro();
+            $exeDevice?.stopVideoIntro();
         });
 
         $('#seleccionaECursor').on('click', () => {
@@ -2984,7 +3042,7 @@ var $exeDevice = {
         $('#seleccionaEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
-                $exeDevice.showMessage(
+                $exeDevice?.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
@@ -3005,7 +3063,7 @@ var $exeDevice = {
                 const gm = parseInt($(this).val(), 10),
                     fb = $('#seleccionaEHasFeedBack').is(':checked'),
                     ul = $seleccionaEUseLives.is(':checked');
-                $exeDevice.updateGameMode(gm, fb, ul);
+                $exeDevice?.updateGameMode(gm, fb, ul);
             }
         );
 
@@ -3013,7 +3071,7 @@ var $exeDevice = {
             const type = parseInt($(this).val(), 10),
                 messages = $('#seleccionaECustomMessages').is(':checked'),
                 customS = $('#seleccionaECustomScore').is(':checked');
-            $exeDevice.showSelectOrder(type, messages, customS);
+            $exeDevice?.showSelectOrder(type, messages, customS);
         });
 
         $('#seleccionaECustomMessages').on('change', function () {
@@ -3023,7 +3081,7 @@ var $exeDevice = {
                     10
                 ),
                 customS = $('#seleccionaECustomScore').is(':checked');
-            $exeDevice.showSelectOrder(type, messages, customS);
+            $exeDevice?.showSelectOrder(type, messages, customS);
         });
 
         $('#seleccionaEGameModeHelpLnk').on('click', function () {
@@ -3041,20 +3099,21 @@ var $exeDevice = {
                 let v = this.value.replace(/\D/g, '').substring(0, 3);
                 this.value = v;
                 if (this.value > 0 && this.value <= 100) {
-                    $exeDevice.updateQuestionsNumber();
+                    $exeDevice?.updateQuestionsNumber();
                 }
             })
             .on('click', function () {
-                $exeDevice.updateQuestionsNumber();
+                $exeDevice?.updateQuestionsNumber();
             })
             .on('focusout', function () {
                 let val = parseInt(this.value.trim() || 100, 10);
                 val = Math.max(1, Math.min(val, 100));
                 this.value = val;
-                $exeDevice.updateQuestionsNumber();
+                $exeDevice?.updateQuestionsNumber();
             });
 
         $seleccionaENumberQuestion.on('keyup', function (e) {
+            if (!$exeDevice) return;
             if (e.keyCode === 13) {
                 const num = parseInt($(this).val(), 10);
                 if (!isNaN(num) && num > 0) {
@@ -3074,6 +3133,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(

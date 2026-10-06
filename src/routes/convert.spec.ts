@@ -577,6 +577,27 @@ describe('Convert Routes', () => {
             expect(body.message).toContain('download=1');
         });
 
+        it('should not leak extract-* temp directories after a conversion', async () => {
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${authToken}` },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(200);
+
+            // The per-conversion extraction directory must be cleaned up; the
+            // route-level finally only removes the convert-* upload dir.
+            const entries = await fs.readdir(path.join(testDir, 'tmp'));
+            expect(entries.some(name => name.startsWith('extract-'))).toBe(false);
+        });
+
         it('should return ELPX file with download=1', async () => {
             // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();

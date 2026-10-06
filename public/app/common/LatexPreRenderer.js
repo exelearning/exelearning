@@ -44,6 +44,28 @@
     // Elements to skip entirely
     const SKIP_ELEMENTS = new Set(['script', 'style', 'textarea', 'code', 'pre', 'noscript', 'svg', 'math']);
 
+    // JSON iDevices whose LaTeX lives in NESTED fields (questions/answers/feedback),
+    // not just in top-level string properties. These require a recursive pass over
+    // data-idevice-json-data. adaptative-quiz is safe because its runtime escapes
+    // author text with escapeHtmlButKeepRenderedMath, which keeps the pre-rendered
+    // <span class="exe-math-rendered"> wrappers. form is safe because its question
+    // text/feedback are inserted as innerHTML and graded by index or by the plain
+    // text inside <u> blanks (never by the surrounding stem). Other JSON iDevices
+    // keep the top-level-only behaviour because their runtime escapes/transforms
+    // text in ways incompatible with pre-rendered SVG (see audit: scrambled-list).
+    const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz', 'scrambled-list', 'form']);
+
+    // JSON keys whose values are compared/used verbatim at runtime, or rendered in a
+    // context that cannot show an SVG (access codes, identifiers, button labels placed
+    // in an <input value="">). These must never be turned into pre-rendered <span>
+    // markup -- even if they contain LaTeX-like delimiters. Otherwise the substituted
+    // SVG would change the literal (e.g. adaptative-quiz enterCodeAccess() matches
+    // itinerary.codeAccess), appear as raw markup (scrambled-list buttonText), or
+    // corrupt an <option value=""> while breaking the value/answer comparison
+    // (form dropdown wrongAnswersValue).
+    // Mirrors NON_RENDERABLE_JSON_KEYS in src/shared/export/prerender/ServerLatexPreRenderer.ts.
+    const NON_RENDERABLE_JSON_KEYS = new Set(['codeAccess', 'buttonText', 'wrongAnswersValue']);
+
     // Patterns for numbered equation environments (define labels, must be processed first)
     // These create equation numbers and register \label{} for later \ref{} resolution
     const NUMBERED_EQUATION_ENVS = new Set([
@@ -779,14 +801,28 @@
                 continue;
             }
 
+            const ideviceType = element.getAttribute('data-idevice-type') || '';
+
             try {
                 const jsonData = JSON.parse(jsonStr);
-                const result = await processJsonProperties(jsonData);
-                if (result.updated) {
+                let newJsonStr;
+                let renderedCount;
+                if (RECURSIVE_JSON_LATEX_IDEVICES.has(ideviceType)) {
+                    // Nested-field iDevices (e.g. trueorfalse questions/answers/feedback):
+                    // reuse the recursive pass already used for encrypted DataGame data.
+                    const processed = await preRenderLatexInGameData(jsonData);
+                    newJsonStr = JSON.stringify(processed);
+                    renderedCount = 1;
+                } else {
+                    // Default: only top-level string properties (unchanged behaviour).
+                    const result = await processJsonProperties(jsonData);
+                    newJsonStr = result.updated ? JSON.stringify(result.jsonData) : jsonStr;
+                    renderedCount = result.updated ? result.count : 0;
+                }
+                if (newJsonStr !== jsonStr) {
                     // Update the attribute with pre-rendered content
-                    const newJsonStr = JSON.stringify(result.jsonData);
                     element.setAttribute('data-idevice-json-data', newJsonStr);
-                    totalReplaced += result.count;
+                    totalReplaced += renderedCount;
                     console.log(`[LatexPreRenderer] Pre-rendered LaTeX in JSON data`);
                 }
             } catch (err) {
@@ -1081,7 +1117,8 @@
         if (typeof data === 'object' && data !== null) {
             const result = {};
             for (const [key, value] of Object.entries(data)) {
-                result[key] = await preRenderLatexInGameData(value);
+                // Leave literal-compared fields (codes/identifiers) untouched.
+                result[key] = NON_RENDERABLE_JSON_KEYS.has(key) ? value : await preRenderLatexInGameData(value);
             }
             return result;
         }

@@ -24,7 +24,7 @@
 
 import * as Y from 'yjs';
 import * as fflate from 'fflate';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 import type {
     AssetHandler,
@@ -34,6 +34,7 @@ import type {
     PageData,
     BlockData,
     ComponentData,
+    MalformedPropertiesRef,
     OdeMetadata,
     Logger,
 } from './interfaces';
@@ -45,12 +46,85 @@ import {
     LEGACY_TYPE_ALIASES,
     defaultLogger,
 } from './interfaces';
+import { PASS_SCORE_DEFAULT, normalizePassScore } from '../export/metadata-properties';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
+import { isLegacyGenericTextTemplate } from './legacyGenericTextTemplate';
+import { addUnresolvedAssetRefs, type UnresolvedAssetRef } from './unresolvedAssetRefs';
+import {
+    DEFAULT_ZIP_LIMITS,
+    ZipLimitError,
+    validateZipLimits,
+    entrySizeError,
+    totalSizeError,
+    entryCountError,
+} from './importPolicy';
+import type { ZipDecompressionLimits, ArchiveInspection, ArchiveEntryInfo } from './importPolicy';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
 import { generateId } from '../ids';
 import type { LegacyParseResult, LegacyPage, LegacyBlock, LegacyIdevice, LegacyMetadata } from './LegacyXmlParser';
 import { generateOdeId } from '../export/utils/odeId';
+
+/**
+ * Decompression safety limits (ZIP-bomb / DoS protection).
+ *
+ * DEFLATE achieves ratios near 1000:1 on repetitive data, so a tiny upload can
+ * expand to tens of GB and OOM the shared server. `fflate.unzipSync` returns
+ * every entry fully decompressed in memory, so we MUST refuse oversized entries
+ * BEFORE they are inflated.
+ *
+ * fflate exposes each entry's `originalSize` (the uncompressed size recorded in
+ * the ZIP central directory) to the `filter` callback, and that callback runs
+ * *before* the entry is decompressed. We use it to enforce three independent
+ * caps and abort by throwing — guaranteeing we never inflate beyond the cap.
+ *
+ * The limits, their default (conservative) values, the structured
+ * {@link ZipLimitError}, and the runtime-specific policies live in
+ * `./importPolicy` — the single source of truth shared with the browser import
+ * adapter and the ELPX export warning. They are re-exported here for backwards
+ * compatibility with existing importers of `./ElpxImporter`.
+ */
+export {
+    DEFAULT_ZIP_LIMITS,
+    ZipLimitError,
+} from './importPolicy';
+export type { ZipDecompressionLimits, ArchiveInspection, ArchiveEntryInfo } from './importPolicy';
+
+/**
+ * Inspect a ZIP archive's central directory WITHOUT inflating any entry.
+ *
+ * fflate's `filter` callback receives each entry's declared `originalSize` and
+ * runs before decompression; returning `false` for every entry visits all the
+ * central-directory metadata while inflating nothing. This is the preflight
+ * used to decide whether an import is within the applicable limits (and whether
+ * a desktop confirmation is required) before any bytes are materialised or any
+ * project state is mutated.
+ *
+ * @param buffer - Raw ZIP bytes
+ * @param _label - Human-readable archive label (accepted for symmetry)
+ * @returns Declared entry metadata, cumulative size, count and largest entry
+ */
+export function inspectZipArchive(buffer: Uint8Array, _label = 'ELP/ELPX archive'): ArchiveInspection {
+    const entries: ArchiveEntryInfo[] = [];
+    let totalBytes = 0;
+    let largestEntry: ArchiveEntryInfo | null = null;
+
+    fflate.unzipSync(buffer, {
+        filter: (file: { name: string; originalSize: number }) => {
+            const size = file.originalSize;
+            const entry: ArchiveEntryInfo = { name: file.name, size };
+            entries.push(entry);
+            totalBytes += size;
+            if (largestEntry === null || size > largestEntry.size) {
+                largestEntry = entry;
+            }
+            // Never inflate — metadata only.
+            return false;
+        },
+    });
+
+    return { entries, totalBytes, entryCount: entries.length, largestEntry };
+}
 
 /**
  * ElpxImporter class
@@ -62,17 +136,122 @@ export class ElpxImporter {
     private assetMap: Map<string, string> = new Map();
     private onProgress: ((progress: ImportProgress) => void) | null = null;
     private logger: Logger;
+    private zipLimits: ZipDecompressionLimits;
+    /** Activities whose asset references the package could not satisfy (#2223). */
+    private unresolvedAssets: UnresolvedAssetRef[] = [];
+    /** Activities whose persisted jsonProperties could not be parsed (#2190). */
+    private malformedProperties: MalformedPropertiesRef[] = [];
 
     /**
      * Create a new ElpxImporter
      * @param ydoc - Yjs document to populate
      * @param assetHandler - Asset handler for storing assets (optional)
      * @param logger - Logger for debug output (optional)
+     * @param zipLimits - ZIP-bomb decompression limits (optional, sensible defaults)
      */
-    constructor(ydoc: Y.Doc, assetHandler: AssetHandler | null = null, logger: Logger = defaultLogger) {
+    constructor(
+        ydoc: Y.Doc,
+        assetHandler: AssetHandler | null = null,
+        logger: Logger = defaultLogger,
+        zipLimits: Partial<ZipDecompressionLimits> = {},
+    ) {
         this.ydoc = ydoc;
         this.assetHandler = assetHandler;
         this.logger = logger;
+        // Validate the merged limits at this single boundary so an invalid
+        // runtime override can never silently disable the ZIP-bomb protection.
+        this.zipLimits = validateZipLimits({ ...DEFAULT_ZIP_LIMITS, ...zipLimits });
+    }
+
+    /**
+     * Decompress a ZIP buffer with hard limits enforced BEFORE inflation.
+     *
+     * fflate's `filter` callback receives each entry's `originalSize` (read from
+     * the ZIP central directory) and runs before that entry is decompressed.
+     * We use it to reject the archive the moment a per-entry, cumulative, or
+     * entry-count cap would be exceeded, throwing {@link ZipLimitError}. This
+     * guarantees the offending bytes are never materialised in memory, so a
+     * zip bomb cannot OOM the process.
+     *
+     * KNOWN LIMITATION (intentional, documented): `originalSize` is the
+     * *declared* uncompressed size in the central directory, i.e. it is
+     * attacker-controlled metadata, not a measured value. A crafted archive can
+     * understate `originalSize` so an entry passes the pre-inflation filter and
+     * then inflates to more bytes than declared. fflate decompresses
+     * synchronously and does not stream/abort mid-inflation through this filter,
+     * so we cannot enforce the cap against the *actual* inflated length here. We
+     * accept this trade-off: the declared-size check stops the common
+     * over-declared zip bomb cheaply and without inflation, and a single
+     * entry's actual overrun is bounded in practice by available memory; full
+     * defence would require a streaming inflater that aborts on byte count.
+     * `maxEntryBytes` therefore caps *declared* per-entry size, not guaranteed
+     * inflated size.
+     *
+     * @param buffer - Raw ZIP bytes
+     * @param label - Human-readable archive label for error messages
+     * @returns Map of entry path -> decompressed bytes
+     */
+    private safeUnzip(buffer: Uint8Array, label: string): Record<string, Uint8Array> {
+        const { maxTotalBytes, maxEntryBytes, maxEntries } = this.zipLimits;
+        let cumulativeBytes = 0;
+        let entryCount = 0;
+
+        return fflate.unzipSync(buffer, {
+            filter: (file: { name: string; originalSize: number }) => {
+                entryCount++;
+                if (entryCount > maxEntries) {
+                    throw entryCountError(label, entryCount, maxEntries);
+                }
+
+                // NOTE: `originalSize` is the attacker-declared uncompressed
+                // size from the central directory, not a measured value (see the
+                // KNOWN LIMITATION in this method's doc comment). It is checked
+                // before inflation as a cheap zip-bomb guard.
+                const entrySize = file.originalSize;
+                if (entrySize > maxEntryBytes) {
+                    throw entrySizeError(label, file.name, entrySize, maxEntryBytes);
+                }
+
+                cumulativeBytes += entrySize;
+                if (cumulativeBytes > maxTotalBytes) {
+                    throw totalSizeError(label, cumulativeBytes, maxTotalBytes);
+                }
+
+                return true;
+            },
+        });
+    }
+
+    /**
+     * Validate an already-decompressed entry map against the same limits as
+     * {@link safeUnzip}. Used by `importFromZipContents`, whose caller provides
+     * the contents already inflated: we cannot prevent the original inflation,
+     * but we refuse to keep processing (asset writes, Y.Doc population) an
+     * archive whose materialised payload exceeds the configured caps, so the
+     * server-side path stays bounded.
+     *
+     * @param zipContents - Already-extracted entry map
+     * @param label - Human-readable archive label for error messages
+     */
+    private assertZipContentsWithinLimits(zipContents: Record<string, Uint8Array>, label: string): void {
+        const { maxTotalBytes, maxEntryBytes, maxEntries } = this.zipLimits;
+        const entries = Object.entries(zipContents);
+
+        if (entries.length > maxEntries) {
+            throw entryCountError(label, entries.length, maxEntries);
+        }
+
+        let cumulativeBytes = 0;
+        for (const [name, data] of entries) {
+            const entrySize = data.length;
+            if (entrySize > maxEntryBytes) {
+                throw entrySizeError(label, name, entrySize, maxEntryBytes);
+            }
+            cumulativeBytes += entrySize;
+            if (cumulativeBytes > maxTotalBytes) {
+                throw totalSizeError(label, cumulativeBytes, maxTotalBytes);
+            }
+        }
     }
 
     // =========================================================================
@@ -171,8 +350,8 @@ export class ElpxImporter {
         // Phase 1: Decompressing (0-10%)
         this.reportProgress('decompress', 0, 'Decompressing...');
 
-        // Decompress ZIP
-        const zip = fflate.unzipSync(buffer);
+        // Decompress ZIP with hard limits enforced before inflation (ZIP-bomb guard)
+        const zip = this.safeUnzip(buffer, 'ELP/ELPX archive');
 
         // Report decompression complete (10%)
         this.reportProgress('decompress', 10, 'File decompressed');
@@ -191,7 +370,8 @@ export class ElpxImporter {
             if (elpFiles.length === 1) {
                 this.logger.log(`[ElpxImporter] Found nested ELP file: ${elpFiles[0]}, extracting...`);
                 const nestedElpData = workingZip[elpFiles[0]];
-                workingZip = fflate.unzipSync(nestedElpData);
+                // Apply the same ZIP-bomb guard to the nested-ELP decompression path.
+                workingZip = this.safeUnzip(nestedElpData, `nested ELP file '${elpFiles[0]}'`);
             } else if (elpFiles.length > 1) {
                 throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
             }
@@ -286,6 +466,10 @@ export class ElpxImporter {
 
         this.logger.log('[ElpxImporter] Starting import from zip contents');
 
+        // Enforce the same decompression caps on the pre-extracted payload so the
+        // server-side path cannot be driven to OOM with an oversized entry map.
+        this.assertZipContentsWithinLimits(zipContents, 'extracted ELP contents');
+
         // Skip decompression phase since contents are already extracted
         this.reportProgress('decompress', 10, 'Files ready');
 
@@ -361,6 +545,19 @@ export class ElpxImporter {
     }
 
     /**
+     * Note that an activity still carries asset references the package could
+     * not satisfy, so the caller can tell the author which files are missing
+     * instead of leaving them to read a raw placeholder in a form field (#2223).
+     *
+     * @param componentId - id of the activity the text belongs to
+     * @param ideviceType - iDevice type, so the notice can name the activity
+     * @param text - HTML or serialized properties, after asset conversion ran
+     */
+    private recordUnresolvedAssets(componentId: string, ideviceType: string, text: string): void {
+        addUnresolvedAssetRefs(this.unresolvedAssets, componentId, ideviceType, text);
+    }
+
+    /**
      * Import document structure from parsed XML
      */
     async importStructure(
@@ -370,6 +567,8 @@ export class ElpxImporter {
     ): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null } = options;
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+        this.unresolvedAssets = [];
+        this.malformedProperties = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -550,6 +749,8 @@ export class ElpxImporter {
 
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
+        stats.missingAssets = this.unresolvedAssets;
+        stats.malformedProperties = this.malformedProperties;
 
         const { zipContents: _zip, ...statsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Import complete:', statsWithoutZip);
@@ -566,6 +767,8 @@ export class ElpxImporter {
     ): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null } = options;
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+        this.unresolvedAssets = [];
+        this.malformedProperties = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -659,6 +862,8 @@ export class ElpxImporter {
 
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
+        stats.missingAssets = this.unresolvedAssets;
+        stats.malformedProperties = this.malformedProperties;
 
         const { zipContents: _zipLegacy, ...legacyStatsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Legacy import complete:', legacyStatsWithoutZip);
@@ -770,6 +975,7 @@ export class ElpxImporter {
                 this.logger.warn(`[ElpxImporter] Error converting asset paths for ${legacyIdevice.id}:`, convErr);
             }
         }
+        this.recordUnresolvedAssets(legacyIdevice.id, legacyIdevice.type || 'unknown', htmlView);
 
         // For text iDevices, the editor expects the content in jsonProperties.textTextarea
         // So we need to populate it from htmlView
@@ -779,6 +985,19 @@ export class ElpxImporter {
                 ...properties,
                 textTextarea: htmlView,
             };
+        }
+        if (legacyIdevice.type === 'scrambled-list' && htmlView) {
+            const extractedProperties = this.extractScrambledListProperties(htmlView);
+            if (extractedProperties) {
+                const previousOptions = (properties as Record<string, unknown>).options;
+                properties = {
+                    ...extractedProperties,
+                    ...properties,
+                };
+                if (!Array.isArray(previousOptions) || previousOptions.length === 0) {
+                    properties.options = extractedProperties.options;
+                }
+            }
         }
 
         const componentData: ComponentData = {
@@ -833,9 +1052,11 @@ export class ElpxImporter {
         metadata.set('addAccessibilityToolbar', legacyMeta.pp_addAccessibilityToolbar);
         metadata.set('exportSource', legacyMeta.exportSource);
 
-        // Legacy files don't have addMathJax or globalFont - use defaults
+        // Legacy files don't have addMathJax, globalFont or the pass score options - use defaults
         metadata.set('addMathJax', false);
         metadata.set('globalFont', 'default');
+        metadata.set('passScore', PASS_SCORE_DEFAULT);
+        metadata.set('passScoreEveryActivity', false);
 
         metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
         metadata.set('footer', legacyMeta.footer);
@@ -891,6 +1112,92 @@ export class ElpxImporter {
             html.includes('iDevice_buttons feedback-button') ||
             html.includes('class="feedback-button')
         );
+    }
+
+    private extractScrambledListProperties(htmlView: string): Record<string, unknown> | null {
+        if (!htmlView || !htmlView.includes('exe-sortableList')) return null;
+
+        const doc = new DOMParser().parseFromString(`<div>${htmlView}</div>`, 'text/html');
+        const activity = this.getFirstElementByClass(doc, 'exe-sortableList');
+        if (!activity) return null;
+
+        const optionsList =
+            this.getFirstElementByClass(activity, 'exe-sortableList-list') || this.getElements(activity, 'ul')[0];
+        const options = optionsList
+            ? this.getDirectChildElements(optionsList, 'li')
+                  .map(item => this.getElementInnerHtml(item) || (item.textContent || '').trim())
+                  .filter(option => option !== '')
+            : [];
+        if (options.length === 0) return null;
+
+        const textAfter = this.getElementInnerHtmlByClass(activity, 'exe-sortableList-textAfter');
+
+        return {
+            typeGame: 'ScrambledList',
+            instructions: this.getElementInnerHtmlByClass(activity, 'exe-sortableList-instructions'),
+            textAfter,
+            afterElement: textAfter ? `<div class="exe-sortableList-textAfter">${textAfter}</div>` : '',
+            options,
+            time: 0,
+            buttonText: this.getElementTextByClass(activity, 'exe-sortableList-buttonText') || 'Check',
+            rightText: this.getElementTextByClass(activity, 'exe-sortableList-rightText') || 'Right!',
+            wrongText:
+                this.getElementTextByClass(activity, 'exe-sortableList-wrongText') ||
+                "Sorry, that's incorrect... The right answer is:",
+            isScorm: 0,
+            textButtonScorm: 'Save score',
+            repeatActivity: false,
+            weighted: 100,
+            showSolutions: true,
+            attemptsNumber: 1,
+        };
+    }
+
+    private getFirstElementByClass(parent: Document | Element, className: string): Element | null {
+        return this.getElementsByClass(parent, className)[0] || null;
+    }
+
+    private getElementsByClass(parent: Document | Element, className: string): Element[] {
+        return this.getElements(parent, '*').filter(element => this.elementHasClass(element, className));
+    }
+
+    private elementHasClass(element: Element, className: string): boolean {
+        return ` ${element.getAttribute('class') || ''} `.includes(` ${className} `);
+    }
+
+    private getDirectChildElements(parent: Element, tagName: string): Element[] {
+        const normalizedTag = tagName.toLowerCase();
+        return Array.from(parent.childNodes || []).filter(child => {
+            if (child.nodeType !== 1) return false;
+            return ((child as Element).tagName || '').toLowerCase() === normalizedTag;
+        }) as Element[];
+    }
+
+    private getElementTextByClass(parent: Document | Element, className: string): string {
+        const element = this.getFirstElementByClass(parent, className);
+        return (element?.textContent || '').trim();
+    }
+
+    private getElementInnerHtmlByClass(parent: Document | Element, className: string): string {
+        const element = this.getFirstElementByClass(parent, className);
+        return element ? this.getElementInnerHtml(element) : '';
+    }
+
+    private getElementInnerHtml(element: Element): string {
+        const elementWithInnerHtml = element as Element & { innerHTML?: string };
+        if (typeof elementWithInnerHtml.innerHTML === 'string') {
+            return this.stripXhtmlNamespaceAttributes(elementWithInnerHtml.innerHTML).trim();
+        }
+
+        const serializer = new XMLSerializer();
+        const html = Array.from(element.childNodes || [])
+            .map(child => serializer.serializeToString(child))
+            .join('');
+        return this.stripXhtmlNamespaceAttributes(html).trim();
+    }
+
+    private stripXhtmlNamespaceAttributes(html: string): string {
+        return html.replace(/\s+xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/g, '');
     }
 
     /**
@@ -973,6 +1280,10 @@ export class ElpxImporter {
             footer: this.getMetadataProperty(odeProperties, 'footer'),
             addMathJax: this.getBooleanMetadataProperty(odeProperties, 'pp_addMathJax', false),
             globalFont: this.getMetadataProperty(odeProperties, 'pp_globalFont', 'default'),
+            // normalizePassScore turns a missing or unparseable value into the
+            // default, so no separate fallback is needed here.
+            passScore: normalizePassScore(this.getMetadataProperty(odeProperties, 'pp_passScore')),
+            passScoreEveryActivity: this.getBooleanMetadataProperty(odeProperties, 'pp_passScoreEveryActivity', false),
         };
     }
 
@@ -996,6 +1307,8 @@ export class ElpxImporter {
         metadata.set('exportSource', values.exportSource);
         metadata.set('addMathJax', values.addMathJax);
         metadata.set('globalFont', values.globalFont);
+        metadata.set('passScore', values.passScore);
+        metadata.set('passScoreEveryActivity', values.passScoreEveryActivity);
         metadata.set('extraHeadContent', values.extraHeadContent);
         metadata.set('footer', values.footer);
         // Screenshot (optional, extracted from archive root)
@@ -1231,6 +1544,7 @@ export class ElpxImporter {
             }
 
             compData.htmlView = typeof htmlContent === 'string' ? htmlContent : '';
+            this.recordUnresolvedAssets(componentId, ideviceType, compData.htmlView);
         }
 
         // Extract JSON properties
@@ -1258,44 +1572,67 @@ export class ElpxImporter {
                 }
 
                 if (!parsed) {
-                    this.logger.warn(`[ElpxImporter] Invalid JSON for ${componentId}, using empty object`);
-                    props = {};
-                }
+                    // Replacing an unparseable payload with {} would permanently
+                    // destroy the activity's configuration (#2190). Preserve the
+                    // raw payload verbatim instead: the workarea detects the parse
+                    // failure, blocks editing and keeps the value (#2178), so the
+                    // data stays recoverable. No transform below can run on it —
+                    // guessing at broken JSON would only corrupt it further.
+                    this.logger.warn(`[ElpxImporter] Invalid JSON for ${componentId}, preserving raw payload`);
+                    compData.malformedProperties = rawJsonStr;
+                    this.malformedProperties.push({ componentId, ideviceType });
+                } else if (compData.htmlView && isLegacyGenericTextTemplate(ideviceType, props)) {
+                    // eXe 3 stamped the text iDevice's form fields, HTML copy
+                    // included, on every activity it converted from a 2.x package.
+                    // On an html-type activity nothing reads that payload and saving
+                    // never rewrites it, so it is a frozen older generation of the
+                    // content in htmlView (#2376). Drop it: keeping it would report
+                    // files the activity no longer references and duplicate the
+                    // activity in every export.
+                    this.logger.log(
+                        `[ElpxImporter] Dropping stale eXe 3 text template from ${ideviceType} ${componentId}`,
+                    );
+                    compData.properties = {};
+                } else {
+                    props = this.decodeLegacyEncodedHtmlInObject(props) as Record<string, unknown>;
 
-                props = this.decodeLegacyEncodedHtmlInObject(props) as Record<string, unknown>;
-
-                // Convert {{context_path}} in parsed JSON values
-                if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
-                    try {
-                        props = this.convertAssetPathsInObject(props) as Record<string, unknown>;
-                    } catch (convErr) {
-                        this.logger.warn(`[ElpxImporter] Error converting paths in JSON for ${componentId}:`, convErr);
+                    // Convert {{context_path}} in parsed JSON values
+                    if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
+                        try {
+                            props = this.convertAssetPathsInObject(props) as Record<string, unknown>;
+                        } catch (convErr) {
+                            this.logger.warn(
+                                `[ElpxImporter] Error converting paths in JSON for ${componentId}:`,
+                                convErr,
+                            );
+                        }
                     }
-                }
 
-                if (typeof props.textTextarea === 'string') {
-                    props.textTextarea = stripLegacyExeTextWrapper(props.textTextarea);
-                }
+                    if (typeof props.textTextarea === 'string') {
+                        props.textTextarea = stripLegacyExeTextWrapper(props.textTextarea);
+                    }
 
-                if (typeof props.htmlView === 'string') {
-                    props.htmlView = stripLegacyExeTextWrapper(props.htmlView);
-                }
+                    if (typeof props.htmlView === 'string') {
+                        props.htmlView = stripLegacyExeTextWrapper(props.htmlView);
+                    }
 
-                // When merge-mode collision regenerated the component id, an embedded
-                // `ideviceId` inside jsonProperties (commonly stored by text/quiz
-                // iDevices and used by the workarea for self-reference) would still
-                // point at the old XML id. Rewrite it so the Yjs field and the JSON
-                // payload stay in sync.
-                if (
-                    originalComponentId &&
-                    originalComponentId !== componentId &&
-                    typeof props.ideviceId === 'string' &&
-                    props.ideviceId === originalComponentId
-                ) {
-                    props.ideviceId = componentId;
-                }
+                    // When merge-mode collision regenerated the component id, an embedded
+                    // `ideviceId` inside jsonProperties (commonly stored by text/quiz
+                    // iDevices and used by the workarea for self-reference) would still
+                    // point at the old XML id. Rewrite it so the Yjs field and the JSON
+                    // payload stay in sync.
+                    if (
+                        originalComponentId &&
+                        originalComponentId !== componentId &&
+                        typeof props.ideviceId === 'string' &&
+                        props.ideviceId === originalComponentId
+                    ) {
+                        props.ideviceId = componentId;
+                    }
 
-                compData.properties = props;
+                    compData.properties = props;
+                    this.recordUnresolvedAssets(componentId, ideviceType, JSON.stringify(props));
+                }
             } catch (e) {
                 this.logger.warn(`[ElpxImporter] Failed to process JSON properties for ${componentId}:`, e);
             }
@@ -1505,7 +1842,14 @@ export class ElpxImporter {
         }
 
         // Store jsonProperties as plain string
-        if (compData.properties && typeof compData.properties === 'object') {
+        if (typeof compData.malformedProperties === 'string') {
+            // Carry the damaged payload into the Y.Doc untouched (#2190). This
+            // write happens inside the import transaction on purpose: the write
+            // boundary (prepareJsonPropertiesForSync, #2179) would reject it,
+            // but rejecting here would mean discarding the author's data. The
+            // workarea detects the parse failure and blocks editing (#2178).
+            compMap.set('jsonProperties', compData.malformedProperties);
+        } else if (compData.properties && typeof compData.properties === 'object') {
             try {
                 const jsonStr = JSON.stringify(compData.properties);
                 compMap.set('jsonProperties', jsonStr);
@@ -2031,18 +2375,23 @@ export class ElpxImporter {
         }
 
         if (typeof obj === 'string') {
-            // Handle {{context_path}}/... references (in HTML content)
-            if (obj.includes('{{context_path}}') && this.assetHandler) {
-                return this.assetHandler.convertContextPathToAssetRefs(obj, this.assetMap);
-            }
-
-            // Handle resources/filename.jpg paths (legacy gallery/iDevice properties)
-            // These are just path strings, not HTML, so we look them up directly
+            // Standalone legacy resource path (e.g. gallery image property
+            // "resources/foo.jpg"): these are plain path strings, not HTML, so we
+            // look them up directly.
             if (obj.startsWith('resources/') && this.assetMap.size > 0) {
                 const assetUrl = this.findAssetUrlForPath(obj);
                 if (assetUrl) {
                     return assetUrl;
                 }
+            }
+
+            // HTML fragments stored inside iDevice properties (e.g. form
+            // questionsData[].baseText, instructions, feedback) can embed
+            // {{context_path}}/... or legacy src="resources/..." references. Route
+            // them through the same rewriter used for htmlView so their images
+            // resolve to asset:// URLs instead of rendering broken.
+            if (this.assetHandler && (obj.includes('{{context_path}}') || obj.includes('resources/'))) {
+                return this.assetHandler.convertContextPathToAssetRefs(obj, this.assetMap);
             }
 
             return obj;

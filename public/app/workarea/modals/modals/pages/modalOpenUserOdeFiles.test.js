@@ -1807,7 +1807,12 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
     });
 
-    it('should call clearAssetsForNewProject and clearMetadataForNewProject before import in static mode', async () => {
+    it('delegates clearing the previous project to importFromElpx (clearPreviousProject) in static mode', async () => {
+      // #2193: the previous project's assets/metadata must be cleared only AFTER
+      // the import preflight/confirmation gate passes. That clearing now lives in
+      // the bridge (importFromElpx + clearPreviousProject option, covered by
+      // YjsProjectBridge.test.js), so the modal must delegate rather than clear
+      // directly — otherwise a cancelled large import would wipe the open project.
       window.eXeLearning.app.capabilities = { storage: { remote: false } };
       const mockYjsBridge = {
         clearAssetsForNewProject: vi.fn().mockResolvedValue(),
@@ -1821,9 +1826,31 @@ describe('modalOpenUserOdeFiles', () => {
 
       await modal.largeFilesUpload(mockFile, false, false, false, false);
 
-      expect(mockYjsBridge.clearAssetsForNewProject).toHaveBeenCalled();
-      expect(mockYjsBridge.clearMetadataForNewProject).toHaveBeenCalled();
+      expect(mockYjsBridge.importFromElpx).toHaveBeenCalledWith(
+        mockFile,
+        expect.objectContaining({ clearPreviousProject: true, onProgress: expect.any(Function) })
+      );
+      // The modal must NOT clear directly (the bridge gates it).
+      expect(mockYjsBridge.clearAssetsForNewProject).not.toHaveBeenCalled();
+    });
+
+    it('stops without refreshing when importFromElpx reports the import was cancelled/rejected', async () => {
+      // A declined large-file confirmation, or a rejected over-limit archive,
+      // returns { cancelled: true }. The current project is unchanged, so the
+      // modal must not run a post-import UI refresh. See #2193.
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      const mockYjsBridge = {
+        importFromElpx: vi.fn().mockResolvedValue({ cancelled: true }),
+      };
+      window.eXeLearning.app.project._yjsBridge = mockYjsBridge;
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
       expect(mockYjsBridge.importFromElpx).toHaveBeenCalled();
+      expect(window.eXeLearning.app.project.refreshAfterDirectImport).not.toHaveBeenCalled();
     });
 
     it('should fallback to legacy flow when yjsBridge is not available in static mode', async () => {

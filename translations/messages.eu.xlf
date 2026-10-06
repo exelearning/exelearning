@@ -783,11 +783,11 @@
       </trans-unit>
       <trans-unit id="lMJfqi8" resname="any digit from 0 to 3 for single-choice (up to 4 options)">
         <source>any digit from 0 to 3 for single-choice (up to 4 options)</source>
-        <target>Aukera bakarreko galderetarako, 0tik 3ra arteko edozein digitu (gehienez 4 aukera)</target>
+        <target>aukera bakarreko galderetarako, 0tik 3ra arteko edozein digitu (gehienez 4 aukera)</target>
       </trans-unit>
       <trans-unit id="gBXtx0s" resname="any combination of A-D for multiple-choice (up to 4 options).">
         <source>any combination of A-D for multiple-choice (up to 4 options).</source>
-        <target>Aukera anitzeko galderetarako, A eta D letren arteko edozein konbinazio (gehienez 4 aukera).</target>
+        <target>aukera anitzeko galderetarako, A eta D letren arteko edozein konbinazio (gehienez 4 aukera).</target>
       </trans-unit>
       <trans-unit id="3mCQkiK" resname="Provide a similar number of questions for each type.">
         <source>Provide a similar number of questions for each type.</source>
@@ -2056,10 +2056,6 @@
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
         <target>Testu izugarri handia</target>
-      </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>Testu erraldoia (Huger)</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
@@ -3603,7 +3599,7 @@
       </trans-unit>
       <trans-unit id="QL4hapV" resname="E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...">
         <source>E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...</source>
-        <target>Adibidez: Kategoria 3 sortu 5 formula bana. Edo sortu 8 elementu ...ri buruz</target>
+        <target>~Adibidez: sortu 3 kategoria 5 formula bana. Edo sortu 8 elementu ...ri buruz</target>
       </trans-unit>
       <trans-unit id="crgTovz" resname="Category topic:">
         <source>Category topic:</source>
@@ -3728,14 +3724,6 @@
       <trans-unit id="RmnBdRa" resname="Info">
         <source>Info</source>
         <target>Info</target>
-      </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>Nodoaren seme-alabak erakutsi edo ezkutatu</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>Hasi buru-mapa berri batean lanean</target>
       </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
@@ -3935,7 +3923,7 @@
       </trans-unit>
       <trans-unit id="tsxZze5" resname="Delete iDevice">
         <source>Delete iDevice</source>
-        <target>iDevicea ezabatu</target>
+        <target>~Ezabatu iDevicea</target>
       </trans-unit>
       <trans-unit id="VBZ1ogU" resname="Delete this iDevice: %s?">
         <source>Delete this iDevice: %s?</source>
@@ -3952,10 +3940,6 @@
       <trans-unit id=".2bNgXe" resname="New file">
         <source>New file</source>
         <target>Fitxategi berria</target>
-      </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Gorde gabe fitxategi berria sortu</target>
       </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
@@ -4207,7 +4191,7 @@
       </trans-unit>
       <trans-unit id="fMxz8c4" resname="Search iDevices">
         <source>Search iDevices</source>
-        <target>iDeviceak bilatu</target>
+        <target>~Bilatu iDeviceak</target>
       </trans-unit>
       <trans-unit id="wtVkNXt" resname="Default iDevices">
         <source>Default iDevices</source>
@@ -4471,7 +4455,7 @@
       </trans-unit>
       <trans-unit id="dOPZCVW" resname="Move iDevice to page">
         <source>Move iDevice to page</source>
-        <target>iDevicea orrira mugitu</target>
+        <target>~Mugitu iDevicea orrira</target>
       </trans-unit>
       <trans-unit id="qMGbqBh" resname="Select the page where you want to move the iDevice. It will be placed at the end of the page.">
         <source>Select the page where you want to move the iDevice. It will be placed at the end of the page.</source>
@@ -4524,10 +4508,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Ezin da iDevicea gehitu erroko orrian</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Arazoa iDevicea gehitzerakoan</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -6179,7 +6159,7 @@
       </trans-unit>
       <trans-unit id="7AQwApM" resname="incorrect">
         <source>incorrect</source>
-        <target>Okerra</target>
+        <target>okerra</target>
       </trans-unit>
       <trans-unit id="A.2D9iI" resname="Right. That's the card.">
         <source>Right. That's the card.</source>
@@ -8427,7 +8407,7 @@
       </trans-unit>
       <trans-unit id="eP0k3XT" resname="This iDevice is compatible with all game iDevices and all interactive activities.">
         <source>This iDevice is compatible with all game iDevices and all interactive activities.</source>
-        <target>iDevice hau, joko iDevice eta jarduera interaktibo guztiekin bateragarria da.</target>
+        <target>~iDevice hau joko iDevice eta jarduera interaktibo guztiekin bateragarria da.</target>
       </trans-unit>
       <trans-unit id="N0bCogy" resname="Puzzle">
         <source>Puzzle</source>
@@ -9919,7 +9899,7 @@
       </trans-unit>
       <trans-unit id="4EAKDGp" resname="Image optimizer">
         <source>Image optimizer</source>
-        <target>Irudiaren optimizatzailea</target>
+        <target>~Irudi-optimizatzailea</target>
       </trans-unit>
       <trans-unit id="HCwVQp." resname="Alternative description">
         <source>Alternative description</source>
@@ -10708,102 +10688,6 @@
       <trans-unit id="cpeFILa" resname="Change the text of the tabs adding a title to each Heading 2 with the &quot;Insert/Edit Attributes&quot; option: ">
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>Erlaitzetako testua aldatu Goiburua 2 izenburu bat gehituz "Atributuak txertatu/editatu" aukerarekin. </target>
-      </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>Wikipediatik, entziklopedia askea.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>Beste helbide batetik birbideratua</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>Wikipediak ez du izen zehatz hau duen artikulurik.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>bilatu</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>Wikipedia-n</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>Ordezko izenburu edo ortografia egiaztatzeko.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>Wikipedia Artikulua</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>Artikulua</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>Ingelesa</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>Euskara</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>Katalana</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>Txinera</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>Nederlandera</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>Frantsesa</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>Galiziera</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>Alemana</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>Italiera</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>Japoniera</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>Magiarra</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>Poloniera</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>Portugalera</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>Esloveniera</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>Gaztelania</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>Suediera</target>
       </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
@@ -12487,7 +12371,7 @@
       </trans-unit>
       <trans-unit id="nv8t9ha" resname="Savings">
         <source>Savings</source>
-        <target>Aurrezkiak</target>
+        <target>~Aurreztutakoa</target>
       </trans-unit>
       <trans-unit id="6c74i5w" resname="Selected">
         <source>Selected</source>
@@ -12600,18 +12484,6 @@
       <trans-unit id="8notabp" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>Idatzi hitz edo esaldia zuzena eta klik egin "Erantzun" botoian.</target>
-      </trans-unit>
-      <trans-unit id="gq6h75d" resname="Timeout">
-        <source>Timeout</source>
-        <target>Denbora agortuta</target>
-      </trans-unit>
-      <trans-unit id="w08twkp" resname="Network error">
-        <source>Network error</source>
-        <target>Sareko errorea</target>
-      </trans-unit>
-      <trans-unit id="ak9atm4" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>URL baliogabea</target>
       </trans-unit>
       <trans-unit id="p52q932" resname="Session Expired">
         <source>Session Expired</source>
@@ -12989,10 +12861,6 @@
         <source>Error validating links</source>
         <target>Errorea loturak egiaztatzean</target>
       </trans-unit>
-      <trans-unit id="bl20ry1" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>Ez dago lotura hautsirik esportatzeko</target>
-      </trans-unit>
       <trans-unit id="hxmruro" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
         <target>Klikatu baliabidea irekitzeko beste leiho batean</target>
@@ -13071,7 +12939,7 @@
       </trans-unit>
       <trans-unit id="aby2ghl" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target>Ziur zaude %a proiektu ezabatu nahi duzula?</target>
+        <target>Ziur zaude %s proiektu ezabatu nahi duzula?</target>
       </trans-unit>
       <trans-unit id="jalbrvv" resname="Delete projects">
         <source>Delete projects</source>
@@ -13377,10 +13245,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml ez da aurkitu ZIP artxiboan</target>
       </trans-unit>
-      <trans-unit id="vu1hlkx" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Estilo hau ezin da deskargatu</target>
-      </trans-unit>
       <trans-unit id="010mtjt" resname="Style already exists">
         <source>Style already exists</source>
         <target>Estilo hori jada existitzen da</target>
@@ -13460,14 +13324,6 @@
       <trans-unit id="tct21y6" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Automatikoki goragoko mailako orrialdera bideratuko dira.</target>
-      </trans-unit>
-      <trans-unit id="5c4y17c" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Lehentasunak orria eguneratu ondoren aplikatuko dira.</target>
-      </trans-unit>
-      <trans-unit id="wque1se" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Aldaketak aplikatzeko orria berriro kargatu behar da. Mesedez, lehenik deskargatu zure proiektua lana ez galtzeko, eta gero kargatu berriro orria.</target>
       </trans-unit>
       <trans-unit id="ntl25n3" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -13677,10 +13533,6 @@
         <source>Your access to this project has been revoked.</source>
         <target>Zure sarbidea proiektu honetan bertan behera geratu da.</target>
       </trans-unit>
-      <trans-unit id="db91cum" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>Burumapa gorde da</target>
-      </trans-unit>
       <trans-unit id="wdqlbi8" resname="source">
         <source>source</source>
         <target>iturria</target>
@@ -13799,7 +13651,7 @@
       </trans-unit>
       <trans-unit id="wvpk6dg" resname="You made %s errors. You have %s attempts left. Do you want to try again?">
         <source>You made %s errors. You have %s attempts left. Do you want to try again?</source>
-        <target>%  errore izan dituzu. % saiakera gelditzen zaizkizu. Saiatu nahi duzu berriro?</target>
+        <target>%s errore izan dituzu. %s saiakera gelditzen zaizkizu. Saiatu nahi duzu berriro?</target>
       </trans-unit>
       <trans-unit id="b4mkkc2" resname="You must close the edited questionnaire before saving the activity.">
         <source>You must close the edited questionnaire before saving the activity.</source>
@@ -14101,10 +13953,6 @@
         <source>Close without saving</source>
         <target>Gorde gabe itxi</target>
       </trans-unit>
-      <trans-unit id="u313fkb" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>Ezin izan da egiaztatu: HTTP edukia blokeatuta dago HTTPS orrialdeetan.</target>
-      </trans-unit>
       <trans-unit id="69v4nt9" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
         <target>Orri bakoitzeko iDevice errubrika bakarra gehitu dezakezu.</target>
@@ -14304,10 +14152,6 @@
       <trans-unit id="fti182j" resname="The battery drains">
         <source>The battery drains</source>
         <target>~Bateria agortzen da</target>
-      </trans-unit>
-      <trans-unit id="z8vfzy7" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
-        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
-        <target>~Sortu 5 aukera anitzeko galdera zirkuitu elektrikoei buruz. Galdera bat lerro bakoitzeko. Lerro bakoitzak eremu guztiak izan behar ditu # bidez bereizita: deskribapen laburra, TikZ kodea (circuitikz erabiliz) zirkuitu-diagramarako, erantzun zuzena letraz (adib., A, AB), galdera, eta 2 eta 4 erantzun-aukera. Ez erabili # karakterea eremuaren barruan. Ez gehitu lerro-jauziak galdera baten barruan. GARRANTZITSUA: TikZ kodea circuitikz 0.9.6 bertsioagatik bateragarria izan behar da. Erabili bertsio honetan eskuragarri dauden osagaiak soilik: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. EZ erabili circuitikz 1.0 edo berriagoko osagaiak, hala nola dipchip, qfpchip, muxdemux, flipflop, latch edo 7 segmentuko pantailak.</target>
       </trans-unit>
       <trans-unit id="yint80q" resname="Drop an .elpx file here to open it">
         <source>Drop an .elpx file here to open it</source>
@@ -15003,7 +14847,7 @@
       </trans-unit>
       <trans-unit id="bculw28" resname="Key Comp.">
         <source>Key Comp.</source>
-        <target>~Gait. Gakoa</target>
+        <target>Gait. Gakoa</target>
       </trans-unit>
       <trans-unit id="p75mse1" resname="Operational descriptors">
         <source>Operational descriptors</source>
@@ -15047,7 +14891,7 @@
       </trans-unit>
       <trans-unit id="sfe2kxo" resname="Eval. Criteria">
         <source>Eval. Criteria</source>
-        <target>~Ebaluazio Irizp.</target>
+        <target>Ebaluazio Irizp.</target>
       </trans-unit>
       <trans-unit id="wuy0158" resname="partial">
         <source>partial</source>
@@ -15063,295 +14907,791 @@
       </trans-unit>
       <trans-unit id="dh46kpt" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
         <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
-        <target></target>
+        <target>~Maila: 0 (baxua), 1 (ertaina), 2 (altua), 3 (aditua) edo 4 (maisua).</target>
       </trans-unit>
       <trans-unit id="cautdf2" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
         <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
-        <target></target>
+        <target>~Maila: 0 (baxua), 1 (ertaina), 2 (altua) edo 3 (aditua).</target>
       </trans-unit>
       <trans-unit id="1x2yu53" resname="Level: 0 (low), 1 (medium) or 2 (high).">
         <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
-        <target></target>
+        <target>~Maila: 0 (baxua), 1 (ertaina) edo 2 (altua).</target>
       </trans-unit>
       <trans-unit id="nnc4mjs" resname="OptionE">
         <source>OptionE</source>
-        <target></target>
+        <target>~EAukera</target>
       </trans-unit>
       <trans-unit id="vyvdwuc" resname="OptionF">
         <source>OptionF</source>
-        <target></target>
+        <target>~FAukera</target>
       </trans-unit>
       <trans-unit id="6uoxfty" resname="Which of the following are prime numbers?">
         <source>Which of the following are prime numbers?</source>
-        <target></target>
+        <target>~Hauetako zein dira zenbaki lehenak?</target>
       </trans-unit>
       <trans-unit id="jxf5hrb" resname="Sort from largest to smallest">
         <source>Sort from largest to smallest</source>
-        <target></target>
+        <target>~Ordenatu handienetik txikienera</target>
       </trans-unit>
       <trans-unit id="4wktc5z" resname="Elephant">
         <source>Elephant</source>
-        <target></target>
+        <target>~Elefantea</target>
       </trans-unit>
       <trans-unit id="oqlg7ud" resname="Mouse">
         <source>Mouse</source>
-        <target></target>
+        <target>~Sagua</target>
       </trans-unit>
       <trans-unit id="nyelv16" resname="Which of these are transcendental numbers?">
         <source>Which of these are transcendental numbers?</source>
-        <target></target>
+        <target>~Hauetako zein dira zenbaki transzendenteak?</target>
       </trans-unit>
       <trans-unit id="zhpo309" resname="Liouville constant">
         <source>Liouville constant</source>
-        <target></target>
+        <target>~Liouvilleren konstantea</target>
       </trans-unit>
       <trans-unit id="24o6j35" resname="Champernowne constant">
         <source>Champernowne constant</source>
-        <target></target>
+        <target>~Champernowneren konstantea</target>
       </trans-unit>
       <trans-unit id="4e2s70n" resname="Sort these chemical elements from lowest to highest atomic number">
         <source>Sort these chemical elements from lowest to highest atomic number</source>
-        <target></target>
+        <target>~Ordenatu elementu kimiko hauek zenbaki atomiko txikienetik handienera</target>
       </trans-unit>
       <trans-unit id="98ld8fm" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
         <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
-        <target></target>
+        <target>~Hiru galdera mota onartzen dira. Lerro bakoitzak mota-zenbakiarekin hasi behar du, ondoren @, maila eta gainerako eremuak #-rekin bereizita:</target>
       </trans-unit>
       <trans-unit id="ewlcb8f" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
         <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
-        <target></target>
+        <target>~0 mota (aukera anitzekoa): 0@Maila#Soluzioa#Galdera#AAukera#BAukera[#CAukera][#DAukera][#EAukera][#FAukera]. Soluzioa A, B, C, D, E, F letren maiuskula-konbinazioa da, aukera zuzenak adierazten dituena (adib. A, AB, ACD, ABCDEF). Erabili gehienez 6 letra eta inoiz ez aukera kopurua baino gehiago. Utzi Soluzioa hutsik aukera bat ere zuzena ez bada.</target>
       </trans-unit>
       <trans-unit id="rxctuop" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
         <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
-        <target></target>
+        <target>~1 mota (ordenatu): 1@Maila#Galdera#1Elementua#2Elementua#3Elementua[#4Elementua][#5Elementua][#6Elementua]. Eman 3 eta 6 elementu artean, galderaren irizpidearen arabera ordena zuzenean zerrendatuta.</target>
       </trans-unit>
       <trans-unit id="mchlxa1" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
         <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
-        <target></target>
+        <target>~2 mota (hitza/definizioa): 2@Maila#Hitza#Definizioa.</target>
       </trans-unit>
       <trans-unit id="4o6wouk" resname="Do not include the # character inside any field.">
         <source>Do not include the # character inside any field.</source>
-        <target></target>
+        <target>~Ez sartu # karakterea inongo eremutan.</target>
       </trans-unit>
       <trans-unit id="cu8mnd9" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
         <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
-        <target></target>
+        <target>~5 mailetan banatuta (0=baxua, 1=ertaina, 2=altua, 3=aditua, 4=maisua)</target>
       </trans-unit>
       <trans-unit id="138ydah" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
         <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
-        <target></target>
+        <target>~4 mailetan banatuta (0=baxua, 1=ertaina, 2=altua, 3=aditua)</target>
       </trans-unit>
       <trans-unit id="ky6rhl3" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
         <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
-        <target></target>
+        <target>~3 mailetan banatuta (0=baxua, 1=ertaina, 2=altua)</target>
       </trans-unit>
       <trans-unit id="k7e8ktp" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
-        <target></target>
+        <target>~0 mailak galdera errazenak izan behar ditu (oinarrizko datuak eta gogoratze sinplea); hurrengo maila bakoitza aurrekoa baino zorrotzago zailagoa izan behar da (arrazoiketa gehiago, aukera luzeagoak edo korapilatsuagoak, hiztegi abstraktuagoa), eta 4. mailak (maisua) galderarik zailenak izan behar ditu.</target>
       </trans-unit>
       <trans-unit id="r7iw7mc" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
-        <target></target>
+        <target>~0 mailak galdera errazenak izan behar ditu (oinarrizko datuak eta gogoratze sinplea); hurrengo maila bakoitza aurrekoa baino zorrotzago zailagoa izan behar da (arrazoiketa gehiago, aukera luzeagoak edo korapilatsuagoak, hiztegi abstraktuagoa), eta 3. mailak (aditua) galderarik zailenak izan behar ditu.</target>
       </trans-unit>
       <trans-unit id="2h2x68t" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
         <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
-        <target></target>
+        <target>~0 mailak galdera errazenak izan behar ditu (oinarrizko datuak eta gogoratze sinplea); hurrengo maila bakoitza aurrekoa baino zorrotzago zailagoa izan behar da (arrazoiketa gehiago, aukera luzeagoak edo korapilatsuagoak, hiztegi abstraktuagoa), eta 2. mailak (altua) galderarik zailenak izan behar ditu.</target>
       </trans-unit>
       <trans-unit id="4ovmm0n" resname="Your browser is not compatible with this type of activity.">
         <source>Your browser is not compatible with this type of activity.</source>
-        <target></target>
+        <target>~Zure nabigatzailea ez da bateragarria jarduera mota honekin.</target>
       </trans-unit>
       <trans-unit id="9gm2xul" resname="You must add at least one question.">
         <source>You must add at least one question.</source>
-        <target></target>
+        <target>~Gutxienez galdera bat gehitu behar duzu.</target>
       </trans-unit>
       <trans-unit id="wsyv236" resname="You must have at least one question.">
         <source>You must have at least one question.</source>
-        <target></target>
+        <target>~Gutxienez galdera bat izan behar duzu.</target>
       </trans-unit>
       <trans-unit id="d5lazt4" resname="Question %s: the question text cannot be empty.">
         <source>Question %s: the question text cannot be empty.</source>
-        <target></target>
+        <target>~%s galdera: galderaren testua ezin da hutsik egon.</target>
       </trans-unit>
       <trans-unit id="fveejdx" resname="Question %s: please fill in all answer options.">
         <source>Question %s: please fill in all answer options.</source>
-        <target></target>
+        <target>~%s galdera: bete erantzun-aukera guztiak.</target>
       </trans-unit>
       <trans-unit id="acjl06k" resname="Question %s: please mark which option is the correct answer.">
         <source>Question %s: please mark which option is the correct answer.</source>
-        <target></target>
+        <target>~%s galdera: adierazi zein aukera den erantzun zuzena.</target>
       </trans-unit>
       <trans-unit id="96tfcof" resname="You must add at least %s questions.">
         <source>You must add at least %s questions.</source>
-        <target></target>
+        <target>~Gutxienez %s galdera gehitu behar dituzu.</target>
       </trans-unit>
       <trans-unit id="8hg8n4l" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
         <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
-        <target></target>
+        <target>~Abisua: hautatutako hasierako mailak ez du galderarik. Galdetegia ordezko maila erabiliz hasiko da.</target>
       </trans-unit>
       <trans-unit id="1kjjhkn" resname="Please provide a name for every level.">
         <source>Please provide a name for every level.</source>
-        <target></target>
+        <target>~Eman izen bat maila bakoitzarentzat.</target>
       </trans-unit>
       <trans-unit id="1ewwkqd" resname="Level &quot;%s&quot; must have at least 2 questions.">
         <source>Level "%s" must have at least 2 questions.</source>
-        <target></target>
+        <target>~«%s» mailak gutxienez 2 galdera izan behar ditu.</target>
       </trans-unit>
       <trans-unit id="ofuuzyd" resname="Please indicate the time the solution will be displayed.">
         <source>Please indicate the time the solution will be displayed.</source>
-        <target></target>
+        <target>~Adierazi soluzioa zenbat denboraz erakutsiko den.</target>
       </trans-unit>
       <trans-unit id="nlrj7xd" resname="Question %s: please mark at least one correct answer.">
         <source>Question %s: please mark at least one correct answer.</source>
-        <target></target>
+        <target>~%s galdera: markatu gutxienez erantzun zuzen bat.</target>
       </trans-unit>
       <trans-unit id="ft9t470" resname="Question %s: please provide the solution word or phrase.">
         <source>Question %s: please provide the solution word or phrase.</source>
-        <target></target>
+        <target>~%s galdera: eman soluzioaren hitza edo esaldia.</target>
       </trans-unit>
       <trans-unit id="72pf70z" resname="Question %s: please provide the definition.">
         <source>Question %s: please provide the definition.</source>
-        <target></target>
+        <target>~%s galdera: eman definizioa.</target>
       </trans-unit>
       <trans-unit id="nweglt5" resname="Question %s: please specify a unique order from 1 to %n for every option.">
         <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
-        <target></target>
+        <target>~%s galdera: esleitu 1etik %n-ra bitarteko ordena bakar bat aukera bakoitzari.</target>
       </trans-unit>
       <trans-unit id="mavrntg" resname="Audio URL">
         <source>Audio URL</source>
-        <target></target>
+        <target>~Audioaren URLa</target>
       </trans-unit>
       <trans-unit id="k4sz5uu" resname="Show audio options">
         <source>Show audio options</source>
-        <target></target>
+        <target>~Erakutsi audio-aukerak</target>
       </trans-unit>
       <trans-unit id="hnzht4z" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
         <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
-        <target></target>
+        <target>~Sortu zailtasuna ikaslearentzat egokitzen den aukera anitzeko galdetegi bat. Aukeratu zailtasun-mailen kopurua (3, 4 edo 5) eta esleitu bat galdera bakoitzari; galdetegia maila bat igotzen da segidan bi erantzun zuzen emanda, eta jaisten da segidan bi erantzun oker emanda.</target>
       </trans-unit>
       <trans-unit id="ivw2c4c" resname="Number of levels">
         <source>Number of levels</source>
-        <target></target>
+        <target>~Maila kopurua</target>
       </trans-unit>
       <trans-unit id="75b0jbi" resname="Level 1 name">
         <source>Level 1 name</source>
-        <target></target>
+        <target>~1. mailaren izena</target>
       </trans-unit>
       <trans-unit id="poa6lpp" resname="Easy">
         <source>Easy</source>
-        <target></target>
+        <target>~Erraza</target>
       </trans-unit>
       <trans-unit id="wckpyat" resname="Level 2 name">
         <source>Level 2 name</source>
-        <target></target>
+        <target>~2. mailaren izena</target>
       </trans-unit>
       <trans-unit id="gis0khe" resname="Level 3 name">
         <source>Level 3 name</source>
-        <target></target>
+        <target>~3. mailaren izena</target>
       </trans-unit>
       <trans-unit id="8u35fl5" resname="Hard">
         <source>Hard</source>
-        <target></target>
+        <target>~Zaila</target>
       </trans-unit>
       <trans-unit id="fdxjqnv" resname="Level 4 name">
         <source>Level 4 name</source>
-        <target></target>
+        <target>~4. mailaren izena</target>
       </trans-unit>
       <trans-unit id="t70iuq1" resname="Expert">
         <source>Expert</source>
-        <target></target>
+        <target>~Aditua</target>
       </trans-unit>
       <trans-unit id="2fy5ztm" resname="Level 5 name">
         <source>Level 5 name</source>
-        <target></target>
+        <target>~5. mailaren izena</target>
       </trans-unit>
       <trans-unit id="zvlympa" resname="Master">
         <source>Master</source>
-        <target></target>
+        <target>~Maisua</target>
       </trans-unit>
       <trans-unit id="qhc0d0u" resname="Initial level">
         <source>Initial level</source>
-        <target></target>
+        <target>~Hasierako maila</target>
       </trans-unit>
       <trans-unit id="zrwc2wp" resname="Set to 0 to disable the time limit.">
         <source>Set to 0 to disable the time limit.</source>
-        <target></target>
+        <target>~Jarri 0 denbora-muga desgaitzeko.</target>
       </trans-unit>
       <trans-unit id="1begbuv" resname="Shuffle answer options at runtime">
         <source>Shuffle answer options at runtime</source>
-        <target></target>
+        <target>~Nahastu erantzun-aukerak exekuzioan</target>
       </trans-unit>
       <trans-unit id="d6ct6jz" resname="Case-sensitive answer matching (word type)">
         <source>Case-sensitive answer matching (word type)</source>
-        <target></target>
+        <target>~Maiuskulak eta minuskulak bereiztea (hitz mota)</target>
       </trans-unit>
       <trans-unit id="5u01ehg" resname="Require correct accents (word type)">
         <source>Require correct accents (word type)</source>
-        <target></target>
+        <target>~Eskatu azentu zuzenak (hitz mota)</target>
       </trans-unit>
       <trans-unit id="sjek1xz" resname="Level filter">
         <source>Level filter</source>
-        <target></target>
+        <target>~Maila-iragazkia</target>
       </trans-unit>
       <trans-unit id="ko50yub" resname="Reload image">
         <source>Reload image</source>
-        <target></target>
+        <target>~Birkargatu irudia</target>
       </trans-unit>
       <trans-unit id="kuzzlf4" resname="Adaptative Quiz">
         <source>Adaptative Quiz</source>
-        <target></target>
+        <target>~Galdetegi moldagarria</target>
       </trans-unit>
       <trans-unit id="ye96oy0" resname="Click on an option to choose your answer.">
         <source>Click on an option to choose your answer.</source>
-        <target></target>
+        <target>~Egin klik aukera batean zure erantzuna aukeratzeko.</target>
       </trans-unit>
       <trans-unit id="khez84r" resname="Highest level reached">
         <source>Highest level reached</source>
-        <target></target>
+        <target>~Lortutako mailarik altuena</target>
       </trans-unit>
       <trans-unit id="408eb2h" resname="Level up!">
         <source>Level up!</source>
-        <target></target>
+        <target>~Maila igo duzu!</target>
       </trans-unit>
       <trans-unit id="66oh6mx" resname="Level down">
         <source>Level down</source>
-        <target></target>
+        <target>~Maila jaitsi duzu</target>
       </trans-unit>
       <trans-unit id="4srmipn" resname="Final report">
         <source>Final report</source>
-        <target></target>
+        <target>~Azken txostena</target>
       </trans-unit>
       <trans-unit id="ej86qwb" resname="Excellent. You dominate the highest-level contents.">
         <source>Excellent. You dominate the highest-level contents.</source>
-        <target></target>
+        <target>~Bikain. Mailarik altueneko edukiak menderatzen dituzu.</target>
       </trans-unit>
       <trans-unit id="68z00go" resname="Good job. You have achieved the intermediate level.">
         <source>Good job. You have achieved the intermediate level.</source>
-        <target></target>
+        <target>~Lan ona. Bitarteko maila lortu duzu.</target>
       </trans-unit>
       <trans-unit id="evy3u4v" resname="You need a bit more practice. Review the basic contents.">
         <source>You need a bit more practice. Review the basic contents.</source>
-        <target></target>
+        <target>~Praktika pixka bat gehiago behar duzu. Berrikusi oinarrizko edukiak.</target>
       </trans-unit>
       <trans-unit id="bjhgp7h" resname="Pause audio">
         <source>Pause audio</source>
-        <target></target>
+        <target>~Pausatu audioa</target>
       </trans-unit>
       <trans-unit id="1hthjtq" resname="Illustration">
         <source>Illustration</source>
-        <target></target>
+        <target>~Ilustrazioa</target>
       </trans-unit>
       <trans-unit id="uh7cnvf" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
         <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
-        <target></target>
+        <target>~Aukeratu erantzun zuzena galdera bakoitzerako. Hurrengo mailara igotzeko, segidan bi galdera zuzen erantzun behar dituzu. Segidan bi huts egiten badituzu, aurreko mailara jaitsiko zara.</target>
       </trans-unit>
       <trans-unit id="ghw7ndw" resname="Time&apos;s up!">
         <source>Time's up!</source>
-        <target></target>
+        <target>~Denbora agortu da!</target>
       </trans-unit>
       <trans-unit id="l132pgi" resname="Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.">
         <source>Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.</source>
-        <target></target>
+        <target>~Sortu %total% galdetegi moldagarriko galdera mistoak %distribution% eta onartzen diren hiru galdera moten artean. Lerro bakoitzak mota-zenbakiarekin hasi behar du, ondoren @, gero maila eta gero gainerako eremuak #-rekin bereizita. Inoiz ez jarri # eremu baten barruan. Onartzen diren hiru lerro-formak hauek dira: 0 mota (aukera anitzekoa): 0@Maila#Soluzioa#Galdera#AAukera#BAukera[#CAukera][#DAukera][#EAukera][#FAukera] — Soluzioa A, B, C, D, E, F letren maiuskula-konbinazioa da, aukera zuzenak adierazten dituena (adib. A, AB, ACD, ABCDEF); erabili gehienez 6 letra eta inoiz ez aukera kopurua baino gehiago; utzi soluzioa hutsik aukera bat ere zuzena ez bada. 1 mota (ordenatu): 1@Maila#Galdera#1Elementua#2Elementua#3Elementua[#4Elementua][#5Elementua][#6Elementua] — eman 3 eta 6 elementu artean, galderaren irizpidearen arabera ordena zuzenean zerrendatuta. 2 mota (hitza/definizioa): 2@Maila#Hitza#Definizioa. Zailtasunak mailarekin handitu behar du: %ladder% Maila bakoitzaren barruan hiru moten galderak sartu behar dituzu (0 mota, 1 mota eta 2 mota): sortu %perLevel% galdera inguru maila bakoitzeko eta ziurtatu maila bakoitzak hautaketa (0 mota), ordenatzea (1 mota) eta hitza/definizioa (2 mota) nahasten dituela. Ez jarri mota bereko guztiak elkarrekin; txandakatu hiru motak maila bakoitzaren barruan.</target>
+      </trans-unit>
+      <trans-unit id="9n0ymdt" resname="Please render the circuit preview before saving.">
+        <source>Please render the circuit preview before saving.</source>
+        <target>~Sortu zirkuituaren aurrebista gorde aurretik</target>
+      </trans-unit>
+      <trans-unit id="abw5d9e" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Pantaila-argazkia</target>
+      </trans-unit>
+      <trans-unit id="1sdabg7" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Uneko proiektuaren pantaila-argazkiaren aurrebista</target>
+      </trans-unit>
+      <trans-unit id="20clic6" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Oraindik ez dago pantaila-argazkirik. Automatikoki sortuko da gordetzean edo esportatzean.</target>
+      </trans-unit>
+      <trans-unit id="v39bmmd" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Kargatu irudi pertsonalizatua</target>
+      </trans-unit>
+      <trans-unit id="1chfds6" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~Pantaila-argazkia 2 MB baino txikiagoa izan behar da.</target>
+      </trans-unit>
+      <trans-unit id="1c1e8cz" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Irudi baliogabea</target>
+      </trans-unit>
+      <trans-unit id="k4keozg" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~Irudiak ez ditu gutxieneko eskakizunak betetzen: 16:9 alderdi-ratioa eta gutxienez 600 pixel zabalera.</target>
+      </trans-unit>
+      <trans-unit id="kzrxn2o" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Sortu edukitik</target>
+      </trans-unit>
+      <trans-unit id="wgx5u0z" resname="Not available">
+        <source>Not available</source>
+        <target>~Ez dago erabilgarri</target>
+      </trans-unit>
+      <trans-unit id="tv4qcxb" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~Pantaila-argazkiak sortzea ez dago erabilgarri.</target>
+      </trans-unit>
+      <trans-unit id="vnfn22u" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Sorkuntza huts egin du</target>
+      </trans-unit>
+      <trans-unit id="8g7nfd9" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~Ezin izan da pantaila-argazkia edukitik sortu. Saia zaitez irudi bat kargatzen.</target>
+      </trans-unit>
+      <trans-unit id="agdbvob" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Ordezkatu pantaila-argazkia</target>
+      </trans-unit>
+      <trans-unit id="swp3bly" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Honek uneko irudia ezabatuko du. Jarraitu nahi al duzu?</target>
+      </trans-unit>
+      <trans-unit id="wvqh61v" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Ezabatu pantaila-argazkia</target>
+      </trans-unit>
+      <trans-unit id="ndpnsli" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Uneko irudia ezabatu? Ekintza hau ezin da desegin.</target>
+      </trans-unit>
+      <trans-unit id="2xmr5dw" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Gomendioak</target>
+      </trans-unit>
+      <trans-unit id="qq69t0l" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Erabili 16:9 irudi bat (1280×720 px gomendatzen da) ikaskuntza-baliabidearen eduki nagusia argi irudikatzeko. Saihestu nahasketa eta testu txikia, eta ziurtatu kontraste ona tamaina txikietan irakurgarritasunerako.</target>
+      </trans-unit>
+      <trans-unit id="fv3rouy" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~Irudia hezkuntza-baliabide honen aurrebista gisa erabiliko da plataforma desberdinetan.</target>
+      </trans-unit>
+      <trans-unit id="gy8vvcd" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~3D molekula</target>
+      </trans-unit>
+      <trans-unit id="lf1xxbc" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~3D molekulak</target>
+      </trans-unit>
+      <trans-unit id="ixws64z" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Gehienezko zabalera (aukerakoa)</target>
+      </trans-unit>
+      <trans-unit id="gqy25hp" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Gehienezko altuera (aukerakoa)</target>
+      </trans-unit>
+      <trans-unit id="xqmdypi" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~adib. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="fah4ip8" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~Gehienezko zabaleak 0 baino handiagoa izan behar du eta px, em, rem edo % erabili (adib. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="rmd8e6b" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~Gehienezko altuerak 0 baino handiagoa izan behar du eta px, em, rem edo % erabili (adib. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="7tbw9yg" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Barkatu, hori okerra da... Erantzun zuzena hau da:</target>
+      </trans-unit>
+      <trans-unit id="475j9ni" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Estiloa instalatuta</target>
+      </trans-unit>
+      <trans-unit id="c8n384t" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~Estiloa behar bezala instalatu da.</target>
+      </trans-unit>
+      <trans-unit id="czjc174" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~iDevice editatzen. Gainerako ekintzak desgaituta daude gorde edo baztertu arte.</target>
+      </trans-unit>
+      <trans-unit id="5o1gqt7" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~iDevice editatzeari amaiera eman diozu.</target>
+      </trans-unit>
+      <trans-unit id="xymfkab" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Gorde edo baztertu irekitako iDevice-a proiektua gorde aurretik.</target>
+      </trans-unit>
+      <trans-unit id="ar9ull7" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Hizkuntza aldaketek eXeLearning berriro kargatu edo ireki behar izan dezakete interfaze osoa eguneratzeko.</target>
+      </trans-unit>
+      <trans-unit id="zmmc653" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~Hizkuntza hobespena gorde da. Baliteke interfazeko testu batzuk ez eguneratzea eXeLearning berriro kargatu edo ireki arte. Gorde edo deskargatu zure proiektua aplikazioa berriro kargatu edo itxi aurretik, aldaketak galtzea ekiditeko.</target>
+      </trans-unit>
+      <trans-unit id="8p115mw" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Fitxategi berri bat sortu aurretik aldaketak gorde nahi dituzu?</target>
+      </trans-unit>
+      <trans-unit id="vdfds2h" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~Ez gorde</target>
+      </trans-unit>
+      <trans-unit id="nxgeas7" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Aldaketa kolaboratibo batzuk oraindik ez dira gorde. Sakatu Gorde irten aurretik, galtzea ekiditeko.</target>
+      </trans-unit>
+      <trans-unit id="g5q3rmf" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
+        <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
+        <target>~Irakasleentzat soilik markatutako edukia ezkutatuta dago modu lehenetsian esportazioetan eta aurrebistetan. Ireki ezazu ?exe-teacher=1 erabiliz erakusteko.</target>
+      </trans-unit>
+      <trans-unit id="0imec9k" resname="The file &quot;%1&quot; contains a large asset (%2).">
+        <source>The file "%1" contains a large asset (%2).</source>
+        <target>~"%1" fitxategiak tamaina handiko baliabide bat du (%2).</target>
+      </trans-unit>
+      <trans-unit id="dbc5mzw" resname="Importing it may use a large amount of memory.">
+        <source>Importing it may use a large amount of memory.</source>
+        <target>~Hura inportatzeak memoria asko erabil dezake.</target>
+      </trans-unit>
+      <trans-unit id="32sbcso" resname="The desktop application can open assets up to %1.">
+        <source>The desktop application can open assets up to %1.</source>
+        <target>~Mahaigaineko aplikazioak %1 arteko baliabideak ireki ditzake.</target>
+      </trans-unit>
+      <trans-unit id="v7wv71m" resname="Protection against malformed or malicious archives remains active.">
+        <source>Protection against malformed or malicious archives remains active.</source>
+        <target>~Gaizki eratutako edo asmo txarreko artxiboen aurkako babesa aktibo mantentzen da.</target>
+      </trans-unit>
+      <trans-unit id="uw7e026" resname="Import large file?">
+        <source>Import large file?</source>
+        <target>~Fitxategi handia inportatu?</target>
+      </trans-unit>
+      <trans-unit id="y5iq3ze" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
+        <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
+        <target>~"%1" fitxategia (%2) aplikazio honek ireki dezakeen gehienezko tamaina baino handiagoa da (%3).</target>
+      </trans-unit>
+      <trans-unit id="eki01sh" resname="This project (%1) is larger than the maximum this application can open (%2).">
+        <source>This project (%1) is larger than the maximum this application can open (%2).</source>
+        <target>~Proiektu hau (%1) aplikazio honek ireki dezakeen gehienezko tamaina baino handiagoa da (%2).</target>
+      </trans-unit>
+      <trans-unit id="vq0rgn5" resname="This project has too many files to open (%1 of a maximum %2).">
+        <source>This project has too many files to open (%1 of a maximum %2).</source>
+        <target>~Proiektu honek fitxategi gehiegi ditu irekitzeko (%1, gehienez %2).</target>
+      </trans-unit>
+      <trans-unit id="bx9u2uu" resname="The project was not imported.">
+        <source>The project was not imported.</source>
+        <target>~Proiektua ez da inportatu.</target>
+      </trans-unit>
+      <trans-unit id="9g6jbby" resname="To reduce its size, open the File Manager and:">
+        <source>To reduce its size, open the File Manager and:</source>
+        <target>~Tamaina murrizteko, ireki Fitxategi kudeatzailea eta:</target>
+      </trans-unit>
+      <trans-unit id="x6j8dsv" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
+        <source>Sort by "Largest first" and review each asset\'s references.</source>
+        <target>~Ordenatu "Handienak lehen" arabera eta berrikusi baliabide bakoitzaren erreferentziak.</target>
+      </trans-unit>
+      <trans-unit id="c8guzzi" resname="Remove an unused older version of a large asset.">
+        <source>Remove an unused older version of a large asset.</source>
+        <target>~Ezabatu tamaina handiko baliabide baten erabili gabeko bertsio zahar bat.</target>
+      </trans-unit>
+      <trans-unit id="xew0r4r" resname="Optimise, replace, or remove the large file.">
+        <source>Optimise, replace, or remove the large file.</source>
+        <target>~Optimizatu, ordeztu edo ezabatu tamaina handiko fitxategia.</target>
+      </trans-unit>
+      <trans-unit id="ocs5hav" resname="File too large to open">
+        <source>File too large to open</source>
+        <target>~Fitxategia handiegia da irekitzeko</target>
+      </trans-unit>
+      <trans-unit id="uc508uf" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
+        <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
+        <target>~"%1" baliabideak (%2) mahaigaineko aplikazioak ireki dezakeen gehienezko tamaina gainditzen du (%3).</target>
+      </trans-unit>
+      <trans-unit id="zc2bkbr" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
+        <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
+        <target>~Proiektu honek (%1) mahaigaineko aplikazioak ireki dezakeen gehienezko tamaina gainditzen du (%2).</target>
+      </trans-unit>
+      <trans-unit id="sxp2bis" resname="The resulting ELPX may not open in the desktop application.">
+        <source>The resulting ELPX may not open in the desktop application.</source>
+        <target>~Baliteke sortutako ELPX fitxategia mahaigaineko aplikazioan ez irekitzea.</target>
+      </trans-unit>
+      <trans-unit id="kphk6fm" resname="Do you want to continue exporting anyway?">
+        <source>Do you want to continue exporting anyway?</source>
+        <target>~Esportazioarekin jarraitu nahi duzu hala ere?</target>
+      </trans-unit>
+      <trans-unit id="udhi8b6" resname="Large ELPX export">
+        <source>Large ELPX export</source>
+        <target>~Tamaina handiko ELPX esportazioa</target>
+      </trans-unit>
+      <trans-unit id="mjpsael" resname="Export anyway">
+        <source>Export anyway</source>
+        <target>~Esportatu hala ere</target>
+      </trans-unit>
+      <trans-unit id="ih585sd" resname="Page title">
+        <source>Page title</source>
+        <target>~Orriaren izenburua</target>
+      </trans-unit>
+      <trans-unit id="xa7fq0v" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
+        <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
+        <target>~iDevice hau ezin da editatu gordetako datuak hondatuta daudelako. Bere uneko edukia mantendu da.</target>
+      </trans-unit>
+      <trans-unit id="x3fhrrb" resname="Invalid iDevice data. The save was discarded.">
+        <source>Invalid iDevice data. The save was discarded.</source>
+        <target>~iDevice-aren datuak baliogabeak dira. Gordetzea baztertu da.</target>
+      </trans-unit>
+      <trans-unit id="k93rfba" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
+        <target>~Sortu 5 aukera anitzeko galdera zirkuitu elektrikoei buruz. Galdera bat lerro bakoitzeko. Lerro bakoitzak eremu guztiak eduki behar ditu # ikurraz bereizita: deskribapen labur bat, zirkuituaren eskemaren TikZ kodea (circuitikz erabiliz), erantzun zuzena letraz (adibidez, A, AB), galdera, eta 2 eta 4 arteko erantzun-aukerak. Ez erabili # karakterea eremuen barruan. Ez gehitu lerro-jauzirik galdera baten barruan. GARRANTZITSUA: TikZ kodeak circuitikz-en 0.9.6 bertsioarekin bateragarria izan behar du. Erabili bertsio honetan eskuragarri dauden osagaiak soilik: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diodoa), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (t=A anperemetrorako, t=V voltimetrorako), and gate, or gate, not gate, nand gate, nor gate. EZ erabili circuitikz 1.0 edo berriagoko osagaiak, hala nola dipchip, qfpchip, muxdemux, flipflop, latch edo 7 segmentuko pantailak. Eskema TikZJax-ek errendatzen du, eta circuitikz, amsmath eta amssymb LaTeX paketeak baino ez ditu kargatzen; EZ erabili beste paketeetako komandorik. Idatzi unitateak testu soil gisa edo Unicode gisa (adibidez Ω, µ, V, A, W, F, H, Hz, kΩ, µF), inoiz ez siunitx edo gensymb makro gisa, hala nola \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} edo \\qty{...}{...}, eta ez jarri inoiz unitate bat angelu-parentesi artean (idatzi 100 Ω, ez 100&lt;\\ohm&gt;).</target>
+      </trans-unit>
+      <trans-unit id="s372blp" resname="Attachment">
+        <source>Attachment</source>
+        <target>~Eranskina</target>
+      </trans-unit>
+      <trans-unit id="crhxaj9" resname="No files attached.">
+        <source>No files attached.</source>
+        <target>~Ez dago fitxategi erantsirik.</target>
+      </trans-unit>
+      <trans-unit id="f6s8qln" resname="File unavailable">
+        <source>File unavailable</source>
+        <target>~Fitxategia ez dago erabilgarri</target>
+      </trans-unit>
+      <trans-unit id="ajt34pw" resname="File attachments">
+        <source>File attachments</source>
+        <target>~Fitxategi erantsiak</target>
+      </trans-unit>
+      <trans-unit id="ecwh5ua" resname="Show file descriptions">
+        <source>Show file descriptions</source>
+        <target>~Erakutsi fitxategien deskribapenak</target>
+      </trans-unit>
+      <trans-unit id="zyctxyb" resname="No files attached yet.">
+        <source>No files attached yet.</source>
+        <target>~Oraindik ez dago fitxategi erantsirik.</target>
+      </trans-unit>
+      <trans-unit id="n3n3b5t" resname="Unknown file">
+        <source>Unknown file</source>
+        <target>~Fitxategi ezezaguna</target>
+      </trans-unit>
+      <trans-unit id="db0ly00" resname="The attached file is missing. Re-add it from the Media Library.">
+        <source>The attached file is missing. Re-add it from the Media Library.</source>
+        <target>~Erantsitako fitxategia falta da. Gehitu ezazu berriro Multimedia liburutegitik.</target>
+      </trans-unit>
+      <trans-unit id="3ezzmfe" resname="The Media Library is not available.">
+        <source>The Media Library is not available.</source>
+        <target>~Multimedia liburutegia ez dago erabilgarri.</target>
+      </trans-unit>
+      <trans-unit id="guyh9cp" resname="The file could not be uploaded.">
+        <source>The file could not be uploaded.</source>
+        <target>~Ezin izan da fitxategia igo.</target>
+      </trans-unit>
+      <trans-unit id="avo8yfd" resname="File properties">
+        <source>File properties</source>
+        <target>~Fitxategiaren propietateak</target>
+      </trans-unit>
+      <trans-unit id="2wilbuy" resname="Please wait">
+        <source>Please wait</source>
+        <target>~Itxaron, mesedez</target>
+      </trans-unit>
+      <trans-unit id="iaquwhd" resname="Generating the circuit images, this may take a few minutes, please wait…">
+        <source>Generating the circuit images, this may take a few minutes, please wait…</source>
+        <target>~Zirkuituen irudiak sortzen; minutu batzuk behar ditzake, itxaron mesedez…</target>
+      </trans-unit>
+      <trans-unit id="pbionsu" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
+        <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
+        <target>~Galdera batzuk ezin izan dira gehitu haien zirkuitua ezin izan delako sortu. Testu-koadroan mantendu dira, zuzendu eta berriro saiatu ahal izateko.</target>
+      </trans-unit>
+      <trans-unit id="krz8d2b" resname="Requires manual review">
+        <source>Requires manual review</source>
+        <target>~Eskuzko berrikuspena behar du</target>
+      </trans-unit>
+      <trans-unit id="lvljo5c" resname="Broken">
+        <source>Broken</source>
+        <target>~Hautsita</target>
+      </trans-unit>
+      <trans-unit id="veqq6tq" resname="Listing links...">
+        <source>Listing links...</source>
+        <target>~Estekak zerrendatzen...</target>
+      </trans-unit>
+      <trans-unit id="fy7vndw" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
+        <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
+        <target>~Nabigatzailearen segurtasun-murrizketengatik, eXeLearning bertsio honek ezin ditu kanpoko estekak automatikoki egiaztatu. Ireki esteka bakoitza eskuz berrikusteko.</target>
+      </trans-unit>
+      <trans-unit id="x9qvllw" resname="the status of these links could not be checked automatically; open them to confirm.">
+        <source>the status of these links could not be checked automatically; open them to confirm.</source>
+        <target>~Esteka hauek ezin izan dira automatikoki egiaztatu.</target>
+      </trans-unit>
+      <trans-unit id="yubtk9g" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
+        <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
+        <target>~Egiaztapen-markak zerbitzariak erantzun duela esan nahi du, baina gune batzuek 200 erantzuten dute existitzen ez diren orrietarako ere.</target>
+      </trans-unit>
+      <trans-unit id="nf3i9g1" resname="Links listed">
+        <source>Links listed</source>
+        <target>~Zerrendatutako estekak</target>
+      </trans-unit>
+      <trans-unit id="265vppa" resname="to review manually">
+        <source>to review manually</source>
+        <target>~eskuz berrikusteko</target>
+      </trans-unit>
+      <trans-unit id="vrewyo2" resname="to review">
+        <source>to review</source>
+        <target>~berrikusteko</target>
+      </trans-unit>
+      <trans-unit id="j88ig4v" resname="No links to export">
+        <source>No links to export</source>
+        <target>~Ez dago estekarik esportatzeko</target>
+      </trans-unit>
+      <trans-unit id="nebj1pf" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
+        <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
+        <target>~Kanpoko estekak ezin dira automatikoki egiaztatu eXeLearning bertsio honetan: eskuz berrikusteko esteken zerrenda bat jasoko duzu.</target>
+      </trans-unit>
+      <trans-unit id="6kzqbc9" resname="Not checked automatically: open the link to review it">
+        <source>Not checked automatically: open the link to review it</source>
+        <target>~Ez da automatikoki egiaztatu; ireki berrikusteko</target>
+      </trans-unit>
+      <trans-unit id="m4ta5pp" resname="Local or private address: open the link to review it manually">
+        <source>Local or private address: open the link to review it manually</source>
+        <target>~Helbide lokala edo pribatua; ireki berrikusteko</target>
+      </trans-unit>
+      <trans-unit id="xgf171h" resname="Redirects to another site — open the link to verify it">
+        <source>Redirects to another site — open the link to verify it</source>
+        <target>~Beste gune batera birbideratzen du; ireki berrikusteko</target>
+      </trans-unit>
+      <trans-unit id="8jhwdio" resname="Could not be fully verified: open the link to confirm it">
+        <source>Could not be fully verified: open the link to confirm it</source>
+        <target>~Egiaztapen osatugabea; ireki berrikusteko</target>
+      </trans-unit>
+      <trans-unit id="hmcqtin" resname="Redirects could not be followed: open the link to review it">
+        <source>Redirects could not be followed: open the link to review it</source>
+        <target>~Ezin izan dira birbideratzeak jarraitu; ireki berrikusteko</target>
+      </trans-unit>
+      <trans-unit id="jqq60ty" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~eta beste %1</target>
+      </trans-unit>
+      <trans-unit id="02ry0db" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Falta diren fitxategiak</target>
+      </trans-unit>
+      <trans-unit id="sj7jfai" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Jarduera hauek inportatutako paketean sartuta ez dauden fitxategiei egiten diete erreferentzia. Erreferentziak gorde egin dira, beraz, fitxategiak berriro gehitzean leheneratuko dira.</target>
+      </trans-unit>
+      <trans-unit id="gnkvovk" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Formulak bistaratzen dira aukera hau desaktibatuta egon arren. Aktibatu MathJax liburutegi osoa esportazioetan sartzeko. Horrek bere laster-menua eta funtzio interaktiboak eransten ditu.</target>
+      </trans-unit>
+      <trans-unit id="3v4lpp8" resname="Change password">
+        <source>Change password</source>
+        <target>~Aldatu pasahitza</target>
+      </trans-unit>
+      <trans-unit id="z40ks2f" resname="Current password">
+        <source>Current password</source>
+        <target>~Uneko pasahitza</target>
+      </trans-unit>
+      <trans-unit id="3vmqw3t" resname="New password">
+        <source>New password</source>
+        <target>~Pasahitz berria</target>
+      </trans-unit>
+      <trans-unit id="9y9tx9g" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Gutxienez 4 karaktere. Letrak, zenbakiak eta ikurrak konbinatzen dituzten pasahitz luzeak seguruagoak dira.</target>
+      </trans-unit>
+      <trans-unit id="88u2tzv" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Berretsi pasahitz berria</target>
+      </trans-unit>
+      <trans-unit id="ceb1el9" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Hondatutako jarduerak</target>
+      </trans-unit>
+      <trans-unit id="wunk0aq" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~Jarduera hauen datuak hondatuta daude eta ezin izan dira irakurri. Aldaketarik gabe inportatu dira: haien azken edukia bistaratzen da oraindik, baina ezin dira editatu berriro sortu arte.</target>
+      </trans-unit>
+      <trans-unit id="oziq6jt" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Inportazio-abisuak</target>
+      </trans-unit>
+      <trans-unit id="pzlihzj" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Bilatu ikonoa</target>
+      </trans-unit>
+      <trans-unit id="n79kffr" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Hautatu irudia fitxategi kudeatzailetik</target>
+      </trans-unit>
+      <trans-unit id="lwydt1s" resname="Icon">
+        <source>Icon</source>
+        <target>~Ikonoa</target>
+      </trans-unit>
+      <trans-unit id="g6qx9wn" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Estiloaren ikonoak</target>
+      </trans-unit>
+      <trans-unit id="23wzx1i" resname="General icons">
+        <source>General icons</source>
+        <target>~Ikono orokorrak</target>
+      </trans-unit>
+      <trans-unit id="tx77k6h" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Pasahitzaren segurtasuna: laburregia</target>
+      </trans-unit>
+      <trans-unit id="03kpts8" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Pasahitzaren segurtasuna: ahula</target>
+      </trans-unit>
+      <trans-unit id="8vxypou" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Pasahitzaren segurtasuna: onargarria</target>
+      </trans-unit>
+      <trans-unit id="93qocrc" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Pasahitzaren segurtasuna: ona</target>
+      </trans-unit>
+      <trans-unit id="a2420lq" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Pasahitzaren segurtasuna: sendoa</target>
+      </trans-unit>
+      <trans-unit id="3gyxkt1" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~Uneko pasahitza ez da zuzena</target>
+      </trans-unit>
+      <trans-unit id="cq8u2va" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~Pasahitz berria ezin da hutsik egon.</target>
+      </trans-unit>
+      <trans-unit id="sj1mau2" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~Pasahitzak ez datoz bat</target>
+      </trans-unit>
+      <trans-unit id="p1mrvny" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~Pasahitza behar bezala aldatu da</target>
+      </trans-unit>
+      <trans-unit id="lx2oxf0" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~Errore bat gertatu da. Saiatu berriro.</target>
+      </trans-unit>
+      <trans-unit id="7nk9zi7" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Kontu honek ez du pasahitza aldatzeko aukerarik ematen.</target>
+      </trans-unit>
+      <trans-unit id="gmmil15" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~Pasahitz berria ez da baliozkoa.</target>
+      </trans-unit>
+      <trans-unit id="bd512t2" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Testu erraldoia</target>
+      </trans-unit>
+      <trans-unit id="9mwu77c" resname="To save the score, the activity needs at least one question.">
+        <source>To save the score, the activity needs at least one question.</source>
+        <target>~Puntuazioa gordetzeko, jarduerak gutxienez galdera bat behar du.</target>
       </trans-unit>
     </body>
   </file>

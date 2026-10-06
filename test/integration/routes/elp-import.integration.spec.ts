@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -57,7 +56,6 @@ describe('ELP Import Flow Integration', () => {
 
         // Create test app with required routes
         app = new Elysia({ name: 'elp-import-test' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

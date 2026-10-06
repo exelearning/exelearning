@@ -77,7 +77,7 @@ var $eXeTrivial = {
     saveDataStorage: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
 
-        if (typeof mOptions.trivialID == 'undefined') return;
+        if (!mOptions.storageKey) return;
 
         const data = {
             trivialID: mOptions.trivialID,
@@ -91,10 +91,7 @@ var $eXeTrivial = {
             direccion: mOptions.direccion,
             contadorJuego: mOptions.contadorJuego,
         };
-        localStorage.setItem(
-            'dataTrivial-' + mOptions.trivialID,
-            JSON.stringify(data)
-        );
+        localStorage.setItem(mOptions.storageKey, JSON.stringify(data));
     },
 
     reloadGame: function (dataTrivial, instance) {
@@ -121,6 +118,22 @@ var $eXeTrivial = {
         }
     },
 
+    /**
+     * Where a board keeps its game: under its own component's id.
+     *
+     * The id in the board's data travels with it when the iDevice is
+     * duplicated, so two copies read and wrote the same entry and each resumed
+     * the other's game. The component's id is its own, in the editor and once
+     * exported. Without one there is nowhere safe to keep it, and nothing is.
+     *
+     * @param {Element} activity - The board's element
+     * @returns {string} The key, or '' when the board belongs to no component
+     */
+    storageKeyOf: function (activity) {
+        const nodeId = $(activity).closest('.idevice_node').attr('id');
+        return nodeId ? 'dataTrivial-' + nodeId : '';
+    },
+
     loadGame: function () {
         $eXeTrivial.options = [];
         $eXeTrivial.activities.each(function (i) {
@@ -134,6 +147,7 @@ var $eXeTrivial = {
             mOption.idevicePath = $eXeTrivial.idevicePath;
             mOption.main = 'trivialMainContainer-' + i;
             mOption.idevice = 'trivial-IDevice';
+            mOption.storageKey = $eXeTrivial.storageKeyOf(this);
 
             for (let j = 0; j < mOption.numeroTemas; j++) {
                 mOption.activesQuestions.push(-1);
@@ -148,6 +162,7 @@ var $eXeTrivial = {
 
             const trivial = $eXeTrivial.createInterfaceTrivial(i);
             dl.before(trivial).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#trivialGameMinimize-' + i).hide();
             $('#trivialGameContainer-' + i)
@@ -558,6 +573,24 @@ var $eXeTrivial = {
         }
     },
 
+    /**
+     * Publish the opening state to the LMS when a game starts.
+     *
+     * startGame() rebuilds the players through loadPlayers — every score back
+     * to 0, every cheese board empty — but nothing told the LMS, so its menu
+     * kept the previous game's grade and status until the first answer.
+     *
+     * Called after loadPlayers, so the report is a genuine zero.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit a game they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeTrivial.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeTrivial.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         let mOptions = $eXeTrivial.options[instance],
             score = 10,
@@ -688,7 +721,7 @@ var $eXeTrivial = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        localStorage.removeItem('dataTrivial-' + mOptions.trivialID);
+        if (mOptions.storageKey) localStorage.removeItem(mOptions.storageKey);
 
         mOptions.contadorJuego = 0;
 
@@ -697,23 +730,37 @@ var $eXeTrivial = {
         $('#trivialSelectsGamers-' + instance).show();
         $('#trivialDado-' + instance).hide();
 
+        // Records the game that just ended. The SCORM report that used to sit
+        // next to it is gone: it ran BEFORE any of the resets below, so it
+        // published the finished game's score all over again — and with
+        // `gameOver` still up, so the LMS was told the discarded game was the
+        // final word. The end-of-game path already reported that result; what
+        // the LMS needs next is the zero, and startGame publishes it when the
+        // learner actually starts playing again.
         $eXeTrivial.saveEvaluation(instance);
-        $eXeTrivial.sendScore(true, instance);
-        $eXeTrivial.initialScore = (
-            ((mOptions.gamers[0].casilla + 1) * 10) /
-            mOptions.numeroCasillas
-        ).toFixed(2);
+
         mOptions.gameStarted = false;
         mOptions.activePlayer = 0;
         mOptions.gameOver = false;
 
         for (let i = 0; i < mOptions.numeroJugadores; i++) {
+            // The board was put back but the players were not: only the on-screen
+            // points were zeroed, while `score`, `quesos` and `cheeses` kept the
+            // finished game's values — which is what sendScore reads.
+            mOptions.gamers[i].score = 0;
+            mOptions.gamers[i].quesos = [];
+            mOptions.gamers[i].cheeses = [];
             mOptions.gamers[i].casilla = mOptions.pT.length - 1;
             $eXeTrivial.placePlayerToken(i, instance);
             $('#trivialJugadores-' + instance + ' > .trivialj' + i)
                 .find('.trivial-Puntos')
                 .text('0');
         }
+
+        $eXeTrivial.initialScore = (
+            ((mOptions.gamers[0].casilla + 1) * 10) /
+            mOptions.numeroCasillas
+        ).toFixed(2);
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 6; j++) {
                 $eXeTrivial.activeCheese(i, j, false, instance);
@@ -721,6 +768,43 @@ var $eXeTrivial = {
         }
         $eXeTrivial.loadGameBoard(instance);
     },
+    /**
+     * Whether a timer's game is still on the page, and the page is not being
+     * edited.
+     *
+     * A timer holds the element its game had when it started, not the
+     * element's id. The editor never reloads the document between pages and
+     * ids are numbered by position, so the next page's first game takes the
+     * same ones: a timer that looked its game up by id found that game and ran
+     * it, and the game clock and the video clock, which never looked at all,
+     * ran for ever.
+     *
+     * @param {Element|null} container - The game's element when the timer started
+     * @returns {boolean}
+     */
+    isClockLive: function (container) {
+        const $content = $('#node-content');
+        return (
+            !!container?.isConnected &&
+            !($content.length && $content.attr('mode') === 'edition')
+        );
+    },
+
+    // The feedback delay belongs to this board, just like its question clock.
+    // All answer paths must stop when the board or its options are replaced.
+    scheduleQuestionAnswer: function (correct, instance, delay) {
+        const mOptions = $eXeTrivial.options[instance],
+            board = document.getElementById('trivialMainContainer-' + instance);
+        setTimeout(() => {
+            if (
+                $eXeTrivial.options[instance] === mOptions &&
+                $eXeTrivial.isClockLive(board)
+            ) {
+                $eXeTrivial.questionAnswer(correct, instance);
+            }
+        }, delay);
+    },
+
     continueGame: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
         mOptions.numeroJugadores = mOptions.gamers.length;
@@ -749,10 +833,18 @@ var $eXeTrivial = {
         $('#trivialDado-' + instance).show();
         $eXeTrivial.changePlayer(instance, true);
 
-        mOptions.relojJuego = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const gameClock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(gameClock);
+                return;
+            }
             mOptions.contadorJuego++;
             $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance);
         }, 1000);
+        mOptions.relojJuego = gameClock;
         setTimeout(function () {
             if (mOptions.numeroJugadores === 1) {
                 $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
@@ -802,12 +894,23 @@ var $eXeTrivial = {
         );
         $eXeTrivial.changePlayer(instance, false);
 
-        mOptions.relojJuego = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const gameClock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(gameClock);
+                return;
+            }
             mOptions.contadorJuego++;
             $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance);
         }, 1000);
+        mOptions.relojJuego = gameClock;
 
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeTrivial.saveScormScore(instance);
         $eXeTrivial.saveDataStorage(instance);
         setTimeout(function () {
             if (mOptions.numeroJugadores === 1) {
@@ -930,8 +1033,28 @@ var $eXeTrivial = {
         }
 
         $exeDevices.iDevice.gamification.media.stopSound();
-        $eXeTrivial.saveEvaluation(instance);
+        $eXeTrivial.saveQuestionScore(instance);
         $eXeTrivial.saveDataStorage(instance);
+    },
+
+    /**
+     * Report the score in the same turn the learner answered, right or wrong.
+     *
+     * The report used to live at the end of correctAnswer(), so a wrong answer
+     * changed nothing in the LMS until the next correct one or the end of the
+     * game — and a win reported twice, once there and once from gameOver().
+     * Reporting here covers both branches, and the gameOver guard leaves the
+     * terminal report to gameOver() alone.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveQuestionScore: function (instance) {
+        const mOptions = $eXeTrivial.options[instance];
+
+        if (mOptions.isScorm == 1 && !mOptions.gameOver) {
+            $eXeTrivial.sendScore(true, instance);
+        }
+        $eXeTrivial.saveEvaluation(instance);
     },
 
     correctAnswer: function (instance) {
@@ -1019,7 +1142,9 @@ var $eXeTrivial = {
                 $eXeTrivial.loadGameBoard(instance);
             }, 3000);
         }
-        $eXeTrivial.sendScore(true, instance);
+        // The report moved to saveQuestionScore(), which questionAnswer() calls
+        // for a wrong answer too, and which stands down once the game is over
+        // so the win is not reported both here and from gameOver().
     },
 
     cheesePositions: function (numasi) {
@@ -1119,13 +1244,20 @@ var $eXeTrivial = {
             contador = 0;
 
         mOptions.valorDado = valor;
-        mOptions.contadorDado = setInterval(function () {
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const dice = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(dice);
+                return;
+            }
             if (mOptions.gameStarted && contador < pos.length) {
                 contador++;
                 image =
                     $eXeTrivial.idevicePath + 'tvlpt' + pos[contador] + '.png';
                 if (contador == pos.length - 1) {
-                    clearInterval(mOptions.contadorDado);
+                    clearInterval(dice);
                     $eXeTrivial.showTargetPositions(
                         mOptions.valorDado,
                         instance
@@ -1139,6 +1271,7 @@ var $eXeTrivial = {
                 });
             }
         }, 150);
+        mOptions.contadorDado = dice;
     },
 
     showTargetPositions: function (vd, instance) {
@@ -1284,14 +1417,12 @@ var $eXeTrivial = {
 
         $eXeTrivial.showQuestion(ntema, active, instance);
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#trivialMainContainer-' + instance);
-            let $content = $('#node-content');
-            if (
-                !$node.length ||
-                ($content.length && $content.attr('mode') === 'edition')
-            ) {
-                clearInterval(mOptions.counterClock);
+        const board = document.getElementById(
+            'trivialMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            if (!$eXeTrivial.isClockLive(board)) {
+                clearInterval(clock);
                 return;
             }
             if (mOptions.activeCounter) {
@@ -1320,14 +1451,13 @@ var $eXeTrivial = {
                     const ts = mOptions.showSolution
                         ? mOptions.timeShowSolution * 1000
                         : 3000;
-                    clearInterval(mOptions.counterClock);
-                    setTimeout(function () {
-                        $eXeTrivial.questionAnswer(false, instance);
-                    }, ts);
+                    clearInterval(clock);
+                    $eXeTrivial.scheduleQuestionAnswer(false, instance, ts);
                     return;
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
     },
 
     showGameMessage: function (mensaje, time, type, instance) {
@@ -1804,9 +1934,17 @@ var $eXeTrivial = {
                 }
             }
             clearInterval(mOptions.timeUpdateInterval);
-            mOptions.timeUpdateInterval = setInterval(function () {
+            const board = document.getElementById(
+                'trivialMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$eXeTrivial.isClockLive(board)) {
+                    clearInterval(clock);
+                    return;
+                }
                 $eXeTrivial.updateTimerDisplayLocal(instance);
             }, 1000);
+            mOptions.timeUpdateInterval = clock;
             return;
         }
         if (
@@ -2064,11 +2202,6 @@ var $eXeTrivial = {
             });
 
         mOptions.respuesta = '';
-
-        $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
-            $eXeTrivial.sendScore(true, instance);
-            $exeDevices.iDevice.gamification.scorm.endScorm($eXeTrivial.mScorm);
-        });
 
         $('#trivialClickDado-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
@@ -2333,8 +2466,8 @@ var $eXeTrivial = {
             $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
-        if (typeof mOptions.trivialID != 'undefined') {
-            const dataTrivial = $eXeTrivial.getDataStorage(mOptions.trivialID);
+        if (mOptions.storageKey) {
+            const dataTrivial = $eXeTrivial.getDataStorage(mOptions.storageKey);
             if (dataTrivial) {
                 if (dataTrivial) {
                     if (
@@ -2365,9 +2498,9 @@ var $eXeTrivial = {
         }
     },
 
-    getDataStorage: function (id) {
+    getDataStorage: function (key) {
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataTrivial-' + id)
+            localStorage.getItem(key)
         );
     },
 
@@ -2442,7 +2575,7 @@ var $eXeTrivial = {
             .find('input')
             .eq(0)
             .focus();
-        $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
+        $(window).on('pagehide.eXeTrivial', function () {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeTrivial.saveDataStorage(instance);
             }
@@ -3060,9 +3193,7 @@ var $eXeTrivial = {
         const ts = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 3000;
-        setTimeout(function () {
-            $eXeTrivial.questionAnswer(correct, instance);
-        }, ts);
+        $eXeTrivial.scheduleQuestionAnswer(correct, instance, ts);
         $eXeTrivial.saveDataStorage(instance);
     },
 
@@ -3108,9 +3239,7 @@ var $eXeTrivial = {
         const ts = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 3000;
-        setTimeout(function () {
-            $eXeTrivial.questionAnswer(value, instance);
-        }, ts);
+        $eXeTrivial.scheduleQuestionAnswer(value, instance, ts);
         $eXeTrivial.saveDataStorage(instance);
     },
 

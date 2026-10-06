@@ -8,7 +8,6 @@
  * - site (is_builtin=0): Admin-uploaded themes, stored in FILES_DIR/themes/site/
  */
 import { Elysia, t } from 'elysia';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as path from 'path';
 import { db as defaultDb } from '../db/client';
@@ -211,7 +210,6 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                     secret: getJwtSecret(),
                 }),
             )
-            .use(cookie())
 
             // Global guard for admin routes
             .guard({

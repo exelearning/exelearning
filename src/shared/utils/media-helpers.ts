@@ -172,6 +172,13 @@ export function simplifyMediaElements(html: string, domParser?: DOMParser): stri
         newVideo.style.maxWidth = '100%';
         newVideo.style.height = 'auto';
 
+        // Preserve <track> children (subtitles/captions) -- dropping them here
+        // silently loses subtitles wherever this simplified markup is rendered
+        // (issue #2034).
+        for (const track of Array.from(video.getElementsByTagName('track'))) {
+            newVideo.appendChild(track.cloneNode(true));
+        }
+
         // Replace the old video with the new simple one
         video.parentNode?.replaceChild(newVideo, video);
         modified++;
@@ -200,6 +207,11 @@ export function simplifyMediaElements(html: string, domParser?: DOMParser): stri
 
         if (type) newAudio.setAttribute('type', type);
         if (className) newAudio.className = className;
+
+        // Preserve <track> children (subtitles/captions), same as for video.
+        for (const track of Array.from(audio.getElementsByTagName('track'))) {
+            newAudio.appendChild(track.cloneNode(true));
+        }
 
         audio.parentNode?.replaceChild(newAudio, audio);
         modified++;

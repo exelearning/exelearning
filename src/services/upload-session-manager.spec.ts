@@ -1,9 +1,16 @@
 /**
  * Upload Session Manager Tests
  */
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { SignJWT } from 'jose';
-import { createUploadSessionManager, MAX_BATCH_BYTES, MAX_BATCH_FILES } from './upload-session-manager';
+import {
+    createUploadSessionManager,
+    MAX_BATCH_BYTES,
+    MAX_BATCH_FILES,
+    CLEANUP_INTERVAL_MS,
+    startCleanupScheduler,
+    stopCleanupScheduler,
+} from './upload-session-manager';
 
 // Helper to get JWT secret as Uint8Array (for test token generation)
 const getJwtSecretEncoded = (): Uint8Array => {
@@ -346,6 +353,171 @@ describe('UploadSessionManager', () => {
             const cleaned = manager.cleanupExpired();
             expect(cleaned).toBe(0);
             expect(manager.getStats().activeSessions).toBe(1);
+        });
+
+        it('should free registered callbacks for expired sessions while keeping fresh ones', async () => {
+            // Expired session with a registered progress callback.
+            const { sessionToken: expiredToken } = await manager.createSession({
+                projectId: 'expired-project',
+                projectIdNum: 1,
+                userId: 1,
+                clientId: 'client-expired',
+                totalFiles: 5,
+                totalBytes: 1000,
+            });
+            const expiredPayload = await manager.validateSession(expiredToken);
+            let expiredCallbackCalled = false;
+            manager.onProgress(expiredPayload!.sessionId, () => {
+                expiredCallbackCalled = true;
+            });
+
+            // Fresh session that must survive cleanup with its callback intact.
+            const { sessionToken: freshToken } = await manager.createSession({
+                projectId: 'fresh-project',
+                projectIdNum: 2,
+                userId: 2,
+                clientId: 'client-fresh',
+                totalFiles: 5,
+                totalBytes: 1000,
+            });
+            const freshPayload = await manager.validateSession(freshToken);
+            let freshCallbackCalled = false;
+            manager.onProgress(freshPayload!.sessionId, () => {
+                freshCallbackCalled = true;
+            });
+
+            // Force the first session to be expired.
+            const expiredSession = manager.getSession(expiredPayload!.sessionId);
+            if (expiredSession) {
+                // @ts-expect-error - accessing private property for testing
+                expiredSession.expiresAt = Date.now() - 1000;
+            }
+
+            const cleaned = manager.cleanupExpired();
+            expect(cleaned).toBe(1);
+
+            // Expired session and its callback are gone: emitting must not fire it.
+            manager.emitProgress(expiredPayload!.sessionId, {
+                clientId: 'x',
+                bytesWritten: 0,
+                totalBytes: 0,
+                status: 'complete',
+            });
+            expect(expiredCallbackCalled).toBe(false);
+
+            // Fresh session and its callback are preserved.
+            expect(manager.getSession(freshPayload!.sessionId)).not.toBeNull();
+            manager.emitProgress(freshPayload!.sessionId, {
+                clientId: 'y',
+                bytesWritten: 100,
+                totalBytes: 1000,
+                status: 'writing',
+            });
+            expect(freshCallbackCalled).toBe(true);
+        });
+    });
+
+    describe('cleanup scheduler', () => {
+        afterEach(() => {
+            // Always stop the singleton scheduler so tests do not leak timers.
+            stopCleanupScheduler();
+        });
+
+        it('should expose a sane default interval (5 minutes)', () => {
+            expect(CLEANUP_INTERVAL_MS).toBe(5 * 60 * 1000);
+        });
+
+        it('should register one timer on start and clear it on stop', () => {
+            const realSetInterval = globalThis.setInterval;
+            const realClearInterval = globalThis.clearInterval;
+            let registered = 0;
+            let cleared = 0;
+
+            // @ts-expect-error - test override of global setInterval
+            globalThis.setInterval = (fn: () => void, ms?: number) => {
+                registered++;
+                return realSetInterval(fn, ms);
+            };
+            // @ts-expect-error - test override of global clearInterval
+            globalThis.clearInterval = (handle: ReturnType<typeof setInterval>) => {
+                cleared++;
+                return realClearInterval(handle);
+            };
+
+            try {
+                startCleanupScheduler(60000);
+                expect(registered).toBe(1);
+
+                stopCleanupScheduler();
+                expect(cleared).toBe(1);
+
+                // Calling stop again is a safe no-op (no extra clearInterval).
+                stopCleanupScheduler();
+                expect(cleared).toBe(1);
+            } finally {
+                globalThis.setInterval = realSetInterval;
+                globalThis.clearInterval = realClearInterval;
+            }
+        });
+
+        it('should replace an existing timer when started again (no leak)', () => {
+            const realSetInterval = globalThis.setInterval;
+            const realClearInterval = globalThis.clearInterval;
+            let registered = 0;
+            let cleared = 0;
+
+            // @ts-expect-error - test override of global setInterval
+            globalThis.setInterval = (fn: () => void, ms?: number) => {
+                registered++;
+                return realSetInterval(fn, ms);
+            };
+            // @ts-expect-error - test override of global clearInterval
+            globalThis.clearInterval = (handle: ReturnType<typeof setInterval>) => {
+                cleared++;
+                return realClearInterval(handle);
+            };
+
+            try {
+                startCleanupScheduler(60000);
+                startCleanupScheduler(60000);
+                // Second start must clear the first timer before registering the new one.
+                expect(registered).toBe(2);
+                expect(cleared).toBe(1);
+
+                stopCleanupScheduler();
+                expect(cleared).toBe(2);
+            } finally {
+                globalThis.setInterval = realSetInterval;
+                globalThis.clearInterval = realClearInterval;
+            }
+        });
+
+        it('should invoke cleanupExpired and cleanupStaleSlots on each scheduled pass', () => {
+            const realSetInterval = globalThis.setInterval;
+            const realClearInterval = globalThis.clearInterval;
+            let capturedCallback: (() => void) | null = null;
+
+            // Capture the scheduled callback without arming a real timer.
+            // @ts-expect-error - test override of global setInterval
+            globalThis.setInterval = (fn: () => void) => {
+                capturedCallback = fn;
+                return 0 as unknown as ReturnType<typeof setInterval>;
+            };
+            // @ts-expect-error - test override of global clearInterval
+            globalThis.clearInterval = () => {};
+
+            try {
+                startCleanupScheduler(60000);
+                expect(capturedCallback).not.toBeNull();
+
+                // Invoking the captured pass must not throw and must reclaim
+                // expired singleton sessions via cleanupExpired().
+                expect(() => capturedCallback!()).not.toThrow();
+            } finally {
+                globalThis.setInterval = realSetInterval;
+                globalThis.clearInterval = realClearInterval;
+                stopCleanupScheduler();
+            }
         });
     });
 

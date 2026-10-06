@@ -6,6 +6,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import {
+    getAssetShard,
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 
 import {
     createProjectRoutes,
@@ -21,6 +26,26 @@ import {
 import type { Theme } from '../db/types';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'project-test');
+
+/**
+ * Sign a JWT for the given user id using the same secret the routes verify
+ * (process.env.JWT_SECRET = 'test-secret-for-testing-only', set in beforeEach).
+ * Module-level so every describe block can authenticate requests.
+ */
+async function createAuthToken(userId: number = 1): Promise<string> {
+    const jwt = await import('@elysiajs/jwt');
+    const jwtInstance = jwt.jwt({
+        name: 'jwt',
+        secret: 'test-secret-for-testing-only',
+    });
+    const tempApp = new Elysia().use(jwtInstance);
+    return tempApp.decorator.jwt.sign({
+        sub: userId,
+        email: mockUsers.get(userId)?.email || 'test@test.com',
+        roles: ['ROLE_USER'],
+        isGuest: false,
+    });
+}
 
 // Mock data - shared state for tests
 let mockUsers: Map<number, any>;
@@ -83,7 +108,11 @@ function createMockFileHelper(): FileHelperDeps {
             await fs.appendFile(filePath, content);
         },
         getFilesDir: () => path.join(testDir, 'files'),
-        getProjectAssetsDir: (projectUuid: string) => path.join(testDir, 'assets', projectUuid),
+        // Asset storage resolvers bound to testDir: legacy absolute fixture
+        // paths under testDir/assets resolve to themselves, and new sharded
+        // relative paths resolve under testDir/assets/<shard>/<uuid>/.
+        resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(testDir, storagePath),
+        tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(testDir, storagePath),
     };
 }
 
@@ -172,6 +201,40 @@ function createMockQueries(): QueriesDeps {
             if (project) {
                 project.visibility = visibility;
             }
+        },
+        setPublicViewEnabled: async (_db: any, id: number, enabled: boolean) => {
+            const project = mockProjects.get(id);
+            if (project) {
+                project.public_view_enabled = enabled ? 1 : 0;
+                if (enabled && !project.public_view_id) {
+                    project.public_view_id = `pv-${id}`;
+                }
+            }
+            return project;
+        },
+        setPublicViewEnabledByUuid: async (_db: any, uuid: string, enabled: boolean) => {
+            const project = mockProjectsByUuid.get(uuid);
+            if (project) {
+                project.public_view_enabled = enabled ? 1 : 0;
+                if (enabled && !project.public_view_id) {
+                    project.public_view_id = `pv-${project.id}`;
+                }
+            }
+            return project;
+        },
+        regeneratePublicViewId: async (_db: any, id: number) => {
+            const project = mockProjects.get(id);
+            if (project) {
+                project.public_view_id = `pv-${id}-${Date.now()}`;
+            }
+            return project;
+        },
+        regeneratePublicViewIdByUuid: async (_db: any, uuid: string) => {
+            const project = mockProjectsByUuid.get(uuid);
+            if (project) {
+                project.public_view_id = `pv-${project.id}-${Date.now()}`;
+            }
+            return project;
         },
         getProjectCollaborators: async (_db: any, projectId: number) => {
             const collabIds = mockCollaborators.get(projectId) || new Set();
@@ -316,12 +379,17 @@ function createMockDependencies(): ProjectDependencies {
         zip: createMockZip(),
         queries: createMockQueries(),
         utils: createMockUtils(),
+        settings: { isPublicViewFeatureEnabled: async () => publicViewFeatureEnabled },
     };
 }
+
+// Site-wide PUBLIC_VIEW_ENABLED value seen by the routes (reset to true per test)
+let publicViewFeatureEnabled = true;
 
 describe('Project Routes', () => {
     let app: Elysia;
     let mockDeps: ProjectDependencies;
+    const originalEnv = { ...process.env };
 
     beforeEach(async () => {
         // Reset mock data
@@ -335,6 +403,7 @@ describe('Project Routes', () => {
         userIdCounter = 1;
         projectIdCounter = 1;
         assetIdCounter = 1;
+        publicViewFeatureEnabled = true;
 
         // Create test users
         mockUsers.set(1, {
@@ -353,7 +422,11 @@ describe('Project Routes', () => {
             roles: '["ROLE_USER"]',
         });
 
-        // Set JWT secret
+        // Set JWT secret. The canonical resolver (auth.ts:getJwtSecret) prefers
+        // API_JWT_SECRET over JWT_SECRET, and the test env sets API_JWT_SECRET via
+        // .env, so we override API_JWT_SECRET to the value tokens are signed with.
+        // Routes are created below in this hook, after the env is set.
+        process.env.API_JWT_SECRET = 'test-secret-for-testing-only';
         process.env.JWT_SECRET = 'test-secret-for-testing-only';
 
         // Create mock dependencies
@@ -367,6 +440,9 @@ describe('Project Routes', () => {
     });
 
     afterEach(async () => {
+        // Restore env so the test secret never leaks into other suites in the
+        // same Bun process.
+        process.env = { ...originalEnv };
         if (await fs.pathExists(testDir)) {
             await fs.remove(testDir);
         }
@@ -509,7 +585,12 @@ describe('Project Routes', () => {
             mockProjects.set(1, project);
             mockProjectsByUuid.set('test-project-uuid', project);
 
-            const res = await app.handle(new Request('http://localhost/api/projects/1/sharing'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/1/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -532,13 +613,198 @@ describe('Project Routes', () => {
             mockProjects.set(1, project);
             mockProjectsByUuid.set('test-project-uuid', project);
 
-            const res = await app.handle(new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
             expect(body.project.uuid).toBe('test-project-uuid');
             expect(body.project.visibility).toBe('private');
+        });
+
+        it('should return 401 for sharing info by project ID without auth', async () => {
+            const project = {
+                id: 1,
+                uuid: 'test-project-uuid',
+                owner_id: 1,
+                title: 'Test Project',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1, project);
+            mockProjectsByUuid.set('test-project-uuid', project);
+
+            const res = await app.handle(new Request('http://localhost/api/projects/1/sharing'));
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for sharing info by project ID for non-owner on private project', async () => {
+            const project = {
+                id: 1,
+                uuid: 'test-project-uuid',
+                owner_id: 1,
+                title: 'Test Project',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1, project);
+            mockProjectsByUuid.set('test-project-uuid', project);
+
+            // User 3 is neither owner nor collaborator
+            const token = await createAuthToken(3);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/1/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('FORBIDDEN');
+        });
+
+        it('should return 401 for sharing info by UUID without auth on existing private project', async () => {
+            const project = {
+                id: 1,
+                uuid: 'test-project-uuid',
+                owner_id: 1,
+                title: 'Test Project',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1, project);
+            mockProjectsByUuid.set('test-project-uuid', project);
+
+            const res = await app.handle(new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing'));
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for sharing info by UUID for non-owner on existing private project', async () => {
+            const project = {
+                id: 1,
+                uuid: 'test-project-uuid',
+                owner_id: 1,
+                title: 'Test Project',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1, project);
+            mockProjectsByUuid.set('test-project-uuid', project);
+
+            // User 3 is neither owner nor collaborator
+            const token = await createAuthToken(3);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('FORBIDDEN');
+        });
+    });
+
+    describe('Public view site setting (PUBLIC_VIEW_ENABLED)', () => {
+        function createOwnedProject(id: number, uuid: string) {
+            const project = {
+                id,
+                uuid,
+                owner_id: 1,
+                title: `Project ${id}`,
+                visibility: 'private',
+                public_view_id: `pub-${id}`,
+                public_view_enabled: 1,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(id, project);
+            mockProjectsByUuid.set(uuid, project);
+            return project;
+        }
+
+        async function request(url: string, method = 'GET', body?: unknown) {
+            const token = await createAuthToken(1);
+            return app.handle(
+                new Request(`http://localhost${url}`, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                    body: body === undefined ? undefined : JSON.stringify(body),
+                }),
+            );
+        }
+
+        it('reports the public link as available when the site allows it', async () => {
+            createOwnedProject(700, 'uuid-700');
+
+            const body = await (await request('/api/projects/700/sharing')).json();
+
+            expect(body.project.publicViewAvailable).toBe(true);
+            expect(body.project.publicViewEnabled).toBe(true);
+            expect(body.project.publicViewId).toBe('pub-700');
+        });
+
+        it('hides the public link in sharing info when the site disables it', async () => {
+            publicViewFeatureEnabled = false;
+            createOwnedProject(701, 'uuid-701');
+
+            for (const url of ['/api/projects/701/sharing', '/api/projects/uuid/uuid-701/sharing']) {
+                const res = await request(url);
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.project.publicViewAvailable).toBe(false);
+                expect(body.project.publicViewEnabled).toBe(false);
+                expect(body.project.publicViewId).toBeNull();
+            }
+        });
+
+        it('refuses to enable or regenerate a public link when the site disables it', async () => {
+            publicViewFeatureEnabled = false;
+            createOwnedProject(702, 'uuid-702');
+
+            const calls: Array<[string, string, unknown?]> = [
+                ['/api/projects/702/public-view', 'PATCH', { enabled: true }],
+                ['/api/projects/uuid/uuid-702/public-view', 'PATCH', { enabled: true }],
+                ['/api/projects/702/public-view/regenerate', 'POST'],
+                ['/api/projects/uuid/uuid-702/public-view/regenerate', 'POST'],
+            ];
+            for (const [url, method, body] of calls) {
+                const res = await request(url, method, body);
+                expect(res.status).toBe(403);
+                const json = await res.json();
+                expect(json.responseMessage).toBe('FEATURE_DISABLED');
+                expect(json.detail).toBe('Public read-only links are disabled on this site');
+            }
+            expect(mockProjects.get(702).public_view_id).toBe('pub-702');
+        });
+
+        it('still lets the owner turn an existing public link off when the site disables it', async () => {
+            publicViewFeatureEnabled = false;
+            createOwnedProject(703, 'uuid-703');
+            createOwnedProject(704, 'uuid-704');
+
+            const byId = await request('/api/projects/703/public-view', 'PATCH', { enabled: false });
+            const byUuid = await request('/api/projects/uuid/uuid-704/public-view', 'PATCH', { enabled: false });
+
+            expect(byId.status).toBe(200);
+            expect((await byId.json()).publicViewEnabled).toBe(false);
+            expect(byUuid.status).toBe(200);
+            expect((await byUuid.json()).publicViewEnabled).toBe(false);
         });
     });
 
@@ -597,6 +863,27 @@ describe('Project Routes', () => {
 
     describe('POST /api/project/upload-chunk', () => {
         it('should handle chunk upload', async () => {
+            const token = await createAuthToken(1);
+            const formData = new FormData();
+            formData.append('odeFilePart', new Blob(['test chunk data']));
+            formData.append('odeFileName', 'test.elp');
+            formData.append('odeSessionId', 'chunk-test-session');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/project/upload-chunk', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+            expect(body.odeFileName).toBe('test.elp');
+        });
+
+        it('should require authentication', async () => {
             const formData = new FormData();
             formData.append('odeFilePart', new Blob(['test chunk data']));
             formData.append('odeFileName', 'test.elp');
@@ -609,17 +896,17 @@ describe('Project Routes', () => {
                 }),
             );
 
-            expect(res.status).toBe(200);
+            expect(res.status).toBe(401);
             const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(body.odeFileName).toBe('test.elp');
+            expect(body.success).toBe(false);
         });
 
         it('should return error when missing required fields', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/project/upload-chunk', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
                     body: JSON.stringify({}),
                 }),
             );
@@ -629,7 +916,50 @@ describe('Project Routes', () => {
             expect(body.responseMessage).toContain('error');
         });
 
+        it('should reject path traversal in odeFileName', async () => {
+            const token = await createAuthToken(1);
+            const formData = new FormData();
+            formData.append('odeFilePart', new Blob(['malicious']));
+            formData.append('odeFileName', '../../../../../../tmp/pwned.txt');
+            formData.append('odeSessionId', 'chunk-test-session');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/project/upload-chunk', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.responseMessage).toContain('odeFileName');
+            // Ensure nothing was written outside the session temp dir.
+            expect(await fs.pathExists('/tmp/pwned.txt')).toBe(false);
+        });
+
+        it('should reject path traversal in odeSessionId', async () => {
+            const token = await createAuthToken(1);
+            const formData = new FormData();
+            formData.append('odeFilePart', new Blob(['malicious']));
+            formData.append('odeFileName', 'file.elp');
+            formData.append('odeSessionId', '../../../../etc');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/project/upload-chunk', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.responseMessage).toContain('odeSessionId');
+        });
+
         it('should handle Buffer input', async () => {
+            const token = await createAuthToken(1);
             const formData = new FormData();
             const buffer = Buffer.from('buffer chunk data');
             formData.append('odeFilePart', new Blob([buffer]));
@@ -639,6 +969,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/upload-chunk', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                     body: formData,
                 }),
             );
@@ -783,6 +1114,207 @@ describe('Project Routes', () => {
                 );
 
                 expect(res.status).toBe(400);
+            });
+        });
+
+        describe('PATCH /api/projects/:projectId/public-view', () => {
+            it('should require ownership', async () => {
+                createTestProject(110, 2);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/110/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(403);
+            });
+
+            it('should enable the public read-only link and return a public view id', async () => {
+                createTestProject(111, 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/111/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('OK');
+                expect(body.publicViewEnabled).toBe(true);
+                expect(body.publicViewId).toBeTruthy();
+            });
+
+            it('should disable the public read-only link', async () => {
+                createTestProject(112, 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/112/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: false }),
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.publicViewEnabled).toBe(false);
+            });
+
+            it('should reject a non-boolean enabled value', async () => {
+                createTestProject(113, 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/113/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: 'yes' }),
+                    }),
+                );
+
+                expect(res.status).toBe(400);
+            });
+
+            it('should reject an invalid (non-numeric) project id', async () => {
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/not-a-number/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(400);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('INVALID_ID');
+            });
+
+            it('should return 404 when the project does not exist', async () => {
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/999999/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('NOT_FOUND');
+            });
+
+            it('should require authentication', async () => {
+                createTestProject(114, 1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/114/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(401);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('UNAUTHORIZED');
+            });
+        });
+
+        describe('POST /api/projects/:projectId/public-view/regenerate', () => {
+            it('should require ownership', async () => {
+                createTestProject(120, 2);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/120/public-view/regenerate', {
+                        method: 'POST',
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+
+                expect(res.status).toBe(403);
+            });
+
+            it('should return a new public view id', async () => {
+                createTestProject(121, 1);
+                const token = await createAuthToken(1);
+
+                await app.handle(
+                    new Request('http://localhost/api/projects/121/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/121/public-view/regenerate', {
+                        method: 'POST',
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('OK');
+                expect(body.publicViewId).toBeTruthy();
+            });
+
+            it('should reject an invalid (non-numeric) project id', async () => {
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/not-a-number/public-view/regenerate', {
+                        method: 'POST',
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+
+                expect(res.status).toBe(400);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('INVALID_ID');
+            });
+
+            it('should return 404 when the project does not exist', async () => {
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/999998/public-view/regenerate', {
+                        method: 'POST',
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('NOT_FOUND');
+            });
+
+            it('should require authentication', async () => {
+                createTestProject(122, 1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/122/public-view/regenerate', {
+                        method: 'POST',
+                    }),
+                );
+
+                expect(res.status).toBe(401);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('UNAUTHORIZED');
             });
         });
 
@@ -1321,6 +1853,182 @@ describe('Project Routes', () => {
                 expect(res.status).toBe(400);
             });
         });
+
+        describe('PATCH /api/projects/uuid/:uuid/public-view', () => {
+            it('should enable the public read-only link by UUID', async () => {
+                createTestProject(900, 'uuid-900', 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-900/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('OK');
+                expect(body.publicViewEnabled).toBe(true);
+                expect(body.publicViewId).toBeTruthy();
+            });
+
+            it('should disable the public read-only link by UUID', async () => {
+                createTestProject(901, 'uuid-901', 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-901/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: false }),
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.publicViewEnabled).toBe(false);
+            });
+
+            it('should reject a non-boolean enabled value', async () => {
+                createTestProject(902, 'uuid-902', 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-902/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: 'maybe' }),
+                    }),
+                );
+
+                expect(res.status).toBe(400);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('INVALID_PAYLOAD');
+            });
+
+            it('should return 404 when the project does not exist', async () => {
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-missing/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('NOT_FOUND');
+            });
+
+            it('should require authentication', async () => {
+                createTestProject(903, 'uuid-903', 1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-903/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(401);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('UNAUTHORIZED');
+            });
+
+            it('should require ownership', async () => {
+                createTestProject(904, 'uuid-904', 2);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-904/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                expect(res.status).toBe(403);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('FORBIDDEN');
+            });
+        });
+
+        describe('POST /api/projects/uuid/:uuid/public-view/regenerate', () => {
+            it('should return a new public view id by UUID', async () => {
+                createTestProject(910, 'uuid-910', 1);
+                const token = await createAuthToken(1);
+
+                await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-910/public-view', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                        body: JSON.stringify({ enabled: true }),
+                    }),
+                );
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-910/public-view/regenerate', {
+                        method: 'POST',
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('OK');
+                expect(body.publicViewId).toBeTruthy();
+            });
+
+            it('should return 404 when the project does not exist', async () => {
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-missing/public-view/regenerate', {
+                        method: 'POST',
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('NOT_FOUND');
+            });
+
+            it('should require authentication', async () => {
+                createTestProject(911, 'uuid-911', 1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-911/public-view/regenerate', {
+                        method: 'POST',
+                    }),
+                );
+
+                expect(res.status).toBe(401);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('UNAUTHORIZED');
+            });
+
+            it('should require ownership', async () => {
+                createTestProject(912, 'uuid-912', 2);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-912/public-view/regenerate', {
+                        method: 'POST',
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+
+                expect(res.status).toBe(403);
+                const body = await res.json();
+                expect(body.responseMessage).toBe('FORBIDDEN');
+            });
+        });
     });
 
     describe('POST /api/projects/uuid/:uuid/duplicate', () => {
@@ -1341,10 +2049,12 @@ describe('Project Routes', () => {
 
         it('should duplicate project', async () => {
             createTestProject(900, 'uuid-900', 1);
+            const token = await createAuthToken(1);
 
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-900/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1355,10 +2065,39 @@ describe('Project Routes', () => {
             expect(body.project.title).toContain('copy');
         });
 
+        it('should return 401 when duplicating without auth', async () => {
+            createTestProject(910, 'uuid-910', 1);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-910/duplicate', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should return 403 when non-owner duplicates a private project', async () => {
+            createTestProject(911, 'uuid-911', 1); // owner is user 1, visibility private
+            const token = await createAuthToken(3); // user 3 has no access
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-911/duplicate', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+        });
+
         it('should return 404 for non-existent project', async () => {
+            const token = await createAuthToken(1);
+
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/non-existent/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1386,9 +2125,11 @@ describe('Project Routes', () => {
                 updated_at: new Date().toISOString(),
             });
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-901-with-snapshot/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1432,9 +2173,11 @@ describe('Project Routes', () => {
                 },
             ]);
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-902-with-assets/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1452,12 +2195,61 @@ describe('Project Routes', () => {
             expect(newAssets![0].project_id).toBe(newProjectId);
         });
 
+        it('should store duplicated assets with FILES_DIR-relative sharded paths (issue #2250)', async () => {
+            const sourceProject = createTestProject(910, 'uuid-910-sharded-dup', 1);
+
+            const sourceClientId = 'sharded-dup-client';
+            const sourceAssetDir = path.join(testDir, 'assets', String(sourceProject.id), sourceClientId);
+            await fs.ensureDir(sourceAssetDir);
+            const sourceFilePath = path.join(sourceAssetDir, 'picture.png');
+            await fs.writeFile(sourceFilePath, Buffer.from('shard-me'));
+
+            mockAssets.set(sourceProject.id, [
+                {
+                    id: 1,
+                    project_id: sourceProject.id,
+                    filename: 'picture.png',
+                    storage_path: sourceFilePath,
+                    mime_type: 'image/png',
+                    file_size: 8,
+                    client_id: sourceClientId,
+                    component_id: null,
+                    content_hash: 'h1',
+                },
+            ]);
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-910-sharded-dup/duplicate', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            const newAssets = mockAssets.get(body.project.id);
+            expect(newAssets).toBeDefined();
+            expect(newAssets!.length).toBe(1);
+
+            const newUuid = body.project.uuid as string;
+            const storedPath = newAssets![0].storage_path as string;
+            expect(path.isAbsolute(storedPath)).toBe(false);
+            expect(storedPath).toBe(`assets/${getAssetShard(newUuid)}/${newUuid}/${sourceClientId}/picture.png`);
+
+            const resolved = resolveAssetStoragePathPure(testDir, storedPath);
+            expect(await fs.pathExists(resolved)).toBe(true);
+            expect((await fs.readFile(resolved)).toString()).toBe('shard-me');
+        });
+
         it('should handle project with no assets during duplication', async () => {
             createTestProject(903, 'uuid-903-no-assets', 1);
+            const token = await createAuthToken(1);
 
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-903-no-assets/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1489,9 +2281,11 @@ describe('Project Routes', () => {
                 },
             ]);
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-904-asset-no-clientid/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1562,9 +2356,11 @@ describe('Project Routes', () => {
                 updated_at: new Date().toISOString(),
             });
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-905-yjs-assets/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1626,9 +2422,11 @@ describe('Project Routes', () => {
                 })),
             );
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-906-multi-assets/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1795,11 +2593,30 @@ describe('Project Routes', () => {
     });
 
     describe('Link Validation (brokenlinks)', () => {
-        it('should return no broken links for empty content', async () => {
+        // Brokenlinks endpoints now require authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
+        it('should require authentication', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idevices: [] }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should return no broken links for empty content', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({ idevices: [] }),
                 }),
             );
@@ -1814,7 +2631,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -1838,7 +2655,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -1860,7 +2677,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -1878,11 +2695,30 @@ describe('Project Routes', () => {
     });
 
     describe('Link Extraction (brokenlinks/extract)', () => {
-        it('should extract links without validating', async () => {
+        // Extract endpoint now requires authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
+        it('should require authentication', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idevices: [{ html: '<a href="https://google.com">Google</a>' }] }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should extract links without validating', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -1915,7 +2751,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [{ html: '<p>No links here</p>' }],
                     }),
@@ -1932,7 +2768,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -1952,11 +2788,30 @@ describe('Project Routes', () => {
     });
 
     describe('Link Validation Stream (brokenlinks/validate-stream)', () => {
-        it('should stream validation results for exe-node links', async () => {
+        // Validate-stream endpoint now requires authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
+        it('should require authentication', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ links: [] }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should stream validation results for exe-node links', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         links: [
                             {
@@ -1993,7 +2848,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         links: [
                             {
@@ -2022,7 +2877,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({ links: [] }),
                 }),
             );
@@ -2915,7 +3770,12 @@ describe('Project Routes', () => {
             mockCollaborators.set(1501, new Set([2]));
             mockUsers.set(2, { id: 2, email: 'collab@test.com', roles: 'ROLE_USER' });
 
-            const res = await app.handle(new Request('http://localhost/api/projects/uuid/uuid-sharing-test/sharing'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-sharing-test/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -3079,9 +3939,11 @@ describe('Project Routes', () => {
             mockProjectsByUuid.set('no-snapshot-project', project);
 
             // Use main app which doesn't have snapshot functions mocked
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/no-snapshot-project/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -3156,8 +4018,12 @@ describe('Project Routes', () => {
                 }),
             );
 
-            // Should still return 200 for public project even without valid auth
-            expect(res.status).toBe(200);
+            // An invalid token yields no authenticated user. Numeric sharing now
+            // requires authentication (M1), so an unverifiable token is rejected
+            // gracefully with 401 rather than leaking PII for the public project.
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
         });
     });
 
@@ -3192,6 +4058,7 @@ describe('Project Routes', () => {
 
     describe('Upload Chunk Error Handling', () => {
         it('should return error message on upload failure', async () => {
+            const token = await createAuthToken(1);
             // Test missing required parameters
             const formData = new FormData();
             formData.append('odeFileName', 'test.elp');
@@ -3200,6 +4067,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/upload-chunk', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                     body: formData,
                 }),
             );
@@ -3770,6 +4638,38 @@ describe('Project Routes', () => {
     });
 
     describe('Link Validation Extended Coverage', () => {
+        // Brokenlinks endpoint now requires authentication (bug H1); supply a token to each request.
+        let authToken: string;
+        // Hermetic DNS + fetch injected into the brokenlinks route so external-link
+        // validation never performs real DNS/HTTP. A real lookup of a non-existent
+        // external host can hang past the 5s test timeout and flake CI — the
+        // 'protocol-relative URLs' case did exactly that. The resolver returns a
+        // fixed public IP (so the SSRF guard allows the host) and the fetch fails
+        // fast, exercising validateLink's broken-link branch deterministically.
+        const HERMETIC_FETCH_ERROR = 'mocked fetch failure (hermetic test: no real network)';
+        let dnsLookups: string[];
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+            dnsLookups = [];
+            const hermeticLookup = async (hostname: string) => {
+                dnsLookups.push(hostname);
+                return [{ address: '93.184.216.34' }]; // public IP — SSRF guard allows it; never actually contacted
+            };
+            const hermeticFetch = (async () => {
+                throw new Error(HERMETIC_FETCH_ERROR);
+            }) as unknown as typeof fetch;
+            // Rebuild the app injecting the hermetic resolver + fetch into the
+            // (symfony-compat) brokenlinks route. createProjectRoutes has no link
+            // validation, so it keeps the shared mockDeps untouched.
+            app = new Elysia().use(createProjectRoutes(mockDeps)).use(
+                createSymfonyCompatProjectRoutes({
+                    ...mockDeps,
+                    linkValidation: { lookupFn: hermeticLookup, fetchImpl: hermeticFetch },
+                }),
+            );
+        });
+
         it('should return null (valid) for existing internal files/', async () => {
             // Create test file that exists
             const filesDir = path.join(testDir, 'files');
@@ -3779,7 +4679,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -3800,7 +4700,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -3821,7 +4721,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -3843,11 +4743,11 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
-                                html: '<a href="//example.invalid-domain-xyz.com/path">Protocol Relative</a>',
+                                html: '<a href="//nonexistent-host.invalid/path">Protocol Relative</a>',
                                 pageName: 'Page 1',
                             },
                         ],
@@ -3856,14 +4756,20 @@ describe('Project Routes', () => {
             );
 
             expect(res.status).toBe(200);
-            // Should try to validate and likely fail (network error)
+            // Regression guard for the flaky 5s-timeout: the route must forward the
+            // injected resolver + fetch (no real DNS/HTTP) and normalize the
+            // protocol-relative '//host' to 'https://host' before validating, so the
+            // host reaches the resolver and the link is reported broken.
+            expect(dnsLookups).toContain('nonexistent-host.invalid');
+            const body = await res.json();
+            expect(body.brokenLinks[0].brokenLinksError).toBe(HERMETIC_FETCH_ERROR);
         });
 
         it('should handle absolute URLs to unreachable hosts', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -3883,7 +4789,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -3904,7 +4810,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -4010,7 +4916,12 @@ describe('Project Routes', () => {
         });
 
         it('should return 404 for non-existent project in sharing', async () => {
-            const res = await app.handle(new Request('http://localhost/api/projects/99999/sharing'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/99999/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(404);
             const body = await res.json();
@@ -5065,13 +5976,20 @@ describe('Project Routes', () => {
     });
 
     describe('Link Validation Special Cases', () => {
+        // Brokenlinks endpoint now requires authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
         it('should handle file path check throwing error', async () => {
             // This tests the catch block in file path validation (line 1769-1770)
             // We can't easily make fs.pathExists throw, but the test structure is here
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5092,7 +6010,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {

@@ -148,9 +148,14 @@ export class ElpxExporter extends Html5Exporter {
                 language: meta.language || 'en',
             });
 
-            // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
+            // Resolve material icon data URIs for inline SVG embedding
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
+
+            // 1.1 Generate HTML pages with optional LaTeX/Mermaid pre-rendering and store them for ZIP insertion.
             const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
+            let latexWasRendered = false;
             this.logElpxExportDebugPhase('exporter:generate-pages:start', {
                 pages: pages.length,
             });
@@ -167,8 +172,20 @@ export class ElpxExporter extends Html5Exporter {
                     faviconInfo,
                     pageFilenameMap,
                     undefined,
+                    materialIconDataUris,
                     navLabels,
                 );
+
+                // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
+                // adaptative-quiz / trueorfalse keep their math through runtime
+                // escaping (mirrors the multi-page HTML5 export).
+                if (!meta.addMathJax) {
+                    const latexResult = await this.preRenderHtmlLatex(html, options);
+                    html = latexResult.html;
+                    if (latexResult.latexRendered) {
+                        latexWasRendered = true;
+                    }
+                }
 
                 // Pre-render Mermaid diagrams to static SVG if hook is provided
                 // This eliminates the need for the ~2.7MB Mermaid library in exports
@@ -209,11 +226,16 @@ export class ElpxExporter extends Html5Exporter {
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered Mermaid CSS if diagrams were rendered
-            if (mermaidWasRendered) {
+            // Append pre-rendered LaTeX / Mermaid CSS if either was rendered
+            if (latexWasRendered || mermaidWasRendered) {
                 const decoder = new TextDecoder();
                 let baseCssText = decoder.decode(baseCss);
-                baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                if (latexWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedLatexCss();
+                }
+                if (mermaidWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                }
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);
             }
@@ -257,6 +279,11 @@ export class ElpxExporter extends Html5Exporter {
                 // Base libraries not available - continue anyway
             }
 
+            // 1.6.1 Add material icon SVG files
+            this.addPrefixedFiles(materialIconFiles, 'libs/', (path, content) => {
+                addFile(path, content);
+            });
+
             // 1.6.5 Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', i18nContent);
@@ -264,6 +291,8 @@ export class ElpxExporter extends Html5Exporter {
             // 1.7 Detect and fetch additional required libraries based on content
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true,
+                skipMathJax: latexWasRendered && !meta.addMathJax,
             });
 
             try {
@@ -308,23 +337,28 @@ export class ElpxExporter extends Html5Exporter {
                 idevices: usedIdevices.length,
             });
 
+            // 1.8.5 Add global font files (if selected). The generated pages reference
+            // fonts/global/<font>/…, so the package must ship them to render outside the editor.
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[ElpxExporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
             // 1.9 Add project assets
             await this.addAssetsToZipWithResourcePath(fileList);
 
-            // 1.10 Generate ELPX manifest and add HTML pages to ZIP
-            if (needsElpxDownload && fileList) {
-                for (const [htmlFile] of pageHtmlMap) {
-                    if (!fileList.includes(htmlFile)) {
-                        fileList.push(htmlFile);
-                    }
-                }
-                // Include the manifest file itself in the file list (self-reference)
-                fileList.push('libs/elpx-manifest.js');
-                const manifestJs = this.generateElpxManifestFile(fileList);
-                this.zip.addFile('libs/elpx-manifest.js', manifestJs);
-            }
-
-            // 1.11 Add HTML pages to ZIP (with manifest script on pages that have download-source-file)
+            // 1.10 Add HTML pages to ZIP (with manifest script on pages that have download-source-file).
+            // The ELPX download manifest itself is generated LAST (Section 2.4) — after the content.xml /
+            // content.dtd / screenshot.png source files are added in Section 2 — so it faithfully lists
+            // every file in the package and the re-downloaded .elpx stays re-importable.
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const pageFilename = pageFilenameMap.get(page.id) || 'page.html';
@@ -387,10 +421,28 @@ export class ElpxExporter extends Html5Exporter {
             }
 
             // =========================================================================
+            // SECTION 2.4: ELPX download manifest — generated LAST, from real ZIP contents
+            // =========================================================================
+            //
+            // The download-source-file iDevice rebuilds the .elpx client-side from this
+            // manifest (public/libs/exe_elpx_download/exe_elpx_download.js). Building it from
+            // this.zip.getFilePaths() — AFTER content.xml, content.dtd and screenshot.png have
+            // been added in Section 2 — keeps the manifest a faithful reflection of the package,
+            // so the re-downloaded .elpx stays re-importable. Generating it earlier silently
+            // dropped those ODE source files from the download.
+            if (needsElpxDownload) {
+                const manifestPath = 'libs/elpx-manifest.js';
+                const manifestFiles = this.zip.getFilePaths().filter(path => path !== manifestPath);
+                manifestFiles.push(manifestPath); // self-reference so the round-trip stays reproducible
+                const manifestJs = this.generateElpxManifestFile(manifestFiles);
+                this.zip.addFile(manifestPath, manifestJs);
+            }
+
+            // =========================================================================
             // SECTION 3: Generate final ZIP
             // =========================================================================
             this.logElpxExportDebugPhase('exporter:zip-generate:start', {
-                zipFiles: fileList?.length || this.zip.getFilePaths?.().length || null,
+                zipFiles: this.zip.getFilePaths?.().length ?? fileList?.length ?? null,
             });
             const buffer = await this.zip.generateAsync();
             const zipStats =

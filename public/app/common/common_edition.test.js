@@ -1,4 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Setup globals needed BEFORE the script is loaded
 globalThis._ = vi.fn((key) => key);
@@ -417,6 +419,321 @@ describe('common_edition.js', () => {
         globalThis.$(checkbox).trigger('change');
         expect(input.value).toBe('KEEPME');
         expect(input.disabled).toBe(true);
+      });
+    });
+
+    /**
+     * Extracted when the Grading tab needed its sixth collapsible note: the
+     * alternative was six copies of the same anchor, the same inline sizing and
+     * the same delegated handler.
+     */
+    describe('help', () => {
+      const help = () => globalThis.$exeDevicesEdition.iDevice.gamification.help;
+
+      it('builds an icon pointing at its note', () => {
+        const icon = help().icon('someHelp', '/idevice/path/');
+
+        expect(icon).toContain('id="someHelpLnk"');
+        expect(icon).toContain('href="#someHelp"');
+        expect(icon).toContain('/idevice/path/quextIEHelp.png');
+      });
+
+      it('renders no icon without a path, rather than one pointing at nothing', () => {
+        expect(help().icon('someHelp')).toBe('');
+        expect(help().icon('someHelp', '')).toBe('');
+      });
+
+      it('builds a note closed, with the last paragraph flush to the bottom', () => {
+        const note = help().note('someHelp', ['first', 'second']);
+
+        expect(note).toContain('id="someHelp"');
+        expect(note).toContain('d-none');
+        expect(note).toContain('<p class="mb-2">first</p>');
+        expect(note).toContain('<p class="mb-0">second</p>');
+      });
+
+      it('gives a single paragraph no trailing margin either', () => {
+        expect(help().note('someHelp', ['only'])).toContain('<p class="mb-0">only</p>');
+      });
+
+      it('toggles the note from its icon', () => {
+        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
+        help().bind('someHelp');
+        const note = document.getElementById('someHelp');
+
+        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
+        expect(note.classList.contains('d-none')).toBe(false);
+        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
+        expect(note.classList.contains('d-none')).toBe(true);
+      });
+
+      it('survives being bound again on every re-render', () => {
+        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
+        help().bind('someHelp');
+        help().bind('someHelp');
+        help().bind('someHelp');
+
+        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
+
+        // Stacked handlers would flip the note once each and leave it closed.
+        expect(document.getElementById('someHelp').classList.contains('d-none')).toBe(false);
+      });
+
+      it('does not let the link navigate', () => {
+        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
+        help().bind('someHelp');
+        const event = globalThis.$.Event('click');
+
+        globalThis.$(document.getElementById('someHelpLnk')).trigger(event);
+
+        expect(event.isDefaultPrevented()).toBe(true);
+      });
+    });
+
+    describe('passScore', () => {
+      const passScore = () => globalThis.$exeDevicesEdition.iDevice.gamification.passScore;
+
+      const mountHtml = () => {
+        document.body.innerHTML = passScore().getContents();
+      };
+
+      // common.js is not loaded here, so $exe stands in for it. The real one
+      // reads the META in an exported page and the Y.Doc in the editor.
+      const setGlobalValue = (value) => {
+        globalThis.$exe = {
+          passScore: {
+            get: () => value,
+            normalize: (raw) => {
+              const parsed = parseFloat(raw);
+              if (!isFinite(parsed)) return 5;
+              return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+            },
+          },
+        };
+      };
+
+      beforeEach(() => setGlobalValue(5));
+      afterEach(() => {
+        delete globalThis.$exe;
+      });
+
+      it('getContents renders the label, both radios and the hidden custom input', () => {
+        const html = passScore().getContents();
+        expect(html).toContain('Minimum score to pass the activity');
+        expect(html).toContain('id="eXePassScoreGlobal"');
+        expect(html).toContain('id="eXePassScoreCustom"');
+        expect(html).toContain('id="eXePassScoreGlobalValue"');
+        expect(html).toContain('id="eXePassScoreCustomOptions"');
+        expect(html).toContain('Global value');
+        expect(html).toContain('Customize');
+        // The custom input is only revealed once the author asks for it.
+        expect(html).toMatch(/id="eXePassScoreCustomOptions"[^>]*d-none/);
+      });
+
+      it('getContents declares the same 0-10 one-decimal domain as the project property', () => {
+        const html = passScore().getContents();
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?min="0"/);
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?max="10"/);
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?step="0.1"/);
+      });
+
+      it('getContents shows the project value next to the global radio', () => {
+        setGlobalValue(7.5);
+        expect(passScore().getContents()).toContain('>7.5</span>');
+      });
+
+      it('getContents falls back to 5 when $exe is not available', () => {
+        delete globalThis.$exe;
+        expect(passScore().getContents()).toContain('>5</span>');
+      });
+
+      it.each([
+        ['7.56', 7.6],
+        [-2, 0],
+        [42, 10],
+        [0, 0],
+        ['invalid', 5],
+        [Infinity, 5],
+      ])('round-trips a custom mark of %s without the shared helper as %s', (stored, expected) => {
+        delete globalThis.$exe;
+        mountHtml();
+
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: stored });
+
+        expect(document.getElementById('eXePassScoreValue').value).toBe(String(expected));
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'custom', passScoreCustom: expected });
+      });
+
+      it('defaults to the global mode for an iDevice that has never been saved', () => {
+        mountHtml();
+        passScore().setValues();
+
+        expect(document.getElementById('eXePassScoreGlobal').checked).toBe(true);
+        expect(document.getElementById('eXePassScoreCustom').checked).toBe(false);
+        expect(document.getElementById('eXePassScoreCustomOptions').classList.contains('d-none')).toBe(true);
+      });
+
+      it('setValues restores a customised iDevice and reveals its value', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+
+        expect(document.getElementById('eXePassScoreCustom').checked).toBe(true);
+        expect(document.getElementById('eXePassScoreValue').value).toBe('7.5');
+        expect(document.getElementById('eXePassScoreCustomOptions').classList.contains('d-none')).toBe(false);
+      });
+
+      it('setValues repaints the global number from the project, not from the saved iDevice', () => {
+        mountHtml();
+        // The project moved to 8 after this iDevice was last saved.
+        setGlobalValue(8);
+        passScore().setValues({ passScoreMode: 'global', passScoreCustom: 3 });
+
+        expect(document.getElementById('eXePassScoreGlobalValue').textContent).toBe('8');
+      });
+
+      it('setValues seeds the custom input with the project value when there is none stored', () => {
+        setGlobalValue(7.5);
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'global' });
+
+        expect(document.getElementById('eXePassScoreValue').value).toBe('7.5');
+      });
+
+      it('getValues reports the global mode without inventing a stored value', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'global' });
+
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'global', passScoreCustom: 5 });
+      });
+
+      it('getValues reports the customised mark', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+      });
+
+      it('getValues clamps a mark typed outside the domain', () => {
+        mountHtml();
+        document.getElementById('eXePassScoreCustom').checked = true;
+        document.getElementById('eXePassScoreValue').value = '42';
+
+        expect(passScore().getValues().passScoreCustom).toBe(10);
+      });
+
+      it('addEvents reveals and hides the custom input with the radios', () => {
+        mountHtml();
+        passScore().addEvents();
+        const options = document.getElementById('eXePassScoreCustomOptions');
+        const custom = document.getElementById('eXePassScoreCustom');
+        const global = document.getElementById('eXePassScoreGlobal');
+
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+        expect(options.classList.contains('d-none')).toBe(false);
+
+        global.checked = true;
+        globalThis.$(global).trigger('change');
+        expect(options.classList.contains('d-none')).toBe(true);
+      });
+
+      it('addEvents keeps the typed mark when switching back and forth', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+        const custom = document.getElementById('eXePassScoreCustom');
+        const global = document.getElementById('eXePassScoreGlobal');
+
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+        input.value = '7.5';
+        global.checked = true;
+        globalThis.$(global).trigger('change');
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+
+        expect(input.value).toBe('7.5');
+      });
+
+      it('addEvents repaints a field left empty on blur with the mark that will be saved', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+
+        input.value = '';
+        globalThis.$(input).trigger('blur');
+
+        expect(input.value).toBe('5');
+      });
+
+      it('addEvents repaints an out-of-range field on blur', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+
+        input.value = '42';
+        globalThis.$(input).trigger('blur');
+
+        expect(input.value).toBe('10');
+      });
+
+      /**
+       * The two modes behave differently in a way the radio labels cannot
+       * convey: one follows the project for the life of the content, the other
+       * breaks away from it. The help note says so, like the progress report's.
+       */
+      describe('help note', () => {
+        const mountWithPath = () => {
+          document.body.innerHTML = passScore().getContents('/idevice/path/');
+        };
+
+        it('explains both modes', () => {
+          const html = passScore().getContents('/idevice/path/');
+
+          expect(html).toContain('Global value: the activity uses the mark set in the project properties');
+          expect(html).toContain('Customize: the activity uses its own mark');
+        });
+
+        it('shows the help icon from the iDevice assets', () => {
+          const html = passScore().getContents('/idevice/path/');
+
+          expect(html).toContain('id="eXePassScoreHelpLnk"');
+          expect(html).toContain('/idevice/path/quextIEHelp.png');
+        });
+
+        it('leaves the icon out when the iDevice passes no path', () => {
+          // Better no icon than one pointing at nothing.
+          const html = passScore().getContents();
+
+          expect(html).not.toContain('eXePassScoreHelpLnk');
+          expect(html).toContain('eXePassScoreHelp');
+        });
+
+        it('starts hidden and toggles on click', () => {
+          mountWithPath();
+          passScore().addEvents();
+          const help = document.getElementById('eXePassScoreHelp');
+          const link = document.getElementById('eXePassScoreHelpLnk');
+
+          expect(help.classList.contains('d-none')).toBe(true);
+          globalThis.$(link).trigger('click');
+          expect(help.classList.contains('d-none')).toBe(false);
+          globalThis.$(link).trigger('click');
+          expect(help.classList.contains('d-none')).toBe(true);
+        });
+
+        it('keeps one handler across re-renders', () => {
+          // addEvents runs on every render; a direct handler would stack up and
+          // the note would flip once per copy, i.e. appear not to toggle.
+          mountWithPath();
+          passScore().addEvents();
+          passScore().addEvents();
+          passScore().addEvents();
+
+          globalThis.$(document.getElementById('eXePassScoreHelpLnk')).trigger('click');
+
+          expect(document.getElementById('eXePassScoreHelp').classList.contains('d-none')).toBe(false);
+        });
       });
     });
   });
@@ -843,14 +1160,214 @@ describe('common_edition.js', () => {
     });
 
     it('getTab with hidebutton applies d-none class to button block', () => {
-      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(true);
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(null, {
+        hidebutton: true,
+      });
       expect(result).toContain('id="eXeGameSCORMblock"');
       expect(result).toContain('d-none');
     });
 
     it('getTab with onlybutton changes message', () => {
-      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(false, true);
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(null, {
+        onlybutton: true,
+      });
       expect(result).toContain('Save the score');
+    });
+
+    /**
+     * The tab used to be the SCORM tab, with the pass score and the progress
+     * report sitting loose in each iDevice's general options. It is now the
+     * Grading tab and composes all three, so the layout is decided once
+     * rather than thirty-four times.
+     */
+    describe('Grading tab', () => {
+      const getTab = (...args) =>
+        globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(...args);
+
+      it('is titled Grading, not SCORM', () => {
+        // Not "Evaluation": the iDevice menu already has an "Assessment and
+        // tracking" category, and this tab is narrower than either -- it is
+        // about the mark and what becomes of it.
+        expect(getTab()).toContain('title="Grading"');
+      });
+
+      it('keeps SCORM as a section inside it', () => {
+        const result = getTab();
+        expect(result).toContain('exe-evaluation-section-title');
+        expect(result).toContain('>SCORM<');
+      });
+
+      it('renders the three blocks in order: SCORM, progress report, pass score', () => {
+        const result = getTab('/idevice/path/');
+
+        const scormAt = result.indexOf('eXeGameSCORMNoSave');
+        const reportAt = result.indexOf('eXeProgressReport');
+        const passScoreAt = result.indexOf('eXePassScoreGlobal');
+
+        expect(scormAt).toBeGreaterThan(-1);
+        expect(reportAt).toBeGreaterThan(scormAt);
+        expect(passScoreAt).toBeGreaterThan(reportAt);
+      });
+
+      it('heads all three sections the same way', () => {
+        const result = getTab('/idevice/path/');
+        const headings = result.match(/class="exe-evaluation-section-title"/g) ?? [];
+
+        // The pass score used to be introduced by a plain paragraph, which read
+        // as a stray label next to two headed sections.
+        expect(headings).toHaveLength(3);
+        expect(result).toContain('>SCORM<');
+        expect(result).toContain('>Progress report<');
+        expect(result).toContain('>Minimum score to pass the activity<');
+      });
+
+      it('leaves the progress report out when the iDevice passes no path', () => {
+        // The report needs the iDevice's own asset path for its help icon, so
+        // an iDevice that does not offer one does not get the section either.
+        const result = getTab();
+
+        expect(result).not.toContain('eXeProgressReport');
+        expect(result).not.toContain('>Progress report<');
+      });
+
+      /**
+       * The weight is a relative share, not a percentage of anything: the
+       * registry computes the page score as sum(score * weight) / sum(weights)
+       * (exe-scorm12-activities.js, aggregateScore). Nothing on screen says so,
+       * and an author reading "%" next to a field naturally assumes otherwise.
+       */
+      describe('weight help note', () => {
+        const mountTab = () => {
+          document.body.innerHTML = getTab('/idevice/path/');
+        };
+
+        it('explains that what counts is the proportion between weights', () => {
+          const result = getTab('/idevice/path/');
+
+          expect(result).toContain('proportion between the weights');
+          expect(result).toContain('count 40%, 40% and 20%');
+          expect(result).toContain('left out of the calculation');
+        });
+
+        it('puts the icon to the right of the weight field', () => {
+          const result = getTab('/idevice/path/');
+          const fieldAt = result.indexOf('id="eXeGameSCORMWeight"');
+          const iconAt = result.indexOf('id="eXeGameSCORMWeightHelpLnk"');
+
+          expect(iconAt).toBeGreaterThan(fieldAt);
+          expect(result).toContain('/idevice/path/quextIEHelp.png');
+        });
+
+        it('starts hidden and toggles on click', () => {
+          mountTab();
+          globalThis.$exeDevicesEdition.iDevice.gamification.scorm.addEvents();
+          const help = document.getElementById('eXeGameSCORMWeightHelp');
+          const link = document.getElementById('eXeGameSCORMWeightHelpLnk');
+
+          expect(help.classList.contains('d-none')).toBe(true);
+          globalThis.$(link).trigger('click');
+          expect(help.classList.contains('d-none')).toBe(false);
+          globalThis.$(link).trigger('click');
+          expect(help.classList.contains('d-none')).toBe(true);
+        });
+
+        it('is hidden along with the weight field when the score is not saved', () => {
+          // The note lives outside the weight row, so an open note would
+          // otherwise survive the control it explains.
+          mountTab();
+          globalThis.$exeDevicesEdition.iDevice.gamification.scorm.addEvents();
+          globalThis.$(document.getElementById('eXeGameSCORMWeightHelpLnk')).trigger('click');
+          expect(document.getElementById('eXeGameSCORMWeightHelp').classList.contains('d-none')).toBe(false);
+
+          const noSave = document.getElementById('eXeGameSCORMNoSave');
+          noSave.checked = true;
+          globalThis.$(noSave).trigger('change');
+
+          expect(document.getElementById('eXeGameSCORMPercentaje').classList.contains('d-none')).toBe(true);
+          expect(document.getElementById('eXeGameSCORMWeightHelp').classList.contains('d-none')).toBe(true);
+        });
+      });
+
+      /**
+       * The three modes differ in ways the labels cannot carry: whether the
+       * learner has to press anything, what happens if they leave halfway, and
+       * whether "do not save" also switches off the progress report (it does
+       * not -- that one is local to the browser).
+       */
+      describe('mode help notes', () => {
+        const ids = [
+          'eXeGameSCORMNoSaveHelp',
+          'eXeGameSCORMAutoSaveHelp',
+          'eXeGameSCORMButtonSaveHelp',
+        ];
+
+        it('gives every mode an icon beside its radio', () => {
+          const result = getTab('/idevice/path/');
+
+          for (const id of ids) {
+            expect(result).toContain(`id="${id}Lnk"`);
+            expect(result).toContain(`id="${id}"`);
+          }
+        });
+
+        it('places each icon after the radio it explains', () => {
+          const result = getTab('/idevice/path/');
+
+          expect(result.indexOf('eXeGameSCORMNoSaveHelpLnk')).toBeGreaterThan(
+            result.indexOf('id="eXeGameSCORMNoSave"'),
+          );
+          expect(result.indexOf('eXeGameSCORMAutoSaveHelpLnk')).toBeGreaterThan(
+            result.indexOf('id="eXeGameSCORMAutoSave"'),
+          );
+          expect(result.indexOf('eXeGameSCORMButtonSaveHelpLnk')).toBeGreaterThan(
+            result.indexOf('id="eXeGameSCORMButtonSave"'),
+          );
+        });
+
+        it('says what each mode actually does', () => {
+          const result = getTab('/idevice/path/');
+
+          expect(result).toContain('sends no score to the LMS');
+          // "Do not save" is about the LMS only; the progress report is local.
+          expect(result).toContain('kept in the learner');
+          expect(result).toContain('reports its score by itself');
+          expect(result).toContain('leaves halfway still has the work done so far recorded');
+          expect(result).toContain('Nothing reaches the LMS until the learner presses the button');
+          expect(result).toContain('does not close the activity');
+        });
+
+        it('toggles each note independently', () => {
+          document.body.innerHTML = getTab('/idevice/path/');
+          globalThis.$exeDevicesEdition.iDevice.gamification.scorm.addEvents();
+
+          globalThis.$(document.getElementById('eXeGameSCORMAutoSaveHelpLnk')).trigger('click');
+
+          expect(document.getElementById('eXeGameSCORMAutoSaveHelp').classList.contains('d-none')).toBe(false);
+          expect(document.getElementById('eXeGameSCORMNoSaveHelp').classList.contains('d-none')).toBe(true);
+          expect(document.getElementById('eXeGameSCORMButtonSaveHelp').classList.contains('d-none')).toBe(true);
+        });
+
+        it('keeps the mode notes open when the author switches mode', () => {
+          // Unlike the weight note, these explain options that stay on screen:
+          // the author is comparing them, so switching must not close them.
+          document.body.innerHTML = getTab('/idevice/path/');
+          globalThis.$exeDevicesEdition.iDevice.gamification.scorm.addEvents();
+          globalThis.$(document.getElementById('eXeGameSCORMNoSaveHelpLnk')).trigger('click');
+
+          const auto = document.getElementById('eXeGameSCORMAutoSave');
+          auto.checked = true;
+          globalThis.$(auto).trigger('change');
+
+          expect(document.getElementById('eXeGameSCORMNoSaveHelp').classList.contains('d-none')).toBe(false);
+        });
+      });
+
+      it('offers the pass score to every iDevice, with no opt-out', () => {
+        // Every scoring activity is judged on the same 0-10 scale, so that a
+        // page mixing several of them grades them alike.
+        expect(getTab()).toContain('eXePassScoreGlobal');
+        expect(getTab('/idevice/path/')).toContain('eXePassScoreGlobal');
+      });
     });
 
     it('setValues handles isScorm=1', () => {
@@ -1376,46 +1893,96 @@ describe('common_edition.js', () => {
         global.window.open = originalWindowOpen;
       });
 
-      it('saveButton click shows success alert when all lines are valid', () => {
+      // The save/IA handlers await saveQuestions (it may render images
+      // asynchronously), so the generic alert fires on a later microtask.
+      const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+      it('saveButton click shows success alert when all lines are valid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
 
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeESaveButton').trigger('click');
+        await flushAsync();
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
         expect(saveQuestionsMock).toHaveBeenCalled();
       });
 
-      it('saveButton click shows invalid lines alert when some lines are invalid', () => {
+      it('saveButton click shows invalid lines alert when some lines are invalid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsArea').val('Word1#Definition1\nInvalidLine\nWord2#Definition2');
 
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeESaveButton').trigger('click');
+        await flushAsync();
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('InvalidLine'));
       });
 
-      it('iaButton click shows success alert when all lines are valid', () => {
+      it('saveButton click skips the generic alert when saveQuestions handles its own messaging', async () => {
+        const saveQuestionsMock = vi.fn().mockResolvedValue({ handledMessaging: true });
+        $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+        await flushAsync();
+
+        expect(saveQuestionsMock).toHaveBeenCalledWith(expect.any(Array), expect.any(Array));
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('saveButton click refills the textarea with the remainingLines the callback could not add', async () => {
+        const saveQuestionsMock = vi
+          .fn()
+          .mockResolvedValue({ handledMessaging: true, remainingLines: ['Bad#line'] });
+        $('#eXeEQuestionsArea').val('Good#Definition\nBad#line');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+        await flushAsync();
+
+        // The cleared textarea keeps only the rejected lines so the user can fix them.
+        expect($('#eXeEQuestionsArea').val()).toBe('Bad#line');
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('iaButton click shows success alert when all lines are valid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsIA').val('Word1#Definition1');
         $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
 
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEIAButton').trigger('click');
+        await flushAsync();
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
       });
 
-      it('iaButton click shows invalid lines alert when some lines are invalid', () => {
+      it('iaButton click refills the textarea with the remainingLines the callback could not add', async () => {
+        const saveQuestionsMock = vi
+          .fn()
+          .mockResolvedValue({ handledMessaging: true, remainingLines: ['Bad#line'] });
+        $('#eXeEQuestionsIA').val('SomeContent');
+        $('#eXeEQuestionsArea').val('Good#Definition\nBad#line');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEIAButton').trigger('click');
+        await flushAsync();
+
+        expect($('#eXeEQuestionsArea').val()).toBe('Bad#line');
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('iaButton click shows invalid lines alert when some lines are invalid', async () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEQuestionsIA').val('SomeContent');
         $('#eXeEQuestionsArea').val('BadFormat\nWord1#Definition1');
 
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEIAButton').trigger('click');
+        await flushAsync();
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
@@ -2365,6 +2932,763 @@ describe('common_edition.js', () => {
       globalThis.$exeDevicesEdition.iDevice.init();
 
       expect(globalThis._('Next')).toBe('Siguiente');
+    });
+  });
+
+  /**
+   * progressBar.getValues() has two return shapes: the values, or `false` after
+   * it has warned about a report identifier shorter than five characters. Every
+   * caller has to honour the second one.
+   *
+   * Reading `.evaluation` off `false` yields undefined instead of throwing, so a
+   * caller that forgets carries on and saves the activity with the report
+   * silently switched off -- the author sees the warning, presses save, and the
+   * form accepts it. That is exactly what happened to two iDevices when their
+   * forms moved to this shared block, and nothing failed to tell us.
+   *
+   * Scanning the callers is the only check that covers all of them at once, and
+   * the only one that catches the next iDevice to adopt the block.
+   */
+  describe('progress report guard across every iDevice', () => {
+    const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
+
+    const callers = readdirSync(IDEVICES_DIR)
+      .map((name) => ({ name, dir: join(IDEVICES_DIR, name, 'edition') }))
+      .filter(({ dir }) => existsSync(dir))
+      .flatMap(({ name, dir }) =>
+        readdirSync(dir)
+          .filter((file) => file.endsWith('.js') && !file.endsWith('.test.js'))
+          .map((file) => ({ name, source: readFileSync(join(dir, file), 'utf-8') }))
+      )
+      .filter(({ source }) => source.includes('gamification.progressBar.getValues()'));
+
+    it('finds the iDevices that read the shared progress report', () => {
+      // A guard rail for the scan itself: a rename that made the filter match
+      // nothing would leave every assertion below vacuously green.
+      expect(callers.length).toBeGreaterThan(30);
+    });
+
+    it.each(callers.map(({ name }) => name))('%s rejects an invalid report identifier', (name) => {
+      const { source } = callers.find((caller) => caller.name === name);
+      // The iDevices do not agree on a name for the result -- most call it
+      // `progressBar`, interactive-video calls it `progressBarValues` -- so the
+      // guard is looked up by whatever each one assigned it to.
+      const assignment = source.match(
+        /(\w+)\s*=\s*\$exeDevicesEdition\.iDevice\.gamification\.progressBar\.getValues\(\)/
+      );
+      expect(assignment).not.toBeNull();
+      expect(source).toMatch(new RegExp(`if\\s*\\(!${assignment[1]}\\)\\s*return false;`));
+    });
+  });
+
+  /**
+   * These helpers create resources that live outside the edition form —
+   * handlers on `document` and `window`, timers, object URLs, audio and a
+   * microphone stream. They belong to the edition that created them, which
+   * `IdeviceNode` publishes as `window.$exeEditionLifecycle`, so closing the
+   * editor must release every one of them.
+   *
+   * Behaviour without a lifecycle is covered by every other test in this file:
+   * none of them opens an edition.
+   */
+  describe('edition lifecycle ownership', () => {
+    const iDevice = () => globalThis.$exeDevicesEdition.iDevice;
+    let lifecycle = null;
+
+    const openEdition = () => {
+      lifecycle = global.attachEditionLifecycle({ name: 'lifecycle-test-device' });
+      return lifecycle;
+    };
+
+    const closeEdition = () => {
+      if (lifecycle) lifecycle.destroy();
+      lifecycle = null;
+      window.$exeEditionLifecycle = null;
+    };
+
+    afterEach(() => {
+      closeEdition();
+      // Registrations made through the no-lifecycle fallback paths.
+      $(document).off(
+        'click.filepicker click.exeProgressReportHelp click.exeFileTrigger change.exeFileInput'
+      );
+    });
+
+    describe('getLifecycle', () => {
+      it('returns null when no editor is open', () => {
+        window.$exeEditionLifecycle = null;
+        expect(iDevice().getLifecycle()).toBeNull();
+      });
+
+      it('returns null once the edition it belongs to has been closed', () => {
+        const active = openEdition();
+        expect(iDevice().getLifecycle()).toBe(active);
+
+        active.destroy();
+
+        expect(iDevice().getLifecycle()).toBeNull();
+      });
+    });
+
+    describe('color picker timer', () => {
+      const withColorPicker = (run) => {
+        vi.useFakeTimers();
+        const previous = iDevice().colorPicker;
+        const colorPicker = { init: vi.fn() };
+        iDevice().colorPicker = colorPicker;
+        try {
+          run(colorPicker);
+        } finally {
+          vi.useRealTimers();
+          if (previous === undefined) delete iDevice().colorPicker;
+          else iDevice().colorPicker = previous;
+        }
+      };
+
+      it('initializes the color picker while the editor stays open', () => {
+        withColorPicker((colorPicker) => {
+          openEdition();
+          iDevice().init();
+
+          vi.advanceTimersByTime(500);
+
+          expect(colorPicker.init).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      it('does not initialize the color picker after the editor closes', () => {
+        withColorPicker((colorPicker) => {
+          openEdition();
+          iDevice().init();
+
+          lifecycle.destroy();
+          vi.advanceTimersByTime(500);
+
+          expect(colorPicker.init).not.toHaveBeenCalled();
+        });
+      });
+    });
+
+    describe('document handlers', () => {
+      const gradingHelpIds = [
+        'eXePassScoreHelp',
+        'eXeGameSCORMNoSaveHelp',
+        'eXeGameSCORMAutoSaveHelp',
+        'eXeGameSCORMButtonSaveHelp',
+        'eXeGameSCORMWeightHelp',
+      ];
+
+      afterEach(() => {
+        gradingHelpIds.forEach(id => $(document).off('click.' + id));
+        $(document).off('click.gradingHelpProbe');
+      });
+
+      it.each(gradingHelpIds)('releases %s on close and rebinds it for the next edition', id => {
+        const help = iDevice().gamification.help;
+        document.body.innerHTML = help.icon(id, '/idevice/') + help.note(id, ['Help text']);
+        const link = $('#' + id + 'Lnk');
+        const note = $('#' + id);
+        const unrelated = vi.fn();
+        $(document).on('click.gradingHelpProbe', '#' + id + 'Lnk', unrelated);
+
+        openEdition();
+        // A re-render must leave just one toggle.
+        help.bind(id);
+        help.bind(id);
+        const event = $.Event('click');
+        link.trigger(event);
+        expect(event.isDefaultPrevented()).toBe(true);
+        expect(note.hasClass('d-none')).toBe(false);
+
+        closeEdition();
+        link.trigger('click');
+        expect(note.hasClass('d-none')).toBe(false);
+        expect(unrelated).toHaveBeenCalledTimes(2);
+
+        openEdition();
+        help.bind(id);
+        link.trigger('click');
+        expect(note.hasClass('d-none')).toBe(true);
+
+        closeEdition();
+        link.trigger('click');
+        expect(note.hasClass('d-none')).toBe(true);
+        expect(unrelated).toHaveBeenCalledTimes(4);
+      });
+
+      it('drops the progress-report help toggle and keeps unrelated document handlers', () => {
+        document.body.innerHTML = iDevice().gamification.progressBar.getContents('/themes/example/');
+        const unrelated = vi.fn();
+        $(document).on('click.unrelatedProbe', unrelated);
+
+        openEdition();
+        iDevice().gamification.progressBar.addEvents();
+
+        const help = document.getElementById('eXeProgressReportHelp');
+        $('#eXeProgressReportHelpLnk').trigger('click');
+        expect(help.classList.contains('d-none')).toBe(false);
+
+        lifecycle.destroy();
+        $('#eXeProgressReportHelpLnk').trigger('click');
+
+        expect(help.classList.contains('d-none')).toBe(false);
+        expect(unrelated).toHaveBeenCalledTimes(2);
+
+        $(document).off('click.unrelatedProbe');
+      });
+
+      it('drops the import file-picker handlers', () => {
+        document.body.innerHTML = `
+          <div data-exe-upload>
+            <input type="file" class="exe-file-input" />
+            <button type="button" data-exe-file-trigger>choose</button>
+            <span data-exe-file-name>none</span>
+          </div>
+        `;
+        const fileInputClicks = vi.fn();
+        document.querySelector('.exe-file-input').addEventListener('click', fileInputClicks);
+
+        openEdition();
+        iDevice().gamification.share.addEvents(0, vi.fn());
+
+        $('[data-exe-file-trigger]').trigger('click');
+        expect(fileInputClicks).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+        $('[data-exe-file-trigger]').trigger('click');
+
+        expect(fileInputClicks).toHaveBeenCalledTimes(1);
+      });
+
+      it('drops the file-manager button handler', () => {
+        document.body.innerHTML = '<input type="text" id="lifecyclePicker" class="exe-image-picker" />';
+        const show = globalThis.eXeLearning.app.modals.filemanager.show;
+        show.mockClear();
+
+        openEdition();
+        iDevice().filePicker.init();
+
+        document.querySelector('.exe-pick-image').click();
+        expect(show).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+        document.querySelector('.exe-pick-image').click();
+
+        expect(show).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('AI question generation', () => {
+      const mountIAForm = () => {
+        document.body.innerHTML = `
+          <div id="eXeFormIAContainer"><textarea id="eXeThemeIA"></textarea></div>
+          <p id="eXeIAMessage"></p>
+        `;
+      };
+
+      const withApi = async (implementation, run) => {
+        const previous = globalThis.eXeLearning.app.api.getGenerateQuestions;
+        globalThis.eXeLearning.app.api.getGenerateQuestions = vi.fn(implementation);
+        try {
+          await run();
+        } finally {
+          globalThis.eXeLearning.app.api.getGenerateQuestions = previous;
+        }
+      };
+
+      it('delivers generated questions while the editor is still open', async () => {
+        mountIAForm();
+        const saveQuestions = vi.fn();
+
+        await withApi(
+          () => Promise.resolve({ questions: ['Heart#A muscular organ'] }),
+          async () => {
+            openEdition();
+            await iDevice().gamification.share.genarateIAQuestons(0, saveQuestions);
+
+            expect(saveQuestions).toHaveBeenCalledWith(['Heart#A muscular organ']);
+          }
+        );
+      });
+
+      it('drops generated questions that arrive after the editor closed', async () => {
+        mountIAForm();
+        const saveQuestions = vi.fn();
+        let resolveRequest;
+
+        await withApi(
+          () =>
+            new Promise((resolve) => {
+              resolveRequest = resolve;
+            }),
+          async () => {
+            openEdition();
+            const pending = iDevice().gamification.share.genarateIAQuestons(0, saveQuestions);
+
+            lifecycle.destroy();
+            resolveRequest({ questions: ['Heart#A muscular organ'] });
+            await pending;
+
+            expect(saveQuestions).not.toHaveBeenCalled();
+          }
+        );
+      });
+
+      // Review H5: the success path was guarded, the error path was not. The
+      // form of the next edition — B — shares these ids, so a stale failure
+      // from A rewrote B's message and re-enabled B's controls mid-request.
+      it('keeps a late failure out of the form of the next edition', async () => {
+        mountIAForm();
+        let failRequest;
+
+        await withApi(
+          () =>
+            new Promise((_resolve, reject) => {
+              failRequest = reject;
+            }),
+          async () => {
+            openEdition();
+            const pending = iDevice().gamification.share.genarateIAQuestons(0, vi.fn());
+
+            lifecycle.destroy();
+            // B opens its own form, with a request of its own in flight.
+            mountIAForm();
+            openEdition();
+            document.getElementById('eXeIAMessage').textContent = 'B is generating';
+            document.getElementById('eXeThemeIA').disabled = true;
+
+            failRequest(new Error('network'));
+            await pending;
+
+            expect(document.getElementById('eXeIAMessage').textContent).toBe('B is generating');
+            expect(document.getElementById('eXeThemeIA').disabled).toBe(true);
+          }
+        );
+      });
+
+      it('reports a failure while the editor is still open', async () => {
+        mountIAForm();
+
+        await withApi(
+          () => Promise.reject(new Error('network')),
+          async () => {
+            openEdition();
+            await iDevice().gamification.share.genarateIAQuestons(0, vi.fn());
+
+            expect(document.getElementById('eXeIAMessage').textContent).not.toBe('');
+            expect(document.getElementById('eXeThemeIA').disabled).toBe(false);
+          }
+        );
+      });
+    });
+
+    describe('downloadBlob', () => {
+      it('revokes the object URL and removes the anchor when the editor closes first', () => {
+        vi.useFakeTimers();
+        const createSpy = vi
+          .spyOn(window.URL, 'createObjectURL')
+          .mockReturnValue('blob:lifecycle-download');
+        const revokeSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+
+        try {
+          openEdition();
+          const started = iDevice().gamification.share.downloadBlob(
+            new Blob(['data'], { type: 'text/plain' }),
+            'game.json'
+          );
+
+          expect(started).toBe(true);
+          expect(document.querySelector('a[download="game.json"]')).toBeTruthy();
+
+          lifecycle.destroy();
+
+          expect(revokeSpy).toHaveBeenCalledTimes(1);
+          expect(revokeSpy).toHaveBeenCalledWith('blob:lifecycle-download');
+          expect(document.querySelector('a[download="game.json"]')).toBeNull();
+
+          // The cancelled timer must not revoke a second time.
+          vi.advanceTimersByTime(1000);
+          expect(revokeSpy).toHaveBeenCalledTimes(1);
+        } finally {
+          createSpy.mockRestore();
+          revokeSpy.mockRestore();
+          vi.useRealTimers();
+        }
+      });
+
+      it('still revokes the object URL on its own timer while the editor stays open', () => {
+        vi.useFakeTimers();
+        const createSpy = vi
+          .spyOn(window.URL, 'createObjectURL')
+          .mockReturnValue('blob:lifecycle-download');
+        const revokeSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+
+        try {
+          openEdition();
+          iDevice().gamification.share.downloadBlob(
+            new Blob(['data'], { type: 'text/plain' }),
+            'game.json'
+          );
+
+          vi.advanceTimersByTime(200);
+
+          expect(revokeSpy).toHaveBeenCalledTimes(1);
+          expect(document.querySelector('a[download="game.json"]')).toBeNull();
+
+          // Already released: teardown must not revoke it again.
+          lifecycle.destroy();
+          expect(revokeSpy).toHaveBeenCalledTimes(1);
+        } finally {
+          createSpy.mockRestore();
+          revokeSpy.mockRestore();
+          vi.useRealTimers();
+        }
+      });
+    });
+
+    describe('gamification.helpers audio', () => {
+      let previousAudio;
+
+      const useAudioMock = (instance) => {
+        previousAudio = globalThis.Audio;
+        // `new Audio(url)` needs a real constructor, not an arrow function.
+        const ctor = vi.fn(function () {
+          return instance;
+        });
+        globalThis.Audio = ctor;
+        return ctor;
+      };
+
+      afterEach(() => {
+        if (previousAudio === undefined) delete globalThis.Audio;
+        else globalThis.Audio = previousAudio;
+        previousAudio = undefined;
+        delete window.eXeLearningAssetResolver;
+        iDevice().gamification.helpers.playerAudio = null;
+        iDevice().gamification.helpers.currentAudioUrl = null;
+      });
+
+      it('stops audio started by the edition when the editor closes', async () => {
+        const instance = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), paused: false };
+        useAudioMock(instance);
+        const helpers = iDevice().gamification.helpers;
+        helpers.playerAudio = null;
+        helpers.currentAudioUrl = null;
+
+        openEdition();
+        await helpers.playSound('https://example.com/audio.mp3');
+        expect(instance.play).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+
+        expect(instance.pause).toHaveBeenCalledTimes(1);
+        expect(helpers.playerAudio).toBeNull();
+        expect(helpers.currentAudioUrl).toBeNull();
+      });
+
+      it('does not stop audio twice when it was already stopped by the user', async () => {
+        const instance = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), paused: false };
+        useAudioMock(instance);
+        const helpers = iDevice().gamification.helpers;
+        helpers.playerAudio = null;
+        helpers.currentAudioUrl = null;
+
+        openEdition();
+        await helpers.playSound('https://example.com/audio.mp3');
+        helpers.stopSound();
+        expect(instance.pause).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+
+        expect(instance.pause).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not start audio resolved after the editor closed', async () => {
+        const instance = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), paused: true };
+        const ctor = useAudioMock(instance);
+        let resolveAsset;
+        window.eXeLearningAssetResolver = {
+          resolve: vi.fn(
+            () =>
+              new Promise((resolve) => {
+                resolveAsset = resolve;
+              })
+          ),
+        };
+        const helpers = iDevice().gamification.helpers;
+        helpers.playerAudio = null;
+        helpers.currentAudioUrl = null;
+
+        openEdition();
+        const pending = helpers.playSound('asset://recording.webm');
+        lifecycle.destroy();
+        resolveAsset('blob:resolved-audio');
+        await pending;
+
+        expect(ctor).not.toHaveBeenCalled();
+        expect(helpers.playerAudio).toBeNull();
+        expect(helpers.currentAudioUrl).toBeNull();
+      });
+
+      // Review H8: both calls passed stopSound() before either had a player,
+      // then both created one and the shared reference kept only the last —
+      // so teardown could stop only that one and the first kept playing.
+      it('leaves no player outside cleanup when two resolutions overlap', async () => {
+        const players = [];
+        previousAudio = globalThis.Audio;
+        globalThis.Audio = vi.fn(function () {
+          const player = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(function () { this.paused = true; }), paused: false };
+          players.push(player);
+          return player;
+        });
+        const pendingResolutions = [];
+        window.eXeLearningAssetResolver = {
+          resolve: vi.fn(() => new Promise((resolve) => pendingResolutions.push(resolve))),
+        };
+        const helpers = iDevice().gamification.helpers;
+
+        openEdition();
+        const first = helpers.playSound('asset://first.webm');
+        const second = helpers.playSound('asset://second.webm');
+        pendingResolutions[0]('blob:first');
+        pendingResolutions[1]('blob:second');
+        await Promise.all([first, second]);
+
+        lifecycle.destroy();
+
+        expect(players.length).toBeGreaterThan(0);
+        expect(players.every((player) => player.paused)).toBe(true);
+        // Only the request made last may start playing.
+        expect(globalThis.Audio).toHaveBeenCalledTimes(1);
+        expect(globalThis.Audio).toHaveBeenCalledWith('blob:second');
+      });
+
+      it('does not start audio whose resolution finished after stopSound()', async () => {
+        const instance = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), paused: true };
+        const ctor = useAudioMock(instance);
+        let resolveAsset;
+        window.eXeLearningAssetResolver = {
+          resolve: vi.fn(() => new Promise((resolve) => (resolveAsset = resolve))),
+        };
+        const helpers = iDevice().gamification.helpers;
+
+        openEdition();
+        const pending = helpers.playSound('asset://recording.webm');
+        helpers.stopSound();
+        resolveAsset('blob:resolved-audio');
+        await pending;
+
+        expect(ctor).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('voiceRecorder', () => {
+      afterEach(() => {
+        delete globalThis.MediaRecorder;
+        delete globalThis.navigator.mediaDevices;
+      });
+
+      it('stops the microphone and removes the recorder UI when the editor closes', async () => {
+        const stopTrack = vi.fn();
+        const stream = { getTracks: () => [{ stop: stopTrack }] };
+        globalThis.navigator.mediaDevices = {
+          getUserMedia: vi.fn().mockResolvedValue(stream),
+        };
+        globalThis.MediaRecorder = class {
+          static isTypeSupported(type) {
+            return type.indexOf('audio/webm') === 0;
+          }
+          constructor() {
+            this.mimeType = 'audio/webm';
+            this.state = 'inactive';
+          }
+          start() {
+            this.state = 'recording';
+          }
+          stop() {
+            this.state = 'inactive';
+          }
+        };
+
+        const recorder = iDevice().voiceRecorder;
+        document.body.innerHTML = `
+          <div id="voice-lifecycle" data-voice-recorder data-voice-input="#audioInput">
+            <input id="audioInput" type="text" class="exe-file-picker" />
+            <input type="button" class="exe-pick-any-file" value="Select a file" />
+          </div>
+        `;
+        const container = document.getElementById('voice-lifecycle');
+
+        openEdition();
+        recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+
+        document.querySelector('.exe-voice-recorder-toggle').click();
+        await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+
+        expect(globalThis.navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+        expect(recorder.instances.some((entry) => entry.containerEl === container)).toBe(true);
+        expect(document.querySelector('.exe-voice-recorder-fallback-modal')).toBeTruthy();
+
+        lifecycle.destroy();
+
+        expect(stopTrack).toHaveBeenCalledTimes(1);
+        expect(recorder.instances.some((entry) => entry.containerEl === container)).toBe(false);
+        expect(document.querySelector('.exe-voice-recorder-fallback-modal')).toBeNull();
+      });
+
+      const mountRecorder = (id) => {
+        document.body.innerHTML = `
+          <div id="${id}" data-voice-recorder data-voice-input="#audioInput">
+            <input id="audioInput" type="text" class="exe-file-picker" />
+            <input type="button" class="exe-pick-any-file" value="Select a file" />
+          </div>
+        `;
+      };
+
+      // Review H7: a real MediaRecorder delivers `stop` asynchronously. The
+      // handler outlived cleanup, then built a blob, an object URL and
+      // reopened a modal that had already been disposed.
+      it('ignores a stop event delivered after the editor closed', async () => {
+        const stream = { getTracks: () => [{ stop: vi.fn() }] };
+        globalThis.navigator.mediaDevices = { getUserMedia: vi.fn().mockResolvedValue(stream) };
+        let liveRecorder;
+        globalThis.MediaRecorder = class {
+          static isTypeSupported() {
+            return true;
+          }
+          constructor() {
+            this.mimeType = 'audio/webm';
+            this.state = 'inactive';
+            liveRecorder = this;
+          }
+          start() {
+            this.state = 'recording';
+          }
+          stop() {
+            this.state = 'inactive';
+            // Delivered later, like the browser does.
+            this.pendingStop = () => this.onstop && this.onstop();
+          }
+        };
+        const createObjectURL = vi.spyOn(window.URL, 'createObjectURL');
+        const recorder = iDevice().voiceRecorder;
+        mountRecorder('voice-late-stop');
+
+        openEdition();
+        recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+        document.querySelector('.exe-voice-recorder-toggle').click();
+        await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+        expect(liveRecorder.state).toBe('recording');
+
+        lifecycle.destroy();
+        expect(() => liveRecorder.pendingStop()).not.toThrow();
+
+        expect(createObjectURL).not.toHaveBeenCalled();
+        expect(document.querySelector('.exe-voice-recorder-fallback-modal')).toBeNull();
+        createObjectURL.mockRestore();
+      });
+
+      // Review H9: permission granted after the editor closed used to start a
+      // recorder nobody could stop, on a live microphone track.
+      it('releases a microphone granted after the editor closed, without recording', async () => {
+        const stopTrack = vi.fn();
+        const stream = { getTracks: () => [{ stop: stopTrack }] };
+        let grant;
+        globalThis.navigator.mediaDevices = {
+          getUserMedia: vi.fn(() => new Promise((resolve) => (grant = resolve))),
+        };
+        const constructed = vi.fn();
+        globalThis.MediaRecorder = class {
+          static isTypeSupported() {
+            return true;
+          }
+          constructor() {
+            constructed();
+            this.state = 'inactive';
+          }
+          start() {
+            this.state = 'recording';
+          }
+          stop() {
+            this.state = 'inactive';
+          }
+        };
+        const recorder = iDevice().voiceRecorder;
+        mountRecorder('voice-late-grant');
+
+        openEdition();
+        recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+        document.querySelector('.exe-voice-recorder-toggle').click();
+        expect(globalThis.navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+        grant(stream);
+        await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+
+        expect(constructed).not.toHaveBeenCalled();
+        expect(stopTrack).toHaveBeenCalledTimes(1);
+      });
+
+      it('shows nothing when the permission is refused after the editor closed', async () => {
+        let refuse;
+        globalThis.navigator.mediaDevices = {
+          getUserMedia: vi.fn(() => new Promise((_resolve, reject) => (refuse = reject))),
+        };
+        globalThis.MediaRecorder = class {
+          static isTypeSupported() {
+            return true;
+          }
+        };
+        const recorder = iDevice().voiceRecorder;
+        mountRecorder('voice-late-refusal');
+
+        openEdition();
+        recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+        const toggle = document.querySelector('.exe-voice-recorder-toggle');
+        toggle.click();
+        lifecycle.destroy();
+        refuse(new Error('NotAllowedError'));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(document.querySelector('.exe-voice-recorder-error:not(.d-none)')).toBeNull();
+      });
+
+      it('rebinds its page-level cleanup handlers for the next edition', () => {
+        const recorder = iDevice().voiceRecorder;
+        const cleanupAll = vi.spyOn(recorder, 'cleanupAll').mockImplementation(() => {});
+        const previousBound = recorder._cleanupBound;
+        const previousObserver = recorder._detachObserver;
+        recorder._cleanupBound = false;
+        recorder._detachObserver = null;
+
+        try {
+          // Earlier tests bound the page handlers without a lifecycle, so
+          // count what a `pagehide` already triggers before this edition adds
+          // its own handler.
+          window.dispatchEvent(new window.Event('pagehide'));
+          const alreadyBound = cleanupAll.mock.calls.length;
+
+          openEdition();
+          recorder.bindCleanupHandlers();
+          expect(recorder._cleanupBound).toBe(true);
+
+          cleanupAll.mockClear();
+          window.dispatchEvent(new window.Event('pagehide'));
+          expect(cleanupAll).toHaveBeenCalledTimes(alreadyBound + 1);
+
+          lifecycle.destroy();
+          cleanupAll.mockClear();
+          window.dispatchEvent(new window.Event('pagehide'));
+
+          expect(cleanupAll).toHaveBeenCalledTimes(alreadyBound);
+          expect(recorder._cleanupBound).toBe(false);
+          expect(recorder._detachObserver).toBeNull();
+        } finally {
+          cleanupAll.mockRestore();
+          recorder._cleanupBound = previousBound;
+          recorder._detachObserver = previousObserver;
+        }
+      });
     });
   });
 });

@@ -28,16 +28,27 @@ $exeFX = {
   baseClass: "exe",
   h2: "h2",
   isOldBrowser: false,
-  init: function () {
+  // Monotonic counter feeding the ids each effect generates (exe-tabs-N, exe-tab-N-M...).
+  // Effects are initialized in more than one pass: JSON iDevices (form, magnifier...)
+  // inject their content after the page-wide init has already run, so deriving the id
+  // from the element position would hand a newly injected effect an id already given to
+  // an earlier one. The counter never reuses a value. See #2170.
+  counter: 0,
+  // `root` restricts initialization to the effects inside (or equal to) that element,
+  // leaving effects already initialized elsewhere on the page untouched.
+  init: function (root) {
     var ie = $exeFX.checkIE();
     if ((!isNaN(parseFloat(ie)) && isFinite(ie)) && ie < 9) {
       $exeFX.isOldBrowser = true;
       $exeFX.h2 = "H2";
     }
     var k = $exeFX.baseClass;
-    var f = $("." + k + "-fx");
+    var scope = root ? $(root) : $(document);
+    var effects = scope.find("." + k + "-fx");
+    if (scope.hasClass(k + "-fx")) effects = effects.add(scope);
     var hasTimeLines = false;
-    $("." + k + "-fx").each(function (i) {
+    effects.each(function () {
+      var i = $exeFX.counter++;
       var c = this.className;
       if (c.indexOf(" " + k + "-accordion") != -1) $exeFX.accordion.init(this, i);
       else if (c.indexOf(" " + k + "-tabs") != -1) $exeFX.tabs.init(this, i);
@@ -115,6 +126,29 @@ $exeFX = {
   noFX: function (e) {
     // Wrong HTML (no H2, etc.): No effects or special presentation
     e.attr("class", "").css("padding", "1em");
+  },
+  // Build a navigation label from a heading, preserving its inner markup.
+  // Tabs copy the heading into a separate navigation entry; using the raw
+  // HTML (instead of .text()) keeps rendered content such as pre-rendered
+  // LaTeX (<span class="exe-math-rendered"> with SVG + MathML) visible in the
+  // label. See #2191: .text() collapsed the equation to its MathML characters
+  // (e.g. "sumn=110n") and dropped the SVG.
+  // The heading stays in the panel too, so any element ids in the copy are
+  // suffixed with `salt` to keep them unique (a self-referential MathJax SVG
+  // uses <use xlink:href="#id"> internally; duplicated ids would be invalid).
+  labelHtml: function (h2, salt) {
+    var html = h2.html();
+    if (!html) return "";
+    if (html.indexOf('id="') === -1) return html;
+    var ids = [];
+    html.replace(/\bid="([^"]+)"/g, function (m, id) { ids.push(id); return m; });
+    ids.forEach(function (id) {
+      var esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html
+        .replace(new RegExp('id="' + esc + '"', 'g'), 'id="' + id + '-' + salt + '"')
+        .replace(new RegExp('href="#' + esc + '"', 'g'), 'href="#' + id + '-' + salt + '"');
+    });
+    return html;
   },
   accordion: {
     closeBlock: function (aID) {
@@ -383,8 +417,9 @@ $exeFX = {
           if (tit.length > 1) tit = tit[0];
           if (tit.length > 0) t = tit;
         } else {
-          // Normal behavior
-          t = h2.text();
+          // Preserve the heading markup (e.g. pre-rendered LaTeX) in the tab
+          // label instead of flattening it to text (#2191).
+          t = $exeFX.labelHtml(h2, k + "-tabs-" + i + "-" + y);
         }
 
         var hT = $("SPAN", h2);
@@ -764,5 +799,6 @@ $(function () {
 * Timeliner.js
 * @version      1.5.1
 * @copyright    Tarek Anandan (http://www.technotarek.com)
+* @modified     Click bindings namespaced so repeated calls do not stack handlers (#2338)
 */
-; (function (e) { var t; e.timeliner = function (n) { t = jQuery.extend({ timelineContainer: ".fx-timeline-container", startState: "closed", startOpen: [], baseSpeed: 100, speed: 4, fontOpen: "1.1em", fontClosed: "1em", expandAllText: $exeFX_i18n.show, collapseAllText: $exeFX_i18n.hide }, n); e(document).ready(function () { function n(n, r) { e(n).removeClass("closed").addClass("open").animate({ fontSize: t.fontOpen }, t.baseSpeed); e(r).show(t.speed * t.baseSpeed) } function r(n, r) { e(n).animate({ fontSize: t.fontClosed }, 0).removeClass("open").addClass("closed"); e(r).hide(t.speed * t.baseSpeed) } if (t.startState === "closed") { e(".fx-timeline-event").hide(); e.each(e(t.startOpen), function (t, r) { n(e(r).parent(".fx-timeline-minor").find("h3 a"), e(r)) }) } else { n(e(".fx-timeline-minor h3 a"), e(".fx-timeline-event")) } e(t.timelineContainer).on("click", ".fx-timeline-minor h3", function () { var t = e(this).attr("id"); if (e(this).find("a").is(".open")) { r(e("a", this), e("#" + t + "EX")); return false } else { n(e("a", this), e("#" + t + "EX")) } return false }); e(t.timelineContainer).on("click", ".fx-timeline-marker", function () { var t = e(this).parents(".fx-timeline-major").find(".fx-timeline-minor").length; var i = e(this).parents(".fx-timeline-major").find(".open").length; if (t > i) { n(e(this).parents(".fx-timeline-major").find("h3 a", ".fx-timeline-minor"), e(this).parents(".fx-timeline-major").find(".fx-timeline-event")) } else { r(e(this).parents(".fx-timeline-major").find(".fx-timeline-minor a"), e(this).parents(".fx-timeline-major").find(".fx-timeline-event")) } return false }); e(".fx-timeline-expand").click(function () { if (e(this).hasClass("expanded")) { r(e(this).parents(t.timelineContainer).find("h3 a", ".fx-timeline-minor"), e(this).parents(t.timelineContainer).find(".fx-timeline-event")); e(this).removeClass("expanded").html(t.expandAllText) } else { n(e(this).parents(t.timelineContainer).find("h3 a", ".fx-timeline-minor"), e(this).parents(t.timelineContainer).find(".fx-timeline-event")); e(this).addClass("expanded").html(t.collapseAllText) } return false }) }) } })(jQuery);
+; (function (e) { var t; e.timeliner = function (n) { t = jQuery.extend({ timelineContainer: ".fx-timeline-container", startState: "closed", startOpen: [], baseSpeed: 100, speed: 4, fontOpen: "1.1em", fontClosed: "1em", expandAllText: $exeFX_i18n.show, collapseAllText: $exeFX_i18n.hide }, n); e(document).ready(function () { function n(n, r) { e(n).removeClass("closed").addClass("open").animate({ fontSize: t.fontOpen }, t.baseSpeed); e(r).show(t.speed * t.baseSpeed) } function r(n, r) { e(n).animate({ fontSize: t.fontClosed }, 0).removeClass("open").addClass("closed"); e(r).hide(t.speed * t.baseSpeed) } if (t.startState === "closed") { e(".fx-timeline-event").hide(); e.each(e(t.startOpen), function (t, r) { n(e(r).parent(".fx-timeline-minor").find("h3 a"), e(r)) }) } else { n(e(".fx-timeline-minor h3 a"), e(".fx-timeline-event")) } e(t.timelineContainer).off("click.timeliner", ".fx-timeline-minor h3").on("click.timeliner", ".fx-timeline-minor h3", function () { var t = e(this).attr("id"); if (e(this).find("a").is(".open")) { r(e("a", this), e("#" + t + "EX")); return false } else { n(e("a", this), e("#" + t + "EX")) } return false }); e(t.timelineContainer).off("click.timeliner", ".fx-timeline-marker").on("click.timeliner", ".fx-timeline-marker", function () { var t = e(this).parents(".fx-timeline-major").find(".fx-timeline-minor").length; var i = e(this).parents(".fx-timeline-major").find(".open").length; if (t > i) { n(e(this).parents(".fx-timeline-major").find("h3 a", ".fx-timeline-minor"), e(this).parents(".fx-timeline-major").find(".fx-timeline-event")) } else { r(e(this).parents(".fx-timeline-major").find(".fx-timeline-minor a"), e(this).parents(".fx-timeline-major").find(".fx-timeline-event")) } return false }); e(".fx-timeline-expand").off("click.timeliner").on("click.timeliner", function () { if (e(this).hasClass("expanded")) { r(e(this).parents(t.timelineContainer).find("h3 a", ".fx-timeline-minor"), e(this).parents(t.timelineContainer).find(".fx-timeline-event")); e(this).removeClass("expanded").html(t.expandAllText) } else { n(e(this).parents(t.timelineContainer).find("h3 a", ".fx-timeline-minor"), e(this).parents(t.timelineContainer).find(".fx-timeline-event")); e(this).addClass("expanded").html(t.collapseAllText) } return false }) }) } })(jQuery);

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG BUN_VERSION=1.3
+ARG BUN_VERSION=1.4
 ARG VERSION=v0.0.0-alpha
 
 ################################################################################
@@ -32,6 +32,7 @@ RUN bun run build:all && \
     ls -la public/app/app.bundle.js && \
     ls -la public/app/yjs/importers.bundle.js && \
     ls -la public/app/yjs/exporters.bundle.js && \
+    bun run scripts/vendor-edicuatex.ts --check && \
     ls -la public/bundles/
 
 # Prune dev dependencies after build

@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import type { Database, User } from '../db/types';
@@ -23,7 +22,6 @@ let testProject: { id: number; uuid: string; owner_id: number };
 function createTestProjectApp(db: Kysely<Database>) {
     return (
         new Elysia()
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

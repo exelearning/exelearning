@@ -436,55 +436,132 @@ describe('NavbarStyles', () => {
 
     it('downloads theme zip from bundle (server theme)', async () => {
         const mockBlob = new Blob(['test'], { type: 'application/zip' });
-        const mockResponse = {
-            ok: true,
-            blob: vi.fn().mockResolvedValue(mockBlob),
+        eXeLearning.app.resourceFetcher = {
+            fetchThemeBundleBlob: vi.fn().mockResolvedValue(mockBlob),
         };
-        global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
         const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
         const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-        navbarStyles.downloadThemeZip({ dirName: 'base-1', name: 'Base Theme', downloadable: '1' });
+        const theme = { dirName: 'base-1', name: 'Base Theme', downloadable: '1' };
+        navbarStyles?.downloadThemeZip(theme);
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        expect(fetch).toHaveBeenCalledWith('/bundles/themes/base-1.zip');
+        // Resolution is delegated to the shared ResourceFetcher helper.
+        expect(eXeLearning.app.resourceFetcher.fetchThemeBundleBlob).toHaveBeenCalledWith(theme);
         expect(clickSpy).toHaveBeenCalled();
 
         createObjectURLSpy.mockRestore();
         revokeObjectURLSpy.mockRestore();
         clickSpy.mockRestore();
+        delete eXeLearning.app.resourceFetcher;
     });
 
-    it('downloads site theme zip from API endpoint', async () => {
-        const mockBlob = new Blob(['test'], { type: 'application/zip' });
-        const mockResponse = {
-            ok: true,
-            blob: vi.fn().mockResolvedValue(mockBlob),
+    it('delegates static-mode theme assembly to the shared ResourceFetcher helper', async () => {
+        const mockBlob = new Blob(['zip'], { type: 'application/zip' });
+        eXeLearning.app.resourceFetcher = {
+            fetchThemeBundleBlob: vi.fn().mockResolvedValue(mockBlob),
         };
-        global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
         const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
         const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-        navbarStyles.downloadThemeZip({ dirName: 'site-1', name: 'Site Theme', type: 'site', downloadable: '1' });
+        const theme = { dirName: 'base-1', name: 'Base Theme', downloadable: '1' };
+        navbarStyles?.downloadThemeZip(theme);
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        expect(fetch).toHaveBeenCalledWith('/api/resources/bundle/theme/site-1');
+        // Single source of truth: the helper decides static-vs-server internally.
+        expect(eXeLearning.app.resourceFetcher.fetchThemeBundleBlob).toHaveBeenCalledWith(theme);
         expect(clickSpy).toHaveBeenCalled();
 
         createObjectURLSpy.mockRestore();
         revokeObjectURLSpy.mockRestore();
         clickSpy.mockRestore();
+        delete eXeLearning.app.resourceFetcher;
     });
 
-    it('shows alert when theme is not downloadable', async () => {
+    it('shows an alert when the shared helper cannot resolve the theme zip', async () => {
+        eXeLearning.app.resourceFetcher = {
+            fetchThemeBundleBlob: vi
+                .fn()
+                .mockRejectedValue(new Error('Theme could not be assembled from loose files')),
+        };
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
-        await navbarStyles.downloadThemeZip({ dirName: 'user-1', downloadable: '0' });
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('cannot be downloaded'), expect.any(Object));
-        expect(eXeLearning.app.api.getThemeZip).not.toHaveBeenCalled();
+
+        await navbarStyles?.downloadThemeFromBundle({ dirName: 'base-1', name: 'Base', type: 'base' });
+
+        expect(alertSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to download'),
+            expect.any(Object),
+        );
+
+        delete eXeLearning.app.resourceFetcher;
+    });
+
+    it('shows an alert when no ResourceFetcher is available', async () => {
+        delete eXeLearning.app.resourceFetcher;
+        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+        await navbarStyles?.downloadThemeFromBundle({ dirName: 'base-1', name: 'Base', type: 'base' });
+
+        expect(alertSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to download'),
+            expect.any(Object),
+        );
+    });
+
+    it('passes site themes through to the shared helper (API endpoint handling preserved)', async () => {
+        const mockBlob = new Blob(['test'], { type: 'application/zip' });
+        eXeLearning.app.resourceFetcher = {
+            fetchThemeBundleBlob: vi.fn().mockResolvedValue(mockBlob),
+        };
+
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+        const theme = { dirName: 'site-1', name: 'Site Theme', type: 'site', downloadable: '1' };
+        navbarStyles?.downloadThemeZip(theme);
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // The full theme object (incl. type) is forwarded so the helper can
+        // route site/admin themes to the API endpoint.
+        expect(eXeLearning.app.resourceFetcher.fetchThemeBundleBlob).toHaveBeenCalledWith(theme);
+        expect(clickSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
+        clickSpy.mockRestore();
+        delete eXeLearning.app.resourceFetcher;
+    });
+
+    it('downloads theme even when downloadable is 0 (issue #1893)', async () => {
+        const mockBlob = new Blob(['test'], { type: 'application/zip' });
+        eXeLearning.app.resourceFetcher = {
+            fetchThemeBundleBlob: vi.fn().mockResolvedValue(mockBlob),
+        };
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+        // Issue #1893: the legacy <downloadable> flag no longer blocks the
+        // download; the theme is always assembled and downloaded from its bundle.
+        navbarStyles.downloadThemeZip({ dirName: 'user-1', name: 'User Theme', downloadable: '0' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(alertSpy).not.toHaveBeenCalledWith(expect.stringContaining('cannot be downloaded'), expect.any(Object));
+        expect(eXeLearning.app.resourceFetcher.fetchThemeBundleBlob).toHaveBeenCalledWith(
+            expect.objectContaining({ dirName: 'user-1', downloadable: '0' }),
+        );
+        expect(clickSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
+        clickSpy.mockRestore();
+        delete eXeLearning.app.resourceFetcher;
     });
 
     it('downloads user theme from IndexedDB', async () => {
@@ -501,7 +578,7 @@ describe('NavbarStyles', () => {
         const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-        await navbarStyles.downloadThemeZip({
+        await navbarStyles?.downloadThemeZip({
             name: 'user-theme',
             type: 'user',
             downloadable: '1',
@@ -526,7 +603,7 @@ describe('NavbarStyles', () => {
         };
 
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
-        await navbarStyles.downloadThemeZip({
+        await navbarStyles?.downloadThemeZip({
             name: 'missing-theme',
             type: 'user',
             downloadable: '1',
@@ -536,15 +613,13 @@ describe('NavbarStyles', () => {
     });
 
     it('shows error when bundle download fails', async () => {
-        const mockResponse = {
-            ok: false,
-            status: 404,
+        eXeLearning.app.resourceFetcher = {
+            fetchThemeBundleBlob: vi.fn().mockRejectedValue(new Error('Theme bundle not found: 404')),
         };
-        global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
 
-        navbarStyles.downloadThemeZip({
+        navbarStyles?.downloadThemeZip({
             dirName: 'nonexistent',
             name: 'Nonexistent Theme',
             downloadable: '1',
@@ -557,6 +632,8 @@ describe('NavbarStyles', () => {
             expect.stringContaining('Failed to download'),
             expect.objectContaining({ error: expect.stringContaining('not found') })
         );
+
+        delete eXeLearning.app.resourceFetcher;
     });
 
     describe('makeMenuThemeDownload', () => {
@@ -567,19 +644,19 @@ describe('NavbarStyles', () => {
             expect(li.querySelector('.download-icon-green')).toBeTruthy();
         });
 
-        it('shows disabled download button when downloadable is not 1', () => {
+        it('shows enabled download button even when downloadable is 0 (issue #1893)', () => {
             const theme = { downloadable: '0' };
             const li = navbarStyles.makeMenuThemeDownload(theme);
-            expect(li.classList.contains('disabled')).toBe(true);
-            expect(li.querySelector('.download-icon-disabled')).toBeTruthy();
+            expect(li.classList.contains('disabled')).toBe(false);
+            expect(li.querySelector('.download-icon-green')).toBeTruthy();
         });
 
-        it('does not call downloadThemeZip when disabled', async () => {
+        it('calls downloadThemeZip even when downloadable is 0 (issue #1893)', async () => {
             const theme = { downloadable: '0' };
-            const downloadSpy = vi.spyOn(navbarStyles, 'downloadThemeZip');
+            const downloadSpy = vi.spyOn(navbarStyles, 'downloadThemeZip').mockImplementation(() => {});
             const li = navbarStyles.makeMenuThemeDownload(theme);
             li.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            expect(downloadSpy).not.toHaveBeenCalled();
+            expect(downloadSpy).toHaveBeenCalledWith(theme);
         });
     });
 
@@ -757,7 +834,7 @@ describe('NavbarStyles', () => {
             );
         });
 
-        it('shows alert when theme is marked as non-downloadable', async () => {
+        it('installs theme even when marked as non-downloadable (issue #1893)', async () => {
             window.fflate.unzipSync.mockReturnValue({
                 'config.xml': new TextEncoder().encode(
                     '<theme><name>Blocked Theme</name><downloadable>0</downloadable></theme>'
@@ -768,11 +845,15 @@ describe('NavbarStyles', () => {
 
             await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
 
-            expect(alertSpy).toHaveBeenCalledWith(
+            expect(alertSpy).not.toHaveBeenCalledWith(
                 expect.stringContaining('Failed to install'),
                 expect.objectContaining({ error: expect.stringContaining('cannot be downloaded') })
             );
-            expect(mockResourceCache.setUserTheme).not.toHaveBeenCalled();
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'blocked_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({ name: 'blocked_theme', downloadable: '1' })
+            );
         });
 
         it('shows alert when storage is not available', async () => {

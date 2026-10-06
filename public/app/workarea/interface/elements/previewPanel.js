@@ -455,8 +455,8 @@ export default class PreviewPanelManager {
                             '<div id="error"></div>' +
                             '<script type="module">' +
                             'try{' +
-                            'var m=await import("' + bp + 'libs/pdfjs/pdf.min.mjs");' +
-                            'm.GlobalWorkerOptions.workerSrc="' + bp + 'libs/pdfjs/pdf.worker.min.mjs";' +
+                            'var m=await import("' + bp + 'libs/pdfjs/pdf.min.js");' +
+                            'm.GlobalWorkerOptions.workerSrc="' + bp + 'libs/pdfjs/pdf.worker.min.js";' +
                             'var pdf=await m.getDocument("' + pdfBlobUrl + '").promise;' +
                             'document.getElementById("loading").style.display="none";' +
                             'var tb=document.getElementById("tb");tb.style.display="flex";' +
@@ -760,26 +760,46 @@ export default class PreviewPanelManager {
      */
     async refreshWithServiceWorker() {
         Logger.log('[PreviewPanel] Generating preview files for SW...');
-        const result = await this._generatePreviewFiles();
+        const files = await this._generatePreviewFilesOrThrow();
 
-        if (!result.success || !result.files) {
-            throw new Error(result.error || 'Failed to generate preview files');
-        }
+        Logger.log(`[PreviewPanel] Generated ${Object.keys(files).length} files, sending to SW...`);
 
-        Logger.log(
-            `[PreviewPanel] Generated ${Object.keys(result.files).length} files, sending to SW...`
-        );
-
-        // Send files to Service Worker
+        // Send files to Service Worker. The buffers are transferred, so a resend after the
+        // app re-registers a dead worker needs freshly generated files.
         const app = eXeLearning.app;
-        await app.sendContentToPreviewSW(result.files, {
-            openExternalLinksInNewWindow: true,
-        });
+        try {
+            await app.sendContentToPreviewSW(
+                files,
+                { openExternalLinksInNewWindow: true },
+                { regenerateFiles: () => this._generatePreviewFilesOrThrow() }
+            );
+        } catch (error) {
+            if (this.isServiceWorkerPreviewAvailable()) {
+                throw error;
+            }
+            // The app gave up on the Service Worker (recovery failed): degrade instead of erroring.
+            Logger.warn('[PreviewPanel] Preview Service Worker unavailable, using blob URL fallback:', error);
+            await this.refreshWithBlobUrl();
+            return;
+        }
 
         // Load preview from Service Worker
         this.loadPreviewFromServiceWorker();
 
         Logger.log('[PreviewPanel] Preview loaded via Service Worker');
+    }
+
+    /**
+     * Generate the preview files, turning a failed result into an exception.
+     * @returns {Promise<Object>} Map of file paths to content
+     * @private
+     */
+    async _generatePreviewFilesOrThrow() {
+        const result = await this._generatePreviewFiles();
+        if (!result.success || !result.files) {
+            throw new Error(result.error || 'Failed to generate preview files');
+        }
+        return result.files;
     }
 
     /**
@@ -919,8 +939,8 @@ export default class PreviewPanelManager {
     function initPdfEmbeds() {
         var embeds = document.querySelectorAll('[data-exe-pdf-src]');
         if (embeds.length === 0) return;
-        import(${JSON.stringify(bp)}+'libs/pdfjs/pdf.min.mjs').then(function(m) {
-            m.GlobalWorkerOptions.workerSrc = ${JSON.stringify(bp)}+'libs/pdfjs/pdf.worker.min.mjs';
+        import(${JSON.stringify(bp)}+'libs/pdfjs/pdf.min.js').then(function(m) {
+            m.GlobalWorkerOptions.workerSrc = ${JSON.stringify(bp)}+'libs/pdfjs/pdf.worker.min.js';
             for (var i = 0; i < embeds.length; i++) renderPdfEmbed(m, embeds[i]);
         }).catch(function(err) {
             console.warn('[Preview] PDF.js load failed:', err);
@@ -1317,10 +1337,14 @@ export default class PreviewPanelManager {
 
         // Get base path for the viewer URL
         const basePath = eXeLearning.app?.getBasePath?.() || '';
-        const viewerUrl = `${basePath}/viewer/index.html`;
+        // The authoring preview makes the Teacher Mode toggle available so the author (the
+        // teacher) can reveal their teacher-only content while editing, so the preview opts
+        // in via ?exe-teacher=1. The toggle is still OFF by default; the parameter only makes
+        // it available. Exported packages get no parameter and stay hidden by default.
+        const viewerUrl = `${basePath}/viewer/index.html?exe-teacher=1`;
 
         // Force reload by clearing src first if it's the same URL
-        if (targetIframe.src.endsWith('/viewer/index.html')) {
+        if (targetIframe.src.includes('/viewer/index.html')) {
             targetIframe.src = 'about:blank';
             // Use setTimeout to ensure the blank page loads first
             setTimeout(() => {
@@ -1356,7 +1380,9 @@ export default class PreviewPanelManager {
             // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
             // Also remove any trailing slash to avoid double slashes
             const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
-            const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html`;
+            // Preview makes the Teacher Mode toggle available (the author is the teacher);
+            // see loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
+            const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html?exe-teacher=1`;
 
             // Open in new tab
             const newTab = window.open(viewerUrl, '_blank');

@@ -1,3 +1,39 @@
+
+const blockIconRuntime = window.eXeBlockIconRuntime
+  || (typeof require === 'function' ? require('../common/blockIconRuntime.js') : null);
+
+function normalizeBlockIcon(icon, iconName = '') {
+  // A structured icon descriptor wins (it may carry extra fields), but a theme icon name
+  // a style has since renamed still has to be mapped: _syncBlockIcon() and
+  // _applyBlockUpdate() look this value up in getThemeIcons(), and the raw old name misses.
+  if (icon && typeof icon === 'object' && icon.source) {
+    if (icon.source !== 'theme') return icon;
+    // `icon.value || ''` on both sides: a descriptor that omits `value` normalises to '',
+    // and comparing the mapped '' against an absent one would rewrite it for no reason.
+    const stored = icon.value || '';
+    const value = blockIconRuntime.resolveRenamedThemeIcon(stored);
+    if (value === stored) return icon;
+    return { ...icon, value, name: value };
+  }
+  // Otherwise derive from the legacy iconName via the shared derivation
+  // (JS twin of src/shared/block-icon.ts).
+  return blockIconRuntime.deriveBlockIcon(iconName);
+}
+
+function resolveAppAssetUrl(path) {
+  return blockIconRuntime.resolveAppAssetUrl(path, {
+    app: window.eXeLearning?.app,
+    config: window.eXeLearning?.config,
+  });
+}
+
+function renderMaterialMaskIcon(iconName) {
+  return blockIconRuntime.renderMaterialMaskIcon(iconName, {
+    app: window.eXeLearning?.app,
+    config: window.eXeLearning?.config,
+  });
+}
+
 /**
  * YjsProjectBridge
  * Bridges the legacy projectManager with the new Yjs-based system.
@@ -11,6 +47,63 @@
  *   // Now all save operations go through Yjs
  *   bridge.enableAutoSync();
  */
+
+const REMOTE_COMPONENT_CONTENT_KEYS = ['htmlContent', 'htmlView', 'jsonProperties'];
+const REMOTE_COMPONENT_LOCK_KEYS = ['lockedBy', 'lockUserName', 'lockUserColor'];
+
+/**
+ * Read the current HTML payload from a Yjs component map.
+ * Prefers htmlContent (Y.Text) and falls back to htmlView (import string).
+ *
+ * @param {Y.Map} compMap
+ * @returns {string}
+ */
+function readComponentHtml(compMap) {
+  const htmlContent = compMap.get('htmlContent');
+  const fromYText = htmlContent?.toString?.() || '';
+  if (fromYText) {
+    return fromYText;
+  }
+  const htmlView = compMap.get('htmlView');
+  return typeof htmlView === 'string' ? htmlView : '';
+}
+
+/**
+ * Build the payload sent to updateRemoteComponent.
+ *
+ * Lock-only Y.Map updates (lockedBy / lockUserName / lockUserColor) must not
+ * include htmlContent or jsonProperties. Those fields being present is treated
+ * as a content update and would re-render — and an empty htmlContent would
+ * wipe the last saved remote view.
+ *
+ * @param {Y.Map} compMap
+ * @param {string[]|null} changedKeys - keys that changed; omit or pass null to include content
+ * @returns {Object}
+ */
+function buildRemoteComponentUpdate(compMap, changedKeys = null) {
+  const data = {
+    id: compMap.get('id'),
+    ideviceType: compMap.get('ideviceType') || compMap.get('type'),
+    lockedBy: compMap.get('lockedBy'),
+    lockUserName: compMap.get('lockUserName'),
+    lockUserColor: compMap.get('lockUserColor'),
+  };
+
+  const keys = changedKeys ? new Set(changedKeys) : null;
+  const htmlChanged = !keys || keys.has('htmlContent') || keys.has('htmlView');
+  const jsonChanged = !keys || keys.has('jsonProperties');
+
+  if (htmlChanged) {
+    data.htmlContent = readComponentHtml(compMap);
+  }
+
+  if (jsonChanged) {
+    data.jsonProperties = compMap.get('jsonProperties');
+  }
+
+  return data;
+}
+
 class YjsProjectBridge {
   /**
    * @param {Object} app - The eXeLearning app instance
@@ -28,6 +121,8 @@ class YjsProjectBridge {
     this.resourceCache = null; // ResourceCache for persistent IndexedDB storage (themes, libs, iDevices)
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
+    this.collaborativeAutosave = null; // CollaborativeAutosaveManager (issue #1592), only in online collaborative sessions
+    this._collabStatusView = null; // CollaborativeSaveStatusView (issue #1592), renders the compact autosave status
     this.connectionMonitor = null; // ConnectionMonitor for connection failure handling
     this.initialized = false;
     this.autoSyncEnabled = false;
@@ -372,6 +467,33 @@ class YjsProjectBridge {
       Logger.log('[YjsProjectBridge] ResourceFetcher initialized with bundle support');
     }
 
+    // Preload the single Material icon sprite into the shared block-icon runtime
+    // so applied block icons render as self-contained data: URIs. The loose
+    // per-icon SVG files were removed in favour of this one sprite.
+    try {
+      if (
+        blockIconRuntime
+        && typeof blockIconRuntime.loadMaterialSprite === 'function'
+        && !blockIconRuntime.isMaterialSpriteLoaded?.()
+      ) {
+        let spriteText = null;
+        if (this.resourceFetcher?.fetchLibraryFile) {
+          const spriteBlob = await this.resourceFetcher.fetchLibraryFile('material-icons/material-icons.svg');
+          if (spriteBlob) spriteText = await spriteBlob.text();
+        }
+        if (!spriteText) {
+          const spriteResp = await fetch(resolveAppAssetUrl('/libs/material-icons/material-icons.svg'));
+          if (spriteResp.ok) spriteText = await spriteResp.text();
+        }
+        if (spriteText) {
+          const iconCount = blockIconRuntime.loadMaterialSprite(spriteText, { root: document });
+          Logger.log(`[YjsProjectBridge] Material icon sprite loaded (${iconCount} icons)`);
+        }
+      }
+    } catch (e) {
+      console.warn('[YjsProjectBridge] Failed to preload Material icon sprite:', e?.message || e);
+    }
+
     // Create AssetWebSocketHandler for peer-to-peer asset synchronization
     if (window.AssetWebSocketHandler && this.assetManager && this.documentManager?.wsProvider) {
       this.assetWebSocketHandler = new window.AssetWebSocketHandler(
@@ -458,6 +580,22 @@ class YjsProjectBridge {
           this.assetManager.setServerConfig(apiBaseUrl, token);
         }
 
+        // Self-heal assets that lost their type/extension (older projects whose
+        // assets were saved as `asset-<uuid>` without extension → octet-stream →
+        // PDFs in iframes get force-downloaded). Runs after blobs are available.
+        const repairAssetTypes = () => {
+          if (typeof this.assetManager.repairAssetsWithoutType !== 'function') return;
+          this.assetManager.repairAssetsWithoutType()
+            .then(repaired => {
+              if (repaired > 0) {
+                Logger.log(`[YjsProjectBridge] Repaired ${repaired} asset(s) missing a usable type/extension`);
+              }
+            })
+            .catch(err => {
+              console.warn('[YjsProjectBridge] Asset type repair failed:', err);
+            });
+        };
+
         if (token && projectId) {
           // Don't await - download in background to avoid blocking UI
           this.assetManager.downloadMissingAssets(apiBaseUrl, token)
@@ -468,7 +606,11 @@ class YjsProjectBridge {
             })
             .catch(err => {
               console.warn('[YjsProjectBridge] Failed to download missing assets:', err);
-            });
+            })
+            .finally(repairAssetTypes);
+        } else {
+          // Offline / no server: blobs come from the local cache; still self-heal.
+          repairAssetTypes();
         }
       }
 
@@ -925,15 +1067,7 @@ class YjsProjectBridge {
             const compMap = components.get(compIndex);
             if (!compMap) continue;
 
-            const componentData = {
-              id: compMap.get('id'),
-              ideviceType: compMap.get('ideviceType'),
-              htmlContent: compMap.get('htmlContent')?.toString?.() || '',
-              jsonProperties: compMap.get('jsonProperties'),
-              lockedBy: compMap.get('lockedBy'),
-              lockUserName: compMap.get('lockUserName'),
-              lockUserColor: compMap.get('lockUserColor'),
-            };
+            const componentData = buildRemoteComponentUpdate(compMap, changedKeys);
 
             Logger.log('[YjsProjectBridge] Remote component updated:', componentData.id, 'changed keys:', changedKeys);
 
@@ -966,15 +1100,7 @@ class YjsProjectBridge {
           const compMap = components.get(compIndex);
           if (!compMap) continue;
 
-          const componentData = {
-            id: compMap.get('id'),
-            ideviceType: compMap.get('ideviceType'),
-            htmlContent: compMap.get('htmlContent')?.toString?.() || '',
-            jsonProperties: compMap.get('jsonProperties'),
-            lockedBy: compMap.get('lockedBy'),
-            lockUserName: compMap.get('lockUserName'),
-            lockUserColor: compMap.get('lockUserColor'),
-          };
+          const componentData = buildRemoteComponentUpdate(compMap, ['htmlContent']);
 
           Logger.log('[YjsProjectBridge] Remote component content updated (Y.Text):', componentData.id);
 
@@ -988,7 +1114,7 @@ class YjsProjectBridge {
             path.length >= 3 && path[1] === 'blocks' && typeof path[2] === 'number' && path.length === 3) {
 
           const changedKeys = Array.from(event.changes.keys.keys());
-          const relevantKeys = ['blockName', 'iconName', 'properties'];
+          const relevantKeys = ['blockName', 'iconName', 'icon', 'properties'];
 
           if (changedKeys.some(key => relevantKeys.includes(key))) {
             const pageIndex = path[0];
@@ -1010,6 +1136,7 @@ class YjsProjectBridge {
               blockId: blockMap.get('blockId'),
               blockName: blockMap.get('blockName'),
               iconName: blockMap.get('iconName'),
+              icon: normalizeBlockIcon(blockMap.get('icon'), blockMap.get('iconName')),
             };
 
             // Get properties if present
@@ -1098,25 +1225,60 @@ class YjsProjectBridge {
   schedulePageReloadIfCurrent(pageId) {
     // Get current page ID
     const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+    if (currentPageId !== pageId) return;
 
-    if (currentPageId === pageId) {
-      // Debounce to avoid multiple reloads
-      if (this._pageReloadTimer) {
-        clearTimeout(this._pageReloadTimer);
-      }
-
-      this._pageReloadTimer = setTimeout(async () => {
-        Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
-        const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
-          `.nav-element[nav-id="${pageId}"]`
-        );
-        if (pageElement) {
-          await this.app?.project?.idevices?.loadApiIdevicesInPage(false, pageElement);
-          // Check if the page is now empty and show empty_articles message
-          this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
-        }
-      }, 100); // Small debounce
+    // A full reload tears down every iDevice on the page, including the one this
+    // user is editing, and its unsaved changes with it (#2427). Keep the reload
+    // pending until the edition ends; IdevicesEngine.updateMode() flushes it.
+    if (this.hasLocalIdeviceInEdition()) {
+      this._deferredPageReloadId = pageId;
+      Logger.log('[YjsProjectBridge] Page reload deferred until the local iDevice edition ends');
+      return;
     }
+
+    // Debounce to avoid multiple reloads
+    if (this._pageReloadTimer) {
+      clearTimeout(this._pageReloadTimer);
+    }
+
+    this._pageReloadTimer = setTimeout(async () => {
+      // Check again: the user may have opened an editor during the debounce, and
+      // the reload would then save that half-initialised edition (#2434).
+      if (this.hasLocalIdeviceInEdition()) {
+        this._deferredPageReloadId = pageId;
+        Logger.log('[YjsProjectBridge] Page reload deferred until the local iDevice edition ends');
+        return;
+      }
+      Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
+      const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
+        `.nav-element[nav-id="${pageId}"]`
+      );
+      if (pageElement) {
+        await this.app?.project?.idevices?.loadApiIdevicesInPage(false, pageElement);
+        // Check if the page is now empty and show empty_articles message
+        this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
+      }
+    }, 100); // Small debounce
+  }
+
+  /**
+   * Whether this client has an iDevice open for editing on the current page.
+   * @returns {boolean}
+   */
+  hasLocalIdeviceInEdition() {
+    return Boolean(this.app?.project?.idevices?.isIdeviceInEdition?.());
+  }
+
+  /**
+   * Run the page reload that was deferred while an iDevice was being edited.
+   * Called by IdevicesEngine.updateMode() once no iDevice is in edition; the
+   * reload is skipped if the user has meanwhile moved to another page.
+   */
+  flushDeferredPageReload() {
+    const pageId = this._deferredPageReloadId;
+    if (!pageId) return;
+    this._deferredPageReloadId = null;
+    this.schedulePageReloadIfCurrent(pageId);
   }
 
   /**
@@ -1164,6 +1326,14 @@ class YjsProjectBridge {
         `.nav-element[nav-id="${currentPageId}"]`
       );
       if (!pageElement) return;
+
+      // Same rule as schedulePageReloadIfCurrent (#2427). The deferred reload
+      // renders with the asset already cached, so no patch pass is needed.
+      if (this.hasLocalIdeviceInEdition()) {
+        this._deferredPageReloadId = currentPageId;
+        Logger.log('[YjsProjectBridge] Late asset page reload deferred until the local iDevice edition ends');
+        return;
+      }
 
       Logger.log('[YjsProjectBridge] Reloading current page after late asset arrival');
       await idevicesEngine.loadApiIdevicesInPage(false, pageElement);
@@ -1357,7 +1527,7 @@ class YjsProjectBridge {
         return;
       }
 
-      await idevicesEngine.updateRemoteIdeviceContent(componentData);
+      await idevicesEngine.updateRemoteIdeviceContent(componentData, pageId);
     } catch (e) {
       console.error('[YjsProjectBridge] Error updating remote component:', e);
     }
@@ -1408,9 +1578,18 @@ class YjsProjectBridge {
         this._syncBlockTitle(blockNode.blockNameElementText, blockData.blockName, blockNode);
       }
 
-      // Update icon if changed
-      if (blockData.iconName !== undefined && blockNode.iconName !== blockData.iconName) {
-        blockNode.iconName = blockData.iconName;
+      // Update icon if changed. Both sides go through normalizeBlockIcon() first: the
+      // descriptors are what the block actually renders, and a renamed name arrives raw
+      // (`objetives`) while the node already holds the mapped one (`objectives`). Comparing
+      // the raw `blockData.iconName` against the normalised `blockNode.iconName` reported a
+      // change on every remote update of such a block, re-running makeIconNameElement()
+      // without end until someone re-saved it.
+      const nextIcon = normalizeBlockIcon(blockData.icon, blockData.iconName);
+      const currentIcon = normalizeBlockIcon(blockNode.icon, blockNode.iconName);
+      const iconChanged = currentIcon.source !== nextIcon.source || currentIcon.value !== nextIcon.value;
+      if (iconChanged) {
+        blockNode.icon = nextIcon;
+        blockNode.iconName = nextIcon.source === 'material' ? `mi-${nextIcon.value}` : (nextIcon.value || '');
         blockNode.makeIconNameElement();
       }
 
@@ -1440,6 +1619,17 @@ class YjsProjectBridge {
     metadata.observe((event, transaction) => {
       const isRemote = transaction.origin === 'remote';
       Logger.log('[YjsProjectBridge] Metadata changed, remote:', isRemote);
+
+      // This only refreshes notices, so it is safe during editing and undo/redo:
+      // the activity DOM, answers and scores must not be rebuilt or reset.
+      if (event.keysChanged.has('passScore')) {
+        try {
+          window.$exeDevices?.iDevice?.gamification?.report?.refreshPassScoreNotices?.();
+        } catch (error) {
+          // A notice that fails to refresh must not stop the metadata sync below.
+          console.error('[YjsProjectBridge] Error refreshing pass score notices:', error);
+        }
+      }
 
       // During undo/redo, skip structure updates to prevent form recreation cascade
       // The undo/redo methods handle UI sync directly via forceTitleSync()
@@ -1595,36 +1785,69 @@ class YjsProjectBridge {
    */
   setupUndoRedoHandlers() {
     // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (!this.initialized) return;
+    document.addEventListener('keydown', (e) => this.handleUndoRedoKeydown(e));
+    this.observeIdeviceEditionState();
+  }
 
-      // Skip if focus is in an input that handles its own undo (like contenteditable in TinyMCE)
-      const activeEl = document.activeElement;
-      const isContentEditable = activeEl?.getAttribute('contenteditable') === 'true';
-      const isInTinyMCE = activeEl?.closest('.tox-tinymce, .mce-content-body');
-      if (isContentEditable || isInTinyMCE) return;
+  /**
+   * True while any iDevice is open in edition mode. While editing, the
+   * iDevice's own editor owns the undo/redo history (#2218).
+   */
+  isIdeviceEditionOpen() {
+    return !!document.querySelector('div.idevice_node[mode="edition"]');
+  }
 
-      // Ctrl+Z / Cmd+Z - Undo (without Shift)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        this.undo();
-        return;
-      }
-
-      // Ctrl+Shift+Z / Cmd+Shift+Z - Redo
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        this.redo();
-        return;
-      }
-
-      // Ctrl+Y / Cmd+Y - Redo (alternative)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !e.shiftKey) {
-        e.preventDefault();
-        this.redo();
-        return;
-      }
+  /**
+   * Keep the navbar undo/redo buttons in sync with iDevice edition mode:
+   * they act on the project history, so they are disabled while an
+   * iDevice editor owns the shortcuts (#2218). Watches the `mode`
+   * attribute flips and node swaps anywhere under the body.
+   */
+  observeIdeviceEditionState() {
+    if (typeof MutationObserver !== 'function') return;
+    const root = document.body;
+    if (!root || typeof root !== 'object' || !root.nodeType) return;
+    this.editionModeObserver = new MutationObserver(() => this.updateUndoRedoButtons());
+    this.editionModeObserver.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['mode'],
     });
+  }
+
+  /**
+   * Document-level handler for the project (Yjs) undo/redo shortcuts.
+   */
+  handleUndoRedoKeydown(e) {
+    if (!this.initialized) return;
+
+    // While an iDevice is open in edition mode its own editor owns the
+    // undo/redo shortcuts (e.g. the Slide editor's Fabric history). Yield
+    // silently: running the project-level undo here would pop the
+    // "unsaved changes" warning modal on every Ctrl+Z (#2218).
+    if (this.isIdeviceEditionOpen()) return;
+
+    // Skip if focus is in an input that handles its own undo (like contenteditable in TinyMCE)
+    const activeEl = document.activeElement;
+    const isContentEditable = activeEl?.getAttribute('contenteditable') === 'true';
+    const isInTinyMCE = activeEl?.closest('.tox-tinymce, .mce-content-body');
+    if (isContentEditable || isInTinyMCE) return;
+
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      // Ctrl+Z / Cmd+Z - Undo
+      e.preventDefault();
+      this.undo();
+    } else if (mod && e.shiftKey && e.key.toLowerCase() === 'z') {
+      // Ctrl+Shift+Z / Cmd+Shift+Z - Redo
+      e.preventDefault();
+      this.redo();
+    } else if (mod && e.key.toLowerCase() === 'y' && !e.shiftKey) {
+      // Ctrl+Y / Cmd+Y - Redo (alternative)
+      e.preventDefault();
+      this.redo();
+    }
   }
 
   /**
@@ -1764,6 +1987,15 @@ class YjsProjectBridge {
   updateUndoRedoButtons() {
     if (!this.documentManager || !this.undoButton || !this.redoButton) return;
 
+    // The buttons act on the PROJECT history; while an iDevice editor is
+    // open its own history owns undo/redo, so disable them instead of
+    // popping the "unsaved changes" warning on click (#2218).
+    if (this.isIdeviceEditionOpen()) {
+      this.undoButton.disabled = true;
+      this.redoButton.disabled = true;
+      return;
+    }
+
     const undoManager = this.documentManager.undoManager;
     if (undoManager) {
       // Enable undo if there are items in undoStack OR pending metadata changes
@@ -1857,6 +2089,8 @@ class YjsProjectBridge {
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
       'pp_globalFont': 'globalFont',
+      'pp_passScore': 'passScore',
+      'pp_passScoreEveryActivity': 'passScoreEveryActivity',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
@@ -1942,11 +2176,11 @@ class YjsProjectBridge {
             }
 
             // Sync icon - update both DOM and blockNode state
-            const iconName = blockMap.get('iconName');
+            const icon = normalizeBlockIcon(blockMap.get('icon'), blockMap.get('iconName'));
 
             // Update DOM directly using _syncBlockIcon (handles icon.id vs key mismatch)
             if (iconEl) {
-              this._syncBlockIcon(iconEl, iconName, blockId);
+              this._syncBlockIcon(iconEl, icon, blockId);
             }
 
             // Also update blockNode instance properties so internal state matches Yjs
@@ -1960,9 +2194,11 @@ class YjsProjectBridge {
               }
 
               // Update blockNode.iconName to match Yjs
-              if (iconName !== undefined && blockNode.iconName !== iconName) {
-                blockNode.iconName = iconName;
-                Logger.log(`[YjsProjectBridge] Synced blockNode.iconName: ${blockId} -> '${iconName}'`);
+              const normalizedIconName = icon.source === 'material' ? `mi-${icon.value}` : (icon.value || '');
+              if (normalizedIconName !== undefined && blockNode.iconName !== normalizedIconName) {
+                blockNode.icon = icon;
+                blockNode.iconName = normalizedIconName;
+                Logger.log(`[YjsProjectBridge] Synced blockNode.iconName: ${blockId} -> '${normalizedIconName}'`);
               }
 
               // Update blockNode.iconElement reference if needed
@@ -2017,14 +2253,15 @@ class YjsProjectBridge {
    * @param {string} iconName - The icon name/id from Yjs
    * @param {string} blockId - The block ID for logging
    */
-  _syncBlockIcon(iconEl, iconName, blockId) {
+  _syncBlockIcon(iconEl, iconData, blockId) {
     const imgEl = iconEl.querySelector('img');
     const currentIconSrc = imgEl?.getAttribute('src') || '';
 
     // Get theme icons to find the icon URL
+    const icon = normalizeBlockIcon(iconData, typeof iconData === 'string' ? iconData : '');
     const themeIcons = window.eXeLearning?.app?.themes?.getThemeIcons?.() || {};
 
-    if (!iconName || iconName === '') {
+    if (!icon.value || icon.source === 'none') {
       // No icon - check if we need to clear it
       // Only clear if there's currently an img (not already showing empty SVG)
       if (imgEl || !iconEl.classList.contains('exe-no-icon')) {
@@ -2036,30 +2273,39 @@ class YjsProjectBridge {
         Logger.log(`[YjsProjectBridge] Synced block icon to empty: ${blockId}`);
       }
     } else {
-      // Has icon - find it in theme icons
-      // First try direct lookup (iconName is the key in themeIcons)
-      let iconData = themeIcons[iconName];
+      if (icon.source === 'material') {
+        iconEl.innerHTML = renderMaterialMaskIcon(icon.value);
+        iconEl.classList.remove('exe-no-icon');
+        iconEl.style.removeProperty('color');
+        return;
+      }
 
-      // If not found, search by icon.id or icon.value
-      if (!iconData) {
-        for (const [, icon] of Object.entries(themeIcons)) {
-          if (icon.id === iconName || icon.value === iconName) {
-            iconData = icon;
+      if (icon.source === 'asset') {
+        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        const resolvedAssetUrl = assetManager?.resolveAssetURLSync?.(icon.value) || icon.value;
+        iconEl.innerHTML = `<img src="${resolvedAssetUrl}" alt="${icon.value}">`;
+        iconEl.classList.remove('exe-no-icon');
+        return;
+      }
+
+      let themeIcon = themeIcons[icon.value];
+      if (!themeIcon) {
+        for (const [, candidate] of Object.entries(themeIcons)) {
+          if (candidate.id === icon.value || candidate.value === icon.value) {
+            themeIcon = candidate;
             break;
           }
         }
       }
 
-      if (iconData && iconData.value) {
-        // Always set the icon if we have valid icon data
-        // Check if we actually need to change (avoid unnecessary DOM updates)
-        if (currentIconSrc !== iconData.value || iconEl.classList.contains('exe-no-icon')) {
-          iconEl.innerHTML = `<img src="${iconData.value}" alt="${iconData.title || iconName}">`;
+      if (themeIcon && themeIcon.value) {
+        if (currentIconSrc !== themeIcon.value || iconEl.classList.contains('exe-no-icon')) {
+          iconEl.innerHTML = `<img src="${themeIcon.value}" alt="${themeIcon.title || icon.value}">`;
           iconEl.classList.remove('exe-no-icon');
-          Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${iconName}`);
+          Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${icon.value}`);
         }
       } else {
-        Logger.log(`[YjsProjectBridge] Icon data not found for: ${iconName}`);
+        Logger.log(`[YjsProjectBridge] Icon data not found for: ${icon.value}`);
       }
     }
   }
@@ -2388,7 +2634,48 @@ class YjsProjectBridge {
       this.updateSaveStatus('saved');
     }
 
+    // Collaborative autosave (issue #1592): persist the shared Yjs state after
+    // an idle period so live collaborative changes are not lost when the last
+    // editor closes without saving. The manager gates itself to genuine online
+    // collaborative sessions (remote storage + collaboration + a collaborator
+    // present), so this is a no-op in single-user, static or offline modes.
+    if (typeof window !== 'undefined' && window.CollaborativeAutosaveManager && !this.collaborativeAutosave) {
+      // Optional runtime override for the idle debounce (ms). Mirrors the
+      // existing window.__EXE_STATIC_MODE__ override convention; used by E2E
+      // tests and deployments that want a different cadence. Falls back to the
+      // manager's conservative default when unset.
+      const idleOverride = window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
+      const idleDelayMs = typeof idleOverride === 'number' && idleOverride >= 0 ? idleOverride : undefined;
+      this.collaborativeAutosave = new window.CollaborativeAutosaveManager(this, {
+        idleDelayMs,
+        onStatusChange: (phase) => this._updateCollaborativeSaveStatus(phase),
+      });
+      this.collaborativeAutosave.start();
+    }
+
     Logger.log('[YjsProjectBridge] Auto-sync enabled');
+  }
+
+  /**
+   * Render the collaborative save-status (issue #1592).
+   *
+   * Delegates to CollaborativeSaveStatusView, a focused presentation helper that
+   * shows the phase as a compact badge on the Save button, announces it through
+   * a visually-hidden live region, and raises a single error toast on failure.
+   * The presentation helper is loaded as a sibling Yjs module; if it is
+   * unavailable the autosave itself is unaffected — we simply skip the (purely
+   * cosmetic) status update rather than throw.
+   *
+   * @param {('clean'|'pending'|'saving'|'failed')} phase
+   */
+  _updateCollaborativeSaveStatus(phase) {
+    if (typeof window === 'undefined' || !window.CollaborativeSaveStatusView) {
+      return;
+    }
+    if (!this._collabStatusView) {
+      this._collabStatusView = new window.CollaborativeSaveStatusView();
+    }
+    this._collabStatusView.setPhase(phase);
   }
 
   /**
@@ -2718,6 +3005,9 @@ class YjsProjectBridge {
    * @param {string} ideviceType - iDevice type
    * @param {Object} initialData - Initial properties (optional)
    * @returns {string} Created component ID
+   * @throws {Error} InvalidJsonPropertiesError when `initialData.jsonProperties`
+   *   cannot be serialized/parsed. Callers that pass iDevice payloads should
+   *   handle this to avoid an uncaught rejection.
    */
   addComponent(pageId, blockId, ideviceType, initialData = {}) {
     const componentId = this.structureBinding.createComponent(pageId, blockId, ideviceType, initialData);
@@ -2735,6 +3025,9 @@ class YjsProjectBridge {
    * Update component properties
    * @param {string} componentId - Component ID
    * @param {Object} props - Properties to update
+   * @throws {Error} InvalidJsonPropertiesError when `props.jsonProperties`
+   *   cannot be serialized/parsed. Callers that pass iDevice payloads should
+   *   handle this to avoid an uncaught rejection.
    */
   updateComponent(componentId, props) {
     this.structureBinding.updateComponent(componentId, props);
@@ -3177,6 +3470,15 @@ class YjsProjectBridge {
    * In Electron/Desktop mode, always prompts for save destination (no silent overwrite).
    */
   async exportToElpx() {
+    // #2193: on a non-desktop runtime, warn before producing an ELPX that the
+    // supported desktop release could not reopen (an asset above the desktop
+    // import policy). The user may cancel or continue; cancelling leaves the
+    // project untouched and reports the same "not saved" result as an OS-dialog
+    // cancellation, which callers already handle.
+    if ((await this._checkDesktopExportCompatibility()) === 'cancelled') {
+      return { saved: false };
+    }
+
     const trace = this.createElpxExportTrace();
 
     // Ensure exelearning_version is set in metadata before export
@@ -3306,6 +3608,7 @@ class YjsProjectBridge {
             }, trace);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
+          this.assetManager?.markAssetsSavedLocally?.();
           return { saved: true };
         } else {
           this.finalizeElpxExportTrace('error', {
@@ -3332,10 +3635,250 @@ class YjsProjectBridge {
   }
 
   /**
+   * Whether the app is running inside the Electron desktop shell.
+   *
+   * Electron and the static PWA both resolve to RuntimeConfig `mode === 'static'`,
+   * so the mode alone cannot distinguish them. The desktop bridge (`electronAPI`)
+   * is the reliable signal; `process.versions.electron` / the user-agent are
+   * fallbacks. This is the ONLY place import/export policy decides "am I desktop".
+   * @returns {boolean}
+   * @private
+   */
+  _isDesktopRuntime() {
+    try {
+      return !!(
+        (typeof window !== 'undefined' && window.electronAPI) ||
+        (typeof window !== 'undefined' && window.process?.versions?.electron) ||
+        (typeof navigator !== 'undefined' && navigator.userAgent?.toLowerCase().includes('electron'))
+      );
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  /**
+   * Resolve the decompression policy for the current runtime (#2193).
+   *
+   * Limits come from the shared import policy exposed by the importers bundle
+   * (`window.ExeImportPolicy`) — the single source of truth shared with the core
+   * importer and the export warning. A `window.__EXE_IMPORT_LIMITS_OVERRIDE__`
+   * object is honoured as a test seam so E2E specs can exercise the flow with
+   * small scaled limits instead of a multi-hundred-MB fixture.
+   *
+   * @returns {{isDesktop: boolean, zipLimits: (Object|undefined), confirmEntryThreshold: (number|undefined)}}
+   * @private
+   */
+  _resolveImportPolicy() {
+    const isDesktop = this._isDesktopRuntime();
+    const policy = (typeof window !== 'undefined' && window.ExeImportPolicy) || null;
+    if (!policy || typeof policy.getZipLimitsForRuntime !== 'function') {
+      // Bundle policy unavailable: degrade safely to conservative behaviour
+      // (the core importer applies conservative defaults when no limits given).
+      return { isDesktop, zipLimits: undefined, confirmEntryThreshold: undefined };
+    }
+    const runtime = isDesktop ? 'desktop' : 'hosted';
+    let zipLimits = policy.getZipLimitsForRuntime(runtime);
+    let confirmEntryThreshold = policy.DESKTOP_CONFIRM_ENTRY_BYTES;
+
+    const override = (typeof window !== 'undefined' && window.__EXE_IMPORT_LIMITS_OVERRIDE__) || null;
+    if (override) {
+      if (override[runtime]) {
+        zipLimits = { ...zipLimits, ...override[runtime] };
+      }
+      if (override.confirmEntryThreshold != null) {
+        confirmEntryThreshold = override.confirmEntryThreshold;
+      }
+    }
+    return { isDesktop, zipLimits, confirmEntryThreshold };
+  }
+
+  /**
+   * Format a byte count using the shared policy formatter when available.
+   * @param {number} bytes
+   * @returns {string}
+   * @private
+   */
+  _formatImportBytes(bytes) {
+    const policy = typeof window !== 'undefined' ? window.ExeImportPolicy : null;
+    if (policy && typeof policy.formatBytes === 'function') {
+      return policy.formatBytes(bytes);
+    }
+    return `${bytes} B`;
+  }
+
+  /**
+   * Ask the user to confirm a controlled large import (desktop only). Resolves
+   * true to proceed, false to cancel. Wraps the callback-based confirm modal in
+   * a promise so the importer can `await` the decision.
+   *
+   * @param {{entryName: string, entryBytes: number, hardLimitBytes: number}} info
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  _confirmLargeImport(info) {
+    const modals = typeof window !== 'undefined' ? window.eXeLearning?.app?.modals : null;
+    if (!modals?.confirm?.show) {
+      // No modal surface (e.g. headless): proceed — hard limits are still enforced.
+      return Promise.resolve(true);
+    }
+    const sizeText = this._formatImportBytes(info.entryBytes);
+    const limitText = this._formatImportBytes(info.hardLimitBytes);
+    const body =
+      `<p>${_('The file "%1" contains a large asset (%2).')
+        .replace('%1', info.entryName)
+        .replace('%2', sizeText)}</p>` +
+      `<p>${_('Importing it may use a large amount of memory.')}</p>` +
+      `<p>${_('The desktop application can open assets up to %1.').replace('%1', limitText)}</p>` +
+      `<p>${_('Protection against malformed or malicious archives remains active.')}</p>`;
+    return new Promise((resolve) => {
+      modals.confirm.show({
+        title: _('Import large file?'),
+        contentId: 'import-large-file',
+        body,
+        confirmButtonText: _('Import'),
+        cancelButtonText: _('Cancel'),
+        focusCancelButton: true,
+        confirmExec: () => resolve(true),
+        cancelExec: () => resolve(false),
+        closeExec: () => resolve(false),
+      });
+    });
+  }
+
+  /**
+   * Show an actionable, translated error when an archive exceeds the applicable
+   * limits and the project was NOT imported. Uses the structured error details
+   * so no message parsing is required.
+   *
+   * @param {{kind: string, entryName?: string, actualValue: number, limitValue: number}} details
+   * @private
+   */
+  _showImportTooLargeError(details) {
+    const modals = typeof window !== 'undefined' ? window.eXeLearning?.app?.modals : null;
+    const actualText = this._formatImportBytes(details.actualValue);
+    const limitText = this._formatImportBytes(details.limitValue);
+
+    let intro;
+    if (details.kind === 'entry-size' && details.entryName) {
+      intro = _('The file "%1" (%2) is larger than the maximum this application can open (%3).')
+        .replace('%1', details.entryName)
+        .replace('%2', actualText)
+        .replace('%3', limitText);
+    } else if (details.kind === 'total-size') {
+      intro = _('This project (%1) is larger than the maximum this application can open (%2).')
+        .replace('%1', actualText)
+        .replace('%2', limitText);
+    } else {
+      intro = _('This project has too many files to open (%1 of a maximum %2).')
+        .replace('%1', String(details.actualValue))
+        .replace('%2', String(details.limitValue));
+    }
+
+    const body =
+      `<p>${intro}</p>` +
+      `<p>${_('The project was not imported.')}</p>` +
+      `<p>${_('To reduce its size, open the File Manager and:')}</p>` +
+      `<ul>` +
+      `<li>${_('Sort by "Largest first" and review each asset\'s references.')}</li>` +
+      `<li>${_('Remove an unused older version of a large asset.')}</li>` +
+      `<li>${_('Optimise, replace, or remove the large file.')}</li>` +
+      `</ul>`;
+
+    if (modals?.alert?.show) {
+      modals.alert.show({ title: _('File too large to open'), body, contentId: 'error' });
+    }
+  }
+
+  /**
+   * Before generating an ELPX from a non-desktop runtime, verify the project
+   * could be reopened by the supported desktop release (#2193). Returns
+   * 'cancelled' when the user declines an incompatible export, otherwise 'ok'.
+   * Never blocks the export on an internal check failure.
+   *
+   * @returns {Promise<'ok'|'cancelled'>}
+   * @private
+   */
+  async _checkDesktopExportCompatibility() {
+    try {
+      // Exporting from the desktop app itself: no cross-runtime warning needed.
+      if (this._isDesktopRuntime()) {
+        return 'ok';
+      }
+      const policy = typeof window !== 'undefined' ? window.ExeImportPolicy : null;
+      if (!policy || typeof policy.getDesktopExportCompatibility !== 'function') {
+        return 'ok';
+      }
+      const assetManager = this.assetManager;
+      if (!assetManager || typeof assetManager.getAllAssetsMetadata !== 'function') {
+        return 'ok';
+      }
+      const metadata = assetManager.getAllAssetsMetadata() || [];
+      const assets = metadata.map((a) => ({
+        name: a.filename || a.id || 'asset',
+        size: Number(a.size) || 0,
+      }));
+      const compat = policy.getDesktopExportCompatibility(assets);
+      if (!compat || compat.compatible) {
+        return 'ok';
+      }
+      const proceed = await this._confirmDesktopIncompatibleExport(compat);
+      return proceed ? 'ok' : 'cancelled';
+    } catch (e) {
+      // A compatibility-check failure must never block a legitimate export.
+      Logger.warn?.('[YjsProjectBridge] Desktop export compatibility check failed:', e);
+      return 'ok';
+    }
+  }
+
+  /**
+   * Warn that the ELPX being exported may not reopen in the desktop app, and
+   * let the user cancel or continue. Resolves true to continue exporting.
+   *
+   * @param {{oversizedAsset: ?Object, totalBytes: number, entryLimit: number, totalLimit: number}} compat
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  _confirmDesktopIncompatibleExport(compat) {
+    const modals = typeof window !== 'undefined' ? window.eXeLearning?.app?.modals : null;
+    if (!modals?.confirm?.show) {
+      return Promise.resolve(true);
+    }
+    let detail;
+    if (compat.oversizedAsset) {
+      detail = _('The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).')
+        .replace('%1', compat.oversizedAsset.name)
+        .replace('%2', this._formatImportBytes(compat.oversizedAsset.size))
+        .replace('%3', this._formatImportBytes(compat.entryLimit));
+    } else {
+      detail = _('This project (%1) exceeds the maximum size the desktop application can open (%2).')
+        .replace('%1', this._formatImportBytes(compat.totalBytes))
+        .replace('%2', this._formatImportBytes(compat.totalLimit));
+    }
+    const body =
+      `<p>${detail}</p>` +
+      `<p>${_('The resulting ELPX may not open in the desktop application.')}</p>` +
+      `<p>${_('Do you want to continue exporting anyway?')}</p>`;
+    return new Promise((resolve) => {
+      modals.confirm.show({
+        title: _('Large ELPX export'),
+        contentId: 'export-desktop-incompatible',
+        body,
+        confirmButtonText: _('Export anyway'),
+        cancelButtonText: _('Cancel'),
+        focusCancelButton: true,
+        confirmExec: () => resolve(true),
+        cancelExec: () => resolve(false),
+        closeExec: () => resolve(false),
+      });
+    });
+  }
+
+  /**
    * Import project from .elpx file
    * @param {File} file - The .elpx file
    * @param {Object} options - Import options
    * @param {boolean} options.clearExisting - If true, clears existing structure before import (default: true)
+   * @param {boolean} options.clearPreviousProject - If true, clears the current project's assets/metadata after the preflight gate passes (static open flow)
    * @returns {Promise<Object>} Import statistics
    */
   async importFromElpx(file, options = {}) {
@@ -3343,14 +3886,59 @@ class YjsProjectBridge {
     const assetHandler = this.assetManager || this.assetCache;
     const importer = new window.ElpxImporter(this.documentManager, assetHandler);
     const clearExisting = options.clearExisting !== false; // default is true
-    let stats;
 
-    if (clearExisting && typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
-      stats = await this.documentManager.withSuppressedDirtyTracking(() =>
-        importer.importFromFile(file, options)
-      );
-    } else {
-      stats = await importer.importFromFile(file, options);
+    // Resolve the runtime-specific import policy (#2193): the Electron desktop
+    // app gets a larger per-entry limit plus a confirmation window; every other
+    // runtime stays conservative. The core importer only receives validated
+    // limits — it never detects the runtime itself.
+    const policy = this._resolveImportPolicy();
+    const importOptions = { ...options };
+    delete importOptions.clearPreviousProject;
+    if (policy.zipLimits) {
+      importOptions.zipLimits = policy.zipLimits;
+    }
+    if (policy.confirmEntryThreshold != null) {
+      importOptions.confirmEntryThreshold = policy.confirmEntryThreshold;
+    }
+    if (policy.isDesktop) {
+      importOptions.onConfirmLargeEntry = (info) => this._confirmLargeImport(info);
+    }
+    // The static "open project" flow must clear the previous project's assets
+    // and metadata only AFTER the preflight gate passes, so a cancelled or
+    // rejected large import leaves the current project unchanged.
+    if (options.clearPreviousProject) {
+      importOptions.beforeImport = async () => {
+        if (typeof this.clearAssetsForNewProject === 'function') {
+          await this.clearAssetsForNewProject();
+        }
+        if (typeof this.clearMetadataForNewProject === 'function') {
+          this.clearMetadataForNewProject();
+        }
+      };
+    }
+
+    let stats;
+    try {
+      if (clearExisting && typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
+        stats = await this.documentManager.withSuppressedDirtyTracking(() =>
+          importer.importFromFile(file, importOptions)
+        );
+      } else {
+        stats = await importer.importFromFile(file, importOptions);
+      }
+    } catch (err) {
+      // User declined a controlled large import: leave the project untouched.
+      if (err && err.name === 'ImportCancelledError') {
+        Logger.log('[YjsProjectBridge] Large import cancelled by user; project left unchanged');
+        return { cancelled: true };
+      }
+      // Archive exceeds the applicable limits: show an actionable, translated
+      // error instead of a generic one, and do not import a partial project.
+      if (err && err.name === 'ZipLimitError' && err.details) {
+        this._showImportTooLargeError(err.details);
+        return { cancelled: true, error: 'zip-limit' };
+      }
+      throw err;
     }
 
     // Announce imported assets to server for peer-to-peer collaboration
@@ -3387,6 +3975,13 @@ class YjsProjectBridge {
     } else if (this.documentManager && !this.documentManager.isDirty) {
       this.documentManager.markDirty();
     }
+
+    // Every import funnels through here — the online menu goes via
+    // projectManager.importFromElpxViaYjs, but the static build and the
+    // embedding bridge call this method directly — so this is the only place
+    // that reports what the import could not fully restore: unsatisfied asset
+    // references (#2223) and activities with damaged saved data (#2190).
+    window.eXeLearning?.app?.project?.showImportNotices?.(stats);
 
     return stats;
   }
@@ -3483,19 +4078,9 @@ class YjsProjectBridge {
         return;
       }
 
-      const configXml = new TextDecoder().decode(themeConfig);
-      const getValue = (tag) => {
-        const match = configXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
-        return match ? match[1].trim() : '';
-      };
-      const downloadable = getValue('downloadable');
-      if (downloadable === '0') {
-        Logger.log(`[YjsProjectBridge] Theme "${themeName}" marked as non-downloadable, skipping import`);
-        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
-        // (user defaultTheme preference -> admin default -> base).
-        eXeLearning.app.themes.selectTheme(themeName, true);
-        return;
-      }
+      // Styles embedded in an opened/imported .elpx are always available. The legacy
+      // <downloadable>0</downloadable> flag must not block importing the style (issue #1893):
+      // the package has a theme folder, so offer it for import like any other embedded style.
 
       // Store file reference for later extraction
       this._pendingThemeFile = file;
@@ -3579,14 +4164,22 @@ class YjsProjectBridge {
           // Select the theme and save to metadata
           await eXeLearning.app.themes.selectTheme(themeName, true);
           Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
+          eXeLearning.app.toasts.createToast({
+            title: _('Style installed'),
+            body: _('The style has been installed successfully.'),
+            icon: 'task_alt',
+            remove: 4000,
+          });
         } catch (error) {
           console.error('[YjsProjectBridge] Theme import error:', error);
           // Clean up stored references
           this._pendingThemeFile = null;
           this._pendingThemeZip = null;
-          eXeLearning.app.modals.alert.show({
+          eXeLearning.app.toasts.createToast({
             title: _('Error'),
             body: _('Failed to import style'),
+            error: true,
+            remove: 5000,
           });
         }
       },
@@ -3688,7 +4281,9 @@ class YjsProjectBridge {
         config.author = getValue('author') || '';
         config.license = getValue('license') || '';
         config.description = getValue('description') || '';
-        config.downloadable = getValue('downloadable') || '1';
+        // Styles imported from a .elpx are always available, so the legacy
+        // <downloadable> flag is intentionally ignored and stays normalized to '1'
+        // (issue #1893). config.downloadable keeps its default value above.
       }
 
       // Scan for CSS files
@@ -4156,6 +4751,11 @@ class YjsProjectBridge {
   async disconnect() {
     Logger.log('[YjsProjectBridge] Disconnecting...');
 
+    if (this.editionModeObserver) {
+      this.editionModeObserver.disconnect();
+      this.editionModeObserver = null;
+    }
+
     if (this._assetsMap && this._onAssetsMapChange && typeof this._assetsMap.unobserve === 'function') {
       this._assetsMap.unobserve(this._onAssetsMapChange);
     }
@@ -4168,6 +4768,22 @@ class YjsProjectBridge {
     }
     if (this._pendingAssetRefreshIds) {
       this._pendingAssetRefreshIds.clear();
+    }
+
+    // Stop collaborative autosave (issue #1592) before tearing down the document
+    // manager it listens to, so no timer fires against a destroyed document.
+    if (this.collaborativeAutosave) {
+      this.collaborativeAutosave.destroy();
+      this.collaborativeAutosave = null;
+    }
+
+    // Clear the collaborative save-status UI (badge, live region and any
+    // lingering failure toast) so a destroyed session leaves nothing behind.
+    if (this._collabStatusView) {
+      if (typeof this._collabStatusView.destroy === 'function') {
+        this._collabStatusView.destroy();
+      }
+      this._collabStatusView = null;
     }
 
     if (this.documentManager) {
@@ -4294,6 +4910,11 @@ class YjsProjectBridge {
     Logger.log('[YjsProjectBridge] Metadata cleared for new project');
   }
 }
+
+YjsProjectBridge.buildRemoteComponentUpdate = buildRemoteComponentUpdate;
+YjsProjectBridge.readComponentHtml = readComponentHtml;
+YjsProjectBridge.REMOTE_COMPONENT_CONTENT_KEYS = REMOTE_COMPONENT_CONTENT_KEYS;
+YjsProjectBridge.REMOTE_COMPONENT_LOCK_KEYS = REMOTE_COMPONENT_LOCK_KEYS;
 
 // Export for use
 if (typeof module !== 'undefined' && module.exports) {

@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { FileSystemResourceProvider } from './FileSystemResourceProvider';
+import { SCORM12_RUNTIME_SOURCE_PATHS } from '../utils/Scorm12Runtime';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
@@ -55,9 +56,15 @@ describe('FileSystemResourceProvider', () => {
         await fs.writeFile(path.join(testDir, 'libs', 'jquery', 'jquery.min.js'), '/* jQuery */');
         await fs.writeFile(path.join(testDir, 'libs', 'bootstrap', 'bootstrap.bundle.min.js'), '/* Bootstrap JS */');
         await fs.writeFile(path.join(testDir, 'libs', 'bootstrap', 'bootstrap.min.css'), '/* Bootstrap CSS */');
-        // SCORM files in app/common/scorm/
+        // SCORM files in app/common/scorm/ (legacy pair for the 2004 path,
+        // vendored wrapper + runtime layers for the 1.2 path)
         await fs.writeFile(path.join(testDir, 'app', 'common', 'scorm', 'SCORM_API_wrapper.js'), '/* SCORM API */');
         await fs.writeFile(path.join(testDir, 'app', 'common', 'scorm', 'SCOFunctions.js'), '/* SCO Functions */');
+        for (const sourcePath of SCORM12_RUNTIME_SOURCE_PATHS) {
+            const fullPath = path.join(testDir, 'app', 'common', 'scorm', ...sourcePath.split('/'));
+            await fs.ensureDir(path.dirname(fullPath));
+            await fs.writeFile(fullPath, `/* ${sourcePath} */`);
+        }
         // Common JS files (app/common/)
         await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_export.js'), '/* Export */');
         await fs.writeFile(path.join(testDir, 'app', 'common', 'common.js'), '/* Common */');
@@ -149,8 +156,10 @@ describe('FileSystemResourceProvider', () => {
             expect(files.get('content.css')?.toString()).toBe('.custom { color: blue; }');
         });
 
-        it('should fall back to base theme when downloadable=0', async () => {
-            // Create embedded theme with downloadable=0
+        it('should use embedded theme even when downloadable=0', async () => {
+            // Styles embedded in an opened/imported .elpx are always available; the
+            // legacy <downloadable>0</downloadable> flag must not make export ignore
+            // the embedded theme and silently fall back to the base theme (issue #1893).
             await fs.ensureDir(path.join(extractedDir, 'theme'));
             await fs.writeFile(
                 path.join(extractedDir, 'theme', 'config.xml'),
@@ -166,10 +175,11 @@ describe('FileSystemResourceProvider', () => {
             const embeddedProvider = new FileSystemResourceProvider(testDir, extractedDir);
             const files = await embeddedProvider.fetchTheme('nondl');
 
-            // Should fall back to base theme (2 files in our test setup)
+            // Should use the embedded theme (config.xml + content.css)
             expect(files.size).toBe(2);
+            expect(files.has('config.xml')).toBe(true);
             expect(files.has('content.css')).toBe(true);
-            expect(files.get('content.css')?.toString()).toBe('.base { color: red; }');
+            expect(files.get('content.css')?.toString()).toBe('.nondl { color: green; }');
         });
 
         it('should fall back to base theme when config.xml is missing', async () => {
@@ -358,19 +368,23 @@ describe('FileSystemResourceProvider', () => {
     });
 
     describe('fetchScormFiles', () => {
-        it('should fetch SCORM library files', async () => {
+        it('should fetch the vendored wrapper and runtime layers for 1.2', async () => {
             const files = await provider.fetchScormFiles('1.2');
 
-            expect(files.size).toBe(2);
-            // Files are returned without prefix (caller adds libs/ prefix)
-            expect(files.has('SCORM_API_wrapper.js')).toBe(true);
-            expect(files.has('SCOFunctions.js')).toBe(true);
+            expect(files.size).toBe(SCORM12_RUNTIME_SOURCE_PATHS.length);
+            for (const sourcePath of SCORM12_RUNTIME_SOURCE_PATHS) {
+                expect(files.has(sourcePath)).toBe(true);
+            }
+            // The legacy pair stays out of the 1.2 file set
+            expect(files.has('SCORM_API_wrapper.js')).toBe(false);
+            expect(files.has('SCOFunctions.js')).toBe(false);
         });
 
-        it('should work with version 2004', async () => {
+        it('should keep the legacy pair for version 2004', async () => {
             const files = await provider.fetchScormFiles('2004');
 
             expect(files.size).toBe(2);
+            // Files are returned without prefix (caller adds libs/ prefix)
             expect(files.has('SCORM_API_wrapper.js')).toBe(true);
             expect(files.has('SCOFunctions.js')).toBe(true);
         });

@@ -33,6 +33,10 @@ describe('adaptative-quiz export', () => {
         if (global.eXe && global.eXe.app && !global.eXe.app.isInExe) {
             global.eXe.app.isInExe = () => false;
         }
+        // Restore the real $exeDevices (with the gamification.math helper) before
+        // every test. Some blocks delete it in their afterEach, and the runtime
+        // always exposes it, so question/feedback rendering can rely on it.
+        global.$exeDevices = realExeDevices;
         adq = loadExport();
     });
 
@@ -311,6 +315,179 @@ describe('adaptative-quiz export', () => {
         });
     });
 
+    describe('LaTeX rendering', () => {
+        let updateLatexSpy;
+
+        beforeEach(() => {
+            // The iDevice reads the global $exeDevices loaded from common.js. It
+            // loads MathJax on demand and then typesets. Spy on updateLatex so
+            // we can assert the iDevice requests the expected target, while
+            // keeping the real hasLatex regex.
+            const math = global.$exeDevices.iDevice.gamification.math;
+            updateLatexSpy = vi.spyOn(math, 'updateLatex').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            updateLatexSpy.mockRestore();
+        });
+
+        function renderQuestion(id, question) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <div id="adaptativeQuizRound-${id}"></div>
+                <div id="adaptativeQuizLevel-${id}"></div>
+                <div id="adaptativeQuizReport-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                questions: [question],
+                currentQuestionIndex: 0,
+                shuffle: false,
+                roundCount: 0,
+                numRound: 1,
+                currentLevel: 1,
+                maxLevel: 3,
+                msgs: adq.msgs,
+            };
+            adq.renderCurrentQuestion(id);
+        }
+
+        it('typesets the export template when its instructions contain LaTeX', () => {
+            const data = {
+                eXeFormInstructions: 'Intro \\(z\\)',
+                questionsGame: [
+                    {
+                        type: 0,
+                        typeSelect: 0,
+                        question: 'Solve \\(x + 1 = 2\\)',
+                        options: [{ text: '1' }, { text: '2' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                    },
+                ],
+                numRound: 1,
+                initialLevel: 1,
+            };
+            const template = readFileSync(join(__dirname, 'adaptative-quiz.html'), 'utf-8');
+
+            document.body.innerHTML = adq.renderView(data, false, template, 'latex-template');
+            expect(document.querySelector('.exe-adaptative-quiz-template')).not.toBeNull();
+            adq.renderBehaviour(data, false, 'latex-template');
+
+            expect(updateLatexSpy).toHaveBeenCalledWith('.exe-adaptative-quiz-template');
+        });
+
+        it('does NOT typeset the template when it has no unrendered LaTeX', () => {
+            const data = {
+                eXeFormInstructions: 'Plain intro, no math',
+                questionsGame: [
+                    { type: 0, typeSelect: 0, question: 'Plain', options: [{ text: '1' }], solutionMulti: [0] },
+                ],
+                numRound: 1,
+                initialLevel: 1,
+            };
+            const template = readFileSync(join(__dirname, 'adaptative-quiz.html'), 'utf-8');
+
+            document.body.innerHTML = adq.renderView(data, false, template, 'plain-template');
+            adq.renderBehaviour(data, false, 'plain-template');
+
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('keeps pre-rendered math spans (no MathJax) but escapes author text in options', () => {
+            renderQuestion('prerendered-opt', {
+                typeSelect: 0,
+                question: 'Stem',
+                options: [
+                    {
+                        text: '<span class="exe-math-rendered" data-latex="x^2"><svg><g></g></svg></span>',
+                    },
+                    { text: '<b>plain</b>' },
+                ],
+                solutionMulti: [0],
+            });
+            const container = document.getElementById('adaptativeQuizQuestionContainer-prerendered-opt');
+            // The trusted pre-rendered SVG survives intact...
+            expect(container.querySelector('.exe-math-rendered svg')).not.toBeNull();
+            // ...while plain author markup is still escaped.
+            expect(container.innerHTML).toContain('&lt;b&gt;plain&lt;/b&gt;');
+            // No MathJax needed: nothing unrendered to typeset.
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('escapeHtmlButKeepRenderedMath neutralises a forged math span (XSS boundary)', () => {
+            const forged = '<span class="exe-math-rendered" data-latex=""><svg onload="alert(1)"></svg></span>';
+            const out = adq.escapeHtmlButKeepRenderedMath('Pick ' + forged);
+            // The script-bearing span is escaped, not kept raw.
+            expect(out).not.toContain('<svg onload');
+            expect(out).toContain('&lt;svg onload');
+        });
+
+        it('typesets the question container when the stem contains LaTeX', () => {
+            renderQuestion('latex-stem', {
+                typeSelect: 0,
+                question: 'Solve \\(x^2 + 1 = 0\\)',
+                options: [{ text: 'A' }, { text: 'B' }],
+                solutionMulti: [0],
+            });
+            expect(updateLatexSpy).toHaveBeenCalledWith('#adaptativeQuizQuestionContainer-latex-stem');
+        });
+
+        it('typesets the question container when an answer option contains LaTeX', () => {
+            renderQuestion('latex-option', {
+                typeSelect: 0,
+                question: 'Pick the identity',
+                options: [{ text: '\\(\\sin^2\\theta + \\cos^2\\theta = 1\\)' }, { text: 'B' }],
+                solutionMulti: [0],
+            });
+            expect(updateLatexSpy).toHaveBeenCalledWith('#adaptativeQuizQuestionContainer-latex-option');
+        });
+
+        it('does not typeset when the question has no LaTeX', () => {
+            renderQuestion('latex-none', {
+                typeSelect: 0,
+                question: 'Plain question with no math',
+                options: [{ text: 'A' }, { text: 'B' }],
+                solutionMulti: [0],
+            });
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('typesets the feedback message when it contains LaTeX', () => {
+            const id = 'latex-msg';
+            document.body.innerHTML = `<div id="adaptativeQuizMessages-${id}"></div>`;
+            adq.setMessage(id, 'Correct, because \\(2 + 2 = 4\\)', 'success', true);
+            expect(updateLatexSpy).toHaveBeenCalledWith('#adaptativeQuizMessages-' + id);
+        });
+
+        it('does not typeset a plain feedback message', () => {
+            const id = 'plain-msg';
+            document.body.innerHTML = `<div id="adaptativeQuizMessages-${id}"></div>`;
+            adq.setMessage(id, 'Well done', 'success', true);
+            expect(updateLatexSpy).not.toHaveBeenCalled();
+        });
+
+        it('typesets the final report when a report message contains LaTeX', () => {
+            const id = 'latex-report';
+            document.body.innerHTML = `<div id="adaptativeQuizReport-${id}"></div>`;
+            adq.options[id] = {
+                id,
+                hits: 1,
+                errors: 0,
+                roundCount: 1,
+                numRound: 1,
+                currentLevel: 1,
+                maxLevel: 3,
+                maxLevelReached: 1,
+                levelNames: ['Easy', 'Medium', 'Hard'],
+                msgs: { ...adq.msgs, msgReportTitle: 'Final score \\(\\alpha\\)' },
+            };
+            adq.renderFinalReport(id);
+            expect(updateLatexSpy).toHaveBeenCalledWith('#adaptativeQuizReport-' + id);
+        });
+    });
+
     describe('progress and SCORM persistence', () => {
         it('saves progress and automatic SCORM when the learner answers a question', () => {
             const id = 'progress-answer';
@@ -368,12 +545,43 @@ describe('adaptative-quiz export', () => {
 
             adq.checkAnswer(id);
 
-            expect(sendScoreSpy).toHaveBeenCalledOnce();
+            // Two reports, not one: the answer itself, and then the completion
+            // that endGame triggers. They used to collapse into the first,
+            // because the marker could not tell the two states apart — so the
+            // LMS only ever heard the answer, with the activity unfinished.
+            expect(sendScoreSpy).toHaveBeenCalledTimes(2);
             expect(sendScoreSpy).toHaveBeenCalledWith(true, id);
-            expect(saveEvaluationSpy).toHaveBeenCalledOnce();
+            expect(saveEvaluationSpy).toHaveBeenCalledTimes(2);
             expect(saveEvaluationSpy).toHaveBeenCalledWith(id);
             expect(adq.options[id].hits).toBe(1);
-            expect(adq.options[id].progressSaveMarker).toBe('1:1:0');
+            expect(adq.options[id].gameOver).toBe(true);
+            expect(adq.options[id].progressSaveMarker).toBe('1:1:0:1');
+        });
+
+        // The counters do not move between the last answer and endGame, so the
+        // finished state is the only thing that distinguishes the two reports.
+        it('reports the completion even though the counts did not change', () => {
+            const id = 'progress-completion';
+            adq.options[id] = {
+                id,
+                roundCount: 1,
+                hits: 1,
+                errors: 0,
+                gameOver: false,
+                isScorm: 1,
+            };
+            const sendScoreSpy = vi
+                .spyOn(adq, 'sendScore')
+                .mockImplementation(() => {});
+            vi.spyOn(adq, 'saveEvaluation').mockImplementation(() => {});
+
+            adq.saveProgress(id);
+            const afterAnswer = sendScoreSpy.mock.calls.length;
+            adq.options[id].gameOver = true;
+            adq.saveProgress(id);
+
+            expect(afterAnswer).toBe(1);
+            expect(sendScoreSpy).toHaveBeenCalledTimes(2);
         });
 
         it('does not duplicate progress persistence for the same answered state', () => {
@@ -1025,10 +1233,14 @@ describe('adaptative-quiz export', () => {
                 itinerary: { showCodeAccess: true },
             };
             const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+            // A coded game starts through startGame, so watching beginActivity
+            // alone would let the gate break without failing.
+            const startSpy = vi.spyOn(adq, 'startGame').mockImplementation(() => {});
 
             adq.maybeStartAfterScorm(id);
 
             expect(beginSpy).not.toHaveBeenCalled();
+            expect(startSpy).not.toHaveBeenCalled();
         });
 
         it('does not restart a game that is already running', () => {
@@ -1058,18 +1270,98 @@ describe('adaptative-quiz export', () => {
                 questions: [{ difficulty: 1 }],
                 itinerary: { showCodeAccess: true, codeAccess: 'open' },
             };
-            const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+            // A code already accepted is the learner's explicit start, so both
+            // the code and the deferred path go straight to startGame — the
+            // gating this pins is unchanged.
+            const startSpy = vi.spyOn(adq, 'startGame').mockImplementation(() => {});
 
             adq.enterCodeAccess(id);
             adq.maybeStartAfterScorm(id);
 
             expect(adq.options[id].accessUnlocked).toBe(true);
-            expect(beginSpy).not.toHaveBeenCalled();
+            expect(startSpy).not.toHaveBeenCalled();
 
             adq.options[id].scormReady = true;
             adq.maybeStartAfterScorm(id);
 
-            expect(beginSpy).toHaveBeenCalledWith(id);
+            // `true`: the accepted code is the learner's explicit start, so this
+            // path is one of the few that may publish the opening zero.
+            expect(startSpy).toHaveBeenCalledWith(id, true);
+        });
+    });
+
+    describe('the opening zero is tied to an explicit start', () => {
+        /**
+         * Build a SCORM-enabled quiz with neither a timer nor an access code —
+         * the configuration that reaches startGame unattended — and return the
+         * spy that says whether the opening zero was published.
+         */
+        const buildGame = (id, extra = {}) => {
+            document.body.classList.add('exe-scorm');
+            document.body.innerHTML = `
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizShowClue-${id}"></div>
+                <div id="adaptativeQuizShowClueText-${id}"></div>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+                <div id="adaptativeQuizStartGameDiv-${id}"></div>
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <div id="adaptativeQuizButtonsContainer-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                isScorm: 1,
+                scormReady: true,
+                time: 0,
+                gameStarted: false,
+                questions: [{ difficulty: 1 }],
+                itinerary: {},
+                initialLevel: 1,
+                answeredIndexes: [],
+                ...extra,
+            };
+            vi.spyOn(adq, 'pickNextQuestionIndex').mockReturnValue(0);
+            vi.spyOn(adq, 'renderCurrentQuestion').mockImplementation(() => {});
+            return vi.spyOn(adq, 'saveScormScore').mockImplementation(() => {});
+        };
+
+        afterEach(() => {
+            document.body.className = '';
+            document.body.innerHTML = '';
+        });
+
+        it('publishes nothing when the page starts the game on its own', () => {
+            const id = 'auto-start';
+            const saveSpy = buildGame(id);
+
+            // The reported defect: with no timer and no access code the
+            // deferred path runs startGame with no learner input at all, and
+            // the zero it published wiped the grade of someone who had merely
+            // reopened the page.
+            adq.maybeStartAfterScorm(id);
+
+            expect(adq.options[id].gameStarted).toBe(true);
+            expect(saveSpy).not.toHaveBeenCalled();
+        });
+
+        it('publishes the zero when the learner presses the play button', () => {
+            const id = 'play-button';
+            const saveSpy = buildGame(id);
+
+            adq.startGame(id, true);
+
+            expect(saveSpy).toHaveBeenCalledWith(id);
+        });
+
+        it('publishes the zero when the learner asks for a new game', () => {
+            const id = 'new-game';
+            const saveSpy = buildGame(id);
+
+            adq.beginActivity(id, true);
+
+            expect(saveSpy).toHaveBeenCalledWith(id);
         });
     });
 
@@ -1105,6 +1397,63 @@ describe('adaptative-quiz export', () => {
                 .querySelector(`#adaptativeQuizCubierta-${id} .ADAPTATIVEQUIZ-IconSubmit`)
                 .getAttribute('src');
             expect(src).toBe('/exe/idevices/adaptative-quiz/export/exequextreply.svg');
+        });
+    });
+
+    describe('code access message rendering', () => {
+        function setupCodeAccessGame(id, messageCodeAccess) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizCubierta-${id}">
+                    <a id="adaptativeQuizCodeAccessButton-${id}">
+                        <img src="exequextreply.svg" class="ADAPTATIVEQUIZ-IconSubmit" alt="" />
+                    </a>
+                </div>
+                <div id="adaptativeQuizMainContainer-${id}"></div>
+                <input id="adaptativeQuizCodeAccessInput-${id}" />
+                <div id="adaptativeQuizCodeAccessDiv-${id}"></div>
+                <div id="adaptativeQuizMessageCodeAccess-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <button id="adaptativeQuizBtnStart-${id}"></button>
+            `;
+            adq.options[id] = {
+                id,
+                idevicePath: '/exe/idevices/adaptative-quiz/export/',
+                itinerary: { showCodeAccess: true, messageCodeAccess },
+                questions: [],
+                isScorm: 0,
+                evaluation: false,
+            };
+        }
+
+        it('keeps pre-rendered math in the access-code message while escaping author HTML', () => {
+            const id = 'access-message-prerendered';
+            const renderedMath =
+                '<span class="exe-math-rendered" data-latex="x^2"><svg><g></g></svg></span>';
+            setupCodeAccessGame(id, `Use <b>bold</b> ${renderedMath}`);
+
+            adq.addEvents(id);
+
+            const message = document.getElementById(`adaptativeQuizMessageCodeAccess-${id}`);
+            expect(message.querySelector('.exe-math-rendered svg')).not.toBeNull();
+            expect(message.querySelector('b')).toBeNull();
+            expect(message.innerHTML).toContain('&lt;b&gt;bold&lt;/b&gt;');
+            expect(message.textContent).not.toContain('<span');
+        });
+
+        it('requests MathJax for unrendered LaTeX in the access-code message', () => {
+            const id = 'access-message-latex';
+            const updateLatexSpy = vi
+                .spyOn(global.$exeDevices.iDevice.gamification.math, 'updateLatex')
+                .mockImplementation(() => {});
+            setupCodeAccessGame(id, 'Solve \\(x + 1 = 2\\)');
+
+            try {
+                adq.addEvents(id);
+                expect(updateLatexSpy).toHaveBeenCalledWith(`#adaptativeQuizMessageCodeAccess-${id}`);
+            } finally {
+                updateLatexSpy.mockRestore();
+            }
         });
     });
 
@@ -1182,6 +1531,12 @@ describe('adaptative-quiz export', () => {
             adq.options[id].roundCount = 2;
             adq.saveProgress(id);
             expect(parseFloat(store['cmi.core.score.raw'])).toBe(100);
+            // A score is not the end of the game: the page waits for it.
+            expect(store['cmi.core.lesson_status']).toBe('incomplete');
+
+            // endGame() reports again once the game is over.
+            adq.options[id].gameOver = true;
+            adq.saveProgress(id);
             expect(store['cmi.core.lesson_status']).toBe('passed');
 
             // The "below the activity" element shows the latest score (0-10 scale).
@@ -1197,6 +1552,7 @@ describe('adaptative-quiz export', () => {
                     gamification: {
                         scorm: { sendScoreNew: vi.fn() },
                         report: { saveEvaluation: vi.fn() },
+                        math: { hasLatex: vi.fn(() => false), updateLatex: vi.fn() },
                     },
                 },
             };
@@ -1516,5 +1872,187 @@ describe('adaptative-quiz export', () => {
             expect(q.solutionOrder).toEqual([2, 1, 4, 3]);
             expect(q.solutionWord).toBe('hello');
         });
+    });
+
+    // Nothing published the opening zero — not the play button, not the access
+    // code — so the LMS kept the previous attempt's grade and status until the
+    // learner answered a question.
+    describe('the opening zero', () => {
+        const id = 'opening-zero';
+
+        function setupStart(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizShowClue-${id}"></div>
+                <div id="adaptativeQuizShowClueText-${id}"></div>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+                <div id="adaptativeQuizStartGameDiv-${id}"></div>
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <div id="adaptativeQuizButtonsContainer-${id}"></div>
+                <div id="adaptativeQuizCodeAccessDiv-${id}"></div>
+                <div id="adaptativeQuizCubierta-${id}"></div>
+                <div id="adaptativeQuizMessageCodeAccess-${id}"></div>
+                <input id="adaptativeQuizCodeAccessInput-${id}" value="" />`;
+            adq.options[id] = Object.assign(
+                {
+                    id,
+                    questions: [{ typeSelect: 0, options: [{ text: 'A' }], solutionMulti: [0], difficulty: 1 }],
+                    // A finished attempt, so the reset is visible in the report.
+                    hits: 2,
+                    errors: 1,
+                    score: 40,
+                    scorerp: 4,
+                    numRound: 1,
+                    minQuestionsShown: 0,
+                    roundCount: 3,
+                    answeredIndexes: [],
+                    currentLevel: 1,
+                    initialLevel: 1,
+                    maxLevel: 3,
+                    maxLevelReached: 1,
+                    consecutiveCorrect: 0,
+                    consecutiveWrong: 0,
+                    gameStarted: false,
+                    gameOver: true,
+                    isScorm: 1,
+                    time: 0,
+                    progressSaveMarker: '3:2:1:1',
+                    itinerary: {},
+                    msgs: adq.msgs,
+                },
+                overrides
+            );
+            vi.spyOn(adq, 'pickNextQuestionIndex').mockReturnValue(0);
+            vi.spyOn(adq, 'renderCurrentQuestion').mockImplementation(() => {});
+            vi.spyOn(adq, 'setupTimer').mockImplementation(() => {});
+        }
+
+        function typeCode(typed) {
+            document.getElementById(`adaptativeQuizCodeAccessInput-${id}`).value = typed;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports the cleared state when the game starts', () => {
+            setupStart();
+            let stateWhenReported;
+            vi.spyOn(adq, 'sendScore').mockImplementation(() => {
+                const { hits, errors, gameOver, gameStarted } = adq.options[id];
+                stateWhenReported = { hits, errors, gameOver, gameStarted };
+            });
+
+            adq.startGame(id, true);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                gameOver: false,
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over.
+                gameStarted: true,
+            });
+        });
+
+        it('does not auto-report in manual SCORM mode', () => {
+            setupStart({ isScorm: 2 });
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.startGame(id);
+
+            expect(sendScore).not.toHaveBeenCalled();
+        });
+
+        // With a clock the code used to leave the learner on the start screen,
+        // with nothing reported at all.
+        it('starts a timed quiz straight from the access code', () => {
+            setupStart({ time: 5, itinerary: { showCodeAccess: true, codeAccess: 'abre' } });
+            typeCode('AbrE');
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.enterCodeAccess(id);
+
+            expect(adq.options[id].gameStarted).toBe(true);
+            expect(sendScore).toHaveBeenCalledWith(true, id);
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            setupStart({ time: 5, itinerary: { showCodeAccess: true, codeAccess: 'abre' } });
+            typeCode('nope');
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.enterCodeAccess(id);
+
+            expect(adq.options[id].gameStarted).toBe(false);
+            expect(sendScore).not.toHaveBeenCalled();
+        });
+    });
+});
+
+describe('adaptative-quiz minimum score notice', () => {
+    let adq;
+    const data = (overrides = {}) =>
+        Object.assign(
+            {
+                eXeFormInstructions: '<p>Instructions</p>',
+                questionsGame: [
+                    {
+                        type: 0,
+                        typeSelect: 0,
+                        question: 'Question',
+                        options: [{ text: '1' }, { text: '2' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                    },
+                ],
+                numRound: 1,
+                initialLevel: 1,
+                // The progress report alone, so no SCORM session is involved.
+                isScorm: 0,
+                evaluation: true,
+                evaluationID: 'report-1',
+                passScoreMode: 'custom',
+                passScoreCustom: 7,
+                msgs: { msgPassScore: 'Pass at %s' },
+            },
+            overrides,
+        );
+
+    function render(id, options) {
+        const template = readFileSync(join(__dirname, 'adaptative-quiz.html'), 'utf-8');
+        document.body.innerHTML = adq.renderView(options, false, template, id);
+        adq.renderBehaviour(options, false, id);
+    }
+
+    beforeEach(() => {
+        if (global.eXe && global.eXe.app && !global.eXe.app.isInExe) {
+            global.eXe.app.isInExe = () => false;
+        }
+        global.$exeDevices = realExeDevices;
+        adq = loadExport();
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('shows its own mark between the instructions and the main container', () => {
+        render('aq-notice', data());
+
+        const notice = document.querySelector('.exe-pass-score-notice');
+        expect(notice.textContent).toBe('Pass at 7');
+        expect(notice.nextElementSibling.id).toBe('adaptativeQuizMainContainer-aq-notice');
+        expect(notice.previousElementSibling.className).toBe('adaptative-quiz-instructions');
+    });
+
+    it('shows nothing at the 5 a learner takes for granted', () => {
+        render('aq-five', data({ passScoreCustom: 5 }));
+
+        expect(document.querySelector('.exe-pass-score-notice')).toBeNull();
     });
 });

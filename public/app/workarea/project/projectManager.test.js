@@ -149,7 +149,8 @@ describe('ProjectManager', () => {
         it('initializes Yjs state as disabled', () => {
             expect(projectManager._yjsEnabled).toBe(false);
             expect(projectManager._yjsBridge).toBe(null);
-            expect(projectManager._yjsBindings).toBeInstanceOf(Map);
+            // The per-editor TinyMCE binding map was removed in #2169
+            expect(projectManager._yjsBindings).toBeUndefined();
         });
 
         it('creates properties, idevices and structure engines', () => {
@@ -356,6 +357,71 @@ describe('ProjectManager', () => {
             title: 'Saved',
             body: 'The project has been saved.',
         });
+    });
+
+    // #2223
+    it('shows a modal naming the activities whose files are missing', () => {
+        projectManager.showImportNotices({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('missing-assets');
+        expect(call.body).toContain('iDevice');
+        expect(call.body).toContain('rabbit.svg');
+    });
+
+    it('resolves missing-file notice locations and localized titles from the active project', () => {
+        projectManager._yjsBridge = { documentManager: { getNavigation: () => ({
+            toArray: () => [new Map([
+                ['pageName', 'Classify content'],
+                ['blocks', { toArray: () => [new Map([
+                    ['components', { toArray: () => [new Map([['id', 'c1']])] }],
+                ])] }],
+            ])],
+        }) } };
+        mockApp.idevices = { getIdeviceInstalled: vi.fn(() => ({ title: 'Clasifica' })) };
+        projectManager.showImportNotices({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        });
+        expect(mockApp.idevices.getIdeviceInstalled).toHaveBeenCalledWith('classify');
+        expect(mockApp.modals.alert.show.mock.calls[0][0].body)
+            .toContain('iDevice 1 (Clasifica) on page &quot;Classify content&quot;');
+    });
+
+    // #2190
+    it('shows a modal naming the activities whose saved data is damaged', () => {
+        projectManager.showImportNotices({
+            malformedProperties: [{ componentId: 'c1', ideviceType: 'trueorfalse' }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('damaged-activities');
+        expect(call.body).toContain('trueorfalse');
+    });
+
+    // The alert modal is a singleton, so simultaneous reports share one dialog.
+    it('merges both reports into a single modal when both have content', () => {
+        projectManager.showImportNotices({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+            malformedProperties: [{ componentId: 'c2', ideviceType: 'trueorfalse' }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('import-warnings');
+        expect(call.body).toContain('trueorfalse');
+        expect(call.body).toContain('rabbit.svg');
+    });
+
+    it('stays silent when the import reported no problems', () => {
+        projectManager.showImportNotices({ missingAssets: [], malformedProperties: [] });
+        projectManager.showImportNotices({});
+        projectManager.showImportNotices(undefined);
+
+        expect(mockApp.modals.alert.show).not.toHaveBeenCalled();
     });
 
     it('shows the save error modal with the response', () => {

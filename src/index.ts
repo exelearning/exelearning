@@ -8,7 +8,11 @@ import { staticPlugin } from '@elysiajs/static';
 import { healthRoutes, healthCheckAlias } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { projectRoutes, symfonyCompatProjectRoutes } from './routes/project';
-import { assetsRoutes } from './routes/assets';
+import { assetsRoutes, startChunkUploadSweeper, stopChunkUploadSweeper } from './routes/assets';
+import {
+    startCleanupScheduler as startUploadSessionCleanup,
+    stopCleanupScheduler as stopUploadSessionCleanup,
+} from './services/upload-session-manager';
 import { fileManagerRoutes } from './routes/filemanager';
 import { exportRoutes } from './routes/export';
 import { convertRoutes } from './routes/convert';
@@ -33,6 +37,7 @@ import { getAppVersion } from './utils/version';
 import { getFilesDir } from './services/file-helper';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
+import { migrateAssetStorage } from './services/asset-storage-migration';
 import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
@@ -43,6 +48,7 @@ import { serveSiteThemeFile } from './utils/site-theme-file';
 import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
+import { warnIfProviderUrlsMissing } from './utils/platform-jwt';
 import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
 import { initializeCrossInstanceHandler } from './websocket/room-manager';
 import {
@@ -727,6 +733,17 @@ async function bootstrap() {
         process.exit(1);
     }
 
+    // 1b. Converge the asset storage layout (sharded directories + relative
+    // storage_path, issue #2250 / ADR-2250-01). Idempotent and resumable; a
+    // fast no-op once converged. Failures are logged and retried on the next
+    // startup — unmigrated rows keep working through the transitional
+    // legacy-path read fallback in the storage resolver.
+    try {
+        await migrateAssetStorage();
+    } catch (err) {
+        console.error('[AssetStorage] Migration failed (will retry on next startup):', err);
+    }
+
     // 2. Initialize Redis for high availability (if configured)
     if (isRedisEnabled()) {
         console.log('[Redis] REDIS_HOST is set, enabling multi-instance mode...');
@@ -812,6 +829,16 @@ async function bootstrap() {
     // 7. Start cleanup scheduler (for unsaved and guest projects)
     startCleanupScheduler(getCleanupConfigFromEnv());
 
+    // 7b. Start resource-bound sweepers: reap abandoned chunked uploads and
+    // expired upload sessions so neither disk nor memory grows unbounded.
+    startChunkUploadSweeper();
+    startUploadSessionCleanup();
+
+    // 7c. Surface a common platform-integration misconfiguration: tokens/ids set
+    // but PROVIDER_URLS empty (isAllowedProviderUrl fails closed, so callbacks
+    // would be silently rejected). Logged once at startup.
+    warnIfProviderUrlsMissing();
+
     console.log(`Elysia server running at http://localhost:${PORT}`);
     console.log(`Pages: /login, /workarea`);
     console.log(`Auth endpoints: /api/auth/login, /api/auth/logout, /api/session/check`);
@@ -831,6 +858,8 @@ async function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down...`);
     stopWebSocket();
     stopCleanupScheduler();
+    stopChunkUploadSweeper();
+    stopUploadSessionCleanup();
     await disconnectRedis();
     await closeDb();
     process.exit(0);

@@ -135,7 +135,7 @@ describe('Room Manager', () => {
             const room = addConnection('test-doc', ws);
 
             expect(room.conns.size).toBe(1);
-            expect(room.conns.has(ws)).toBe(true);
+            expect(room.conns.has(ws.data.clientId)).toBe(true);
         });
 
         it('should create room if not exists', () => {
@@ -184,6 +184,23 @@ describe('Room Manager', () => {
             expect(() => removeConnection('non-existent', ws)).not.toThrow();
         });
 
+        it('removes the connection even when close() receives a different wrapper object than open() did', () => {
+            // Elysia's Bun adapter constructs a brand-new ElysiaWS wrapper for
+            // every event (open/message/close/drain) around the same
+            // underlying Bun socket — see node_modules/elysia/dist/adapter/bun/index.js.
+            // A real close() call therefore never receives the exact object
+            // open() did, only one sharing the same ws.data (and clientId).
+            const openWs = createMockWebSocket('same-client');
+            const closeWs = { ...openWs }; // distinct object, same clientId
+            expect(closeWs).not.toBe(openWs);
+
+            addConnection('test-room', openWs);
+            removeConnection('test-room', closeWs);
+
+            const room = getRoom('test-room');
+            expect(room!.conns.size).toBe(0);
+        });
+
         it('should keep other connections intact', () => {
             const ws1 = createMockWebSocket('client-1');
             const ws2 = createMockWebSocket('client-2');
@@ -194,7 +211,7 @@ describe('Room Manager', () => {
 
             const room = getRoom('test-room');
             expect(room!.conns.size).toBe(1);
-            expect(room!.conns.has(ws2)).toBe(true);
+            expect(room!.conns.has(ws2.data.clientId)).toBe(true);
         });
     });
 
@@ -364,6 +381,22 @@ describe('Room Manager', () => {
         it('should handle non-existent room', () => {
             const ws = createMockWebSocket();
             expect(() => relayMessage(ws, 'non-existent', 'message')).not.toThrow();
+        });
+
+        it('excludes the sender even when the message event wrapper differs from the one stored at open time', () => {
+            // A real `message` event also gets its own fresh ElysiaWS wrapper
+            // (see room-manager.ts's Room.conns doc comment), so `sender` here
+            // is never the exact object stored in room.conns for that client.
+            const openWs = createMockWebSocket('sender');
+            const receiver = createMockWebSocket('receiver');
+            addConnection('relay-room-2', openWs);
+            addConnection('relay-room-2', receiver);
+
+            const messageEventWs = { ...openWs, send: openWs.send };
+            relayMessage(messageEventWs, 'relay-room-2', 'test message');
+
+            expect(openWs.send).not.toHaveBeenCalled();
+            expect(receiver.send).toHaveBeenCalledWith('test message');
         });
 
         it('should not send to closed connections', () => {

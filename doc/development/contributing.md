@@ -10,6 +10,14 @@ Thank you for considering contributing to eXeLearning! This page explains how to
 
 > New to the codebase? Start with docs or small issues labeled “good first issue”.
 
+## Generative AI and First-Time Contributors
+
+For a contributor's first pull request to eXeLearning, the implementation must be their own work. We do not accept first-time contributions generated or substantially produced with generative AI tools.
+
+The purpose of a first contribution, especially a `good first issue`, is to help the contributor become familiar with the codebase and to let maintainers evaluate their understanding of the problem and the proposed solution. First-time contributors must therefore not use generative AI to produce the implementation, tests, pull request description, or responses to review feedback on their behalf.
+
+Contributors must understand and be able to explain every change they submit. A first-time pull request that does not comply with this policy will be closed.
+
 ## Prerequisites
 
 - Docker (or Docker Desktop)
@@ -34,6 +42,56 @@ Access http://localhost:8080 and log in with the default credentials shown in `.
 - Open a Pull Request to `main` when ready.
 
 Details: [development/version-control.md](version-control.md)
+
+## Architecture Decisions & Change Documents
+
+Significant technical work is documented before or alongside the code.
+
+**Start from the change's GitHub number.** That is its tracking issue if it has
+one, and otherwise its pull request — GitHub numbers issues and pull requests from
+a single sequence, so the two never collide. That number identifies the change and
+every document it produces; there is no global ADR counter to look up or
+increment, and you should never open an issue just to obtain a number.
+
+- Write a **change document set** for large feature proposals, major refactors,
+  design gates and multi-step implementations. Each change gets a directory,
+  `doc/architecture/changes/<number>-<change-slug>/`, holding any of `proposal.md`,
+  `spec.md`, `design.md`, `research.md` and `tasks.md`. Create only the files that
+  carry real content. See [the change guide](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md).
+- Write an **Architecture Decision Record (ADR)** for durable decisions likely to
+  affect future work. ADRs live under
+  [`doc/architecture/adr/`](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md) and are named
+  `ADR-<number>-<NN>-<decision-slug>.md`, where `<NN>` is a two-digit sequence
+  scoped to that tracking number and starting at `01`.
+- An ADR is expected for changes affecting architecture, storage model, file
+  formats, database migrations, import/export behavior, the collaboration model,
+  security/sandboxing, accessibility strategy, public API contracts, or
+  AI-assisted generation policy.
+- When a design contains a durable decision, link it to an existing ADR or propose
+  a new one — don't bury the decision in the design.
+- **There is no committed index.** `make architecture-records` prints one on
+  demand. Run `make architecture-check` before pushing; CI runs the same check.
+- Mention any ADRs or change documents your PR creates or updates in the PR
+  description.
+
+### If your branch predates this convention
+
+Branches opened before the migration may still contain `ADR-NNNN` or `SDD-NNNN`
+files. To bring one up to date:
+
+1. Find the change's tracking number: its issue, or this pull request's number if
+   there is no issue.
+2. `git mv` each ADR to `ADR-<number>-<NN>-<decision-slug>.md`, numbering `01`,
+   `02`, … in the order the decisions were written.
+3. Update each file's `id` and `tracking_issue`, and make the H1 `# <id>: <title>`.
+4. Move design documents into `doc/architecture/changes/<number>-<slug>/`.
+5. Delete any `records.md` your branch adds — the index is no longer committed.
+6. Run `make architecture-check`.
+
+See the [ADR](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md) and
+[change](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md) guides for templates, identifiers and
+statuses, and [`migration-map.md`](https://github.com/exelearning/exelearning/blob/main/doc/architecture/migration-map.md) to resolve a
+retired identifier.
 
 ## Coding Standards
 

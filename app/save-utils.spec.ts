@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, mock } from 'bun:test';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const path = require('path');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
     getExt,
@@ -11,6 +13,10 @@ const {
     clearSavedNameCache,
     resolveSaveDir,
     DEFAULT_EXTENSION,
+    buildStagingPath,
+    moveStagedFile,
+    safeUnlink,
+    finalizeStagedDownload,
 } = require('./save-utils');
 
 describe('save-utils', () => {
@@ -456,6 +462,215 @@ describe('save-utils', () => {
             applySetCurrentFile(settings, '/Users/me/Desktop', 'A.elpx');
             const stored = readStored(settings, 'uuid-a');
             expect(stored).toEqual({ dir: '/Users/me/Desktop', name: 'A.elpx' });
+        });
+    });
+
+    // ── Staged-download helpers (issue #2039: single Electron save dialog) ──
+
+    describe('buildStagingPath', () => {
+        it('builds a path inside tempDir with a fixed prefix and the download extension', () => {
+            expect(buildStagingPath('/tmp', 'document.pdf', 42)).toBe(path.join('/tmp', 'exe-download-42.pdf'));
+        });
+
+        it('omits the extension when the filename has none', () => {
+            expect(buildStagingPath('/tmp', 'document', 7)).toBe(path.join('/tmp', 'exe-download-7'));
+        });
+
+        it('ignores directory components in the filename (no traversal via the name)', () => {
+            expect(buildStagingPath('/tmp', '../../etc/passwd.pdf', 1)).toBe(
+                path.join('/tmp', 'exe-download-1.pdf'),
+            );
+        });
+
+        it('sanitizes the id so it cannot escape tempDir', () => {
+            expect(buildStagingPath('/tmp', 'a.pdf', '../evil')).toBe(path.join('/tmp', 'exe-download-evil.pdf'));
+        });
+
+        it('produces distinct paths for distinct ids', () => {
+            expect(buildStagingPath('/tmp', 'a.pdf', 1)).not.toBe(buildStagingPath('/tmp', 'a.pdf', 2));
+        });
+
+        it('tolerates a nullish filename', () => {
+            expect(buildStagingPath('/tmp', null, 3)).toBe(path.join('/tmp', 'exe-download-3'));
+        });
+    });
+
+    describe('moveStagedFile', () => {
+        it('renames the staged file to the target on the same volume', () => {
+            const calls: { rename: string[][]; copy: string[][]; unlink: string[] } = {
+                rename: [],
+                copy: [],
+                unlink: [],
+            };
+            const fsImpl = {
+                renameSync: (a: string, b: string) => {
+                    calls.rename.push([a, b]);
+                },
+                copyFileSync: (a: string, b: string) => {
+                    calls.copy.push([a, b]);
+                },
+                unlinkSync: (a: string) => {
+                    calls.unlink.push(a);
+                },
+            };
+            moveStagedFile(fsImpl, '/tmp/staging.pdf', '/docs/out.pdf');
+            expect(calls.rename).toEqual([['/tmp/staging.pdf', '/docs/out.pdf']]);
+            expect(calls.copy).toEqual([]);
+            expect(calls.unlink).toEqual([]);
+        });
+
+        it('falls back to copy+unlink on a cross-device (EXDEV) rename', () => {
+            const calls: { copy: string[][]; unlink: string[] } = { copy: [], unlink: [] };
+            const fsImpl = {
+                renameSync: () => {
+                    const err = new Error('cross-device link not permitted') as NodeJS.ErrnoException;
+                    err.code = 'EXDEV';
+                    throw err;
+                },
+                copyFileSync: (a: string, b: string) => {
+                    calls.copy.push([a, b]);
+                },
+                unlinkSync: (a: string) => {
+                    calls.unlink.push(a);
+                },
+            };
+            moveStagedFile(fsImpl, '/tmp/s.pdf', '/d/out.pdf');
+            expect(calls.copy).toEqual([['/tmp/s.pdf', '/d/out.pdf']]);
+            expect(calls.unlink).toEqual(['/tmp/s.pdf']);
+        });
+
+        it('rethrows non-EXDEV rename errors', () => {
+            const fsImpl = {
+                renameSync: () => {
+                    const err = new Error('permission denied') as NodeJS.ErrnoException;
+                    err.code = 'EACCES';
+                    throw err;
+                },
+                copyFileSync: () => {},
+                unlinkSync: () => {},
+            };
+            expect(() => moveStagedFile(fsImpl, '/tmp/s.pdf', '/d/out.pdf')).toThrow('permission denied');
+        });
+    });
+
+    describe('safeUnlink', () => {
+        it('removes an existing file', () => {
+            const removed: string[] = [];
+            const fsImpl = {
+                unlinkSync: (p: string) => {
+                    removed.push(p);
+                },
+            };
+            safeUnlink(fsImpl, '/tmp/s.pdf');
+            expect(removed).toEqual(['/tmp/s.pdf']);
+        });
+
+        it('never throws when unlink fails', () => {
+            const fsImpl = {
+                unlinkSync: () => {
+                    throw new Error('ENOENT');
+                },
+            };
+            expect(() => safeUnlink(fsImpl, '/tmp/gone.pdf')).not.toThrow();
+        });
+
+        it('does nothing for a nullish path', () => {
+            let called = false;
+            const fsImpl = {
+                unlinkSync: () => {
+                    called = true;
+                },
+            };
+            safeUnlink(fsImpl, null);
+            expect(called).toBe(false);
+        });
+    });
+
+    describe('finalizeStagedDownload (issue #2039 — single save dialog)', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        function makeDeps(overrides: Record<string, any> = {}) {
+            const moves: string[][] = [];
+            const cleanups: string[] = [];
+            const savedDirs: string[][] = [];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const deps: Record<string, any> = {
+                state: 'completed',
+                stagingPath: '/tmp/exe-download-1.pdf',
+                suggestedName: 'document.pdf',
+                owner: { id: 'win' },
+                lastDir: '/docs',
+                projectKey: 'proj-uuid',
+                promptSave: mock(async () => '/docs/chosen.pdf'),
+                setLastSaveDir: mock((key: string, dir: string) => {
+                    savedDirs.push([key, dir]);
+                }),
+                move: mock((s: string, t: string) => {
+                    moves.push([s, t]);
+                }),
+                cleanup: mock((p: string) => {
+                    cleanups.push(p);
+                }),
+                ...overrides,
+            };
+            return { deps, moves, cleanups, savedDirs };
+        }
+
+        it('prompts exactly once and moves the staged file to the chosen path (no double dialog)', async () => {
+            const { deps, moves, cleanups } = makeDeps();
+            const result = await finalizeStagedDownload(deps);
+            // The core no-double-dialog property: a single native dialog per download.
+            expect(deps.promptSave.mock.calls.length).toBe(1);
+            expect(moves).toEqual([['/tmp/exe-download-1.pdf', '/docs/chosen.pdf']]);
+            expect(cleanups).toEqual([]);
+            expect(result).toEqual({ ok: true, path: '/docs/chosen.pdf' });
+        });
+
+        it('records the chosen directory for the project key', async () => {
+            const { deps, savedDirs } = makeDeps();
+            await finalizeStagedDownload(deps);
+            expect(savedDirs).toEqual([['proj-uuid', path.dirname('/docs/chosen.pdf')]]);
+        });
+
+        it('cleans up and does not move when the user cancels the dialog', async () => {
+            const { deps, moves, cleanups } = makeDeps({ promptSave: mock(async () => null) });
+            const result = await finalizeStagedDownload(deps);
+            expect(deps.promptSave.mock.calls.length).toBe(1);
+            expect(moves).toEqual([]);
+            expect(cleanups).toEqual(['/tmp/exe-download-1.pdf']);
+            expect(result).toEqual({ ok: false, canceled: true, error: 'canceled' });
+        });
+
+        it('cleans up without prompting when the download did not complete', async () => {
+            const { deps, cleanups } = makeDeps({ state: 'interrupted' });
+            const result = await finalizeStagedDownload(deps);
+            expect(deps.promptSave.mock.calls.length).toBe(0);
+            expect(cleanups).toEqual(['/tmp/exe-download-1.pdf']);
+            expect(result).toEqual({ ok: false, error: 'interrupted' });
+        });
+
+        it('treats an interrupted-but-complete download as completed', async () => {
+            const { deps, moves } = makeDeps({ state: 'interrupted', stagedLooksComplete: () => true });
+            const result = await finalizeStagedDownload(deps);
+            expect(deps.promptSave.mock.calls.length).toBe(1);
+            expect(moves.length).toBe(1);
+            expect(result.ok).toBe(true);
+        });
+
+        it('cleans up and reports an error when the move fails', async () => {
+            const { deps, cleanups } = makeDeps({
+                move: mock(() => {
+                    throw new Error('disk full');
+                }),
+            });
+            const result = await finalizeStagedDownload(deps);
+            expect(cleanups).toEqual(['/tmp/exe-download-1.pdf']);
+            expect(result).toEqual({ ok: false, error: 'disk full' });
+        });
+
+        it('works without an optional setLastSaveDir dependency', async () => {
+            const { deps } = makeDeps({ setLastSaveDir: undefined });
+            const result = await finalizeStagedDownload(deps);
+            expect(result.ok).toBe(true);
         });
     });
 });

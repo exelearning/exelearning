@@ -98,6 +98,7 @@ var $periodicTable = {
             const pt = $periodicTable.createInterfacePT(i);
 
             dl.before(pt).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ptGameMinimize-' + i).hide();
             $('#ptGameContainer-' + i).hide();
@@ -330,6 +331,24 @@ var $periodicTable = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors and gameOver, but nothing told the LMS.
+     * updateGameBoard() does report, and startGame() calls it — but one line
+     * before raising gameStarted, and that report is gated on the flag, so the
+     * opening state never went out and the menu kept the previous attempt's
+     * grade and status.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $periodicTable.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $periodicTable.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $periodicTable.options[instance];
 
@@ -355,7 +374,6 @@ var $periodicTable = {
             .off('click', '.Games-SendScore');
         $('#ptStartGame-' + instance).off('click');
         $('#ptStartGameMobile-' + instance).off('click');
-        $(window).off('unload.PeriodicTable beforeunload.PeriodicTable');
     },
 
     addEvents: function (instance) {
@@ -428,17 +446,6 @@ var $periodicTable = {
         });
 
         $('#ptPNumber-' + instance).text(mOptions.number);
-
-        $(window).on(
-            'unload.PeriodicTable beforeunload.PeriodicTable',
-            function () {
-                if ($periodicTable.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $periodicTable.mScorm
-                    );
-                }
-            }
-        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -984,6 +991,17 @@ var $periodicTable = {
             $number.prop('disabled', true);
             $name.prop('disabled', true);
             $symbol.prop('disabled', true);
+            // Answering the last question ends the attempt. Raise the flag and
+            // report now, outside the reveal delay: sitting inside it, the
+            // report arrived five seconds late and merely repeated the one
+            // gameMobileOver makes, so a learner who left during the reveal
+            // lost both the mark and the completion.
+            if (mOptions.active >= mOptions.number) {
+                mOptions.gameOver = true;
+                    if (mOptions.isScorm == 1) {
+                        $periodicTable.sendScore(true, instance);
+                    }
+                }
             setTimeout(function () {
                 if (mOptions.active >= mOptions.number) {
                     $periodicTable.gameMobileOver(instance);
@@ -1013,6 +1031,14 @@ var $periodicTable = {
                 $number.prop('disabled', true);
                 $name.prop('disabled', true);
                 $symbol.prop('disabled', true);
+                // Same as the correct branch above: the flag and the report go
+                // out now, not five seconds later inside the reveal.
+                if (mOptions.active >= mOptions.number) {
+                    mOptions.gameOver = true;
+                        if (mOptions.isScorm == 1) {
+                            $periodicTable.sendScore(true, instance);
+                        }
+                    }
                 setTimeout(function () {
                     if (mOptions.active >= mOptions.number) {
                         $periodicTable.gameMobileOver(instance);
@@ -1084,6 +1110,14 @@ var $periodicTable = {
             mOptions.active++;
             $periodicTable.showMessage(2, mOptions.msgs.msgIsOKEQ, instance);
             if (mOptions.active >= mOptions.number) {
+                // Answering the last question ends the attempt. Raise the flag and report
+                // here, so the mark and the completion reach the LMS now instead of after
+                // the reveal delay below — a learner who leaves during it would otherwise
+                // lose both.
+                mOptions.gameOver = true;
+                if (mOptions.isScorm == 1) {
+                    $periodicTable.sendScore(true, instance);
+                }
                 setTimeout(function () {
                     $periodicTable.gameOver(instance);
                 }, 3000);
@@ -1155,6 +1189,15 @@ var $periodicTable = {
                         dataclicked
                     );
                     $periodicTable.showMessage(1, msg3);
+                    // Running out of attempts on the last element ends the
+                    // attempt just as answering it does, so it gets the same
+                    // early report the correct branch above already had — this
+                    // one had none, and a learner who left during the three
+                    // seconds lost the mark and the completion.
+                    mOptions.gameOver = true;
+                    if (mOptions.isScorm == 1) {
+                        $periodicTable.sendScore(true, instance);
+                    }
                     setTimeout(function () {
                         $periodicTable.gameOver(instance);
                     }, 3000);
@@ -1562,26 +1605,50 @@ var $periodicTable = {
                 .show();
             $('#ptPTime-' + instance).show();
             mOptions.counter = mOptions.time * 60;
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#ptMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'ptMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (mOptions.gameStarted) {
                     mOptions.counter--;
                     $periodicTable.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
-                        clearInterval(mOptions.counterClock);
-                        $periodicTable.checkAnswers(instance);
+                        clearInterval(clock);
+                        // Time is up, so the attempt ends. This used to call
+                        // checkAnswers(), which does not exist anywhere in this
+                        // iDevice: the timer threw a TypeError instead, so the
+                        // game never ended, no score was reported and the SCO
+                        // never completed.
+                        //
+                        // Each layout has its own ending, and only the mobile
+                        // one fades out #ptlLightboxMobile and brings
+                        // #ptStartGameMobileDiv back. Calling the desktop
+                        // gameOver() on a phone left the learner looking at an
+                        // open overlay with no way to play again.
+                        if ($periodicTable.isMobileDevice()) {
+                            $periodicTable.gameMobileOver(instance);
+                        } else {
+                            $periodicTable.gameOver(instance);
+                        }
                         return;
                     }
                 }
             }, 1000);
+            mOptions.counterClock = clock;
             $periodicTable.updateTime(mOptions.time * 60, instance);
         }
         if ($periodicTable.isMobileDevice()) {
@@ -1597,6 +1664,9 @@ var $periodicTable = {
         $periodicTable.updateGameBoard(instance);
 
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $periodicTable.saveScormScore(instance);
     },
 
     enterCodeAccess: function (instance) {
@@ -1633,7 +1703,7 @@ var $periodicTable = {
                 .replace('%s', score)
                 .replace('%s', mOptions.hits)
                 .replace('%s', mOptions.number),
-            type = score < 5 ? 1 : 2;
+            type = score < $exe.passScore.resolve(mOptions) ? 1 : 2;
         $('#ptQuestionP-' + instance).hide();
 
         $periodicTable.showMessage(type, message, instance);
@@ -1682,7 +1752,7 @@ var $periodicTable = {
                 .replace('%s', score)
                 .replace('%s', mOptions.hits)
                 .replace('%s', mOptions.number),
-            type = score < 5 ? 1 : 2;
+            type = score < $exe.passScore.resolve(mOptions) ? 1 : 2;
 
         $periodicTable.showMessage(type, message, instance);
 

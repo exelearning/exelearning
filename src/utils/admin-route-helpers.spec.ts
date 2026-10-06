@@ -233,25 +233,41 @@ describe('Admin Route Helpers', () => {
             process.env = { ...originalEnv };
         });
 
-        test('should return JWT_SECRET if set', () => {
+        // getJwtSecret now delegates to the single canonical resolver in
+        // routes/auth (API_JWT_SECRET || JWT_SECRET || 'dev_secret_change_me'),
+        // so the verify secret always matches the sign secret. APP_SECRET is no
+        // longer used for internal-auth verification (it is only for platform
+        // JWTs) — see H3.
+        test('should prefer API_JWT_SECRET when set', () => {
+            process.env.API_JWT_SECRET = 'api-secret';
+            process.env.JWT_SECRET = 'my-jwt-secret';
+
+            expect(getJwtSecret()).toBe('api-secret');
+        });
+
+        test('should return JWT_SECRET when API_JWT_SECRET is not set', () => {
+            delete process.env.API_JWT_SECRET;
             process.env.JWT_SECRET = 'my-jwt-secret';
             process.env.APP_SECRET = 'my-app-secret';
 
             expect(getJwtSecret()).toBe('my-jwt-secret');
         });
 
-        test('should return APP_SECRET if JWT_SECRET not set', () => {
+        test('should NOT fall back to APP_SECRET for internal auth', () => {
+            delete process.env.API_JWT_SECRET;
             delete process.env.JWT_SECRET;
             process.env.APP_SECRET = 'my-app-secret';
 
-            expect(getJwtSecret()).toBe('my-app-secret');
+            expect(getJwtSecret()).not.toBe('my-app-secret');
+            expect(getJwtSecret()).toBe('dev_secret_change_me');
         });
 
-        test('should return default if no env vars set', () => {
+        test('should return the canonical default if no env vars set', () => {
+            delete process.env.API_JWT_SECRET;
             delete process.env.JWT_SECRET;
             delete process.env.APP_SECRET;
 
-            expect(getJwtSecret()).toBe('elysia-dev-secret-change-me');
+            expect(getJwtSecret()).toBe('dev_secret_change_me');
         });
     });
 });

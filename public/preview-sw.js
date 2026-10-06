@@ -4,7 +4,29 @@
  * Adapted from eXeViewer approach (https://github.com/exelearning/exeviewer)
  */
 
-const SW_VERSION = '1.0.0';
+/**
+ * Resolve the worker version from the registration URL query (?v=<app version>).
+ * app.js registers the worker with the app version so that every release installs a fresh
+ * worker and GET_STATUS can reveal an app/worker mismatch.
+ * @param {string|undefined} search - location.search of the worker script
+ * @returns {string} The version, or "unversioned" when the query is missing
+ */
+function resolveServiceWorkerVersion(search) {
+    try {
+        const version = new URLSearchParams(search || '').get('v');
+        return version && version.trim() ? version.trim() : 'unversioned';
+    } catch (e) {
+        return 'unversioned';
+    }
+}
+
+/** Revision of this script. Bump it whenever preview-sw.js changes. */
+const SW_VERSION = '1.2.0';
+
+/** App version the worker was registered with (?v=), reported by GET_STATUS. */
+const SW_APP_VERSION = resolveServiceWorkerVersion(
+    typeof self !== 'undefined' && self.location ? self.location.search : ''
+);
 
 /**
  * MIME types for common file extensions
@@ -216,6 +238,74 @@ function getMimeType(filename) {
 }
 
 /**
+ * Detect a MIME type from a file's leading bytes (magic-byte sniffing).
+ *
+ * Minimal twin of `sniffMimeFromBytes` in public/app/common/mime-sniff.js —
+ * the service worker is a standalone file that cannot import app modules. Keep
+ * the two in sync. Lets the SW serve the correct Content-Type for assets that
+ * lost their extension (e.g. a PDF stored as `asset-<uuid>`), so iframe/object
+ * embeds render inline instead of being downloaded.
+ *
+ * @param {Uint8Array|ArrayBuffer|null|undefined} input
+ * @returns {string|null} MIME type, or null when unrecognized.
+ */
+function sniffMimeFromBytes(input) {
+    if (input == null) return null;
+    const b = input instanceof Uint8Array ? input : (input instanceof ArrayBuffer ? new Uint8Array(input) : null);
+    if (!b || b.length < 3) return null;
+
+    const isAscii = (text, offset = 0) => {
+        if (b.length < offset + text.length) return false;
+        for (let i = 0; i < text.length; i++) {
+            if (b[offset + i] !== text.charCodeAt(i)) return false;
+        }
+        return true;
+    };
+    const startsWith = (sig) => {
+        if (b.length < sig.length) return false;
+        for (let i = 0; i < sig.length; i++) {
+            if (b[i] !== sig[i]) return false;
+        }
+        return true;
+    };
+
+    if (isAscii('%PDF-')) return 'application/pdf';
+    if (startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
+    if (startsWith([0xff, 0xd8, 0xff])) return 'image/jpeg';
+    if (isAscii('GIF87a') || isAscii('GIF89a')) return 'image/gif';
+    if (isAscii('RIFF')) {
+        if (isAscii('WEBP', 8)) return 'image/webp';
+        if (isAscii('WAVE', 8)) return 'audio/wav';
+    }
+    if (startsWith([0x50, 0x4b, 0x03, 0x04]) || startsWith([0x50, 0x4b, 0x05, 0x06]) || startsWith([0x50, 0x4b, 0x07, 0x08])) {
+        return 'application/zip';
+    }
+    if (isAscii('OggS')) return 'audio/ogg';
+    if (isAscii('ID3')) return 'audio/mpeg';
+    if (isAscii('ftyp', 4)) return 'video/mp4';
+
+    let textStart = 0;
+    if (b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) textStart = 3;
+    if (isAscii('<?xml', textStart) || isAscii('<svg', textStart)) return 'image/svg+xml';
+
+    return null;
+}
+
+/**
+ * Resolve the Content-Type to serve for a file: trust a known extension, and
+ * only sniff the bytes when the extension is unknown/missing (octet-stream).
+ *
+ * @param {string} filePath
+ * @param {Uint8Array} body
+ * @returns {string} MIME type to serve.
+ */
+function resolveServedMime(filePath, body) {
+    const mime = getMimeType(filePath);
+    if (mime !== 'application/octet-stream') return mime;
+    return sniffMimeFromBytes(body) || mime;
+}
+
+/**
  * Extract file path from viewer URL
  * @param {string} pathname - The URL pathname
  * @param {number} viewerIndex - Index where /viewer/ starts
@@ -313,8 +403,8 @@ const PDF_EMBED_HANDLER_SCRIPT = `
             return vi >= 0 ? window.location.pathname.substring(0, vi) + '/' : '/';
         })();
 
-        import(bp + 'libs/pdfjs/pdf.min.mjs').then(function(m) {
-            m.GlobalWorkerOptions.workerSrc = bp + 'libs/pdfjs/pdf.worker.min.mjs';
+        import(bp + 'libs/pdfjs/pdf.min.js').then(function(m) {
+            m.GlobalWorkerOptions.workerSrc = bp + 'libs/pdfjs/pdf.worker.min.js';
             for (var i = 0; i < embeds.length; i++) renderPdfEmbed(m, embeds[i]);
         }).catch(function(err) {
             console.warn('[Preview] PDF.js load failed:', err);
@@ -574,7 +664,7 @@ function createSuccessResponse(body, mimeType) {
  * content (top-level, iframe, embed, object). This viewer uses PDF.js to parse and
  * render each page to <canvas> elements, bypassing Chrome's SW-PDF restrictions entirely.
  *
- * The viewer loads pdf.min.mjs from the network (not SW-intercepted) and uses
+ * The viewer loads pdf.min.js from the network (not SW-intercepted) and uses
  * window.location.href as the PDF source. When PDF.js fetches it, the SW intercepts
  * the request as a regular fetch (destination ''), serving raw PDF bytes — no loop.
  *
@@ -622,8 +712,8 @@ function createPdfViewerResponse(filePath, pathname, basePath) {
         '<div id="error"></div>' +
         '<script type="module">' +
         'try{' +
-        'var m=await import("' + safeBasePath + 'libs/pdfjs/pdf.min.mjs");' +
-        'm.GlobalWorkerOptions.workerSrc="' + safeBasePath + 'libs/pdfjs/pdf.worker.min.mjs";' +
+        'var m=await import("' + safeBasePath + 'libs/pdfjs/pdf.min.js");' +
+        'm.GlobalWorkerOptions.workerSrc="' + safeBasePath + 'libs/pdfjs/pdf.worker.min.js";' +
         'var pdf=await m.getDocument(window.location.href).promise;' +
         'document.getElementById("loading").style.display="none";' +
         'var tb=document.getElementById("tb");tb.style.display="flex";' +
@@ -686,12 +776,16 @@ function createPdfViewerResponse(filePath, pathname, basePath) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         SW_VERSION,
+        SW_APP_VERSION,
+        resolveServiceWorkerVersion,
         MIME_TYPES,
         EXTERNAL_LINK_HANDLER_SCRIPT,
         PREVIEW_REFRESH_SCRIPT,
         KEEPALIVE_SCRIPT,
         PDF_EMBED_HANDLER_SCRIPT,
         getMimeType,
+        sniffMimeFromBytes,
+        resolveServedMime,
         extractFilePath,
         findFileInContent,
         convertToUint8Array,
@@ -740,7 +834,7 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
      */
     self.addEventListener('install', event => {
         // eslint-disable-next-line no-console
-        console.log(`[Preview SW] Service Worker v${SW_VERSION} installing...`);
+        console.log(`[Preview SW] Service Worker v${SW_VERSION} (app ${SW_APP_VERSION}) installing...`);
         // Skip waiting to activate immediately
         event.waitUntil(self.skipWaiting());
     });
@@ -750,7 +844,7 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
      */
     self.addEventListener('activate', event => {
         // eslint-disable-next-line no-console
-        console.log(`[Preview SW] Service Worker v${SW_VERSION} activated`);
+        console.log(`[Preview SW] Service Worker v${SW_VERSION} (app ${SW_APP_VERSION}) activated`);
         // Claim all clients immediately
         event.waitUntil(self.clients.claim());
     });
@@ -868,6 +962,7 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
                     ready: contentReady,
                     fileCount: contentFiles.size,
                     version: SW_VERSION,
+                    appVersion: SW_APP_VERSION,
                     files: Array.from(contentFiles.keys()),
                 };
 
@@ -965,7 +1060,13 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
         const fileData = findFileInContent(contentFiles, filePath);
 
         if (fileData) {
-            const mimeType = getMimeType(filePath);
+            let body = convertToUint8Array(fileData);
+
+            // Resolve the Content-Type from the extension, falling back to
+            // content sniffing when the asset lost its extension (e.g. a PDF
+            // stored as `asset-<uuid>`). Without this it would be served as
+            // application/octet-stream and force-downloaded on every render.
+            const mimeType = resolveServedMime(filePath, body);
 
             // PDF top-level navigation: serve PDF.js viewer HTML
             // Chrome blocks PDFium for ALL SW-served PDFs. PDF.js renders to canvas instead.
@@ -974,8 +1075,6 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
                 const swBasePath = pathname.substring(0, viewerIndex) + '/';
                 return createPdfViewerResponse(filePath, pathname, swBasePath);
             }
-
-            let body = convertToUint8Array(fileData);
 
             // For HTML files, inject helper scripts
             if (mimeType.startsWith('text/html')) {

@@ -33,6 +33,7 @@ import {
     handleWebSocketMessage,
     handleWebSocketClose,
     WsData,
+    YJS_WS_MAX_PAYLOAD_LENGTH,
     type YjsWebSocketQueries,
     type YjsWebSocketSessionManager,
     type YjsWebSocketAuth,
@@ -212,6 +213,26 @@ describe('Yjs WebSocket Service', () => {
             const routes = createWebSocketRoutes();
             const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
             expect(wsRoute).toBeDefined();
+        });
+
+        it('configures an explicit conservative maxPayloadLength (DoS hardening, BUG H8)', () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+            expect(wsRoute).toBeDefined();
+
+            const wsHook = (wsRoute?.hooks as any)?.websocket;
+            expect(wsHook).toBeDefined();
+
+            // Must be set explicitly rather than relying on Bun's 16MB default.
+            expect(wsHook.maxPayloadLength).toBe(YJS_WS_MAX_PAYLOAD_LENGTH);
+        });
+
+        it('caps maxPayloadLength below Bun default but above a few-MB Yjs sync', () => {
+            // 8MB: comfortably above a multi-MB Yjs document sync, and at most
+            // half of Bun's 16MB default so a single frame cannot allocate 16MB.
+            expect(YJS_WS_MAX_PAYLOAD_LENGTH).toBe(8 * 1024 * 1024);
+            expect(YJS_WS_MAX_PAYLOAD_LENGTH).toBeLessThanOrEqual(16 * 1024 * 1024);
+            expect(YJS_WS_MAX_PAYLOAD_LENGTH).toBeGreaterThanOrEqual(4 * 1024 * 1024);
         });
     });
 
@@ -1246,6 +1267,62 @@ describe('Yjs WebSocket Service', () => {
 
             expect(result.success).toBe(true);
             expect(result.error).toBeUndefined();
+        });
+
+        it('does not register a room connection if the socket closed while awaiting token verification', async () => {
+            // Reproduces the issue #2255 benchmark finding: `open(ws)` awaits
+            // verifyToken/checkProjectAccess, but Bun fires `close(ws)`
+            // independently of that pending promise. If the socket closes
+            // during the await, handleWebSocketClose runs first (a no-op,
+            // since ws.data.docName isn't set yet) and no further `close`
+            // event will ever fire for this connection.
+            let resolveVerify!: (user: { sub: number; email: string; roles: string[] } | null) => void;
+            const mockAuth: YjsWebSocketAuth = {
+                verifyToken: () =>
+                    new Promise(resolve => {
+                        resolveVerify = resolve;
+                    }),
+            };
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: mockAuth,
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            // Before `open` populates it, real Elysia/Bun ws.data only has
+            // {params, query} — none of the WsData fields the default mock
+            // pre-fills. Override them to undefined so handleWebSocketClose
+            // sees the same "not populated yet" state it would in production.
+            const ws = createMockWebSocket({
+                clientId: undefined,
+                userId: undefined,
+                projectUuid: undefined,
+                docName: undefined,
+            } as unknown as Partial<WsData>) as any;
+            const docName = 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            // In-memory session so checkWebSocketProjectAccess grants access
+            // without touching the (unmocked-here) DB path, isolating the
+            // scenario to the verifyToken await specifically.
+            mockSessions.set('a1b2c3d4-e5f6-7890-abcd-ef1234567890', {
+                sessionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                fileName: 'Test.elp',
+            });
+
+            const openPromise = handleWebSocketOpen(ws, docName, 'valid-token-user-1');
+
+            // Client disconnects while verifyToken is still pending: Bun's
+            // close handler fires with ws.data still unpopulated.
+            ws.readyState = 3; // CLOSED
+            handleWebSocketClose(ws, ws.data);
+
+            // The awaited verification now resolves successfully.
+            resolveVerify({ sub: 1, email: 'user1@test.com', roles: ['ROLE_USER'] });
+            const result = await openPromise;
+
+            expect(result.success).toBe(false);
+            expect(roomManager.getRoom(docName)).toBeUndefined();
         });
 
         it('should register client with asset coordinator on success', async () => {

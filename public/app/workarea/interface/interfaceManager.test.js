@@ -8,6 +8,7 @@ import ShareProjectButton from './elements/shareButton.js';
 import DownloadProjectButton from './elements/downloadButton.js';
 import PreviewButton from './elements/previewButton.js';
 import LogoutButton from './elements/logoutButton.js';
+import FocusedEditMode from './focusedEditMode.js';
 
 // Mock all dependencies
 vi.mock('./loadingScreen.js');
@@ -19,6 +20,7 @@ vi.mock('./elements/shareButton.js');
 vi.mock('./elements/downloadButton.js');
 vi.mock('./elements/previewButton.js');
 vi.mock('./elements/logoutButton.js');
+vi.mock('./focusedEditMode.js');
 
 describe('InterfaceManager', () => {
   let manager;
@@ -53,6 +55,7 @@ describe('InterfaceManager', () => {
       expect(DownloadProjectButton).toHaveBeenCalled();
       expect(PreviewButton).toHaveBeenCalled();
       expect(LogoutButton).toHaveBeenCalled();
+      expect(FocusedEditMode).toHaveBeenCalledWith(mockApp);
     });
   });
 
@@ -68,6 +71,7 @@ describe('InterfaceManager', () => {
       expect(manager.shareButton.init).toHaveBeenCalled();
       expect(manager.previewButton.init).toHaveBeenCalled();
       expect(manager.logoutButton.init).toHaveBeenCalled();
+      expect(manager.focusedEditMode.init).toHaveBeenCalled();
     });
 
     it('should not initialize concurrentUsers in offline mode', async () => {

@@ -477,7 +477,7 @@ The workarea preview uses a **Service Worker** to serve exported HTML files dire
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| **Service Worker** | `public/app/preview-sw.js` | Intercepts `/viewer/*` requests |
+| **Service Worker** | `public/preview-sw.js` | Intercepts `/viewer/*` requests |
 | **Preview Panel** | `public/app/workarea/interface/elements/previewPanel.js` | UI and orchestration |
 | **Export Generator** | `src/shared/export/exporters/Html5Exporter.ts` | Generates export files |
 | **Browser API** | `src/shared/export/browser/index.ts` | Browser-side export functions |
@@ -497,8 +497,130 @@ The workarea preview uses a **Service Worker** to serve exported HTML files dire
 { type: 'SET_CONTENT', files: Map<path, ArrayBuffer> }  // Set preview content
 { type: 'CLEAR_CONTENT' }                                // Clear preview cache
 { type: 'CLAIM_CLIENTS' }                                // Activate SW for page
+{ type: 'GET_STATUS' }                                   // Health check; replies STATUS { version, appVersion, ready, fileCount }
 ```
 
+### 8.6 Public View (Read-Only) & Untrusted Content Isolation
+
+The **public view** (`GET /view/:publicViewId`) exposes a published project at an
+opaque, shareable URL with no authentication. It serves **author-provided HTML/JS**,
+which must be treated as **untrusted**: a teacher can paste AI-generated or copied
+code, and the link may be opened by anyone — including a logged-in admin.
+
+#### Why it cannot reuse the Service Worker preview
+
+The workarea preview (§8.1–8.5) serves content from the **same origin** as the app.
+That is acceptable for the editor (the author previews their own content), but it is
+**unsafe for a public link**: same-origin content can read the `auth` cookie surface,
+call the authenticated API with the viewer's session, reach `window.parent`, and open
+the app's IndexedDB / Cache API. The danger scales with the role of whoever opens the
+link. This is exactly the same-origin failure mode documented in the "untrusted
+content in educational resources" security study (§4.5, §6.2).
+
+A naive fix ("just add `sandbox`") does not work here: a `sandbox` without
+`allow-same-origin` gives the document an **opaque origin**, and a Service Worker
+**cannot control opaque-origin clients** — the content would never load. True
+isolation therefore requires serving the public content **from the server** instead
+of via the SW.
+
+#### Design (opaque origin, no subdomain)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  /view/:publicViewId   (trusted loader page, app origin)      │
+│  views/viewer/viewer.njk                                      │
+│      └── <iframe sandbox="allow-scripts …"  (NO same-origin)  │
+│              src="/view/:publicViewId/_/index.html">          │
+└──────────────────────────────────────────────────────────────┘
+                               │  (opaque origin)
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│  GET /view/:publicViewId/_/*        (untrusted content)       │
+│  src/routes/pages.ts → getPublicViewFile()                    │
+│      ├── buildHtml5PreviewExport() (cached by updated_at)     │
+│      ├── path-traversal-safe file lookup                      │
+│      └── Response headers:                                    │
+│            Content-Security-Policy: sandbox … (R3)            │
+│            Permissions-Policy / X-Content-Type-Options        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+The published files are served directly by the server from the project's HTML5
+export (built once, then cached in memory keyed by `publicViewId:updated_at`). Both
+the iframe `sandbox` attribute and a **response-level `Content-Security-Policy:
+sandbox …` directive** are applied, so the document stays in an opaque origin **even
+if the content URL is opened directly** (new tab, popup, fullscreen, raw URL) — not
+only when embedded in the loader iframe.
+
+This implements requirements R1–R4 of the study:
+
+| Req | Implementation |
+|-----|----------------|
+| R1 — opaque origin by default | `sandbox` **without** `allow-same-origin` |
+| R2 — single source of truth for tokens | `src/shared/security/publicViewSandbox.ts` (used by both the iframe attribute and the CSP header) |
+| R3 — `sandbox` in the response CSP | `Content-Security-Policy: sandbox …` on every `/_/ *` response |
+| R4 — restrictive CSP + Permissions-Policy | `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'self'`, camera/mic/geo/payment disabled |
+
+With the opaque origin, untrusted content **cannot**: reach `window.parent`/`top`
+(SecurityError), read or send the `auth` cookie (cross-site → `SameSite=lax` not
+sent), call `/api/...` as the viewer, or open the app's IndexedDB / Cache API.
+
+**Site-wide switch.** The whole feature is off by default. `PUBLIC_VIEW_ENABLED` sets
+the installation default and the `/admin` > Sharing toggle (stored in `app_settings`)
+overrides it; both are read through `isPublicViewFeatureEnabled()` in
+`src/services/app-settings.ts`. While it is off, both `/view/*` routes return 404, the
+enable/regenerate endpoints answer 403 `FEATURE_DISABLED` (turning a link off is still
+allowed), and the sharing payload reports `publicViewAvailable: false`, so the Share
+dialog hides the public-link card. Per-project flags are kept, so re-enabling the
+feature restores the links that were already on.
+
+**CSP profile.** Selectable via the `PUBLIC_VIEW_CSP_PROFILE` env var. The default
+`compatible` profile relies on the opaque origin to protect the session and still
+allows external `https:` assets (CDN, MathJax, external images, YouTube/Vimeo embeds)
+to avoid breaking legitimate content. Setting it to `strict` additionally cuts data
+exfiltration (`connect-src 'none'`, no open `https:`, `'unsafe-eval'` dropped) for
+sensitive deployments, at the cost of breaking content that depends on external
+resources (study §6.3).
+
+**Cost protection.** The export for a public view is built once and the unzipped
+result cached in memory (LRU-capped). Concurrent first-time requests for the same
+project are **coalesced onto a single in-flight build** (no thundering herd), and an
+export exceeding the size/file-count bounds is rejected. Per-IP rate limiting is left
+to the reverse proxy / a dedicated middleware.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Isolation policy** | `src/shared/security/publicViewSandbox.ts` | Single source of truth for sandbox tokens + CSP/Permissions-Policy headers |
+| **Content service** | `src/services/public-view-content.ts` | Builds/caches the export, path-safe file lookup |
+| **Routes** | `src/routes/pages.ts` | `/view/:publicViewId` (loader) and `/view/:publicViewId/_/*` (content) |
+| **Loader template** | `views/viewer/viewer.njk` | Sandboxed iframe |
+
+> Note: the workarea preview (§8.1–8.5) keeps the same-origin Service Worker, since
+> the author is previewing their own content. Only the **public** view is isolated.
+
+### 8.7 Registration Lifecycle and Self-Healing
+
+Browser profiles keep Service Worker registrations indefinitely, so the app never trusts a
+stored worker blindly (see [ADR-2429-01](architecture/adr/ADR-2429-01-self-heal-preview-service-worker-registration.md)).
+`App.registerPreviewServiceWorker()` in `public/app/app.js`:
+
+1. Unregisters `preview-sw.js` registrations whose scope contains the preview scope
+   (`<basePath>viewer/`), e.g. the root scope used by pre-4.0.0 builds. Sibling scopes of
+   other deployments and the PWA `service-worker.js` are left alone.
+2. Registers `preview-sw.js?v=<app version>` at `<basePath>viewer/`, runs
+   `registration.update()` when `register()` did not already start an install, and waits for
+   the installed worker to activate. A new release therefore installs a new worker before any
+   content is sent.
+3. Pings the worker with `GET_STATUS` (3 s). A worker that does not answer is unregistered and
+   registered again once; if it still does not answer the promise resolves `null` and the
+   preview panel falls back to the blob URL renderer.
+
+`App.sendContentToPreviewSW(files, options, { regenerateFiles })` applies the same recovery
+when `SET_CONTENT` is never confirmed: it re-registers the worker once and, because the
+`ArrayBuffer`s were transferred, resends files produced by the caller's `regenerateFiles`
+callback. If that recovery fails the worker is marked unavailable, as after a failed
+registration, and the preview panel falls back to the blob URL renderer. `CLAIM_CLIENTS` is only awaited when the page is inside the registration scope; the
+editor page is not, so no time is spent waiting for a `controllerchange`.
 ## 9. Database Architecture
 
 ### 9.1 Multi-Database Support
@@ -604,7 +726,7 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `public/app/yjs/AssetWebSocketHandler.js` | Asset protocol |
 | `public/app/yjs/SaveManager.js` | Save orchestration |
 | `public/app/yjs/YjsProjectBridge.js` | Coordination hub |
-| `public/app/preview-sw.js` | Preview Service Worker |
+| `public/preview-sw.js` | Preview Service Worker |
 | `public/app/workarea/interface/elements/previewPanel.js` | Preview panel UI |
 
 ### Configuration
@@ -781,8 +903,28 @@ This design follows the same pattern as other user-specific data (like favorite 
 
 ---
 
+## Architecture Decision Records and change documents
+
+Durable architecture decisions are tracked as **ADRs** under `doc/architecture/adr/`.
+
+Significant technical designs and design-gated proposals are tracked as **change documents** under `doc/architecture/changes/`, one directory per change.
+
+The two complement each other: a design describes how a change will be implemented, while an ADR records a specific decision and its rationale. When a design contains a durable decision, that decision should link to an existing ADR or propose a new one.
+
+Both are identified by their **GitHub tracking issue** rather than a global counter: ADRs are named `ADR-<issue>-<NN>-<decision-slug>.md` and changes live in `changes/<issue>-<change-slug>/`. The rationale is recorded in [ADR-2232-01](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md).
+
+See:
+
+- [Architecture Decision Records](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md)
+- [Architecture changes](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md)
+- [Migration map](https://github.com/exelearning/exelearning/blob/main/doc/architecture/migration-map.md) — retired identifiers and where they went
+
+---
+
 ## Further Reading
 
+- [Architecture Decision Records](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md) - Durable decisions and their rationale
+- [Architecture changes](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md) - Design gates for significant changes
 - [Real-Time Collaboration](development/real-time.md) - WebSocket and Yjs details
 - [REST API](development/rest-api.md) - API endpoints
 - [Testing](development/testing.md) - Test patterns and coverage

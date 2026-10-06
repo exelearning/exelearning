@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { BaseExporter } from './BaseExporter';
+import { BaseExporter, resolveMaterialIconDataUris } from './BaseExporter';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -743,6 +743,24 @@ describe('BaseExporter', () => {
             expect(result).toBe('<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012">');
         });
 
+        // Defense-in-depth (#1941): an unresolved asset reference means the ZIP will ship a
+        // dangling URL with no binary behind it (the collaborative image-loss bug:
+        // exported `content/resources/<uuid>` with no file). The exporter must RECORD
+        // these so the save/export flow can surface them instead of losing data silently.
+        it('records unresolved asset references so silent data loss is detectable', async () => {
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012">';
+            await exporter.addFilenamesToAssetUrls(content);
+
+            expect(exporter.getUnresolvedAssetRefs()).toContain('12345678-1234-1234-1234-123456789012');
+        });
+
+        it('does not record resolved asset references', async () => {
+            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
+            await exporter.addFilenamesToAssetUrls('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890">');
+
+            expect(exporter.getUnresolvedAssetRefs()).toHaveLength(0);
+        });
+
         it('should return empty string for empty content', async () => {
             const result = await exporter.addFilenamesToAssetUrls('');
             expect(result).toBe('');
@@ -817,6 +835,53 @@ describe('BaseExporter', () => {
 
                 expect(result).toContain('asset-c3d4e5f6.pdf');
                 expect(result).not.toContain('unknown');
+            });
+        });
+
+        describe('extension-less filename handling', () => {
+            it('appends the MIME extension when a stored filename has none (prevents lossy PDF export)', async () => {
+                // Reproduces the real bug: a PDF stored as `asset-<uuid>` with no extension.
+                assets.addAsset(
+                    'e9e79be2-7b98-3e8c-0143-91e790c196f8',
+                    'asset-e9e79be2-7b98-3e8c-0143-91e790c196f8',
+                    'application/pdf',
+                    Buffer.from('%PDF-1.4'),
+                );
+
+                const content = '<iframe src="asset://e9e79be2-7b98-3e8c-0143-91e790c196f8"></iframe>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/asset-e9e79be2-7b98-3e8c-0143-91e790c196f8.pdf');
+            });
+
+            it('does not append .bin for an unknown MIME (leaves the name unchanged)', async () => {
+                assets.addAsset(
+                    'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                    'asset-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                    'application/octet-stream',
+                    Buffer.from([1, 2, 3]),
+                );
+
+                const content = '<a href="asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee">x</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/asset-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"');
+                expect(result).not.toContain('.bin');
+            });
+
+            it('leaves a well-formed filename untouched', async () => {
+                assets.addAsset(
+                    'ffffffff-1111-2222-3333-444444444444',
+                    'report.pdf',
+                    'application/pdf',
+                    Buffer.from('%PDF-1.4'),
+                );
+
+                const content = '<a href="asset://ffffffff-1111-2222-3333-444444444444.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('content/resources/report.pdf');
+                expect(result).not.toContain('report.pdf.pdf');
             });
         });
 
@@ -1405,154 +1470,6 @@ describe('BaseExporter', () => {
         });
     });
 
-    describe('Internal Link Handling', () => {
-        describe('buildPageUrlMap', () => {
-            it('should map first page to index.html', () => {
-                const pages = [
-                    { id: 'page-1', title: 'Home', blocks: [] },
-                    { id: 'page-2', title: 'About', blocks: [] },
-                ];
-                const map = (exporter as any).buildPageUrlMap(pages);
-
-                expect(map.get('page-1')).toEqual({
-                    url: 'index.html',
-                    urlFromSubpage: '../index.html',
-                });
-            });
-
-            it('should map other pages to html/ directory', () => {
-                const pages = [
-                    { id: 'page-1', title: 'Home', blocks: [] },
-                    { id: 'page-2', title: 'About Us', blocks: [] },
-                    { id: 'page-3', title: 'Contact', blocks: [] },
-                ];
-                const map = (exporter as any).buildPageUrlMap(pages);
-
-                expect(map.get('page-2')).toEqual({
-                    url: 'html/about-us.html',
-                    urlFromSubpage: 'about-us.html',
-                });
-                expect(map.get('page-3')).toEqual({
-                    url: 'html/contact.html',
-                    urlFromSubpage: 'contact.html',
-                });
-            });
-
-            it('should sanitize page titles with special characters', () => {
-                const pages = [
-                    { id: 'page-1', title: 'Home', blocks: [] },
-                    { id: 'page-2', title: 'Capítulo 1: Introducción', blocks: [] },
-                ];
-                const map = (exporter as any).buildPageUrlMap(pages);
-
-                expect(map.get('page-2')).toEqual({
-                    url: 'html/capitulo-1-introduccion.html',
-                    urlFromSubpage: 'capitulo-1-introduccion.html',
-                });
-            });
-        });
-
-        describe('replaceInternalLinks', () => {
-            it('should replace exe-node links with page URLs from index', () => {
-                const pageUrlMap = new Map([
-                    ['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }],
-                    ['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }],
-                ]);
-
-                const content = '<a href="exe-node:page-2">Go to About</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="html/about.html">Go to About</a>');
-            });
-
-            it('should replace exe-node links with relative URLs from subpage', () => {
-                const pageUrlMap = new Map([
-                    ['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }],
-                    ['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }],
-                ]);
-
-                const content = '<a href="exe-node:page-1">Go to Home</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, false);
-
-                expect(result).toBe('<a href="../index.html">Go to Home</a>');
-            });
-
-            it('should handle multiple links in content', () => {
-                const pageUrlMap = new Map([
-                    ['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }],
-                    ['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }],
-                    ['page-3', { url: 'html/contact.html', urlFromSubpage: 'contact.html' }],
-                ]);
-
-                const content = '<a href="exe-node:page-2">About</a> and <a href="exe-node:page-3">Contact</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="html/about.html">About</a> and <a href="html/contact.html">Contact</a>');
-            });
-
-            it('should leave non-matching links unchanged', () => {
-                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
-
-                const content = '<a href="exe-node:unknown-page">Unknown</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="exe-node:unknown-page">Unknown</a>');
-            });
-
-            it('should handle content without exe-node links', () => {
-                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
-
-                const content = '<a href="https://example.com">External</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="https://example.com">External</a>');
-            });
-
-            it('should handle empty content', () => {
-                const pageUrlMap = new Map();
-                const result = (exporter as any).replaceInternalLinks('', pageUrlMap, true);
-
-                expect(result).toBe('');
-            });
-
-            it('should handle links with single quotes', () => {
-                const pageUrlMap = new Map([['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }]]);
-
-                const content = "<a href='exe-node:page-2'>About</a>";
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="html/about.html">About</a>');
-            });
-
-            it('should preserve anchor fragment from index page', () => {
-                const pageUrlMap = new Map([['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }]]);
-
-                const content = '<a href="exe-node:page-2#section1">About Section 1</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="html/about.html#section1">About Section 1</a>');
-            });
-
-            it('should preserve anchor fragment from subpage', () => {
-                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
-
-                const content = '<a href="exe-node:page-1#intro">Go to Intro</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, false);
-
-                expect(result).toBe('<a href="../index.html#intro">Go to Intro</a>');
-            });
-
-            it('should leave anchor fragment link unchanged when page not found', () => {
-                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
-
-                const content = '<a href="exe-node:unknown-page#section">Unknown</a>';
-                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
-
-                expect(result).toBe('<a href="exe-node:unknown-page#section">Unknown</a>');
-            });
-        });
-    });
-
     describe('buildPageFilenameMap', () => {
         it('should map first page to index.html', () => {
             const pages: ExportPage[] = [
@@ -1661,35 +1578,27 @@ describe('BaseExporter', () => {
             expect(map.get('page-2')).toBe('nueva-pagina.html');
         });
 
-        it('should work correctly with buildPageUrlMap integration', () => {
+        it('should produce collision-safe filenames for duplicate titles', () => {
             const pages: ExportPage[] = [
                 { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
                 { id: 'page-2', title: 'Test', parentId: null, order: 1, blocks: [] },
                 { id: 'page-3', title: 'Test', parentId: null, order: 2, blocks: [] },
             ];
 
-            // buildPageUrlMap internally uses buildPageFilenameMap
-            const urlMap = (exporter as any).buildPageUrlMap(pages);
+            const map = exporter.testBuildPageFilenameMap(pages);
 
-            expect(urlMap.get('page-1')).toEqual({
-                url: 'index.html',
-                urlFromSubpage: '../index.html',
-            });
-            expect(urlMap.get('page-2')).toEqual({
-                url: 'html/test.html',
-                urlFromSubpage: 'test.html',
-            });
-            expect(urlMap.get('page-3')).toEqual({
-                url: 'html/test-2.html',
-                urlFromSubpage: 'test-2.html',
-            });
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('test.html');
+            expect(map.get('page-3')).toBe('test-2.html');
         });
 
-        it('should handle more than 20 pages with same title (maxAttempts limit)', () => {
-            // Create 23 pages: 1 index + 22 pages all titled "Test"
+        it('should give every page a unique filename beyond 20 duplicates (no overwrite)', () => {
+            // Create 31 pages: 1 index + 30 pages all titled "Test". Past the old
+            // 20-attempt cap, distinct pages used to collapse onto a single
+            // filename, silently overwriting each other in the export ZIP.
             const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
 
-            for (let i = 1; i <= 22; i++) {
+            for (let i = 1; i <= 30; i++) {
                 pages.push({
                     id: `page-${i}`,
                     title: 'Test',
@@ -1701,20 +1610,38 @@ describe('BaseExporter', () => {
 
             const map = exporter.testBuildPageFilenameMap(pages);
 
-            // First page is index.html
+            // First page is index.html, first "Test" page gets test.html (no suffix).
             expect(map.get('page-0')).toBe('index.html');
-
-            // First "Test" page gets test.html (no suffix)
             expect(map.get('page-1')).toBe('test.html');
 
-            // Pages 2-21 get test-2.html through test-21.html (collisions start at 2)
-            for (let i = 2; i <= 21; i++) {
+            // Every subsequent duplicate gets a deterministic, incrementing name
+            // with no cap: test-2.html … test-30.html.
+            for (let i = 2; i <= 30; i++) {
                 expect(map.get(`page-${i}`)).toBe(`test-${i}.html`);
             }
 
-            // Page 22 exceeds maxAttempts (20), falls back to last attempted filename
-            // This is intentional - after 20 attempts, the algorithm gives up
-            expect(map.get('page-22')).toBe('test-21.html');
+            // Crucially, every page maps to a distinct filename (one ZIP entry
+            // per page — no silent drops).
+            const filenames = Array.from(map.values());
+            expect(new Set(filenames).size).toBe(filenames.length);
+        });
+
+        it('should give non-Latin-script titles unique filenames (no empty-name collisions)', () => {
+            // CJK/Arabic/etc. titles sanitize to an empty base; they must still
+            // each receive a distinct filename rather than all collapsing.
+            const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
+            for (let i = 1; i <= 25; i++) {
+                pages.push({ id: `page-${i}`, title: '中文页面', parentId: null, order: i, blocks: [] });
+            }
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('page.html');
+            expect(map.get('page-2')).toBe('page-2.html');
+            expect(map.get('page-25')).toBe('page-25.html');
+
+            const filenames = Array.from(map.values());
+            expect(new Set(filenames).size).toBe(filenames.length);
         });
 
         it('should increment trailing numbers in filename on collision', () => {
@@ -2001,5 +1928,237 @@ describe('BaseExporter', () => {
 
             expect(processed[0].blocks[0].components[0].content).toBe('<p>No properties</p>');
         });
+    });
+
+    describe('Subtitle track SRT to VTT conversion (issue #2034)', () => {
+        // Real fixture text (test/fixtures/subtitles/test-subtitle.srt), byte-identical
+        // to the file attached to the GitHub issue.
+        const srtBytes = Buffer.from(
+            '1\n00:00:02,360 --> 00:00:05,760\nEste es un vídeo de prueba para\nprobar los subtítulos en EXeLearning.\n',
+            'utf-8',
+        );
+
+        it('rewrites a .srt subtitle asset export path to .vtt', async () => {
+            assets.addAsset(
+                '11111111-1111-1111-1111-111111111111',
+                'test-subtitle.srt',
+                'application/x-subrip',
+                srtBytes,
+            );
+
+            const pathMap = await exporter.buildAssetExportPathMap();
+            const exportPath = pathMap.get('11111111-1111-1111-1111-111111111111');
+
+            expect(exportPath).toBeDefined();
+            expect(exportPath?.endsWith('.vtt')).toBe(true);
+            expect(exportPath?.endsWith('.srt')).toBe(false);
+        });
+
+        it('rewrites <track src="asset://...srt"> HTML references to the .vtt export path and keeps other track attributes intact', async () => {
+            assets.addAsset(
+                '22222222-2222-2222-2222-222222222222',
+                'test-subtitle.srt',
+                'application/x-subrip',
+                srtBytes,
+            );
+
+            const html =
+                '<video controls><source src="video.mp4" type="video/mp4" />' +
+                '<track kind="subtitles" srclang="es" label="Español" default ' +
+                'src="asset://22222222-2222-2222-2222-222222222222.srt" />' +
+                '</video>';
+
+            const result = await exporter.addFilenamesToAssetUrls(html);
+
+            expect(result).toContain('content/resources/test-subtitle.vtt');
+            expect(result).not.toContain('.srt');
+            expect(result).toContain('kind="subtitles"');
+            expect(result).toContain('srclang="es"');
+            expect(result).toContain('label="Español"');
+            expect(result).toContain('default');
+        });
+
+        it('writes converted WebVTT bytes into the ZIP under the .vtt path (not the raw .srt bytes)', async () => {
+            assets.addAsset(
+                '33333333-3333-3333-3333-333333333333',
+                'test-subtitle.srt',
+                'application/x-subrip',
+                srtBytes,
+            );
+
+            await exporter.addAssetsToZipWithResourcePath();
+
+            expect(zip.hasFile('content/resources/test-subtitle.vtt')).toBe(true);
+            expect(zip.hasFile('content/resources/test-subtitle.srt')).toBe(false);
+
+            const written = zip.files.get('content/resources/test-subtitle.vtt');
+            const writtenText = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+
+            expect(writtenText.startsWith('WEBVTT')).toBe(true);
+            expect(writtenText).toContain('00:00:02.360 --> 00:00:05.760');
+            expect(writtenText).not.toContain(',360');
+            // UTF-8 accented text must survive the conversion
+            expect(writtenText).toContain('vídeo');
+            expect(writtenText).toContain('subtítulos');
+        });
+
+        it('toWebVttExportFilename forces a .vtt extension across all input shapes', () => {
+            const toVtt = (name: string) =>
+                (exporter as unknown as { toWebVttExportFilename(n: string): string }).toWebVttExportFilename(name);
+            expect(toVtt('subs.srt')).toBe('subs.vtt'); // .srt -> .vtt
+            expect(toVtt('subs.vtt')).toBe('subs.vtt'); // already .vtt, unchanged
+            expect(toVtt('asset-noext')).toBe('asset-noext.vtt'); // MIME-detected, no extension -> append
+        });
+
+        it('keeps a legacy filename-form <track src="asset://name.srt"> reference pointing at the .vtt name', async () => {
+            // Filename-form reference (not a 36-char UUID) with no matching asset in
+            // the map -> the "use as-is" fallback. buildAssetExportPathMap always
+            // renames .srt -> .vtt, so the reference must be rewritten too or the
+            // <track src> 404s (issue #2034, /review finding).
+            const html = '<video controls><track kind="subtitles" src="asset://orphan-subtitle.srt" /></video>';
+
+            const result = await exporter.addFilenamesToAssetUrls(html);
+
+            expect(result).toContain('content/resources/orphan-subtitle.vtt');
+            expect(result).not.toContain('orphan-subtitle.srt');
+        });
+
+        it('decodes a Windows-1252/Latin-1 encoded .srt so accented captions survive (not U+FFFD)', async () => {
+            // Same text as the UTF-8 fixture, but encoded as Windows-1252 (latin1
+            // shares byte values for these accents). A non-fatal UTF-8 decode would
+            // turn every accented byte into the replacement character.
+            const win1252Srt = Buffer.from(
+                '1\n00:00:02,360 --> 00:00:05,760\nEste es un vídeo de prueba para\nprobar los subtítulos en EXeLearning.\n',
+                'latin1',
+            );
+            assets.addAsset(
+                '66666666-6666-6666-6666-666666666666',
+                'latin1-subtitle.srt',
+                'application/x-subrip',
+                win1252Srt,
+            );
+
+            await exporter.addAssetsToZipWithResourcePath();
+
+            const written = zip.files.get('content/resources/latin1-subtitle.vtt');
+            const writtenText = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+
+            expect(writtenText.startsWith('WEBVTT')).toBe(true);
+            expect(writtenText).toContain('vídeo');
+            expect(writtenText).toContain('subtítulos');
+            expect(writtenText).not.toContain('�');
+        });
+
+        it('renames and converts a subtitle detected by a non-canonical MIME (text/srt) even without a .srt extension', async () => {
+            assets.addAsset('77777777-7777-7777-7777-777777777777', 'asset-noext', 'text/srt', srtBytes);
+
+            const pathMap = await exporter.buildAssetExportPathMap();
+            const exportPath = pathMap.get('77777777-7777-7777-7777-777777777777');
+            expect(exportPath?.endsWith('.vtt')).toBe(true);
+
+            await exporter.addAssetsToZipWithResourcePath();
+            const written = zip.files.get(`content/resources/${exportPath}`);
+            const writtenText = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+            expect(writtenText.startsWith('WEBVTT')).toBe(true);
+            expect(writtenText).not.toMatch(/\d{2}:\d{2}:\d{2},\d{3}/);
+        });
+
+        it('leaves an already-.vtt subtitle asset untouched (no double conversion, no .srt path)', async () => {
+            const vttBytes = Buffer.from('WEBVTT\n\n00:00:02.360 --> 00:00:05.760\nAlready valid VTT\n', 'utf-8');
+            assets.addAsset('44444444-4444-4444-4444-444444444444', 'already-valid.vtt', 'text/vtt', vttBytes);
+
+            const pathMap = await exporter.buildAssetExportPathMap();
+            expect(pathMap.get('44444444-4444-4444-4444-444444444444')).toBe('already-valid.vtt');
+
+            await exporter.addAssetsToZipWithResourcePath();
+            const written = zip.files.get('content/resources/already-valid.vtt');
+            const writtenText = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+            expect(writtenText).toContain('WEBVTT');
+            expect(writtenText).toContain('Already valid VTT');
+        });
+
+        it('degrades to a valid empty WebVTT document (never raw .srt bytes) when the .srt asset data cannot be decoded as text', async () => {
+            // Not a real Buffer/TypedArray -- TextDecoder.decode() throws on this,
+            // exercising resolveAssetExportData's catch-and-fall-back branch.
+            const undecodable = {} as unknown as Buffer;
+            assets.addAsset(
+                '55555555-5555-5555-5555-555555555555',
+                'broken-subtitle.srt',
+                'application/x-subrip',
+                undecodable,
+            );
+
+            // Resolves without throwing -- if resolveAssetExportData's catch branch
+            // didn't swallow the decode error, this await would reject and fail the test.
+            await exporter.addAssetsToZipWithResourcePath();
+
+            // The export path is renamed .srt -> .vtt (filename-driven, independent
+            // of the data), so the written bytes MUST also be valid WebVTT. Falling
+            // back to the raw (SRT/undecodable) bytes here would ship a .vtt file the
+            // <track> engine parses to zero cues -- the exact issue #2034 failure.
+            // Graceful degradation = a valid, empty WebVTT document instead.
+            expect(zip.hasFile('content/resources/broken-subtitle.vtt')).toBe(true);
+            expect(zip.files.get('content/resources/broken-subtitle.vtt')).toBe('WEBVTT\n');
+        });
+    });
+});
+
+describe('resolveMaterialIconDataUris', () => {
+    // Sprite with alarm + help, but deliberately WITHOUT lightbulb.
+    const SPRITE = [
+        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M40-200Z"/></symbol>',
+        '<symbol id="help" viewBox="0 -960 960 960"><path d="M1-1Z"/></symbol>',
+        '</svg>',
+    ].join('\n');
+
+    const pageWithMaterialIcons = (...iconNames: string[]): ExportPage[] => [
+        {
+            id: 'p1',
+            title: 'Page',
+            blocks: iconNames.map((iconName, i) => ({
+                id: `b${i}`,
+                name: 'Block',
+                order: i,
+                components: [],
+                iconName,
+            })),
+        } as ExportPage,
+    ];
+
+    const spriteResources = (): ResourceProvider => {
+        const resources = new MockResourceProvider();
+        resources.setLibraryFiles(new Map([['material-icons/material-icons.svg', Buffer.from(SPRITE)]]));
+        return resources;
+    };
+
+    const decode = (uri: string): string => decodeURIComponent(uri.replace('data:image/svg+xml;utf8,', ''));
+
+    it('resolves a known material icon to its own SVG data URI', async () => {
+        const { dataUris } = await resolveMaterialIconDataUris(spriteResources(), pageWithMaterialIcons('mi-alarm'));
+        expect(decode(dataUris.get('alarm')!)).toContain('<path d="M40-200Z"/>');
+    });
+
+    it('resolves an unknown material icon name to the help glyph (not a dead path)', async () => {
+        const { dataUris } = await resolveMaterialIconDataUris(
+            spriteResources(),
+            pageWithMaterialIcons('mi-lightbulb'),
+        );
+
+        // The unknown name must map to a real, inlined data URI (the help glyph),
+        // never to a missing libs/.../icons/lightbulb.svg file.
+        const uri = dataUris.get('lightbulb');
+        expect(uri).toBeDefined();
+        expect(uri).toStartWith('data:image/svg+xml;utf8,');
+        expect(uri).not.toContain('/icons/');
+        expect(decode(uri!)).toContain('<path d="M1-1Z"/>');
+    });
+
+    it('returns an empty map (no dead paths) when the sprite cannot be fetched', async () => {
+        // No library files registered -> fetchLibraryFiles yields no sprite.
+        const resources = new MockResourceProvider();
+        const { files, dataUris } = await resolveMaterialIconDataUris(resources, pageWithMaterialIcons('mi-lightbulb'));
+        expect(dataUris.size).toBe(0);
+        expect(files.size).toBe(0);
     });
 });

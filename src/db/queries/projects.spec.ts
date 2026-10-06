@@ -10,6 +10,7 @@ import {
     findProjectById,
     findProjectByUuid,
     findProjectByPlatformId,
+    findProjectByPublicViewId,
     findProjectWithOwner,
     findProjectByUuidWithOwner,
     getProjectCollaborators,
@@ -37,6 +38,12 @@ import {
     transferOwnershipByUuid,
     updateProjectVisibility,
     updateProjectVisibilityByUuid,
+    setPublicViewEnabled,
+    setPublicViewEnabledByUuid,
+    regeneratePublicViewId,
+    regeneratePublicViewIdByUuid,
+    findUnsavedProjectsOlderThan,
+    findGuestProjectsOlderThan,
 } from './projects';
 import { createUser } from './users';
 
@@ -208,6 +215,30 @@ describe('Project Queries', () => {
         });
     });
 
+    describe('findProjectByPublicViewId', () => {
+        it('should find a project by its public_view_id', async () => {
+            const project = await createProject(db, { title: 'Public View', owner_id: testUser.id });
+            const updated = await setPublicViewEnabled(db, project.id, true);
+            const publicViewId = updated?.public_view_id as string;
+
+            const found = await findProjectByPublicViewId(db, publicViewId);
+            expect(found?.id).toBe(project.id);
+        });
+
+        it('should return undefined for an unknown public_view_id', async () => {
+            const found = await findProjectByPublicViewId(db, 'no-such-public-view-id');
+            expect(found).toBeUndefined();
+        });
+
+        it('should not match the internal project UUID', async () => {
+            const project = await createProject(db, { title: 'Uuid Not Token', owner_id: testUser.id });
+            await setPublicViewEnabled(db, project.id, true);
+
+            const found = await findProjectByPublicViewId(db, project.uuid);
+            expect(found).toBeUndefined();
+        });
+    });
+
     describe('findProjectWithOwner', () => {
         it('should find project with owner data', async () => {
             const project = await createProject(db, {
@@ -374,6 +405,128 @@ describe('Project Queries', () => {
             const found = await findProjectById(db, project.id);
             expect(found?.visibility).toBe('public');
         });
+
+        it('should not generate a public_view_id on visibility change (decoupled)', async () => {
+            const project = await createProject(db, { title: 'No PV On Visibility', owner_id: testUser.id });
+
+            await updateProjectVisibility(db, project.id, 'public');
+
+            const found = await findProjectById(db, project.id);
+            expect(found?.public_view_id).toBeFalsy();
+        });
+    });
+
+    describe('setPublicViewEnabled', () => {
+        it('should generate a public_view_id on first enable', async () => {
+            const project = await createProject(db, { title: 'PV Gen', owner_id: testUser.id });
+            expect(project.public_view_id).toBeFalsy();
+
+            const updated = await setPublicViewEnabled(db, project.id, true);
+
+            expect(updated?.public_view_enabled).toBe(1);
+            expect(updated?.public_view_id).toBeTruthy();
+            // The public view id must be distinct from the internal UUID.
+            expect(updated?.public_view_id).not.toBe(project.uuid);
+        });
+
+        it('should work while the project remains edit-private (decoupled)', async () => {
+            const project = await createProject(db, { title: 'PV Private', owner_id: testUser.id });
+
+            const updated = await setPublicViewEnabled(db, project.id, true);
+
+            expect(updated?.visibility).toBe('private');
+            expect(updated?.public_view_enabled).toBe(1);
+            expect(updated?.public_view_id).toBeTruthy();
+        });
+
+        it('should keep the public_view_id when disabled and reuse it when re-enabled', async () => {
+            const project = await createProject(db, { title: 'PV Keep', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabled(db, project.id, true);
+            const originalId = enabled?.public_view_id;
+
+            const disabled = await setPublicViewEnabled(db, project.id, false);
+            expect(disabled?.public_view_enabled).toBe(0);
+            expect(disabled?.public_view_id).toBe(originalId);
+
+            const reEnabled = await setPublicViewEnabled(db, project.id, true);
+            expect(reEnabled?.public_view_enabled).toBe(1);
+            expect(reEnabled?.public_view_id).toBe(originalId);
+        });
+
+        it('should return undefined for a non-existent project id', async () => {
+            const updated = await setPublicViewEnabled(db, 9999999, true);
+            expect(updated).toBeUndefined();
+        });
+    });
+
+    describe('regeneratePublicViewId', () => {
+        it('should replace the public_view_id while keeping it enabled', async () => {
+            const project = await createProject(db, { title: 'PV Regen', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabled(db, project.id, true);
+            const originalId = enabled?.public_view_id;
+
+            const regenerated = await regeneratePublicViewId(db, project.id);
+
+            expect(regenerated?.public_view_id).toBeTruthy();
+            expect(regenerated?.public_view_id).not.toBe(originalId);
+            expect(regenerated?.public_view_enabled).toBe(1);
+        });
+
+        it('should return undefined for a non-existent project id', async () => {
+            const regenerated = await regeneratePublicViewId(db, 9999999);
+            expect(regenerated).toBeUndefined();
+        });
+    });
+
+    describe('setPublicViewEnabledByUuid', () => {
+        it('should generate a public_view_id on first enable by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Gen Uuid', owner_id: testUser.id });
+            expect(project.public_view_id).toBeFalsy();
+
+            const updated = await setPublicViewEnabledByUuid(db, project.uuid, true);
+
+            expect(updated?.public_view_enabled).toBe(1);
+            expect(updated?.public_view_id).toBeTruthy();
+            expect(updated?.public_view_id).not.toBe(project.uuid);
+        });
+
+        it('should keep the public_view_id when disabled and reuse it when re-enabled by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Keep Uuid', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            const originalId = enabled?.public_view_id;
+
+            const disabled = await setPublicViewEnabledByUuid(db, project.uuid, false);
+            expect(disabled?.public_view_enabled).toBe(0);
+            expect(disabled?.public_view_id).toBe(originalId);
+
+            const reEnabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            expect(reEnabled?.public_view_enabled).toBe(1);
+            expect(reEnabled?.public_view_id).toBe(originalId);
+        });
+
+        it('should return undefined for a non-existent uuid', async () => {
+            const updated = await setPublicViewEnabledByUuid(db, 'no-such-uuid', true);
+            expect(updated).toBeUndefined();
+        });
+    });
+
+    describe('regeneratePublicViewIdByUuid', () => {
+        it('should replace the public_view_id while keeping it enabled by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Regen Uuid', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            const originalId = enabled?.public_view_id;
+
+            const regenerated = await regeneratePublicViewIdByUuid(db, project.uuid);
+
+            expect(regenerated?.public_view_id).toBeTruthy();
+            expect(regenerated?.public_view_id).not.toBe(originalId);
+            expect(regenerated?.public_view_enabled).toBe(1);
+        });
+
+        it('should return undefined for a non-existent uuid', async () => {
+            const regenerated = await regeneratePublicViewIdByUuid(db, 'no-such-uuid');
+            expect(regenerated).toBeUndefined();
+        });
     });
 
     describe('transferOwnership', () => {
@@ -512,6 +665,84 @@ describe('Project Queries', () => {
             expect(collaborators.length).toBe(2);
             expect(collaborators.some(c => c.id === testUser.id)).toBe(true);
             expect(collaborators.some(c => c.id === otherCollab.id)).toBe(true);
+        });
+
+        it('should roll back all writes atomically when a mid-sequence step fails', async () => {
+            const newOwner = await createUser(db, {
+                email: 'rollback-owner@example.com',
+                user_id: 'rollback-owner',
+                password: 'h',
+            });
+
+            const project = await createProject(db, {
+                title: 'Rollback Test',
+                owner_id: testUser.id,
+            });
+
+            // New owner must be a collaborator so the pre-checks pass and the
+            // function proceeds to the write phase (removeCollaborator ->
+            // addCollaborator -> UPDATE owner_id).
+            await addCollaborator(db, project.id, newOwner.id);
+
+            // Wrap db so the transaction callback runs against a trx proxy whose
+            // final `updateTable('projects')` step throws. This simulates a
+            // mid-sequence failure AFTER the collaborator writes have executed
+            // inside the transaction, exercising a real SQLite rollback.
+            // Kysely methods access private fields (this.#props), so any
+            // delegated method MUST be bound back to its real target — otherwise
+            // `this` becomes the proxy and private-field access throws.
+            const bindToTarget = <O extends object>(target: O, prop: string | symbol, receiver: unknown): unknown => {
+                const value = Reflect.get(target, prop, receiver);
+                return typeof value === 'function' ? value.bind(target) : value;
+            };
+
+            const failingDb = new Proxy(db, {
+                get(target, prop, receiver) {
+                    if (prop === 'transaction') {
+                        return () => {
+                            const builder = target.transaction();
+                            return {
+                                execute<T>(cb: (trx: typeof db) => Promise<T>): Promise<T> {
+                                    return builder.execute(realTrx => {
+                                        const trxProxy = new Proxy(realTrx, {
+                                            get(trxTarget, trxProp, trxReceiver) {
+                                                if (trxProp === 'updateTable') {
+                                                    return () => {
+                                                        throw new Error('Injected write failure');
+                                                    };
+                                                }
+                                                return bindToTarget(trxTarget, trxProp, trxReceiver);
+                                            },
+                                        });
+                                        return cb(trxProxy as typeof db);
+                                    });
+                                },
+                            };
+                        };
+                    }
+                    return bindToTarget(target, prop, receiver);
+                },
+            });
+
+            await expect(transferOwnership(failingDb, project.id, newOwner.id)).rejects.toThrow(
+                'Injected write failure',
+            );
+
+            // Ownership must be unchanged (UPDATE rolled back).
+            const found = await findProjectById(db, project.id);
+            expect(found?.owner_id).toBe(testUser.id);
+
+            // New owner must still be a collaborator (removeCollaborator rolled back).
+            expect(await isCollaborator(db, project.id, newOwner.id)).toBe(true);
+
+            // Previous owner must NOT have been added as a collaborator
+            // (addCollaborator rolled back).
+            expect(await isCollaborator(db, project.id, testUser.id)).toBe(false);
+
+            // Collaborator set is exactly what it was before the failed transfer.
+            const collaborators = await getProjectCollaborators(db, project.id);
+            expect(collaborators.length).toBe(1);
+            expect(collaborators[0].id).toBe(newOwner.id);
         });
     });
 
@@ -1031,6 +1262,133 @@ describe('Project Queries', () => {
 
             const found = await findProjectByUuid(db, uuid);
             expect(found?.updated_at).not.toBe(originalUpdatedAt);
+        });
+    });
+
+    describe('findUnsavedProjectsOlderThan (cleanup safety guards, #1932)', () => {
+        // Negative maxAge => cutoff is in the future, so the age filter matches
+        // freshly-created rows; lets us assert the other guards in isolation.
+        const ALL_AGES = -1_000_000;
+
+        it('returns a private, unsaved project past the age cutoff', async () => {
+            const p = await createProject(db, { title: 'Draft', owner_id: testUser.id });
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).toContain(p.id);
+        });
+
+        it('excludes saved projects (saved_once = 1)', async () => {
+            const p = await createProject(db, { title: 'Saved', owner_id: testUser.id });
+            await markProjectAsSaved(db, p.id);
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('excludes recent projects (within the age window)', async () => {
+            const p = await createProject(db, { title: 'Recent', owner_id: testUser.id });
+            const found = await findUnsavedProjectsOlderThan(db, 60 * 60 * 1000);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('never deletes shared (non-private) projects, even unsaved and old', async () => {
+            const p = await createProject(db, { title: 'Public Draft', owner_id: testUser.id });
+            await updateProjectVisibility(db, p.id, 'public');
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('never deletes projects with collaborators, even private/unsaved/old', async () => {
+            const p = await createProject(db, { title: 'Collab Draft', owner_id: testUser.id });
+            const collaborator = await createUser(db, {
+                email: 'collab@example.com',
+                user_id: 'collab-user',
+                password: 'hashed',
+            });
+            await addCollaborator(db, p.id, collaborator.id);
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('correlates the collaborator guard per project: returns a collaborator-free project but not one with collaborators', async () => {
+            // Project A: private + unsaved + old, WITH a collaborator -> must be excluded.
+            const projectA = await createProject(db, { title: 'Has Collaborator', owner_id: testUser.id });
+            const collaborator = await createUser(db, {
+                email: 'correlated-collab@example.com',
+                user_id: 'correlated-collab',
+                password: 'hashed',
+            });
+            await addCollaborator(db, projectA.id, collaborator.id);
+
+            // Project B: private + unsaved + old, WITHOUT collaborators -> must be returned.
+            const projectB = await createProject(db, { title: 'No Collaborator', owner_id: testUser.id });
+
+            const found = await findUnsavedProjectsOlderThan(db, ALL_AGES);
+            const ids = found.map(x => x.id);
+
+            // If the NOT EXISTS were uncorrelated/global, the presence of any
+            // collaborator row would wrongly exclude B (or wrongly include A).
+            expect(ids).toContain(projectB.id);
+            expect(ids).not.toContain(projectA.id);
+        });
+    });
+
+    describe('findGuestProjectsOlderThan (cleanup safety guards, #1932)', () => {
+        // Negative maxAge => cutoff is in the future, so the age filter matches
+        // freshly-created rows; lets us assert the other guards in isolation.
+        const ALL_AGES = -1_000_000;
+
+        async function createGuestUser(suffix: string): Promise<User> {
+            return createUser(db, {
+                email: `guest_${suffix}@guest.local`,
+                user_id: `guest-${suffix}`,
+                password: 'hashed',
+            });
+        }
+
+        it('returns a private, collaborator-free guest project past the age cutoff', async () => {
+            const guest = await createGuestUser('plain');
+            const p = await createProject(db, { title: 'Guest Draft', owner_id: guest.id });
+            const found = await findGuestProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).toContain(p.id);
+        });
+
+        it('never deletes shared (non-private) guest projects', async () => {
+            const guest = await createGuestUser('shared');
+            const p = await createProject(db, { title: 'Guest Public', owner_id: guest.id });
+            await updateProjectVisibility(db, p.id, 'public');
+            const found = await findGuestProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('never deletes guest projects with collaborators', async () => {
+            const guest = await createGuestUser('withcollab');
+            const p = await createProject(db, { title: 'Guest Collab', owner_id: guest.id });
+            const collaborator = await createUser(db, {
+                email: 'guest-collab-peer@example.com',
+                user_id: 'guest-collab-peer',
+                password: 'hashed',
+            });
+            await addCollaborator(db, p.id, collaborator.id);
+            const found = await findGuestProjectsOlderThan(db, ALL_AGES);
+            expect(found.map(x => x.id)).not.toContain(p.id);
+        });
+
+        it('correlates the collaborator guard per guest project', async () => {
+            const guest = await createGuestUser('correlated');
+            // Project A: shared via collaborator -> excluded.
+            const projectA = await createProject(db, { title: 'Guest Has Collab', owner_id: guest.id });
+            const collaborator = await createUser(db, {
+                email: 'guest-correlated-peer@example.com',
+                user_id: 'guest-correlated-peer',
+                password: 'hashed',
+            });
+            await addCollaborator(db, projectA.id, collaborator.id);
+            // Project B: same guest owner, no collaborators -> returned.
+            const projectB = await createProject(db, { title: 'Guest No Collab', owner_id: guest.id });
+
+            const found = await findGuestProjectsOlderThan(db, ALL_AGES);
+            const ids = found.map(x => x.id);
+            expect(ids).toContain(projectB.id);
+            expect(ids).not.toContain(projectA.id);
         });
     });
 });

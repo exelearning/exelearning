@@ -49,6 +49,7 @@ describe('LinkValidationManager', () => {
                 validated: 0,
                 valid: 0,
                 broken: 0,
+                unknown: 0,
                 pending: 0,
             });
         });
@@ -67,6 +68,24 @@ describe('LinkValidationManager', () => {
             expect(stats.broken).toBe(1);
             expect(stats.pending).toBe(1);
             expect(stats.validated).toBe(3); // valid + broken
+        });
+
+        it('should count links needing a manual review as validated', () => {
+            const manager = new LinkValidationManager();
+            manager.links.set('1', { id: '1', status: 'unknown' });
+            manager.links.set('2', { id: '2', status: 'unknown' });
+            manager.links.set('3', { id: '3', status: 'broken' });
+            manager.links.set('4', { id: '4', status: 'validating' });
+
+            const stats = manager.getStats();
+
+            expect(stats.total).toBe(4);
+            expect(stats.unknown).toBe(2);
+            expect(stats.broken).toBe(1);
+            expect(stats.valid).toBe(0);
+            expect(stats.pending).toBe(1);
+            // Inconclusive checks are finished checks: the progress bar must reach 100%
+            expect(stats.validated).toBe(3);
         });
     });
 
@@ -113,6 +132,60 @@ describe('LinkValidationManager', () => {
 
             expect(valid).toHaveLength(1);
             expect(valid[0].url).toBe('https://valid.com');
+        });
+    });
+
+    describe('getUnknownLinks', () => {
+        it('should return only links needing a manual review', () => {
+            const manager = new LinkValidationManager();
+            manager.links.set('1', { id: '1', url: 'https://valid.com', status: 'valid' });
+            manager.links.set('2', { id: '2', url: 'https://broken.com', status: 'broken' });
+            manager.links.set('3', {
+                id: '3',
+                url: 'https://www.youtube.com/@example',
+                status: 'unknown',
+                error: 'Not checked automatically: open the link to review it',
+            });
+
+            const unknown = manager.getUnknownLinks();
+
+            expect(unknown).toHaveLength(1);
+            expect(unknown[0].url).toBe('https://www.youtube.com/@example');
+        });
+    });
+
+    describe('isBrowserLimited', () => {
+        afterEach(() => {
+            delete window.electronAPI;
+            // clearAllMocks does not reset return values: restore the default
+            // stream URL so later describes keep exercising the SSE path.
+            mockApi.getLinkValidationStreamUrl.mockReturnValue('http://test.com/validate-stream');
+        });
+
+        it('should be false when the server validation stream is available', () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue('http://test.com/validate-stream');
+
+            expect(new LinkValidationManager().isBrowserLimited()).toBe(false);
+        });
+
+        it('should be true in a plain browser without server stream (static web flavor)', () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+
+            expect(new LinkValidationManager().isBrowserLimited()).toBe(true);
+        });
+
+        it('should be false in the desktop app, where the main process checks links', () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            window.electronAPI = { checkLink: () => {} };
+
+            expect(new LinkValidationManager().isBrowserLimited()).toBe(false);
+        });
+
+        it('should be true when the desktop shell does not expose checkLink (outdated shell)', () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            window.electronAPI = {};
+
+            expect(new LinkValidationManager().isBrowserLimited()).toBe(true);
         });
     });
 
@@ -274,7 +347,7 @@ describe('LinkValidationManager', () => {
             await manager.startValidation([]);
 
             expect(onComplete).toHaveBeenCalledWith(
-                { total: 0, validated: 0, valid: 0, broken: 0, pending: 0 },
+                { total: 0, validated: 0, valid: 0, broken: 0, unknown: 0, pending: 0 },
                 false
             );
         });
@@ -351,6 +424,7 @@ describe('LinkValidationManager', () => {
                 validated: 1,
                 valid: 1,
                 broken: 0,
+                unknown: 0,
                 pending: 0,
             });
         });
@@ -433,6 +507,32 @@ describe('LinkValidationManager', () => {
             await manager.startValidation([{ html: '<a href="https://broken.com">Link</a>' }]);
 
             expect(onLinkUpdate).toHaveBeenCalledWith('link-1', 'broken', '404', expect.any(Object));
+        });
+
+        it('should check a repeated URL only once and give every row the same result', async () => {
+            // The same URL can appear in several iDevices; per-run memoization
+            // avoids inconsistent rows (e.g. one Timeout, one valid).
+            const mockAdapter = {
+                validateLink: vi.fn().mockResolvedValue({ status: 'broken', error: '404' }),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [
+                    { id: 'link-1', url: 'https://repeated.com/page', count: 1 },
+                    { id: 'link-2', url: 'https://repeated.com/page', count: 2 },
+                ],
+                totalLinks: 2,
+            });
+
+            const manager = new LinkValidationManager();
+            await manager.startValidation([{ html: '<a href="https://repeated.com/page">Link</a>' }]);
+
+            expect(mockAdapter.validateLink).toHaveBeenCalledTimes(1);
+            expect(manager.getLinkById('link-1').status).toBe('broken');
+            expect(manager.getLinkById('link-2').status).toBe('broken');
+            expect(manager.getLinkById('link-2').error).toBe('404');
         });
 
         it('should handle adapter validation errors', async () => {

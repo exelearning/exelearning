@@ -1,5 +1,6 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
+import { waitForAppReady } from '../helpers/workarea-helpers';
 
 /**
  * Share Modal Tests
@@ -25,7 +26,7 @@ test.describe('Share Modal', () => {
 
             // Navigate to the project
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             // Click share button (pill button in header)
             const shareButton = authenticatedPage.locator('#head-top-share-button');
@@ -43,7 +44,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, projectTitle);
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -60,7 +61,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Link Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -83,7 +84,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Copy Link Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -115,7 +116,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Feedback Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -141,7 +142,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Visibility Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -157,7 +158,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Toggle Visibility Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -179,24 +180,134 @@ test.describe('Share Modal', () => {
             expect(currentVisibility).toBe(newVisibility);
         });
 
-        test('should show/hide help text based on visibility', async ({ authenticatedPage, createProject }) => {
+        test('should update edit-access help text based on visibility', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
             const projectUuid = await createProject(authenticatedPage, 'Help Text Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
 
-            // Set to private - help text should be hidden
+            // The edit-access help is always visible; only its text changes.
             await shareModal.setVisibility('private');
-            await expect(shareModal.visibilityHelp).toBeHidden({ timeout: 5000 });
-
-            // Set to public - help text should be visible
-            await shareModal.setVisibility('public');
             await expect(shareModal.visibilityHelp).toBeVisible({ timeout: 5000 });
+            await expect(shareModal.visibilityHelp).toContainText('edit', { timeout: 5000 });
+
+            await shareModal.setVisibility('public');
+            await expect(shareModal.visibilityHelp).toContainText('edit', { timeout: 5000 });
+        });
+
+        test('regenerating the public link changes the URL and invalidates the old one', async ({
+            authenticatedPage,
+            createProject,
+            browser,
+        }) => {
+            const projectUuid = await createProject(authenticatedPage, 'Regenerate Project');
+
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await authenticatedPage.waitForLoadState('networkidle');
+
+            await authenticatedPage.locator('#head-top-share-button').click();
+            await shareModal.waitForOpen();
+
+            await shareModal.setPublicView('enabled');
+            await expect(shareModal.publicLinkSection).toBeVisible({ timeout: 5000 });
+            await authenticatedPage.waitForFunction(
+                () => {
+                    const input = document.querySelector('#public-link-input') as HTMLInputElement;
+                    return Boolean(input?.value?.includes('/view/'));
+                },
+                undefined,
+                { timeout: 5000 },
+            );
+            const firstUrl = await shareModal.getPublicViewerLink();
+
+            // Regenerate via the inline confirmation (kept inside the share modal).
+            await shareModal.publicRegenerateButton.click();
+            const confirmYes = authenticatedPage.locator('#public-regenerate-confirm-yes');
+            await confirmYes.waitFor({ state: 'visible', timeout: 5000 });
+            await confirmYes.click();
+
+            await authenticatedPage.waitForFunction(
+                previous => {
+                    const input = document.querySelector('#public-link-input') as HTMLInputElement;
+                    return Boolean(input?.value) && input.value !== previous && input.value.includes('/view/');
+                },
+                firstUrl,
+                { timeout: 5000 },
+            );
+            const secondUrl = await shareModal.getPublicViewerLink();
+            expect(secondUrl).not.toBe(firstUrl);
+
+            // The old link must stop working; the new one must render.
+            const anonContext = await browser.newContext();
+            try {
+                const anonPage = await anonContext.newPage();
+                const oldRes = await anonPage.goto(new URL(firstUrl).pathname);
+                expect(oldRes?.status()).toBe(404);
+                const newRes = await anonPage.goto(new URL(secondUrl).pathname);
+                expect(newRes?.status()).toBe(200);
+            } finally {
+                await anonContext.close();
+            }
+        });
+
+        test('public read-only link uses an opaque id (not the project UUID) and renders without login', async ({
+            authenticatedPage,
+            createProject,
+            browser,
+        }) => {
+            const projectUuid = await createProject(authenticatedPage, 'Public Viewer Project');
+
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await authenticatedPage.waitForLoadState('networkidle');
+
+            await authenticatedPage.locator('#head-top-share-button').click();
+            await shareModal.waitForOpen();
+
+            // Edit access stays private; enabling the public read-only link is
+            // independent of edit access (decoupled).
+            await shareModal.setPublicView('enabled');
+            await expect(shareModal.publicLinkSection).toBeVisible({ timeout: 5000 });
+
+            // Wait until the public viewer URL is populated.
+            await authenticatedPage.waitForFunction(
+                () => {
+                    const input = document.querySelector('#public-link-input') as HTMLInputElement;
+                    return Boolean(input?.value?.includes('/view/'));
+                },
+                undefined,
+                { timeout: 5000 },
+            );
+
+            const publicUrl = await shareModal.getPublicViewerLink();
+            expect(publicUrl).toContain('/view/');
+            // The opaque id must NOT be the internal project UUID.
+            expect(publicUrl).not.toContain(projectUuid);
+
+            const viewPath = new URL(publicUrl).pathname;
+
+            // Open the public URL in a fresh, unauthenticated context.
+            const anonContext = await browser.newContext();
+            try {
+                const anonPage = await anonContext.newPage();
+                const res = await anonPage.goto(viewPath);
+                expect(res?.status()).toBe(200);
+                // The internal UUID must not leak into the public page source.
+                expect(await anonPage.content()).not.toContain(projectUuid);
+
+                // Using the internal UUID as a public id must 404.
+                const uuidRes = await anonPage.goto(`/view/${projectUuid}`);
+                expect(uuidRes?.status()).toBe(404);
+            } finally {
+                await anonContext.close();
+            }
         });
     });
 
@@ -205,7 +316,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Owner Invite Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -220,7 +331,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Invalid Email Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -242,7 +353,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Non-existent User Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -266,7 +377,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'People List Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
@@ -283,6 +394,96 @@ test.describe('Share Modal', () => {
             const owner = collaborators.find(c => c.isOwner);
             expect(owner).toBeDefined();
         });
+
+        test('should scroll a long people list inside the modal instead of overflowing (issue #1960)', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const projectUuid = await createProject(authenticatedPage, 'Overflow People List Project');
+
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await waitForAppReady(authenticatedPage);
+
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
+            await shareButton.click();
+
+            await shareModal.waitForOpen();
+
+            // Reproduce the ">4 people" scenario from issue #1960 by injecting many
+            // rows into the list. Creating that many real cloud collaborators would
+            // require many registered accounts; injecting the rendered rows exercises
+            // the exact CSS path (the people list container) that was overflowing.
+            await authenticatedPage.evaluate(() => {
+                const list = document.querySelector('#share-people-list');
+                if (!list) {
+                    throw new Error('#share-people-list not found');
+                }
+                let html = '';
+                for (let i = 0; i < 12; i++) {
+                    html += `
+                        <div class="share-person-row" data-user-id="injected-${i}">
+                            <div class="share-person-avatar">U${i}</div>
+                            <div class="share-person-info">
+                                <div class="share-person-email">collaborator${i}@example.com
+                                    <span class="share-person-role-badge">Editor</span>
+                                </div>
+                            </div>
+                            <div class="share-person-actions"></div>
+                        </div>`;
+                }
+                list.innerHTML = html;
+            });
+
+            const metrics = await authenticatedPage.evaluate(() => {
+                const list = document.querySelector('#share-people-list') as HTMLElement;
+                // Section immediately following the people list in the redesigned modal.
+                const nextSection = document.querySelector('#share-edit-access-section') as HTMLElement;
+                const modalContent = document.querySelector('#modalShare .modal-content') as HTMLElement;
+                const style = window.getComputedStyle(list);
+                return {
+                    overflowY: style.overflowY,
+                    clientHeight: list.clientHeight,
+                    scrollHeight: list.scrollHeight,
+                    listBottom: list.getBoundingClientRect().bottom,
+                    nextSectionTop: nextSection.getBoundingClientRect().top,
+                    modalContentBottom: modalContent.getBoundingClientRect().bottom,
+                };
+            });
+
+            // The container scrolls its overflow instead of letting rows spill out.
+            expect(['auto', 'scroll']).toContain(metrics.overflowY);
+            // Content is taller than the visible box -> it is genuinely scrollable.
+            expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+            // The box height stays clamped to its max-height (300px) rather than
+            // growing to fit every row.
+            expect(metrics.clientHeight).toBeLessThanOrEqual(301);
+            // The next section starts below the list (no overlap / spill-over).
+            expect(metrics.nextSectionTop).toBeGreaterThanOrEqual(metrics.listBottom - 1);
+            // The whole list stays inside the modal dialog.
+            expect(metrics.listBottom).toBeLessThanOrEqual(metrics.modalContentBottom + 1);
+        });
+    });
+
+    test.describe('Modal Layout', () => {
+        test('keeps the Done button on screen once the public link is enabled', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // A common laptop height: with the public link section expanded the
+            // dialog is taller than this, so its body must scroll, not the page.
+            await authenticatedPage.setViewportSize({ width: 1280, height: 720 });
+            const projectUuid = await createProject(authenticatedPage, 'Modal Layout Project');
+
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await waitForAppReady(authenticatedPage);
+
+            await authenticatedPage.locator('#head-top-share-button').click();
+            await shareModal.waitForOpen();
+            await shareModal.setPublicView('enabled');
+            await expect(authenticatedPage.locator('#public-link-section')).toBeVisible();
+
+            await expect(shareModal.doneButton).toBeInViewport({ ratio: 1 });
+        });
     });
 
     test.describe('Modal Closing', () => {
@@ -290,7 +491,7 @@ test.describe('Share Modal', () => {
             const projectUuid = await createProject(authenticatedPage, 'Close Modal Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-            await authenticatedPage.waitForLoadState('networkidle');
+            await waitForAppReady(authenticatedPage);
 
             const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();

@@ -11,17 +11,41 @@
  * Run with:  npx vitest run public/files/perm/idevices/base/lomloe/edition/lomloe.test.js
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import esPvDataset from '../data/lomloe-ES-PV.json';
 
 // ── Mock eXeLearning globals ─────────────────────────────────────
 globalThis._ = (str) => str;  // i18n passthrough
 globalThis.CSS = { escape: (s) => s.replace(/[^a-zA-Z0-9\-_]/g, '\\$&') };
 
 // ── Load module under test ───────────────────────────────────────
+/**
+ * Instantiate the editor module and give it the edition lifecycle the workarea
+ * publishes before calling init(), so the editor can register the resources it
+ * owns (dataset downloads, the document-level Escape handler).
+ *
+ * @param {String} raw Source of lomloe.js
+ * @returns {Object} The $exeDevice instance
+ */
+function instantiateDevice(raw) {
+    const device = new Function('globalThis', '_', 'CSS', raw + '\nreturn $exeDevice;')(
+        globalThis,
+        globalThis._,
+        globalThis.CSS,
+    );
+    globalThis.attachEditionLifecycle(device);
+    return device;
+}
+
 const src = await import('./lomloe.js?raw').then(m => m.default).catch(() => null);
 if (src) {
-    const fn = new Function('globalThis', '_', 'CSS', src + '\nreturn $exeDevice;');
-    globalThis.$exeDevice = fn(globalThis, globalThis._, globalThis.CSS);
+    globalThis.$exeDevice = instantiateDevice(src);
 }
+
+// A fresh lifecycle per test: a destroyed one refuses every registration, and
+// the module-level instance is shared by the whole suite.
+beforeEach(() => {
+    if (globalThis.$exeDevice) globalThis.attachEditionLifecycle(globalThis.$exeDevice);
+});
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -46,15 +70,15 @@ const SAMPLE_DATA = {
                             {
                                 nombre: 'PM01SBI.1.1',
                                 subtitulo_nivel_1: 'Números naturales',
-                                subtitulo_nivel_2: '1.1. Conteo y representación'
+                                subtitulo_nivel_2: '1.1. Conteo y representación',
                             },
                             {
                                 nombre: 'PM01SBI.1.2',
                                 subtitulo_nivel_1: 'Números naturales',
-                                subtitulo_nivel_2: '1.2. Valor posicional'
-                            }
-                        ]
-                    }
+                                subtitulo_nivel_2: '1.2. Valor posicional',
+                            },
+                        ],
+                    },
                 },
                 competencias_especificas: {
                     'PMC1': {
@@ -64,26 +88,26 @@ const SAMPLE_DATA = {
                             {
                                 codigo: 'PM01CE1.1',
                                 descripcion: 'Interpretar datos cuantitativos del entorno',
-                                competencias_clave: ['CCL2', 'STEM1', 'STEM3']
+                                competencias_clave: ['CCL2', 'STEM1', 'STEM3'],
                             },
                             {
                                 codigo: 'PM01CE1.2',
                                 descripcion: 'Resolver problemas con números naturales',
-                                competencias_clave: ['CCL1', 'STEM2']
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-    }
+                                competencias_clave: ['CCL1', 'STEM2'],
+                            },
+                        ],
+                    },
+                },
+            },
+        },
+    },
 };
 
 // Minimal ESO dataset used to exercise the per-course subject filter.
-const area = (denominacion) => ({
+const area = denominacion => ({
     denominacion,
     competencias_especificas: {},
-    saberes_basicos: { bloques: {} }
+    saberes_basicos: { bloques: {} },
 });
 const ESO_SAMPLE = {
     ESO: {
@@ -92,9 +116,9 @@ const ESO_SAMPLE = {
             FQX: area('Física y Química'),
             GEH: area('Geografía e Historia'),
             EFI: area('Educación Física'),
-            DIG: area('Digitalización')
-        }
-    }
+            DIG: area('Digitalización'),
+        },
+    },
 };
 
 function buildMockElement() {
@@ -150,8 +174,8 @@ describe('Save / restore round-trip', () => {
         globalThis.fetch = vi.fn(() =>
             Promise.resolve({
                 ok: true,
-                json: () => Promise.resolve(SAMPLE_DATA)
-            })
+                json: () => Promise.resolve(SAMPLE_DATA),
+            }),
         );
     });
 
@@ -201,9 +225,9 @@ describe('Save / restore round-trip', () => {
                     subtitulo1: 'Números naturales',
                     subtitulo2: '1.1. Conteo y representación',
                     coverage: 'introduced',
-                    notes: 'Test note'
-                }
-            ]
+                    notes: 'Test note',
+                },
+            ],
         };
 
         $exeDevice.init(el, previousData);
@@ -232,7 +256,7 @@ describe('Save / restore round-trip', () => {
             codigoCriterio: 'EFI01CE1.1',
             descripcionCriterio: 'Criterio sobre actividad física saludable',
             competenciasClave: ['CPSAA1', 'STEM2'],
-            partial: true
+            partial: true,
         };
 
         const prev = {
@@ -241,7 +265,7 @@ describe('Save / restore round-trip', () => {
             lomloeSelectedEtapa: 'ESO',
             lomloeSelectedNivel: '1º ESO',
             lomloeSelectedMateria: { codArea: 'EFI', denominacion: 'Educación Física' },
-            lomloeSelections: [sel]
+            lomloeSelections: [sel],
         };
 
         $exeDevice.init(el, prev);
@@ -259,23 +283,25 @@ describe('Save / restore round-trip', () => {
         const selId = makeCriterioSelId('ESO', '1º ESO', 'EFI', 'EFI_C1', 'EFI01CE1.1');
         const prev = {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'ESO',
-                nivel: '1º ESO',
-                codArea: 'EFI',
-                denominacion: 'Educación Física',
-                codigoComp: 'EFI_C1',
-                descripcionComp: 'Competencia sobre actividad física',
-                codigoCriterio: 'EFI01CE1.1',
-                descripcionCriterio: 'Criterio sobre actividad física saludable',
-                competenciasClave: ['CPSAA1', 'STEM2'],
-                coverage: 'assessed',
-                notes: 'Old data',
-                linkedSaberes: ['some-old-id']
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'ESO',
+                    nivel: '1º ESO',
+                    codArea: 'EFI',
+                    denominacion: 'Educación Física',
+                    codigoComp: 'EFI_C1',
+                    descripcionComp: 'Competencia sobre actividad física',
+                    codigoCriterio: 'EFI01CE1.1',
+                    descripcionCriterio: 'Criterio sobre actividad física saludable',
+                    competenciasClave: ['CPSAA1', 'STEM2'],
+                    coverage: 'assessed',
+                    notes: 'Old data',
+                    linkedSaberes: ['some-old-id'],
+                },
+            ],
         };
 
         $exeDevice.init(el, prev);
@@ -296,9 +322,7 @@ describe('Operational descriptor checkboxes (issue #1832)', () => {
 
     beforeEach(() => {
         el = buildMockElement();
-        globalThis.fetch = vi.fn(() =>
-            Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) })
-        );
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) }));
     });
 
     afterEach(() => {
@@ -315,33 +339,40 @@ describe('Operational descriptor checkboxes (issue #1832)', () => {
             lomloeSelectedEtapa: 'ESO',
             lomloeSelectedNivel: '1º ESO',
             lomloeSelectedMateria: { codArea: 'BIG', denominacion: 'Biología' },
-            lomloeSelections: [sel]
+            lomloeSelections: [sel],
         };
         $exeDevice.init(el, prev);
         await new Promise(r => setTimeout(r, 50));
         return el.querySelector('[id^="lomloe-sel-list-"]');
     }
 
-    const makeSel = (dataset, extra) => Object.assign({
-        id: makeCriterioSelId('ESO', '1º ESO', 'BIG', 'BIG_C1', 'BIG01CE1.1'),
-        type: 'criterio',
-        dataset,
-        etapa: 'ESO',
-        nivel: '1º ESO',
-        codArea: 'BIG',
-        denominacion: 'Biología',
-        codigoComp: 'BIG_C1',
-        descripcionComp: 'Comp',
-        codigoCriterio: 'BIG01CE1.1',
-        descripcionCriterio: 'Criterio',
-        partial: false
-    }, extra);
+    const makeSel = (dataset, extra) =>
+        Object.assign(
+            {
+                id: makeCriterioSelId('ESO', '1º ESO', 'BIG', 'BIG_C1', 'BIG01CE1.1'),
+                type: 'criterio',
+                dataset,
+                etapa: 'ESO',
+                nivel: '1º ESO',
+                codArea: 'BIG',
+                denominacion: 'Biología',
+                codigoComp: 'BIG_C1',
+                descripcionComp: 'Comp',
+                codigoCriterio: 'BIG01CE1.1',
+                descripcionCriterio: 'Criterio',
+                partial: false,
+            },
+            extra,
+        );
 
     it('renders descriptor checkboxes for non-Canarias datasets', async () => {
-        const list = await initWithCriterio('ES', makeSel('ES', {
-            competenciasClave: [],
-            descriptorOptions: ['CCL1', 'STEM4', 'CD2']
-        }));
+        const list = await initWithCriterio(
+            'ES',
+            makeSel('ES', {
+                competenciasClave: [],
+                descriptorOptions: ['CCL1', 'STEM4', 'CD2'],
+            }),
+        );
         const boxes = list.querySelectorAll('.lomloe-desc-cb');
         expect(boxes).toHaveLength(3);
         // None checked initially (teacher must pick explicitly)
@@ -349,12 +380,15 @@ describe('Operational descriptor checkboxes (issue #1832)', () => {
     });
 
     it('toggling descriptor checkboxes updates competenciasClave (ordered)', async () => {
-        const list = await initWithCriterio('ES', makeSel('ES', {
-            competenciasClave: [],
-            descriptorOptions: ['CCL1', 'STEM4', 'CD2']
-        }));
+        const list = await initWithCriterio(
+            'ES',
+            makeSel('ES', {
+                competenciasClave: [],
+                descriptorOptions: ['CCL1', 'STEM4', 'CD2'],
+            }),
+        );
         // Check CD2 first, then CCL1 → result must follow option order, not click order.
-        const byCc = (cc) => list.querySelector('.lomloe-desc-cb[data-cc="' + cc + '"]');
+        const byCc = cc => list.querySelector('.lomloe-desc-cb[data-cc="' + cc + '"]');
         byCc('CD2').checked = true;
         byCc('CD2').dispatchEvent(new Event('change', { bubbles: true }));
         byCc('CCL1').checked = true;
@@ -371,13 +405,15 @@ describe('Operational descriptor checkboxes (issue #1832)', () => {
     });
 
     it('summary reflects only the chosen descriptors', async () => {
-        const list = await initWithCriterio('ES', makeSel('ES', {
-            competenciasClave: [],
-            descriptorOptions: ['CCL1', 'STEM4', 'CD2']
-        }));
+        const list = await initWithCriterio(
+            'ES',
+            makeSel('ES', {
+                competenciasClave: [],
+                descriptorOptions: ['CCL1', 'STEM4', 'CD2'],
+            }),
+        );
         list.querySelector('.lomloe-desc-cb[data-cc="STEM4"]').checked = true;
-        list.querySelector('.lomloe-desc-cb[data-cc="STEM4"]')
-            .dispatchEvent(new Event('change', { bubbles: true }));
+        list.querySelector('.lomloe-desc-cb[data-cc="STEM4"]').dispatchEvent(new Event('change', { bubbles: true }));
         const html = $exeDevice.save().lomloeSummaryHtml;
         expect(html).toContain('>STEM4<');
         expect(html).not.toContain('>CCL1<');
@@ -385,9 +421,12 @@ describe('Operational descriptor checkboxes (issue #1832)', () => {
     });
 
     it('Canarias keeps fixed badges and renders no descriptor checkboxes', async () => {
-        const list = await initWithCriterio('ES-CN', makeSel('ES-CN', {
-            competenciasClave: ['CCL1', 'CCL2', 'STEM4']
-        }));
+        const list = await initWithCriterio(
+            'ES-CN',
+            makeSel('ES-CN', {
+                competenciasClave: ['CCL1', 'CCL2', 'STEM4'],
+            }),
+        );
         expect(list.querySelectorAll('.lomloe-desc-cb')).toHaveLength(0);
         const saved = $exeDevice.save();
         expect(saved.lomloeSelections[0].competenciasClave).toEqual(['CCL1', 'CCL2', 'STEM4']);
@@ -409,23 +448,25 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
                         C1: {
                             descripcion: 'Competencia 1',
                             criterios_evaluacion: [
-                                { codigo: 'CR1', descripcion: 'Criterio 1', competencias_clave: ['CCL1', 'STEM4', 'CD2'] }
-                            ]
-                        }
+                                {
+                                    codigo: 'CR1',
+                                    descripcion: 'Criterio 1',
+                                    competencias_clave: ['CCL1', 'STEM4', 'CD2'],
+                                },
+                            ],
+                        },
                     },
-                    saberes_basicos: { bloques: {} }
-                }
-            }
-        }
+                    saberes_basicos: { bloques: {} },
+                },
+            },
+        },
     };
 
     let el, dev;
 
     beforeEach(async () => {
         const raw = await import('./lomloe.js?raw').then(m => m.default);
-        dev = new Function('globalThis', '_', 'CSS', raw + '\nreturn $exeDevice;')(
-            globalThis, globalThis._, globalThis.CSS
-        );
+        dev = instantiateDevice(raw);
         el = buildMockElement();
         globalThis.fetch = vi.fn(() =>
             Promise.resolve({ ok: true, json: () => Promise.resolve(ESO_COMP) })
@@ -444,7 +485,7 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
             lomloeSelectedEtapa: 'ESO',
             lomloeSelectedNivel: '2º ESO',
             lomloeSelectedMateria: { codArea: 'FQX', denominacion: 'Física y Química' },
-            lomloeSelections: []
+            lomloeSelections: [],
         });
         await new Promise(r => setTimeout(r, 50));
         const cb = el.querySelector('input[type="checkbox"][data-type="criterio"]');
@@ -454,7 +495,9 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
     }
 
     it('checkbox-mode dataset starts empty with descriptorOptions and hides browse tags', async () => {
-        const sel = await selectCriterio('ES-EX');
+        // ES-MD stands in for any available checkbox-mode (non-Canarias) dataset.
+        // (ES-EX is on hold — available:false — so its loader path is unreachable.)
+        const sel = await selectCriterio('ES-MD');
         expect(sel.competenciasClave).toEqual([]);
         expect(sel.descriptorOptions).toEqual(['CCL1', 'STEM4', 'CD2']);
         // Browse panel must not present descriptors as fixed per-criterio tags.
@@ -480,25 +523,23 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
                             C1: {
                                 descripcion: 'Competencia 1',
                                 criterios_evaluacion: [
-                                    { codigo: 'CR1', descripcion: 'Criterio 1', competencias_clave: ['CCL', 'CPSAA'] }
-                                ]
-                            }
+                                    { codigo: 'CR1', descripcion: 'Criterio 1', competencias_clave: ['CCL', 'CPSAA'] },
+                                ],
+                            },
                         },
-                        saberes_basicos: { bloques: {} }
-                    }
-                }
-            }
+                        saberes_basicos: { bloques: {} },
+                    },
+                },
+            },
         };
-        globalThis.fetch = vi.fn(() =>
-            Promise.resolve({ ok: true, json: () => Promise.resolve(INF_COMP) })
-        );
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(INF_COMP) }));
         dev.init(el, {
             lomloeDataset: 'ES',
             lomloeActiveTab: 'competencias',
             lomloeSelectedEtapa: 'Educación Infantil',
             lomloeSelectedNivel: 'Primer ciclo (0-3 años)',
             lomloeSelectedMateria: { codArea: 'ACA', denominacion: 'Área 1. Crecimiento en Armonía' },
-            lomloeSelections: []
+            lomloeSelections: [],
         });
         await new Promise(r => setTimeout(r, 50));
         const cb = el.querySelector('input[type="checkbox"][data-type="criterio"]');
@@ -522,9 +563,7 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
 
     beforeEach(() => {
         el = buildMockElement();
-        globalThis.fetch = vi.fn(() =>
-            Promise.resolve({ ok: true, json: () => Promise.resolve(ESO_SAMPLE) })
-        );
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(ESO_SAMPLE) }));
     });
 
     afterEach(() => {
@@ -534,47 +573,28 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
 
     async function listedCodAreas(dataset, sample) {
         if (sample) {
-            globalThis.fetch = vi.fn(() =>
-                Promise.resolve({ ok: true, json: () => Promise.resolve(sample) })
-            );
+            globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(sample) }));
         }
         $exeDevice.init(el, {
             lomloeDataset: dataset,
             lomloeSelectedEtapa: 'ESO',
             lomloeSelectedNivel: '1º ESO',
-            lomloeSelections: []
+            lomloeSelections: [],
         });
         await new Promise(r => setTimeout(r, 50));
         const list = el.querySelector('[id^="lomloe-mat-list-"]');
-        return [...list.querySelectorAll('.lomloe-materia-item')]
-            .map(li => li.getAttribute('data-codarea'));
+        return [...list.querySelectorAll('.lomloe-materia-item')].map(li => li.getAttribute('data-codarea'));
     }
 
-    // Extremadura uses official subject codes (BG, FQ…); see README.
-    const EX_SAMPLE = {
-        ESO: {
-            '1º ESO': {
-                BG: area('Biología y Geología'),
-                FQ: area('Física y Química'),
-                GH: area('Geografía e Historia'),
-                EF: area('Educación Física'),
-                DIG: area('Digitalización')
-            }
-        }
-    };
-
-    it('Extremadura 1º ESO hides Física y Química (not taught in 1º)', async () => {
-        const codes = await listedCodAreas('ES-EX', EX_SAMPLE);
-        expect(codes).toContain('BG');
-        expect(codes).not.toContain('FQ');
-        // 4º-only optatives duplicated into the cycle are also filtered out.
-        expect(codes).not.toContain('DIG');
-    });
-
+    // The per-course filter is exercised on Madrid because Extremadura (ES-EX) is
+    // on hold (available:false) and its loader path is unreachable; the filtering
+    // mechanism is dataset-agnostic, so ES-MD covers it equally. See issue #1832.
     it('Madrid 1º ESO hides Física y Química too', async () => {
         const codes = await listedCodAreas('ES-MD');
         expect(codes).toContain('BIG');
         expect(codes).not.toContain('FQX');
+        // 4º-only optatives duplicated into the cycle are also filtered out.
+        expect(codes).not.toContain('DIG');
     });
 
     it('EFP (Ceuta/Melilla) 1º ESO hides Física y Química too', async () => {
@@ -583,11 +603,12 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         expect(codes).not.toContain('FQX');
     });
 
-    it('datasets without a per-course distribution (e.g. Galicia, State) are not filtered', async () => {
-        // ES-GA is absent from ESO_COURSE_SUBJECTS, like the State (ES) floor,
-        // so the full 1º–3º block is shown unchanged. (Uses ES-GA rather than
-        // ES because the module caches datasets by id across tests.)
-        const codes = await listedCodAreas('ES-GA');
+    it('datasets without a per-course distribution (e.g. Navarra, State) are not filtered', async () => {
+        // ES-NC is absent from ESO_COURSE_SUBJECTS, like the State (ES) floor,
+        // so the full 1º–3º block is shown unchanged. (Uses ES-NC rather than
+        // ES because the module caches datasets by id across tests, and rather
+        // than ES-GA because that dataset is on hold / unavailable — see #1900.)
+        const codes = await listedCodAreas('ES-NC');
         expect(codes).toContain('BIG');
         expect(codes).toContain('FQX');
         expect(codes).toContain('DIG');
@@ -600,9 +621,7 @@ describe('Summary HTML generation', () => {
 
     beforeEach(() => {
         el = buildMockElement();
-        globalThis.fetch = vi.fn(() =>
-            Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) })
-        );
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) }));
     });
 
     afterEach(() => {
@@ -614,21 +633,23 @@ describe('Summary HTML generation', () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'Educación Primaria',
-                nivel: '1º Primaria',
-                codArea: 'MAT',
-                denominacion: 'Matemáticas',
-                codigoComp: 'PMC1',
-                descripcionComp: 'Razonar matemáticamente',
-                codigoCriterio: 'PM01CE1.1',
-                descripcionCriterio: 'Interpretar datos cuantitativos',
-                competenciasClave: ['CCL2', 'STEM1', 'STEM3'],
-                partial: false
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Primaria',
+                    nivel: '1º Primaria',
+                    codArea: 'MAT',
+                    denominacion: 'Matemáticas',
+                    codigoComp: 'PMC1',
+                    descripcionComp: 'Razonar matemáticamente',
+                    codigoCriterio: 'PM01CE1.1',
+                    descripcionCriterio: 'Interpretar datos cuantitativos',
+                    competenciasClave: ['CCL2', 'STEM1', 'STEM3'],
+                    partial: false,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -643,21 +664,23 @@ describe('Summary HTML generation', () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'Educación Primaria',
-                nivel: '1º Primaria',
-                codArea: 'MAT',
-                denominacion: 'Matemáticas',
-                codigoComp: 'PMC1',
-                descripcionComp: 'Razonar matemáticamente',
-                codigoCriterio: 'PM01CE1.1',
-                descripcionCriterio: 'Interpretar datos cuantitativos del entorno',
-                competenciasClave: ['CCL2'],
-                partial: false
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Primaria',
+                    nivel: '1º Primaria',
+                    codArea: 'MAT',
+                    denominacion: 'Matemáticas',
+                    codigoComp: 'PMC1',
+                    descripcionComp: 'Razonar matemáticamente',
+                    codigoCriterio: 'PM01CE1.1',
+                    descripcionCriterio: 'Interpretar datos cuantitativos del entorno',
+                    competenciasClave: ['CCL2'],
+                    partial: false,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -668,19 +691,21 @@ describe('Summary HTML generation', () => {
         const selId = makeSaberSelId('Educación Primaria', '1º Primaria', 'MAT', 'I. Sentido numérico', 'PM01SBI.1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'saber',
-                dataset: 'ES-CN',
-                etapa: 'Educación Primaria',
-                nivel: '1º Primaria',
-                codArea: 'MAT',
-                denominacion: 'Matemáticas',
-                bloque: 'I. Sentido numérico',
-                nombre: 'PM01SBI.1.1',
-                subtitulo1: 'Números naturales',
-                subtitulo2: '1.1. Conteo'
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'saber',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Primaria',
+                    nivel: '1º Primaria',
+                    codArea: 'MAT',
+                    denominacion: 'Matemáticas',
+                    bloque: 'I. Sentido numérico',
+                    nombre: 'PM01SBI.1.1',
+                    subtitulo1: 'Números naturales',
+                    subtitulo2: '1.1. Conteo',
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -690,7 +715,13 @@ describe('Summary HTML generation', () => {
     });
 
     it('saberes appear in a shared rowspan cell when criterios also exist', async () => {
-        const saberId = makeSaberSelId('Educación Primaria', '1º Primaria', 'MAT', 'I. Sentido numérico', 'PM01SBI.1.1');
+        const saberId = makeSaberSelId(
+            'Educación Primaria',
+            '1º Primaria',
+            'MAT',
+            'I. Sentido numérico',
+            'PM01SBI.1.1',
+        );
         const critId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
@@ -706,7 +737,7 @@ describe('Summary HTML generation', () => {
                     bloque: 'I. Sentido numérico',
                     nombre: 'PM01SBI.1.1',
                     subtitulo1: 'Números naturales',
-                    subtitulo2: '1.1. Conteo'
+                    subtitulo2: '1.1. Conteo',
                 },
                 {
                     id: critId,
@@ -721,9 +752,9 @@ describe('Summary HTML generation', () => {
                     codigoCriterio: 'PM01CE1.1',
                     descripcionCriterio: 'Interpretar datos cuantitativos',
                     competenciasClave: ['CCL2'],
-                    partial: false
-                }
-            ]
+                    partial: false,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -740,21 +771,23 @@ describe('Summary HTML generation', () => {
         const critId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: critId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'Educación Primaria',
-                nivel: '1º Primaria',
-                codArea: 'MAT',
-                denominacion: 'Matemáticas',
-                codigoComp: 'PMC1',
-                descripcionComp: 'Razonar',
-                codigoCriterio: 'PM01CE1.1',
-                descripcionCriterio: 'Interpretar',
-                competenciasClave: ['CCL2'],
-                partial: false
-            }]
+            lomloeSelections: [
+                {
+                    id: critId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Primaria',
+                    nivel: '1º Primaria',
+                    codArea: 'MAT',
+                    denominacion: 'Matemáticas',
+                    codigoComp: 'PMC1',
+                    descripcionComp: 'Razonar',
+                    codigoCriterio: 'PM01CE1.1',
+                    descripcionCriterio: 'Interpretar',
+                    competenciasClave: ['CCL2'],
+                    partial: false,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -774,21 +807,23 @@ describe('Summary HTML generation', () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'Educación Primaria',
-                nivel: '1º Primaria',
-                codArea: 'MAT',
-                denominacion: 'Matemáticas',
-                codigoComp: 'PMC1',
-                descripcionComp: 'Razonar matemáticamente',
-                codigoCriterio: 'PM01CE1.1',
-                descripcionCriterio: 'Interpretar datos cuantitativos',
-                competenciasClave: ['CCL2', 'STEM1', 'STEM3'],
-                partial: false
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Primaria',
+                    nivel: '1º Primaria',
+                    codArea: 'MAT',
+                    denominacion: 'Matemáticas',
+                    codigoComp: 'PMC1',
+                    descripcionComp: 'Razonar matemáticamente',
+                    codigoCriterio: 'PM01CE1.1',
+                    descripcionCriterio: 'Interpretar datos cuantitativos',
+                    competenciasClave: ['CCL2', 'STEM1', 'STEM3'],
+                    partial: false,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -801,21 +836,23 @@ describe('Summary HTML generation', () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'Educación Primaria',
-                nivel: '1º Primaria',
-                codArea: 'MAT',
-                denominacion: 'Matemáticas',
-                codigoComp: 'PMC1',
-                descripcionComp: 'Razonar matemáticamente',
-                codigoCriterio: 'PM01CE1.1',
-                descripcionCriterio: 'Interpretar datos cuantitativos',
-                competenciasClave: ['CCL2'],
-                partial: true
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Primaria',
+                    nivel: '1º Primaria',
+                    codArea: 'MAT',
+                    denominacion: 'Matemáticas',
+                    codigoComp: 'PMC1',
+                    descripcionComp: 'Razonar matemáticamente',
+                    codigoCriterio: 'PM01CE1.1',
+                    descripcionCriterio: 'Interpretar datos cuantitativos',
+                    competenciasClave: ['CCL2'],
+                    partial: true,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -827,21 +864,23 @@ describe('Summary HTML generation', () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'Educación Primaria',
-                nivel: '1º Primaria',
-                codArea: 'MAT',
-                denominacion: 'Matemáticas',
-                codigoComp: 'PMC1',
-                descripcionComp: 'Razonar matemáticamente',
-                codigoCriterio: 'PM01CE1.1',
-                descripcionCriterio: 'Interpretar datos cuantitativos',
-                competenciasClave: ['CCL2'],
-                partial: false
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Primaria',
+                    nivel: '1º Primaria',
+                    codArea: 'MAT',
+                    denominacion: 'Matemáticas',
+                    codigoComp: 'PMC1',
+                    descripcionComp: 'Razonar matemáticamente',
+                    codigoCriterio: 'PM01CE1.1',
+                    descripcionCriterio: 'Interpretar datos cuantitativos',
+                    competenciasClave: ['CCL2'],
+                    partial: false,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -852,21 +891,23 @@ describe('Summary HTML generation', () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'Educación Primaria',
-                nivel: '1º Primaria',
-                codArea: 'MAT',
-                denominacion: 'Matemáticas',
-                codigoComp: 'PMC1',
-                descripcionComp: 'Razonar',
-                codigoCriterio: 'PM01CE1.1',
-                descripcionCriterio: 'Interpretar',
-                competenciasClave: ['CCL2'],
-                partial: false
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Primaria',
+                    nivel: '1º Primaria',
+                    codArea: 'MAT',
+                    denominacion: 'Matemáticas',
+                    codigoComp: 'PMC1',
+                    descripcionComp: 'Razonar',
+                    codigoCriterio: 'PM01CE1.1',
+                    descripcionCriterio: 'Interpretar',
+                    competenciasClave: ['CCL2'],
+                    partial: false,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -885,21 +926,23 @@ describe('Summary HTML generation', () => {
         const selId = makeCriterioSelId('Educación Infantil', '4º Infantil de 3 años', 'CYR', 'CYR_C1', 'CYR01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
-            lomloeSelections: [{
-                id: selId,
-                type: 'criterio',
-                dataset: 'ES-CN',
-                etapa: 'Educación Infantil',
-                nivel: '4º Infantil de 3 años',
-                codArea: 'CYR',
-                denominacion: 'Crecimiento en Armonía',
-                codigoComp: 'CYR_C1',
-                descripcionComp: 'Progresar en el conocimiento',
-                codigoCriterio: 'CYR01CE1.1',
-                descripcionCriterio: 'Participar con seguridad',
-                competenciasClave: ['CPSAA1'],
-                partial: false
-            }]
+            lomloeSelections: [
+                {
+                    id: selId,
+                    type: 'criterio',
+                    dataset: 'ES-CN',
+                    etapa: 'Educación Infantil',
+                    nivel: '4º Infantil de 3 años',
+                    codArea: 'CYR',
+                    denominacion: 'Crecimiento en Armonía',
+                    codigoComp: 'CYR_C1',
+                    descripcionComp: 'Progresar en el conocimiento',
+                    codigoCriterio: 'CYR01CE1.1',
+                    descripcionCriterio: 'Participar con seguridad',
+                    competenciasClave: ['CPSAA1'],
+                    partial: false,
+                },
+            ],
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
@@ -920,9 +963,7 @@ describe('Summary HTML generation', () => {
 describe('Dataset configuration', () => {
     it('has at least one available dataset', () => {
         const el2 = buildMockElement();
-        globalThis.fetch = vi.fn(() =>
-            Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) })
-        );
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) }));
         expect(() => $exeDevice.init(el2, null)).not.toThrow();
         el2.remove();
         vi.restoreAllMocks();
@@ -930,9 +971,7 @@ describe('Dataset configuration', () => {
 
     it('renders a dataset selector in the DOM after init', async () => {
         const el3 = buildMockElement();
-        globalThis.fetch = vi.fn(() =>
-            Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) })
-        );
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) }));
         $exeDevice.init(el3, null);
         await new Promise(r => setTimeout(r, 50));
         const dsSelect = el3.querySelector('select[id*="lomloe-ds-"]');
@@ -953,9 +992,7 @@ describe('Tooltip popover controller', () => {
         const old = document.getElementById('lomloe-tooltip');
         if (old) old.remove();
         el = buildMockElement();
-        globalThis.fetch = vi.fn(() =>
-            Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) })
-        );
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) }));
     });
 
     afterEach(() => {
@@ -1048,6 +1085,216 @@ describe('Tooltip popover controller', () => {
         plain.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
         expect(document.getElementById('lomloe-tooltip')).toBeNull();
     });
+
+    it('clamps a tall tooltip inside the viewport so long definitions are not clipped', async () => {
+        $exeDevice.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        const target = document.createElement('span');
+        target.setAttribute('data-lomloe-tip', 'A very long criteria definition…');
+        el.appendChild(target);
+        // Create + show the tooltip, then simulate a tall tooltip near the
+        // bottom edge and re-position via a scroll event.
+        target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        const tip = document.getElementById('lomloe-tooltip');
+        const vh = window.innerHeight || 768;
+        const tipH = 700;
+        // Mid-viewport target; the tooltip is too tall to fit either below or
+        // above it, so the clamp must pull it back inside the viewport.
+        target.getBoundingClientRect = () => ({ top: 400, bottom: 420, left: 100, right: 200, width: 100, height: 20 });
+        tip.getBoundingClientRect = () => ({ top: 0, bottom: tipH, left: 0, right: 360, width: 360, height: tipH });
+        window.dispatchEvent(new Event('scroll'));
+        // Pinned so its bottom stays just inside the viewport (vh - 4 - height).
+        expect(tip.style.top).toBe(Math.max(4, vh - 4 - tipH) + 'px');
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+// Stage (etapa) ordering must be Infantil → Primaria → ESO → Bachillerato
+// regardless of how the dataset spells the stage names. Regional datasets use
+// the full official names ("Educación Secundaria Obligatoria") or co-official
+// spellings ("Educació Secundària Obligatòria", "Batxillerat"); these must sort
+// like the Castilian abbreviations and not fall behind Bachillerato.
+describe('LOMLOE stage (etapa) ordering', () => {
+    let el;
+    let dev;
+
+    // Re-instantiate per test so the module-level dataCache is fresh (each test
+    // loads the default dataset id with a different fixture).
+    beforeEach(async () => {
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = instantiateDevice(raw);
+    });
+    afterEach(() => {
+        el && el.remove();
+        vi.restoreAllMocks();
+    });
+
+    async function renderedEtapaOrder(dataset) {
+        el = buildMockElement();
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(dataset) }));
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        return Array.from(el.querySelectorAll('.lomloe-etapa-btn')).map(b => b.dataset.etapa);
+    }
+
+    it('orders official Castilian stage names (Navarra-style) ESO before Bachillerato', async () => {
+        // Insertion order scrambled on purpose to prove it is the sort, not the
+        // object order, that fixes this — the regression was Bachillerato first.
+        const order = await renderedEtapaOrder({
+            Bachillerato: { '1º Bachillerato': { MAT: area('Matemáticas') } },
+            'Educación Secundaria Obligatoria': { '1º de ESO': { MAT: area('Matemáticas') } },
+            'Educación Infantil': { '2º ciclo': { ÁCA: area('Comunicación') } },
+            'Educación Primaria': { '1º Primaria': { MAT: area('Matemáticas') } },
+        });
+        expect(order).toEqual([
+            'Educación Infantil',
+            'Educación Primaria',
+            'Educación Secundaria Obligatoria',
+            'Bachillerato',
+        ]);
+    });
+
+    it('orders accented co-official stage names (Valencian-style) correctly', async () => {
+        const order = await renderedEtapaOrder({
+            Batxillerat: { '1r Batxillerat': { MAT: area('Matemàtiques') } },
+            'Educació Secundària Obligatòria': { '1r ESO': { MAT: area('Matemàtiques') } },
+            'Educació Infantil': { '2n cicle': { ÁCA: area('Comunicació') } },
+            'Educació Primària': { '1r Primària': { MAT: area('Matemàtiques') } },
+        });
+        expect(order).toEqual([
+            'Educació Infantil',
+            'Educació Primària',
+            'Educació Secundària Obligatòria',
+            'Batxillerat',
+        ]);
+    });
+
+    it('orders Basque (Euskadi-style) stage names Haur → Lehen → DBH', async () => {
+        // The Euskadi dataset uses Basque stage names with no Castilian token, so
+        // ETAPA_ORDER must recognise 'haur'/'lehen'/'bigarren'. Insertion order is
+        // scrambled to prove it is the sort, not the object order, that fixes this.
+        const order = await renderedEtapaOrder({
+            'Derrigorrezko Bigarren Hezkuntza': { 'DBHko 1. maila': { MAT: area('Matematika') } },
+            'Haur Hezkuntza': { 'Lehen zikloa (0-3 urte)': { HH: area('Harmonian hazten') } },
+            'Lehen Hezkuntza': { 'Lehen Hezkuntzako 1. maila': { MAT: area('Matematika') } },
+        });
+        expect(order).toEqual(['Haur Hezkuntza', 'Lehen Hezkuntza', 'Derrigorrezko Bigarren Hezkuntza']);
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+// A dataset may carry its own descriptor catalog (e.g. the Comunitat
+// Valenciana publishes the perfil-d'eixida descriptors in Valencian) under a
+// reserved top-level `descriptors` key; when present it overrides the shared
+// Castilian CC_DESCRIPTIONS, per-code, and must not be treated as an etapa.
+describe('LOMLOE per-dataset descriptor override', () => {
+    let el;
+
+    function fixtureWithDescriptors(descriptors) {
+        const ds = {
+            'Educació Primària': {
+                "1r d'Educació Primària": {
+                    MAT: {
+                        denominacion: 'Matemàtiques',
+                        saberes_basicos: { bloques: {} },
+                        competencias_especificas: {
+                            C1: {
+                                descripcion: 'Comp 1',
+                                explicacion_bloque_competencial: '',
+                                criterios_evaluacion: [
+                                    { codigo: 'C1.1', descripcion: 'Crit 1', competencias_clave: ['CCL2', 'STEM1'] },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        };
+        if (descriptors) ds.descriptors = descriptors;
+        return ds;
+    }
+
+    function mockFetch(ds) {
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(ds) }));
+    }
+
+    function seededPrev() {
+        return {
+            lomloeDataset: 'ES-VC',
+            lomloeSelectedEtapa: 'Educació Primària',
+            lomloeSelectedNivel: "1r d'Educació Primària",
+            lomloeSelectedMateria: { codArea: 'MAT', denominacion: 'Matemàtiques' },
+            lomloeSelections: [
+                {
+                    id: makeCriterioSelId('Educació Primària', "1r d'Educació Primària", 'MAT', 'C1', 'C1.1'),
+                    type: 'criterio',
+                    dataset: 'ES-VC',
+                    etapa: 'Educació Primària',
+                    nivel: "1r d'Educació Primària",
+                    codArea: 'MAT',
+                    denominacion: 'Matemàtiques',
+                    codigoComp: 'C1',
+                    descripcionComp: 'Comp 1',
+                    codigoCriterio: 'C1.1',
+                    descripcionCriterio: 'Crit 1',
+                    competenciasClave: ['CCL2', 'STEM1'],
+                },
+            ],
+        };
+    }
+
+    // Re-instantiate per test so the module-level dataCache is fresh (each test
+    // loads the ES-VC id with a different fixture).
+    let dev;
+    beforeEach(async () => {
+        el = buildMockElement();
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = instantiateDevice(raw);
+    });
+    afterEach(() => { el && el.remove(); vi.restoreAllMocks(); });
+
+    it('uses the dataset override text for a code that has one', async () => {
+        mockFetch(fixtureWithDescriptors({ CCL2: 'CCL2 — text en valencià' }));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        const html = dev.save().lomloeSummaryHtml;
+        expect(html).toContain('CCL2 — text en valencià');
+        expect(html).not.toContain('Comprende e interpreta con sentido crítico'); // Castilian default gone
+    });
+
+    it('falls back per-code to CC_DESCRIPTIONS for codes the override lacks', async () => {
+        mockFetch(fixtureWithDescriptors({ CCL2: 'CCL2 — text en valencià' }));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        const html = dev.save().lomloeSummaryHtml;
+        expect(html).toContain('STEM1 — Utiliza conceptos y razonamientos'); // STEM1 not overridden
+    });
+
+    it('uses CC_DESCRIPTIONS and empty lomloeDescriptors when no descriptors key', async () => {
+        mockFetch(fixtureWithDescriptors(null));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        const saved = dev.save();
+        expect(saved.lomloeSummaryHtml).toContain('CCL2 — Comprende e interpreta');
+        expect(saved.lomloeDescriptors).toEqual({});
+    });
+
+    it('save() denormalizes only the used codes that have an override', async () => {
+        mockFetch(fixtureWithDescriptors({ CCL2: 'CCL2 — VAL', CD1: 'CD1 — unused VAL' }));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        // selection uses CCL2 (overridden) + STEM1 (not overridden); CD1 is unused
+        expect(dev.save().lomloeDescriptors).toEqual({ CCL2: 'CCL2 — VAL' });
+    });
+
+    it('does not render the reserved `descriptors` key as an etapa tab', async () => {
+        mockFetch(fixtureWithDescriptors({ CCL2: 'x' }));
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        const tabs = Array.from(el.querySelectorAll('.lomloe-etapa-btn')).map(b => b.getAttribute('data-etapa'));
+        expect(tabs).toContain('Educació Primària');
+        expect(tabs).not.toContain('descriptors');
+    });
 });
 
 // ── Bundled state-level datasets (lomloe-ES.json + lomloe-ES-EFP.json) ──────
@@ -1064,9 +1311,15 @@ function loadDataset(name) {
     return JSON.parse(readFileSync(join(dataDir, name), 'utf-8'));
 }
 
+// Reserved top-level keys in a dataset JSON that are NOT etapes (e.g. a
+// per-dataset `descriptors` override catalog). Keep in sync with the same list
+// in edition/lomloe.js.
+const RESERVED_DATASET_KEYS = ['descriptors'];
+
 function walkAreas(dataset) {
     const out = [];
     for (const [etapa, niveles] of Object.entries(dataset)) {
+        if (RESERVED_DATASET_KEYS.includes(etapa)) continue;
         for (const [nivel, areas] of Object.entries(niveles)) {
             for (const [codArea, area] of Object.entries(areas)) {
                 out.push({ etapa, nivel, codArea, area });
@@ -1094,7 +1347,9 @@ function assertInfantilLinkedToCompetenciasClave(data) {
                     const cc = cr.competencias_clave || [];
                     if (cc.length === 0) empty++;
                     for (const code of cc) {
-                        expect(COMPETENCIAS_CLAVE, `Infantil code ${code} must be a bare competencia clave`).toContain(code);
+                        expect(COMPETENCIAS_CLAVE, `Infantil code ${code} must be a bare competencia clave`).toContain(
+                            code,
+                        );
                     }
                 }
             }
@@ -1103,6 +1358,95 @@ function assertInfantilLinkedToCompetenciasClave(data) {
     expect(total).toBeGreaterThan(0);
     expect(empty, 'all Infantil criterios must be linked to competencias clave').toBe(0);
 }
+
+// ════════════════════════════════════════════════════════════════
+describe('fetchJsonMaybeGzipped decompression tiers (.zst / plain / XHR)', () => {
+    let el;
+
+    function minimalDataset() {
+        return {
+            'Educación Primaria': {
+                '1º Primaria': {
+                    MAT: {
+                        denominacion: 'Matemáticas',
+                        saberes_basicos: { bloques: {} },
+                        competencias_especificas: {},
+                    },
+                },
+            },
+        };
+    }
+
+    function mockZstFetch(ds) {
+        const zstUrl = /\.zst$/;
+        const jsonBytes = new TextEncoder().encode(JSON.stringify(ds));
+        globalThis.window.fzstd = { decompress: vi.fn(() => jsonBytes) };
+        globalThis.fetch = vi.fn((url) => {
+            if (zstUrl.test(url)) {
+                return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(jsonBytes.buffer) });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(ds) });
+        });
+    }
+
+    function mockZstFetch404ThenPlain(ds) {
+        globalThis.window.fzstd = { decompress: vi.fn() };
+        globalThis.fetch = vi.fn((url) => {
+            if (/\.zst$/.test(url)) {
+                return Promise.resolve({ ok: false, status: 404 });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(ds) });
+        });
+    }
+
+    function mockPlainFetchOnly(ds) {
+        delete globalThis.window.fzstd;
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(ds) }));
+    }
+
+    let dev;
+    beforeEach(async () => {
+        el = buildMockElement();
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = instantiateDevice(raw);
+    });
+    afterEach(() => {
+        el && el.remove();
+        delete globalThis.window.fzstd;
+        vi.restoreAllMocks();
+    });
+
+    it('tries <url>.zst first and decompresses via window.fzstd when available', async () => {
+        mockZstFetch(minimalDataset());
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        expect(globalThis.fetch).toHaveBeenCalled();
+        const firstUrl = globalThis.fetch.mock.calls[0][0];
+        expect(firstUrl).toMatch(/\.zst$/);
+        expect(globalThis.window.fzstd.decompress).toHaveBeenCalled();
+        // Data loaded successfully via the .zst tier (no error thrown, summary renders).
+        expect(dev.save().lomloeSummaryHtml).toBeDefined();
+    });
+
+    it('falls back to the plain <url> fetch when the .zst request 404s', async () => {
+        mockZstFetch404ThenPlain(minimalDataset());
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        const urls = globalThis.fetch.mock.calls.map(c => c[0]);
+        expect(urls.some(u => /\.zst$/.test(u))).toBe(true);
+        expect(urls.some(u => !/\.zst$/.test(u))).toBe(true);
+        expect(dev.save().lomloeSummaryHtml).toBeDefined();
+    });
+
+    it('skips the .zst tier entirely when window.fzstd is not loaded', async () => {
+        mockPlainFetchOnly(minimalDataset());
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        const urls = globalThis.fetch.mock.calls.map(c => c[0]);
+        expect(urls.every(u => !/\.zst$/.test(u))).toBe(true);
+        expect(dev.save().lomloeSummaryHtml).toBeDefined();
+    });
+});
 
 describe('lomloe-ES.json (state minimum teachings)', () => {
     const data = loadDataset('lomloe-ES.json');
@@ -1132,8 +1476,12 @@ describe('lomloe-ES.json (state minimum teachings)', () => {
 
     it('uses the expected per-year nivel keys for Primaria, ESO, Bachillerato', () => {
         expect(Object.keys(data['Educación Primaria'])).toEqual([
-            '1º Primaria', '2º Primaria', '3º Primaria',
-            '4º Primaria', '5º Primaria', '6º Primaria',
+            '1º Primaria',
+            '2º Primaria',
+            '3º Primaria',
+            '4º Primaria',
+            '5º Primaria',
+            '6º Primaria',
         ]);
         expect(Object.keys(data['ESO'])).toEqual(['1º ESO', '2º ESO', '3º ESO', '4º ESO']);
         expect(Object.keys(data['Bachillerato'])).toEqual(['1º Bachillerato', '2º Bachillerato']);
@@ -1216,8 +1564,12 @@ describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
 
     it('uses the same per-year nivel keys as the state dataset', () => {
         expect(Object.keys(data['Educación Primaria'])).toEqual([
-            '1º Primaria', '2º Primaria', '3º Primaria',
-            '4º Primaria', '5º Primaria', '6º Primaria',
+            '1º Primaria',
+            '2º Primaria',
+            '3º Primaria',
+            '4º Primaria',
+            '5º Primaria',
+            '6º Primaria',
         ]);
         expect(Object.keys(data['ESO'])).toEqual(['1º ESO', '2º ESO', '3º ESO', '4º ESO']);
         expect(Object.keys(data['Bachillerato'])).toEqual(['1º Bachillerato', '2º Bachillerato']);
@@ -1238,7 +1590,20 @@ describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
         // Generator-derived codes must no longer appear in Primaria/ESO.
         for (const etapa of ['Educación Primaria', 'ESO']) {
             for (const [, areas] of Object.entries(data[etapa])) {
-                for (const old of ['BIG', 'FQX', 'GEH', 'EPV', 'TYD', 'EVC', 'LEX', 'EFI', 'EAR', 'EEX', 'FOP', 'CMN']) {
+                for (const old of [
+                    'BIG',
+                    'FQX',
+                    'GEH',
+                    'EPV',
+                    'TYD',
+                    'EVC',
+                    'LEX',
+                    'EFI',
+                    'EAR',
+                    'EEX',
+                    'FOP',
+                    'CMN',
+                ]) {
                     expect(areas[old], `${etapa} must not keep derived code ${old}`).toBeUndefined();
                 }
                 // Embedded competencia codes match their area key.
@@ -1318,8 +1683,12 @@ describe('lomloe-ES-MD.json (Comunidad de Madrid concretion)', () => {
 
     it('uses the same per-year nivel keys as the state dataset', () => {
         expect(Object.keys(data['Educación Primaria'])).toEqual([
-            '1º Primaria', '2º Primaria', '3º Primaria',
-            '4º Primaria', '5º Primaria', '6º Primaria',
+            '1º Primaria',
+            '2º Primaria',
+            '3º Primaria',
+            '4º Primaria',
+            '5º Primaria',
+            '6º Primaria',
         ]);
         expect(Object.keys(data['ESO'])).toEqual(['1º ESO', '2º ESO', '3º ESO', '4º ESO']);
         expect(Object.keys(data['Bachillerato'])).toEqual(['1º Bachillerato', '2º Bachillerato']);
@@ -1387,16 +1756,14 @@ describe('lomloe-ES-EFP.json (Ministry-managed territory: MEFPD)', () => {
 
     it('covers Infantil, Primaria, ESO and Bachillerato (Orden EFP/608/2022 added Infantil)', () => {
         expect(Object.keys(data).sort()).toEqual(
-            ['Bachillerato', 'ESO', 'Educación Infantil', 'Educación Primaria'].sort()
+            ['Bachillerato', 'ESO', 'Educación Infantil', 'Educación Primaria'].sort(),
         );
         expect(data['Educación Infantil']).toBeDefined();
     });
 
     it('Infantil exposes the two ciclos and three áreas, with ES-EFP-INF-prefixed codes', () => {
         const inf = data['Educación Infantil'];
-        expect(Object.keys(inf)).toEqual([
-            'Primer ciclo (0-3 años)', 'Segundo ciclo (3-6 años)',
-        ]);
+        expect(Object.keys(inf)).toEqual(['Primer ciclo (0-3 años)', 'Segundo ciclo (3-6 años)']);
         for (const ciclo of Object.keys(inf)) {
             // The three LOMLOE Infantil áreas (codes inherited from the state dataset).
             expect(Object.keys(inf[ciclo]).sort()).toEqual(['ÁCA', 'ÁCR', 'ÁDE']);
@@ -1483,15 +1850,23 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
 
     it('uses Galician nivel labels (per-year for Primaria/ESO/Bacharelato, ciclo for Infantil)', () => {
         expect(Object.keys(data['Educación Primaria'])).toEqual([
-            '1º de educación primaria', '2º de educación primaria', '3º de educación primaria',
-            '4º de educación primaria', '5º de educación primaria', '6º de educación primaria',
+            '1º de educación primaria',
+            '2º de educación primaria',
+            '3º de educación primaria',
+            '4º de educación primaria',
+            '5º de educación primaria',
+            '6º de educación primaria',
         ]);
         expect(Object.keys(data['Educación Secundaria Obrigatoria'])).toEqual([
-            '1º de ESO', '2º de ESO', '3º de ESO', '4º de ESO',
+            '1º de ESO',
+            '2º de ESO',
+            '3º de ESO',
+            '4º de ESO',
         ]);
         expect(Object.keys(data['Bacharelato'])).toEqual(['1º de bacharelato', '2º de bacharelato']);
         expect(Object.keys(data['Educación Infantil'])).toEqual([
-            'Primeiro ciclo (0-3 anos)', 'Segundo ciclo (3-6 anos)',
+            'Primeiro ciclo (0-3 anos)',
+            'Segundo ciclo (3-6 anos)',
         ]);
     });
 
@@ -1542,6 +1917,134 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
     });
 });
 
+// Shared structural assertions for an autonomous-community concretion. The data
+// is generated from the official curriculum decrees, so we check the schema
+// contract and the code invariants rather than specific wording.
+function assertConcretion(name, prefix, etapaNiveles) {
+    describe(name, () => {
+        const data = loadDataset(name.split(' ')[0]);
+
+        it('parses as a non-empty object with no placeholder notice', () => {
+            expect(typeof data).toBe('object');
+            expect(data).not.toBeNull();
+            expect(data.__notice__).toBeUndefined();
+            expect(Object.keys(data).length).toBeGreaterThan(0);
+        });
+
+        it('exposes the expected etapas with the exact nivel labels', () => {
+            for (const [etapa, niveles] of Object.entries(etapaNiveles)) {
+                expect(data[etapa], `missing etapa ${etapa}`).toBeDefined();
+                expect(Object.keys(data[etapa])).toEqual(niveles);
+            }
+        });
+
+        it('every area record has the iDevice schema shape', () => {
+            const sample = walkAreas(data).slice(0, 30);
+            expect(sample.length).toBeGreaterThan(0);
+            for (const { area, codArea, etapa, nivel } of sample) {
+                const ctx = `${etapa}/${nivel}/${codArea}`;
+                expect(area.denominacion, ctx).toBeTruthy();
+                expect(area.competencias_especificas, ctx).toBeDefined();
+                expect(area.saberes_basicos.bloques, ctx).toBeDefined();
+            }
+        });
+
+        it('has competencias with criterios and at least one saberes bloque', () => {
+            let comps = 0,
+                criterios = 0,
+                saberes = 0;
+            for (const { area } of walkAreas(data)) {
+                for (const comp of Object.values(area.competencias_especificas)) {
+                    comps++;
+                    expect(comp.descripcion).toBeTruthy();
+                    for (const cr of comp.criterios_evaluacion) {
+                        criterios++;
+                        expect(cr.codigo).toBeTruthy();
+                        expect(cr.descripcion).toBeTruthy();
+                        expect(Array.isArray(cr.competencias_clave)).toBe(true);
+                    }
+                }
+                for (const items of Object.values(area.saberes_basicos.bloques)) {
+                    saberes += items.length;
+                }
+            }
+            expect(comps).toBeGreaterThan(0);
+            expect(criterios).toBeGreaterThan(0);
+            expect(saberes).toBeGreaterThan(0);
+        });
+
+        it(`every code uses the ${prefix} namespace and embeds its area code`, () => {
+            let checked = false;
+            for (const { area, codArea } of walkAreas(data)) {
+                for (const code of Object.keys(area.competencias_especificas)) {
+                    expect(code.startsWith(prefix)).toBe(true);
+                    expect(code.split('-')[3]).toBe(codArea);
+                    checked = true;
+                }
+            }
+            expect(checked).toBe(true);
+        });
+
+        it('competencia codes are unique within each (nivel, area)', () => {
+            for (const { area, codArea, etapa, nivel } of walkAreas(data)) {
+                const codes = Object.keys(area.competencias_especificas);
+                expect(new Set(codes).size, `${etapa}/${nivel}/${codArea}`).toBe(codes.length);
+            }
+        });
+
+        it('saberes nombres are globally unique inside the dataset', () => {
+            const seen = new Set();
+            const dupes = [];
+            for (const { area } of walkAreas(data)) {
+                for (const items of Object.values(area.saberes_basicos.bloques)) {
+                    for (const item of items) {
+                        if (seen.has(item.nombre)) dupes.push(item.nombre);
+                        seen.add(item.nombre);
+                    }
+                }
+            }
+            expect(dupes).toEqual([]);
+        });
+    });
+}
+
+assertConcretion('lomloe-ES-NC.json (Navarra concretion — official Spanish extraction)', 'ES-NC-', {
+    'Educación Infantil': ['Primer ciclo (0-3 años)', 'Segundo ciclo (3-6 años)'],
+    'Educación Primaria': [
+        '1º de Educación Primaria',
+        '2º de Educación Primaria',
+        '3º de Educación Primaria',
+        '4º de Educación Primaria',
+        '5º de Educación Primaria',
+        '6º de Educación Primaria',
+    ],
+    'Educación Secundaria Obligatoria': ['1º de ESO', '2º de ESO', '3º de ESO', '4º de ESO'],
+    'Bachillerato': ['1º de Bachillerato', '2º de Bachillerato'],
+});
+
+assertConcretion('lomloe-ES-VC.json (Comunitat Valenciana concretion — official Valencian extraction)', 'ES-VC-', {
+    'Educació Infantil': ['Primer cicle (0-3 anys)', 'Segon cicle (3-6 anys)'],
+    'Educació Primària': [
+        "1r d'Educació Primària",
+        "2n d'Educació Primària",
+        "3r d'Educació Primària",
+        "4t d'Educació Primària",
+        "5é d'Educació Primària",
+        "6é d'Educació Primària",
+    ],
+    'Educació Secundària Obligatòria': ["1r d'ESO", "2n d'ESO", "3r d'ESO", "4t d'ESO"],
+    'Batxillerat': ['1r de Batxillerat', '2n de Batxillerat'],
+});
+
+describe('lomloe-ES-VC.json (Valencian wording integrity)', () => {
+    const data = loadDataset('lomloe-ES-VC.json');
+    it('preserves Valencian etapa labels and accented characters', () => {
+        const blob = JSON.stringify(data);
+        expect(blob).toMatch(/Educació|Primària|Secundària|Batxillerat/);
+        expect(blob).toMatch(/[àèòïçé·]/);
+    });
+});
+
 describe('DATASETS registry (regression guard)', () => {
     // DATASETS is var-scoped inside the iDevice IIFE and not exported, so we
     // assert against the source string. Catches accidental flips of the
@@ -1549,50 +2052,327 @@ describe('DATASETS registry (regression guard)', () => {
     const lomloeSrc = readFileSync(join(__testDir, 'lomloe.js'), 'utf-8');
 
     function entryFor(id) {
-        const re = new RegExp(
-            "\\{\\s*id:\\s*'" + id + "'[\\s\\S]*?available:\\s*(true|false)",
-        );
+        const re = new RegExp("\\{\\s*id:\\s*'" + id + "'[\\s\\S]*?available:\\s*(true|false)");
         return lomloeSrc.match(re);
     }
 
     it('declares ES with available:true and the lomloe-ES.json file', () => {
         const m = entryFor('ES');
-        expect(m, "ES entry missing").not.toBeNull();
+        expect(m, 'ES entry missing').not.toBeNull();
         expect(m[1]).toBe('true');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES.json'");
     });
 
     it('declares ES-EFP with available:true and the lomloe-ES-EFP.json file', () => {
         const m = entryFor('ES-EFP');
-        expect(m, "ES-EFP entry missing").not.toBeNull();
+        expect(m, 'ES-EFP entry missing').not.toBeNull();
         expect(m[1]).toBe('true');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EFP.json'");
     });
 
-    it('declares ES-EX with available:true and the lomloe-ES-EX.json file', () => {
+    it('declares ES-EX on hold (available:false) with the lomloe-ES-EX.json file', () => {
+        // Temporarily disabled pending confirmation for reactivation. The dataset
+        // file stays in the repo; only the availability flag is flipped off.
         const m = entryFor('ES-EX');
-        expect(m, "ES-EX entry missing").not.toBeNull();
-        expect(m[1]).toBe('true');
+        expect(m, 'ES-EX entry missing').not.toBeNull();
+        expect(m[1]).toBe('false');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EX.json'");
     });
 
     it('declares ES-MD with available:true and the lomloe-ES-MD.json file', () => {
         const m = entryFor('ES-MD');
-        expect(m, "ES-MD entry missing").not.toBeNull();
+        expect(m, 'ES-MD entry missing').not.toBeNull();
         expect(m[1]).toBe('true');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-MD.json'");
     });
 
-    it('declares ES-GA with available:true and the lomloe-ES-GA.json file', () => {
+    it('declares ES-GA on hold (available:false) with the lomloe-ES-GA.json file', () => {
+        // On hold pending official Galician spec (#1900 / #1898). The dataset
+        // file stays in the repo; only the availability flag is flipped off.
         const m = entryFor('ES-GA');
-        expect(m, "ES-GA entry missing").not.toBeNull();
-        expect(m[1]).toBe('true');
+        expect(m, 'ES-GA entry missing').not.toBeNull();
+        expect(m[1]).toBe('false');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-GA.json'");
+    });
+
+    it('declares ES-NC with available:true and the lomloe-ES-NC.json file', () => {
+        const m = entryFor('ES-NC');
+        expect(m, 'ES-NC entry missing').not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES-NC.json'");
+    });
+
+    it('declares ES-VC with available:true and the lomloe-ES-VC.json file', () => {
+        const m = entryFor('ES-VC');
+        expect(m, 'ES-VC entry missing').not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES-VC.json'");
+    });
+
+    it('declares ES-PV (Euskadi) with available:true and the lomloe-ES-PV.json file', () => {
+        const m = entryFor('ES-PV');
+        expect(m, 'ES-PV entry missing').not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES-PV.json'");
+        expect(lomloeSrc).toContain('LOMLOE — Euskadi / País Vasco');
+        expect(lomloeSrc).toContain('showDescriptorsAtCompetency: true');
     });
 
     it('leaves ES-CN unchanged (available:true)', () => {
         const m = entryFor('ES-CN');
-        expect(m, "ES-CN entry missing").not.toBeNull();
+        expect(m, 'ES-CN entry missing').not.toBeNull();
         expect(m[1]).toBe('true');
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+// Real-dataset render test: load the actual lomloe-ES-PV.json through the
+// editor and walk Infantil → Primaria → ESO, asserting the Basque stage tree
+// renders and a selected materia shows its competencias/criterios/saberes.
+describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
+    let el, dev;
+
+    beforeEach(async () => {
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = instantiateDevice(raw);
+    });
+    afterEach(() => {
+        el && el.remove();
+        vi.restoreAllMocks();
+    });
+
+    async function initEsPv(saved) {
+        el = buildMockElement();
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(esPvDataset) }));
+        dev.init(el, Object.assign({ lomloeDataset: 'ES-PV', lomloeSelections: [] }, saved || {}));
+        await new Promise(r => setTimeout(r, 80));
+        return el;
+    }
+
+    it('renders the three Basque etapas in canonical order', async () => {
+        await initEsPv();
+        const order = Array.from(el.querySelectorAll('.lomloe-etapa-btn')).map(b => b.dataset.etapa);
+        expect(order).toEqual(['Haur Hezkuntza', 'Lehen Hezkuntza', 'Derrigorrezko Bigarren Hezkuntza']);
+    });
+
+    it('renders niveles when each etapa is opened', async () => {
+        await initEsPv();
+        const open = etapa => {
+            const btn = Array.from(el.querySelectorAll('.lomloe-etapa-btn')).find(b => b.dataset.etapa === etapa);
+            btn.click();
+            return Array.from(el.querySelectorAll('.lomloe-nivel-btn')).map(b => b.dataset.nivel);
+        };
+        expect(open('Haur Hezkuntza')).toEqual(['Lehen zikloa (0-3 urte)', 'Bigarren zikloa (3-6 urte)']);
+        expect(open('Lehen Hezkuntza')).toContain('Lehen Hezkuntzako 1. maila');
+        expect(open('Derrigorrezko Bigarren Hezkuntza')).toContain('DBHko 1. maila');
+    });
+
+    async function materiasAfter(etapa, nivel) {
+        const eb = Array.from(el.querySelectorAll('.lomloe-etapa-btn')).find(b => b.dataset.etapa === etapa);
+        eb.click();
+        await new Promise(r => setTimeout(r, 30));
+        const nb = Array.from(el.querySelectorAll('.lomloe-nivel-btn')).find(b => b.dataset.nivel === nivel);
+        nb.click();
+        await new Promise(r => setTimeout(r, 30));
+        return Array.from(el.querySelectorAll('.lomloe-materia-item')).map(li => li.dataset.codarea);
+    }
+
+    it('lists the expected materias when navigating to a nivel in each etapa', async () => {
+        await initEsPv();
+        expect(await materiasAfter('Haur Hezkuntza', 'Lehen zikloa (0-3 urte)')).toEqual(['HH', 'IEE', 'KEA']);
+        expect(await materiasAfter('Lehen Hezkuntza', 'Lehen Hezkuntzako 1. maila')).toContain('MAT');
+        const eso1 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 1. maila');
+        expect(eso1).toEqual(expect.arrayContaining(['EL', 'GL', 'AHIZ', 'MAT', 'GH', 'HF']));
+    });
+
+    it('lists the corrected ESO subjects in their official courses', async () => {
+        await initEsPv();
+        const eso1 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 1. maila');
+        const eso2 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 2. maila');
+        const eso3 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 3. maila');
+        const eso4 = await materiasAfter('Derrigorrezko Bigarren Hezkuntza', 'DBHko 4. maila');
+
+        expect(eso1).toContain('MUS');
+        expect(eso2).toContain('MUS');
+        expect(eso3).toEqual(expect.arrayContaining(['MUS', 'KZ']));
+        expect(eso4).toEqual(expect.arrayContaining(['MUS', 'LAT', 'AA', 'KZ', 'ML']));
+        expect(eso1).not.toContain('AA');
+        expect(eso2).not.toContain('AA');
+        expect(eso3).not.toContain('AA');
+    });
+
+    it('renders a selected Primaria materia curriculum and competencia descriptors', async () => {
+        await initEsPv();
+        await materiasAfter('Lehen Hezkuntza', 'Lehen Hezkuntzako 1. maila');
+        const mat = Array.from(el.querySelectorAll('.lomloe-materia-item')).find(li => li.dataset.codarea === 'MAT');
+        mat.click();
+        await new Promise(r => setTimeout(r, 40));
+        expect(el.querySelector('.lomloe-materia-item.active')).toBeTruthy();
+        expect(el.innerHTML).toContain('ES-PV-PRI1-MAT-');
+        expect(el.querySelector('.lomloe-comp-cc-tags .lomloe-cc-tag')).toBeTruthy();
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+describe('Edition lifecycle', () => {
+    let el;
+    let dev;
+
+    // A private instance per test: the module-level closure caches datasets and
+    // the document-level Escape handler, and each test closes its own edition.
+    beforeEach(async () => {
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = instantiateDevice(raw);
+        el = buildMockElement();
+    });
+
+    afterEach(() => {
+        el && el.remove();
+        vi.restoreAllMocks();
+    });
+
+    function mockFetchOk() {
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) }));
+    }
+
+    async function initAndWait() {
+        mockFetchOk();
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+    }
+
+    describe('global Escape handler', () => {
+        it('closes the summary modal while the edition is open', async () => {
+            await initAndWait();
+            const modal = el.querySelector('#lomloe-modal-test-lomloe-001');
+            modal.hidden = false;
+
+            document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+
+            expect(modal.hidden).toBe(true);
+        });
+
+        it('stops listening on document once the edition closes', async () => {
+            await initAndWait();
+            const modal = el.querySelector('#lomloe-modal-test-lomloe-001');
+            const unrelated = vi.fn();
+            document.addEventListener('keydown', unrelated);
+
+            dev.$lifecycle.destroy();
+            modal.hidden = false;
+            document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+
+            expect(modal.hidden).toBe(false);
+            // Removal is scoped to this edition's own listener.
+            expect(unrelated).toHaveBeenCalledTimes(1);
+
+            document.removeEventListener('keydown', unrelated);
+        });
+    });
+
+    describe('dataset download', () => {
+        it('passes the edition abort signal to fetch', async () => {
+            await initAndWait();
+
+            expect(globalThis.fetch).toHaveBeenCalled();
+            globalThis.fetch.mock.calls.forEach(([, options]) => {
+                expect(options.signal).toBe(dev.$lifecycle.signal);
+            });
+        });
+
+        it('aborts the pending download when the edition closes', async () => {
+            let received = null;
+            globalThis.fetch = vi.fn((url, options) => {
+                received = options;
+                return new Promise(() => {});
+            });
+
+            dev.init(el, null);
+            await new Promise(r => setTimeout(r, 10));
+            dev.$lifecycle.destroy();
+
+            expect(received.signal.aborted).toBe(true);
+        });
+
+        // Review H2: see the DigCompEdu twin of this test.
+        describe('when the edition closes mid-download', () => {
+            let xhrs;
+            let OriginalXHR;
+
+            beforeEach(() => {
+                xhrs = [];
+                OriginalXHR = globalThis.XMLHttpRequest;
+                globalThis.XMLHttpRequest = function () {
+                    const xhr = { open: vi.fn(), send: vi.fn(), abort: vi.fn() };
+                    xhrs.push(xhr);
+                    return xhr;
+                };
+            });
+
+            afterEach(() => {
+                globalThis.XMLHttpRequest = OriginalXHR;
+                delete window.fzstd;
+            });
+
+            const abortableFetch = () =>
+                vi.fn(
+                    (url, options) =>
+                        new Promise((_resolve, reject) => {
+                            options.signal.addEventListener('abort', () =>
+                                reject(new DOMException('aborted', 'AbortError')),
+                            );
+                        }),
+                );
+
+            it('does not fall back to an XHR from the plain fetch', async () => {
+                globalThis.fetch = abortableFetch();
+                dev.init(el, null);
+                await new Promise(r => setTimeout(r, 10));
+                dev.$lifecycle.destroy();
+                await new Promise(r => setTimeout(r, 10));
+
+                expect(xhrs).toEqual([]);
+                expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('does not fall back from the .zst request either', async () => {
+                window.fzstd = { decompress: vi.fn() };
+                globalThis.fetch = abortableFetch();
+                dev.init(el, null);
+                await new Promise(r => setTimeout(r, 10));
+                dev.$lifecycle.destroy();
+                await new Promise(r => setTimeout(r, 10));
+
+                expect(xhrs).toEqual([]);
+                expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('still falls back to an XHR when the fetch fails for another reason', async () => {
+                globalThis.fetch = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')));
+                dev.init(el, null);
+                await vi.waitFor(() => expect(xhrs).toHaveLength(1));
+
+                expect(xhrs[0].send).toHaveBeenCalled();
+            });
+        });
+
+        it('does not render a dataset that arrives after the edition closed', async () => {
+            let release;
+            globalThis.fetch = vi.fn(
+                () =>
+                    new Promise(resolve => {
+                        release = () => resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) });
+                    }),
+            );
+
+            dev.init(el, null);
+            await new Promise(r => setTimeout(r, 10));
+            dev.$lifecycle.destroy();
+            release();
+            await new Promise(r => setTimeout(r, 30));
+
+            // The loading placeholder is still there: nothing repainted the form.
+            expect(el.querySelector('.lomloe-etapa-btn')).toBeNull();
+        });
     });
 });

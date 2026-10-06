@@ -1178,3 +1178,160 @@ test.describe('Block Icon Preservation during Export/Import', () => {
         console.log('Block without icon correctly handled during export/import');
     });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// iDEVICE STRUCTURE PROPERTY PRESERVATION TESTS (issue #1991)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Set an iDevice's structure properties (visibility, teacherOnly, cssClass) through
+ * the same Yjs path the "iDevice properties" modal uses. These are the values that
+ * used to be dropped when exporting a single .block / .idevice (issue #1991).
+ */
+async function setIdeviceStructureProperties(
+    page: Page,
+    ideviceId: string,
+    props: { visibility?: boolean; teacherOnly?: boolean; cssClass?: string },
+): Promise<void> {
+    await page.evaluate(
+        ({ id, properties }) => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            if (!bridge?.updateComponent) {
+                throw new Error('Yjs bridge updateComponent not available');
+            }
+            bridge.updateComponent(id, { properties });
+        },
+        { id: ideviceId, properties: props },
+    );
+}
+
+test.describe('iDevice Structure Property Preservation during Export/Import (issue #1991)', () => {
+    let tempDir: string;
+
+    test.beforeAll(() => {
+        tempDir = path.join('/tmp', `exelearning-e2e-structprops-${Date.now()}`);
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+    });
+
+    test.afterAll(() => {
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('should include iDevice structure properties in exported .block content.xml', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Struct Props Block Export');
+        await gotoWorkarea(page, projectUuid);
+        await waitForLoadingScreen(page);
+
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(500);
+
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Teacher-only hidden content for #1991');
+
+        const { blockId, ideviceId } = await getFirstBlockAndIdeviceIds(page);
+
+        // Mark the iDevice hidden from export, teacher-only, with custom CSS classes.
+        await setIdeviceStructureProperties(page, ideviceId, {
+            visibility: false,
+            teacherOnly: true,
+            cssClass: 'my-custom-class another-class',
+        });
+
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFilePath = path.join(tempDir, blockDownload.suggestedFilename());
+        await blockDownload.saveAs(blockFilePath);
+
+        const zipContents = unzipSync(fs.readFileSync(blockFilePath));
+        expect(zipContents['content.xml']).toBeDefined();
+        const contentXml = new TextDecoder().decode(zipContents['content.xml']);
+
+        // Before the fix this block was emitted empty, so none of these appeared.
+        expect(contentXml).not.toContain('<odeComponentsProperties></odeComponentsProperties>');
+        expect(contentXml).toContain('<key>visibility</key>');
+        expect(contentXml).toContain('<value>false</value>');
+        expect(contentXml).toContain('<key>teacherOnly</key>');
+        expect(contentXml).toContain('<value>true</value>');
+        expect(contentXml).toContain('<key>cssClass</key>');
+        expect(contentXml).toContain('<value>my-custom-class another-class</value>');
+    });
+
+    test('should preserve structure properties through a full export → import round-trip', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(90000);
+        const page = authenticatedPage;
+
+        // Source project: text iDevice marked teacher-only, hidden, with custom CSS classes.
+        const sourceUuid = await createProject(page, 'Struct Props Roundtrip Source');
+        await gotoWorkarea(page, sourceUuid);
+        await waitForLoadingScreen(page);
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(500);
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Roundtrip content for #1991');
+
+        const { blockId, ideviceId } = await getFirstBlockAndIdeviceIds(page);
+        await setIdeviceStructureProperties(page, ideviceId, {
+            visibility: false,
+            teacherOnly: true,
+            cssClass: 'roundtrip-class extra-class',
+        });
+
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFilePath = path.join(tempDir, blockDownload.suggestedFilename());
+        await blockDownload.saveAs(blockFilePath);
+
+        // Target project: import the exported block.
+        const targetUuid = await createProject(page, 'Struct Props Roundtrip Target');
+        await gotoWorkarea(page, targetUuid);
+        await waitForLoadingScreen(page);
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(500);
+
+        await importComponent(page, blockFilePath);
+
+        // Wait for the imported iDevice to appear, then read its structure properties
+        // back from the document (Yjs) — this proves the values survived the
+        // export → import round-trip independent of any DOM render timing.
+        const importedProps = await page
+            .waitForFunction(
+                () => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    const binding = bridge?.structureBinding;
+                    if (!binding?.getComponentProperties) return null;
+                    // A fresh project may also render a default iDevice, so scan every
+                    // rendered node for the one whose properties carry our cssClass.
+                    const nodes = Array.from(document.querySelectorAll('#node-content article .idevice_node'));
+                    for (const node of nodes) {
+                        if (!node.id) continue;
+                        const props = binding.getComponentProperties(node.id);
+                        if (props && props.cssClass === 'roundtrip-class extra-class') {
+                            return props;
+                        }
+                    }
+                    return null;
+                },
+                undefined,
+                { timeout: 20000 },
+            )
+            .then(handle => handle.jsonValue());
+
+        // visibility/teacherOnly may come back as booleans or strings depending on the
+        // import path; normalize with String() before comparing.
+        expect(String(importedProps.visibility)).toBe('false');
+        expect(String(importedProps.teacherOnly)).toBe('true');
+        expect(importedProps.cssClass).toBe('roundtrip-class extra-class');
+
+        console.log('Structure properties preserved through export → import round-trip');
+    });
+});

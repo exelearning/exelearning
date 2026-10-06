@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { Elysia, t } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
 import * as bcrypt from 'bcryptjs';
 import {
@@ -32,7 +31,6 @@ describe('Auth Routes Integration', () => {
 
         // Create auth routes that use test db
         app = new Elysia({ name: 'auth-test' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

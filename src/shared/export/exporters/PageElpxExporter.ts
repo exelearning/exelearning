@@ -83,8 +83,10 @@ export class PageElpxExporter extends ElpxExporter {
                     const exportPath = exportPathMap.get(asset.id);
                     if (exportPath) {
                         const zipPath = `content/resources/${exportPath}`;
-                        this.zip.addFile(zipPath, asset.data);
-                        if (trackingList) trackingList.push(zipPath);
+                        // Route through the shared writer so .srt subtitle assets are
+                        // converted to WebVTT (buildAssetExportPathMap already renamed
+                        // the path .srt -> .vtt) -- see issue #2034.
+                        await this.writeAssetToZip(zipPath, asset, trackingList);
                         assetsAdded++;
                     } else {
                         console.warn(`[PageElpxExporter] No export path for referenced asset: ${asset.id}`);
@@ -125,6 +127,14 @@ export class PageElpxExporter extends ElpxExporter {
 
         for (const page of pages) {
             for (const block of page.blocks || []) {
+                const blockIconValue = block.icon?.source === 'asset' ? block.icon.value : block.iconName || '';
+                if (typeof blockIconValue === 'string' && blockIconValue.startsWith('asset://')) {
+                    const matches = blockIconValue.matchAll(assetPattern);
+                    for (const match of matches) {
+                        assetIds.add(match[1]);
+                    }
+                }
+
                 for (const component of block.components || []) {
                     // Extract from content (htmlView field)
                     if (component.content) {

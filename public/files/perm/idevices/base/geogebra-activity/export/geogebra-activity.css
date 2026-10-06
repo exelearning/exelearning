@@ -4,7 +4,9 @@
 }
 
 .auto-geogebra-wrapper {
-    padding: 1em 0
+    padding: 1em 0;
+    max-width: 100%;
+    overflow-x: auto
 }
 
 .auto-geogebra-loading {

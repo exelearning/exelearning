@@ -83,7 +83,7 @@ global.eXeLearning = {
 };
 
 // Import after setting up mocks
-import IdeviceBlockNode from './blockNode.js';
+import IdeviceBlockNode, { sortThemeIcons } from './blockNode.js';
 
 describe('IdeviceBlockNode', () => {
     let block;
@@ -706,15 +706,35 @@ describe('IdeviceBlockNode', () => {
             expect(icon.getAttribute('selected')).toBe('true');
         });
 
+        it('adds original-icon-selection class when no iconName', () => {
+            block.iconName = '';
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.classList.contains('original-icon-selection')).toBe(true);
+        });
+
         it('sets selected to false when iconName exists', () => {
             block.iconName = 'icon1';
             const icon = block.makeEmptyIcon();
 
             expect(icon.getAttribute('selected')).toBe('false');
         });
+
+        it('does not add original-icon-selection class when iconName exists', () => {
+            block.iconName = 'icon1';
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.classList.contains('original-icon-selection')).toBe(false);
+        });
     });
 
     describe('makeIconValueElement', () => {
+        const originalConfig = eXeLearning.config;
+
+        afterEach(() => {
+            eXeLearning.config = originalConfig;
+        });
+
         it('creates img element with correct src and alt', () => {
             const icon = { value: '/path/to/icon.svg', title: 'My Icon' };
             const img = block.makeIconValueElement(icon);
@@ -722,6 +742,78 @@ describe('IdeviceBlockNode', () => {
             expect(img.tagName).toBe('IMG');
             expect(img.getAttribute('src')).toBe('/path/to/icon.svg');
             expect(img.getAttribute('alt')).toBe('My Icon');
+        });
+
+        it('does not re-prefix theme icon URLs that already include BASE_PATH', () => {
+            // Theme icon URLs are resolved server-side (src/routes/themes.ts) and
+            // already include BASE_PATH. Re-applying resolveAppAssetUrl would double
+            // the prefix (/web/exelearning/web/exelearning/...) and 404. See #1802/#1804.
+            eXeLearning.config = { basePath: '/web/exelearning' };
+            const value = '/web/exelearning/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
+            const img = block.makeIconValueElement({ value, title: 'Info' });
+
+            expect(img.getAttribute('src')).toBe(value);
+        });
+
+        it('leaves absolute theme icon URLs unchanged when no BASE_PATH is configured', () => {
+            eXeLearning.config = { basePath: '' };
+            const value = '/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
+            const img = block.makeIconValueElement({ value, title: 'Info' });
+
+            expect(img.getAttribute('src')).toBe(value);
+        });
+
+        it('converts absolute icon URLs to relative in static mode', () => {
+            eXeLearning.config = { isStaticMode: true };
+            const value = '/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
+            const img = block.makeIconValueElement({ value, title: 'Info' });
+
+            expect(img.getAttribute('src')).toBe(`.${value}`);
+        });
+
+        it('converts absolute icon URLs to relative in offline installation mode', () => {
+            eXeLearning.config = { isOfflineInstallation: true };
+            const value = '/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
+            const img = block.makeIconValueElement({ value, title: 'Info' });
+
+            expect(img.getAttribute('src')).toBe(`.${value}`);
+        });
+
+        it('still prefixes client-built material icon paths with BASE_PATH (contrast)', () => {
+            // Unlike theme icons, material icon paths are built client-side from the app
+            // root (/libs/...) and DO need BASE_PATH prepended.
+            eXeLearning.config = { basePath: '/web/exelearning' };
+            expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(
+                '/web/exelearning/libs/material-icons/icons/alarm.svg'
+            );
+        });
+    });
+
+    describe('renderMaterialMaskIcon (shared sprite runtime)', () => {
+        afterEach(() => {
+            delete window.eXeBlockIconRuntime;
+        });
+
+        it('emits a placeholder for hydration when no shared runtime is present', () => {
+            // window.eXeBlockIconRuntime is unset here → local fallback path.
+            const html = block.renderMaterialMaskIcon('lightbulb');
+            expect(html).toContain('class="exe-material-icon"');
+            expect(html).toContain('data-exe-material-icon="lightbulb"');
+            expect(html).not.toContain('.svg');
+
+            // Unknown names collapse to the "help" fallback.
+            expect(block.renderMaterialMaskIcon('totally-unknown-icon')).toContain('data-exe-material-icon="help"');
+        });
+
+        it('delegates to the shared runtime (sprite data: URI) when available', () => {
+            window.eXeBlockIconRuntime = {
+                renderMaterialMaskIcon: () =>
+                    '<span class="exe-material-icon" style="--exe-material-icon-url:url(\'data:image/svg+xml;utf8,X\');"></span>',
+            };
+
+            const html = block.renderMaterialMaskIcon('lightbulb');
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('data-exe-material-icon');
         });
     });
 
@@ -731,14 +823,33 @@ describe('IdeviceBlockNode', () => {
             expect(block.iconName).toBe('new-icon');
         });
 
+        it('updates Yjs directly when collaborative mode is enabled', async () => {
+            const mockUpdateBlock = vi.fn();
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    updateBlock: mockUpdateBlock,
+                },
+            };
+
+            await block.apiUpdateIcon({ source: 'material', value: 'alarm' });
+
+            expect(mockUpdateBlock).toHaveBeenCalledWith(block.blockId, {
+                icon: { source: 'material', value: 'alarm', name: 'alarm' },
+                iconName: 'mi-alarm',
+            });
+        });
+
         it('calls apiSendDataService when id exists', async () => {
             const spy = vi
                 .spyOn(block, 'apiSendDataService')
                 .mockResolvedValue({ responseMessage: 'OK' });
+            eXeLearning.app.project._yjsEnabled = false;
             await block.apiUpdateIcon('new-icon');
             expect(spy).toHaveBeenCalledWith('putSaveBlock', [
                 'odePagStructureSyncId',
                 'iconName',
+                'icon',
             ]);
         });
     });
@@ -779,13 +890,100 @@ describe('IdeviceBlockNode', () => {
 
             expect(body.id).toBe('change-block-icon-modal-content');
             expect(body.querySelector('.empty-block-icon')).not.toBeNull();
+            expect(body.querySelector('#block-icon-custom-button')).not.toBeNull();
         });
 
-        it('includes theme icons', () => {
+        it('includes material icons', () => {
             const body = block.makeModalChangeIconBody();
-            const icons = body.querySelectorAll('.option-block-icon');
+            const icons = body.querySelectorAll('.option-block-icon[data-icon-source="material"]');
 
             expect(icons.length).toBeGreaterThan(1);
+        });
+
+        it('lists current theme icons before material icons', () => {
+            const body = block.makeModalChangeIconBody();
+            const options = [...body.querySelectorAll('.option-block-icon')];
+            const themeIcons = options.filter((icon) => icon.getAttribute('data-icon-source') === 'theme');
+            const firstThemeIndex = options.indexOf(themeIcons[0]);
+            const firstMaterialIndex = options.indexOf(
+                options.find((icon) => icon.getAttribute('data-icon-source') === 'material')
+            );
+
+            expect(themeIcons).toHaveLength(2);
+            expect(themeIcons[0].getAttribute('data-icon-value')).toBe('icon1');
+            expect(themeIcons[0].getAttribute('title')).toBe('Icon 1');
+            expect(themeIcons[0].classList.contains('theme-block-icon')).toBe(true);
+            expect(firstThemeIndex).toBeLessThan(firstMaterialIndex);
+        });
+
+        it('lists theme icons alphabetically regardless of source order (#2411)', () => {
+            // Static bundles built on Linux ship icons in raw readdir order
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                udl_rep_informarse: { id: 'udl_rep_informarse', value: '/i/udl_rep_informarse.svg' },
+                udl_exp_grupohomogeneo: { id: 'udl_exp_grupohomogeneo', value: '/i/udl_exp_grupohomogeneo.svg' },
+                udl_eng_reto: { id: 'udl_eng_reto', value: '/i/udl_eng_reto.svg' },
+                udl_eng_curiosidad: { id: 'udl_eng_curiosidad', value: '/i/udl_eng_curiosidad.svg' },
+            }));
+            const body = block.makeModalChangeIconBody();
+            const values = [...body.querySelectorAll('.option-block-icon[data-icon-source="theme"]')].map((el) =>
+                el.getAttribute('data-icon-value')
+            );
+
+            expect(values).toEqual([
+                'udl_eng_curiosidad',
+                'udl_eng_reto',
+                'udl_exp_grupohomogeneo',
+                'udl_rep_informarse',
+            ]);
+        });
+
+        it('adds section titles separating theme and general icons', () => {
+            const body = block.makeModalChangeIconBody();
+            const titles = [...body.querySelectorAll('.icon-options-section-title')].map((el) => el.textContent);
+
+            expect(titles).toEqual(['Style icons', 'General icons']);
+        });
+
+        it('omits section titles when the theme has no icons', () => {
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({}));
+            const body = block.makeModalChangeIconBody();
+
+            expect(body.querySelectorAll('.icon-options-section-title')).toHaveLength(0);
+            expect(body.querySelectorAll('.option-block-icon[data-icon-source="theme"]')).toHaveLength(0);
+        });
+
+        it('renders material modal options as inline SVG from the shared sprite runtime', () => {
+            // Under Electron's app:// scheme Chromium fetches the whole sprite once per
+            // external <use>, so 3 798 options froze the renderer (#2419). The picker
+            // must inline each glyph from the sprite already parsed in memory instead.
+            const renderMaterialInlineIcon = vi.fn(
+                () =>
+                    '<svg class="exe-material-icon-sprite" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M1-1Z"/></svg>'
+            );
+            window.eXeBlockIconRuntime = { renderMaterialInlineIcon };
+            try {
+                const body = block.makeModalChangeIconBody();
+                const firstMaterialIcon = body.querySelector('.option-block-icon[data-icon-source="material"]');
+
+                expect(firstMaterialIcon.querySelector('.exe-material-icon-sprite path')).not.toBeNull();
+                expect(body.querySelector('.exe-material-icon-sprite use')).toBeNull();
+                expect(body.innerHTML).not.toContain('material-icons.svg');
+                expect(renderMaterialInlineIcon).toHaveBeenCalledWith(
+                    firstMaterialIcon.getAttribute('data-icon-value'),
+                    expect.objectContaining({ catalog: expect.any(Array) })
+                );
+            } finally {
+                delete window.eXeBlockIconRuntime;
+            }
+        });
+
+        it('renders material modal options as hydration placeholders when the sprite is not loaded yet', () => {
+            const body = block.makeModalChangeIconBody();
+            const firstMaterialIcon = body.querySelector('.option-block-icon[data-icon-source="material"]');
+
+            expect(firstMaterialIcon.querySelector('.exe-material-icon[data-exe-material-icon]')).not.toBeNull();
+            expect(body.querySelector('use')).toBeNull();
+            expect(body.innerHTML).not.toContain('material-icons.svg');
         });
     });
 
@@ -798,6 +996,7 @@ describe('IdeviceBlockNode', () => {
             expect(callArgs.title).toBe('Select icon');
             expect(callArgs.confirmButtonText).toBe('Save');
             expect(callArgs.cancelButtonText).toBe('Cancel');
+            expect(typeof callArgs.cancelExec).toBe('function');
         });
     });
 
@@ -1357,7 +1556,8 @@ describe('IdeviceBlockNode', () => {
             const iconElement = document.createElement('div');
             iconElement.classList.add('option-block-icon');
             iconElement.setAttribute('selected', 'true');
-            iconElement.setAttribute('icon-id', 'test-icon');
+            iconElement.setAttribute('data-icon-source', 'material');
+            iconElement.setAttribute('data-icon-value', 'alarm');
             modalBody.appendChild(iconElement);
             eXeLearning.app.modals.confirm.modalElementBody = modalBody;
 
@@ -1366,29 +1566,354 @@ describe('IdeviceBlockNode', () => {
 
         it('gets icon value from selected element', () => {
             block.saveIconAction();
-            expect(block.apiUpdateIcon).toHaveBeenCalledWith('test-icon');
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith({
+                source: 'material',
+                value: 'alarm',
+                name: 'alarm',
+            });
         });
 
         it('uses empty string when icon is 0', () => {
             const modalBody = eXeLearning.app.modals.confirm.modalElementBody;
-            modalBody.querySelector('.option-block-icon').setAttribute('icon-id', '0');
+            modalBody.querySelector('.option-block-icon').setAttribute('data-icon-source', 'none');
+            modalBody.querySelector('.option-block-icon').setAttribute('data-icon-value', '');
 
             block.saveIconAction();
-            expect(block.apiUpdateIcon).toHaveBeenCalledWith('');
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith({
+                source: 'none',
+                value: '',
+            });
         });
 
-        it('does not sync to Yjs directly (handled by apiCallManager)', () => {
-            // Yjs sync is now handled by apiUpdateIcon -> putSaveBlock -> apiCallManager
-            // to avoid duplicate undo entries
-            const mockUpdateBlock = vi.fn();
-            eXeLearning.app.project._yjsBridge = {
-                structureBinding: { updateBlock: mockUpdateBlock },
-            };
+        it('uses custom asset selected via toolbar button', () => {
+            const modalBody = eXeLearning.app.modals.confirm.modalElementBody;
+            const customButton = document.createElement('button');
+            customButton.id = 'block-icon-custom-button';
+            customButton.className = 'selected';
+            modalBody.appendChild(customButton);
+            modalBody.setAttribute('data-custom-icon-source', 'asset');
+            modalBody.setAttribute('data-custom-icon-value', 'asset://uuid-123/dog.jpg');
+            modalBody.setAttribute('data-custom-icon-name', 'dog.jpg');
+            modalBody.querySelector('.option-block-icon').setAttribute('selected', 'false');
 
             block.saveIconAction();
 
-            // Should NOT be called here - apiCallManager handles it
-            expect(mockUpdateBlock).not.toHaveBeenCalled();
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith({
+                source: 'asset',
+                value: 'asset://uuid-123/dog.jpg',
+                name: 'dog.jpg',
+            });
+        });
+
+        it('derives canonical asset:// URL from asset metadata', () => {
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    getAssetUrl: vi.fn(() => 'asset://uuid-999/black-dog.jpg'),
+                },
+            };
+
+            expect(block.getCanonicalAssetUrl({
+                assetUrl: 'blob:should-not-be-used',
+                asset: { id: 'uuid-999', filename: 'black-dog.jpg' },
+            })).toBe('asset://uuid-999/black-dog.jpg');
+        });
+
+        it('delegates selected icon to apiUpdateIcon', () => {
+            block.saveIconAction();
+
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith({
+                source: 'material',
+                value: 'alarm',
+                name: 'alarm',
+            });
+        });
+    });
+
+    describe('icon helpers', () => {
+        // The tint tests attach elements to document.body, because getComputedStyle only
+        // resolves custom properties on an attached node. Take them back out again: the
+        // outer afterEach only nulls `block`, so without this a later test looking for a
+        // <header> or #change-block-icon-modal-content would find a stale one.
+        const attached = [];
+        const attach = (element) => {
+            document.body.appendChild(element);
+            attached.push(element);
+            return element;
+        };
+
+        afterEach(() => {
+            attached.splice(0).forEach((element) => element.remove());
+        });
+
+        it('normalizes legacy icon names into structured descriptors', () => {
+            expect(block.normalizeIconDescriptor(null, '')).toEqual({ source: 'none', value: '' });
+            expect(block.normalizeIconDescriptor(null, 'mi-alarm')).toEqual({
+                source: 'material',
+                value: 'alarm',
+                name: 'alarm',
+            });
+            expect(block.normalizeIconDescriptor(null, 'activity')).toEqual({
+                source: 'material',
+                value: 'checklist',
+                name: 'checklist',
+            });
+            expect(block.normalizeIconDescriptor(null, 'asset://uuid/icon.jpg')).toEqual({
+                source: 'asset',
+                value: 'asset://uuid/icon.jpg',
+                name: 'asset://uuid/icon.jpg',
+            });
+            expect(block.normalizeIconDescriptor(null, 'legacy-theme')).toEqual({
+                source: 'theme',
+                value: 'legacy-theme',
+                name: 'legacy-theme',
+            });
+        });
+
+        it('prefers the current style icon over the legacy Material mapping', () => {
+            // 'objectives' has a legacy → Material ('target') mapping, but when the
+            // active style provides an icon with that id it must stay a style icon
+            // so picker selections survive undo/redo block reconstruction.
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                objectives: { id: 'objectives', value: '/icons/objectives.png', title: 'Objectives' },
+            }));
+            expect(block.normalizeIconDescriptor(null, 'objectives')).toEqual({
+                source: 'theme',
+                value: 'objectives',
+                name: 'objectives',
+            });
+
+            // When the active style does not ship that icon, the legacy mapping applies.
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({}));
+            expect(block.normalizeIconDescriptor(null, 'objectives')).toEqual({
+                source: 'material',
+                value: 'target',
+                name: 'target',
+            });
+        });
+
+        it('normalizes a stored icon name the style has since renamed', () => {
+            // 'objetives' is what neo shipped from v4.0.0 to v4.0.3, so projects saved then
+            // still store it. The descriptor has to come out under the current name, or the
+            // picker cannot match the block's icon against the entry it lists.
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                objectives: { id: 'objectives', value: '/icons/objectives.png', title: 'Objectives' },
+            }));
+
+            expect(block.normalizeIconDescriptor(null, 'objetives')).toEqual({
+                source: 'theme',
+                value: 'objectives',
+                name: 'objectives',
+            });
+
+            // Same for a descriptor that was already structured when it was saved.
+            expect(block.normalizeIconDescriptor({ source: 'theme', value: 'objetives' })).toEqual({
+                source: 'theme',
+                value: 'objectives',
+                name: 'objectives',
+            });
+        });
+
+        it('falls back to the legacy Material mapping under the renamed name', () => {
+            // A neo project saved in v4.0.3 stores 'objetives'. Opened under a style that
+            // ships no 'objectives.*' -- universal -- it has to reach the legacy mapping, which
+            // is keyed by the current name; looked up under the stored one it found nothing
+            // and the block was left with no icon at all.
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({}));
+
+            expect(block.normalizeIconDescriptor(null, 'objetives')).toEqual({
+                source: 'material',
+                value: 'target',
+                name: 'target',
+            });
+        });
+
+        it('finds the style icon behind a renamed stored name', () => {
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                think_alt: { id: 'think_alt', value: '/icons/think_alt.svg', title: 'Think' },
+            }));
+
+            expect(block.resolveThemeIconData('think-alt')).toEqual({
+                id: 'think_alt',
+                value: '/icons/think_alt.svg',
+                title: 'Think',
+            });
+        });
+
+        it('resolves app asset URLs using composeUrl and basePath fallbacks', () => {
+            eXeLearning.app.composeUrl = vi.fn((path) => `/composed${path}`);
+            expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(
+                '/composed/libs/material-icons/icons/alarm.svg'
+            );
+
+            delete eXeLearning.app.composeUrl;
+            window.eXeLearning.config = JSON.stringify({ basePath: '/exe' });
+            expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(
+                '/exe/libs/material-icons/icons/alarm.svg'
+            );
+        });
+
+        it('returns renderable asset URL for asset refs, public paths and passthrough values', () => {
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    resolveAssetURLSync: vi.fn(() => 'blob:asset-ref'),
+                    extractAssetId: vi.fn(() => 'uuid-123'),
+                    generateLoadingPlaceholder: vi.fn(() => 'data:image/svg+xml,loading'),
+                },
+            };
+
+            expect(block.getRenderableAssetUrl('asset://uuid-123/icon.jpg')).toBe('blob:asset-ref');
+            expect(block.getRenderableAssetUrl('/icons/theme.svg')).toContain('/icons/theme.svg');
+            expect(block.getRenderableAssetUrl('https://example.com/icon.svg')).toBe('https://example.com/icon.svg');
+        });
+
+        it('renders material picker icon as a hydration placeholder with the help fallback when no shared runtime exists', () => {
+            const html = block.renderMaterialInlineIcon('not-in-catalog');
+            expect(html).toContain('class="exe-material-icon"');
+            expect(html).toContain('data-exe-material-icon="help"');
+            expect(html).not.toContain('<use');
+        });
+
+        it('delegates material picker icon rendering to the shared runtime with the catalog', () => {
+            const renderMaterialInlineIcon = vi.fn(() => '<svg class="exe-material-icon-sprite"><path d="M1-1Z"/></svg>');
+            window.eXeBlockIconRuntime = { renderMaterialInlineIcon };
+            try {
+                expect(block.renderMaterialInlineIcon('alarm')).toContain('<path d="M1-1Z"/>');
+                expect(renderMaterialInlineIcon).toHaveBeenCalledWith(
+                    'alarm',
+                    expect.objectContaining({ catalog: expect.any(Array) })
+                );
+            } finally {
+                delete window.eXeBlockIconRuntime;
+            }
+        });
+
+        it('filters material and theme icon tiles from the search query', () => {
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
+            }));
+            const body = block.makeModalChangeIconBody();
+            const icons = body.querySelectorAll('.option-block-icon');
+            block.filterModalMaterialIcons(icons, 'alarm');
+
+            const alarm = body.querySelector('.option-block-icon[data-icon-value="alarm"]');
+            const book = body.querySelector('.option-block-icon[data-icon-value="book"]');
+            const themeIcon = body.querySelector('.option-block-icon[data-icon-source="theme"]');
+            const empty = body.querySelector('.empty-block-icon');
+
+            expect(alarm.style.display).toBe('');
+            expect(book.style.display).toBe('none');
+            expect(themeIcon.style.display).toBe('none');
+            expect(empty.style.display).toBe('');
+        });
+
+        it('keeps theme icons matching the search query by title', () => {
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
+            }));
+            const body = block.makeModalChangeIconBody();
+            const icons = body.querySelectorAll('.option-block-icon');
+            block.filterModalMaterialIcons(icons, 'icon 1');
+
+            const themeIcon = body.querySelector('.option-block-icon[data-icon-value="icon1"]');
+            expect(themeIcon.style.display).toBe('');
+        });
+
+        it('hides section titles while searching and restores them when cleared', () => {
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
+            }));
+            const body = block.makeModalChangeIconBody();
+            const icons = body.querySelectorAll('.option-block-icon');
+            const titles = body.querySelectorAll('.icon-options-section-title');
+
+            block.filterModalMaterialIcons(icons, 'alarm');
+            titles.forEach((title) => expect(title.style.display).toBe('none'));
+
+            block.filterModalMaterialIcons(icons, '');
+            titles.forEach((title) => expect(title.style.display).toBe(''));
+        });
+
+        it('prefers the picker accent over the box head icon color', () => {
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.setProperty('--exe-icon-color', '#fff');
+            block.headElement.style.setProperty('--exe-icon-picker-color', '#0d77d1');
+            // The head needs white on its blue background; the white picker chip does not.
+            expect(block.getCurrentThemeIconColor()).toBe('#0d77d1');
+
+            block.headElement.style.removeProperty('--exe-icon-picker-color');
+            expect(block.getCurrentThemeIconColor()).toBe('#fff');
+        });
+
+        it('falls back to the title, then the icon, when the block has no header yet', () => {
+            // The header is the normal source: a style declares both variables once on
+            // .exe-content and, since they are custom properties, the header inherits them.
+            // That inheritance is what the picker E2E spec covers, because happy-dom does not
+            // resolve inherited custom properties. What is pinned here is only which source
+            // the resolver picks when headElement is null -- a defensive path, since a real
+            // browser returns nothing for the detached title and icon a headerless block has.
+            block.headElement = null;
+            block.blockNameElementText = attach(document.createElement('h1'));
+            block.blockNameElementText.style.setProperty('--exe-icon-color', '#123456');
+            expect(block.getCurrentThemeIconColor()).toBe('#123456');
+
+            block.blockNameElementText = null;
+            block.iconElement = attach(document.createElement('div'));
+            block.iconElement.style.setProperty('--exe-icon-color', '#654321');
+            expect(block.getCurrentThemeIconColor()).toBe('#654321');
+        });
+
+        it('resolves no color when the theme declares neither variable', () => {
+            block.headElement = attach(document.createElement('div'));
+            // The block header text color is not the picker tint: an undeclared theme
+            // leaves --modal-icon-color unset so the picker CSS reaches --modal-icon-default.
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            block.blockNameElementText = null;
+            block.iconElement = null;
+
+            expect(block.getCurrentThemeIconColor()).toBe('');
+        });
+
+        it('resolves currentColor against the block header, not the modal it is copied onto', () => {
+            // A style may say "follow the header text" with --exe-icon-color: currentColor.
+            // Copied verbatim onto the modal body it would mean the modal's own text, so the
+            // keyword has to be resolved here, while the block header is still the context.
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            block.headElement.style.setProperty('--exe-icon-color', 'currentColor');
+
+            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
+        });
+
+        it('leaves the picker untinted rather than throwing when getComputedStyle is missing', () => {
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+            const original = window.getComputedStyle;
+            window.getComputedStyle = undefined;
+
+            try {
+                expect(block.getCurrentThemeIconColor()).toBe('');
+            } finally {
+                window.getComputedStyle = original;
+            }
+        });
+
+        it('sets --modal-icon-color on the picker from the theme variable', () => {
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+
+            const body = block.makeModalChangeIconBody();
+
+            expect(body.style.getPropertyValue('--modal-icon-color')).toBe('#123456');
+        });
+
+        it('leaves --modal-icon-color unset when the theme declares no tint', () => {
+            block.headElement = null;
+            block.blockNameElementText = null;
+            block.iconElement = null;
+
+            const body = block.makeModalChangeIconBody();
+
+            expect(body.style.getPropertyValue('--modal-icon-color')).toBe('');
         });
     });
 
@@ -1552,27 +2077,167 @@ describe('IdeviceBlockNode', () => {
             const iconEl = block.makeIconNameElement();
             expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
         });
+
+        it('resolves asset icons through AssetManager cache for preview', () => {
+            block.iconName = 'asset://asset-123/icon.jpg';
+            block.icon = { source: 'asset', value: 'asset://asset-123/icon.jpg', name: 'icon.jpg' };
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    resolveAssetURLSync: vi.fn(() => 'blob:test-icon'),
+                    resolveAssetURL: vi.fn().mockResolvedValue('blob:test-icon'),
+                },
+            };
+
+            const iconEl = block.makeIconNameElement();
+            const img = iconEl.querySelector('img');
+
+            expect(img).not.toBeNull();
+            expect(img.getAttribute('src')).toBe('blob:test-icon');
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
+        });
+
+        it('uses a loading placeholder instead of empty src when asset blob is not cached yet', () => {
+            block.iconName = 'asset://12345678-1234-1234-1234-123456789012/icon.jpg';
+            block.icon = {
+                source: 'asset',
+                value: 'asset://12345678-1234-1234-1234-123456789012/icon.jpg',
+                name: 'icon.jpg',
+            };
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    resolveAssetURLSync: vi.fn(() => null),
+                    extractAssetId: vi.fn(() => '12345678-1234-1234-1234-123456789012'),
+                    generateLoadingPlaceholder: vi.fn(() => 'data:image/svg+xml,placeholder'),
+                    resolveAssetURL: vi.fn().mockResolvedValue('blob:test-icon'),
+                },
+            };
+
+            const iconEl = block.makeIconNameElement();
+            const img = iconEl.querySelector('img');
+
+            expect(img).not.toBeNull();
+            expect(img.getAttribute('src')).toBe('data:image/svg+xml,placeholder');
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
+        });
+
+        it('previewIconElement updates button preview for selected custom asset', () => {
+            block.iconElement = document.createElement('button');
+            block.iconElement.className = 'exe-icon box-icon exe-app-tooltip exe-no-icon';
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    resolveAssetURLSync: vi.fn(() => 'blob:preview-icon'),
+                    resolveAssetURL: vi.fn().mockResolvedValue('blob:preview-icon'),
+                },
+            };
+
+            block.previewIconElement({
+                source: 'asset',
+                value: 'asset://asset-123/icon.jpg',
+                name: 'icon.jpg',
+                previewUrl: 'blob:preview-icon',
+            });
+
+            const img = block.iconElement.querySelector('img');
+            expect(img).not.toBeNull();
+            expect(img.getAttribute('src')).toBe('blob:preview-icon');
+            expect(block.iconElement.classList.contains('exe-no-icon')).toBe(false);
+        });
     });
 
     describe('makeModalChangeIconBody', () => {
-        it('sets icon-id attribute to icon.id (without extension)', () => {
+        it('sets icon-id attribute to material icon ids', () => {
+            const body = block.makeModalChangeIconBody();
+            const iconElements = body.querySelectorAll('.option-block-icon:not(.empty-block-icon)');
+
+            const iconIds = Array.from(iconElements).map(el => el.getAttribute('icon-id'));
+            expect(iconIds).toContain('mi-alarm');
+            expect(iconIds).toContain('mi-lightbulb');
+        });
+
+        it('persists custom asset icon immediately when selected from file manager', async () => {
+            const body = block.makeModalChangeIconBody();
+            eXeLearning.app.modals.confirm.modalElementBody = body;
+            const apiUpdateIconSpy = vi.spyOn(block, 'apiUpdateIcon').mockResolvedValue(true);
+            const previewSpy = vi.spyOn(block, 'previewIconElement').mockImplementation(() => {});
+            eXeLearning.app.modals.filemanager = eXeLearning.app.modals.filemanager || {};
+
+            let onSelectCallback;
+            eXeLearning.app.modals.filemanager.show = vi.fn(({ onSelect }) => {
+                onSelectCallback = onSelect;
+            });
+
+            block.addBehaviourToModalChangeIconBody();
+            body.querySelector('#block-icon-custom-button').click();
+
+            await onSelectCallback({
+                assetUrl: 'asset://uuid-123/black-dog.jpg',
+                blobUrl: 'blob:black-dog',
+                asset: { id: 'uuid-123', filename: 'black-dog.jpg' },
+            });
+
+            expect(apiUpdateIconSpy).toHaveBeenCalledWith({
+                source: 'asset',
+                value: 'asset://uuid-123/black-dog.jpg',
+                name: 'black-dog.jpg',
+            });
+            expect(previewSpy).toHaveBeenCalledWith({
+                source: 'asset',
+                value: 'asset://uuid-123/black-dog.jpg',
+                name: 'black-dog.jpg',
+                previewUrl: 'blob:black-dog',
+            });
+        });
+
+        it('marks icon as selected when iconName matches icon.id', () => {
+            block.iconName = 'share';
+            block.icon = { source: 'theme', value: 'share', name: 'Share' };
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
                 share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
                 download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
             }));
 
             const body = block.makeModalChangeIconBody();
-            const iconElements = body.querySelectorAll('.option-block-icon:not(.empty-block-icon)');
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+            const downloadEl = body.querySelector('.option-block-icon[icon-id="download"]');
 
-            // icon-id uses icon.id which does NOT include the extension (consistent with themes.ts)
-            const iconIds = Array.from(iconElements).map(el => el.getAttribute('icon-id'));
-            expect(iconIds).toContain('share');
-            expect(iconIds).toContain('download');
+            expect(shareEl.getAttribute('selected')).toBe('true');
+            expect(downloadEl.getAttribute('selected')).not.toBe('true');
+        });
+
+        it('adds original-icon-selection class to the matching icon', () => {
+            block.iconName = 'share';
+            block.icon = { source: 'theme', value: 'share', name: 'Share' };
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+            const downloadEl = body.querySelector('.option-block-icon[icon-id="download"]');
+
+            expect(shareEl.classList.contains('original-icon-selection')).toBe(true);
+            expect(downloadEl.classList.contains('original-icon-selection')).toBe(false);
+        });
+
+        it('marks icon as selected when iconName matches icon.value', () => {
+            block.iconName = '/path/to/share.svg';
+            block.icon = { source: 'theme', value: '/path/to/share.svg', name: 'Share' };
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const shareEl = body.querySelector('.option-block-icon[icon-id="share"]');
+
+            expect(shareEl.getAttribute('selected')).toBe('true');
         });
     });
 
     describe('makeIconValueElement', () => {
         it('creates img element with src and alt', () => {
+            window.eXeLearning.config = {};
             const icon = { value: '/path/to/icon.svg', title: 'Test Icon' };
             const iconValue = block.makeIconValueElement(icon);
             expect(iconValue.tagName).toBe('IMG');
@@ -2394,4 +3059,1420 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+    // -------------------------------------------------------------------------
+    // addBehaviourChangeIcon
+    // -------------------------------------------------------------------------
+    describe('addBehaviourChangeIcon', () => {
+        let iconEl;
+        let originalIsAvailable;
+
+        beforeEach(() => {
+            iconEl = document.createElement('button');
+            block.iconElement = iconEl;
+            originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+        });
+
+        it('calls showModalChangeIcon when component is available', async () => {
+            const showSpy = vi
+                .spyOn(block, 'showModalChangeIcon')
+                .mockImplementation(() => {});
+            block.addBehaviourChangeIcon();
+            iconEl.click();
+            await vi.waitFor(() => {
+                expect(showSpy).toHaveBeenCalled();
+            });
+        });
+
+        it('shows alert when component is not available', async () => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'iDevice locked' });
+            block.addBehaviourChangeIcon();
+            iconEl.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourButtonDropDown
+    // -------------------------------------------------------------------------
+    describe('addBehaviourButtonDropDown', () => {
+        let dropdownButton;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            dropdownButton = document.createElement('button');
+            dropdownButton.id = `dropdownMenuButton${block.blockId}`;
+            block.blockButtons.appendChild(dropdownButton);
+        });
+
+        it('calls toggleOn when dropdown has show class and block has hidden-idevices', () => {
+            // For getElementById to work both elements must be in the document.
+            // Appending blockButtons (which contains dropdownButton) keeps the
+            // button findable both via querySelector on blockButtons and via getElementById.
+            document.body.appendChild(block.blockButtons);
+            block.blockContent = document.createElement('article');
+            block.blockContent.id = block.blockId;
+            block.blockContent.classList.add('hidden-idevices');
+            document.body.appendChild(block.blockContent);
+
+            dropdownButton.classList.add('show');
+            const toggleOnSpy = vi
+                .spyOn(block, 'toggleOn')
+                .mockImplementation(() => {});
+            block.addBehaviourButtonDropDown();
+            dropdownButton.click();
+
+            expect(toggleOnSpy).toHaveBeenCalled();
+
+            document.body.removeChild(block.blockButtons);
+            document.body.removeChild(block.blockContent);
+        });
+
+        it('does nothing when dropdown does not have show class', () => {
+            const toggleOnSpy = vi
+                .spyOn(block, 'toggleOn')
+                .mockImplementation(() => {});
+            block.addBehaviourButtonDropDown();
+            dropdownButton.click();
+            expect(toggleOnSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourButtonPropertiesBlock
+    // -------------------------------------------------------------------------
+    describe('addBehaviourButtonPropertiesBlock', () => {
+        let propertiesButton;
+        let originalIsAvailable;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            propertiesButton = document.createElement('button');
+            propertiesButton.id = `dropdownBlockMore-button-properties${block.blockId}`;
+            block.blockButtons.appendChild(propertiesButton);
+
+            originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+        });
+
+        it('loads Yjs properties and shows properties modal on OK', async () => {
+            const loadSpy = vi
+                .spyOn(block, 'loadPropertiesFromYjs')
+                .mockImplementation(() => {});
+            block.addBehaviourButtonPropertiesBlock();
+            propertiesButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.properties.show).toHaveBeenCalled();
+            });
+            expect(loadSpy).toHaveBeenCalled();
+        });
+
+        it('shows alert when component is not available', async () => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'locked' });
+            block.addBehaviourButtonPropertiesBlock();
+            propertiesButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourButtonCloneBlock
+    // -------------------------------------------------------------------------
+    describe('addBehaviourButtonCloneBlock', () => {
+        it('calls apiCloneBlock when button is clicked', async () => {
+            block.blockButtons = document.createElement('div');
+            const btn = document.createElement('button');
+            btn.id = `dropdownBlockMore-button-clone${block.blockId}`;
+            block.blockButtons.appendChild(btn);
+
+            const cloneSpy = vi
+                .spyOn(block, 'apiCloneBlock')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.addBehaviourButtonCloneBlock();
+            btn.click();
+            await vi.waitFor(() => {
+                expect(cloneSpy).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourMoveToPageBlockButton
+    // -------------------------------------------------------------------------
+    describe('addBehaviourMoveToPageBlockButton', () => {
+        let moveButton;
+        let originalIsAvailable;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            moveButton = document.createElement('button');
+            moveButton.id = `dropdownBlockMore-button-move${block.blockId}`;
+            block.blockButtons.appendChild(moveButton);
+
+            originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+        });
+
+        it('shows confirm modal with correct title on OK', async () => {
+            block.addBehaviourMoveToPageBlockButton();
+            moveButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            });
+            const args = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            expect(args.title).toBe('Move box to page');
+            expect(args.confirmButtonText).toBe('Move');
+        });
+
+        it('shows alert when component is not available', async () => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'locked' });
+            block.addBehaviourMoveToPageBlockButton();
+            moveButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+
+        it('calls apiUpdatePage with selected page id from confirmExec', async () => {
+            const apiUpdatePageSpy = vi
+                .spyOn(block, 'apiUpdatePage')
+                .mockResolvedValue({ responseMessage: 'OK' });
+
+            // Build the DOM required by confirmExec
+            const main = document.createElement('div');
+            main.id = 'main';
+            const workarea = document.createElement('div');
+            workarea.id = 'workarea';
+            const menuNav = document.createElement('div');
+            menuNav.id = 'menu_nav_content';
+            const pageEl = document.createElement('div');
+            pageEl.setAttribute('nav-id', 'page-2');
+            menuNav.appendChild(pageEl);
+            workarea.appendChild(menuNav);
+            main.appendChild(workarea);
+            document.body.appendChild(main);
+
+            // Build modal body with a select. Append the option first, then
+            // set selectedIndex so select.item(selectedIndex) returns it reliably.
+            const modalBody = document.createElement('div');
+            const select = document.createElement('select');
+            select.classList.add('select-move-to-page');
+            const option = document.createElement('option');
+            option.setAttribute('value', 'page-2');
+            select.appendChild(option);
+            select.selectedIndex = 0;
+            modalBody.appendChild(select);
+            eXeLearning.app.modals.confirm.modalElementBody = modalBody;
+
+            block.addBehaviourMoveToPageBlockButton();
+            moveButton.click();
+
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            });
+
+            const args = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            args.confirmExec();
+
+            await vi.waitFor(() => {
+                expect(apiUpdatePageSpy).toHaveBeenCalledWith('page-2');
+            });
+
+            document.body.removeChild(main);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourExportBlockButton
+    // -------------------------------------------------------------------------
+    describe('addBehaviourExportBlockButton', () => {
+        let exportButton;
+        let originalIsAvailable;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            exportButton = document.createElement('button');
+            exportButton.id = `dropdownBlockMore-button-export${block.blockId}`;
+            block.blockButtons.appendChild(exportButton);
+
+            originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+        });
+
+        it('calls downloadBlockSelected with blockId on OK', async () => {
+            const downloadSpy = vi
+                .spyOn(block, 'downloadBlockSelected')
+                .mockResolvedValue(undefined);
+            block.addBehaviourExportBlockButton();
+            exportButton.click();
+            await vi.waitFor(() => {
+                expect(downloadSpy).toHaveBeenCalledWith(block.blockId);
+            });
+        });
+
+        it('shows alert when component is not available', async () => {
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'locked' });
+            block.addBehaviourExportBlockButton();
+            exportButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourToggleBlockButton
+    // -------------------------------------------------------------------------
+    describe('addBehaviourToggleBlockButton', () => {
+        let toggleButton;
+        let originalDollar;
+
+        beforeEach(() => {
+            block.headElement = document.createElement('header');
+            toggleButton = document.createElement('button');
+            toggleButton.id = `toggleBox${block.blockId}`;
+            block.headElement.appendChild(toggleButton);
+
+            block.blockContent = document.createElement('article');
+            block.toggleElement = null;
+
+            originalDollar = global.$;
+            global.$ = vi.fn(() => ({
+                attr: vi.fn(() => 'false'),
+                trigger: vi.fn(),
+            }));
+        });
+
+        afterEach(() => {
+            global.$ = originalDollar;
+        });
+
+        it('calls toggleOff when toggle is currently on', () => {
+            toggleButton.classList.add('box-toggle-on');
+            const toggleOffSpy = vi
+                .spyOn(block, 'toggleOff')
+                .mockImplementation(() => {});
+            block.addBehaviourToggleBlockButton();
+            toggleButton.click();
+            expect(toggleOffSpy).toHaveBeenCalled();
+        });
+
+        it('calls toggleOn when toggle is currently off', () => {
+            toggleButton.classList.add('box-toggle-off');
+            const toggleOnSpy = vi
+                .spyOn(block, 'toggleOn')
+                .mockImplementation(() => {});
+            block.addBehaviourToggleBlockButton();
+            toggleButton.click();
+            expect(toggleOnSpy).toHaveBeenCalled();
+        });
+
+        it('sets this.toggleElement from headElement on call', () => {
+            block.addBehaviourToggleBlockButton();
+            expect(block.toggleElement).toBe(toggleButton);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addTooltips
+    // -------------------------------------------------------------------------
+    describe('addTooltips', () => {
+        let originalDollar;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            originalDollar = global.$;
+        });
+
+        afterEach(() => {
+            global.$ = originalDollar;
+        });
+
+        it('calls initTooltips on blockButtons', () => {
+            global.$ = vi.fn(() => ({ addClass: vi.fn() }));
+            block.addTooltips();
+            expect(eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+                block.blockButtons,
+            );
+        });
+
+        it('adds exe-app-tooltip class via jQuery', () => {
+            const mockAddClass = vi.fn();
+            global.$ = vi.fn(() => ({ addClass: mockAddClass }));
+            block.addTooltips();
+            expect(mockAddClass).toHaveBeenCalledWith('exe-app-tooltip');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addNoTranslateForGoogle
+    // -------------------------------------------------------------------------
+    describe('addNoTranslateForGoogle', () => {
+        let originalDollar;
+
+        beforeEach(() => {
+            block.ideviceButtons = document.createElement('div');
+            originalDollar = global.$;
+        });
+
+        afterEach(() => {
+            global.$ = originalDollar;
+        });
+
+        it('calls jQuery to add notranslate class to auto-icons', () => {
+            const mockAddClass = vi.fn();
+            global.$ = vi.fn(() => ({ addClass: mockAddClass }));
+            block.addNoTranslateForGoogle();
+            expect(mockAddClass).toHaveBeenCalledWith('notranslate');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // addBehaviourToModalChangeIconBody
+    // -------------------------------------------------------------------------
+    describe('addBehaviourToModalChangeIconBody', () => {
+        let modalBody;
+        let icon1;
+        let icon2;
+
+        beforeEach(() => {
+            modalBody = document.createElement('div');
+            modalBody.id = 'change-block-icon-modal-content';
+            icon1 = document.createElement('div');
+            icon1.classList.add('option-block-icon');
+            icon1.setAttribute('selected', 'false');
+            icon2 = document.createElement('div');
+            icon2.classList.add('option-block-icon');
+            icon2.setAttribute('selected', 'false');
+            modalBody.appendChild(icon1);
+            modalBody.appendChild(icon2);
+            eXeLearning.app.modals.confirm.modalElementBody = modalBody;
+        });
+
+        it('selects clicked icon and deselects others on click', () => {
+            icon1.setAttribute('selected', 'true');
+            block.addBehaviourToModalChangeIconBody();
+            icon2.click();
+            expect(icon2.getAttribute('selected')).toBe('true');
+            expect(icon1.getAttribute('selected')).toBe('false');
+        });
+
+        it('calls saveIconAction and closes modal on double-click', () => {
+            const saveIconSpy = vi
+                .spyOn(block, 'saveIconAction')
+                .mockImplementation(() => {});
+            block.addBehaviourToModalChangeIconBody();
+            icon1.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+            expect(saveIconSpy).toHaveBeenCalled();
+            expect(eXeLearning.app.modals.confirm.close).toHaveBeenCalled();
+        });
+
+        it('calls saveIconAction and closes modal on Enter key', () => {
+            const saveIconSpy = vi
+                .spyOn(block, 'saveIconAction')
+                .mockImplementation(() => {});
+            block.addBehaviourToModalChangeIconBody();
+            icon1.dispatchEvent(
+                new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }),
+            );
+            expect(saveIconSpy).toHaveBeenCalled();
+            expect(eXeLearning.app.modals.confirm.close).toHaveBeenCalled();
+        });
+
+        it('does not call saveIconAction on non-Enter keyup', () => {
+            const saveIconSpy = vi
+                .spyOn(block, 'saveIconAction')
+                .mockImplementation(() => {});
+            block.addBehaviourToModalChangeIconBody();
+            icon1.dispatchEvent(
+                new KeyboardEvent('keyup', { key: 'Space', bubbles: true }),
+            );
+            expect(saveIconSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiSaveProperties
+    // -------------------------------------------------------------------------
+    describe('apiSaveProperties', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.appendChild(document.createElement('span'));
+            block.headElement = document.createElement('header');
+            mockEngine.getIdeviceById = vi.fn();
+        });
+
+        it('calls putSavePropertiesBlock with correct params', async () => {
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            await block.apiSaveProperties({ visibility: 'true' });
+            expect(eXeLearning.app.api.putSavePropertiesBlock).toHaveBeenCalled();
+            const args = eXeLearning.app.api.putSavePropertiesBlock.mock.calls[0][0];
+            expect(args.odePagStructureSyncId).toBe(block.blockId);
+        });
+
+        it('adds updateChildsProperties when inherit is true', async () => {
+            // odePagStructureSync must be present (even if empty) to avoid
+            // accessing .odeComponentsSyncs on undefined inside the source.
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'OK',
+                odePagStructureSync: {},
+            });
+            vi.spyOn(block, 'generateBlockContentNode').mockImplementation(() => {});
+            await block.apiSaveProperties({}, true);
+            const args = eXeLearning.app.api.putSavePropertiesBlock.mock.calls[0][0];
+            expect(args.updateChildsProperties).toBe('true');
+        });
+
+        it('calls generateBlockContentNode(false) on success', async () => {
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            const generateSpy = vi
+                .spyOn(block, 'generateBlockContentNode')
+                .mockImplementation(() => {});
+            await block.apiSaveProperties({});
+            await vi.waitFor(() => {
+                expect(generateSpy).toHaveBeenCalledWith(false);
+            });
+        });
+
+        it('shows alert on error response', async () => {
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'ERROR',
+            });
+            await block.apiSaveProperties({});
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            });
+        });
+
+        it('propagates properties to idevices when inherit=true and odeComponentsSyncs exists', async () => {
+            const mockIdevice = {
+                setProperties: vi.fn(),
+                makeIdeviceContentNode: vi.fn(),
+            };
+            mockEngine.getIdeviceById.mockReturnValue(mockIdevice);
+            eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
+                responseMessage: 'OK',
+                odePagStructureSync: {
+                    odeComponentsSyncs: [{ odeIdeviceId: 'idevice-1' }],
+                },
+            });
+            vi.spyOn(block, 'generateBlockContentNode').mockImplementation(() => {});
+            await block.apiSaveProperties({}, true);
+            await vi.waitFor(() => {
+                expect(mockIdevice.setProperties).toHaveBeenCalledWith(
+                    block.properties,
+                    true,
+                );
+                expect(mockIdevice.makeIdeviceContentNode).toHaveBeenCalledWith(false);
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiUpdatePage
+    // -------------------------------------------------------------------------
+    describe('apiUpdatePage', () => {
+        it('returns false when target page equals current page', async () => {
+            block.odeNavStructureSyncId = 'page-1';
+            const result = await block.apiUpdatePage('page-1');
+            expect(result).toBe(false);
+        });
+
+        it('routes through moveToPageViaYjs when Yjs is enabled', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const moveSpy = vi
+                .spyOn(block, 'moveToPageViaYjs')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.odeNavStructureSyncId = 'page-1';
+            await block.apiUpdatePage('other-page');
+            expect(moveSpy).toHaveBeenCalledWith('other-page');
+        });
+
+        it('legacy path calls apiSendDataService and removes on OK', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            block.odeNavStructureSyncId = 'page-1';
+            const apiSendSpy = vi
+                .spyOn(block, 'apiSendDataService')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            const removeSpy = vi
+                .spyOn(block, 'remove')
+                .mockImplementation(() => {});
+            await block.apiUpdatePage('page-2');
+            expect(apiSendSpy).toHaveBeenCalled();
+            expect(removeSpy).toHaveBeenCalled();
+        });
+
+        it('legacy path shows error modal on non-OK response', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            block.odeNavStructureSyncId = 'page-1';
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue(false);
+            const showModalSpy = vi
+                .spyOn(block, 'showModalMessageErrorDatabase')
+                .mockImplementation(() => {});
+            await block.apiUpdatePage('page-2');
+            expect(showModalSpy).toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // deleteBlockViaYjs
+    // -------------------------------------------------------------------------
+    describe('deleteBlockViaYjs', () => {
+        it('returns ERROR when bridge not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            const result = await block.deleteBlockViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+        });
+
+        it('calls deleteBlock with blockId and returns OK on success', async () => {
+            const mockDelete = vi.fn().mockReturnValue(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { deleteBlock: mockDelete },
+            };
+            const result = await block.deleteBlockViaYjs();
+            expect(mockDelete).toHaveBeenCalledWith(block.pageId, block.blockId);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('retries with this.id when blockId fails and ids differ', async () => {
+            block.id = 'alt-id';
+            block.blockId = 'block-id-1';
+            const mockDelete = vi
+                .fn()
+                .mockReturnValueOnce(false)
+                .mockReturnValueOnce(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { deleteBlock: mockDelete },
+            };
+            const result = await block.deleteBlockViaYjs();
+            expect(mockDelete).toHaveBeenCalledTimes(2);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('returns ERROR when all attempts fail', async () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { deleteBlock: vi.fn().mockReturnValue(false) },
+            };
+            const result = await block.deleteBlockViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+            warnSpy.mockRestore();
+        });
+
+        it('returns ERROR when an exception is thrown', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    deleteBlock: vi.fn(() => {
+                        throw new Error('delete failed');
+                    }),
+                },
+            };
+            const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const result = await block.deleteBlockViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+            errSpy.mockRestore();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // reorderViaYjs
+    // -------------------------------------------------------------------------
+    describe('reorderViaYjs', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            block.blockContent.classList.add('moving');
+        });
+
+        it('returns ERROR when bridge not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            const result = await block.reorderViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+        });
+
+        it('calls updateBlockOrder with blockId and returns OK on success', async () => {
+            const mockUpdate = vi.fn().mockReturnValue(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { updateBlockOrder: mockUpdate },
+            };
+            block.order = 2;
+            const result = await block.reorderViaYjs();
+            expect(mockUpdate).toHaveBeenCalledWith(block.blockId, 2);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('retries with this.id when blockId fails and ids differ', async () => {
+            block.id = 'alt-id';
+            block.blockId = 'block-id-1';
+            const mockUpdate = vi
+                .fn()
+                .mockReturnValueOnce(false)
+                .mockReturnValueOnce(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { updateBlockOrder: mockUpdate },
+            };
+            const result = await block.reorderViaYjs();
+            expect(mockUpdate).toHaveBeenCalledTimes(2);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('returns ERROR when all attempts fail', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    updateBlockOrder: vi.fn().mockReturnValue(false),
+                },
+            };
+            const result = await block.reorderViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+        });
+
+        it('schedules removal of moving class on success', async () => {
+            vi.useFakeTimers();
+            try {
+                eXeLearning.app.project._yjsBridge = {
+                    structureBinding: {
+                        updateBlockOrder: vi.fn().mockReturnValue(true),
+                    },
+                };
+                await block.reorderViaYjs();
+                expect(block.blockContent.classList.contains('moving')).toBe(true);
+                vi.advanceTimersByTime(mockEngine.movingClassDuration + 10);
+                expect(block.blockContent.classList.contains('moving')).toBe(false);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('returns ERROR when exception is thrown', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    updateBlockOrder: vi.fn(() => {
+                        throw new Error('reorder error');
+                    }),
+                },
+            };
+            const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const result = await block.reorderViaYjs();
+            expect(result.responseMessage).toBe('ERROR');
+            errSpy.mockRestore();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // getFallbackPageOrder
+    // -------------------------------------------------------------------------
+    describe('getFallbackPageOrder', () => {
+        it('returns 1 when components.blocks is not an array', () => {
+            mockEngine.components = {};
+            block.pageId = 'page-1';
+            expect(block.getFallbackPageOrder()).toBe(1);
+        });
+
+        it('returns 1 when no blocks exist', () => {
+            mockEngine.components = { blocks: [] };
+            block.pageId = 'page-1';
+            expect(block.getFallbackPageOrder()).toBe(1);
+        });
+
+        it('returns max order + 1 from blocks on current page', () => {
+            block.pageId = 'page-1';
+            mockEngine.components = {
+                blocks: [
+                    { pageId: 'page-1', order: 3 },
+                    { pageId: 'page-1', order: 7 },
+                    { pageId: 'page-2', order: 10 },
+                ],
+            };
+            expect(block.getFallbackPageOrder()).toBe(8);
+        });
+
+        it('falls back to blockContent.getAttribute when block.order is undefined', () => {
+            block.pageId = 'page-1';
+            const bc = document.createElement('article');
+            bc.setAttribute('order', '5');
+            mockEngine.components = {
+                blocks: [{ pageId: 'page-1', order: undefined, blockContent: bc }],
+            };
+            expect(block.getFallbackPageOrder()).toBe(6);
+        });
+
+        it('returns 1 when exception is thrown', () => {
+            const originalComponents = mockEngine.components;
+            Object.defineProperty(mockEngine, 'components', {
+                get() {
+                    throw new Error('oops');
+                },
+                configurable: true,
+            });
+            expect(block.getFallbackPageOrder()).toBe(1);
+            Object.defineProperty(mockEngine, 'components', {
+                value: originalComponents,
+                configurable: true,
+                writable: true,
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiUpdateOrder
+    // -------------------------------------------------------------------------
+    describe('apiUpdateOrder', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            mockEngine.updateComponentsBlocks = vi.fn();
+        });
+
+        it('routes through reorderViaYjs when Yjs is enabled', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const reorderSpy = vi
+                .spyOn(block, 'reorderViaYjs')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            await block.apiUpdateOrder();
+            expect(reorderSpy).toHaveBeenCalled();
+        });
+
+        it('legacy path calls putReorderBlock and removes moving class on OK', async () => {
+            vi.useFakeTimers();
+            try {
+                eXeLearning.app.project._yjsEnabled = false;
+                block.blockContent.classList.add('moving');
+                vi.spyOn(block, 'apiSendDataService').mockResolvedValue({
+                    responseMessage: 'OK',
+                });
+                await block.apiUpdateOrder();
+                vi.advanceTimersByTime(mockEngine.movingClassDuration + 10);
+                expect(block.blockContent.classList.contains('moving')).toBe(false);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('legacy path shows error modal on non-OK response', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue(false);
+            const showModalSpy = vi
+                .spyOn(block, 'showModalMessageErrorDatabase')
+                .mockImplementation(() => {});
+            await block.apiUpdateOrder();
+            expect(showModalSpy).toHaveBeenCalled();
+        });
+
+        it('with getCurrentOrder=true reads order from adjacent blocks first', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const container = document.createElement('div');
+            const prevBlock = document.createElement('article');
+            prevBlock.classList.add('box');
+            prevBlock.setAttribute('order', '5');
+            container.appendChild(prevBlock);
+            container.appendChild(block.blockContent);
+
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            await block.apiUpdateOrder(true);
+            expect(block.order).toBe(6);
+        });
+
+        it('with getCurrentOrder=true uses getFallbackPageOrder when no adjacent blocks', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            mockEngine.components = { blocks: [] };
+            block.pageId = 'page-1';
+
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            await block.apiUpdateOrder(true);
+            expect(block.order).toBe(1);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiDeleteBlock
+    // -------------------------------------------------------------------------
+    describe('apiDeleteBlock', () => {
+        beforeEach(() => {
+            mockEngine.updateComponentsBlocks = vi.fn();
+        });
+
+        it('calls deleteBlockViaYjs when Yjs is enabled', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const deleteSpy = vi
+                .spyOn(block, 'deleteBlockViaYjs')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            await block.apiDeleteBlock();
+            expect(deleteSpy).toHaveBeenCalled();
+        });
+
+        it('legacy path calls eXeLearning.app.api.deleteBlock', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            eXeLearning.app.api.deleteBlock = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+            await block.apiDeleteBlock();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.api.deleteBlock).toHaveBeenCalledWith(block.id);
+            });
+        });
+
+        it('legacy path calls updateComponentsBlocks when odePagStructureSyncs present', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const syncs = [{ id: 'b1', order: 0 }];
+            eXeLearning.app.api.deleteBlock = vi.fn().mockResolvedValue({
+                responseMessage: 'OK',
+                odePagStructureSyncs: syncs,
+            });
+            await block.apiDeleteBlock();
+            await vi.waitFor(() => {
+                expect(mockEngine.updateComponentsBlocks).toHaveBeenCalledWith(
+                    syncs,
+                    ['order'],
+                );
+            });
+        });
+
+        it('legacy path shows error modal on failure', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            eXeLearning.app.api.deleteBlock = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'ERROR' });
+            const showModalSpy = vi
+                .spyOn(block, 'showModalMessageErrorDatabase')
+                .mockImplementation(() => {});
+            await block.apiDeleteBlock();
+            await vi.waitFor(() => {
+                expect(showModalSpy).toHaveBeenCalled();
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiSendDataService
+    // -------------------------------------------------------------------------
+    describe('apiSendDataService', () => {
+        beforeEach(() => {
+            mockEngine.updateComponentsBlocks = vi.fn();
+        });
+
+        it('returns response on success', async () => {
+            eXeLearning.app.api.putSaveBlock.mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            const result = await block.apiSendDataService('putSaveBlock', [
+                'odePagStructureSyncId',
+            ]);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('calls updateComponentsBlocks when odePagStructureSyncs is present', async () => {
+            const syncs = [{ id: 'b1', order: 1 }];
+            eXeLearning.app.api.putSaveBlock.mockResolvedValue({
+                responseMessage: 'OK',
+                odePagStructureSyncs: syncs,
+            });
+            await block.apiSendDataService('putSaveBlock', [
+                'odePagStructureSyncId',
+                'order',
+            ]);
+            expect(mockEngine.updateComponentsBlocks).toHaveBeenCalledWith(syncs, [
+                'order',
+            ]);
+        });
+
+        it('returns false on non-OK response', async () => {
+            eXeLearning.app.api.putSaveBlock.mockResolvedValue({
+                responseMessage: 'ERROR',
+            });
+            const result = await block.apiSendDataService('putSaveBlock', [
+                'odePagStructureSyncId',
+            ]);
+            expect(result).toBe(false);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // generateDataObject
+    // -------------------------------------------------------------------------
+    describe('generateDataObject', () => {
+        it('builds data object from params array', () => {
+            block.blockId = 'blk-1';
+            block.iconName = 'myIcon';
+            block.blockName = 'My Block';
+            block.order = 3;
+
+            const result = block.generateDataObject([
+                'odePagStructureSyncId',
+                'iconName',
+                'blockName',
+                'order',
+            ]);
+
+            expect(result.odePagStructureSyncId).toBe('blk-1');
+            expect(result.iconName).toBe('myIcon');
+            expect(result.blockName).toBe('My Block');
+            expect(result.order).toBe(3);
+        });
+
+        it('only includes params listed in the array', () => {
+            const result = block.generateDataObject(['odePagStructureSyncId']);
+            expect(Object.keys(result)).toEqual(['odePagStructureSyncId']);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // getDictBaseValuesData
+    // -------------------------------------------------------------------------
+    describe('getDictBaseValuesData', () => {
+        it('returns correct base data dictionary', () => {
+            block.blockId = 'blk-1';
+            block.iconName = 'icon1';
+            block.blockName = 'Block';
+            block.order = 2;
+            block.odeNavStructureSyncId = 'nav-1';
+            block.pageId = 'page-1';
+
+            const result = block.getDictBaseValuesData();
+
+            expect(result.odePagStructureSyncId).toBe('blk-1');
+            expect(result.iconName).toBe('icon1');
+            expect(result.blockName).toBe('Block');
+            expect(result.order).toBe(2);
+            expect(result.odeVersionId).toBe('v1');
+            expect(result.odeSessionId).toBe('session-123');
+            expect(result.odeNavStructureSyncId).toBe('nav-1');
+            expect(result.odePageId).toBe('page-1');
+        });
+
+        it('uses structure defaults when odeNavStructureSyncId and pageId are unset', () => {
+            block.odeNavStructureSyncId = null;
+            block.pageId = null;
+
+            const result = block.getDictBaseValuesData();
+
+            expect(result.odeNavStructureSyncId).toBe('nav-id-1');
+            expect(result.odePageId).toBe('page-id-1');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // showModalMessageErrorDatabase
+    // -------------------------------------------------------------------------
+    describe('showModalMessageErrorDatabase', () => {
+        it('shows alert with default message after 300ms timeout', async () => {
+            vi.useFakeTimers();
+            try {
+                block.showModalMessageErrorDatabase({}, 'Default error message');
+                vi.advanceTimersByTime(300);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        title: 'Block error',
+                        body: 'Default error message',
+                    }),
+                );
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('shows default message even when response is falsy', async () => {
+            vi.useFakeTimers();
+            try {
+                block.showModalMessageErrorDatabase(false, 'Fallback message');
+                vi.advanceTimersByTime(300);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({ body: 'Fallback message' }),
+                );
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // remove
+    // -------------------------------------------------------------------------
+    describe('remove', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            document.body.appendChild(block.blockContent);
+            mockEngine.removeBlockOfComponentList = vi.fn();
+            mockEngine.updateMode = vi.fn();
+        });
+
+        afterEach(() => {
+            if (document.body.contains(block.blockContent)) {
+                document.body.removeChild(block.blockContent);
+            }
+        });
+
+        it('removes blockContent from the DOM', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            block.remove();
+            expect(document.body.contains(block.blockContent)).toBe(false);
+        });
+
+        it('calls engine.removeBlockOfComponentList with block id', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            block.remove();
+            expect(mockEngine.removeBlockOfComponentList).toHaveBeenCalledWith(
+                block.id,
+            );
+        });
+
+        it('calls engine.updateMode', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            block.remove();
+            expect(mockEngine.updateMode).toHaveBeenCalled();
+        });
+
+        it('calls apiDeleteBlock when bbdd is true', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            const apiDeleteSpy = vi
+                .spyOn(block, 'apiDeleteBlock')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.remove(true);
+            expect(apiDeleteSpy).toHaveBeenCalled();
+        });
+
+        it('does not call apiDeleteBlock when bbdd is false', () => {
+            vi.spyOn(block, 'removeIdevices').mockImplementation(() => {});
+            const apiDeleteSpy = vi
+                .spyOn(block, 'apiDeleteBlock')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.remove(false);
+            expect(apiDeleteSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // removeClassLoading
+    // -------------------------------------------------------------------------
+    describe('removeClassLoading', () => {
+        it('removes loading class from blockContent', () => {
+            block.blockContent = document.createElement('article');
+            block.blockContent.classList.add('loading', 'extra-class');
+            block.removeClassLoading();
+            expect(block.blockContent.classList.contains('loading')).toBe(false);
+            expect(block.blockContent.classList.contains('extra-class')).toBe(true);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // updateMode
+    // -------------------------------------------------------------------------
+    describe('updateMode', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            block.headElement = document.createElement('header');
+            block.headElement.classList.add('draggable');
+            block.headElement.setAttribute('draggable', 'true');
+            block.mode = 'export';
+        });
+
+        it('sets mode attribute on blockContent', () => {
+            block.updateMode('edition');
+            expect(block.blockContent.getAttribute('mode')).toBe('edition');
+        });
+
+        it('edition mode makes headElement non-draggable', () => {
+            block.updateMode('edition');
+            expect(block.headElement.getAttribute('draggable')).toBe('false');
+            expect(block.headElement.classList.contains('draggable')).toBe(false);
+        });
+
+        it('export mode makes headElement draggable', () => {
+            block.mode = 'edition';
+            block.headElement.classList.remove('draggable');
+            block.updateMode('export');
+            expect(block.headElement.getAttribute('draggable')).toBe('true');
+            expect(block.headElement.classList.contains('draggable')).toBe(true);
+        });
+
+        it('uses existing this.mode when no argument is provided', () => {
+            block.mode = 'export';
+            block.updateMode();
+            expect(block.blockContent.getAttribute('mode')).toBe('export');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // updateParam — 'id' and 'order' cases
+    // -------------------------------------------------------------------------
+    describe('updateParam id and order cases', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+        });
+
+        it("updates blockContent sym-id attribute for param 'id'", () => {
+            block.updateParam('id', 'new-block-id');
+            expect(block.id).toBe('new-block-id');
+            expect(block.blockContent.getAttribute('sym-id')).toBe('new-block-id');
+        });
+
+        it("updates blockContent order attribute for param 'order'", () => {
+            block.updateParam('order', 7);
+            expect(block.order).toBe(7);
+            expect(block.blockContent.getAttribute('order')).toBe('7');
+        });
+
+        it('updates arbitrary property without DOM side-effect for other params', () => {
+            block.updateParam('blockName', 'Hello');
+            expect(block.blockName).toBe('Hello');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // resetWindowHash
+    // -------------------------------------------------------------------------
+    describe('resetWindowHash', () => {
+        afterEach(() => {
+            window.location.hash = '';
+        });
+
+        it('sets window.location.hash to node-content', () => {
+            block.resetWindowHash();
+            expect(window.location.hash).toContain('node-content');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // focusTextInput
+    // -------------------------------------------------------------------------
+    describe('focusTextInput', () => {
+        it('focuses the input element', () => {
+            const input = document.createElement('input');
+            input.value = 'test';
+            document.body.appendChild(input);
+            const focusSpy = vi.spyOn(input, 'focus');
+            block.focusTextInput(input);
+            expect(focusSpy).toHaveBeenCalled();
+            document.body.removeChild(input);
+        });
+
+        it('clears and restores the input value to move caret to end', () => {
+            const input = document.createElement('input');
+            input.value = 'original value';
+            document.body.appendChild(input);
+            block.focusTextInput(input);
+            expect(input.value).toBe('original value');
+            document.body.removeChild(input);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // sendPublishedNotification
+    // -------------------------------------------------------------------------
+    describe('sendPublishedNotification', () => {
+        it('does nothing when offlineInstallation is true', () => {
+            block.offlineInstallation = true;
+            block.realTimeEventNotifier = { notify: vi.fn() };
+            block.sendPublishedNotification();
+            expect(block.realTimeEventNotifier.notify).not.toHaveBeenCalled();
+        });
+
+        it('calls realTimeEventNotifier.notify when not offline', () => {
+            block.offlineInstallation = false;
+            const notifySpy = vi.fn();
+            block.realTimeEventNotifier = { notify: notifySpy };
+            block.sendPublishedNotification();
+            expect(notifySpy).toHaveBeenCalledWith(
+                eXeLearning.app.project.odeSession,
+                { name: 'new-content-published' },
+            );
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // makeIconValueElement — static / offline mode branch
+    // -------------------------------------------------------------------------
+    describe('makeIconValueElement static mode branch', () => {
+        it('converts absolute path to relative when isStaticMode is true', () => {
+            const savedConfig = eXeLearning.config;
+            eXeLearning.config = { isStaticMode: true, isOfflineInstallation: false };
+
+            const icon = { value: '/themes/theme/icons/star.svg', title: 'Star' };
+            const img = block.makeIconValueElement(icon);
+
+            expect(img.getAttribute('src')).toBe('./themes/theme/icons/star.svg');
+            eXeLearning.config = savedConfig;
+        });
+
+        it('converts absolute path to relative when isOfflineInstallation is true', () => {
+            const savedConfig = eXeLearning.config;
+            eXeLearning.config = { isStaticMode: false, isOfflineInstallation: true };
+
+            const icon = { value: '/themes/theme/icons/star.svg', title: 'Star' };
+            const img = block.makeIconValueElement(icon);
+
+            expect(img.getAttribute('src')).toBe('./themes/theme/icons/star.svg');
+            eXeLearning.config = savedConfig;
+        });
+
+        it('leaves path unchanged in server mode', () => {
+            const icon = { value: '/themes/theme/icons/star.svg', title: 'Star' };
+            const img = block.makeIconValueElement(icon);
+            expect(img.getAttribute('src')).toBe('/themes/theme/icons/star.svg');
+        });
+
+        it('leaves relative path unchanged', () => {
+            const icon = { value: 'relative/path/icon.svg', title: 'Icon' };
+            const img = block.makeIconValueElement(icon);
+            expect(img.getAttribute('src')).toBe('relative/path/icon.svg');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // loadPropertiesFromYjs — null yjsProperties
+    // -------------------------------------------------------------------------
+    describe('loadPropertiesFromYjs null yjsProperties', () => {
+        it('does nothing when getBlockProperties returns null', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getBlockProperties: vi.fn(() => null),
+                },
+            };
+            const originalValue = block.properties.visibility.value;
+            block.loadPropertiesFromYjs();
+            expect(block.properties.visibility.value).toBe(originalValue);
+        });
+
+        it('handles getBlockProperties returning undefined gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getBlockProperties: vi.fn(() => undefined),
+                },
+            };
+            const originalValue = block.properties.visibility.value;
+            block.loadPropertiesFromYjs();
+            expect(block.properties.visibility.value).toBe(originalValue);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiUpdateIcon — no id branch
+    // -------------------------------------------------------------------------
+    describe('apiUpdateIcon no id branch', () => {
+        it('does not call apiSendDataService when id is null', () => {
+            const apiSendSpy = vi
+                .spyOn(block, 'apiSendDataService')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.id = null;
+            block.apiUpdateIcon('new-icon');
+            expect(apiSendSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // apiUpdateTitle — no id branch
+    // -------------------------------------------------------------------------
+    describe('apiUpdateTitle no id branch', () => {
+        it('does not call apiSendDataService when id is null', () => {
+            block.blockNameElementText = document.createElement('h1');
+            const apiSendSpy = vi
+                .spyOn(block, 'apiSendDataService')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            block.id = null;
+            block.apiUpdateTitle('New Title');
+            expect(apiSendSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // generateBlockContentNode — no id branch
+    // -------------------------------------------------------------------------
+    describe('generateBlockContentNode no id branch', () => {
+        let originalDollar;
+
+        beforeEach(() => {
+            // The addBehaviourButtonDeleteBlock tests in this file delete global.$
+            // via `delete global.$`. Restore a minimal stub so addTooltips does
+            // not throw when generateBlockContentNode drives the full chain.
+            originalDollar = global.$;
+            if (typeof global.$ !== 'function') {
+                global.$ = vi.fn(() => ({ addClass: vi.fn() }));
+            }
+        });
+
+        afterEach(() => {
+            global.$ = originalDollar;
+        });
+
+        it('does not set sym-id attribute when block has no id', () => {
+            block.id = null;
+            const node = block.generateBlockContentNode(true);
+            expect(node.hasAttribute('sym-id')).toBe(false);
+        });
+    });
+
+});
+
+describe('sortThemeIcons', () => {
+    it('returns icons sorted by id with numeric awareness', () => {
+        const sorted = sortThemeIcons({
+            icon10: { id: 'icon10', value: '/i/icon10.svg' },
+            icon2: { id: 'icon2', value: '/i/icon2.svg' },
+            icon1: { id: 'icon1', value: '/i/icon1.svg' },
+        });
+
+        expect(sorted.map((icon) => icon.id)).toEqual(['icon1', 'icon2', 'icon10']);
+    });
+
+    it('drops entries without a value and falls back to value when id is missing', () => {
+        const sorted = sortThemeIcons({
+            b: { id: 'b', value: '/i/b.svg' },
+            broken: { id: 'broken' },
+            empty: null,
+            a: { value: '/i/a.svg' },
+        });
+
+        expect(sorted.map((icon) => icon.id || icon.value)).toEqual(['/i/a.svg', 'b']);
+    });
+
+    it('returns an empty list for null or undefined input', () => {
+        expect(sortThemeIcons(null)).toEqual([]);
+        expect(sortThemeIcons(undefined)).toEqual([]);
+    });
 });

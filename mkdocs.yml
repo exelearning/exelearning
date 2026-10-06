@@ -1,6 +1,15 @@
 # mkdocs.yml
 site_name: eXeLearning Docs
 docs_dir: doc
+
+# Architecture decision records and change documents are contributor-facing.
+# They live in the repository and are read on GitHub or with
+# `make architecture-records`; publishing them to the user docs site adds noise
+# without adding value.
+exclude_docs: |
+  architecture/adr/
+  architecture/changes/
+  architecture/migration-map.md
 repo_url: https://github.com/exelearning/exelearning
 edit_uri: edit/main/doc/
 
@@ -24,7 +33,13 @@ nav:
   - Home: index.md
   - Overview: overview.md
   - Install: install.md
+  - Profile Avatars: profile-avatars.md
   - Deployment: deployment.md
+  - High Availability: high-availability.md
+  - "Deploy: Sample Configs": deploy/README.md
+  - Architecture:
+      - Overview: architecture.md
+  - Conventions: conventions.md
   - Development:
       - Environment: development/environment.md
       - Version Control: development/version-control.md
@@ -32,12 +47,44 @@ nav:
       - Testing: development/testing.md
       - Internationalization: development/internationalization.md
       - Real Time: development/real-time.md
+      - Embedding: development/embedding.md
+      - Profiling: development/profiling.md
       - Customization: development/customization.md
       - Styles: development/styles.md
       - Installers: development/installers.md
       - REST API: development/rest-api.md
       - Authentication: development/authentication.md
-      
+      - SCORM 1.2 Runtime Contract: development/scorm12-runtime-contract.md
+      - C10k Benchmark: development/c10k-benchmark.md
+      - C10k Benchmark (Español): development/c10k-benchmark.es.md
+  - File Formats:
+      - Legacy ELP Format: contentv3-format.md
+      - ELPX Format:
+          - Overview: elpx-format.md
+          - Container: elpx-format/container.md
+          - content.xml: elpx-format/content-xml.md
+          - IDs: elpx-format/ids.md
+          - Metadata: elpx-format/metadata.md
+          - Pages & Blocks: elpx-format/pages-blocks.md
+          - iDevices:
+              - Catalog: elpx-format/idevices/catalog.md
+              - Patterns: elpx-format/idevices/patterns.md
+              - config.xml: elpx-format/idevices/config-xml.md
+              - Snippets: elpx-format/idevices/snippets.md
+          - Themes: elpx-format/themes.md
+          - Libraries: elpx-format/libraries.md
+          - Assets: elpx-format/assets.md
+          - Screenshot: elpx-format/screenshot.md
+          - Tracking: elpx-format/tracking-emission.md
+          - Export Pipeline: elpx-format/export-pipeline.md
+          - Import Pipeline: elpx-format/import-pipeline.md
+          - Validation: elpx-format/validation.md
+          - AI Generation: elpx-format/ai-generation.md
+          - Examples:
+              - Minimal content.xml: elpx-format/examples/minimal-content-xml.md
+              - Multi-page content.xml: elpx-format/examples/multi-page-content-xml.md
+              - Full Package Tree: elpx-format/examples/full-package-tree.md
+
 
 
 plugins:

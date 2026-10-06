@@ -36,7 +36,6 @@ var $quickquestionsvideo = {
     options: {},
     userName: '',
     previousScore: '',
-    initialScore: '',
     msgs: '',
     youtubeLoaded: false,
     hasSCORMbutton: false,
@@ -66,6 +65,22 @@ var $quickquestionsvideo = {
             mOptions,
             $quickquestionsvideo.isInExe
         );
+    },
+
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors and the running score, but nothing told
+     * the LMS, so the menu kept the previous attempt's grade and status until
+     * the learner answered a question.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestionsvideo.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $quickquestionsvideo.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {
@@ -106,6 +121,7 @@ var $quickquestionsvideo = {
 
             const vquext = $quickquestionsvideo.createInterfaceVideoQuExt(i);
             dl.before(vquext).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#vquextGameMinimize-' + i).hide();
             $('#vquextGameContainer-' + i).hide();
 
@@ -665,14 +681,6 @@ var $quickquestionsvideo = {
     addEvents: function (instance) {
         const mOptions = $quickquestionsvideo.options[instance];
         $quickquestionsvideo.removeEvents(instance);
-        $(window).on(
-            'unload.eXeVideoQuext beforeunload.eXeVideoQuext',
-            function () {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $quickquestionsvideo.mScorm
-                );
-            }
-        );
 
         $(`videovquextGamerOver-${instance}`).css('display', 'flex');
 
@@ -1017,7 +1025,6 @@ var $quickquestionsvideo = {
         $(`#vquextModeBoardOK-${instance}, #vquextModeBoardKO-${instance}`).off(
             'click'
         );
-        $(window).off('unload.eXeVideoQuext beforeunload.eXeVideoQuext');
     },
 
     goEnd: function (instance, time) {
@@ -1399,6 +1406,11 @@ var $quickquestionsvideo = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
+        // Cleared here and not only at load: gameOver() leaves gameStarted
+        // false, so a finished game can be started again — and it carried the
+        // stale gameOver into the new one, which made the first answer report
+        // the fresh attempt as already finished.
+        mOptions.gameOver = false;
         mOptions.livesLeft = mOptions.numberLives;
         $quickquestionsvideo.updateLives(instance);
         mOptions.stateReproduction = 0;
@@ -1417,14 +1429,22 @@ var $quickquestionsvideo = {
             mOptions.questionsGame[i].answerScore = -1;
         }
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#vquextMainContainer-' + instance);
-            let $content = $('#node-content');
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // drove it, stopping its video at this one's questions and counting
+        // down on its display.
+        const container = document.getElementById(
+            'vquextMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
             let timeVideo = 0;
@@ -1578,6 +1598,7 @@ var $quickquestionsvideo = {
                     break;
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $quickquestionsvideo.uptateTime(0, instance);
 
@@ -1590,6 +1611,9 @@ var $quickquestionsvideo = {
             $('#vquextNavigationButtons-' + instance).show();
         }*/
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $quickquestionsvideo.saveScormScore(instance);
     },
 
     updataProgressBar: function (ntime, instance) {
@@ -1654,21 +1678,21 @@ var $quickquestionsvideo = {
         $quickquestionsvideo.showNavigationButtons(instance, 0);
 
         mOptions.gameOver = true;
+        // No "score only once" lock: the end of the attempt is always reported.
+        // The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew), so it short-circuited the condition
+        // before the learner touched anything. The activity registry owns what
+        // has been recorded.
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
-            ) {
-                let score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                $quickquestionsvideo.sendScore(true, instance);
-                $('#vquextRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score
-                );
-                $quickquestionsvideo.initialScore = score;
-            }
+            const score = (
+                (mOptions.hits * 10) /
+                mOptions.numberQuestions
+            ).toFixed(2);
+            $quickquestionsvideo.sendScore(true, instance);
+            $('#vquextRepeatActivity-' + instance).text(
+                mOptions.msgs.msgYouScore + ': ' + score
+            );
         }
         $quickquestionsvideo.saveEvaluation(instance);
         $quickquestionsvideo.showFeedBack(instance);
@@ -1768,32 +1792,26 @@ var $quickquestionsvideo = {
             $quickquestionsvideo.muteVideo(false, instance);
         }
 
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
-            ) {
-                let score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                if (mOptions.isNavigable) {
-                    score = 0;
-                    for (let i = 0; i < mOptions.questionsGame.length; i++) {
-                        score =
-                            mOptions.questionsGame[i].answerScore > 0
-                                ? score + 1
-                                : score;
-                    }
-                    score = ((score * 10) / mOptions.numberQuestions).toFixed(
-                        2
-                    );
+            let score = (
+                (mOptions.hits * 10) /
+                mOptions.numberQuestions
+            ).toFixed(2);
+            if (mOptions.isNavigable) {
+                score = 0;
+                for (let i = 0; i < mOptions.questionsGame.length; i++) {
+                    score =
+                        mOptions.questionsGame[i].answerScore > 0
+                            ? score + 1
+                            : score;
                 }
-                $quickquestionsvideo.sendScore(true, instance);
-                $('#vquextRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score
-                );
+                score = ((score * 10) / mOptions.numberQuestions).toFixed(2);
             }
+            $quickquestionsvideo.sendScore(true, instance);
+            $('#vquextRepeatActivity-' + instance).text(
+                mOptions.msgs.msgYouScore + ': ' + score
+            );
         }
         $quickquestionsvideo.saveEvaluation(instance);
     },
@@ -1898,20 +1916,16 @@ var $quickquestionsvideo = {
             $quickquestionsvideo.gameOver(1, instance);
             return;
         }
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                $quickquestionsvideo.sendScore(true, instance);
-                $('#vquextRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score
-                );
-            }
+            const score = (
+                (mOptions.hits * 10) /
+                mOptions.numberQuestions
+            ).toFixed(2);
+            $quickquestionsvideo.sendScore(true, instance);
+            $('#vquextRepeatActivity-' + instance).text(
+                mOptions.msgs.msgYouScore + ': ' + score
+            );
         }
 
         $quickquestionsvideo.saveEvaluation(instance);
@@ -1970,20 +1984,16 @@ var $quickquestionsvideo = {
             return;
         }
 
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                $quickquestionsvideo.sendScore(true, instance);
-                $('#vquextRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score
-                );
-            }
+            const score = (
+                (mOptions.hits * 10) /
+                mOptions.numberQuestions
+            ).toFixed(2);
+            $quickquestionsvideo.sendScore(true, instance);
+            $('#vquextRepeatActivity-' + instance).text(
+                mOptions.msgs.msgYouScore + ': ' + score
+            );
         }
 
         $quickquestionsvideo.saveEvaluation(instance);

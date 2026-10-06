@@ -28,15 +28,41 @@ test.describe('Admin Impersonation', () => {
         expect(createUserResponse.ok()).toBeTruthy();
 
         await page.goto('/admin');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await page.locator('.admin-nav-link[data-section="users"]').click();
+        await expect(page.locator('#usersTableBody tr').first()).toBeVisible();
+
+        const filteredUsers = page.waitForResponse(res => {
+            try {
+                const url = new URL(res.url());
+                return (
+                    url.pathname.includes('/api/admin/users') &&
+                    url.searchParams.get('search') === targetEmail &&
+                    res.ok()
+                );
+            } catch {
+                return false;
+            }
+        });
         await page.fill('#userSearch', targetEmail);
+        await filteredUsers;
+
         const targetRow = page.locator('#usersTableBody tr').filter({ hasText: targetEmail }).first();
+        // The search is debounced and re-renders the whole table when its response lands. The row can
+        // already be visible from the unfiltered render, so wait for the narrowed result before opening
+        // the row menu — otherwise the re-render detaches the open dropdown and the click times out.
+        await expect(page.locator('#usersTableBody tr')).toHaveCount(1);
         await expect(targetRow).toBeVisible();
 
+        const actionsButton = targetRow.locator('button[data-action="user-actions"]');
+        await actionsButton.click();
+        await expect(actionsButton).toHaveAttribute('aria-expanded', 'true');
+        const impersonateItem = targetRow.locator('.dropdown-menu.show button[data-action="impersonate"]');
+        await expect(impersonateItem).toBeVisible();
+
         page.once('dialog', dialog => dialog.accept());
-        await targetRow.locator('button[data-action="impersonate"]').click();
+        await impersonateItem.click();
 
         await page.waitForURL(/\/workarea/);
         const banner = page.locator('#impersonation-banner');

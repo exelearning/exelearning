@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path d="M0 0L48 0L48 48L0 48L0 0Z" />
+    <path d="M0 20C0 20 0 3 0 3C0 1.34315 1.34315 0 3 0C4.65685 0 6 1.34315 6 3C6 3 6 18 6 18" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(16 6)" />
+    <path d="M0 7C0 7 0 3 0 3C0 1.34315 1.34315 0 3 0C4.65685 0 6 1.34315 6 3C6 3 6 8 6 8" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(22 16)" />
+    <path d="M0 3C0 1.34315 1.34315 0 3 0C4.65685 0 6 1.34315 6 3C6 3 6 6 6 6" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 18)" />
+    <path d="M26.9578 3C26.9578 1.34315 28.301 0 29.9578 0C31.6147 0 32.9578 1.34315 32.9578 3C32.9578 3 32.9578 12 32.9578 12C32.9578 18.6274 27.5853 24 20.9578 24C20.9578 24 16.9579 24 16.9579 24C16.9579 24 17.3738 24 17.3738 24C13.3369 24.0007 9.57016 21.9715 7.34985 18.6C7.34985 18.6 6.95785 18 6.95785 18C6.33385 17.042 4.14385 13.224 0.385847 6.544C-0.410747 5.1281 0.064477 3.33537 1.45785 2.5C2.92641 1.61883 4.80614 1.84968 6.01785 3.06C6.01785 3.06 8.95785 6 8.95785 6" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(7.042 20)" />
+    <path d="M2 2L0 0" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 4)" />
+    <path d="M2 0L0 0" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 14)" />
+    <path d="M0 2L2 0" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 4)" />
+    <path d="M0 0L2 0" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(30 12)" />
+  </g>
+</svg>

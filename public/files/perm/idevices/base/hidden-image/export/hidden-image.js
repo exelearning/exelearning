@@ -78,6 +78,7 @@ var $eXeHiddenImage = {
 
             const hiP = $eXeHiddenImage.createInterfacehiP(i);
             dl.before(hiP).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#hiPGameMinimize-' + i).hide();
             $('#hiPGameContainer-' + i).hide();
 
@@ -426,12 +427,6 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance];
         $eXeHiddenImage.removeEvents(instance);
 
-        $(window).on('unload.eXehiP beforeunload.eXehiP', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeHiddenImage.mScorm
-            );
-        });
-
         $('#hiPLinkMaximize-' + instance).on('click touchstart', (e) => {
             e.preventDefault();
             $('#hiPGameContainer-' + instance).show();
@@ -601,8 +596,6 @@ var $eXeHiddenImage = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXehiP beforeunload.eXehiP');
-
         $('#hiPLinkMaximize-' + instance).off('click touchstart');
         $('#hiPLinkMinimize-' + instance).off('click touchstart');
         $('#hiPMainContainer-' + instance)
@@ -682,20 +675,31 @@ var $eXeHiddenImage = {
         mOptions.gameActived = false;
         mOptions.activeQuestion = -1;
         mOptions.validQuestions = mOptions.numberQuestions;
+        // gameOver() leaves this true; a replay starts as unfinished before
+        // newQuestion() can publish the automatic SCORM score.
+        mOptions.gameOver = false;
 
         $('#hiPNumber-' + instance).text(mOptions.numberQuestions);
 
-        mOptions.counterClock = setInterval(() => {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and answering its question when
+        // its own time ran out.
+        const container = document.getElementById(
+            'hiPMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#hiPMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXeHiddenImage.uptateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
@@ -709,6 +713,7 @@ var $eXeHiddenImage = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         mOptions.gameStarted = true;
         $eXeHiddenImage.uptateTime(0, instance);
@@ -742,7 +747,10 @@ var $eXeHiddenImage = {
         $('#hiPContainer-' + instance).hide();
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        const typem = parseInt(score) >= 5 ? 2 : 1;
+        // parseFloat, not parseInt: the pass mark carries a decimal, and
+        // truncating 7.9 to 7 failed a learner who had passed a 7.5 activity.
+        const typem =
+            parseFloat(score) >= $exe.passScore.resolve(mOptions) ? 2 : 1;
         const message = msgs.msgGameOver.replace('%s', score);
         $eXeHiddenImage.showMessage(typem, message, instance);
         $eXeHiddenImage.clearQuestions(instance);
@@ -830,13 +838,15 @@ var $eXeHiddenImage = {
     },
 
     showImageNeo: function (url, instance) {
-        const mOptions = $eXeHiddenImage.options[instance],
-            mQuestion = mOptions.questionsGame[mOptions.activeQuestion],
+        const mOptions = $eXeHiddenImage.options[instance];
+        if (!mOptions) return;
+        const mQuestion = mOptions.questionsGame[mOptions.activeQuestion],
             $image = $('#hiPImage-' + instance);
 
         $image.attr('alt', 'No image').hide();
 
         const imgEl = $image[0];
+        if (!imgEl) return;
 
         function onImageLoad() {
             if (
@@ -918,6 +928,7 @@ var $eXeHiddenImage = {
 
     createSquares: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
+        if (!mOptions) return;
         const mQuestion = mOptions.questionsGame[mOptions.activeQuestion];
         const $overlay = $('#hipOverlay-' + instance);
         $eXeHiddenImage.updateOverlaySize(instance);
@@ -1138,7 +1149,21 @@ var $eXeHiddenImage = {
         if (mOptions.showSolution) {
             $eXeHiddenImage.drawSolution(instance);
         }
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, instead of waiting for the
+        // reveal delay and the newQuestion -> gameOver that follows it; the
+        // delayed gameOver still runs for the end-of-game interface.
+        if (mOptions.activeQuestion >= mOptions.numberQuestions - 1) {
+            mOptions.gameOver = true;
+        }
         $eXeHiddenImage.saveEvaluation(instance);
+        // Report in the same turn the learner answered. The automatic report
+        // used to happen only from showQuestion(), i.e. once the reveal delay
+        // below had elapsed, so the mark reached the LMS seconds late and a
+        // learner who left during that window lost the answer.
+        if (mOptions.isScorm > 0) {
+            $eXeHiddenImage.sendScore(true, instance);
+        }
 
         $eXeHiddenImage.hideSquares(instance, $eXeHiddenImage.startNewQuestion);
     },

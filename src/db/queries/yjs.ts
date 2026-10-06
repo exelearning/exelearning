@@ -6,10 +6,24 @@
 import { sql, type Kysely } from 'kysely';
 import type { Database, YjsDocument, NewYjsDocument, YjsUpdate, NewYjsUpdate, YjsVersionHistory } from '../types';
 import { now } from '../types';
-import { supportsReturning, updateByColumnAndReturn, toBinaryData } from '../helpers';
+import { getDialect, supportsReturning, updateByColumnAndReturn, toBinaryData } from '../helpers';
 
-/** version column is varchar — cast for numeric operations */
-const versionAsInt = sql<number>`CAST(version AS INTEGER)`;
+/**
+ * The `version` column is a varchar holding a numeric value. Versions are
+ * millisecond timestamps (Date.now()), which exceed a 32-bit INTEGER, so the
+ * cast must be dialect-aware: bare `INTEGER` overflows on PostgreSQL and is
+ * rejected by MySQL (which needs SIGNED). SQLite's INTEGER is 64-bit and fine.
+ */
+function versionAsInt() {
+    switch (getDialect()) {
+        case 'mysql':
+            return sql<number>`CAST(version AS SIGNED)`;
+        case 'postgres':
+            return sql<number>`CAST(version AS BIGINT)`;
+        default:
+            return sql<number>`CAST(version AS INTEGER)`;
+    }
+}
 
 // ============================================================================
 // YJS DOCUMENTS (SNAPSHOTS)
@@ -114,7 +128,7 @@ export async function findUpdatesByProjectId(db: Kysely<Database>, projectId: nu
         .selectFrom('yjs_updates')
         .selectAll()
         .where('project_id', '=', projectId)
-        .orderBy(versionAsInt, 'asc')
+        .orderBy(versionAsInt(), 'asc')
         .execute();
 }
 
@@ -128,8 +142,8 @@ export async function findUpdatesSince(
         .selectFrom('yjs_updates')
         .selectAll()
         .where('project_id', '=', projectId)
-        .where(versionAsInt, '>', sinceVersionNum)
-        .orderBy(versionAsInt, 'asc')
+        .where(versionAsInt(), '>', sinceVersionNum)
+        .orderBy(versionAsInt(), 'asc')
         .execute();
 }
 
@@ -171,7 +185,7 @@ export async function deleteUpdatesBefore(
     const result = await db
         .deleteFrom('yjs_updates')
         .where('project_id', '=', projectId)
-        .where(versionAsInt, '<', beforeVersionNum)
+        .where(versionAsInt(), '<', beforeVersionNum)
         .execute();
     return Number(result[0]?.numDeletedRows ?? 0);
 }
@@ -179,11 +193,37 @@ export async function deleteUpdatesBefore(
 export async function getLatestVersion(db: Kysely<Database>, projectId: number): Promise<string> {
     const result = await db
         .selectFrom('yjs_updates')
-        .select(sql<number>`MAX(${versionAsInt})`.as('maxVersion'))
+        .select(sql<number>`MAX(${versionAsInt()})`.as('maxVersion'))
         .where('project_id', '=', projectId)
         .executeTakeFirst();
 
     return result?.maxVersion != null ? String(result.maxVersion) : '0';
+}
+
+/**
+ * Effective persisted document version for a project.
+ *
+ * Returns the greater of the snapshot version and the latest incremental update
+ * version. Every persistence path — full-state replace ({@link saveFullState}),
+ * incremental update ({@link saveIncrementalUpdate}) and snapshot upsert
+ * ({@link upsertSnapshot}) — writes a monotonic `Date.now()` version, so this
+ * value strictly increases on every edit. It stays correct after compaction,
+ * when older updates are folded into the snapshot and removed.
+ *
+ * Used as a cache key for derived artifacts (e.g. the public read-only export),
+ * which must invalidate whenever the document content changes — note that Yjs
+ * persistence does NOT bump `projects.updated_at`, so that column cannot be used
+ * for this purpose.
+ */
+export async function getDocumentVersion(db: Kysely<Database>, projectId: number): Promise<string> {
+    const [snapshot, latestUpdate] = await Promise.all([
+        findSnapshotByProjectId(db, projectId),
+        getLatestVersion(db, projectId),
+    ]);
+
+    const snapshotVersionNum = parseInt(snapshot?.snapshot_version ?? '0', 10) || 0;
+    const updateVersionNum = parseInt(latestUpdate, 10) || 0;
+    return String(Math.max(snapshotVersionNum, updateVersionNum));
 }
 
 export async function countUpdates(db: Kysely<Database>, projectId: number): Promise<number> {
@@ -214,15 +254,24 @@ export async function saveFullState(
     state: Uint8Array,
     clientId?: string,
 ): Promise<YjsUpdate> {
-    // Delete all existing updates for this project
-    await deleteAllUpdates(db, projectId);
+    // Use a monotonic millisecond-timestamp version (same scheme as snapshots
+    // and incremental updates) so loadDocumentWithUpdates does NOT filter this
+    // write out as "older than the snapshot". The previous hardcoded '1' was
+    // always < a Date.now() snapshot version, which silently discarded every
+    // REST API v1 edit on reload (C6).
+    const version = Date.now().toString();
 
-    // Save new full state as version 1
-    return createUpdate(db, {
-        project_id: projectId,
-        update_data: state,
-        version: '1',
-        client_id: clientId || null,
+    // Replace prior updates and insert the new full state ATOMICALLY. The old
+    // delete-then-insert was non-transactional: a failed insert left the prior
+    // row already deleted, losing all server-side state (H6).
+    return db.transaction().execute(async trx => {
+        await deleteAllUpdates(trx, projectId);
+        return createUpdate(trx, {
+            project_id: projectId,
+            update_data: state,
+            version,
+            client_id: clientId || null,
+        });
     });
 }
 
@@ -282,8 +331,8 @@ export async function getUpdateStats(db: Kysely<Database>, projectId: number): P
             eb.fn.count<number>('id').as('count'),
             eb.fn.sum<number>(eb.fn('length', ['update_data'])).as('totalBytes'),
         ])
-        .select(sql<number>`MIN(${versionAsInt})`.as('oldestVersion'))
-        .select(sql<number>`MAX(${versionAsInt})`.as('newestVersion'))
+        .select(sql<number>`MIN(${versionAsInt()})`.as('oldestVersion'))
+        .select(sql<number>`MAX(${versionAsInt()})`.as('newestVersion'))
         .where('project_id', '=', projectId)
         .executeTakeFirst();
 
@@ -365,7 +414,7 @@ export async function deleteUpdatesUpToVersion(
     const result = await db
         .deleteFrom('yjs_updates')
         .where('project_id', '=', projectId)
-        .where(versionAsInt, '<=', upToVersionNum)
+        .where(versionAsInt(), '<=', upToVersionNum)
         .execute();
     return Number(result[0]?.numDeletedRows ?? 0);
 }

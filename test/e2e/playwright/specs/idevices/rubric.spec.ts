@@ -249,6 +249,307 @@ test.describe('Rubric iDevice', () => {
             });
         });
 
+        test('should edit a descriptor through the cell dialog', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Cell Dialog Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            // Open the descriptor dialog from the first cell
+            const firstCell = page.locator('#ri_Table tbody tr').first().locator('td').first();
+            await firstCell.locator('a.ri_EditTD').first().click();
+
+            // Dialog and backdrop belong to the iDevice, so both hang from its form
+            const dialog = page.locator('#ri_IdeviceForm > #ri_CellEditModal');
+            await expect(dialog).toBeVisible({ timeout: 10000 });
+            await expect(page.locator('#ri_IdeviceForm > #ri_CellEditModalBackdrop')).toHaveCount(1);
+
+            // Regression guard for #2227: the dialog, not the backdrop, is the
+            // topmost element at its own centre.
+            const dialogIsOnTop = await page.evaluate(() => {
+                const content = document.querySelector('#ri_CellEditModal .modal-content');
+                if (!content) return false;
+                const rect = content.getBoundingClientRect();
+                const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                return !!topmost && !!topmost.closest('#ri_CellEditModal');
+            });
+            expect(dialogIsOnTop).toBe(true);
+
+            // A real (hit-tested) click: it fails if the backdrop covers the dialog
+            const descriptorField = dialog.locator('#ri_CellEditContent');
+            await descriptorField.click();
+            await descriptorField.fill(TEST_DATA.editedDescriptor);
+            await dialog.locator('#ri_CellEditScore').fill(TEST_DATA.weight);
+
+            await dialog.locator('#ri_CellEditAccept').click();
+
+            await expect(dialog).toBeHidden({ timeout: 10000 });
+            await expect(page.locator('.ri-edit-backdrop')).toHaveCount(0);
+
+            // The edited values land in the rubric table
+            await expect(firstCell.locator('input[type="text"]:not(.ri_Weight)').first()).toHaveValue(
+                TEST_DATA.editedDescriptor,
+            );
+            await expect(firstCell.locator('input.ri_Weight').first()).toHaveValue(TEST_DATA.weight);
+
+            await saveRubricIdevice(page);
+
+            await expect(page.locator('#node-content .idevice_node.rubric')).toContainText(TEST_DATA.editedDescriptor, {
+                timeout: 10000,
+            });
+        });
+
+        test('should block the rubric controls but leave the rest of the app usable', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Dialog Scope Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            await page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD').click();
+            await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+
+            const scope = await page.evaluate(() => {
+                const reach = (selector: string) => {
+                    const el = document.querySelector(selector) as HTMLElement | null;
+                    if (!el) return 'absent';
+                    const rect = el.getBoundingClientRect();
+                    const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                    if (!topmost) return 'none';
+                    if (topmost.closest('#ri_CellEditModalBackdrop')) return 'blocked';
+                    return el.contains(topmost) || topmost.contains(el) ? 'reachable' : 'other';
+                };
+                const form = document.getElementById('ri_IdeviceForm');
+                const panel = document.querySelector('#ri_CellEditModal .modal-content');
+                const formRect = form?.getBoundingClientRect();
+                const panelRect = panel?.getBoundingClientRect();
+
+                return {
+                    rubricTable: reach('#ri_Table caption input'),
+                    topBarPreview: reach('#head-bottom-preview'),
+                    backdropCoversForm: document.getElementById('ri_CellEditModalBackdrop')?.parentElement?.id ?? null,
+                    pageScrollLocked: document.body.classList.contains('modal-open'),
+                    centreOffset:
+                        formRect && panelRect
+                            ? Math.abs((panelRect.left + panelRect.right) / 2 - (formRect.left + formRect.right) / 2)
+                            : null,
+                };
+            });
+
+            // The dialog belongs to the iDevice: it blocks the rubric underneath …
+            expect(scope.rubricTable).not.toBe('reachable');
+            expect(scope.backdropCoversForm).toBe('ri_IdeviceForm');
+            // … and nothing else.
+            expect(scope.topBarPreview).toBe('reachable');
+            expect(scope.pageScrollLocked).toBe(false);
+            // The panel is horizontally centred on the iDevice, not on the window.
+            expect(scope.centreOffset).toBeLessThan(2);
+        });
+
+        test('should keep the rubric out of reach of the keyboard while a dialog is open', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Dialog Inert Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            await page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD').click();
+            await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+
+            // The backdrop only stops the pointer, so the rubric is made inert:
+            // focusing one of its inputs must be a no-op.
+            const whileOpen = await page.evaluate(() => {
+                const input = document.querySelector('#ri_Table caption input') as HTMLElement;
+                input.focus();
+                return {
+                    tookFocus: document.activeElement === input,
+                    dialogFieldTakesFocus: (() => {
+                        const field = document.getElementById('ri_CellEditContent');
+                        field?.focus();
+                        return document.activeElement === field;
+                    })(),
+                };
+            });
+            expect(whileOpen.tookFocus).toBe(false);
+            // The dialog itself stays operable
+            expect(whileOpen.dialogFieldTakesFocus).toBe(true);
+
+            await page.locator('#ri_CellEditCancel').click();
+            await expect(page.locator('#ri_CellEditModal')).toBeHidden({ timeout: 10000 });
+
+            const afterClose = await page.evaluate(() => {
+                const input = document.querySelector('#ri_Table caption input') as HTMLElement;
+                input.focus();
+                return document.activeElement === input;
+            });
+            expect(afterClose).toBe(true);
+        });
+
+        test('should return the focus to the control that opened the dialog', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Dialog Focus Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            const editLink = page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD');
+            await editLink.click();
+            await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+
+            // Esc closes the dialog, so keyboard users must land back on the pencil
+            await page.keyboard.press('Escape');
+            await expect(page.locator('#ri_CellEditModal')).toBeHidden({ timeout: 10000 });
+
+            const focusIsBack = await page.evaluate(() => {
+                const active = document.activeElement;
+                const opener = document.querySelector('#ri_Table tbody tr td a.ri_EditTD');
+                return !!active && active === opener;
+            });
+            expect(focusIsBack).toBe(true);
+        });
+
+        test('should keep the edits pending in a dialog when the iDevice is saved', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Save With Dialog Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            // Type into the row dialog and save the iDevice without accepting it:
+            // its Save button is outside the rubric form, so it stays clickable.
+            await page.locator('#ri_Table tbody tr').first().locator('a.ri_EditTR').click();
+            await expect(page.locator('#ri_RowEditModal')).toBeVisible({ timeout: 10000 });
+            const pendingDescriptor = 'Descriptor pending in the dialog';
+            await page.locator('#ri_RowEditContent').fill(pendingDescriptor);
+
+            await saveRubricIdevice(page);
+
+            await expect(page.locator('#node-content .idevice_node.rubric')).toContainText(pendingDescriptor, {
+                timeout: 10000,
+            });
+        });
+
+        test('should show the unsaved-changes confirmation above the row dialog', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Row Dialog Confirm Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            // Dirty the row dialog and close it without saving
+            await page.locator('#ri_Table tbody tr').first().locator('a.ri_EditTR').click();
+            const rowDialog = page.locator('#ri_RowEditModal');
+            await expect(rowDialog).toBeVisible({ timeout: 10000 });
+            await page.locator('#ri_RowEditContent').fill('Descriptor sin guardar');
+            await page.locator('#ri_RowEditCancel').click();
+
+            const confirmDialog = page.locator('#modalConfirm');
+            await expect(confirmDialog).toBeVisible({ timeout: 10000 });
+
+            // The app confirm lives in the root stacking context, the rubric dialog
+            // inside the editor, so the confirmation must paint above it.
+            const confirmIsOnTop = await page.evaluate(() => {
+                const button = document.querySelector('#modalConfirm .modal-footer button');
+                if (!button) return false;
+                const rect = button.getBoundingClientRect();
+                const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                return !!topmost && !!topmost.closest('#modalConfirm');
+            });
+            expect(confirmIsOnTop).toBe(true);
+
+            // A real (hit-tested) click: it fails if the rubric dialog covers the confirmation
+            await confirmDialog.locator('.modal-footer button').first().click();
+            await expect(rowDialog).toBeHidden({ timeout: 10000 });
+        });
+
+        for (const exit of ['save', 'discard', 'delete'] as const) {
+            test(`should leave no dialog behind when leaving edition through ${exit}`, async ({
+                authenticatedPage,
+                createProject,
+            }) => {
+                const page = authenticatedPage;
+
+                const projectUuid = await createProject(page, `Rubric Dialog Cleanup ${exit}`);
+                await gotoWorkarea(page, projectUuid);
+
+                await waitForAppReady(page);
+
+                await addRubricIdeviceFromPanel(page);
+                await createNewRubric(page);
+
+                // Open and close a dialog so it exists in the DOM
+                await page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD').click();
+                await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+                await page.locator('#ri_CellEditCancel').click();
+                await expect(page.locator('#ri_CellEditModal')).toBeHidden({ timeout: 10000 });
+
+                const rubricNode = page.locator('#node-content .idevice_node.rubric');
+                if (exit === 'save') {
+                    await rubricNode.locator('.btn-save-idevice').first().click();
+                } else {
+                    const button = exit === 'discard' ? '.btn-undo-idevice' : '.btn-delete-idevice';
+                    await rubricNode.locator(button).first().click();
+                    await expect(page.locator('#modalConfirm')).toBeVisible({ timeout: 10000 });
+                    await page.locator('#modalConfirm .modal-footer button').first().click();
+                }
+
+                await page.waitForFunction(
+                    () => {
+                        const node = document.querySelector('#node-content article .idevice_node.rubric');
+                        return !node || node.getAttribute('mode') !== 'edition';
+                    },
+                    undefined,
+                    { timeout: 15000 },
+                );
+
+                // The dialogs live inside the editor, so they die with it
+                await expect(page.locator('#ri_CellEditModal')).toHaveCount(0);
+                await expect(page.locator('#ri_RowEditModal')).toHaveCount(0);
+                await expect(page.locator('#ri_ColumnEditModal')).toHaveCount(0);
+                await expect(page.locator('.ri-edit-backdrop')).toHaveCount(0);
+            });
+        }
+
         test('should persist rubric after reload', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);

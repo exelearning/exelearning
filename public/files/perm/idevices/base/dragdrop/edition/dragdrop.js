@@ -101,6 +101,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Drag and drop'),
             msgCheck: c_('Check'),
             msgRestart: c_('Restart'),
@@ -202,7 +203,6 @@ var $exeDevice = {
                                 <input id="dadEAuthory" type="text" class="form-control" />
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -294,7 +294,7 @@ var $exeDevice = {
                     ${$exeDevice.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
@@ -521,9 +521,9 @@ var $exeDevice = {
     },
 
     addEventCard: function () {
-        const loadAndPlayImage = (index) => $exeDevice.loadImage(index),
+        const loadAndPlayImage = (index) => $exeDevice?.loadImage(index),
             loadAndPlayAudio = (selector) =>
-                $exeDevice.loadAudio($(selector).val());
+                $exeDevice?.loadAudio($(selector).val());
 
         $('#dadEURLImage').on('change', () => loadAndPlayImage(0));
         $('#dadEURLImageBack').on('change', () => loadAndPlayImage(1));
@@ -567,6 +567,7 @@ var $exeDevice = {
         });
 
         $('#dadEBgColor, #dadEBgColorBack').on('change', function () {
+            if (!$exeDevice) return;
             const textDiv = $(this).is('#dadEBgColor')
                     ? '#dadETextDiv'
                     : '#dadETextDivBack',
@@ -575,7 +576,7 @@ var $exeDevice = {
         });
 
         $('#dadEImage').on('click', (e) =>
-            $exeDevice.clickImage(e.pageX, e.pageY)
+            $exeDevice?.clickImage(e.pageX, e.pageY)
         );
 
         $('#dadECursor').on('click', function () {
@@ -584,7 +585,7 @@ var $exeDevice = {
         });
 
         $('#dadEImageBack').on('click', (e) =>
-            $exeDevice.clickImageBack(e.pageX, e.pageY)
+            $exeDevice?.clickImageBack(e.pageX, e.pageY)
         );
 
         $('#dadECursorBack').on('click', function () {
@@ -817,6 +818,8 @@ var $exeDevice = {
             time = parseInt($('#dadETime').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -857,6 +860,8 @@ var $exeDevice = {
             time,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
     },
@@ -873,6 +878,7 @@ var $exeDevice = {
         $image
             .prop('src', url)
             .on('load', function () {
+                if (!$exeDevice) return false;
                 if (
                     this.complete &&
                     typeof this.naturalWidth !== 'undefined' &&
@@ -896,11 +902,14 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const lifecycle = this.$lifecycle;
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', () => {
-            $exeDevice.playerAudio.play();
+        // The element is never inserted in the form, so closing the editor
+        // would otherwise leave it playing and downloading.
+        lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
+        lifecycle.addEventListener($exeDevice.playerAudio, 'canplaythrough', () => {
+            $exeDevice?.playerAudio.play();
         });
     },
 
@@ -942,6 +951,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         $('#dadEPasteC').hide();
         // Inicializar toggles (sin afectar lógica existente)
         const initToggle = function ($input) {
@@ -963,33 +973,36 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on `document`, which outlives the form: the lifecycle
+        // removes it, and only it, when the editor closes. Handlers it owns run
+        // bound to the edition, so the changed toggle comes from the event.
+        lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
 
         $('#dadEAddC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.addCard(true);
+            $exeDevice?.addCard(true);
         });
 
         $('#dadEDeleteC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.removeCard();
+            $exeDevice?.removeCard();
         });
 
         $('#dadECopyC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.copyCard();
+            $exeDevice?.copyCard();
         });
 
         $('#dadECutC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.cutCard();
+            $exeDevice?.cutCard();
         });
 
         $('#dadEPasteC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.pasteCard();
+            $exeDevice?.pasteCard();
         });
 
         $('#dadEFirstC, #dadEPreviousC, #dadENextC, #dadELastC').on(
@@ -1002,7 +1015,7 @@ var $exeDevice = {
                     dadENextC: 'nextCard',
                     dadELastC: 'lastCard',
                 };
-                $exeDevice[actions[e.currentTarget.id]]();
+                $exeDevice?.[actions[e.currentTarget.id]]();
             }
         );
 
@@ -1036,13 +1049,16 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                // A read still in flight is aborted on teardown, and a read
+                // that lands first cannot import into a later iDevice.
+                lifecycle.ownFileReader(reader);
+                reader.onload = lifecycle.bind(event => {
+                    $exeDevice?.importGame(event.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {
-                $exeDevice.exportQuestions();
+                $exeDevice?.exportQuestions();
             });
         } else {
             $('#eXeGameExportImport').hide();
@@ -1052,23 +1068,24 @@ var $exeDevice = {
                 let v = this.value.replace(/\D/g, '').substring(0, 3);
                 this.value = v;
                 if (this.value > 0 && this.value < 101) {
-                    $exeDevice.updateCardsNumber();
+                    $exeDevice?.updateCardsNumber();
                 }
             })
             .on('focusout', function () {
                 this.value = this.value.trim() === '' ? 100 : this.value;
                 this.value = Math.max(1, Math.min(100, this.value));
-                $exeDevice.updateCardsNumber();
+                $exeDevice?.updateCardsNumber();
             })
             .on('click', () => {
-                $exeDevice.updateCardsNumber();
+                $exeDevice?.updateCardsNumber();
             });
 
         $('#dadEURLAudioDefinition').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
+            $exeDevice?.loadAudio($(this).val());
         });
 
         $('#dadENumberCard').keyup(function (e) {
+            if (!$exeDevice) return;
             if (e.keyCode === 13) {
                 const num = parseInt($(this).val(), 10);
                 if (!isNaN(num) && num > 0) {
@@ -1115,47 +1132,48 @@ var $exeDevice = {
                 .toggleClass('d-flex', $(this).val() === '2');
         });
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
-            $exeDevice.loadImage(url);
+            $exeDevice?.loadImage(url);
         });
 
         $('#dadEPlayImage').on('click', function (e) {
             e.preventDefault();
             const url = $('#dadEURLImage').val().trim();
-            $exeDevice.loadImage(url);
+            $exeDevice?.loadImage(url);
         });
 
         $('#dadEURLAudio').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
+            $exeDevice?.loadAudio($(this).val());
         });
 
         $('#dadEPlayAudio').on('click', function (e) {
             e.preventDefault();
             const audio = $('#dadEURLAudio').val();
-            $exeDevice.loadAudio(audio);
+            $exeDevice?.loadAudio(audio);
         });
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
-            $exeDevice.loadImage(url);
+            $exeDevice?.loadImage(url);
         });
 
         $('#dadEPlayImage').on('click', function (e) {
             e.preventDefault();
             const url = $('#dadEURLImage').val().trim();
-            $exeDevice.loadImage(url);
+            $exeDevice?.loadImage(url);
         });
 
         $('#dadEURLAudio').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
+            $exeDevice?.loadAudio($(this).val());
         });
 
         $('#dadEPlayAudio').on('click', function (e) {
             e.preventDefault();
             const audio = $('#dadEURLAudio').val();
-            $exeDevice.loadAudio(audio);
+            $exeDevice?.loadAudio(audio);
         });
 
         $('#dadEShowMore').on('click', function (e) {
@@ -1240,6 +1258,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         if (game.type == 2) {
             $('#dadETimeDiv').removeClass('d-none').addClass('d-flex');

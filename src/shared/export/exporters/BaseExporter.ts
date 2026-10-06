@@ -21,9 +21,111 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
+import {
+    parseMaterialIconSprite,
+    buildStandaloneSvg,
+    resolveMaterialIconSymbol,
+} from '../../material-icons/spriteParser';
+
+/** Path of the single vendored Material Symbols sprite, relative to `libs/`. */
+const MATERIAL_ICON_SPRITE_PATH = 'material-icons/material-icons.svg';
+
+/**
+ * Collect the distinct Material icon names referenced by a project's blocks.
+ * Icons come either as `block.icon = { source: 'material', value }` or as a
+ * legacy `block.iconName` prefixed with `mi-`.
+ */
+function collectUsedMaterialIconNames(pages: ExportPage[]): string[] {
+    const names = new Set<string>();
+
+    for (const page of pages) {
+        for (const block of page.blocks || []) {
+            const icon = block.icon;
+            const iconName = block.iconName || '';
+
+            if (icon?.source === 'material' && icon.value) {
+                names.add(icon.value);
+                continue;
+            }
+
+            if (iconName.startsWith('mi-')) {
+                names.add(iconName.replace(/^mi-/, ''));
+            }
+        }
+    }
+
+    return Array.from(names);
+}
+
+/**
+ * Resolve the Material icons used by a project from the single sprite file.
+ *
+ * The loose per-icon SVG files no longer exist on disk — the sprite is the only
+ * source — so we fetch it once, parse it, and rebuild standalone SVGs for just
+ * the used icons. The return shape is unchanged so every exporter keeps working:
+ * - `files`  → `material-icons/icons/{name}.svg` reconstructed bytes (written to
+ *   the export package, byte-equivalent to the files they replace).
+ * - `dataUris` → `name -> data:` URI inlined into the rendered HTML.
+ */
+export async function resolveMaterialIconDataUris(
+    resources: ResourceProvider,
+    pages: ExportPage[],
+): Promise<{
+    paths: string[];
+    files: Map<string, Uint8Array>;
+    dataUris: Map<string, string>;
+}> {
+    const empty = {
+        paths: [] as string[],
+        files: new Map<string, Uint8Array>(),
+        dataUris: new Map<string, string>(),
+    };
+
+    const names = collectUsedMaterialIconNames(pages);
+    if (names.length === 0) {
+        return empty;
+    }
+
+    try {
+        const spriteFiles = await resources.fetchLibraryFiles([MATERIAL_ICON_SPRITE_PATH]);
+        const spriteContent = spriteFiles.get(MATERIAL_ICON_SPRITE_PATH);
+        if (!spriteContent) {
+            return empty;
+        }
+
+        const symbols = parseMaterialIconSprite(new TextDecoder().decode(spriteContent));
+        const encoder = new TextEncoder();
+
+        const paths: string[] = [];
+        const files = new Map<string, Uint8Array>();
+        const dataUris = new Map<string, string>();
+
+        for (const name of names) {
+            // Resolve to the requested glyph, falling back to the `help` symbol
+            // when the name is unknown. The loose per-icon SVG files were removed,
+            // so a missing name must still yield a real inlined icon rather than a
+            // dangling `material-icons/icons/{name}.svg` reference.
+            const symbol = resolveMaterialIconSymbol(symbols, name);
+            if (!symbol) {
+                continue;
+            }
+            const svg = buildStandaloneSvg(symbol);
+            const libPath = `material-icons/icons/${name}.svg`;
+            paths.push(libPath);
+            files.set(libPath, encoder.encode(svg));
+            dataUris.set(name, `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`);
+        }
+
+        return { paths, files, dataUris };
+    } catch {
+        return empty;
+    }
+}
+import { convertSrtToVtt } from '../../utils/srt-to-vtt';
 
 /**
  * Abstract base class for exporters
@@ -48,6 +150,12 @@ export abstract class BaseExporter {
     protected assetFilenameMap: Map<string, string> | null = null;
     // Cache for asset export path lookups (folderPath-based)
     protected assetExportPathMap: Map<string, string> | null = null;
+
+    // UUID-format asset references that could not be resolved to a bundled file.
+    // These produce a dangling `content/resources/<uuid>` URL with no binary behind
+    // it (the collaborative image-loss bug). Collected so the save/export flow can
+    // surface the loss instead of degrading silently.
+    protected unresolvedAssetRefs: Set<string> = new Set();
 
     constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         this.document = document;
@@ -243,6 +351,28 @@ export abstract class BaseExporter {
         return Array.from(types);
     }
 
+    protected async resolveMaterialIconDataUris(pages: ExportPage[]): Promise<{
+        paths: string[];
+        files: Map<string, Uint8Array>;
+        dataUris: Map<string, string>;
+    }> {
+        return resolveMaterialIconDataUris(this.resources, pages);
+    }
+
+    protected addPrefixedFiles(
+        files: Map<string, Uint8Array>,
+        prefix: string,
+        addFile: (path: string, content: Uint8Array) => void,
+        hasFile: (path: string) => boolean = path => this.zip.hasFile(path),
+    ): void {
+        for (const [relativePath, content] of files) {
+            const targetPath = `${prefix}${relativePath}`;
+            if (!hasFile(targetPath)) {
+                addFile(targetPath, content);
+            }
+        }
+    }
+
     /**
      * Get root pages (pages without parent)
      */
@@ -355,13 +485,18 @@ export abstract class BaseExporter {
      */
     sanitizePageFilename(title: string | null | undefined): string {
         if (!title) return 'page';
-        return title
+        const sanitized = title
             .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '') // Remove accents
             .replace(/[^a-z0-9\s-]/g, '')
             .replace(/\s+/g, '-')
             .substring(0, 50);
+        // Titles written entirely in non-Latin scripts (CJK, Arabic, Cyrillic,
+        // Greek, Hebrew, \u2026) strip down to an empty string. Fall back to 'page'
+        // so every page still gets a usable base name and uniqueness handling
+        // below can disambiguate them.
+        return sanitized || 'page';
     }
 
     /**
@@ -523,8 +658,7 @@ export abstract class BaseExporter {
                 if (this.zip.hasFile(zipPath)) {
                     return;
                 }
-                this.zip.addFile(zipPath, asset.data);
-                if (trackingList) trackingList.push(zipPath);
+                await this.writeAssetToZip(zipPath, asset, trackingList);
                 assetsAdded++;
             };
 
@@ -589,6 +723,124 @@ export abstract class BaseExporter {
      */
     getExtensionFromMime(mime: string): string {
         return getExtensionFromMimeType(mime, true);
+    }
+
+    // =========================================================================
+    // Subtitle Track Conversion (issue #2034)
+    // =========================================================================
+
+    /** MIME types used for raw SubRip (`.srt`) subtitle files. */
+    private static readonly SRT_MIME_TYPES = new Set(['application/x-subrip', 'application/srt', 'text/srt']);
+
+    /**
+     * Whether an asset is a raw SubRip (`.srt`) subtitle file, detected from
+     * its filename extension or MIME type. Native `<video><track>` only
+     * understands WebVTT, so these assets must be converted before they are
+     * written into an export or preview file set (see
+     * {@link resolveAssetExportData} and {@link buildAssetExportPathMap}).
+     */
+    protected isSrtSubtitleAsset(filename: string | undefined, mime: string | undefined): boolean {
+        const normalizedFilename = (filename || '').toLowerCase();
+        const normalizedMime = (mime || '').toLowerCase();
+        return normalizedFilename.endsWith('.srt') || BaseExporter.SRT_MIME_TYPES.has(normalizedMime);
+    }
+
+    /**
+     * Decode asset binary data (Uint8Array or Blob) to text. Subtitle files
+     * are usually UTF-8, but `.srt` files in the wild are very frequently
+     * Windows-1252/Latin-1 (accented characters). A non-fatal UTF-8 decode
+     * would silently replace every high byte with U+FFFD, so we decode UTF-8
+     * strictly first and fall back to Windows-1252 when that fails -- keeping
+     * accented captions readable instead of garbled.
+     */
+    protected async readAssetDataAsText(data: Uint8Array | Blob): Promise<string> {
+        const bytes =
+            typeof Blob !== 'undefined' && data instanceof Blob
+                ? new Uint8Array(await data.arrayBuffer())
+                : (data as Uint8Array);
+        try {
+            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch {
+            return new TextDecoder('windows-1252').decode(bytes);
+        }
+    }
+
+    /**
+     * Resolve the data that should actually be written for an asset in the
+     * export/preview file set. `.srt` subtitle assets are converted to
+     * WebVTT text on the fly (their export path is renamed `.srt` -> `.vtt`
+     * by {@link buildAssetExportPathMap}, so the written bytes must match).
+     * Every other asset passes through unchanged.
+     *
+     * Shared by {@link addAssetsToZipWithResourcePath} (real exports) and
+     * `Html5Exporter.addAssetsToPreviewFiles` (Preview panel), so the same
+     * conversion always applies regardless of which surface is rendering.
+     */
+    protected async resolveAssetExportData(asset: {
+        filename?: string;
+        mime?: string;
+        data: Uint8Array | Blob;
+    }): Promise<Uint8Array | Blob | string> {
+        if (!this.isSrtSubtitleAsset(asset.filename, asset.mime)) {
+            return asset.data;
+        }
+        try {
+            const text = await this.readAssetDataAsText(asset.data);
+            const { vtt, error } = convertSrtToVtt(text);
+            if (error) {
+                // The document is still valid (empty) WebVTT, but surface why no
+                // cues were produced -- silent export degradation is a known
+                // anti-pattern in this codebase.
+                console.warn(
+                    `[BaseExporter] SRT->WebVTT conversion produced no cues for subtitle asset "${asset.filename ?? ''}": ${error}`,
+                );
+            }
+            return vtt;
+        } catch (e) {
+            console.warn('[BaseExporter] Failed to convert .srt subtitle asset to WebVTT:', e);
+            // The export path was already renamed .srt -> .vtt, so we must NOT
+            // fall back to the raw SubRip bytes (that would ship a .vtt file
+            // full of SRT text -> zero cues). Degrade to a valid, empty WebVTT
+            // document instead.
+            return 'WEBVTT\n';
+        }
+    }
+
+    /**
+     * Write a single asset into the export ZIP at `zipPath`, applying the
+     * shared `.srt` -> WebVTT subtitle conversion via
+     * {@link resolveAssetExportData}.
+     *
+     * ALL exporters (full, filtered page/branch, component, EPUB) must route
+     * their ZIP asset writes through here. {@link buildAssetExportPathMap}
+     * renames `.srt` -> `.vtt` globally, so any writer that bypasses this and
+     * stores the raw asset bytes would emit a `.vtt` file containing SubRip
+     * text -- zero cues, i.e. the exact issue #2034 bug, on that surface.
+     * Single source of truth (AGENTS.md).
+     */
+    protected async writeAssetToZip(
+        zipPath: string,
+        asset: ExportAsset,
+        trackingList?: string[] | null,
+    ): Promise<void> {
+        const data = await this.resolveAssetExportData(asset);
+        this.zip.addFile(zipPath, data);
+        if (trackingList) trackingList.push(zipPath);
+    }
+
+    /**
+     * Force a `.vtt` extension on a subtitle asset's export filename. SRT
+     * assets are always emitted as WebVTT (see {@link resolveAssetExportData}),
+     * and this keeps the ZIP entry name and every `<track src>` reference in
+     * sync even when the asset arrived with a non-canonical MIME (e.g.
+     * `text/srt`) or without a `.srt` extension at all. Already-`.vtt` names
+     * pass through unchanged.
+     */
+    protected toWebVttExportFilename(filename: string): string {
+        if (/\.vtt$/i.test(filename)) return filename;
+        if (/\.srt$/i.test(filename)) return filename.replace(/\.srt$/i, '.vtt');
+        // Detected as SRT by MIME only, with no usable extension: append .vtt.
+        return `${filename}.vtt`;
     }
 
     /**
@@ -663,10 +915,24 @@ export abstract class BaseExporter {
             for (const item of items) {
                 let folderPath = item.folderPath || '';
                 // Treat 'unknown' same as missing: derive a proper name with extension from MIME
-                const filename =
+                const rawFilename =
                     item.filename && item.filename !== 'unknown'
                         ? item.filename
                         : this._deriveFilenameFromMime(item.id, item.mime);
+                // Ensure the export name carries an extension. Assets saved as
+                // `asset-<uuid>` (no extension) would otherwise be re-imported as
+                // application/octet-stream and force-downloaded (PDF iframes).
+                let filename = this._ensureFilenameExtension(rawFilename, item.mime);
+
+                // Raw .srt subtitle assets are always exported/previewed as WebVTT
+                // (native <video><track> never understood .srt) -- see issue #2034.
+                // Rewriting the export path here keeps the ZIP file and every HTML
+                // <track src> reference in sync automatically, since both derive
+                // from this same map (addAssetsToZipWithResourcePath /
+                // addFilenamesToAssetUrls / Html5Exporter.addAssetsToPreviewFiles).
+                if (this.isSrtSubtitleAsset(filename, item.mime)) {
+                    filename = this.toWebVttExportFilename(filename);
+                }
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
@@ -714,6 +980,18 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Ensure a filename carries a file extension. When it lacks one, append the
+     * extension derived from the MIME type — but only a meaningful one, never
+     * the generic `.bin` fallback (we leave truly-unknown binaries unchanged).
+     */
+    private _ensureFilenameExtension(filename: string, mime: string): string {
+        if (/\.[a-z0-9]{1,8}$/i.test(filename)) return filename;
+        const ext = getExtensionFromMimeType(mime, true);
+        if (!ext || ext === '.bin') return filename;
+        return `${filename}${ext}`;
+    }
+
+    /**
      * Convert asset:// URLs directly to {{context_path}}/content/resources/ format
      * for XML export. This is the single transformation step.
      *
@@ -751,6 +1029,7 @@ export abstract class BaseExporter {
             console.warn(
                 `[BaseExporter] Unresolved asset reference in HTML; falling back to literal UUID URL: asset://${uuid}${ext || ''}`,
             );
+            this.unresolvedAssetRefs.add(uuid);
             return `{{context_path}}/content/resources/${uuid}${ext || ''}`;
         });
 
@@ -776,8 +1055,14 @@ export abstract class BaseExporter {
                 return `{{context_path}}/content/resources/${filenameExportPath}`;
             }
 
-            // Unresolved: use the asset path as-is
-            return `{{context_path}}/content/resources/${assetPath}`;
+            // Unresolved: use the asset path as-is. A legacy filename-form
+            // `.srt` subtitle reference must still point at the `.vtt` name the
+            // asset map writes (buildAssetExportPathMap always renames), or the
+            // <track src> would 404 -- see issue #2034.
+            const asIs = this.isSrtSubtitleAsset(assetPath, undefined)
+                ? this.toWebVttExportFilename(assetPath)
+                : assetPath;
+            return `{{context_path}}/content/resources/${asIs}`;
         });
 
         // Fix duplicated filename patterns in existing content
@@ -789,11 +1074,24 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Pre-process pages to add filenames to asset URLs in all component content
-     * And converts internal links (exe-node:) to proper page URLs
+     * UUID-format asset references encountered during export that could not be
+     * resolved to a bundled file. A non-empty result means the package ships
+     * dangling image/resource URLs (data loss) and callers should surface it.
+     */
+    getUnresolvedAssetRefs(): string[] {
+        return [...this.unresolvedAssetRefs];
+    }
+
+    /**
+     * Pre-process pages to add filenames to asset URLs in all component content.
      *
-     * Note: exe-package:elp protocol transformation is now done in PageRenderer.renderPageContent()
-     * so the XML content keeps the original protocol for re-import compatibility
+     * This only performs XML-safe rewrites: asset URLs become {{context_path}}/... which
+     * is reversed on import, so the persisted content.xml stays re-importable.
+     *
+     * Note: exe-node: internal links and the exe-package:elp protocol are NOT rewritten
+     * here. Both are transformed at render time (PageRenderer.renderPageContent /
+     * renderSinglePage) so the XML keeps the original references and survives an
+     * export → re-import round trip (#1927).
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
         const componentCount = pages.reduce((total, page) => {
@@ -809,20 +1107,12 @@ export abstract class BaseExporter {
         // This ensures multiple exports on the same document work correctly
         const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
 
-        // Build page URL map for internal link conversion
-        const pageUrlMap = this.buildPageUrlMap(clonedPages);
-
-        for (let pageIndex = 0; pageIndex < clonedPages.length; pageIndex++) {
-            const page = clonedPages[pageIndex];
-            const isIndex = pageIndex === 0;
-
+        for (const page of clonedPages) {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
                         // Add filenames to asset URLs in content
                         component.content = await this.addFilenamesToAssetUrls(component.content);
-                        // Convert internal links to proper page URLs
-                        component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
                     }
                     // Also process properties (jsonProperties may contain asset URLs)
                     if (component.properties && Object.keys(component.properties).length > 0) {
@@ -851,7 +1141,6 @@ export abstract class BaseExporter {
     protected buildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
         const filenameMap = new Map<string, string>();
         const usedFilenames = new Set<string>();
-        const maxAttempts = 20;
 
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
@@ -876,21 +1165,26 @@ export abstract class BaseExporter {
                     const startNum = parseInt(match[2], 10);
                     let counter = startNum + 1;
 
-                    while (counter <= startNum + maxAttempts) {
+                    while (usedFilenames.has(filename)) {
                         filename = `${base}${counter}.html`;
-                        if (!usedFilenames.has(filename)) break;
                         counter++;
                     }
                 } else {
                     // No trailing number: append -2, -3, etc. (first page is implicitly "1")
                     let counter = 2;
-                    while (usedFilenames.has(filename) && counter <= maxAttempts + 1) {
+                    while (usedFilenames.has(filename)) {
                         filename = `${baseFilename}-${counter}.html`;
                         counter++;
                     }
                 }
             }
 
+            // Uniqueness is guaranteed by construction: the loops above keep
+            // incrementing until a free name is found, and the page count is
+            // finite. Never cap the attempts — a duplicate filename here would
+            // make distinct pages overwrite each other in the export ZIP
+            // (FflateZipProvider.addFile is a silent Map.set), silently dropping
+            // every page beyond the collision.
             usedFilenames.add(filename);
             filenameMap.set(page.id, filename);
         }
@@ -898,72 +1192,10 @@ export abstract class BaseExporter {
         return filenameMap;
     }
 
-    /**
-     * Build a map of page IDs to their export URLs
-     * Used for internal link (exe-node:) conversion
-     */
-    protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
-        const map = new Map<string, { url: string; urlFromSubpage: string }>();
-        const filenameMap = this.buildPageFilenameMap(pages);
-
-        for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
-            const filename = filenameMap.get(page.id) || 'page.html';
-            const isFirstPage = i === 0;
-
-            if (isFirstPage) {
-                // First page is index.html
-                map.set(page.id, {
-                    url: 'index.html',
-                    urlFromSubpage: '../index.html',
-                });
-            } else {
-                // Other pages are in html/ directory
-                map.set(page.id, {
-                    url: `html/${filename}`,
-                    urlFromSubpage: filename,
-                });
-            }
-        }
-
-        return map;
-    }
-
-    /**
-     * Replace exe-node: internal links with proper page URLs
-     *
-     * @param content - HTML content
-     * @param pageUrlMap - Map of page IDs to their export URLs
-     * @param isFromIndex - Whether the content is from the index page (affects relative paths)
-     * @returns Content with internal links replaced
-     */
-    protected replaceInternalLinks(
-        content: string,
-        pageUrlMap: Map<string, { url: string; urlFromSubpage: string }>,
-        isFromIndex: boolean,
-    ): string {
-        if (!content || !content.includes('exe-node:')) {
-            return content;
-        }
-
-        // Replace href="exe-node:pageId" or href="exe-node:pageId#anchor" with actual page URLs
-        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
-            // Split pageId from optional anchor fragment (e.g. "pageId#section1")
-            const hashIdx = pageIdWithAnchor.indexOf('#');
-            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
-            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
-
-            const pageUrls = pageUrlMap.get(pageId);
-            if (pageUrls) {
-                // Use the appropriate URL based on whether we're on index or subpage
-                const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
-                return `href="${url}${anchorFragment}"`;
-            }
-            // If page not found, leave the link unchanged (might be an external link or error)
-            console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);
-            return match;
-        });
-    }
+    // Note: exe-node: internal links are no longer rewritten here. The rewrite moved to
+    // render time (PageRenderer.replaceInternalLinks / replaceSinglePageInternalLinks), so
+    // the source HTML that feeds content.xml keeps the original exe-node: references and
+    // survives an export → re-import round trip (#1927).
 
     /**
      * Replace exe-package:elp protocol with client-side download handler
@@ -996,19 +1228,7 @@ export abstract class BaseExporter {
      * Collect all HTML content from all pages (for library detection)
      */
     collectAllHtmlContent(pages: ExportPage[]): string {
-        const htmlParts: string[] = [];
-
-        for (const page of pages) {
-            for (const block of page.blocks || []) {
-                for (const component of block.components || []) {
-                    if (component.content) {
-                        htmlParts.push(component.content);
-                    }
-                }
-            }
-        }
-
-        return htmlParts.join('\n');
+        return [...this.iteratePageContentFragments(pages), ...this.iteratePagePropertyFragments(pages)].join('\n');
     }
 
     /**
@@ -1028,14 +1248,33 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Yield rich text and other string fragments nested in JSON iDevice properties.
+     */
+    private *iteratePagePropertyFragments(pages: ExportPage[]): Generator<string> {
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    yield* iterateJsonPropertyStrings(component.properties);
+                }
+            }
+        }
+    }
+
+    /**
      * Detect required libraries across all page fragments incrementally.
      */
     protected getRequiredLibraryFilesForPages(
         pages: ExportPage[],
         options: LibraryDetectionOptions = {},
     ): { files: string[]; patterns: import('../interfaces').LibraryPattern[] } {
-        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragments(
-            this.iteratePageContentFragments(pages),
+        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragmentGroups(
+            [
+                { fragments: this.iteratePageContentFragments(pages) },
+                {
+                    fragments: this.iteratePagePropertyFragments(pages),
+                    excludedLibraries: JSON_PROPERTY_LIBRARY_EXCLUSIONS,
+                },
+            ],
             options,
         );
     }
@@ -1165,6 +1404,27 @@ window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
     // =========================================================================
     // Content XML Generation (for re-import capability)
     // =========================================================================
+
+    /**
+     * Whether this export ships the re-editable ODE source (`content.xml`).
+     *
+     * Single source of truth for every exporter that can omit it, so the
+     * website, ePub, single-page, SCORM and IMS packages all answer the
+     * question identically (#2415).
+     *
+     * The project property `exportSource` ("Editable export") is the author's
+     * decision and governs by default. `options.forceEditableSource` overrides
+     * it only for a host that stores the exported package as the project
+     * itself and re-opens it later — see `ExportOptions.forceEditableSource`.
+     *
+     * `.elpx` never asks: `content.xml` is mandatory in that format.
+     *
+     * @param meta - Project metadata carrying the author's `exportSource`.
+     * @param options - Export options, if the caller has them in scope.
+     */
+    protected shipsEditableSource(meta: ExportMetadata, options?: ExportOptions): boolean {
+        return options?.forceEditableSource === true || meta.exportSource !== false;
+    }
 
     /**
      * Generate content.xml from document structure

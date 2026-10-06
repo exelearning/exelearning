@@ -1260,6 +1260,9 @@ test.describe('File Manager - Special Characters', () => {
             await openFileManagerViaTinyMCE(page);
 
             // Verify file still exists with correct name
+            // Wait for the grid to repopulate after reload before reading filenames
+            // (Firefox can return an empty list if the read races the async render).
+            await waitForFileInGrid(page, filename);
             const files = await getAllFilenames(page);
             expect(files).toContain(filename);
         });

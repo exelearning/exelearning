@@ -21,6 +21,7 @@ import {
     updateApiToken,
     findFirstUser,
     updateUserRoles,
+    updateUserPassword,
 } from './users';
 
 describe('User Queries', () => {
@@ -478,6 +479,67 @@ describe('User Queries', () => {
             const updated = await updateUserRoles(db, user.id, []);
 
             expect(updated!.roles).toBe('[]');
+        });
+    });
+
+    describe('updateUserPassword', () => {
+        it('should replace the password hash', async () => {
+            const user = await createUser(db, {
+                email: 'pwd@example.com',
+                password: 'old-hash',
+            });
+
+            const updated = await updateUserPassword(db, user.id, 'new-hash');
+
+            expect(updated).toBeDefined();
+            expect(updated!.password).toBe('new-hash');
+        });
+
+        it('should leave every other field untouched', async () => {
+            const user = await createUser(db, {
+                email: 'pwd-only@example.com',
+                password: 'old-hash',
+                roles: '["ROLE_USER","ROLE_ADMIN"]',
+                quota_mb: 512,
+            });
+
+            const updated = await updateUserPassword(db, user.id, 'new-hash');
+
+            expect(updated!.email).toBe('pwd-only@example.com');
+            expect(updated!.roles).toBe('["ROLE_USER","ROLE_ADMIN"]');
+            expect(updated!.quota_mb).toBe(512);
+            expect(updated!.is_active).toBe(user.is_active);
+        });
+
+        it('should refresh updated_at', async () => {
+            const user = await createUser(db, {
+                email: 'pwd-ts@example.com',
+                password: 'old-hash',
+            });
+            const originalTimestamp = user.updated_at;
+
+            await new Promise(r => setTimeout(r, 10));
+            const updated = await updateUserPassword(db, user.id, 'new-hash');
+
+            expect(updated!.updated_at).not.toBe(originalTimestamp);
+        });
+
+        it('should return undefined for a non-existent user', async () => {
+            const updated = await updateUserPassword(db, 99999, 'new-hash');
+
+            expect(updated).toBeUndefined();
+        });
+
+        it('should persist the new hash for subsequent reads', async () => {
+            const user = await createUser(db, {
+                email: 'pwd-read@example.com',
+                password: 'old-hash',
+            });
+
+            await updateUserPassword(db, user.id, 'new-hash');
+            const reloaded = await findUserById(db, user.id);
+
+            expect(reloaded!.password).toBe('new-hash');
         });
     });
 });

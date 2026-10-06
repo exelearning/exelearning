@@ -27,6 +27,11 @@
     max-width: 9.5ch !important;
 }
 
+#gameQEIdeviceForm #ordenaCardHeight {
+    width: 12ch !important;
+    max-width: 12ch !important;
+}
+
 /*Panel preguntas */
 .ODNE-EPanel {
     padding: 0;

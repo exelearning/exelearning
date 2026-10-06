@@ -46,7 +46,13 @@ $exe_i18n = {
     "elpxFileProtocolWarning": c_("Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary."),
     "proprietaryLicense": c_("Proprietary license"),
     "notAppropriate": c_("Not appropriate"),
-    "publicDomain": c_("Public domain")
+    "publicDomain": c_("Public domain"),
+    "attachment": c_("Attachment"),
+    "noFilesAttached": c_("No files attached."),
+    "fileUnavailable": c_("File unavailable"),
+    "passScoreNotice": c_("Minimum score needed to pass this activity: %s"),
+    "pagePassScore": c_("Minimum score to pass: %s"),
+    "pagePassEveryActivity": c_("Each activity must reach its minimum score")
 };
 // The following line should only be used if the ELP contains a hangman game:
 $exe_i18n.exeGames = {

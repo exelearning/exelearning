@@ -105,6 +105,99 @@ describe('ModalSessionLogout', () => {
       expect(mockBootstrapModal.show).toHaveBeenCalled();
       vi.useRealTimers();
     });
+
+    it('should fall back to the default body when data.body is omitted', async () => {
+      vi.useFakeTimers();
+      modal.show();
+      vi.advanceTimersByTime(500);
+      expect(mockElement.querySelector('.modal-body').innerHTML).toBe(
+        'Do you want to save the current project?'
+      );
+      vi.useRealTimers();
+    });
+  });
+
+  describe('contextual labels', () => {
+    it('should render a contextual body when data.body is provided', async () => {
+      vi.useFakeTimers();
+      modal.show({
+        body: 'Do you want to save changes before creating a new file?',
+      });
+      vi.advanceTimersByTime(500);
+      expect(mockElement.querySelector('.modal-body').innerHTML).toBe(
+        'Do you want to save changes before creating a new file?'
+      );
+      vi.useRealTimers();
+    });
+
+    it('should render a contextual save button label when data.saveButtonText is provided', async () => {
+      vi.useFakeTimers();
+      modal.show({ saveButtonText: 'Save' });
+      vi.advanceTimersByTime(500);
+      const saveButton = mockElement.querySelector(
+        '.modal-footer .session-logout-save'
+      );
+      expect(saveButton.innerHTML).toBe('Save');
+      vi.useRealTimers();
+    });
+
+    it('should fall back to "Yes" for the save button when no label is provided', async () => {
+      vi.useFakeTimers();
+      modal.show({});
+      vi.advanceTimersByTime(500);
+      const saveButton = mockElement.querySelector(
+        '.modal-footer .session-logout-save'
+      );
+      expect(saveButton.innerHTML).toBe('Yes');
+      vi.useRealTimers();
+    });
+
+    it('should render a contextual not-save button label when data.notSaveButtonText is provided', async () => {
+      vi.useFakeTimers();
+      modal.show({ notSaveButtonText: "Don't Save" });
+      vi.advanceTimersByTime(500);
+      const notSaveButton = mockElement.querySelector(
+        '.modal-footer .session-logout-without-save'
+      );
+      expect(notSaveButton.innerHTML).toBe("Don't Save");
+      vi.useRealTimers();
+    });
+
+    it('should keep backward compatibility with data.forceOpen for the not-save button', async () => {
+      vi.useFakeTimers();
+      modal.show({ forceOpen: 'Create new file without saving' });
+      vi.advanceTimersByTime(500);
+      const notSaveButton = mockElement.querySelector(
+        '.modal-footer .session-logout-without-save'
+      );
+      expect(notSaveButton.innerHTML).toBe('Create new file without saving');
+      vi.useRealTimers();
+    });
+
+    it('should prefer data.notSaveButtonText over data.forceOpen', async () => {
+      vi.useFakeTimers();
+      modal.show({
+        notSaveButtonText: "Don't Save",
+        forceOpen: 'Create new file without saving',
+      });
+      vi.advanceTimersByTime(500);
+      const notSaveButton = mockElement.querySelector(
+        '.modal-footer .session-logout-without-save'
+      );
+      expect(notSaveButton.innerHTML).toBe("Don't Save");
+      vi.useRealTimers();
+    });
+
+    it('should fall back to "Exit without saving" for the not-save button when nothing is provided', async () => {
+      vi.useFakeTimers();
+      modal.show({});
+      vi.advanceTimersByTime(500);
+      const notSaveButton = mockElement.querySelector(
+        '.modal-footer .session-logout-without-save'
+      );
+      expect(notSaveButton.innerHTML).toBe('Exit without saving');
+      vi.useRealTimers();
+    });
   });
 
   describe('save button (Yes) with pendingAction', () => {

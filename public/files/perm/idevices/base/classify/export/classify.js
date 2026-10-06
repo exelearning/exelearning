@@ -78,6 +78,7 @@ var $eXeClasifica = {
 
             const clasifica = $eXeClasifica.createInterfaceClasifica(i);
             dl.before(clasifica).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#clasificaGameMinimize-' + i)
                 .css('cursor', 'pointer')
@@ -287,18 +288,41 @@ var $eXeClasifica = {
         return html;
     },
 
+    /**
+     * The mark the activity reports, on the 0-10 scale the LMS and the local
+     * evaluation report share.
+     *
+     * The essential level scores accuracy, not just hits: a board solved in
+     * more moves than it has cards is worth less than one solved in the
+     * minimum. Every divisor is defended here, because none of them was
+     * before — with nothing moved yet, hits and attempts are both 0, so
+     * `hits / attempts` was 0/0 and the whole product came out NaN. That
+     * opening report reached sendScoreNew as a non-finite score and only its
+     * guard kept it out of the LMS.
+     *
+     * @param {number} hits - Cards sitting in their own group.
+     * @param {number} attempts - Cards dropped so far, right or wrong.
+     * @param {number} totalCards - Cards in play; a deck of 0 counts as 1.
+     * @param {number} gameLevel - 0 essential, 1 medium, 2 advanced.
+     * @returns {number} A finite mark from 0 to 10.
+     */
+    computeScore: function (hits, attempts, totalCards, gameLevel) {
+        const total = totalCards > 0 ? totalCards : 1;
+        const base = (hits * 10) / total;
+        if (gameLevel !== 0) return base;
+        const accuracy = attempts > 0 ? hits / attempts : 0;
+        return base * accuracy;
+    },
+
     saveEvaluation: function (instance) {
-        const mOptions = $eXeClasifica.options[instance],
-            hits = mOptions.hits || 0,
-            attempts = mOptions.attempts || 0,
-            totalCards = mOptions.cardsGame.length || 1;
+        const mOptions = $eXeClasifica.options[instance];
 
-        let score = (hits * 10) / totalCards;
-        if (mOptions.gameLevel === 0)
-            score =
-                ((hits * 10) / mOptions.numberQuestions) * (hits / attempts);
-
-        mOptions.scorerp = score;
+        mOptions.scorerp = $eXeClasifica.computeScore(
+            mOptions.hits || 0,
+            mOptions.attempts || 0,
+            mOptions.cardsGame.length,
+            mOptions.gameLevel
+        );
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $eXeClasifica.isInExe
@@ -306,17 +330,14 @@ var $eXeClasifica = {
     },
 
     sendScore: function (auto, instance) {
-        const mOptions = $eXeClasifica.options[instance],
-            hits = mOptions.hits || 0,
-            attempts = mOptions.attempts || 0,
-            totalCards = mOptions.cardsGame.length || 1;
+        const mOptions = $eXeClasifica.options[instance];
 
-        let score = (hits * 10) / totalCards;
-        if (mOptions.gameLevel === 0)
-            score =
-                ((hits * 10) / mOptions.numberQuestions) * (hits / attempts);
-
-        mOptions.scorerp = score;
+        mOptions.scorerp = $eXeClasifica.computeScore(
+            mOptions.hits || 0,
+            mOptions.attempts || 0,
+            mOptions.cardsGame.length,
+            mOptions.gameLevel
+        );
 
         mOptions.previousScore = $eXeClasifica.previousScore;
         mOptions.userName = $eXeClasifica.userName;
@@ -807,14 +828,6 @@ var $eXeClasifica = {
 
         $('#clasificaPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeClasifica beforeunload.eXeClasifica', () => {
-            if ($eXeClasifica.mScorm) {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeClasifica.mScorm
-                );
-            }
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1011,8 +1024,6 @@ var $eXeClasifica = {
             .find('.CQP-CardContainer')
             .off('mousedown touchstart mouseup touchend');
         $('#clasificaValidateAnswers-' + instance).off('click');
-
-        $(window).off('unload.eXeClasifica beforeunload.eXeClasifica');
     },
 
     refreshGame: function (instance) {
@@ -1180,7 +1191,15 @@ var $eXeClasifica = {
             $eXeClasifica.gameOverLevel0(instance);
         } else if (mOptions.gameLevel === 1) {
             $eXeClasifica.gameOverLevel1(instance);
-        } else if (mOptions.gameLevel === 2) {
+        } else {
+            // Level 2 and anything else. The comparison is strict and the
+            // field is only written by the editor, so an activity saved
+            // before it existed carries `undefined` and used to match no
+            // branch at all — the attempt ended without the report that
+            // carries the completion, leaving the page `incomplete` in the
+            // LMS forever. Falling through to the level-2 presenter is the
+            // safe default: it recounts the board from the DOM rather than
+            // trusting a running tally.
             $eXeClasifica.gameOverLevel2(instance);
         }
 
@@ -1316,7 +1335,10 @@ var $eXeClasifica = {
         const percentageHits = mOptions.hits / mOptions.cardsGame.length;
 
         let msg = '',
-            type = percentageHits < 0.5 ? 1 : 2;
+            // The verdict goes by the mark, on the same 0-10 scale the report
+            // uses. The bands below are a different thing -- three tiers of
+            // encouragement -- and keep their own boundaries.
+            type = mOptions.score < $exe.passScore.resolve(mOptions) ? 1 : 2;
         if (percentageHits < 0.5) {
             msg = mOptions.msgs.msgQ5.replace(
                 '%s',
@@ -1694,29 +1716,43 @@ var $eXeClasifica = {
         }
 
         if (mOptions.time > 0) {
-            mOptions.counterClock = setInterval(() => {
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'clasificaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
+                if (
+                    !container?.isConnected ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
+                    clearInterval(clock);
+                    return;
+                }
                 if (mOptions.gameStarted) {
-                    let $node = $('#clasificaMainContainer-' + instance);
-                    let $content = $('#node-content');
-                    if (
-                        !$node.length ||
-                        ($content.length && $content.attr('mode') === 'edition')
-                    ) {
-                        clearInterval(mOptions.counterClock);
-                        return;
-                    }
                     mOptions.counter--;
                     $eXeClasifica.uptateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
-                        clearInterval(mOptions.counterClock);
+                        clearInterval(clock);
                         $eXeClasifica.gameOver(instance);
                     }
                 }
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeClasifica.uptateTime(mOptions.time * 60, instance);
         }
 
         mOptions.gameStarted = true;
+        // Report as soon as the learner starts, so the LMS menu shows the
+        // attempt from the first move rather than only once a card is placed.
+        if (mOptions.isScorm === 1) {
+            $eXeClasifica.sendScore(true, instance);
+        }
     },
 
     uptateTime: function (tiempo, instance) {

@@ -13,6 +13,7 @@
  * 3. Receive real-time progress via WebSocket
  */
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
+import { serverPriorityQueue } from './asset-priority-queue';
 
 /**
  * Upload session JWT payload
@@ -89,6 +90,9 @@ export const MAX_BATCH_BYTES = 100 * 1024 * 1024;
 
 // Maximum files per batch
 export const MAX_BATCH_FILES = 200;
+
+// Default interval for the periodic cleanup scheduler (5 minutes)
+export const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Factory function to create upload session manager with isolated state
@@ -347,3 +351,50 @@ export const emitBatchComplete = uploadSessionManager.emitBatchComplete;
 export const deleteSession = uploadSessionManager.deleteSession;
 export const cleanupExpired = uploadSessionManager.cleanupExpired;
 export const getStats = uploadSessionManager.getStats;
+
+// Module-level handle for the periodic cleanup scheduler.
+let cleanupScheduler: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Start the periodic cleanup scheduler for the default singleton manager.
+ *
+ * Without this, expired sessions and their registered progress/batch-complete
+ * callbacks accumulate in memory forever (the manager only stores state in
+ * in-memory Maps). The scheduler periodically reclaims expired sessions and
+ * also releases stale upload slots held by the asset priority queue.
+ *
+ * Idempotent: calling it again replaces any existing timer. The orchestrator
+ * (src/index.ts) is responsible for calling this at server boot.
+ *
+ * @param intervalMs - Interval between cleanup passes (default CLEANUP_INTERVAL_MS).
+ */
+export function startCleanupScheduler(intervalMs: number = CLEANUP_INTERVAL_MS): void {
+    // Replace any existing timer so repeated calls do not leak intervals.
+    if (cleanupScheduler) {
+        clearInterval(cleanupScheduler);
+        cleanupScheduler = null;
+    }
+
+    cleanupScheduler = setInterval(() => {
+        uploadSessionManager.cleanupExpired();
+        serverPriorityQueue.cleanupStaleSlots();
+    }, intervalMs);
+
+    // Do not keep the process alive solely for this timer (no-op in browsers).
+    if (typeof cleanupScheduler.unref === 'function') {
+        cleanupScheduler.unref();
+    }
+}
+
+/**
+ * Stop the periodic cleanup scheduler and clear its timer.
+ *
+ * Idempotent: safe to call when no scheduler is running. The orchestrator
+ * (src/index.ts) is responsible for calling this at server shutdown.
+ */
+export function stopCleanupScheduler(): void {
+    if (cleanupScheduler) {
+        clearInterval(cleanupScheduler);
+        cleanupScheduler = null;
+    }
+}

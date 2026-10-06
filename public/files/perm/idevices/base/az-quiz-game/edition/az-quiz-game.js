@@ -129,6 +129,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('A-Z quiz'),
             msgShowWords: c_('Show solutions'),
             msgAll: c_('All'),
@@ -229,7 +230,6 @@ var $exeDevice = {
                                     </div>
                                     <label class="toggle-label" for="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
                                 </div>
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -242,7 +242,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 1, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(1)}
@@ -318,6 +318,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: dataGame.evaluation,
             evaluationID: dataGame.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: dataGame.passScoreMode,
+            passScoreCustom: dataGame.passScoreCustom,
         });
 
         for (let i = 0; i < dataGame.wordsGame.length; i++) {
@@ -961,6 +965,8 @@ var $exeDevice = {
             caseSensitive = $('#roscoCaseSensitive').is(':checked'),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1107,6 +1113,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
     },
@@ -1380,15 +1388,16 @@ var $exeDevice = {
         });
 
         // Uso de delegación para soportar elementos añadidos tras updateFieldGame
-        // Handler con namespace para poder desregistrar fácilmente y evitar duplicados.
-        $(document)
-            .off('click.roscoSelectImg')
+        // Owned by the edition lifecycle: the handler is removed when the
+        // editor closes, so it can never reach a later edition.
+        this.$lifecycle
             .on(
-                'click.roscoSelectImg',
+                document,
+                'click',
                 '#roscoDataWord a.roscoLinkSelectImage',
                 function (e) {
                     e.preventDefault();
-                    const $container = $(this).closest(
+                    const $container = $(e.currentTarget).closest(
                         '.roscoWordMutimediaEdition'
                     );
                     const $panel = $container.children('.roscoImageBarEdition');
@@ -1408,7 +1417,7 @@ var $exeDevice = {
                         0;
 
                     $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
-                    $exeDevice.showImage(img, url, x, y, alt, 0);
+                    this.showImage(img, url, x, y, alt, 0);
 
                     // Sincroniza icono activo/inactivo también aquí
                     const hasImage =
@@ -1423,7 +1432,7 @@ var $exeDevice = {
                             : 'roscoSelectImageInactive.png';
                     $container
                         .find('.roscoSelectImageEdition')
-                        .attr('src', $exeDevice.idevicePath + icon);
+                        .attr('src', this.idevicePath + icon);
 
                     if (!hasImage) {
                         const $cursor = $panel.find('.roscoCursorEdition');
@@ -1455,19 +1464,18 @@ var $exeDevice = {
             $container.find('.roscoImageBarEdition').slideUp();
         });
 
-        $(document).on(
+        this.$lifecycle.on(
+            document,
             'focusout',
             '#roscoDataWord .roscoWordEdition',
-            function () {
-                const $input = $(this);
+            function (e) {
+                const $input = $(e.currentTarget);
                 const word = $input.val().trim();
                 const $row = $input.closest('.roscoFileWordEdition');
                 const $letterEl = $row.find('h3.roscoLetterEdition').first();
                 const letter = $letterEl.text();
-                const color = word
-                    ? $exeDevice.colors.blue
-                    : $exeDevice.colors.grey;
-                const mletter = $exeDevice.getCaracterLetter(letter);
+                const color = word ? this.colors.blue : this.colors.grey;
+                const mletter = this.getCaracterLetter(letter);
 
                 $letterEl.css('background-color', color);
 
@@ -1480,11 +1488,11 @@ var $exeDevice = {
                         ? 1
                         : 0;
 
-                if ($exeDevice.modeBoard) return;
+                if (this.modeBoard) return;
 
                 if (
                     mType === 0 &&
-                    !$exeDevice.startContainsAll(mletter, word, mType)
+                    !this.startContainsAll(mletter, word, mType)
                 ) {
                     const message = msgs.msgNotStart
                         .replace('%1', word)
@@ -1492,7 +1500,7 @@ var $exeDevice = {
                     eXe.app.alert(message);
                 } else if (
                     mType === 1 &&
-                    !$exeDevice.startContainsAll(mletter, word, mType)
+                    !this.startContainsAll(mletter, word, mType)
                 ) {
                     const message = msgs.msgNotContain
                         .replace('%1', word)
@@ -1511,16 +1519,16 @@ var $exeDevice = {
             $exeDevice.modeBoard = $(this).is(':checked');
         });
 
-        // Delegación para soportar imágenes añadidas dinámicamente y evitar bindings duplicados
-        $(document)
-            .off('click.roscoImg')
-            .on(
-                'click.roscoImg',
-                '#roscoDataWord img.roscoHomeImageEdition',
-                function (e) {
-                    $exeDevice.clickImage(this, e.pageX, e.pageY);
-                }
-            );
+        // Delegación para soportar imágenes añadidas dinámicamente
+        // Owned by the edition lifecycle, so it is removed when the editor closes.
+        this.$lifecycle.on(
+            document,
+            'click',
+            '#roscoDataWord img.roscoHomeImageEdition',
+            function (e) {
+                this.clickImage(e.currentTarget, e.pageX, e.pageY);
+            }
+        );
 
         $('.roscoWordMutimediaEdition').on(
             'dblclick',
@@ -1594,7 +1602,7 @@ var $exeDevice = {
                 .text(_('Supported formats') + ': txt, xml(Moodle)');
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame').attr('accept', '.txt, .xml');
-            $('#eXeGameImportGame').on('change', function (e) {
+            $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
                     eXe.app.alert(
@@ -1621,9 +1629,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (event) {
+                    this.importGame(event.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
 
@@ -1635,10 +1646,11 @@ var $exeDevice = {
         }
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
-        $(document).on('click', '.toggle-item', function (e) {
+        this.$lifecycle.on(document, 'click', '.toggle-item', function (e) {
             if ($(e.target).is('input, label, a, button')) return;
-            const id = $(this).attr('idevice-id');
+            const id = $(e.currentTarget).attr('idevice-id');
             if (!id) return;
             const $input = $('#' + id);
             if ($input.length) {
@@ -1878,9 +1890,12 @@ var $exeDevice = {
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
 
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', () => {
-            $exeDevice.playerAudio
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player, 'previewAudio');
+        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
+            player
                 .play()
                 .catch((err) => console.error('Error playing sound:', err));
         });

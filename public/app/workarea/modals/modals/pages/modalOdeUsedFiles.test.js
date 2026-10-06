@@ -531,9 +531,9 @@ describe('ModalOdeUsedFiles', () => {
 
   describe('downloadCsv', () => {
     beforeEach(() => {
-      // Mock alerts
-      window.eXeLearning.app.alerts = {
-        showToast: vi.fn(),
+      // Mock the toast manager (lives at app.toasts.createToast)
+      window.eXeLearning.app.toasts = {
+        createToast: vi.fn(),
       };
     });
 
@@ -556,10 +556,26 @@ describe('ModalOdeUsedFiles', () => {
         </table>
       `;
       modal.downloadCsv();
-      expect(window.eXeLearning.app.alerts.showToast).toHaveBeenCalledWith({
-        type: 'info',
-        message: 'No resources to export',
+      expect(window.eXeLearning.app.toasts.createToast).toHaveBeenCalledWith({
+        title: 'Resource Report',
+        body: 'No resources to export',
+        icon: 'info',
+        modal: true,
+        remove: 5000,
       });
+    });
+
+    it('should not throw when there are no resources (regression #1947)', () => {
+      // Reproduces the reported crash: the toast manager lives at
+      // app.toasts.createToast, not the non-existent app.alerts.showToast.
+      modal.modalElementBody.innerHTML = `
+        <table>
+          <thead><tr><th>File</th><th>Path</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      `;
+      expect(() => modal.downloadCsv()).not.toThrow();
+      expect(window.eXeLearning.app.toasts.createToast).toHaveBeenCalled();
     });
 
     it('should set preventCloseModal to true', () => {

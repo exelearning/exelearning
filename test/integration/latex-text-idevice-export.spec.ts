@@ -9,6 +9,13 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import { Html5Exporter } from '../../src/shared/export/exporters/Html5Exporter';
+import { Scorm12Exporter } from '../../src/shared/export/exporters/Scorm12Exporter';
+import { Scorm2004Exporter } from '../../src/shared/export/exporters/Scorm2004Exporter';
+import { ImsExporter } from '../../src/shared/export/exporters/ImsExporter';
+import { PageExporter } from '../../src/shared/export/exporters/PageExporter';
+import { ElpxExporter } from '../../src/shared/export/exporters/ElpxExporter';
+import { ServerLatexPreRenderer } from '../../src/shared/export/prerender/ServerLatexPreRenderer';
+import { FileSystemResourceProvider } from '../../src/shared/export/providers/FileSystemResourceProvider';
 import { FflateZipProvider } from '../../src/shared/export/providers/FflateZipProvider';
 import type {
     ExportDocument,
@@ -20,6 +27,7 @@ import type {
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../src/services/idevice-config';
 import { extractZip } from '../../src/services/zip';
 import { parseFromFile } from '../../src/services/xml/xml-parser';
+import { unzipSync } from 'fflate';
 
 // Path to real iDevices
 const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
@@ -212,6 +220,304 @@ const createDocumentWithLatexInTextJson = (): ExportDocument => ({
             ],
         },
     ],
+});
+
+// Every JSON iDevice that carries LaTeX now pre-renders it during export, so the
+// only way MathJax must still be bundled is when the author explicitly requests it
+// (addMathJax: true). This fixture exercises that explicit path across all formats.
+const createDocumentWithMathJaxRequested = (): ExportDocument => ({
+    getMetadata: (): ExportMetadata => ({
+        title: 'Explicit MathJax Test',
+        author: 'Test',
+        description: '',
+        language: 'en',
+        license: 'CC-BY-SA',
+        keywords: '',
+        theme: 'base',
+        addMathJax: true,
+    }),
+    getNavigation: (): ExportPage[] => [
+        {
+            id: 'page-1',
+            title: 'Explicit MathJax',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-1',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'form-1',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: {
+                                eXeFormInstructions: 'Order the steps to solve \\(x^2 = 1\\)',
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+});
+
+const createDocumentWithAdaptativeQuizLatex = (): ExportDocument => ({
+    getMetadata: (): ExportMetadata => ({
+        title: 'Adaptative Quiz LaTeX Test',
+        author: 'Test',
+        description: '',
+        language: 'en',
+        license: 'CC-BY-SA',
+        keywords: '',
+        theme: 'base',
+        addMathJax: false,
+    }),
+    getNavigation: (): ExportPage[] => [
+        {
+            id: 'page-1',
+            title: 'Adaptative Quiz LaTeX',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-1',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'adaptative-quiz-1',
+                            type: 'adaptative-quiz',
+                            order: 0,
+                            content: '',
+                            properties: {
+                                questionsGame: [
+                                    { question: 'Solve \\(x^2 = 1\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+});
+
+const createDocumentWithScrambledListLatex = (): ExportDocument => ({
+    getMetadata: (): ExportMetadata => ({
+        title: 'Scrambled List LaTeX Test',
+        author: 'Test',
+        description: '',
+        language: 'en',
+        license: 'CC-BY-SA',
+        keywords: '',
+        theme: 'base',
+        addMathJax: false,
+    }),
+    getNavigation: (): ExportPage[] => [
+        {
+            id: 'page-1',
+            title: 'Scrambled List LaTeX',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-1',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'scrambled-list-1',
+                            type: 'scrambled-list',
+                            order: 0,
+                            content: '',
+                            properties: {
+                                options: ['Solve \\(x^2 = 1\\)', 'Then \\(x = \\pm 1\\)', 'Done'],
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+});
+
+const createDocumentWithFormLatex = (): ExportDocument => ({
+    getMetadata: (): ExportMetadata => ({
+        title: 'Form LaTeX Test',
+        author: 'Test',
+        description: '',
+        language: 'en',
+        license: 'CC-BY-SA',
+        keywords: '',
+        theme: 'base',
+        addMathJax: false,
+    }),
+    getNavigation: (): ExportPage[] => [
+        {
+            id: 'page-1',
+            title: 'Form LaTeX',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-1',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'form-1',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: {
+                                eXeFormInstructions: '<p>Solve the quiz \\(x^2 = 1\\)</p>',
+                                questionsData: [
+                                    {
+                                        baseText: '<p>Which equals \\(1\\)?</p>',
+                                        answers: [
+                                            [true, '\\(x^2\\)'],
+                                            [false, 'plain'],
+                                        ],
+                                        feedbackRight: '<p>Right: \\(y^2\\)</p>',
+                                        feedbackWrong: '',
+                                        selectionType: 'single',
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+});
+
+describe('Runtime JSON iDevice LaTeX Export Integration', () => {
+    const exporters = [
+        [
+            'HTML5',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new Html5Exporter(document, resources, assets, zip),
+        ],
+        [
+            'SCORM 1.2',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new Scorm12Exporter(document, resources, assets, zip),
+        ],
+        [
+            'SCORM 2004',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new Scorm2004Exporter(document, resources, assets, zip),
+        ],
+        [
+            'IMS',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new ImsExporter(document, resources, assets, zip),
+        ],
+        [
+            'Single Page',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new PageExporter(document, resources, assets, zip),
+        ],
+        [
+            'ELPX',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new ElpxExporter(document, resources, assets, zip),
+        ],
+    ] as const;
+
+    beforeAll(() => {
+        loadIdeviceConfigs(REAL_IDEVICES_PATH);
+    });
+
+    afterAll(() => {
+        resetIdeviceConfigCache();
+    });
+
+    for (const [format, createExporter] of exporters) {
+        it(`${format} includes and references MathJax`, async () => {
+            const document = createDocumentWithMathJaxRequested();
+            const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+            const assets = createMockAssetProvider();
+            const result = await createExporter(document, resources, assets, new FflateZipProvider()).export();
+
+            expect(result.success, `${format} export should succeed`).toBe(true);
+            const files = unzipSync(result.data!);
+            expect(files['libs/exe_math/tex-mml-svg.js'], `${format} should bundle MathJax`).toBeDefined();
+            const indexHtml = new TextDecoder().decode(files['index.html']);
+            expect(indexHtml, `${format} should reference MathJax`).toContain('libs/exe_math/tex-mml-svg.js');
+        });
+    }
+
+    it('pre-renders adaptative-quiz JSON LaTeX server-side without bundling MathJax', async () => {
+        const document = createDocumentWithAdaptativeQuizLatex();
+        const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+        const assets = createMockAssetProvider();
+        const latexRenderer = new ServerLatexPreRenderer();
+
+        const result = await new Html5Exporter(document, resources, assets, new FflateZipProvider()).export({
+            preRenderLatex: (html: string) => latexRenderer.preRender(html),
+        });
+
+        expect(result.success).toBe(true);
+        const files = unzipSync(result.data!);
+        const indexHtml = new TextDecoder().decode(files['index.html']);
+
+        // The nested question/option LaTeX is baked into the JSON as SVG...
+        expect(indexHtml).toContain('exe-math-rendered');
+        // ...so the heavy MathJax engine is never bundled or referenced.
+        expect(files['libs/exe_math/tex-mml-svg.js']).toBeUndefined();
+        expect(indexHtml).not.toContain('libs/exe_math/tex-mml-svg.js');
+        // And the raw delimiters are gone from the pre-rendered payload.
+        expect(indexHtml).not.toContain('Solve \\(x^2 = 1\\)');
+    });
+
+    it('pre-renders scrambled-list option LaTeX server-side without bundling MathJax', async () => {
+        const document = createDocumentWithScrambledListLatex();
+        const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+        const assets = createMockAssetProvider();
+        const latexRenderer = new ServerLatexPreRenderer();
+
+        const result = await new Html5Exporter(document, resources, assets, new FflateZipProvider()).export({
+            preRenderLatex: (html: string) => latexRenderer.preRender(html),
+        });
+
+        expect(result.success).toBe(true);
+        const files = unzipSync(result.data!);
+        const indexHtml = new TextDecoder().decode(files['index.html']);
+
+        // Each option's LaTeX is baked into the JSON as SVG...
+        expect(indexHtml).toContain('exe-math-rendered');
+        // ...so the heavy MathJax engine is never bundled or referenced.
+        expect(files['libs/exe_math/tex-mml-svg.js']).toBeUndefined();
+        expect(indexHtml).not.toContain('libs/exe_math/tex-mml-svg.js');
+    });
+
+    it('pre-renders form question/answer LaTeX server-side without bundling MathJax', async () => {
+        const document = createDocumentWithFormLatex();
+        const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+        const assets = createMockAssetProvider();
+        const latexRenderer = new ServerLatexPreRenderer();
+
+        const result = await new Html5Exporter(document, resources, assets, new FflateZipProvider()).export({
+            preRenderLatex: (html: string) => latexRenderer.preRender(html),
+        });
+
+        expect(result.success).toBe(true);
+        const files = unzipSync(result.data!);
+        const indexHtml = new TextDecoder().decode(files['index.html']);
+
+        // The question stem, options and feedback LaTeX are baked into the JSON as SVG...
+        expect(indexHtml).toContain('exe-math-rendered');
+        // ...so the heavy MathJax engine is never bundled or referenced.
+        expect(files['libs/exe_math/tex-mml-svg.js']).toBeUndefined();
+        expect(indexHtml).not.toContain('libs/exe_math/tex-mml-svg.js');
+        // And the raw delimiters are gone from the pre-rendered payload.
+        expect(indexHtml).not.toContain('Which equals \\(1\\)');
+    });
 });
 
 describe('LaTeX Pre-rendering Export Integration', () => {

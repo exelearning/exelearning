@@ -9,6 +9,13 @@
  *    plain English, which the frontend translates at render time via _().
  */
 
+import {
+    PASS_SCORE_DEFAULT,
+    PASS_SCORE_MAX,
+    PASS_SCORE_MIN,
+    PASS_SCORE_STEP,
+} from '../shared/export/metadata-properties';
+
 export interface ConfigParamsDeps {
     TRANS_PREFIX: string;
     LICENSES: Record<string, string>;
@@ -138,6 +145,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
         },
         teacherOnly: {
             title: `${TRANS_PREFIX}Teacher only`,
+            help: `${TRANS_PREFIX}Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.`,
             value: 'false',
             type: 'checkbox',
             category: null,
@@ -221,6 +229,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
         },
         teacherOnly: {
             title: `${TRANS_PREFIX}Teacher only`,
+            help: `${TRANS_PREFIX}Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.`,
             value: 'false',
             type: 'checkbox',
             category: null,
@@ -347,7 +356,21 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
             },
             pp_addMathJax: {
                 title: `${TRANS_PREFIX}Include MathJax (advanced features)`,
-                help: `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.`,
+                /*
+                 * The help text used to quote a size and name the features. Both aged
+                 * badly: the directory has been 8 MB, 2.4 MB and 6.8 MB inside a single
+                 * release cycle, and "accessibility tools" was false for the seven
+                 * months issue #2259 covers. A translated string is expensive to change
+                 * — the English text is the XLF key, so every edit orphans ten locales —
+                 * so this one deliberately carries no figure and no feature list.
+                 *
+                 * The retired text stays here on purpose: `make translations-cleanup`
+                 * drops any trans-unit whose key is not found in the sources, and the
+                 * extractor is a plain text scan, so leaving it in a comment keeps the
+                 * ten existing translations parked instead of deleted.
+                 *   `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.`
+                 */
+                help: `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.`,
                 value: 'false',
                 type: 'checkbox',
                 category: 'properties',
@@ -366,6 +389,25 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                     nunito: 'Nunito',
                     'playwrite-es': 'Playwrite ES',
                 },
+                category: 'properties',
+                groups: { export: GROUPS_TITLE.export },
+            },
+            pp_passScore: {
+                title: `${TRANS_PREFIX}Minimum score to pass`,
+                help: `${TRANS_PREFIX}Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.`,
+                value: PASS_SCORE_DEFAULT,
+                type: 'number',
+                min: PASS_SCORE_MIN,
+                max: PASS_SCORE_MAX,
+                step: PASS_SCORE_STEP,
+                category: 'properties',
+                groups: { export: GROUPS_TITLE.export },
+            },
+            pp_passScoreEveryActivity: {
+                title: `${TRANS_PREFIX}Each SCORM activity must reach its minimum score`,
+                help: `${TRANS_PREFIX}A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.`,
+                value: 'false',
+                type: 'checkbox',
                 category: 'properties',
                 groups: { export: GROUPS_TITLE.export },
             },
