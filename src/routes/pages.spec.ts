@@ -3438,6 +3438,11 @@ describe('Pages Routes', () => {
             expect(templateData.adminSettings).toBeDefined();
             expect(templateData.adminSettings.general).toBeDefined();
             expect(templateData.adminSettings.storage).toBeDefined();
+            // Only settings that have an effect are offered under "Storage and quotas" (#2514)
+            expect(Object.keys(templateData.adminSettings.storage).sort()).toEqual([
+                'default_quota',
+                'file_upload_max_size',
+            ]);
         });
 
         it('should seed the public view toggle from PUBLIC_VIEW_ENABLED (disabled when unset)', async () => {

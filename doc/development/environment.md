@@ -374,6 +374,10 @@ docker compose exec exelearning bun cli <command> [arguments]
 docker compose exec exelearning bun cli create-user admin@example.com password123 admin
 docker compose exec exelearning bun cli promote-admin admin@example.com
 
+# Storage quota (DEFAULT_QUOTA only applies to new users; this updates existing ones)
+docker compose exec exelearning bun cli set-quota --all default
+docker compose exec exelearning bun cli set-quota user@example.com 2048
+
 # Generate JWT token
 docker compose exec exelearning bun cli jwt:generate admin@example.com --ttl=86400
 

@@ -1292,12 +1292,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         collaborative_block_level: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice',
                     },
                     storage: {
-                        user_storage_max_disk_space: parseNumber(process.env.USER_STORAGE_MAX_DISK_SPACE, 1024),
                         default_quota: parseNumber(process.env.DEFAULT_QUOTA, 4096),
-                        count_user_autosave_space_ode_files: parseBoolean(
-                            process.env.COUNT_USER_AUTOSAVE_SPACE_ODE_FILES,
-                            true,
-                        ),
                         file_upload_max_size: parseNumber(process.env.FILE_UPLOAD_MAX_SIZE, 1024),
                     },
                     autosave: {
@@ -1352,12 +1347,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     DEFAULT_PROJECT_VISIBILITY: { path: ['general', 'default_project_visibility'], type: 'string' },
                     USER_RECENT_ODE_FILES_AMOUNT: { path: ['general', 'user_recent_ode_files_amount'], type: 'number' },
                     COLLABORATIVE_BLOCK_LEVEL: { path: ['general', 'collaborative_block_level'], type: 'string' },
-                    USER_STORAGE_MAX_DISK_SPACE: { path: ['storage', 'user_storage_max_disk_space'], type: 'number' },
                     DEFAULT_QUOTA: { path: ['storage', 'default_quota'], type: 'number' },
-                    COUNT_USER_AUTOSAVE_SPACE_ODE_FILES: {
-                        path: ['storage', 'count_user_autosave_space_ode_files'],
-                        type: 'boolean',
-                    },
                     FILE_UPLOAD_MAX_SIZE: { path: ['storage', 'file_upload_max_size'], type: 'number' },
                     PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL: {
                         path: ['autosave', 'permanent_save_autosave_time_interval'],
