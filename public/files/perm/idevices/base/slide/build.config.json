@@ -1,0 +1,16 @@
+{
+    "entries": [
+        {
+            "entry": "src/index.ts",
+            "outdir": "edition",
+            "naming": "[dir]/slide-editor.bundle.[ext]",
+            "globalName": "__slideEditorInit",
+            "minify": true,
+            "sourcemap": "none",
+            "externals": {
+                "fabric": "fabric",
+                "dompurify": { "global": "DOMPurify", "default": true }
+            }
+        }
+    ]
+}

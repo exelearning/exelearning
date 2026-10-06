@@ -344,6 +344,14 @@ describe('idevice-config-browser', () => {
             const files = getIdeviceExportFiles('text', '.js');
             expect(files).toEqual(['text.js']);
         });
+
+        it('loads interactive-video as a single self-contained bundle', () => {
+            // The shared core and the provider adapters are compiled INTO the
+            // interactive-video bundle (scripts/build-idevices.ts), so
+            // the runtime needs no extra classic scripts.
+            const files = getIdeviceExportFiles('interactive-video', '.js');
+            expect(files).toEqual(['interactive-video.js']);
+        });
     });
 
     // Regression for issue #1810. The browser bundle can't read JS files, so it cannot
