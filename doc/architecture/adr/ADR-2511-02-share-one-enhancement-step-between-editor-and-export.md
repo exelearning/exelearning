@@ -122,8 +122,10 @@ We will adopt **Option 3**, extending `ADR-2510-01`:
   its earlier registration.
 - An enhancement joins the list only with a test that applies it twice.
 - Runtime scripts never call a shared library's page-level initialization.
-- `afterIdeviceRendered()` stays as a wrapper, and the two editor methods become one
-  `enhance(document)` call.
+- `afterIdeviceRendered()` stays as a wrapper. The two editor methods are replaced
+  by `enhance(document)` on page load, and `enhance(node)` on the saved iDevice's
+  content root after a save. The page-level reload after a remote edit keeps
+  `enhance(document)` while HTML-type runtimes remain page-scoped.
 
 ## Consequences
 

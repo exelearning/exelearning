@@ -156,7 +156,7 @@ The alternatives for each decision are compared in the ADRs:
 
 - **Ready signal**: event plus promise, promise-only API, or event without waiting
   (ADR-2511-01).
-- **Where the enhancement list lives**: `common.js` runtime, or separate lists per
+- **Where the enhancement list lives**: a shared runtime script, or separate lists per
   host (ADR-2511-02).
 - **Teardown**: shared resource lifecycle, `destroyRuntime` hook only, or detection
   by `MutationObserver` (ADR-2511-03).

@@ -105,14 +105,14 @@ In scope:
 ## Documents
 
 - [spec.md](spec.md) — the contract: normative requirements and scenarios.
-- [design.md](design.md) — how the two hosts and `common.js` implement it.
+- [design.md](design.md) — how the two hosts and a shared runtime script implement it.
 - [research.md](research.md) — survey of the 53 base iDevices and the shared libraries.
 - [tasks.md](tasks.md) — the phased adoption plan.
 
 Durable decisions:
 
 - [ADR-2511-01](../../adr/ADR-2511-01-run-every-idevice-instance-through-one-render-lifecycle.md) — one render lifecycle per instance, ending in a DOM event.
-- [ADR-2511-02](../../adr/ADR-2511-02-share-one-enhancement-step-between-editor-and-export.md) — one enhancement step in `common.js`, shared by both hosts.
+- [ADR-2511-02](../../adr/ADR-2511-02-share-one-enhancement-step-between-editor-and-export.md) — one enhancement step in the shared runtime script, shared by both hosts.
 - [ADR-2511-03](../../adr/ADR-2511-03-own-exported-idevice-resources-with-a-shared-lifecycle.md) — export-side teardown through a shared resource lifecycle.
 
 [ADR-2510-01](../../adr/ADR-2510-01-apply-shared-enhancements-after-idevice-render.md) (PR #2512) decides that `afterIdeviceRendered()` is where

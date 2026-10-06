@@ -142,7 +142,10 @@ media player. It calls `enhance(document)` instead of the individual functions.
 - `IdeviceNode.exportProcessIdeviceJson()` calls `run()` with a `mount` that applies
   `exportHtmlView()`. It keeps its `htmlView` save in edition mode, unchanged.
 - `IdeviceNode` calls `destroy(this.ideviceBody)` before `generateContentExportView()`
-  replaces the body, and in `remove()`. `IdevicesEngine` calls it for every instance
+  replaces the body, and in `remove()`. `this.ideviceBody` is the content root
+  (spec §1), so only the iDevice's content is cleaned. The `.idevice_node`
+  (`this.ideviceContent`), with the editor's drag, selection and toolbar handlers, is
+  not touched. `IdevicesEngine` calls it for every instance
   before a page change empties the content. These are the same sites where
   ADR-2293-01 calls `destroyEditionInstance()`.
 - After a save, the editor enhances only the saved node, not the whole page.
@@ -275,6 +278,6 @@ case.
 | Decision | ADR |
 |---|---|
 | One render lifecycle per instance, run by one implementation for both hosts and ending in a DOM event | [ADR-2511-01](../../adr/ADR-2511-01-run-every-idevice-instance-through-one-render-lifecycle.md) |
-| One enhancement step in `common.js`'s runtime, shared by both hosts; enhancements take a context and are idempotent | [ADR-2511-02](../../adr/ADR-2511-02-share-one-enhancement-step-between-editor-and-export.md), building on [ADR-2510-01](../../adr/ADR-2510-01-apply-shared-enhancements-after-idevice-render.md) |
+| One enhancement step in the shared runtime script (`exe_idevice_runtime.js`), used by both hosts; enhancements take a context and are idempotent | [ADR-2511-02](../../adr/ADR-2511-02-share-one-enhancement-step-between-editor-and-export.md), building on [ADR-2510-01](../../adr/ADR-2510-01-apply-shared-enhancements-after-idevice-render.md) |
 | Export-side teardown through a resource lifecycle shared with editions | [ADR-2511-03](../../adr/ADR-2511-03-own-exported-idevice-resources-with-a-shared-lifecycle.md), the counterpart of [ADR-2293-01](../../adr/ADR-2293-01-own-idevice-edition-resources-with-an-explicit-lifecycle.md) |
 | Saved state keyed by component id | [ADR-2492-01](../../adr/ADR-2492-01-keep-saved-idevice-games-under-their-component-id.md), generalized by R2.2 |

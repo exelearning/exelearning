@@ -32,6 +32,10 @@ Where they live and how they are built is in the [design](design.md).
   object** `window['$' + type.replace(/-/g, '')]`.
 - **Instance**: one `.idevice_node` element on the page. Its **component id** is the
   element's `id`.
+- **Content root**: the element the host mounts an instance's markup into, and
+  passes as `node` to the runtime API. On exported pages it is the `.idevice_node`
+  itself. In the editor it is the instance's `.idevice_body`, inside the
+  `.idevice_node` that the editor uses for its own controls.
 - **Render**: one run of the lifecycle in §3 for one instance.
 - **Shared enhancement**: behaviour from a shared library applied to any content,
   whatever iDevice produced it. Examples: effects, lightbox links, dialog image sizes,
@@ -142,15 +146,18 @@ Where they live and how they are built is in the [design](design.md).
 
 ## 7. Teardown
 
-- **R7.1** Before a host removes an instance's node, or renders it again, it calls
-  `$exe.ideviceRuntime.destroy(node)`.
+- **R7.1** Before a host removes an instance, or renders it again, it calls
+  `$exe.ideviceRuntime.destroy(node)` with the instance's content root.
 - **R7.2** `destroy(node)`, in this order:
   1. dispatches `exe-idevice-destroy` on the node, which bubbles, while the instance's
      DOM is still intact;
   2. calls the export object's optional `destroyRuntime(ideviceId, node)` hook, the
      runtime counterpart of `destroyEdition`;
   3. disposes the instance lifecycle (R7.3), in reverse order of registration;
-  4. drops jQuery's event and data registry for the node's subtree;
+  4. drops jQuery's event and data registry for the **descendants** of the node, the
+     instance's content. The node itself and its ancestors keep their handlers and
+     data, so the editor's bindings on the `.idevice_node` (drag, selection, toolbar)
+     survive;
   5. removes `loaded`.
   It is idempotent. A failing disposer does not stop the others.
 - **R7.3** Every resource an instance creates that can outlive its node must be owned
@@ -162,7 +169,8 @@ Where they live and how they are built is in the [design](design.md).
   - media and third-party players;
   - pending requests and file reads;
   - SCORM activity registrations.
-  Handlers bound inside the node need nothing: step 4 removes them.
+  Handlers bound to elements inside the node need nothing: step 4 removes them. A
+  handler bound to the node itself must be owned by the lifecycle.
 - **R7.4** A callback registered through the lifecycle never runs after `destroy`.
 - **R7.5** The lifecycle's resource API is the one
   [ADR-2293-01](../../adr/ADR-2293-01-own-idevice-edition-resources-with-an-explicit-lifecycle.md)

@@ -100,7 +100,8 @@ Watch for removed `.idevice_node` elements and clean up afterwards, as
   1. it dispatches `exe-idevice-destroy`;
   2. it calls the optional `destroyRuntime` hook;
   3. it disposes the lifecycle;
-  4. it drops jQuery's data registry for the subtree.
+  4. it drops jQuery's data registry for the content inside the node, but not for
+     the node itself.
 - `EditionLifecycle` delegates its registry to the same implementation.
 
 - Pro:
