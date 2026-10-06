@@ -124,7 +124,8 @@ declare var $exeDevicesEdition:
                       getContents?: (path: string | undefined) => string;
                       addEvents?: () => void;
                       setValues?: (values: { evaluation?: unknown; evaluationID?: unknown }) => void;
-                      getValues?: () => { evaluation?: unknown; evaluationID?: unknown } | null;
+                      /** `false` (after alerting) when the report identifier is invalid. */
+                      getValues?: () => { evaluation?: unknown; evaluationID?: unknown } | false | null;
                   };
                   passScore?: {
                       addEvents?: () => void;

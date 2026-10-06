@@ -35,6 +35,9 @@ import {
 import type { EditionState } from './state';
 import { tr } from './state';
 
+/** What the shared progress report (`gamification.progressBar.getValues`) answers. */
+type ProgressReportValues = { evaluation?: unknown; evaluationID?: unknown } | false | null;
+
 export interface InteractiveVideoEditionDevice {
     readonly i18n: { name: string };
     init(element: HTMLElement, previousData: unknown, path?: string): void;
@@ -270,7 +273,7 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
     }
 
     /** Read the whole form back into the document (does not validate). */
-    function collect(): InteractiveVideoDocumentV2 {
+    function collect(progressValues: ProgressReportValues): InteractiveVideoDocumentV2 {
         const doc = state.doc;
 
         // Flush the open body editor so its latest content is saved.
@@ -308,9 +311,6 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
             showResults: $('#ivShowResults').is(':checked'),
         };
 
-        const progressValues = edition?.gamification.progressBar?.getValues
-            ? edition.gamification.progressBar.getValues()
-            : null;
         doc.meta = doc.meta || { legacy: {} };
         doc.meta.legacy = doc.meta.legacy || {};
         doc.meta.legacy.scoreNIA = $('#ivScoreNIA').is(':checked');
@@ -384,7 +384,18 @@ export function createInteractiveVideoEditionDevice(): InteractiveVideoEditionDe
                 );
                 return false;
             }
-            const doc = collect();
+            // The shared progress report alerts and answers `false` when its
+            // identifier is too short; like every other iDevice, refuse the
+            // save instead of storing an unusable identifier.
+            let progressBarValues: ProgressReportValues = null;
+            if (
+                typeof $exeDevicesEdition !== 'undefined' &&
+                $exeDevicesEdition?.iDevice.gamification.progressBar?.getValues
+            ) {
+                progressBarValues = $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+                if (!progressBarValues) return false;
+            }
+            const doc = collect(progressBarValues);
             if (!doc.video.url) {
                 alertUser(tr('Please set a video source.'));
                 return false;

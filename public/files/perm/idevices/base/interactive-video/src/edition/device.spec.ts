@@ -430,13 +430,32 @@ describe('the Interactive Video edition device', () => {
             expect(doc.passScoreCustom).toBe(7);
         });
 
-        it('survives shared tabs that report nothing', () => {
+        it('survives a SCORM tab that reports nothing', () => {
             setSource(YOUTUBE_URL);
-            harness.values.progress = null;
             harness.stubs.scormGetValues.mockReturnValue(null);
             const doc = saved();
             expect(doc.scorm).toMatchObject({ enabled: false, weight: 100, repeatActivity: true });
-            expect(doc.meta.legacy).not.toHaveProperty('evaluation');
+        });
+
+        it('refuses to save when the progress report rejects its identifier', () => {
+            // The shared report alerts and answers `false` for an identifier
+            // shorter than 5 characters; every iDevice must then abort the save.
+            setSource(YOUTUBE_URL);
+            harness.stubs.progressGetValues.mockReturnValue(false);
+            expect(device.save()).toBe(false);
+        });
+
+        it('saves without the progress report fields when the report API is absent', () => {
+            setSource(YOUTUBE_URL);
+            const progressBar = $exeDevicesEdition!.iDevice.gamification.progressBar!;
+            const getValues = progressBar.getValues;
+            progressBar.getValues = undefined;
+            try {
+                const doc = saved();
+                expect(doc.meta.legacy).not.toHaveProperty('evaluation');
+            } finally {
+                progressBar.getValues = getValues;
+            }
         });
 
         it('saves custom-text overrides into doc.customTexts', () => {
