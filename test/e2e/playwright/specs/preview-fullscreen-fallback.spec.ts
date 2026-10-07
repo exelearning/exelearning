@@ -320,7 +320,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = true;
+            mgr.isServiceWorkerPreviewAvailable = () => true; // recomputed at click time
             mgr.refreshWithServiceWorker = async () => {};
             (window as any).open = () => null;
         });
@@ -354,7 +354,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = true;
+            mgr.isServiceWorkerPreviewAvailable = () => true; // recomputed at click time
             mgr.refreshWithServiceWorker = async () => {
                 throw new Error('Simulated SW refresh failure');
             };
@@ -394,7 +394,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = true;
+            mgr.isServiceWorkerPreviewAvailable = () => true; // recomputed at click time
             mgr.refreshWithServiceWorker = async () => {};
             (window as any).open = () => null;
         });
@@ -416,5 +416,143 @@ test.describe('Preview fullscreen fallback', () => {
         const slideIcon = page.locator('#preview-extract-button .small-icon');
         await expect(slideIcon).toHaveClass(/enlarge-icon/);
         await expect(slideIcon).not.toHaveClass(/external-link-icon/);
+    });
+
+    test('should not bring the panel back fullscreen after enlarge, pin and unpin', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Fullscreen Pin Unpin');
+
+        await page.goto(`/workarea?project=${uuid}`);
+        await waitForAppReady(page);
+
+        await page.click('#head-bottom-preview');
+        const panel = page.locator('#previewsidenav');
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+
+        await page.evaluate(() => {
+            const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
+            if (!mgr) throw new Error('PreviewPanelManager not found');
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
+            mgr._updateExtractButton();
+        });
+
+        await page.locator('#preview-extract-button').click();
+        await expect(panel).toHaveClass(/preview-fullscreen/);
+
+        await page.locator('#preview-pin-button').click();
+        await page.waitForFunction(
+            () => (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel()?.isPinned === true,
+            undefined,
+            { timeout: 5000 },
+        );
+        await expect(panel).not.toHaveClass(/preview-fullscreen/);
+        await expect(page.locator('#workarea')).toHaveAttribute('data-preview-fullscreen', 'false');
+
+        await page.locator('#preview-unpin-button').click();
+        await page.waitForFunction(
+            () => (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel()?.isPinned === false,
+            undefined,
+            { timeout: 5000 },
+        );
+
+        await expect(panel).toHaveClass(/active/);
+        await expect(panel).not.toHaveClass(/preview-fullscreen/);
+        await expect(page.locator('#workarea')).toHaveAttribute('data-preview-fullscreen', 'false');
+        await expect(page.locator('#preview-extract-button')).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    test('should open a new tab if the SW becomes available after the panel opened', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Fullscreen SW Becomes Available');
+
+        await page.goto(`/workarea?project=${uuid}`);
+        await waitForAppReady(page);
+
+        await page.click('#head-bottom-preview');
+        const panel = page.locator('#previewsidenav');
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+
+        // SW unavailable while the panel opens: the button offers "Enlarge preview"
+        await page.evaluate(() => {
+            const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
+            if (!mgr) throw new Error('PreviewPanelManager not found');
+            (window as any).__swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => (window as any).__swAvailable;
+            mgr._updateExtractButton();
+        });
+        const slideBtn = page.locator('#preview-extract-button');
+        await expect(slideBtn).toHaveAttribute('title', 'Enlarge preview');
+
+        // The SW becomes available afterwards; the button state is still stale
+        await page.evaluate(() => {
+            const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
+            (window as any).__swAvailable = true;
+            mgr.refreshWithServiceWorker = async () => {};
+            (window as any).__openCalls = [];
+            (window as any).open = (url: string) => {
+                (window as any).__openCalls.push(url);
+                return { closed: false };
+            };
+        });
+
+        await slideBtn.click();
+
+        const openCalls = await page.evaluate(() => (window as any).__openCalls);
+        expect(openCalls).toHaveLength(1);
+        expect(openCalls[0]).toContain('/viewer/index.html');
+
+        await expect(panel).not.toHaveClass(/preview-fullscreen/);
+        await expect(slideBtn).toHaveAttribute('aria-pressed', 'false');
+        // Button state was refreshed at click time
+        await expect(slideBtn).toHaveAttribute('title', 'Open in new tab');
+        await expect(slideBtn.locator('.small-icon')).toHaveClass(/external-link-icon/);
+    });
+
+    test('should restore the panel size on click even if the SW became available while enlarged', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Fullscreen Restore With SW');
+
+        await page.goto(`/workarea?project=${uuid}`);
+        await waitForAppReady(page);
+
+        await page.click('#head-bottom-preview');
+        const panel = page.locator('#previewsidenav');
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+
+        await page.evaluate(() => {
+            const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
+            if (!mgr) throw new Error('PreviewPanelManager not found');
+            (window as any).__swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => (window as any).__swAvailable;
+            mgr._updateExtractButton();
+        });
+
+        const slideBtn = page.locator('#preview-extract-button');
+        await slideBtn.click();
+        await expect(panel).toHaveClass(/preview-fullscreen/);
+        await expect(slideBtn).toHaveAttribute('title', 'Restore preview size');
+
+        await page.evaluate(() => {
+            (window as any).__swAvailable = true;
+            (window as any).__openCalls = [];
+            (window as any).open = (url: string) => {
+                (window as any).__openCalls.push(url);
+                return { closed: false };
+            };
+        });
+
+        await slideBtn.click();
+
+        await expect(panel).not.toHaveClass(/preview-fullscreen/);
+        expect(await page.evaluate(() => (window as any).__openCalls)).toHaveLength(0);
     });
 });

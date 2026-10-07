@@ -86,14 +86,24 @@ export default class PreviewPanelManager {
         this._popupWindow = null;
         this._clearPopupMonitor();
 
-        this.isFullscreen = false;
-        this.panel?.classList.remove('preview-fullscreen');
-        this._wasPinnedBeforeFullscreen = false;
-        this._updateExtractButtonAria();
+        this._clearFullscreenState();
 
         const workarea = document.getElementById('workarea');
         workarea?.setAttribute('data-preview-pinned', 'false');
-        workarea?.setAttribute('data-preview-fullscreen', 'false');
+    }
+
+    /**
+     * Clear all fullscreen state in one place: the flag, the panel class, the
+     * workarea data attribute, the "was pinned" memory and the extract button
+     * state. Shared by close(), pin() and resetToDefaultState() so that no
+     * transition can leave a stale fullscreen panel behind.
+     */
+    _clearFullscreenState() {
+        this.isFullscreen = false;
+        this._wasPinnedBeforeFullscreen = false;
+        this.panel?.classList.remove('preview-fullscreen');
+        document.getElementById('workarea')?.setAttribute('data-preview-fullscreen', 'false');
+        this._updateExtractButtonAria();
     }
 
     /**
@@ -742,14 +752,7 @@ export default class PreviewPanelManager {
     close() {
         if (this.isPinned) return; // Can't close when pinned
 
-        if (this.isFullscreen) {
-            this.panel?.classList.remove('preview-fullscreen');
-            this.isFullscreen = false;
-            this._wasPinnedBeforeFullscreen = false;
-            const workarea = document.getElementById('workarea');
-            workarea?.setAttribute('data-preview-fullscreen', 'false');
-            this._updateExtractButtonAria();
-        }
+        this._clearFullscreenState();
 
         this.isOpen = false;
         this.panel?.classList.remove('active');
@@ -763,6 +766,10 @@ export default class PreviewPanelManager {
      */
     async pin() {
         if (this.isPinned) return;
+
+        // Leaving the slide-out: drop any fullscreen state so unpinning later
+        // doesn't bring the panel back enlarged at 100vw
+        this._clearFullscreenState();
 
         // Close slide-out panel first
         this.panel?.classList.remove('active');
@@ -1482,8 +1489,14 @@ export default class PreviewPanelManager {
         try {
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
 
-            // Toggle fullscreen when SW is not available
-            if (!this._swAvailable) {
+            // Re-check SW availability at click time (it may have become available
+            // after the panel was opened) and refresh the button state
+            this._updateExtractButton();
+
+            // Toggle fullscreen when SW is not available. If the panel is already
+            // enlarged the button reads "Restore preview size", so a click must
+            // restore it even if the SW has become available in the meantime.
+            if (!this._swAvailable || this.isFullscreen) {
                 if (this.isPinned) {
                     // Pinned → always enter fullscreen slide-out
                     this._wasPinnedBeforeFullscreen = true;

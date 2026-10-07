@@ -727,6 +727,84 @@ describe('PreviewPanelManager', () => {
       expect(mockElements.workarea.getAttribute('data-preview-pinned')).toBe('false');
       expect(mockElements.previewsidenav.classList.contains('active')).toBe(true);
     });
+
+    it('should clear fullscreen state when pinning', async () => {
+      vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      manager.isOpen = true;
+      manager.toggleFullscreen();
+      manager._wasPinnedBeforeFullscreen = true;
+      expect(manager.isFullscreen).toBe(true);
+
+      await manager.pin();
+
+      expect(manager.isFullscreen).toBe(false);
+      expect(manager._wasPinnedBeforeFullscreen).toBe(false);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(false);
+      expect(mockElements.workarea.getAttribute('data-preview-fullscreen')).toBe('false');
+      expect(mockElements['preview-extract-button'].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('should not bring the panel back fullscreen after pin then unpin', async () => {
+      vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      manager.isOpen = true;
+      manager.toggleFullscreen();
+
+      await manager.pin();
+      manager.unpin();
+
+      expect(manager.isFullscreen).toBe(false);
+      expect(mockElements.previewsidenav.classList.contains('active')).toBe(true);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(false);
+      expect(mockElements.workarea.getAttribute('data-preview-fullscreen')).toBe('false');
+    });
+  });
+
+  describe('_clearFullscreenState', () => {
+    it('should reset flag, class, data attribute, pinned memory and aria', () => {
+      manager.toggleFullscreen();
+      manager._wasPinnedBeforeFullscreen = true;
+
+      manager._clearFullscreenState();
+
+      expect(manager.isFullscreen).toBe(false);
+      expect(manager._wasPinnedBeforeFullscreen).toBe(false);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(false);
+      expect(mockElements.workarea.getAttribute('data-preview-fullscreen')).toBe('false');
+      expect(mockElements['preview-extract-button'].getAttribute('aria-pressed')).toBe('false');
+      expect(mockElements['preview-pinned-extract-button'].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('should be used by close()', () => {
+      const spy = vi.spyOn(manager, '_clearFullscreenState');
+      manager.isOpen = true;
+      manager.toggleFullscreen();
+
+      manager.close();
+
+      expect(spy).toHaveBeenCalled();
+      expect(manager.isFullscreen).toBe(false);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(false);
+    });
+
+    it('should be used by resetToDefaultState()', () => {
+      const spy = vi.spyOn(manager, '_clearFullscreenState');
+
+      manager.resetToDefaultState();
+
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should be used by pin()', async () => {
+      vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      const spy = vi.spyOn(manager, '_clearFullscreenState');
+
+      await manager.pin();
+
+      expect(spy).toHaveBeenCalled();
+    });
   });
 
   describe('refresh', () => {
@@ -762,7 +840,7 @@ describe('PreviewPanelManager', () => {
 
   describe('extractToNewTab', () => {
     it('should open viewer URL in new tab when SW is available', async () => {
-      manager._swAvailable = true;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
@@ -777,7 +855,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should store popup window reference and start monitor', async () => {
-      manager._swAvailable = true;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockPopup = { closed: false };
@@ -791,7 +869,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should not store popup reference when popup is blocked', async () => {
-      manager._swAvailable = true;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
       global.open = vi.fn(() => null);
 
@@ -809,7 +887,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should fallback to link click if popup is blocked', async () => {
-      manager._swAvailable = true;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
       global.open = vi.fn(() => null);
 
@@ -827,7 +905,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should toggle fullscreen when SW is not available', async () => {
-      manager._swAvailable = false;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
 
       const mockOpen = vi.fn();
       global.open = mockOpen;
@@ -840,7 +918,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should unpin and open fullscreen when pinned and SW not available', async () => {
-      manager._swAvailable = false;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
       manager.isPinned = true;
       manager.unpin = vi.fn(() => { manager.isPinned = false; });
       manager.toggleFullscreen = vi.fn(() => { manager.isFullscreen = true; });
@@ -853,7 +931,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should exit fullscreen and restore pinned when SW not available', async () => {
-      manager._swAvailable = false;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
       manager.isFullscreen = true;
       manager._wasPinnedBeforeFullscreen = true;
       manager.toggleFullscreen = vi.fn(() => { manager.isFullscreen = false; });
@@ -867,7 +945,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should exit fullscreen without restoring pinned when was not pinned before', async () => {
-      manager._swAvailable = false;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
       manager.isFullscreen = true;
       manager._wasPinnedBeforeFullscreen = false;
       manager.toggleFullscreen = vi.fn(() => { manager.isFullscreen = false; });
@@ -879,8 +957,64 @@ describe('PreviewPanelManager', () => {
       expect(manager.pin).not.toHaveBeenCalled();
     });
 
-    it('should derive basePath from pathname for subdirectory deployments', async () => {
+    it('should open a new tab if the SW becomes available after the panel opened', async () => {
+      const swAvailable = vi.fn().mockReturnValue(false);
+      manager.isServiceWorkerPreviewAvailable = swAvailable;
+      manager._updateExtractButton();
+      expect(manager._swAvailable).toBe(false);
+
+      swAvailable.mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      await manager.extractToNewTab();
+
+      expect(mockOpen).toHaveBeenCalledWith(
+        expect.stringContaining('/viewer/index.html'),
+        '_blank'
+      );
+      expect(manager.isFullscreen).toBe(false);
+    });
+
+    it('should refresh the cached state and button when clicked', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+      global.open = vi.fn(() => ({ focus: vi.fn() }));
+      manager._swAvailable = false;
+
+      await manager.extractToNewTab();
+
+      expect(manager._swAvailable).toBe(true);
+      expect(mockElements['preview-extract-button'].title).toBe('Open in new tab');
+    });
+
+    it('should enlarge if the SW disappeared after the panel opened', async () => {
       manager._swAvailable = true;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
+
+      await manager.extractToNewTab();
+
+      expect(mockOpen).not.toHaveBeenCalled();
+      expect(manager.isFullscreen).toBe(true);
+    });
+
+    it('should restore from fullscreen even if the SW became available meanwhile', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.toggleFullscreen();
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
+
+      await manager.extractToNewTab();
+
+      expect(mockOpen).not.toHaveBeenCalled();
+      expect(manager.isFullscreen).toBe(false);
+    });
+
+    it('should derive basePath from pathname for subdirectory deployments', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
@@ -905,7 +1039,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should handle workarea.html pathname correctly', async () => {
-      manager._swAvailable = true;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
@@ -930,7 +1064,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should handle root workarea path correctly', async () => {
-      manager._swAvailable = true;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
@@ -955,7 +1089,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should handle pathname with trailing slash correctly', async () => {
-      manager._swAvailable = true;
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
