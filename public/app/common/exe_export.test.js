@@ -234,7 +234,7 @@ describe('exe_export.js', () => {
 
     document.body.append(jsonNode, jsonNodeTwo, jsNode);
 
-    const spy = vi.spyOn(window.$exeExport, 'initJsonIdeviceInterval');
+    const spy = vi.spyOn(window.$exeExport, 'initJsonIdeviceInterval').mockImplementation(() => {});
 
     window.$exeExport.initJsonIdevices();
 

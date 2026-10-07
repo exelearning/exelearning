@@ -15,6 +15,11 @@ describe('ModalPrintPreview', () => {
         overlayElement.innerHTML = `
             <div class="print-preview-header">
                 <div class="print-preview-title">Print preview</div>
+                <div class="print-preview-options">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="printOptLinkUrls" checked>
+                    </div>
+                </div>
                 <div class="print-preview-actions">
                     <button class="print-preview-print-btn"></button>
                     <button class="print-preview-close-btn"></button>
@@ -98,6 +103,7 @@ describe('ModalPrintPreview', () => {
         it('should initialize blobUrl as null', () => {
             expect(modal.blobUrl).toBeNull();
         });
+
     });
 
     describe('behaviour', () => {
@@ -120,6 +126,40 @@ describe('ModalPrintPreview', () => {
         });
     });
 
+    describe('link URLs option', () => {
+        it('regenerates the visible preview when the checkbox changes', async () => {
+            const genSpy = vi.spyOn(modal, 'generatePreview').mockResolvedValue();
+            modal.behaviour();
+            modal.overlay.setAttribute('data-visible', 'true');
+
+            const checkbox = modal.overlay.querySelector('#printOptLinkUrls');
+            checkbox.checked = false;
+            checkbox.dispatchEvent(new Event('change'));
+
+            expect(genSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not regenerate when the overlay is hidden', () => {
+            const genSpy = vi.spyOn(modal, 'generatePreview').mockResolvedValue();
+            modal.behaviour();
+
+            modal.overlay.querySelector('#printOptLinkUrls').dispatchEvent(new Event('change'));
+
+            expect(genSpy).not.toHaveBeenCalled();
+        });
+
+        it('shows the error when regeneration fails', async () => {
+            vi.spyOn(modal, 'generatePreview').mockRejectedValue(new Error('boom'));
+            const errSpy = vi.spyOn(modal, 'showError');
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            modal.behaviour();
+            modal.overlay.setAttribute('data-visible', 'true');
+
+            modal.overlay.querySelector('#printOptLinkUrls').dispatchEvent(new Event('change'));
+            await vi.waitFor(() => expect(errSpy).toHaveBeenCalledWith('boom'));
+        });
+    });
+
     describe('isVisible', () => {
         it('should return true when data-visible is true', () => {
             overlayElement.setAttribute('data-visible', 'true');
@@ -129,6 +169,30 @@ describe('ModalPrintPreview', () => {
         it('should return false when data-visible is false', () => {
             overlayElement.setAttribute('data-visible', 'false');
             expect(modal.isVisible()).toBe(false);
+        });
+    });
+
+    describe('getPrintOptions', () => {
+        it('should return the link URLs checkbox state (checked by default)', () => {
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
+        });
+
+        it('should reflect unchecked link URLs', () => {
+            document.getElementById('printOptLinkUrls').checked = false;
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: false });
+        });
+
+        it('should default to showing link URLs when the checkbox is missing', () => {
+            document.getElementById('printOptLinkUrls').remove();
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
+        });
+    });
+
+    describe('buildPreviewOptions', () => {
+        it('should include print options from checkboxes', () => {
+            const options = modal.buildPreviewOptions();
+            expect(options.showLinkUrls).toBe(true);
+            expect(options.baseUrl).toBe('http://localhost:8080');
         });
     });
 
@@ -240,27 +304,33 @@ describe('ModalPrintPreview', () => {
             expect(calls.length).toBeGreaterThan(0);
             expect(calls[0][3]).toBe(assetManager);
         });
+
+        it('should pass print options to generatePrintPreview', async () => {
+            document.getElementById('printOptLinkUrls').checked = false;
+
+            await modal.generatePreview();
+
+            const calls = window.generatePrintPreview.mock.calls;
+            const optionsArg = calls[0][2];
+            expect(optionsArg.showLinkUrls).toBe(false);
+        });
     });
 
     describe('print', () => {
-        it('should call iframe contentWindow.print()', () => {
+        it('prints the preview iframe itself, so boxes collapsed in the preview stay collapsed', () => {
             const mockPrint = vi.fn();
-            modal.iframe = {
-                contentWindow: { print: mockPrint },
-                classList: { toggle: vi.fn(), add: vi.fn() },
-                src: '',
-            };
+            modal.iframe = { contentWindow: { print: mockPrint } };
+            global.window.open = vi.fn();
 
             modal.print();
 
-            expect(mockPrint).toHaveBeenCalled();
+            expect(mockPrint).toHaveBeenCalledTimes(1);
+            expect(window.open).not.toHaveBeenCalled();
+            expect(window.generatePrintPreview).not.toHaveBeenCalled();
         });
 
-        it('should not throw when iframe has no contentWindow', () => {
-            modal.iframe = {
-                contentWindow: null,
-                classList: { toggle: vi.fn(), add: vi.fn() },
-            };
+        it('does not throw when the iframe has no contentWindow', () => {
+            modal.iframe = { contentWindow: null };
 
             expect(() => modal.print()).not.toThrow();
         });

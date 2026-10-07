@@ -25,6 +25,16 @@ export default class ModalPrintPreview {
             this.print();
         });
 
+        // Link URLs option: regenerate so the preview reflects it
+        this.overlay.querySelector('#printOptLinkUrls')?.addEventListener('change', () => {
+            if (!this.isVisible()) return;
+            this.showLoading(true);
+            this.generatePreview().catch((error) => {
+                console.error('[PrintPreview] Error:', error);
+                this.showError(error.message || 'An error occurred');
+            });
+        });
+
         // Close button
         this.closeBtn?.addEventListener('click', () => {
             this.close();
@@ -43,6 +53,16 @@ export default class ModalPrintPreview {
      */
     isVisible() {
         return this.overlay?.getAttribute('data-visible') === 'true';
+    }
+
+    /**
+     * Read the current state of the print option checkbox.
+     * Returns the default if the checkbox doesn't exist in the DOM.
+     * @returns {{ showLinkUrls: boolean }}
+     */
+    getPrintOptions() {
+        const linkUrls = this.overlay?.querySelector('#printOptLinkUrls');
+        return { showLinkUrls: linkUrls ? linkUrls.checked : true };
     }
 
     /**
@@ -77,6 +97,21 @@ export default class ModalPrintPreview {
     }
 
     /**
+     * Build the options object for generatePrintPreview from current config.
+     * @returns {object}
+     */
+    buildPreviewOptions() {
+        return {
+            baseUrl: window.eXeLearning?.config?.isStaticMode
+                ? window.location.origin
+                : (window.eXeLearning?.config?.baseURL || window.location.origin),
+            basePath: window.eXeLearning?.config?.basePath || '',
+            version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
+            ...this.getPrintOptions(),
+        };
+    }
+
+    /**
      * Generate and load the print preview
      */
     async generatePreview() {
@@ -88,14 +123,6 @@ export default class ModalPrintPreview {
         const yjsBridge = eXeLearning.app.project?._yjsBridge;
         if (!yjsBridge?.documentManager) {
             throw new Error(_('Document manager not available'));
-        }
-
-        console.log('[ModalPrintPreview] yjsBridge available:', !!yjsBridge);
-        console.log('[ModalPrintPreview] AssetManager available:', !!yjsBridge?.assetManager);
-        if (yjsBridge?.assetManager) {
-             console.log('[ModalPrintPreview] AssetManager details:', yjsBridge.assetManager);
-        } else {
-             console.warn('[ModalPrintPreview] AssetManager is MISSING in yjsBridge');
         }
 
         // Get generatePrintPreview function
@@ -110,14 +137,7 @@ export default class ModalPrintPreview {
         const result = await generatePrintPreviewFn(
             yjsBridge.documentManager,
             yjsBridge.resourceFetcher || null,
-            {
-                // Static mode requires absolute URLs for Blob compatibility
-                baseUrl: window.eXeLearning?.config?.isStaticMode 
-                    ? window.location.origin 
-                    : (window.eXeLearning?.config?.baseURL || window.location.origin),
-                basePath: window.eXeLearning?.config?.basePath || '',
-                version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
-            },
+            this.buildPreviewOptions(),
             yjsBridge.assetManager || null
         );
 
@@ -143,12 +163,11 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Print the preview content
+     * Print the preview iframe itself, so what the user changed in the
+     * preview (e.g. collapsed boxes) is what gets printed.
      */
     print() {
-        if (this.iframe?.contentWindow) {
-            this.iframe.contentWindow.print();
-        }
+        this.iframe?.contentWindow?.print();
     }
 
     /**

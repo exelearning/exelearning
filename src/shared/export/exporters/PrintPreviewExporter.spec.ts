@@ -297,6 +297,77 @@ describe('PrintPreviewExporter', () => {
         });
     });
 
+    describe('print options', () => {
+        it('should not inject page numbers or a watermark (browser print headers own them)', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).not.toContain('@bottom-center');
+            expect(result.html).not.toContain('counter(page)');
+            expect(result.html).not.toContain('@bottom-right');
+            expect(result.html).not.toContain('Created with eXeLearning');
+        });
+
+        it('should include link URL CSS by default', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('a[href^="http"]::after');
+            expect(result.html).toContain('content: " [" attr(href) "]"');
+        });
+
+        it('should omit link URL CSS when showLinkUrls is false', async () => {
+            const result = await exporter.generatePreview({ showLinkUrls: false });
+            expect(result.html).not.toContain('a[href^="http"]::after');
+            expect(result.html).not.toContain('content: " [" attr(href) "]"');
+        });
+
+        it('should apply link URL CSS on screen too, so the preview shows what will print', async () => {
+            const result = await exporter.generatePreview();
+            const style = result.html.slice(result.html.indexOf('/* PREVIEW MODE (Screen) */'));
+            const before = style.slice(0, style.indexOf('a[href^="http"]::after'));
+            // Balanced braces before the rule = top level, not nested inside @media print
+            expect(before.split('{').length).toBe(before.split('}').length);
+        });
+
+        it('should not append the URL again to the external iframe source link', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.external-iframe-src a::after { content: none; }');
+        });
+
+        it('should include external-iframe-src display rule when link URLs are on', async () => {
+            const result = await exporter.generatePreview({ showLinkUrls: true });
+            expect(result.html).toContain('.external-iframe-src');
+        });
+
+        it('should hide toggle content buttons in print CSS', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.box-toggle { display: none !important; }');
+        });
+
+        it('should hide game toolbar icons in print (background images do not print by default)', async () => {
+            const result = await exporter.generatePreview();
+            const rule = '[class*="exeQuextIcons"], .SopaIcons, .IDFPIcons { display: none !important; }';
+            const at = result.html.indexOf(rule);
+            expect(at).toBeGreaterThan(-1);
+            const before = result.html.slice(result.html.indexOf('/* PREVIEW MODE (Screen) */'), at);
+            // Nested inside @media print, so the icons stay usable on screen
+            expect(before.split('{').length).toBeGreaterThan(before.split('}').length);
+        });
+
+        it('should hide teacher-only elements in print CSS', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.teacher-only { display: none !important; }');
+        });
+
+        it('should hide map iDevice image overlays in print CSS', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.mapa-IDevice img.js-hidden { display: none !important; }');
+        });
+
+        it('should style links for PDF interactivity in print CSS', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('a[href]');
+            expect(result.html).toContain('text-decoration: underline');
+        });
+    });
+
     describe('versioned paths', () => {
         it('should use versioned paths for resources', async () => {
             const result = await exporter.generatePreview({

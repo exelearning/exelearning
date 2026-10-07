@@ -51,6 +51,13 @@ export interface PrintPreviewOptions {
      * If true, enables auto-print mode (injects print scripts and onload handler).
      */
     printMode?: boolean;
+    /**
+     * If true, shows URLs inline after external links in printed output.
+     * E.g., "Cedec" becomes "Cedec [https://cedec.intef.es]".
+     * Applied on screen as well, so the preview matches the printed output.
+     * Defaults to true.
+     */
+    showLinkUrls?: boolean;
 }
 
 /**
@@ -215,7 +222,7 @@ export class PrintPreviewExporter {
             };
 
             const logoUrl = getPath('app/common/exe_powered_logo/exe_powered_logo.png');
-            html = this.injectPreviewStyles(html, logoUrl);
+            html = this.injectPreviewStyles(html, logoUrl, options);
 
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
@@ -261,7 +268,7 @@ export class PrintPreviewExporter {
     /**
      * Inject styles to force content to fit within the page width
      */
-    private injectPreviewStyles(html: string, logoUrl?: string): string {
+    private injectPreviewStyles(html: string, logoUrl?: string, options: PrintPreviewOptions = {}): string {
         const logoCss = logoUrl
             ? `
 /* Fix for eXe logo 404 */
@@ -270,9 +277,35 @@ export class PrintPreviewExporter {
 }`
             : '';
 
+        const showLinkUrls = options.showLinkUrls !== false;
+
+        // Build conditional link URL display CSS
+        const linkUrlsCss = showLinkUrls
+            ? `
+/* Show URLs inline after external links (screen and print, so the preview matches) */
+a[href^="http"]::after,
+a[href^="https"]::after {
+    content: " [" attr(href) "]";
+    font-size: 0.85em;
+    word-break: break-all;
+    color: #666;
+}
+/* Don't show URL for links whose text IS the URL */
+a[href^="http"]:-moz-only-whitespace::after,
+a[href^="https"]:-moz-only-whitespace::after { content: none; }
+/* Don't show URL for image-only links */
+a[href^="http"]:has(img:only-child)::after,
+a[href^="https"]:has(img:only-child)::after { content: none; }
+/* Show external iframe source URLs in print */
+.external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }
+/* Its link text already is the URL */
+.external-iframe-src a::after { content: none; }`
+            : '';
+
         const styles = `
 <style>
 /* PREVIEW MODE (Screen) */
+${linkUrlsCss}
 /* Create space around the document in preview mode */
 body {
     padding: 40px;
@@ -382,6 +415,25 @@ figure img {
         page-break-inside: avoid;
         break-inside: avoid;
         border-bottom: none;
+    }
+
+    /* Hide toggle content buttons — these are interactive-only controls */
+    .box-toggle { display: none !important; }
+
+    /* Hide game toolbar/score icons: they are background images, which browsers
+       omit by default when printing, leaving empty boxes */
+    [class*="exeQuextIcons"], .SopaIcons, .IDFPIcons { display: none !important; }
+
+    /* Hide teacher-only mode indicators */
+    .teacher-only { display: none !important; }
+
+    /* Hide map iDevice image overlays that are js-hidden */
+    .mapa-IDevice img.js-hidden { display: none !important; }
+
+    /* Ensure links are styled for PDF interactivity */
+    a[href] {
+        color: inherit;
+        text-decoration: underline;
     }
 }
 
