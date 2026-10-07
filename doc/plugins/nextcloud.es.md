@@ -15,7 +15,7 @@ comparta sus materiales en la nube del centro.
 
 ## Requisitos
 
-- Nextcloud 33.
+- Nextcloud 31, 32 o 33. Con la versión 4.0.5 del plugin, solo Nextcloud 33.
 - Un navegador actual (la vista previa usa *Service Workers*).
 
 ## Instalación

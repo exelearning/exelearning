@@ -15,7 +15,7 @@ material in the school cloud.
 
 ## Requirements
 
-- Nextcloud 33.
+- Nextcloud 31, 32 or 33. With plugin version 4.0.5, Nextcloud 33 only.
 - An up-to-date browser (the preview uses *Service Workers*).
 
 ## Installation
