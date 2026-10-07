@@ -234,7 +234,7 @@ describe('exe_export.js', () => {
 
     document.body.append(jsonNode, jsonNodeTwo, jsNode);
 
-    const spy = vi.spyOn(window.$exeExport, 'initJsonIdeviceInterval');
+    const spy = vi.spyOn(window.$exeExport, 'initJsonIdeviceInterval').mockImplementation(() => {});
 
     window.$exeExport.initJsonIdevices();
 
@@ -1461,6 +1461,36 @@ describe('exe_export.js', () => {
       window.dispatchEvent(new Event('pagehide'));
 
       expect(window.unloadPage).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('initJsonIdeviceInterval', () => {
+    it('stops polling and warns when the iDevice script never loads', () => {
+      vi.useFakeTimers();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const initSpy = vi.spyOn(window.$exeExport, 'initJsonIdevice');
+      const { delayLoadingIdevicesJson: delay, maxLoadingIdevicesJsonAttempts: max } = window.$exeExport;
+
+      window.$exeExport.initJsonIdeviceInterval('never-loaded');
+      vi.advanceTimersByTime(delay * max * 2);
+
+      expect(initSpy).toHaveBeenCalledTimes(max);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('never-loaded'));
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps polling until the iDevice script loads', () => {
+      vi.useFakeTimers();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const initSpy = vi.spyOn(window.$exeExport, 'initJsonIdevice').mockReturnValueOnce(false).mockReturnValue(undefined);
+      const delay = window.$exeExport.delayLoadingIdevicesJson;
+
+      window.$exeExport.initJsonIdeviceInterval('slow');
+      vi.advanceTimersByTime(delay * 2);
+
+      expect(initSpy).toHaveBeenCalledTimes(2);
+      expect(warnSpy).not.toHaveBeenCalled();
+      clearInterval(window['eXe_idevice_init_interval_slow']);
     });
   });
 
