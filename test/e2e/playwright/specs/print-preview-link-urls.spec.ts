@@ -47,9 +47,11 @@ test.describe('Print preview: link URLs option', () => {
 
         const link = page.frameLocator('.print-preview-iframe').locator('a[href="https://cedec.intef.es/"]');
         const afterContent = () => link.evaluate(a => getComputedStyle(a, '::after').content);
+        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
 
         await expect(link).toBeVisible({ timeout: 30000 });
-        await expect.poll(afterContent).toBe('" [https://cedec.intef.es/]"');
+        await expect.poll(afterContent).toMatch(showsUrl);
         await overlay.screenshot({ path: testInfo.outputPath('print-preview-urls-on.png') });
 
         await page.locator('#printOptLinkUrls').uncheck();
@@ -57,6 +59,6 @@ test.describe('Print preview: link URLs option', () => {
         await overlay.screenshot({ path: testInfo.outputPath('print-preview-urls-off.png') });
 
         await page.locator('#printOptLinkUrls').check();
-        await expect.poll(afterContent, { timeout: 30000 }).toBe('" [https://cedec.intef.es/]"');
+        await expect.poll(afterContent, { timeout: 30000 }).toMatch(showsUrl);
     });
 });
