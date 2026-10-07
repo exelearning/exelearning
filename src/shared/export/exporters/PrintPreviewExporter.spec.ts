@@ -341,6 +341,16 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('.box-toggle { display: none !important; }');
         });
 
+        it('should hide game toolbar icons in print (background images do not print by default)', async () => {
+            const result = await exporter.generatePreview();
+            const rule = '[class*="exeQuextIcons"], .SopaIcons, .IDFPIcons { display: none !important; }';
+            const at = result.html.indexOf(rule);
+            expect(at).toBeGreaterThan(-1);
+            const before = result.html.slice(result.html.indexOf('/* PREVIEW MODE (Screen) */'), at);
+            // Nested inside @media print, so the icons stay usable on screen
+            expect(before.split('{').length).toBeGreaterThan(before.split('}').length);
+        });
+
         it('should hide teacher-only elements in print CSS', async () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('.teacher-only { display: none !important; }');

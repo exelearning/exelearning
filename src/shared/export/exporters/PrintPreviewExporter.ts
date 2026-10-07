@@ -420,6 +420,10 @@ figure img {
     /* Hide toggle content buttons — these are interactive-only controls */
     .box-toggle { display: none !important; }
 
+    /* Hide game toolbar/score icons: they are background images, which browsers
+       omit by default when printing, leaving empty boxes */
+    [class*="exeQuextIcons"], .SopaIcons, .IDFPIcons { display: none !important; }
+
     /* Hide teacher-only mode indicators */
     .teacher-only { display: none !important; }
 
