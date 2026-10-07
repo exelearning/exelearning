@@ -33,6 +33,22 @@ nav:
   - Home: index.md
   - Overview: overview.md
   - Install: install.md
+  - Plugins:
+      - Overview: plugins/index.md
+      - Moodle: plugins/moodle.md
+      - Nextcloud: plugins/nextcloud.md
+      - WordPress: plugins/wordpress.md
+      - Omeka S: plugins/omeka-s.md
+      - Google Drive: plugins/google-drive.md
+      - Printable Manual: plugins/manual.md
+      - Español:
+          - Introducción: plugins/index.es.md
+          - Moodle: plugins/moodle.es.md
+          - Nextcloud: plugins/nextcloud.es.md
+          - WordPress: plugins/wordpress.es.md
+          - Omeka S: plugins/omeka-s.es.md
+          - Google Drive: plugins/google-drive.es.md
+          - Manual imprimible: plugins/manual.es.md
   - Profile Avatars: profile-avatars.md
   - Deployment: deployment.md
   - High Availability: high-availability.md
@@ -91,6 +107,8 @@ plugins:
   - search
 markdown_extensions:
   - admonition
+  - attr_list
+  - def_list
   - toc:
       permalink: true
   - pymdownx.highlight:
