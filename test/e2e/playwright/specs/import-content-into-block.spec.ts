@@ -12,7 +12,7 @@ import {
 } from '../helpers/workarea-helpers';
 
 /**
- * E2E Tests for importing a .idevice into an EXISTING block ("Import content"
+ * E2E Tests for importing a .idevice into an EXISTING block ("Import iDevice"
  * box menu item).
  *
  * The pre-existing flows (file manager modal / #local-ode-file-upload, tested in
@@ -24,17 +24,17 @@ import {
 
 const FIXTURE_IDEVICE = path.join(process.cwd(), 'test/fixtures/idevice-mkg5tfoo-i0k5qzyvx.idevice');
 
-test.describe('Import content into an existing block (.idevice)', () => {
+test.describe('Import iDevice into an existing block (.idevice)', () => {
     test.beforeAll(() => {
         if (!fs.existsSync(FIXTURE_IDEVICE)) {
             throw new Error(`Fixture file not found: ${FIXTURE_IDEVICE}`);
         }
     });
 
-    test('the block actions menu offers "Import content"', async ({ authenticatedPage, createProject }) => {
+    test('the block actions menu offers "Import iDevice"', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
-        const projectUuid = await createProject(page, 'Import Content Menu Test');
+        const projectUuid = await createProject(page, 'Import iDevice Menu Test');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
         await selectPageByIndex(page, 0);
@@ -65,7 +65,7 @@ test.describe('Import content into an existing block (.idevice)', () => {
         const page = authenticatedPage;
 
         // 1. New project, first page, one text iDevice inside one block.
-        const projectUuid = await createProject(page, 'Import Content Into Block Test');
+        const projectUuid = await createProject(page, 'Import iDevice Into Block Test');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
         await selectPageByIndex(page, 0);

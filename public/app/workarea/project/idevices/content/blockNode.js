@@ -1062,7 +1062,7 @@ export default class IdeviceBlockNode {
             </button>
             <ul class="dropdown-menu button-action-block exe-advanced" aria-labelledby="dropdownMenuButton${id}">
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-properties${id}"><span class="small-icon settings-icon-green"></span>${_('Box properties')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-import-idevice${id}"><span class="small-icon import-icon-green"></span>${_('Import content')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-import-idevice${id}"><span class="small-icon import-icon-green"></span>${_('Import iDevice')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone box')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="small-icon move-icon-green"></span>${_('Move to page')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="small-icon download-icon-green"></span>${_('Export box')}</button></li>
@@ -1498,7 +1498,7 @@ export default class IdeviceBlockNode {
             }
             await eXeLearning.app.project.idevices.loadApiIdevicesInPage(true);
         } catch (error) {
-            console.error('[BlockNode] Import content failed:', error);
+            console.error('[BlockNode] Import iDevice failed:', error);
             eXeLearning.app.modals.alert.show({
                 title: _('Import error'),
                 body:

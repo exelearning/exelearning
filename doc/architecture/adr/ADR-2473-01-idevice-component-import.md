@@ -1,6 +1,6 @@
 ---
 id: ADR-2473-01
-title: Import single iDevice components (.idevice files) into an existing block
+title: Import single iDevice content (.idevice files) into an existing block
 status: Proposed
 date: 2026-09-27
 tracking_issue: 2473
@@ -17,7 +17,7 @@ ai_assistance:
   model: "GLM-5.3-Flash"
 ---
 
-# ADR-2473-01: Import single iDevice components (.idevice files) into an existing block
+# ADR-2473-01: Import single iDevice content (.idevice files) into an existing block
 
 ## Context
 
@@ -44,13 +44,7 @@ through `IdeviceBlockNode.importIdeviceFileIntoBlock` and a dedicated "Import
 content" button (`addBehaviourImportIdeviceButton`) on the block's action menu
 (PR #2474).
 
-The button is labelled **"Import content"**, not "Import iDevice", even though
-the file picker is restricted to `.idevice` files. eXeLearning already
-overloads the term "iDevice" for two different concepts: a block/box container
-in the page, and a JavaScript component type. "Import content" was chosen
-specifically to avoid implying that this action imports an iDevice-as-block,
-and to leave room for a future, separate action that imports
-iDevices-as-components without a naming clash (PR #2474 discussion).
+The button is labelled **"Import iDevice"**
 
 `ComponentImporter` unzips untrusted, user-supplied ZIP data
 (`fflate.unzipSync`) and must not let a hostile archive exhaust memory. The
@@ -353,11 +347,9 @@ array, following the same structural conventions already used by
   component's dedicated `properties` Y.Map, matching the full-page import
   path, so a re-imported `.idevice` does not silently lose them (issue
   #1991).
-- **UI label**: the box action menu entry reads "Import content" rather than
-  "Import iDevice", despite only accepting `.idevice` files, to avoid the two
-  existing meanings of "iDevice" (block container vs. JS component type)
-  colliding in the same menu, and to leave the "Import iDevice" wording free
-  for a possible future, distinct action.
+- **UI entry point**: the block's action menu exposes an "Import iDevice"
+  entry that opens a file picker restricted to `.idevice` files and imports
+  the selected file into that block.
 - **Error reporting**: every failure path returns a specific, user-facing
   `{ success: false, error }` result (bad extension, oversized file, invalid
   ZIP, missing `content.xml`, malformed XML, missing marker, missing page,
@@ -443,7 +435,7 @@ array, following the same structural conventions already used by
 - **No per-session / per-document cumulative budget**: every limit discussed
   in this ADR, on both the `ComponentImporter` and `importPolicy.ts` side, is
   enforced per individual import call, not across the lifetime of an editing
-  session. Nothing stops a user from invoking "Import content" repeatedly on
+  session. Nothing stops a user from invoking "Import iDevice" repeatedly on
   the same open, Yjs-synced document, each import staying under the per-call
   cap but the cumulative total growing unbounded over the session. Because
   the imported content is replicated to every connected collaborator through
@@ -495,14 +487,11 @@ array, following the same structural conventions already used by
   that the fixture's image asset is resolved and fully painted
   (`img.complete && img.naturalWidth > 0`), proving asset extraction and
   rendering ran end-to-end for this flow. A second test asserts that the
-  "Import content" menu item is genuinely visible to a user.
-- CI: PR #2474's Codecov report shows all modified and coverable lines
-  covered by tests, with project coverage moving from 92.77 % to 92.78 %
-  (+141 lines, +137 hits) and all tests passing.
+  "Import iDevice" menu item is genuinely visible to a user.
 - Manual: tested by `@cristinavaldera` against the deployed preview
   (`https://2473-add-import-content-idev.exelearning.pages.dev`), confirming
   components import directly into the target box without creating an extra
-  one; the only feedback was the button-label question addressed above.
+  one.
 - Not yet covered (gap identified while writing this ADR): a test asserting
   that the local fallback constants (`MAX_COMPONENT_FILE_BYTES`,
   `MAX_COMPONENT_UNCOMPRESSED_BYTES`) stay numerically equal to
@@ -525,7 +514,7 @@ array, following the same structural conventions already used by
   to the corresponding fields of `COMPONENT_IMPORT_LIMITS`, so the
   degraded-mode fallback cannot silently diverge from the shared tier.
 - Investigate a per-session or per-document cumulative import budget for
-  repeatable, in-place actions like "Import content" (as opposed to the
+  repeatable, in-place actions like "Import iDevice" (as opposed to the
   current per-call-only limits). Because imported content is replicated to
   every connected collaborator via Yjs sync, repeated imports today have no
   ceiling on how much data one editing session can push into a shared
@@ -553,7 +542,7 @@ array, following the same structural conventions already used by
   `IdeviceBlockNode.importIdeviceFileIntoBlock`,
   `addBehaviourImportIdeviceButton`.
 - `public/app/workarea/project/idevices/content/blockNode.test.js` — unit
-  tests for the "Import content" menu action and the block-level import flow.
+  tests for the "Import iDevice" menu action and the block-level import flow.
 - `src/shared/import/importPolicy.ts` — `COMPONENT_IMPORT_LIMITS`,
   `CONSERVATIVE_ZIP_LIMITS`, `DESKTOP_ZIP_LIMITS`, `getZipLimitsForRuntime`,
   `validateZipLimits`, `assertInspectionWithinLimits`, `ZipLimitError`.
@@ -566,7 +555,7 @@ array, following the same structural conventions already used by
 - `public/libs/fflate/fflate.umd.js` — the vendored fflate build whose
   `unzipSync` filter contract the importer relies on.
 - `test/e2e/import-content-into-block.spec.ts` — Playwright end-to-end
-  coverage of the "Import content" flow.
+  coverage of the "Import iDevice" flow.
 
 **Tracking:**
 

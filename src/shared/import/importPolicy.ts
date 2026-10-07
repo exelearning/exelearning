@@ -89,7 +89,7 @@ export const DESKTOP_CONFIRM_ENTRY_BYTES: number = CONSERVATIVE_ZIP_LIMITS.maxEn
  * Component-scoped limits for .idevice/.block import (`ComponentImporter`).
  *
  * A per-component budget is NOT a per-project budget (ADR-2473-01): "Import
- * content" is a repeatable, per-click action inside an already-open,
+ * iDevice" is a repeatable, per-click action inside an already-open,
  * collaboratively synced Yjs document, unlike the once-per-session
  * whole-project import. The cumulative cap therefore keeps the historical
  * component value (200 MiB) instead of inheriting the project tiers above,

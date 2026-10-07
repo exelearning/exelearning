@@ -1581,7 +1581,7 @@ export async function importComponent(page: Page, filePath: string): Promise<voi
 
 /**
  * Import a .idevice file into an existing block via the block's actions menu
- * ("Import content"). Mirrors the user flow: open the block dropdown, click
+ * ("Import iDevice"). Mirrors the user flow: open the block dropdown, click
  * the menu item, and answer the file picker created on the fly by
  * addBehaviourImportIdeviceButton() through Playwright's filechooser event.
  *

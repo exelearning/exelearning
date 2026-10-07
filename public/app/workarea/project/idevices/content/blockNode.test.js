@@ -3940,7 +3940,7 @@ describe('IdeviceBlockNode', () => {
             await block.importIdeviceFileIntoBlock(makeFile());
 
             expect(errorSpy).toHaveBeenCalledWith(
-                '[BlockNode] Import content failed:',
+                '[BlockNode] Import iDevice failed:',
                 expect.objectContaining({ message: 'boom' }),
             );
             errorSpy.mockRestore();
