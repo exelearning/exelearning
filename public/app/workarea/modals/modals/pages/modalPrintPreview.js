@@ -1,8 +1,7 @@
 /**
  * Print Preview Overlay
  *
- * Simple fullscreen overlay for print preview (no Bootstrap dependency).
- * Uses window.open for printing to ensure @media print CSS is applied correctly.
+ * Simple fullscreen overlay for print preview (no Bootstrap dependency)
  */
 export default class ModalPrintPreview {
     constructor(manager) {
@@ -13,7 +12,6 @@ export default class ModalPrintPreview {
         this.printBtn = this.overlay?.querySelector('.print-preview-print-btn');
         this.closeBtn = this.overlay?.querySelector('.print-preview-close-btn');
         this.blobUrl = null;
-        this.printWindowUrl = null;
     }
 
     /**
@@ -100,10 +98,9 @@ export default class ModalPrintPreview {
 
     /**
      * Build the options object for generatePrintPreview from current config.
-     * @param {object} [extraOptions] - Additional options to merge (e.g., printMode).
      * @returns {object}
      */
-    buildPreviewOptions(extraOptions) {
+    buildPreviewOptions() {
         return {
             baseUrl: window.eXeLearning?.config?.isStaticMode
                 ? window.location.origin
@@ -111,7 +108,6 @@ export default class ModalPrintPreview {
             basePath: window.eXeLearning?.config?.basePath || '',
             version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
             ...this.getPrintOptions(),
-            ...extraOptions,
         };
     }
 
@@ -167,69 +163,11 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Print the preview content.
-     * Opens a new window with printMode enabled so @media print CSS is applied correctly.
-     * Falls back to iframe.contentWindow.print() if the window cannot be opened.
+     * Print the preview iframe itself, so what the user changed in the
+     * preview (e.g. collapsed boxes) is what gets printed.
      */
-    async print() {
-        try {
-            await this.openPrintWindow();
-        } catch (error) {
-            console.warn('[PrintPreview] window.open print failed, falling back to iframe print:', error);
-            if (this.iframe?.contentWindow) {
-                this.iframe.contentWindow.print();
-            }
-        }
-    }
-
-    /**
-     * Open a standalone browser window with printMode=true and trigger window.print().
-     * This ensures @media print CSS rules are applied correctly, unlike iframe printing.
-     */
-    async openPrintWindow() {
-        if (!eXeLearning.app.project?._yjsEnabled) {
-            throw new Error(_('Print preview requires server mode'));
-        }
-
-        const yjsBridge = eXeLearning.app.project?._yjsBridge;
-        if (!yjsBridge?.documentManager) {
-            throw new Error(_('Document manager not available'));
-        }
-
-        const generatePrintPreviewFn =
-            window.generatePrintPreview || window.SharedExporters?.generatePrintPreview;
-
-        if (typeof generatePrintPreviewFn !== 'function') {
-            throw new Error(_('Print preview not available'));
-        }
-
-        // Generate with printMode: true for auto-print on load
-        const result = await generatePrintPreviewFn(
-            yjsBridge.documentManager,
-            yjsBridge.resourceFetcher || null,
-            this.buildPreviewOptions({ printMode: true }),
-            yjsBridge.assetManager || null
-        );
-
-        if (!result.success || !result.html) {
-            throw new Error(result.error || _('Failed to generate print preview'));
-        }
-
-        // Cleanup previous print window URL
-        if (this.printWindowUrl) {
-            URL.revokeObjectURL(this.printWindowUrl);
-        }
-
-        const blob = new Blob([result.html], { type: 'text/html' });
-        this.printWindowUrl = URL.createObjectURL(blob);
-
-        // Open in new window — the injected onload script will call window.print()
-        const printWindow = window.open(this.printWindowUrl, '_blank');
-        if (!printWindow) {
-            URL.revokeObjectURL(this.printWindowUrl);
-            this.printWindowUrl = null;
-            throw new Error(_('Could not open print window. Please allow pop-ups.'));
-        }
+    print() {
+        this.iframe?.contentWindow?.print();
     }
 
     /**
@@ -268,10 +206,6 @@ export default class ModalPrintPreview {
         if (this.blobUrl) {
             URL.revokeObjectURL(this.blobUrl);
             this.blobUrl = null;
-        }
-        if (this.printWindowUrl) {
-            URL.revokeObjectURL(this.printWindowUrl);
-            this.printWindowUrl = null;
         }
         if (this.iframe) {
             this.iframe.src = 'about:blank';

@@ -104,9 +104,6 @@ describe('ModalPrintPreview', () => {
             expect(modal.blobUrl).toBeNull();
         });
 
-        it('should initialize printWindowUrl as null', () => {
-            expect(modal.printWindowUrl).toBeNull();
-        });
     });
 
     describe('behaviour', () => {
@@ -196,17 +193,6 @@ describe('ModalPrintPreview', () => {
             const options = modal.buildPreviewOptions();
             expect(options.showLinkUrls).toBe(true);
             expect(options.baseUrl).toBe('http://localhost:8080');
-        });
-
-        it('should merge extra options', () => {
-            const options = modal.buildPreviewOptions({ printMode: true });
-            expect(options.printMode).toBe(true);
-            expect(options.showLinkUrls).toBe(true);
-        });
-
-        it('should allow extra options to override checkbox options', () => {
-            const options = modal.buildPreviewOptions({ showLinkUrls: false });
-            expect(options.showLinkUrls).toBe(false);
         });
     });
 
@@ -331,95 +317,22 @@ describe('ModalPrintPreview', () => {
     });
 
     describe('print', () => {
-        it('should call openPrintWindow', async () => {
-            const openSpy = vi.spyOn(modal, 'openPrintWindow').mockResolvedValue();
-
-            await modal.print();
-
-            expect(openSpy).toHaveBeenCalled();
-        });
-
-        it('should fall back to iframe print if openPrintWindow fails', async () => {
-            vi.spyOn(modal, 'openPrintWindow').mockRejectedValue(new Error('blocked'));
+        it('prints the preview iframe itself, so boxes collapsed in the preview stay collapsed', () => {
             const mockPrint = vi.fn();
-            modal.iframe = {
-                contentWindow: { print: mockPrint },
-                classList: { toggle: vi.fn(), add: vi.fn() },
-                src: '',
-            };
+            modal.iframe = { contentWindow: { print: mockPrint } };
+            global.window.open = vi.fn();
 
-            await modal.print();
+            modal.print();
 
-            expect(mockPrint).toHaveBeenCalled();
+            expect(mockPrint).toHaveBeenCalledTimes(1);
+            expect(window.open).not.toHaveBeenCalled();
+            expect(window.generatePrintPreview).not.toHaveBeenCalled();
         });
 
-        it('should not throw when fallback also has no contentWindow', async () => {
-            vi.spyOn(modal, 'openPrintWindow').mockRejectedValue(new Error('blocked'));
-            modal.iframe = {
-                contentWindow: null,
-                classList: { toggle: vi.fn(), add: vi.fn() },
-            };
+        it('does not throw when the iframe has no contentWindow', () => {
+            modal.iframe = { contentWindow: null };
 
-            await expect(modal.print()).resolves.toBeUndefined();
-        });
-    });
-
-    describe('openPrintWindow', () => {
-        beforeEach(() => {
-            global.window.open = vi.fn(() => ({ closed: false }));
-        });
-
-        it('should call generatePrintPreview with printMode true', async () => {
-            await modal.openPrintWindow();
-
-            const calls = window.generatePrintPreview.mock.calls;
-            expect(calls.length).toBeGreaterThan(0);
-            const optionsArg = calls[0][2];
-            expect(optionsArg.printMode).toBe(true);
-        });
-
-        it('should create blob URL for print window', async () => {
-            await modal.openPrintWindow();
-
-            expect(URL.createObjectURL).toHaveBeenCalled();
-            expect(modal.printWindowUrl).toBe('blob:test-url');
-        });
-
-        it('should open window with blob URL', async () => {
-            await modal.openPrintWindow();
-
-            expect(window.open).toHaveBeenCalledWith('blob:test-url', '_blank');
-        });
-
-        it('should throw if window.open returns null (blocked popup)', async () => {
-            global.window.open = vi.fn(() => null);
-
-            await expect(modal.openPrintWindow()).rejects.toThrow('Could not open print window');
-        });
-
-        it('should revoke previous printWindowUrl before creating new one', async () => {
-            modal.printWindowUrl = 'blob:old-url';
-
-            await modal.openPrintWindow();
-
-            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:old-url');
-        });
-
-        it('should throw error when Yjs is not enabled', async () => {
-            eXeLearning.app.project._yjsEnabled = false;
-
-            await expect(modal.openPrintWindow()).rejects.toThrow('Print preview requires server mode');
-        });
-
-        it('should pass print options from checkboxes', async () => {
-            document.getElementById('printOptLinkUrls').checked = false;
-
-            await modal.openPrintWindow();
-
-            const calls = window.generatePrintPreview.mock.calls;
-            const optionsArg = calls[0][2];
-            expect(optionsArg.printMode).toBe(true);
-            expect(optionsArg.showLinkUrls).toBe(false);
+            expect(() => modal.print()).not.toThrow();
         });
     });
 
@@ -464,15 +377,6 @@ describe('ModalPrintPreview', () => {
 
             expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
             expect(modal.blobUrl).toBeNull();
-        });
-
-        it('should revoke printWindowUrl if exists', () => {
-            modal.printWindowUrl = 'blob:print-url';
-
-            modal.cleanup();
-
-            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:print-url');
-            expect(modal.printWindowUrl).toBeNull();
         });
 
         it('should reset iframe src', () => {

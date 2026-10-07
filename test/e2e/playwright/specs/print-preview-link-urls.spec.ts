@@ -4,9 +4,10 @@ import { gotoWorkarea, waitForAppReady, selectFirstPage, addIdevice } from '../h
 /**
  * The "Show link URLs" print option must be visible in the print preview,
  * not only in the printed output, and toggling it must update the preview.
+ * Printing prints that same preview, keeping what the user collapsed in it.
  */
-test.describe('Print preview: link URLs option', () => {
-    test('shows the link URL in the preview and hides it when unchecked', async ({
+test.describe('Print preview', () => {
+    test('shows link URLs as an option and prints the preview as the user left it', async ({
         authenticatedPage: page,
         createProject,
     }, testInfo) => {
@@ -60,5 +61,24 @@ test.describe('Print preview: link URLs option', () => {
 
         await page.locator('#printOptLinkUrls').check();
         await expect.poll(afterContent, { timeout: 30000 }).toMatch(showsUrl);
+
+        // Print prints the preview itself, so a box collapsed here stays collapsed on paper
+        const frame = page.frameLocator('.print-preview-iframe');
+        await frame.locator('article.box .box-toggle').first().click();
+        await expect(frame.locator('article.box').first()).toHaveClass(/minimized/);
+        await frame.locator('body').evaluate(() => {
+            window.print = () => {
+                (window as any).__printedMinimized = !!document.querySelector('article.box.minimized');
+            };
+        });
+        await page.evaluate(() => {
+            window.open = () => {
+                (window as any).__opened = true;
+                return null;
+            };
+        });
+        await page.locator('.print-preview-print-btn').click();
+        await expect.poll(() => frame.locator('body').evaluate(() => (window as any).__printedMinimized)).toBe(true);
+        expect(await page.evaluate(() => (window as any).__opened)).toBeUndefined();
     });
 });
