@@ -318,6 +318,19 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).not.toContain('content: " [" attr(href) "]"');
         });
 
+        it('should apply link URL CSS on screen too, so the preview shows what will print', async () => {
+            const result = await exporter.generatePreview();
+            const style = result.html.slice(result.html.indexOf('/* PREVIEW MODE (Screen) */'));
+            const before = style.slice(0, style.indexOf('a[href^="http"]::after'));
+            // Balanced braces before the rule = top level, not nested inside @media print
+            expect(before.split('{').length).toBe(before.split('}').length);
+        });
+
+        it('should not append the URL again to the external iframe source link', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.external-iframe-src a::after { content: none; }');
+        });
+
         it('should include external-iframe-src display rule when link URLs are on', async () => {
             const result = await exporter.generatePreview({ showLinkUrls: true });
             expect(result.html).toContain('.external-iframe-src');

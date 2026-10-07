@@ -129,6 +129,40 @@ describe('ModalPrintPreview', () => {
         });
     });
 
+    describe('link URLs option', () => {
+        it('regenerates the visible preview when the checkbox changes', async () => {
+            const genSpy = vi.spyOn(modal, 'generatePreview').mockResolvedValue();
+            modal.behaviour();
+            modal.overlay.setAttribute('data-visible', 'true');
+
+            const checkbox = modal.overlay.querySelector('#printOptLinkUrls');
+            checkbox.checked = false;
+            checkbox.dispatchEvent(new Event('change'));
+
+            expect(genSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not regenerate when the overlay is hidden', () => {
+            const genSpy = vi.spyOn(modal, 'generatePreview').mockResolvedValue();
+            modal.behaviour();
+
+            modal.overlay.querySelector('#printOptLinkUrls').dispatchEvent(new Event('change'));
+
+            expect(genSpy).not.toHaveBeenCalled();
+        });
+
+        it('shows the error when regeneration fails', async () => {
+            vi.spyOn(modal, 'generatePreview').mockRejectedValue(new Error('boom'));
+            const errSpy = vi.spyOn(modal, 'showError');
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            modal.behaviour();
+            modal.overlay.setAttribute('data-visible', 'true');
+
+            modal.overlay.querySelector('#printOptLinkUrls').dispatchEvent(new Event('change'));
+            await vi.waitFor(() => expect(errSpy).toHaveBeenCalledWith('boom'));
+        });
+    });
+
     describe('isVisible', () => {
         it('should return true when data-visible is true', () => {
             overlayElement.setAttribute('data-visible', 'true');

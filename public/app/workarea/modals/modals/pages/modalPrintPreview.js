@@ -27,6 +27,16 @@ export default class ModalPrintPreview {
             this.print();
         });
 
+        // Link URLs option: regenerate so the preview reflects it
+        this.overlay.querySelector('#printOptLinkUrls')?.addEventListener('change', () => {
+            if (!this.isVisible()) return;
+            this.showLoading(true);
+            this.generatePreview().catch((error) => {
+                console.error('[PrintPreview] Error:', error);
+                this.showError(error.message || 'An error occurred');
+            });
+        });
+
         // Close button
         this.closeBtn?.addEventListener('click', () => {
             this.close();

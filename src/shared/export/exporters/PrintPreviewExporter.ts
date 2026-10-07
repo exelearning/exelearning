@@ -54,7 +54,7 @@ export interface PrintPreviewOptions {
     /**
      * If true, shows URLs inline after external links in printed output.
      * E.g., "Cedec" becomes "Cedec [https://cedec.intef.es]".
-     * Only visible in actual print output, not in screen preview.
+     * Applied on screen as well, so the preview matches the printed output.
      * Defaults to true.
      */
     showLinkUrls?: boolean;
@@ -282,27 +282,30 @@ export class PrintPreviewExporter {
         // Build conditional link URL display CSS
         const linkUrlsCss = showLinkUrls
             ? `
-    /* Show URLs inline after external links for print */
-    a[href^="http"]::after,
-    a[href^="https"]::after {
-        content: " [" attr(href) "]";
-        font-size: 0.85em;
-        word-break: break-all;
-        color: #666;
-    }
-    /* Don't show URL for links whose text IS the URL */
-    a[href^="http"]:-moz-only-whitespace::after,
-    a[href^="https"]:-moz-only-whitespace::after { content: none; }
-    /* Don't show URL for image-only links */
-    a[href^="http"]:has(img:only-child)::after,
-    a[href^="https"]:has(img:only-child)::after { content: none; }
-    /* Show external iframe source URLs in print */
-    .external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }`
+/* Show URLs inline after external links (screen and print, so the preview matches) */
+a[href^="http"]::after,
+a[href^="https"]::after {
+    content: " [" attr(href) "]";
+    font-size: 0.85em;
+    word-break: break-all;
+    color: #666;
+}
+/* Don't show URL for links whose text IS the URL */
+a[href^="http"]:-moz-only-whitespace::after,
+a[href^="https"]:-moz-only-whitespace::after { content: none; }
+/* Don't show URL for image-only links */
+a[href^="http"]:has(img:only-child)::after,
+a[href^="https"]:has(img:only-child)::after { content: none; }
+/* Show external iframe source URLs in print */
+.external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }
+/* Its link text already is the URL */
+.external-iframe-src a::after { content: none; }`
             : '';
 
         const styles = `
 <style>
 /* PREVIEW MODE (Screen) */
+${linkUrlsCss}
 /* Create space around the document in preview mode */
 body {
     padding: 40px;
@@ -428,7 +431,6 @@ figure img {
         color: inherit;
         text-decoration: underline;
     }
-${linkUrlsCss}
 }
 
 /* Force visibility for feedback elements even if JS tries to hide them */
