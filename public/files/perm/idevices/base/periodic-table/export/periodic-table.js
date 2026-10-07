@@ -98,6 +98,7 @@ var $periodicTable = {
             const pt = $periodicTable.createInterfacePT(i);
 
             dl.before(pt).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ptGameMinimize-' + i).hide();
             $('#ptGameContainer-' + i).hide();
@@ -1702,7 +1703,7 @@ var $periodicTable = {
                 .replace('%s', score)
                 .replace('%s', mOptions.hits)
                 .replace('%s', mOptions.number),
-            type = score < 5 ? 1 : 2;
+            type = score < $exe.passScore.resolve(mOptions) ? 1 : 2;
         $('#ptQuestionP-' + instance).hide();
 
         $periodicTable.showMessage(type, message, instance);
@@ -1751,7 +1752,7 @@ var $periodicTable = {
                 .replace('%s', score)
                 .replace('%s', mOptions.hits)
                 .replace('%s', mOptions.number),
-            type = score < 5 ? 1 : 2;
+            type = score < $exe.passScore.resolve(mOptions) ? 1 : 2;
 
         $periodicTable.showMessage(type, message, instance);
 

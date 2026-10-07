@@ -1311,6 +1311,10 @@
                 <span class="mi">tune</span>
                 {{ t.settings or 'Settings' }}
             </a>
+            <a href="#sharing" class="admin-nav-link" data-section="sharing">
+                <span class="mi">share</span>
+                {{ t.sharing or 'Sharing' }}
+            </a>
             <a href="#presentation" class="admin-nav-link" data-section="presentation">
                 <span class="mi">tune</span>
                 {{ t.customization or 'Customization' }}
@@ -1906,6 +1910,41 @@
                 </div>
             </section>
 
+            <section id="sharing" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">share</span>
+                            {{ t.sharing or 'Sharing' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="admin-settings-actions">
+                            <button id="sharingSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <span id="sharingSaveStatus" class="admin-settings-status"></span>
+                        </div>
+
+                        <div class="admin-settings-group">
+                            <h6>{{ t.public_view_links or 'Public read-only links' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label for="publicViewToggle">PUBLIC_VIEW_ENABLED</label>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" id="publicViewToggle" data-setting-key="PUBLIC_VIEW_ENABLED" data-setting-type="boolean" {% if adminSettings.general.public_view_enabled %}checked{% endif %}>
+                                        <span>{{ t.active or 'Active' }}</span>
+                                    </div>
+                                    <small>{{ t.allows_public_view_links or 'Allows project owners to publish a public read-only link to their projects.' }}</small>
+                                    <small>{{ t.public_view_links_disabled_note or 'When disabled, the option is hidden from the Share dialog and existing public links stop working. They work again if the option is re-enabled.' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section id="presentation" class="admin-section">
                 <div class="admin-card">
                     <div class="admin-card-header">
@@ -2265,6 +2304,7 @@ window.$eXeLearningCustom = {
             projects: '{{ t.projects or "Projects" }}',
             extensions: '{{ t.extensions or "Extensions" }}',
             settings: '{{ t.settings or "Settings" }}',
+            sharing: '{{ t.sharing or "Sharing" }}',
             active: '{{ t.active or "Active" }}',
             inactive: '{{ t.inactive or "Inactive" }}',
             error_loading: '{{ t.error_loading or "Error loading data" }}',
@@ -2340,6 +2380,7 @@ window.$eXeLearningCustom = {
                 projects: T.projects,
                 extensions: T.extensions,
                 settings: T.settings,
+                sharing: T.sharing,
                 presentation: T.customization,
                 maintenance: T.maintenance
             };
@@ -2445,6 +2486,50 @@ window.$eXeLearningCustom = {
                     }
                 } finally {
                     presentationSaveBtn.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // Sharing save
+        const sharingSaveBtn = document.getElementById('sharingSaveBtn');
+        const sharingSaveStatus = document.getElementById('sharingSaveStatus');
+
+        if (sharingSaveBtn) {
+            sharingSaveBtn.addEventListener('click', async () => {
+                sharingSaveBtn.setAttribute('disabled', 'disabled');
+                if (sharingSaveStatus) {
+                    sharingSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
+                    sharingSaveStatus.classList.remove('success', 'error');
+                }
+
+                try {
+                    const toggle = document.getElementById('publicViewToggle');
+                    const settings = [
+                        { key: 'PUBLIC_VIEW_ENABLED', value: toggle && toggle.checked ? 'true' : 'false', type: 'boolean' },
+                    ];
+                    const res = await fetch(`${API_BASE}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ settings }),
+                    });
+                    if (!res.ok) throw new Error('Failed to save');
+
+                    if (sharingSaveStatus) {
+                        sharingSaveStatus.textContent = '{{ t.saved or "Saved" }}';
+                        sharingSaveStatus.classList.add('success');
+                        setTimeout(() => {
+                            sharingSaveStatus.textContent = '';
+                            sharingSaveStatus.classList.remove('success');
+                        }, 3000);
+                    }
+                } catch (err) {
+                    if (sharingSaveStatus) {
+                        sharingSaveStatus.textContent = '{{ t.error_saving or "Error saving" }}';
+                        sharingSaveStatus.classList.add('error');
+                    }
+                } finally {
+                    sharingSaveBtn.removeAttribute('disabled');
                 }
             });
         }

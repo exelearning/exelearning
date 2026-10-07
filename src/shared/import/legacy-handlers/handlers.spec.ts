@@ -2130,11 +2130,10 @@ describe('ScormTestHandler', () => {
             expect(questions[0].selectionType).toBe('multiple');
         });
 
-        it('should extract passRate as dropdownPassRate', () => {
-            const dict = createDomElement(`
+        const quizWithPassRate = (passRate?: string, tag = 'string') =>
+            createDomElement(`
                 <dictionary>
-                    <string role="key" value="passRate"/>
-                    <string value="70"/>
+                    ${passRate === undefined ? '' : `<string role="key" value="passRate"/><${tag} value="${passRate}"/>`}
                     <string role="key" value="questions"/>
                     <list>
                         <instance class="TestQuestion">
@@ -2153,8 +2152,33 @@ describe('ScormTestHandler', () => {
                     </list>
                 </dictionary>
             `);
-            const props = handler.extractProperties(dict);
-            expect(props.dropdownPassRate).toBe('70');
+
+        it.each([
+            ['70', 'string', 7],
+            ['75', 'unicode', 7.5],
+            ['33.3', 'string', 3.3],
+            ['0', 'unicode', 0],
+            ['100', 'string', 10],
+        ])('should import passRate %s (<%s>) as the activity own mark %s', (passRate, tag, mark) => {
+            const props = handler.extractProperties(quizWithPassRate(passRate, tag));
+            expect(props.passScoreMode).toBe('custom');
+            expect(props.passScoreCustom).toBe(mark);
+            expect(props).not.toHaveProperty('dropdownPassRate');
+        });
+
+        it.each([
+            ['the legacy default 50', '50'],
+            ['no passRate', undefined],
+            ['an empty passRate', ''],
+            ['an invalid passRate', 'abc'],
+            ['a passRate above 100', '150'],
+            ['a negative passRate', '-10'],
+        ])('should leave %s to inherit the project mark', (_label, passRate) => {
+            const props = handler.extractProperties(quizWithPassRate(passRate));
+            expect(props.questionsData).toHaveLength(1);
+            expect(props).not.toHaveProperty('passScoreMode');
+            expect(props).not.toHaveProperty('passScoreCustom');
+            expect(props).not.toHaveProperty('dropdownPassRate');
         });
 
         it('should include userTranslations', () => {
