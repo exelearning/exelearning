@@ -974,10 +974,12 @@ describe('ModalPrintPreview and its options panel', () => {
         it.each([
             ['marked as imported', { path: '/v1/user-files/themes/custom/', isUserTheme: true }],
             ['kept in the project', { path: 'user-theme://custom/' }],
-        ])('gives no URL for a style the user imported (%s), which the server does not serve', (_case, theme) => {
+        ])('takes a style the user imported (%s) from its own files, having no URL for it', (_case, theme) => {
             withTheme(theme);
 
-            expect(modal.buildPreviewOptions()).not.toHaveProperty('themeUrl');
+            const options = modal.buildPreviewOptions();
+            expect(options).not.toHaveProperty('themeUrl');
+            expect(options.themeFromFiles).toBe(true);
         });
 
         it('gives no URL when there is no style manager to ask', () => {

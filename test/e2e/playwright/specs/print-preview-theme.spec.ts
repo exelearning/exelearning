@@ -6,10 +6,11 @@ import { test, expect } from '../fixtures/auth.fixture';
 import { gotoWorkarea, waitForAppReady } from '../helpers/workarea-helpers';
 
 /**
- * The print preview loads the project's style from wherever it is served: a base style from the
- * application, a style an administrator installed from the site files. The preview is a blob:
- * document, which resolves no relative path, so the stylesheet, the script and the icons blocks
- * are given all have to come from that address.
+ * The print preview loads the project's style from wherever it is: a base style from the
+ * application, a style an administrator installed from the site files, and a style the user
+ * imported from its own files, kept with the project. The preview is a blob: document, which
+ * resolves no relative path, so the stylesheet, the script and the icons blocks are given all
+ * have to come from there.
  */
 
 /** Give the project a page with one block showing the given icon from the style. */
@@ -39,6 +40,32 @@ async function iconLoaded(frame: FrameLocator): Promise<boolean> {
     return icon.evaluate(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0);
 }
 
+/** The outline of the page's content, which each test style sets to a colour of its own. */
+function contentOutline(frame: FrameLocator): Promise<string> {
+    return frame
+        .locator('.exe-content')
+        .first()
+        .evaluate(el => getComputedStyle(el).outlineColor);
+}
+
+/** An icon a style can ship, taken from a fixture style. */
+function fixtureIcon(): Uint8Array {
+    return unzipSync(readFileSync(path.resolve('test/fixtures/test-theme-with-icons.zip')))['icons/info.png'];
+}
+
+/** A style of its own, so that nothing else installed during the run can answer for it. */
+function styleZip(name: string, css: string, files: Record<string, Uint8Array>): Buffer {
+    return Buffer.from(
+        zipSync({
+            'config.xml': strToU8(
+                `<?xml version="1.0" encoding="UTF-8"?><theme><name>${name}</name><title>${name}</title><version>1.0</version></theme>`,
+            ),
+            'style.css': strToU8(css),
+            ...files,
+        }),
+    );
+}
+
 test.describe('Print preview: the style', () => {
     test('loads the icons of a base style', async ({ authenticatedPage: page, createProject }) => {
         const uuid = await createProject(page, 'Print a base style');
@@ -62,18 +89,12 @@ test.describe('Print preview: the style', () => {
         });
         expect(login.ok()).toBeTruthy();
 
-        // A style of its own, so that nothing else installed during the run can answer for it.
         const name = `print-site-style-${Date.now()}`;
-        const fixture = unzipSync(readFileSync(path.resolve('test/fixtures/test-theme-with-icons.zip')));
-        const zip = zipSync({
-            'config.xml': strToU8(
-                `<?xml version="1.0" encoding="UTF-8"?><theme><name>${name}</name><title>${name}</title><version>1.0</version></theme>`,
-            ),
-            'style.css': strToU8('.exe-content { outline: 3px solid rgb(1, 2, 3); }'),
-            'icons/info.png': fixture['icons/info.png'],
+        const zip = styleZip(name, '.exe-content { outline: 3px solid rgb(1, 2, 3); }', {
+            'icons/info.png': fixtureIcon(),
         });
         const upload = await page.request.post('/api/admin/themes/upload', {
-            multipart: { file: { name: `${name}.zip`, mimeType: 'application/zip', buffer: Buffer.from(zip) } },
+            multipart: { file: { name: `${name}.zip`, mimeType: 'application/zip', buffer: zip } },
         });
         expect(upload.ok()).toBeTruthy();
         const style = await upload.json();
@@ -91,21 +112,64 @@ test.describe('Print preview: the style', () => {
             const frame = await openPreview(page);
 
             // The style's own stylesheet applies, and its icon loads from the same place.
-            await expect
-                .poll(
-                    () =>
-                        frame
-                            .locator('.exe-content')
-                            .first()
-                            .evaluate(el => getComputedStyle(el).outlineColor),
-                    {
-                        timeout: 15000,
-                    },
-                )
-                .toBe('rgb(1, 2, 3)');
+            await expect.poll(() => contentOutline(frame), { timeout: 15000 }).toBe('rgb(1, 2, 3)');
             await expect.poll(() => iconLoaded(frame), { timeout: 15000 }).toBe(true);
         } finally {
             await page.request.delete(`/api/admin/themes/${style.id}`);
         }
+    });
+
+    test('loads a style the user imported: its stylesheet, what the stylesheet refers to, and its icons', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print an imported style');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const name = `print-user-style-${Date.now()}`;
+        const zip = styleZip(
+            name,
+            '.exe-content { outline: 3px solid rgb(4, 5, 6); } .box-head { background-image: url(img/stripe.png); }',
+            { 'img/stripe.png': fixtureIcon(), 'icons/info.png': fixtureIcon() },
+        );
+        await page.locator('#dropdownStyles').click();
+        await page.waitForSelector('#stylessidenav.active', { timeout: 5000 });
+        await page.locator('#importedstylescontent-tab').click();
+        await page
+            .locator('#theme-file-import')
+            .setInputFiles({ name: `${name}.zip`, mimeType: 'application/zip', buffer: zip });
+        const id = await page
+            .waitForFunction(
+                prefix => {
+                    const installed = (window as any).eXeLearning?.app?.themes?.list?.installed || {};
+                    return (
+                        Object.keys(installed).find(key => key.startsWith(prefix) && installed[key]?.isUserTheme) ||
+                        null
+                    );
+                },
+                name,
+                { timeout: 15000 },
+            )
+            .then(handle => handle.jsonValue() as Promise<string>);
+        await page.evaluate(async theme => (window as any).eXeLearning.app.themes.selectTheme(theme, true, true), id);
+        await addBlockWithStyleIcon(page, 'info');
+
+        const frame = await openPreview(page);
+
+        // Taken from its own files: the stylesheet applies, what the stylesheet refers to is
+        // handed over with it instead of resolving to nothing, and the icon loads.
+        await expect.poll(() => contentOutline(frame), { timeout: 15000 }).toBe('rgb(4, 5, 6)');
+        await expect
+            .poll(
+                () =>
+                    frame
+                        .locator('.box-head')
+                        .first()
+                        .evaluate(el => getComputedStyle(el).backgroundImage),
+                { timeout: 15000 },
+            )
+            .toMatch(/^url\("blob:/);
+        await expect.poll(() => iconLoaded(frame), { timeout: 15000 }).toBe(true);
     });
 });

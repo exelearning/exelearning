@@ -604,21 +604,23 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Where the style the editor shows is served from, for the preview to load the same one.
+     * Where the preview should take the style the editor shows from, so it loads the same one.
      *
-     * Without it the exporter looks for the style among the base ones, which misses a style an
+     * Without this the exporter looks for the style among the base ones, which misses a style an
      * administrator installed: its stylesheet, its script and its icons are served from
      * elsewhere. The URL is made absolute because the preview is a blob: document, against which
-     * no other kind resolves. A style the user imported is not served from anywhere, so there is
-     * no URL to give for it.
+     * no other kind resolves. A style the user imported is not served from anywhere: the exporter
+     * is asked to take it from its own files instead.
      *
      * @param {string} baseUrl - What the style's path is resolved against
-     * @returns {{themeUrl?: string}} An options fragment, empty when there is no URL to give
+     * @returns {{themeUrl?: string, themeFromFiles?: boolean}} An options fragment, empty when
+     *     there is no style to point at
      */
     getThemeOptions(baseUrl) {
         const theme = window.eXeLearning?.app?.themes?.selected;
         const path = theme?.path;
-        if (!path || theme.isUserTheme || path.startsWith('user-theme://')) return {};
+        if (!path) return {};
+        if (theme.isUserTheme || path.startsWith('user-theme://')) return { themeFromFiles: true };
 
         try {
             return { themeUrl: new URL(path, baseUrl).href };

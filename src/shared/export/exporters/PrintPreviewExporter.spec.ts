@@ -1609,6 +1609,58 @@ describe('PrintPreviewExporter', () => {
 
             expect(html).toContain('data-src="theme/lazy.png"');
         });
+
+        describe('a style kept with the project', () => {
+            /** Preview a project whose style is made of the given files. */
+            const previewWith = (files: Record<string, string> | null, options: PrintPreviewOptions) => {
+                const provider = createMockResourceProvider();
+                provider.fetchTheme = async () => {
+                    if (!files) throw new Error('Theme not available');
+                    return new Map(Object.entries(files).map(([path, text]) => [path, new TextEncoder().encode(text)]));
+                };
+                return new PrintPreviewExporter(createMockDocument(pagesWithIcon()), provider).generatePreview(options);
+            };
+            const STYLE = { 'style.css': '.exe-content{color:red}', 'icons/activity.png': 'png' };
+
+            it('is taken from its own files when it is served from nowhere', async () => {
+                const { html } = await previewWith(STYLE, { themeFromFiles: true });
+
+                expect(html).toMatch(/<link rel="stylesheet" href="blob:[^"]+">/);
+                expect(html).toMatch(/<img src="blob:[^"]+"/);
+                expect(html).not.toContain('files/perm/themes/base/base/');
+            });
+
+            it('gives back the URLs of its files with the preview', async () => {
+                const revoke = spyOn(URL, 'revokeObjectURL');
+                try {
+                    const result = await previewWith(STYLE, { themeFromFiles: true });
+                    const handedOut = [...(result.html ?? '').matchAll(/"(blob:[^"]+)"/g)].map(match => match[1]);
+
+                    result.dispose?.();
+
+                    const released = revoke.mock.calls.map(([url]) => url);
+                    expect(handedOut.length).toBeGreaterThan(0);
+                    for (const url of handedOut) expect(released).toContain(url);
+                } finally {
+                    revoke.mockRestore();
+                }
+            });
+
+            it('is loaded from its URL when it has one', async () => {
+                const { html } = await previewWith(STYLE, {
+                    themeFromFiles: true,
+                    themeUrl: 'https://exe.example.test/site-files/themes/custom/',
+                });
+
+                expect(html).toContain('href="https://exe.example.test/site-files/themes/custom/style.css"');
+            });
+
+            it('is looked for among the base styles when its files cannot be had', async () => {
+                const { html } = await previewWith(null, { themeFromFiles: true });
+
+                expect(html).toContain('/files/perm/themes/base/base/style.css"');
+            });
+        });
     });
 
     describe('User Reported Broken Images', () => {
