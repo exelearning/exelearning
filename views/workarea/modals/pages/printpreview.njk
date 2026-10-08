@@ -46,6 +46,11 @@
                         <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks" checked>
                         <label class="form-check-label" for="printOptUnfoldBlocks">{{ 'Print all visible content' | trans }}</label>
                     </div>
+                    {# Shown by the script only when the project has activities that can never be printed. #}
+                    <div class="form-check" hidden>
+                        <input class="form-check-input" type="checkbox" id="printOptUnprintableTitles">
+                        <label class="form-check-label" for="printOptUnprintableTitles">{{ 'Show titles of non-printable activities' | trans }}</label>
+                    </div>
                 </fieldset>
             </div>
             <p class="print-options-status" role="status" aria-live="polite"></p>

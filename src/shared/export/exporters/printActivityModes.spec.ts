@@ -599,8 +599,37 @@ describe('listInteractiveActivities', () => {
         ];
 
         expect(listInteractiveActivities(pages)).toEqual([
-            { id: 'a', type: 'guess', pageTitle: 'La Edad Media', blockTitle: 'Bloque' },
-            { id: 'b', type: 'crossword', pageTitle: 'Repaso', blockTitle: 'Crucigrama final' },
+            { id: 'a', type: 'guess', pageTitle: 'La Edad Media', blockTitle: 'Bloque', neverPrintable: false },
+            {
+                id: 'b',
+                type: 'crossword',
+                pageTitle: 'Repaso',
+                blockTitle: 'Crucigrama final',
+                neverPrintable: false,
+            },
+        ]);
+    });
+
+    it('marks the activities that will never be given a printed form, and only those', () => {
+        const pages = [
+            page([
+                component({ id: 'guess' }),
+                component({ id: 'map', type: 'map', content: '' }),
+                component({ id: 'download', type: 'download-source-file', content: '' }),
+                // A padlock prints the writing it guards. One that guards none says so, but that is
+                // about this component, not about padlocks.
+                { ...emptyPadlock(), id: 'padlock' },
+                // Still waiting for an adapter, which is a gap to report rather than a decision.
+                component({ id: 'waiting', type: WAITING, content: '' }),
+            ]),
+        ];
+
+        expect(listInteractiveActivities(pages).map(({ id, neverPrintable }) => [id, neverPrintable])).toEqual([
+            ['guess', false],
+            ['map', true],
+            ['download', true],
+            ['padlock', false],
+            ['waiting', false],
         ]);
     });
 

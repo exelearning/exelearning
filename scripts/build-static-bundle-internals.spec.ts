@@ -451,9 +451,11 @@ describe('menu and modal HTML generation', () => {
         expect(preview).toContain('class="print-options-activities"');
         expect(preview).toContain('id="printOptLinkUrls"');
         expect(preview).toContain('id="printOptUnfoldBlocks"');
+        expect(preview).toContain('id="printOptUnprintableTitles"');
         expect(preview).toContain('data-i18n="Print options"');
         expect(preview).toContain('data-i18n="Show link URLs"');
         expect(preview).toContain('data-i18n="Print all visible content"');
+        expect(preview).toContain('data-i18n="Show titles of non-printable activities"');
         expect(preview).toContain('data-i18n-aria-label="Close"');
     });
 });

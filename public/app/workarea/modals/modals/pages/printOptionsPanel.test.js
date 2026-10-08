@@ -3,6 +3,7 @@ import PrintOptionsPanel, {
     PRINT_CHOICE_FIELD,
     PRINT_LINK_URLS_FIELD,
     PRINT_UNFOLD_BLOCKS_FIELD,
+    PRINT_UNPRINTABLE_TITLES_FIELD,
 } from './printOptionsPanel.js';
 import { PRINT_SELECTION_ALL, PRINT_SELECTION_FIELD } from './printActivitySelection.js';
 
@@ -25,6 +26,13 @@ const ACTIVITIES = [
     { id: 'c2', type: 'crossword', pageTitle: 'Tema 2', blockTitle: 'Repaso final' },
     { id: 'c3', type: 'guess', pageTitle: 'Tema 3', blockTitle: '' },
 ];
+
+/** Two activities that can never be printed, as the exporter marks them. */
+const MAP = { id: 'm1', type: 'map', pageTitle: 'Tema 1', blockTitle: 'Mapa', neverPrintable: true };
+const DOWNLOAD = { id: 'd1', type: 'download-source-file', pageTitle: 'Tema 3', blockTitle: '', neverPrintable: true };
+
+/** The activities above with those two among them, in document order. */
+const WITH_UNPRINTABLE = [ACTIVITIES[0], MAP, ACTIVITIES[1], DOWNLOAD, ACTIVITIES[2]];
 
 describe('PrintOptionsPanel', () => {
     let panel;
@@ -51,6 +59,9 @@ describe('PrintOptionsPanel', () => {
     const activitiesEl = () => root.querySelector('.print-options-activities');
     const linkUrls = () => root.querySelector(`#${PRINT_LINK_URLS_FIELD}`);
     const unfoldBlocks = () => root.querySelector(`#${PRINT_UNFOLD_BLOCKS_FIELD}`);
+    const unprintable = () => root.querySelector(`#${PRINT_UNPRINTABLE_TITLES_FIELD}`);
+    const unprintableRow = () => unprintable().closest('.form-check');
+    const listed = () => boxes().map((box) => box.value);
     const status = () => root.querySelector('.print-options-status').textContent;
 
     /** Pick a choice, clearing the others as the browser would (happy-dom does not). */
@@ -86,6 +97,10 @@ describe('PrintOptionsPanel', () => {
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks" checked>
                             <label class="form-check-label" for="printOptUnfoldBlocks">Print all visible content</label>
+                        </div>
+                        <div class="form-check" hidden>
+                            <input class="form-check-input" type="checkbox" id="printOptUnprintableTitles">
+                            <label class="form-check-label" for="printOptUnprintableTitles">Show titles of non-printable activities</label>
                         </div>
                     </fieldset>
                 </div>
@@ -521,6 +536,194 @@ describe('PrintOptionsPanel', () => {
         });
     });
 
+    describe('the activities that can never be printed', () => {
+        beforeEach(() => configure({ activities: WITH_UNPRINTABLE }));
+
+        it('offers the option only when the project has some', () => {
+            expect(unprintableRow().hidden).toBe(false);
+
+            configure();
+            expect(unprintableRow().hidden).toBe(true);
+
+            configure({ activities: [] });
+            expect(unprintableRow().hidden).toBe(true);
+        });
+
+        it('starts with the option cleared', () => {
+            expect(unprintable().checked).toBe(false);
+        });
+
+        it('leaves them out of the list while the option is cleared', () => {
+            expect(listed()).toEqual(['c1', 'c2', 'c3']);
+            expect(boxes().every((box) => box.checked)).toBe(true);
+            expect(selectAll().checked).toBe(true);
+        });
+
+        it('names the others, so that leaving them out does not read as printing every activity', () => {
+            expect(panel.getState()).toEqual({
+                choice: 'in-place',
+                selectedActivities: ['c1', 'c2', 'c3'],
+                valid: true,
+                showLinkUrls: true,
+                unfoldBlocks: true,
+            });
+        });
+
+        it('lists them in document order, ticked, once the option is ticked, and says which option changed', () => {
+            tick(unprintable(), true);
+
+            expect(listed()).toEqual(['c1', 'm1', 'c2', 'd1', 'c3']);
+            expect(boxes().every((box) => box.checked)).toBe(true);
+            expect(onChange).toHaveBeenCalledTimes(1);
+            expect(onChange).toHaveBeenLastCalledWith(
+                {
+                    choice: 'in-place',
+                    selectedActivities: null,
+                    valid: true,
+                    showLinkUrls: true,
+                    unfoldBlocks: true,
+                },
+                PRINT_UNPRINTABLE_TITLES_FIELD
+            );
+        });
+
+        it('leaves them out again once the option is cleared', () => {
+            tick(unprintable(), true);
+            tick(unprintable(), false);
+
+            expect(listed()).toEqual(['c1', 'c2', 'c3']);
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({ selectedActivities: ['c1', 'c2', 'c3'] }),
+                PRINT_UNPRINTABLE_TITLES_FIELD
+            );
+        });
+
+        it('keeps what was ticked while they come and go', () => {
+            tick(unprintable(), true);
+            tick(boxes().find((box) => box.value === 'm1'), false);
+            tick(boxes().find((box) => box.value === 'c2'), false);
+
+            tick(unprintable(), false);
+            expect(boxes().map((box) => [box.value, box.checked])).toEqual([
+                ['c1', true],
+                ['c2', false],
+                ['c3', true],
+            ]);
+            expect(panel.getState().selectedActivities).toEqual(['c1', 'c3']);
+
+            tick(unprintable(), true);
+            expect(boxes().map((box) => [box.value, box.checked])).toEqual([
+                ['c1', true],
+                ['m1', false],
+                ['c2', false],
+                ['d1', true],
+                ['c3', true],
+            ]);
+            expect(panel.getState().selectedActivities).toEqual(['c1', 'd1', 'c3']);
+        });
+
+        it('starts with the activities it is told to tick, shown or not', () => {
+            configure({ activities: WITH_UNPRINTABLE, selectedActivities: ['c2', 'm1'] });
+            expect(boxes().map((box) => box.checked)).toEqual([false, true, false]);
+
+            tick(unprintable(), true);
+            expect(boxes().map((box) => box.checked)).toEqual([false, true, true, false, false]);
+        });
+
+        it('ticks and clears with "select all" only the activities the list shows', () => {
+            tick(selectAll(), false);
+            expect(panel.getState()).toEqual(expect.objectContaining({ selectedActivities: [], valid: false }));
+
+            tick(selectAll(), true);
+            expect(panel.getState()).toEqual(
+                expect.objectContaining({ selectedActivities: ['c1', 'c2', 'c3'], valid: true })
+            );
+
+            tick(unprintable(), true);
+            expect(panel.getState().selectedActivities).toBeNull();
+        });
+
+        it('wires "select all" again after drawing the list again', () => {
+            tick(unprintable(), true);
+            onChange.mockClear();
+
+            tick(selectAll(), false);
+
+            expect(boxes().every((box) => !box.checked)).toBe(true);
+            expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ selectedActivities: [], valid: false }));
+        });
+
+        it('can be printed, with no list to choose from, when they are all the project has', () => {
+            configure({ activities: [MAP, DOWNLOAD] });
+
+            expect(listed()).toEqual([]);
+            expect(selection().hidden).toBe(true);
+            expect(status()).toBe('');
+            expect(panel.getState()).toEqual(expect.objectContaining({ selectedActivities: [], valid: true }));
+
+            tick(unprintable(), true);
+            expect(selection().hidden).toBe(false);
+            expect(listed()).toEqual(['m1', 'd1']);
+            expect(panel.getState()).toEqual(expect.objectContaining({ selectedActivities: null, valid: true }));
+        });
+
+        it('asks for at least one activity once they are shown, if none is ticked', () => {
+            configure({ activities: [MAP, DOWNLOAD] });
+            tick(unprintable(), true);
+
+            tick(selectAll(), false);
+
+            expect(status()).toBe('Select at least one activity to print.');
+            expect(panel.getState().valid).toBe(false);
+        });
+
+        it('cannot be chosen while no activity is to be printed', () => {
+            choose('omit');
+            expect(unprintable().disabled).toBe(true);
+
+            choose('appendix');
+            expect(unprintable().disabled).toBe(false);
+        });
+
+        it('can be chosen for the worksheet, which the other document options do not act on', () => {
+            choose('idevices');
+            panel.setDocumentOptionsEnabled(false);
+
+            expect(unprintable().disabled).toBe(false);
+            expect(linkUrls().disabled).toBe(true);
+            expect(panel.documentOptions()).not.toContain(unprintable());
+        });
+
+        it('stays as the user left it when the panel is filled for another project', () => {
+            tick(unprintable(), true);
+
+            configure();
+            expect(unprintable().checked).toBe(true);
+
+            configure({ activities: WITH_UNPRINTABLE });
+            expect(listed()).toEqual(['c1', 'm1', 'c2', 'd1', 'c3']);
+        });
+
+        it('lists and prints them all, as before, where the markup has no option for them', () => {
+            unprintableRow().remove();
+            const old = new PrintOptionsPanel(root, { toggleButton: toggle });
+            old.bind();
+            old.configure({ activities: WITH_UNPRINTABLE, choices: CHOICES, choice: 'in-place', labels: LABELS });
+
+            expect(listed()).toEqual(['c1', 'm1', 'c2', 'd1', 'c3']);
+            expect(old.getState().selectedActivities).toBeNull();
+            old.destroy();
+        });
+
+        it('does nothing to the list of a project that has no activities', () => {
+            configure({ activities: [] });
+
+            expect(() => tick(unprintable(), true)).not.toThrow();
+            expect(activitiesEl().children).toHaveLength(0);
+            expect(panel.getState().selectedActivities).toBeNull();
+        });
+    });
+
     describe('opening and closing', () => {
         beforeEach(() => configure());
 
@@ -576,6 +779,7 @@ describe('PrintOptionsPanel', () => {
             root.querySelector('.print-options-close').click();
             tick(linkUrls(), false);
             tick(unfoldBlocks(), false);
+            tick(unprintable(), true);
 
             expect(toggleSpy).not.toHaveBeenCalled();
             expect(setOpenSpy).not.toHaveBeenCalled();

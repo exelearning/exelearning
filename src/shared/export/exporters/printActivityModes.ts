@@ -91,6 +91,11 @@ export interface InteractiveActivityEntry {
     pageTitle: string;
     /** What the author called the block the activity sits in; empty when it was left blank. */
     blockTitle: string;
+    /**
+     * True for an iDevice that will never be given a printed form (see `isNeverPrintable`). The
+     * print options leave these out unless the user asks for the note that stands in for them.
+     */
+    neverPrintable: boolean;
 }
 
 const DEFAULT_LABELS = {
@@ -275,6 +280,9 @@ function isActedOn(block: ExportBlock, component: ExportComponent): boolean {
  * misses one they change. Pages hidden themselves or under a hidden ancestor do not print, so
  * nothing on them is listed.
  *
+ * Each entry says whether its activity is one that will never be given a printed form, so the
+ * print options can offer to leave those out without asking the exporter again.
+ *
  * @param pages - The project's pages, as the export document gives them
  * @returns One entry per activity
  */
@@ -290,6 +298,7 @@ export function listInteractiveActivities(pages: ExportPage[]): InteractiveActiv
                         type: component.type,
                         pageTitle: (page.title || '').trim(),
                         blockTitle: (block.name || '').trim(),
+                        neverPrintable: isNeverPrintable(component.type),
                     });
 
     return entries;

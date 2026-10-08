@@ -10,8 +10,10 @@
  * A panel beside the preview offers the print options: whether to write the URL of each link,
  * whether folded blocks print unfolded or as the preview shows them, and, when the project has
  * interactive activities, the choices about them (print them where they are, in an appendix, only
- * them, or not at all, and which of them). The preview is drawn again whenever one of those
- * changes, except how folded blocks print, which the loaded preview takes in place.
+ * them, or not at all, and which of them). Those that can never be printed are left out unless the
+ * user asks for their titles; the panel does it by leaving them out of the selection it reports.
+ * The preview is drawn again whenever one of those changes, except how folded blocks print, which
+ * the loaded preview takes in place.
  */
 import PrintOptionsPanel, { PRINT_UNFOLD_BLOCKS_FIELD } from './printOptionsPanel.js';
 

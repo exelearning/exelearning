@@ -660,6 +660,7 @@ describe('ModalPrintPreview and its options panel', () => {
     const status = () => overlayElement.querySelector('.print-options-status').textContent;
     const linkUrls = () => overlayElement.querySelector('#printOptLinkUrls');
     const unfoldBlocks = () => overlayElement.querySelector('#printOptUnfoldBlocks');
+    const unprintable = () => overlayElement.querySelector('#printOptUnprintableTitles');
     const busy = () => overlayElement.getAttribute('data-busy');
     const lastOptions = () => global.window.generatePrintPreview.mock.calls.at(-1)[2];
     const lastWorksheetOptions = () => global.window.generateWorksheet.mock.calls.at(-1)[1];
@@ -718,6 +719,7 @@ describe('ModalPrintPreview and its options panel', () => {
                     <fieldset class="print-options-document">
                         <input type="checkbox" id="printOptLinkUrls" checked>
                         <input type="checkbox" id="printOptUnfoldBlocks" checked>
+                        <div class="form-check" hidden><input type="checkbox" id="printOptUnprintableTitles"></div>
                     </fieldset>
                 </div>
                 <p class="print-options-status"></p>
@@ -901,6 +903,54 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(options.showLinkUrls).toBe(false);
             expect(options.baseUrl).toBe('http://localhost:8080');
             expect(options).not.toHaveProperty('activities');
+        });
+    });
+
+    describe('the activities that can never be printed', () => {
+        const MAP = { id: 'm1', type: 'map', pageTitle: 'Tema 4', blockTitle: '', neverPrintable: true };
+        const WITH_MAP = [...ACTIVITIES, MAP];
+
+        it('are left out of the document unless their titles are asked for', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX, null, WITH_MAP);
+
+            expect(unprintable().checked).toBe(false);
+            expect(lastOptions().activities.selectedActivities).toEqual(['c1', 'c2', 'c3']);
+        });
+
+        it('are left off the worksheet unless their titles are asked for', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES, null, null, WITH_MAP);
+
+            expect(lastWorksheetOptions().selectedActivities).toEqual(['c1', 'c2', 'c3']);
+        });
+
+        it('come back, with the preview drawn again, once their titles are asked for', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE, null, WITH_MAP);
+            loaded();
+            global.window.generatePrintPreview.mockClear();
+
+            tick(unprintable(), true);
+            expect(busy()).toBe('true');
+            await settle();
+
+            expect(global.window.generatePrintPreview).toHaveBeenCalledTimes(1);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_IN_PLACE);
+            expect(lastOptions().activities).not.toHaveProperty('selectedActivities');
+        });
+
+        it('do not stop the document from printing when they are all the project has', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE, null, [MAP]);
+            loaded();
+
+            expect(lastOptions().activities.selectedActivities).toEqual([]);
+            expect(printBtn().disabled).toBe(false);
+            expect(status()).toBe('');
+        });
+
+        it('can be asked for in the worksheet too, where the other document options cannot', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES, null, null, WITH_MAP);
+
+            expect(unprintable().disabled).toBe(false);
+            expect(linkUrls().disabled).toBe(true);
         });
     });
 

@@ -2024,6 +2024,8 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await expect(page.locator('.print-preview-options-btn')).toBeVisible();
         await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(0);
         await expect(panel.locator('#printOptLinkUrls')).toBeChecked();
+        // With no activity at all, there is none that cannot be printed to ask about.
+        await expect(panel.locator('#printOptUnprintableTitles')).toBeHidden();
     });
 
     test('offers the options beside the preview when the project has them, with printing them in an appendix preselected', async ({
@@ -2285,14 +2287,12 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         // its own.
         const exercise = '.worksheet-activity[data-idevice="guess"]';
         await expect(frame.locator(exercise)).toHaveCount(1);
-        // The fixture holds four activities in all — a rubric, two forms and the Guess — and every
-        // one of them now has a paper form. Its download button has none and never will, so it is
-        // the one note left standing.
+        // The fixture holds four activities with a paper form — a rubric, two forms and the Guess —
+        // and a download button, which has none and never will. Unless its title is asked for, it
+        // is left out without even a note.
         const converted = '.worksheet-activity:not(.worksheet-activity-reference):not(.worksheet-activity-unprintable)';
         await expect(frame.locator(converted)).toHaveCount(4);
-        const note = frame.locator('.worksheet-activity-unprintable');
-        await expect(note).toHaveCount(1);
-        await expect(note).toHaveAttribute('data-idevice', 'download-source-file');
+        await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(0);
         await expect(frame.locator('.exe-download-package-link')).toHaveCount(0);
         await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
@@ -2420,9 +2420,10 @@ test.describe('Print: choosing which interactive activities to print', () => {
         await panel.waitFor({ state: 'visible', timeout: 15000 });
         const selection = panel.locator('.print-activities-selection');
 
-        // A rubric, two forms, the Guess and a download button: five, each ticked.
+        // A rubric, two forms and the Guess: four, each ticked. The download button, which can never
+        // be printed, is not listed until its title is asked for.
         await expect(selection).toBeVisible();
-        await expect(selection.locator(SELECTED)).toHaveCount(5);
+        await expect(selection.locator(SELECTED)).toHaveCount(4);
         for (const box of await selection.locator(SELECTED).all()) await expect(box).toBeChecked();
         await expect(selection.locator('#print-activity-select-all')).toBeChecked();
         // Named by page, then by block or iDevice.
@@ -2485,10 +2486,10 @@ test.describe('Print: choosing which interactive activities to print', () => {
         // Neither the game, nor its exercise, nor a pointer to one.
         await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(0);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
-        // The other four are numbered from one without a gap.
+        // The other three that can be printed are numbered from one without a gap.
         const references = frame.locator('.worksheet-reference');
-        await expect(references).toHaveCount(4);
-        for (let index = 0; index < 4; index++) await expect(references.nth(index)).toContainText(String(index + 1));
+        await expect(references).toHaveCount(3);
+        for (let index = 0; index < 3; index++) await expect(references.nth(index)).toContainText(String(index + 1));
     });
 
     test('leaves off the worksheet an activity left unticked', async ({ authenticatedPage, createProject }) => {
@@ -2528,6 +2529,132 @@ test.describe('Print: choosing which interactive activities to print', () => {
         const lastBox = await last.boundingBox();
         const panelBox = await panel.boundingBox();
         expect(lastBox!.y + lastBox!.height).toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 1);
+    });
+});
+
+test.describe('Print: the activities that can never be printed', () => {
+    const SELECTED = 'input[name="print-activity-selected"]';
+    const OPTION = '#printOptUnprintableTitles';
+
+    /** A padlock's markup, guarding the given writing. */
+    const padlock = (feedback: string) =>
+        '<div class="candado-IDevice">' +
+        '<div class="candado-instructions js-hidden"><p>Busca el código en la unidad</p></div>' +
+        `<div class="candado-retro js-hidden">${feedback}</div>` +
+        '</div>';
+
+    /** Open a new project holding the given activities on one page, each in a block named as given. */
+    async function openProjectWith(
+        page: Page,
+        createProject: (page: Page, title?: string) => Promise<string>,
+        activities: { type: string; html: string; block: string }[],
+    ) {
+        const uuid = await createProject(page, 'Print unprintable activities');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(activities => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Activities');
+            for (const { type, html, block } of activities)
+                binding.createComponent(parent.id, binding.createBlock(parent.id, block), type, { htmlContent: html });
+        }, activities);
+    }
+
+    /** A padlock that prints its writing, beside a map and a website that can never be printed. */
+    const MIXED = [
+        { type: 'padlock', html: padlock('<p>Texto desbloqueado</p>'), block: 'Candado' },
+        { type: 'map', html: '', block: 'Mapa de la península' },
+        { type: 'external-website', html: '', block: 'Web del museo' },
+    ];
+
+    test('offers no option about them when the project has none, a padlock guarding nothing included', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        await openProjectWith(page, createProject, [{ type: 'padlock', html: padlock(''), block: 'Candado vacío' }]);
+
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        await expect(panel.locator(SELECTED)).toHaveCount(1);
+        await expect(panel.locator(OPTION)).toBeHidden();
+
+        // A padlock can be printed. One that guards nothing still says so where it stood.
+        const { frame } = await choosePrintOption(page, 'in-place');
+        await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="padlock"]')).toHaveCount(1);
+    });
+
+    test('leaves them out of the list and the document until their titles are asked for', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        await openProjectWith(page, createProject, MIXED);
+
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        const option = panel.locator(OPTION);
+        await expect(option).toBeVisible();
+        await expect(option).not.toBeChecked();
+        await expect(panel.locator(SELECTED)).toHaveCount(1);
+
+        // In the appendix, where printing starts: no pointer, no entry and no block for them.
+        let { frame } = await waitForPreview(page);
+        await expect(frame.locator('.worksheet-reference')).toHaveCount(1);
+        await expect(frame.locator('.worksheet-activity[data-idevice="padlock"] .worksheet-item')).toHaveText(
+            'Texto desbloqueado',
+        );
+        await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(0);
+        await expect(frame.locator('body')).not.toContainText('Mapa de la península');
+        await expect(frame.locator('body')).not.toContainText('Web del museo');
+
+        // Asked for, they are listed and ticked, and each takes a number, a pointer and its note.
+        await option.check();
+        await expect(panel.locator(SELECTED)).toHaveCount(3);
+        for (const box of await panel.locator(SELECTED).all()) await expect(box).toBeChecked();
+        ({ frame } = await waitForPreview(page));
+        await expect(frame.locator('.worksheet-reference')).toHaveCount(3);
+        const notes = frame.locator('#section-worksheet-appendix .worksheet-activity-unprintable');
+        await expect(notes).toHaveCount(2);
+        await expect(notes.nth(0)).toHaveAttribute('data-idevice', 'map');
+        await expect(notes.nth(0)).toContainText('Mapa de la península');
+        await expect(notes.nth(1)).toHaveAttribute('data-idevice', 'external-website');
+        await expect(notes.nth(1)).toContainText('Web del museo');
+
+        // Where the author put them, each block keeps its title above the note.
+        ({ frame } = await choosePrintOption(page, 'in-place'));
+        await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(2);
+        await expect(frame.locator('body')).toContainText('Mapa de la península');
+
+        // Cleared again, they go: from the list and from the page, blocks and all.
+        await option.uncheck();
+        await expect(panel.locator(SELECTED)).toHaveCount(1);
+        ({ frame } = await waitForPreview(page));
+        await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(0);
+        await expect(frame.locator('body')).not.toContainText('Mapa de la península');
+
+        // With no activity to print there is nothing for the option to act on.
+        await panel.locator('input[name="print-activity-mode"][value="omit"]').check();
+        await expect(option).toBeDisabled();
+    });
+
+    test('leaves them out of the teacher’s note on the worksheet until their titles are asked for', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        await openProjectWith(page, createProject, MIXED);
+
+        const panel = await openPrintPanel(page);
+        let { frame } = await choosePrintOption(page, 'idevices');
+        await expect(frame.locator('.worksheet-activity[data-idevice="padlock"]')).toHaveCount(1);
+        await expect(frame.locator('.worksheet-unsupported')).toHaveCount(0);
+
+        const option = panel.locator(OPTION);
+        await expect(option).toBeEnabled();
+        await option.check();
+        ({ frame } = await waitForPreview(page));
+        const note = frame.locator('.worksheet-unsupported');
+        await expect(note.locator('li')).toHaveCount(2);
+        await expect(note).toContainText('map');
+        await expect(note).toContainText('external-website');
     });
 });
 

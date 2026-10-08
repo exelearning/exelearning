@@ -882,8 +882,9 @@ export default class NavbarFile {
     /**
      * List the interactive activities in the project.
      *
-     * @returns {Array<{id: string, type: string, pageTitle: string, blockTitle: string}>} The
-     *     activities in document order, and none if the question cannot be answered
+     * @returns {Array<{id: string, type: string, pageTitle: string, blockTitle: string,
+     *     neverPrintable: boolean}>} The activities in document order, and none if the question
+     *     cannot be answered
      */
     listInteractiveActivities() {
         const listFn = window.SharedExporters?.listProjectInteractiveActivities;
