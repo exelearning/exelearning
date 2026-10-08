@@ -954,6 +954,52 @@ describe('ModalPrintPreview and its options panel', () => {
         });
     });
 
+    describe('the style', () => {
+        const withTheme = (selected) => {
+            global.eXeLearning.app.themes = { selected };
+        };
+
+        it('is loaded from where the server serves the one the editor shows', () => {
+            withTheme({ path: '/v1/site-files/themes/custom/' });
+
+            expect(modal.buildPreviewOptions().themeUrl).toBe('http://localhost:8080/v1/site-files/themes/custom/');
+        });
+
+        it('keeps a style URL that is already absolute', () => {
+            withTheme({ path: 'https://cdn.example.test/themes/custom/' });
+
+            expect(modal.buildPreviewOptions().themeUrl).toBe('https://cdn.example.test/themes/custom/');
+        });
+
+        it.each([
+            ['marked as imported', { path: '/v1/user-files/themes/custom/', isUserTheme: true }],
+            ['kept in the project', { path: 'user-theme://custom/' }],
+        ])('gives no URL for a style the user imported (%s), which the server does not serve', (_case, theme) => {
+            withTheme(theme);
+
+            expect(modal.buildPreviewOptions()).not.toHaveProperty('themeUrl');
+        });
+
+        it('gives no URL when there is no style manager to ask', () => {
+            expect(modal.buildPreviewOptions()).not.toHaveProperty('themeUrl');
+        });
+
+        it('gives no URL when the style path cannot be made absolute', () => {
+            global.eXeLearning.config.baseURL = 'not a url';
+            withTheme({ path: '/v1/site-files/themes/custom/' });
+
+            expect(modal.buildPreviewOptions()).not.toHaveProperty('themeUrl');
+        });
+
+        it('reaches the exporter', async () => {
+            withTheme({ path: '/v1/files/perm/themes/base/base/' });
+
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+
+            expect(lastOptions().themeUrl).toBe('http://localhost:8080/v1/files/perm/themes/base/base/');
+        });
+    });
+
     describe('how folded blocks print', () => {
         it('unfolds them on paper by default', async () => {
             await modal.show(PREVIEW_MODE_DOCUMENT);

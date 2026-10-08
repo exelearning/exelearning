@@ -63,8 +63,11 @@ export interface PrintPreviewOptions {
     /** Base path for URLs (e.g., '/exelearning') */
     basePath?: string;
     /**
-     * Full theme URL from the themes manager (e.g., '/v1/site-files/themes/chiquito/')
-     * When provided, this is used instead of constructing the path from theme name.
+     * Where the project's style is served from, as the themes manager knows it
+     * (e.g., 'https://host/v1/site-files/themes/chiquito/'). Everything the page takes from the
+     * style — its stylesheet, its script and the icons blocks are given — is loaded from here.
+     * It must be absolute for a preview shown as a blob: document. Without it, the style is
+     * looked for among the base styles.
      */
     themeUrl?: string;
     /**
@@ -701,14 +704,6 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
             // Base CSS
             'content/css/base.css': getPath('style/workarea/base.css'), // Fallback/Core CSS
 
-            // Theme (in zip: theme/ -> on server: /files/perm/themes/base/...)
-            'theme/style.css': options.themeUrl
-                ? `${options.themeUrl.replace(/\/$/, '')}/style.css`
-                : getPath(`files/perm/themes/base/${themeName}/style.css`),
-            'theme/style.js': options.themeUrl
-                ? `${options.themeUrl.replace(/\/$/, '')}/style.js`
-                : getPath(`files/perm/themes/base/${themeName}/style.js`),
-
             // Highlighter (exe_highlighter)
             // PageRenderer outputs libs/exe_highlighter/...
             // Server has it in app/common/exe_highlighter/...
@@ -729,6 +724,14 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
             processed = processed.replaceAll(`src="${key}"`, `src="${value}"`);
             processed = processed.replaceAll(`href="${key}"`, `href="${value}"`);
         }
+
+        // Theme (in zip: theme/ -> wherever the style is served from). The whole prefix moves,
+        // not a list of files: the icons blocks are given live under it beside the stylesheet and
+        // the script, and a path left relative resolves to nothing in a blob: document.
+        const themeBase = options.themeUrl
+            ? options.themeUrl.replace(/\/$/, '')
+            : getPath(`files/perm/themes/base/${themeName}`);
+        processed = processed.replace(/(\s(?:src|href)=")theme\//g, (_match, attribute) => `${attribute}${themeBase}/`);
 
         // Handle iDevice resources (in zip: idevices/ -> on server: /files/perm/idevices/base/...)
         const serverIdeviceBase = getPath('files/perm/idevices/base/');

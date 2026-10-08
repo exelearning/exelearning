@@ -588,16 +588,43 @@ export default class ModalPrintPreview {
      * @returns {object}
      */
     buildPreviewOptions() {
+        // Static mode requires absolute URLs for Blob compatibility
+        const baseUrl = window.eXeLearning?.config?.isStaticMode
+            ? window.location.origin
+            : (window.eXeLearning?.config?.baseURL || window.location.origin);
+
         return {
-            // Static mode requires absolute URLs for Blob compatibility
-            baseUrl: window.eXeLearning?.config?.isStaticMode
-                ? window.location.origin
-                : (window.eXeLearning?.config?.baseURL || window.location.origin),
+            baseUrl,
             basePath: window.eXeLearning?.config?.basePath || '',
             version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
+            ...this.getThemeOptions(baseUrl),
             ...this.getPrintOptions(),
             ...this.getActivityOptions(),
         };
+    }
+
+    /**
+     * Where the style the editor shows is served from, for the preview to load the same one.
+     *
+     * Without it the exporter looks for the style among the base ones, which misses a style an
+     * administrator installed: its stylesheet, its script and its icons are served from
+     * elsewhere. The URL is made absolute because the preview is a blob: document, against which
+     * no other kind resolves. A style the user imported is not served from anywhere, so there is
+     * no URL to give for it.
+     *
+     * @param {string} baseUrl - What the style's path is resolved against
+     * @returns {{themeUrl?: string}} An options fragment, empty when there is no URL to give
+     */
+    getThemeOptions(baseUrl) {
+        const theme = window.eXeLearning?.app?.themes?.selected;
+        const path = theme?.path;
+        if (!path || theme.isUserTheme || path.startsWith('user-theme://')) return {};
+
+        try {
+            return { themeUrl: new URL(path, baseUrl).href };
+        } catch {
+            return {};
+        }
     }
 
     /**

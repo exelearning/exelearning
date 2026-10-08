@@ -1558,6 +1558,59 @@ describe('PrintPreviewExporter', () => {
         });
     });
 
+    describe('where the style is loaded from', () => {
+        /** One block that shows an icon from the style. */
+        const pagesWithIcon = (content = ''): ExportPage[] => [
+            {
+                id: 'page-1',
+                title: 'Test Page',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        iconName: 'activity',
+                        components: content ? [{ id: 'comp-1', type: 'text', order: 0, content, properties: {} }] : [],
+                    },
+                ],
+            },
+        ];
+        const preview = (options: PrintPreviewOptions = {}, content = '') =>
+            new PrintPreviewExporter(
+                createMockDocument(pagesWithIcon(content)),
+                createMockResourceProvider(),
+            ).generatePreview(options);
+
+        it('loads the stylesheet, the script and the icons from where the style is served', async () => {
+            const { html } = await preview({ themeUrl: 'https://exe.example.test/v1/site-files/themes/custom/' });
+
+            expect(html).toContain('href="https://exe.example.test/v1/site-files/themes/custom/style.css"');
+            expect(html).toContain('src="https://exe.example.test/v1/site-files/themes/custom/style.js"');
+            expect(html).toContain('src="https://exe.example.test/v1/site-files/themes/custom/icons/activity.png"');
+        });
+
+        it('looks for a base style when not told where the style is', async () => {
+            const { html } = await preview({ baseUrl: 'http://localhost:3001', version: 'v2' });
+
+            expect(html).toContain('href="http://localhost:3001/v2/files/perm/themes/base/base/style.css"');
+            expect(html).toContain('src="http://localhost:3001/v2/files/perm/themes/base/base/icons/activity.png"');
+        });
+
+        it('leaves no path relative to the style, which a blob: document could not resolve', async () => {
+            const { html } = await preview();
+
+            expect(html).not.toMatch(/\s(?:src|href)="theme\//);
+        });
+
+        it('leaves alone an attribute that only ends in src', async () => {
+            const { html } = await preview({}, '<p><img data-src="theme/lazy.png" alt=""></p>');
+
+            expect(html).toContain('data-src="theme/lazy.png"');
+        });
+    });
+
     describe('User Reported Broken Images', () => {
         // Helper to check if paths are patched to server paths (mocked as http://localhost:3000/...)
         const SERVER_BASE = 'http://localhost:3000';
