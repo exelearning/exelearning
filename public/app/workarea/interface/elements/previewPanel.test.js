@@ -1112,6 +1112,93 @@ describe('PreviewPanelManager', () => {
 
       window.location = originalLocation;
     });
+
+    it('should log the error and fall back to the enlarged preview when extraction throws', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      const error = new Error('SW refresh failed');
+      manager.refreshWithServiceWorker = vi.fn().mockRejectedValue(error);
+      const errorSpy = vi.spyOn(window.AppLogger || console, 'error').mockImplementation(() => {});
+      const fallbackSpy = vi.spyOn(manager, '_enterFullscreenFallback');
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
+
+      await manager.extractToNewTab();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[PreviewPanel] Error extracting to new tab:',
+        error
+      );
+      expect(fallbackSpy).toHaveBeenCalledTimes(1);
+      expect(mockOpen).not.toHaveBeenCalled();
+      expect(manager.isFullscreen).toBe(true);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(true);
+    });
+
+    it('should unpin and remember the pinned state when the popup is blocked while pinned', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+      manager.isPinned = true;
+      manager.unpin = vi.fn(() => { manager.isPinned = false; });
+      global.open = vi.fn(() => null);
+
+      const realCreateElement = document.createElement.bind(document);
+      const mockClick = vi.fn();
+      vi.spyOn(document, 'createElement').mockImplementation((tag) =>
+        tag === 'a' ? { click: mockClick, href: '', target: '' } : realCreateElement(tag)
+      );
+
+      await manager.extractToNewTab();
+
+      expect(mockClick).toHaveBeenCalled();
+      expect(manager._wasPinnedBeforeFullscreen).toBe(true);
+      expect(manager.unpin).toHaveBeenCalled();
+      expect(manager.isFullscreen).toBe(true);
+    });
+  });
+
+  describe('_enterFullscreenFallback', () => {
+    it('should unpin and remember the pinned state when the panel is pinned', () => {
+      manager.isPinned = true;
+      manager.unpin = vi.fn(() => { manager.isPinned = false; });
+
+      manager._enterFullscreenFallback();
+
+      expect(manager._wasPinnedBeforeFullscreen).toBe(true);
+      expect(manager.unpin).toHaveBeenCalledTimes(1);
+      expect(manager.isFullscreen).toBe(true);
+    });
+
+    it('should not unpin nor remember the pinned state when the panel is not pinned', () => {
+      manager.isPinned = false;
+      manager.unpin = vi.fn();
+
+      manager._enterFullscreenFallback();
+
+      expect(manager.unpin).not.toHaveBeenCalled();
+      expect(manager._wasPinnedBeforeFullscreen).toBeFalsy();
+      expect(manager.isFullscreen).toBe(true);
+    });
+
+    it('should not toggle fullscreen again when it is already enlarged', () => {
+      manager.isFullscreen = true;
+      const toggleSpy = vi.spyOn(manager, 'toggleFullscreen');
+
+      manager._enterFullscreenFallback();
+
+      expect(toggleSpy).not.toHaveBeenCalled();
+      expect(manager.isFullscreen).toBe(true);
+    });
+
+    it('should notify the user with a toast', () => {
+      const createToast = vi.fn();
+      window.eXeLearning.app.toasts = { createToast };
+
+      manager._enterFullscreenFallback();
+
+      expect(createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ icon: 'info', remove: 5000 })
+      );
+    });
   });
 
   describe('utility methods', () => {
@@ -1225,6 +1312,19 @@ describe('PreviewPanelManager', () => {
       expect(manager._swMessageHandler).toBeNull();
 
       Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+      vi.useRealTimers();
+    });
+
+    it('should clear the SW content needed timer', () => {
+      vi.useFakeTimers();
+      const callback = vi.fn();
+      manager._swContentNeededTimer = setTimeout(callback, 1000);
+
+      manager.destroy();
+
+      expect(manager._swContentNeededTimer).toBeNull();
+      vi.advanceTimersByTime(2000);
+      expect(callback).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
