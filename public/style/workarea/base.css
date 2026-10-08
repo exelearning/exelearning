@@ -42,6 +42,17 @@
   transform: scale(1.2);
 }
 
+/* A Material icon is a background colour cut out by a mask, here or in the style's own rule, and
+   browsers leave backgrounds off the page unless the reader turns on "Background graphics": the
+   icon then prints as an empty box. Keep the colour for these icons alone, so they print without
+   printing every other background. */
+@media print {
+  .exe-material-icon {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 .exe-content a{
   color: #5a7f0c;
 }

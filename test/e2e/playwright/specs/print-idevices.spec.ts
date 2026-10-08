@@ -2795,3 +2795,39 @@ test.describe('Print: a folded block opens on paper', () => {
         await expect(panel.locator('#printOptUnfoldBlocks')).toBeDisabled();
     });
 });
+
+test.describe('Print: Material icons reach the paper', () => {
+    test('keeps the colour of a Material block icon when printing, and of nothing around it', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Material icon');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Icons');
+            const block = binding.createBlock(parent.id, 'Block with a Material icon');
+            binding.updateBlock(block, { icon: { source: 'material', value: 'lightbulb' } });
+            binding.createComponent(parent.id, block, 'text', { htmlContent: '<p>Some text</p>' });
+        });
+
+        await openPrintPanel(page);
+        const { frame } = await waitForPreview(page);
+        const icon = frame.locator('article.box .box-icon .exe-material-icon');
+        await expect(icon).toHaveCount(1);
+
+        // The icon is a background colour cut out by a mask. Browsers leave backgrounds off the
+        // page unless the reader turns on "Background graphics", so the icon has to keep its own.
+        const colourAdjust = (element: Element) => {
+            const style = getComputedStyle(element);
+            return style.printColorAdjust || (style as any).webkitPrintColorAdjust;
+        };
+        await page.emulateMedia({ media: 'print' });
+        expect(await icon.evaluate(colourAdjust)).toBe('exact');
+        // Only the icon: every other background stays the reader's choice.
+        expect(await frame.locator('article.box').first().evaluate(colourAdjust)).toBe('economy');
+        await page.emulateMedia({ media: null });
+    });
+});
