@@ -6,7 +6,9 @@ import {
     PRINT_SELECTION_FIELD,
     readSelectedActivities,
     renderActivitySelection,
+    setSelectedActivities,
     shortenPageTitle,
+    syncSelectAll,
 } from './printActivitySelection.js';
 
 const STRINGS = { heading: 'Select the activities', selectAll: 'Select all' };
@@ -153,6 +155,93 @@ describe('readSelectedActivities', () => {
         items(host)[0].checked = false;
 
         expect(readSelectedActivities(host)).toEqual([]);
+    });
+});
+
+describe('syncSelectAll', () => {
+    let host;
+
+    beforeEach(() => {
+        host = mount([activity(), activity({ id: 'c2' })]);
+    });
+
+    it('ticks "all" while every activity is ticked', () => {
+        all(host).checked = false;
+
+        syncSelectAll(host);
+
+        expect(all(host).checked).toBe(true);
+        expect(all(host).indeterminate).toBe(false);
+    });
+
+    it('half-ticks "all" while only some are ticked', () => {
+        items(host)[0].checked = false;
+
+        syncSelectAll(host);
+
+        expect(all(host).checked).toBe(false);
+        expect(all(host).indeterminate).toBe(true);
+    });
+
+    it('clears "all" when none is ticked', () => {
+        items(host).forEach((input) => {
+            input.checked = false;
+        });
+
+        syncSelectAll(host);
+
+        expect(all(host).checked).toBe(false);
+        expect(all(host).indeterminate).toBe(false);
+    });
+
+    it('does nothing where there is no box', () => {
+        expect(() => syncSelectAll(document.createElement('div'))).not.toThrow();
+    });
+});
+
+describe('setSelectedActivities', () => {
+    let host;
+
+    beforeEach(() => {
+        host = mount([activity(), activity({ id: 'c2' }), activity({ id: 'c3' })]);
+    });
+
+    it('ticks every activity when no ids are given', () => {
+        items(host).forEach((input) => {
+            input.checked = false;
+        });
+
+        setSelectedActivities(host);
+
+        expect(items(host).every((input) => input.checked)).toBe(true);
+        expect(all(host).checked).toBe(true);
+    });
+
+    it('ticks only the given ones and clears the rest', () => {
+        setSelectedActivities(host, ['c1', 'c3']);
+
+        expect(readSelectedActivities(host)).toEqual(['c1', 'c3']);
+    });
+
+    it('half-ticks "all" when only some are given', () => {
+        setSelectedActivities(host, ['c2']);
+
+        expect(all(host).checked).toBe(false);
+        expect(all(host).indeterminate).toBe(true);
+    });
+
+    it('ticks none for an empty list', () => {
+        setSelectedActivities(host, []);
+
+        expect(readSelectedActivities(host)).toEqual([]);
+        expect(all(host).checked).toBe(false);
+        expect(all(host).indeterminate).toBe(false);
+    });
+
+    it('ignores ids that are not listed', () => {
+        setSelectedActivities(host, ['c1', 'gone']);
+
+        expect(readSelectedActivities(host)).toEqual(['c1']);
     });
 });
 

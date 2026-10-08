@@ -1,10 +1,18 @@
 /**
  * Tests for PrintPreviewExporter
  */
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, spyOn } from 'bun:test';
 import { PrintPreviewExporter, type PrintPreviewOptions } from './PrintPreviewExporter';
+import { PageRenderer } from '../renderers/PageRenderer';
 import { encryptDataGame } from '../utils/dataGameCipher';
-import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider } from '../interfaces';
+import type {
+    AssetProvider,
+    ExportAsset,
+    ExportDocument,
+    ExportMetadata,
+    ExportPage,
+    ResourceProvider,
+} from '../interfaces';
 
 // Mock URL.createObjectURL
 const originalCreateObjectURL = global.URL.createObjectURL;
@@ -125,6 +133,199 @@ describe('PrintPreviewExporter', () => {
     describe('constructor', () => {
         it('should create exporter with document and resource provider', () => {
             expect(exporter).toBeDefined();
+        });
+    });
+
+    describe('dispose', () => {
+        const originalRevokeObjectURL = global.URL.revokeObjectURL;
+        let revoked: string[];
+
+        /** An image asset whose blob URL, under the mock above, is told apart by its size. */
+        const imageAsset = (id: string, filename: string, size: number): ExportAsset => ({
+            id,
+            filename,
+            originalPath: filename,
+            mime: 'image/png',
+            data: new Uint8Array(size),
+        });
+
+        const createAssets = (assets: ExportAsset[]): AssetProvider => ({
+            getProjectAssets: async () => assets,
+            getAllAssets: async () => assets,
+            getAsset: async (id: string) => assets.find(asset => asset.id === id) ?? null,
+        });
+
+        const twoAssets = () => createAssets([imageAsset('a1', 'one.png', 3), imageAsset('a2', 'two.png', 5)]);
+
+        beforeEach(() => {
+            revoked = [];
+            global.URL.revokeObjectURL = ((url: string) => {
+                revoked.push(url);
+            }) as typeof URL.revokeObjectURL;
+        });
+
+        afterEach(() => {
+            global.URL.revokeObjectURL = originalRevokeObjectURL;
+        });
+
+        it('hands back a way to release the asset URLs, and releases nothing while the document is shown', async () => {
+            const withAssets = new PrintPreviewExporter(mockDocument, mockResourceProvider, twoAssets());
+
+            const result = await withAssets.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(typeof result.dispose).toBe('function');
+            expect(revoked).toHaveLength(0);
+        });
+
+        it('releases every URL it made, and only those', async () => {
+            const withAssets = new PrintPreviewExporter(mockDocument, mockResourceProvider, twoAssets());
+            const result = await withAssets.generatePreview();
+
+            result.dispose?.();
+
+            expect(revoked.sort()).toEqual(['blob:mock-url-3', 'blob:mock-url-5']);
+        });
+
+        it('releases them once, however many times it is called', async () => {
+            const withAssets = new PrintPreviewExporter(mockDocument, mockResourceProvider, twoAssets());
+            const result = await withAssets.generatePreview();
+
+            result.dispose?.();
+            result.dispose?.();
+
+            expect(revoked).toHaveLength(2);
+        });
+
+        it('has nothing to release when the project has no assets', async () => {
+            const result = await exporter.generatePreview();
+
+            result.dispose?.();
+
+            expect(revoked).toHaveLength(0);
+        });
+
+        it('keeps the URLs of one preview apart from those of the next', async () => {
+            const first = await new PrintPreviewExporter(
+                mockDocument,
+                mockResourceProvider,
+                twoAssets(),
+            ).generatePreview();
+            const second = await new PrintPreviewExporter(
+                mockDocument,
+                mockResourceProvider,
+                twoAssets(),
+            ).generatePreview();
+
+            first.dispose?.();
+
+            expect(revoked).toHaveLength(2);
+            second.dispose?.();
+            expect(revoked).toHaveLength(4);
+        });
+
+        it('releases the URLs it made when generating fails, and offers nothing to release later', async () => {
+            const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+            const withAssets = new PrintPreviewExporter(mockDocument, mockResourceProvider, twoAssets());
+            const renderSpy = spyOn(PageRenderer.prototype, 'renderSinglePage').mockImplementationOnce(() => {
+                throw new Error('render failed');
+            });
+
+            const result = await withAssets.generatePreview();
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('render failed');
+            expect(result.dispose).toBeUndefined();
+            expect(revoked).toHaveLength(2);
+            renderSpy.mockRestore();
+            errorSpy.mockRestore();
+        });
+    });
+
+    describe('reusing an exporter', () => {
+        let mockedCreateObjectURL: typeof URL.createObjectURL;
+        let results: Awaited<ReturnType<PrintPreviewExporter['generatePreview']>>[];
+
+        beforeEach(() => {
+            mockedCreateObjectURL = URL.createObjectURL;
+            URL.createObjectURL = originalCreateObjectURL;
+            results = [];
+            const asset: ExportAsset = {
+                id: 'picture',
+                filename: 'picture.png',
+                originalPath: 'picture.png',
+                mime: 'image/png',
+                data: new Uint8Array([1, 2, 3]),
+            };
+            const assets: AssetProvider = {
+                getAllAssets: async () => [asset],
+                getProjectAssets: async () => [asset],
+                getAsset: async () => asset,
+            };
+            const pages = mockDocument.getNavigation();
+            pages[0].blocks[0].components[0].content = '<img src="asset://picture">';
+            exporter = new PrintPreviewExporter(createMockDocument(pages), mockResourceProvider, assets);
+        });
+
+        afterEach(() => {
+            for (const result of results) result.dispose?.();
+            URL.createObjectURL = mockedCreateObjectURL;
+        });
+
+        const imageUrl = (result: Awaited<ReturnType<PrintPreviewExporter['generatePreview']>>) => {
+            expect(result.success).toBe(true);
+            const match = result.html?.match(/src="(blob:[^"]+)"/);
+            expect(match).not.toBeNull();
+            return match![1];
+        };
+        const readable = (url: string) =>
+            fetch(url)
+                .then(response => response.ok)
+                .catch(() => false);
+
+        it.each([false, true])('isolates results when concurrent generation is %s', async concurrent => {
+            results = concurrent
+                ? await Promise.all([exporter.generatePreview(), exporter.generatePreview()])
+                : [await exporter.generatePreview(), await exporter.generatePreview()];
+            const [first, second] = results;
+            const firstUrl = imageUrl(first);
+            const secondUrl = imageUrl(second);
+            expect(firstUrl).not.toBe(secondUrl);
+
+            first.dispose?.();
+            expect(await readable(firstUrl)).toBe(false);
+            expect(await readable(secondUrl)).toBe(true);
+            second.dispose?.();
+            expect(await readable(secondUrl)).toBe(false);
+        });
+
+        it('can generate fresh resources after a previous result was disposed', async () => {
+            const first = await exporter.generatePreview();
+            results.push(first);
+            first.dispose?.();
+            const second = await exporter.generatePreview();
+            results.push(second);
+            expect(await readable(imageUrl(second))).toBe(true);
+            // A repeated disposal of the old result must not touch newly generated resources.
+            first.dispose?.();
+            expect(await readable(imageUrl(second))).toBe(true);
+        });
+
+        it('preserves an existing result when a later generation fails', async () => {
+            const first = await exporter.generatePreview();
+            results.push(first);
+            const renderSpy = spyOn(PageRenderer.prototype, 'renderSinglePage').mockImplementationOnce(() => {
+                throw new Error('render failed');
+            });
+            const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+            try {
+                const failed = await exporter.generatePreview();
+                expect(failed.success).toBe(false);
+                expect(await readable(imageUrl(first))).toBe(true);
+            } finally {
+                renderSpy.mockRestore();
+                errorSpy.mockRestore();
+            }
         });
     });
 
@@ -298,6 +499,84 @@ describe('PrintPreviewExporter', () => {
 
             // 6. No appendix pagination: a document that converts no activity has no appendix.
             expect(result.html).not.toContain('#section-worksheet-appendix');
+        });
+    });
+
+    describe('print options', () => {
+        it('should not inject page numbers or a watermark (browser print headers own them)', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).not.toContain('@bottom-center');
+            expect(result.html).not.toContain('counter(page)');
+            expect(result.html).not.toContain('@bottom-right');
+            expect(result.html).not.toContain('Created with eXeLearning');
+        });
+
+        it('should include link URL CSS by default', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('a[href^="http"]::after');
+            expect(result.html).toContain('content: " [" attr(href) "]"');
+        });
+
+        it('should omit link URL CSS when showLinkUrls is false', async () => {
+            const result = await exporter.generatePreview({ showLinkUrls: false });
+            expect(result.html).not.toContain('a[href^="http"]::after');
+            expect(result.html).not.toContain('content: " [" attr(href) "]"');
+        });
+
+        it('should apply link URL CSS on screen too, so the preview shows what will print', async () => {
+            const result = await exporter.generatePreview();
+            const style = result.html!.slice(result.html!.indexOf('/* PREVIEW MODE (Screen) */'));
+            const before = style.slice(0, style.indexOf('a[href^="http"]::after'));
+            // Balanced braces before the rule = top level, not nested inside @media print
+            expect(before.split('{').length).toBe(before.split('}').length);
+        });
+
+        it('should not append the URL again to the external iframe source link', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.external-iframe-src a::after { content: none; }');
+        });
+
+        it('should include external-iframe-src display rule when link URLs are on', async () => {
+            const result = await exporter.generatePreview({ showLinkUrls: true });
+            expect(result.html).toContain('.external-iframe-src');
+        });
+
+        it('should keep showing link URLs alongside the styles of converted activities', async () => {
+            const result = await exporter.generatePreview({
+                activities: { mode: 'appendix', labels: {} } as PrintPreviewOptions['activities'],
+            });
+            expect(result.html).toContain('a[href^="http"]::after');
+        });
+
+        it('should hide toggle content buttons in print CSS', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.box-toggle { display: none !important; }');
+        });
+
+        it('should hide game toolbar icons in print (background images do not print by default)', async () => {
+            const result = await exporter.generatePreview();
+            const rule = '[class*="exeQuextIcons"], .SopaIcons, .IDFPIcons { display: none !important; }';
+            const at = result.html!.indexOf(rule);
+            expect(at).toBeGreaterThan(-1);
+            const before = result.html!.slice(result.html!.indexOf('/* PREVIEW MODE (Screen) */'), at);
+            // Nested inside @media print, so the icons stay usable on screen
+            expect(before.split('{').length).toBeGreaterThan(before.split('}').length);
+        });
+
+        it('should leave teacher-only content to the teacher mode, which decides whether it prints', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).not.toContain('.teacher-only { display: none !important; }');
+        });
+
+        it('should hide map iDevice image overlays in print CSS', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.mapa-IDevice img.js-hidden { display: none !important; }');
+        });
+
+        it('should style links for PDF interactivity in print CSS', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('a[href]');
+            expect(result.html).toContain('text-decoration: underline');
         });
     });
 

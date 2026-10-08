@@ -436,6 +436,26 @@ describe('menu and modal HTML generation', () => {
 
         expect(missing).toEqual([]);
     });
+
+    it('carries the print preview and the options panel beside it', () => {
+        // The print preview finds its elements by id instead of through the base Modal, so the
+        // check above passes it over; without this markup File → Print would silently do nothing.
+        const html = generateModalsHtml();
+        expect(html).toContain('id="printPreviewOverlay"');
+        expect(html).toContain('id="printOptionsPanel"');
+
+        // The panel is filled by script, so what the template carries must survive the
+        // conversion whole, with its strings left for the browser to translate.
+        const preview = processNjkTemplate(path.join(projectRoot, 'views/workarea/modals/pages/printpreview.njk'));
+        expect(preview).not.toMatch(/\{[{%#]/);
+        expect(preview).toContain('class="print-options-activities"');
+        expect(preview).toContain('id="printOptLinkUrls"');
+        expect(preview).toContain('id="printOptUnfoldBlocks"');
+        expect(preview).toContain('data-i18n="Print options"');
+        expect(preview).toContain('data-i18n="Show link URLs"');
+        expect(preview).toContain('data-i18n="Print all visible content"');
+        expect(preview).toContain('data-i18n-aria-label="Close"');
+    });
 });
 
 describe('generateStaticHtml', () => {

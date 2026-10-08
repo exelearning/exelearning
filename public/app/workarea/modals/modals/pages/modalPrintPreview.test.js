@@ -5,6 +5,8 @@ import ModalPrintPreview, {
     ACTIVITY_MODE_OMIT,
     PREVIEW_MODE_DOCUMENT,
     PREVIEW_MODE_IDEVICES,
+    PRINT_AS_SHOWN_CLASS,
+    REGENERATE_DELAY_MS,
 } from './modalPrintPreview.js';
 
 describe('ModalPrintPreview', () => {
@@ -108,10 +110,15 @@ describe('ModalPrintPreview', () => {
         it('should initialize blobUrl as null', () => {
             expect(modal.blobUrl).toBeNull();
         });
+
+        it('should have no options panel where the page has no markup for it', () => {
+            expect(modal.panel).toBeNull();
+            expect(modal.optionsBtn).toBeNull();
+        });
     });
 
     describe('concurrent previews', () => {
-        it('keeps the new mode when an older generation finishes last', async () => {
+        it('waits for a closed preview before generating the newly opened mode', async () => {
             let resolveOld;
             const oldDispose = vi.fn();
             const currentDispose = vi.fn();
@@ -119,11 +126,11 @@ describe('ModalPrintPreview', () => {
             window.generateWorksheet.mockResolvedValue({ success: true, html: 'NEW', dispose: currentDispose });
             const oldRequest = modal.show(PREVIEW_MODE_DOCUMENT);
             modal.close();
-            await modal.show(PREVIEW_MODE_IDEVICES);
-            const created = URL.createObjectURL.mock.calls.length;
+            const newRequest = modal.show(PREVIEW_MODE_IDEVICES);
+            expect(window.generateWorksheet).not.toHaveBeenCalled();
             resolveOld({ success: true, html: 'OLD', dispose: oldDispose });
-            await oldRequest;
-            expect(URL.createObjectURL).toHaveBeenCalledTimes(created);
+            await Promise.all([oldRequest, newRequest]);
+            expect(URL.createObjectURL).toHaveBeenCalledOnce();
             expect(modal.mode).toBe(PREVIEW_MODE_IDEVICES);
             expect(oldDispose).toHaveBeenCalledOnce();
             expect(currentDispose).not.toHaveBeenCalled();
@@ -137,9 +144,9 @@ describe('ModalPrintPreview', () => {
             window.generatePrintPreview.mockReturnValue(new Promise((resolve, reject) => { rejectOld = reject; }));
             const error = vi.spyOn(modal, 'showError');
             const oldRequest = modal.show();
-            await modal.show(PREVIEW_MODE_IDEVICES);
+            const newRequest = modal.show(PREVIEW_MODE_IDEVICES);
             rejectOld(new Error('stale error'));
-            await oldRequest;
+            await Promise.all([oldRequest, newRequest]);
             expect(error).not.toHaveBeenCalled();
         });
 
@@ -327,7 +334,9 @@ describe('ModalPrintPreview', () => {
     });
 
     describe('print', () => {
-        it('should call iframe contentWindow.print()', () => {
+        it('should call iframe contentWindow.print() for a loaded preview', () => {
+            overlayElement.setAttribute('data-visible', 'true');
+            modal.ready = true;
             const mockPrint = vi.fn();
             modal.iframe = {
                 contentWindow: { print: mockPrint },
@@ -341,6 +350,8 @@ describe('ModalPrintPreview', () => {
         });
 
         it('should not throw when iframe has no contentWindow', () => {
+            overlayElement.setAttribute('data-visible', 'true');
+            modal.ready = true;
             modal.iframe = {
                 contentWindow: null,
                 classList: { toggle: vi.fn(), add: vi.fn() },
@@ -625,6 +636,775 @@ describe('ModalPrintPreview and interactive activities', () => {
             await modal.show(PREVIEW_MODE_IDEVICES);
 
             expect(worksheetOptions()).not.toHaveProperty('selectedActivities');
+        });
+    });
+});
+
+describe('ModalPrintPreview and its options panel', () => {
+    let modal;
+    let overlayElement;
+
+    const ACTIVITIES = [
+        { id: 'c1', type: 'guess', pageTitle: 'Tema 1', blockTitle: '' },
+        { id: 'c2', type: 'crossword', pageTitle: 'Tema 2', blockTitle: 'Repaso final' },
+        { id: 'c3', type: 'guess', pageTitle: 'Tema 3', blockTitle: '' },
+    ];
+
+    const panelEl = () => overlayElement.querySelector('.print-options-panel');
+    const optionsBtn = () => overlayElement.querySelector('.print-preview-options-btn');
+    const printBtn = () => overlayElement.querySelector('.print-preview-print-btn');
+    const radios = () => [...overlayElement.querySelectorAll('input[name="print-activity-mode"]')];
+    const checkedChoice = () =>
+        overlayElement.querySelector('input[name="print-activity-mode"]:checked')?.value;
+    const boxes = () => [...overlayElement.querySelectorAll('input[name="print-activity-selected"]')];
+    const status = () => overlayElement.querySelector('.print-options-status').textContent;
+    const linkUrls = () => overlayElement.querySelector('#printOptLinkUrls');
+    const unfoldBlocks = () => overlayElement.querySelector('#printOptUnfoldBlocks');
+    const busy = () => overlayElement.getAttribute('data-busy');
+    const lastOptions = () => global.window.generatePrintPreview.mock.calls.at(-1)[2];
+    const lastWorksheetOptions = () => global.window.generateWorksheet.mock.calls.at(-1)[1];
+
+    /** Pick a choice, clearing the others as the browser would (happy-dom does not). */
+    const choose = (value) => {
+        radios().forEach((input) => {
+            input.checked = input.value === value;
+        });
+        radios()
+            .find((input) => input.value === value)
+            .dispatchEvent(new Event('change'));
+    };
+    const tick = (input, checked) => {
+        input.checked = checked;
+        input.dispatchEvent(new Event('change'));
+    };
+    /** Let the wait before drawing the preview again pass, and the drawing finish. */
+    const settle = () => vi.advanceTimersByTimeAsync(REGENERATE_DELAY_MS);
+    /** The browser reports the document in the frame as loaded. */
+    const loaded = () => modal.iframe.onload();
+    /** Give the frame a document of its own, as the browser does once a preview loads in it. */
+    const frameDocument = () => {
+        const doc = document.implementation.createHTMLDocument('preview');
+        Object.defineProperty(modal.iframe, 'contentDocument', { configurable: true, get: () => doc });
+        return doc;
+    };
+    /** A preview loads in the frame; returns the <html> of its document. */
+    const loadedPage = () => {
+        const doc = frameDocument();
+        loaded();
+        return doc.documentElement;
+    };
+
+    /** Show the preview of a project that has the three activities above. */
+    const showWithActivities = (mode = PREVIEW_MODE_DOCUMENT, activityMode = ACTIVITY_MODE_IN_PLACE, selected = null) =>
+        modal.show(mode, activityMode, selected, ACTIVITIES);
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        overlayElement = document.createElement('div');
+        overlayElement.id = 'printPreviewOverlay';
+        overlayElement.setAttribute('data-visible', 'false');
+        overlayElement.setAttribute('data-busy', 'false');
+        overlayElement.innerHTML = `
+            <span class="print-preview-title-text">Print preview</span>
+            <button class="print-preview-options-btn" aria-expanded="false" hidden></button>
+            <button class="print-preview-print-btn"></button>
+            <button class="print-preview-close-btn"></button>
+            <div class="print-preview-loading"></div>
+            <iframe class="print-preview-iframe"></iframe>
+            <aside class="print-options-panel" hidden>
+                <button class="print-options-close"></button>
+                <div class="print-options-body">
+                    <div class="print-options-activities" hidden></div>
+                    <fieldset class="print-options-document">
+                        <input type="checkbox" id="printOptLinkUrls" checked>
+                        <input type="checkbox" id="printOptUnfoldBlocks" checked>
+                    </fieldset>
+                </div>
+                <p class="print-options-status"></p>
+            </aside>
+        `;
+        document.body.appendChild(overlayElement);
+
+        global.eXeLearning = {
+            app: { project: { _yjsEnabled: true, _yjsBridge: { documentManager: {}, assetManager: {} } } },
+            config: { baseURL: 'http://localhost:8080', basePath: '', version: 'v1.0.0' },
+        };
+        global.window.generatePrintPreview = vi.fn().mockResolvedValue({ success: true, html: '<html></html>' });
+        global.window.generateWorksheet = vi.fn().mockResolvedValue({ success: true, html: '<html></html>' });
+        global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
+        global.URL.revokeObjectURL = vi.fn();
+        global._ = (str) => str;
+
+        modal = new ModalPrintPreview({});
+        modal.behaviour();
+    });
+
+    afterEach(() => {
+        modal.close();
+        vi.useRealTimers();
+        document.body.removeChild(overlayElement);
+        vi.restoreAllMocks();
+        vi.clearAllMocks();
+    });
+
+    describe('when the preview opens', () => {
+        it('builds the panel from the markup', () => {
+            expect(modal.panel).not.toBeNull();
+            expect(modal.optionsBtn).toBe(optionsBtn());
+        });
+
+        it('offers only the document options when the project has no interactive activity', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+
+            expect(panelEl().hidden).toBe(false);
+            expect(optionsBtn().hidden).toBe(false);
+            expect(radios()).toHaveLength(0);
+            expect(linkUrls().disabled).toBe(false);
+            // The document prints as it always did, links with their URLs.
+            expect(lastOptions().activities).toBeUndefined();
+            expect(lastOptions().showLinkUrls).toBe(true);
+        });
+
+        it('offers the choices when it has some, with the one it is given preselected', async () => {
+            await showWithActivities();
+
+            expect(panelEl().hidden).toBe(false);
+            expect(optionsBtn().hidden).toBe(false);
+            expect(optionsBtn().getAttribute('aria-expanded')).toBe('true');
+            expect(radios().map((radio) => radio.value)).toEqual(['omit', 'in-place', 'appendix', 'idevices']);
+            expect(checkedChoice()).toBe(ACTIVITY_MODE_IN_PLACE);
+            expect(boxes()).toHaveLength(3);
+            expect(boxes().every((box) => box.checked)).toBe(true);
+        });
+
+        it('draws the preview the panel shows', async () => {
+            await showWithActivities();
+
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_IN_PLACE);
+            expect(lastOptions().activities).not.toHaveProperty('selectedActivities');
+        });
+
+        it('starts the activities in an appendix when the arguments say nothing about them', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, null, null, ACTIVITIES);
+
+            expect(checkedChoice()).toBe(ACTIVITY_MODE_APPENDIX);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_APPENDIX);
+        });
+
+        it('starts with the choice it is told to', async () => {
+            await showWithActivities(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX);
+
+            expect(checkedChoice()).toBe(ACTIVITY_MODE_APPENDIX);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_APPENDIX);
+        });
+
+        it('starts with the worksheet when printing only the activities', async () => {
+            await showWithActivities(PREVIEW_MODE_IDEVICES, null);
+
+            expect(checkedChoice()).toBe(PREVIEW_MODE_IDEVICES);
+            expect(global.window.generateWorksheet).toHaveBeenCalledTimes(1);
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+            expect(modal.titleEl.textContent).toBe('Print iDevices');
+        });
+
+        it('starts with the activities it is told to print', async () => {
+            await showWithActivities(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX, ['c2']);
+
+            expect(boxes().map((box) => box.checked)).toEqual([false, true, false]);
+            expect(lastOptions().activities.selectedActivities).toEqual(['c2']);
+        });
+
+        it('names an activity by its iDevice when its block has no name', async () => {
+            global.eXeLearning.app.idevices = { getIdeviceInstalled: () => ({ title: 'Adivina' }) };
+
+            await showWithActivities();
+
+            expect([...overlayElement.querySelectorAll('.print-activities-list label')][0].textContent).toBe(
+                'Tema 1 — Adivina'
+            );
+        });
+
+        it('forgets the activity choices of the last project', async () => {
+            await showWithActivities();
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+
+            expect(radios()).toHaveLength(0);
+            expect(lastOptions().activities).toBeUndefined();
+        });
+
+        it('treats anything but a list as no activities', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, null, null, undefined);
+            expect(radios()).toHaveLength(0);
+
+            await modal.show(PREVIEW_MODE_DOCUMENT, null, null, 'nonsense');
+            expect(radios()).toHaveLength(0);
+        });
+
+        it('keeps the worksheet of a project that has no activity to choose about', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            expect(global.window.generateWorksheet).toHaveBeenCalledTimes(1);
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+            expect(modal.mode).toBe(PREVIEW_MODE_IDEVICES);
+        });
+    });
+
+    describe('the URLs of links', () => {
+        it('are written by default', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
+            expect(lastOptions().showLinkUrls).toBe(true);
+        });
+
+        it('are left out once the option is cleared, and the preview drawn again', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            loaded();
+            global.window.generatePrintPreview.mockClear();
+
+            tick(linkUrls(), false);
+            expect(busy()).toBe('true');
+            await settle();
+
+            expect(global.window.generatePrintPreview).toHaveBeenCalledTimes(1);
+            expect(lastOptions().showLinkUrls).toBe(false);
+        });
+
+        it('stay as chosen when the activities change', async () => {
+            await showWithActivities();
+            loaded();
+            tick(linkUrls(), false);
+            await settle();
+            loaded();
+
+            choose(ACTIVITY_MODE_OMIT);
+            await settle();
+
+            expect(lastOptions().showLinkUrls).toBe(false);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_OMIT);
+        });
+
+        it('cannot be chosen for the worksheet, which has no links to show', async () => {
+            await showWithActivities(PREVIEW_MODE_IDEVICES, null);
+            expect(linkUrls().disabled).toBe(true);
+
+            loaded();
+            choose(ACTIVITY_MODE_APPENDIX);
+            expect(linkUrls().disabled).toBe(false);
+        });
+
+        it('are part of the options built for the document preview', () => {
+            modal.showLinkUrls = false;
+
+            const options = modal.buildPreviewOptions();
+
+            expect(options.showLinkUrls).toBe(false);
+            expect(options.baseUrl).toBe('http://localhost:8080');
+            expect(options).not.toHaveProperty('activities');
+        });
+    });
+
+    describe('how folded blocks print', () => {
+        it('unfolds them on paper by default', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            const page = loadedPage();
+
+            expect(modal.unfoldBlocks).toBe(true);
+            expect(unfoldBlocks().disabled).toBe(false);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
+        });
+
+        it('keeps the preview as it is shown once the option is cleared, without drawing it again', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            const page = loadedPage();
+            global.window.generatePrintPreview.mockClear();
+
+            tick(unfoldBlocks(), false);
+
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
+            expect(busy()).toBe('false');
+            expect(printBtn().disabled).toBe(false);
+            await settle();
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+            // How a block prints is no business of the exporter.
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
+        });
+
+        it('unfolds them again once the option is ticked back', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            const page = loadedPage();
+
+            tick(unfoldBlocks(), false);
+            tick(unfoldBlocks(), true);
+
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
+            expect(modal.unfoldBlocks).toBe(true);
+        });
+
+        it('keeps the choice in a preview drawn again for another option', async () => {
+            await showWithActivities();
+            loadedPage();
+            tick(unfoldBlocks(), false);
+
+            choose(ACTIVITY_MODE_OMIT);
+            await settle();
+            const page = loadedPage();
+
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_OMIT);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
+        });
+
+        it('offers no choice for the worksheet, which has no blocks to fold', async () => {
+            await showWithActivities(PREVIEW_MODE_IDEVICES, null);
+            expect(unfoldBlocks().disabled).toBe(true);
+
+            loadedPage();
+            choose(ACTIVITY_MODE_APPENDIX);
+            expect(unfoldBlocks().disabled).toBe(false);
+        });
+
+        it('takes the choice to a preview that loads after it', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            Object.defineProperty(modal.iframe, 'contentDocument', { configurable: true, get: () => null });
+
+            expect(() => tick(unfoldBlocks(), false)).not.toThrow();
+
+            const page = loadedPage();
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
+        });
+
+        it('leaves a document that cannot be reached as it was built', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            Object.defineProperty(modal.iframe, 'contentDocument', {
+                configurable: true,
+                get: () => {
+                    throw new DOMException('Blocked a frame', 'SecurityError');
+                },
+            });
+
+            expect(() => tick(unfoldBlocks(), false)).not.toThrow();
+            expect(modal.unfoldBlocks).toBe(false);
+        });
+
+        it('ignores the option while the preview is closed', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            const page = loadedPage();
+            modal.close();
+
+            tick(unfoldBlocks(), false);
+
+            expect(modal.unfoldBlocks).toBe(true);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
+        });
+    });
+
+    describe('when an option changes', () => {
+        beforeEach(async () => {
+            await showWithActivities();
+            loaded();
+            global.window.generatePrintPreview.mockClear();
+            global.window.generateWorksheet.mockClear();
+        });
+
+        it('draws the preview again for the new choice, after a short wait', async () => {
+            choose(ACTIVITY_MODE_APPENDIX);
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+
+            await settle();
+
+            expect(global.window.generatePrintPreview).toHaveBeenCalledTimes(1);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_APPENDIX);
+        });
+
+        it('is busy from the moment the option changes until the new preview has loaded', async () => {
+            expect(busy()).toBe('false');
+            expect(printBtn().disabled).toBe(false);
+
+            choose(ACTIVITY_MODE_APPENDIX);
+            expect(busy()).toBe('true');
+            expect(printBtn().disabled).toBe(true);
+
+            await settle();
+            expect(busy()).toBe('true');
+
+            loaded();
+            expect(busy()).toBe('false');
+            expect(printBtn().disabled).toBe(false);
+        });
+
+        it('draws once when several options change in a row', async () => {
+            choose(ACTIVITY_MODE_APPENDIX);
+            tick(boxes()[0], false);
+            tick(boxes()[1], false);
+
+            await settle();
+
+            expect(global.window.generatePrintPreview).toHaveBeenCalledTimes(1);
+            expect(lastOptions().activities.selectedActivities).toEqual(['c3']);
+        });
+
+        it('asks only for the activities left ticked', async () => {
+            tick(boxes()[1], false);
+
+            await settle();
+
+            expect(lastOptions().activities.selectedActivities).toEqual(['c1', 'c3']);
+        });
+
+        it('switches to the worksheet, and its heading, when only the activities are asked for', async () => {
+            choose(PREVIEW_MODE_IDEVICES);
+            expect(modal.titleEl.textContent).toBe('Print iDevices');
+
+            await settle();
+
+            expect(global.window.generateWorksheet).toHaveBeenCalledTimes(1);
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+        });
+
+        it('goes back to the document, and its heading, when the activities are asked for there again', async () => {
+            choose(PREVIEW_MODE_IDEVICES);
+            await settle();
+            loaded();
+
+            choose(ACTIVITY_MODE_OMIT);
+            await settle();
+
+            expect(modal.titleEl.textContent).toBe('Print preview');
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_OMIT);
+            expect(lastOptions().activities).not.toHaveProperty('selectedActivities');
+        });
+
+        it('hands the worksheet the activities left ticked', async () => {
+            choose(PREVIEW_MODE_IDEVICES);
+            tick(boxes()[0], false);
+
+            await settle();
+
+            expect(lastWorksheetOptions().selectedActivities).toEqual(['c2', 'c3']);
+        });
+
+        it('drops a preview that was still being drawn for the old options', async () => {
+            let resolveOld;
+            const oldDispose = vi.fn();
+            global.window.generatePrintPreview.mockReturnValueOnce(
+                new Promise((resolve) => {
+                    resolveOld = resolve;
+                })
+            );
+            const pending = modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE, null, ACTIVITIES);
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+            const created = global.URL.createObjectURL.mock.calls.length;
+            expect(global.window.generatePrintPreview).toHaveBeenCalledTimes(1);
+
+            resolveOld({ success: true, html: 'OLD', dispose: oldDispose });
+            await pending;
+            await settle();
+
+            expect(oldDispose).toHaveBeenCalledOnce();
+            expect(global.URL.createObjectURL).toHaveBeenCalledTimes(created + 1);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_APPENDIX);
+        });
+
+        it('stays busy until the newest preview has loaded, whatever the older ones do', async () => {
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+            const newest = modal.iframe.onload;
+            choose(ACTIVITY_MODE_OMIT);
+
+            // The load of the preview drawn for the appendix arrives late.
+            newest();
+
+            expect(busy()).toBe('true');
+        });
+
+        it('shows the error, and stops being busy, when drawing again fails', async () => {
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            global.window.generatePrintPreview.mockRejectedValueOnce(new Error('Boom'));
+
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+
+            expect(modal.loadingEl.innerHTML).toContain('Boom');
+            expect(busy()).toBe('false');
+        });
+
+        it('disables printing and releases the old document after a failed regeneration, then recovers', async () => {
+            const dispose = vi.fn();
+            global.window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: 'OLD', dispose });
+            await showWithActivities();
+            loaded();
+            const nativePrint = vi.fn();
+            Object.defineProperty(modal.iframe, 'contentWindow', { configurable: true, value: { print: nativePrint } });
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            global.window.generatePrintPreview.mockRejectedValueOnce(new Error('Boom'));
+
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+
+            expect(dispose).toHaveBeenCalledOnce();
+            expect(modal.iframe.src).toBe('about:blank');
+            expect(modal.blobUrl).toBeNull();
+            expect(printBtn().disabled).toBe(true);
+            modal.print();
+            expect(nativePrint).not.toHaveBeenCalled();
+
+            choose(ACTIVITY_MODE_IN_PLACE);
+            expect(modal.loadingEl.textContent).not.toContain('Boom');
+            await settle();
+            expect(printBtn().disabled).toBe(true);
+            loaded();
+            expect(printBtn().disabled).toBe(false);
+        });
+
+        it('coalesces changes made while an exporter is running into the latest options only', async () => {
+            let resolveSlow;
+            const dispose = vi.fn();
+            global.window.generatePrintPreview.mockReturnValueOnce(new Promise(resolve => { resolveSlow = resolve; }));
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+            choose(ACTIVITY_MODE_OMIT);
+            await settle();
+            choose(PREVIEW_MODE_IDEVICES);
+            await settle();
+            tick(boxes()[0], false);
+            await settle();
+            expect(global.window.generatePrintPreview).toHaveBeenCalledTimes(1);
+            expect(global.window.generateWorksheet).not.toHaveBeenCalled();
+
+            resolveSlow({ success: true, html: 'STALE', dispose });
+            await settle();
+
+            expect(dispose).toHaveBeenCalledOnce();
+            expect(global.window.generatePrintPreview).toHaveBeenCalledTimes(1);
+            expect(global.window.generateWorksheet).toHaveBeenCalledOnce();
+            expect(lastWorksheetOptions().selectedActivities).toEqual(['c2', 'c3']);
+            loaded();
+            expect(printBtn().disabled).toBe(false);
+        });
+
+        it('drops queued work when closed while generation is running', async () => {
+            let resolveSlow;
+            const dispose = vi.fn();
+            global.window.generatePrintPreview.mockReturnValueOnce(new Promise(resolve => { resolveSlow = resolve; }));
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+            choose(PREVIEW_MODE_IDEVICES);
+            await settle();
+            modal.close();
+            resolveSlow({ success: true, html: 'STALE', dispose });
+            await settle();
+
+            expect(dispose).toHaveBeenCalledOnce();
+            expect(global.window.generateWorksheet).not.toHaveBeenCalled();
+            expect(modal.iframe.src).toBe('about:blank');
+            expect(modal.generationPromise).toBeNull();
+            expect(printBtn().disabled).toBe(true);
+        });
+
+        it('keeps the debounce of the latest change when the active generation finishes', async () => {
+            let resolveSlow;
+            global.window.generatePrintPreview.mockReturnValueOnce(new Promise(resolve => { resolveSlow = resolve; }));
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+            choose(ACTIVITY_MODE_OMIT);
+            await settle();
+            choose(PREVIEW_MODE_IDEVICES);
+            resolveSlow({ success: true, html: 'STALE' });
+            await vi.advanceTimersByTimeAsync(REGENERATE_DELAY_MS - 1);
+            expect(global.window.generateWorksheet).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+            expect(global.window.generateWorksheet).toHaveBeenCalledOnce();
+        });
+
+        it('says nothing of an error from a preview that is no longer wanted', async () => {
+            let rejectOld;
+            global.window.generatePrintPreview.mockReturnValueOnce(
+                new Promise((resolve, reject) => {
+                    rejectOld = reject;
+                })
+            );
+            const error = vi.spyOn(modal, 'showError');
+            const pending = modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE, null, ACTIVITIES);
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+
+            rejectOld(new Error('old'));
+            await pending;
+
+            expect(error).not.toHaveBeenCalled();
+        });
+
+        it('does nothing once the overlay has been closed', async () => {
+            modal.close();
+
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+        });
+
+        it('stops waiting to draw when the overlay is closed', async () => {
+            choose(ACTIVITY_MODE_APPENDIX);
+
+            modal.close();
+            await settle();
+
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+            expect(busy()).toBe('false');
+        });
+
+        it('stops waiting to draw when a new preview is asked for', async () => {
+            choose(ACTIVITY_MODE_APPENDIX);
+
+            await showWithActivities(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_OMIT);
+            global.window.generatePrintPreview.mockClear();
+            await settle();
+
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('when no activity is left to print', () => {
+        beforeEach(async () => {
+            await showWithActivities();
+            loaded();
+        });
+
+        it('still draws the preview, but does not allow printing it', async () => {
+            boxes().forEach((box) => tick(box, false));
+            await settle();
+            loaded();
+
+            expect(lastOptions().activities.selectedActivities).toEqual([]);
+            expect(busy()).toBe('false');
+            expect(printBtn().disabled).toBe(true);
+            expect(status()).toBe('Select at least one activity to print.');
+        });
+
+        it('allows printing again once one is ticked', async () => {
+            boxes().forEach((box) => tick(box, false));
+            await settle();
+            loaded();
+
+            tick(boxes()[0], true);
+            await settle();
+            loaded();
+
+            expect(printBtn().disabled).toBe(false);
+            expect(status()).toBe('');
+        });
+
+        it('allows printing when none of them is to be printed', async () => {
+            boxes().forEach((box) => tick(box, false));
+            choose(ACTIVITY_MODE_OMIT);
+            await settle();
+            loaded();
+
+            expect(printBtn().disabled).toBe(false);
+            expect(status()).toBe('');
+        });
+
+        it('does not start out unable to print the next project', async () => {
+            boxes().forEach((box) => tick(box, false));
+            await settle();
+
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            loaded();
+
+            expect(printBtn().disabled).toBe(false);
+        });
+    });
+
+    describe('the buttons', () => {
+        beforeEach(async () => {
+            await showWithActivities();
+            loaded();
+        });
+
+        it('closes the panel from its own button, and opens it again from the one in the header', () => {
+            panelEl().querySelector('.print-options-close').click();
+            expect(panelEl().hidden).toBe(true);
+            expect(optionsBtn().getAttribute('aria-expanded')).toBe('false');
+
+            optionsBtn().click();
+            expect(panelEl().hidden).toBe(false);
+            expect(optionsBtn().getAttribute('aria-expanded')).toBe('true');
+        });
+
+        it('does not print while the preview is being drawn', () => {
+            choose(ACTIVITY_MODE_APPENDIX);
+
+            expect(printBtn().disabled).toBe(true);
+        });
+
+        it.each(['busy', 'invalid', 'closed', 'not-ready'])('rejects direct printing when %s', (state) => {
+            const nativePrint = vi.fn();
+            Object.defineProperty(modal.iframe, 'contentWindow', { configurable: true, value: { print: nativePrint } });
+            if (state === 'busy') modal.busy = true;
+            if (state === 'invalid') modal.valid = false;
+            if (state === 'closed') modal.close();
+            if (state === 'not-ready') modal.ready = false;
+            modal.print();
+            expect(nativePrint).not.toHaveBeenCalled();
+        });
+
+        it('prints once the preview is ready', () => {
+            const printSpy = vi.spyOn(modal, 'print').mockImplementation(() => {});
+
+            printBtn().click();
+
+            expect(printSpy).toHaveBeenCalledOnce();
+        });
+
+        it('does not print the first preview before it has loaded', async () => {
+            await showWithActivities();
+
+            expect(printBtn().disabled).toBe(true);
+
+            loaded();
+            expect(printBtn().disabled).toBe(false);
+        });
+    });
+
+    describe('being busy', () => {
+        it('is not busy once the overlay is closed', async () => {
+            await showWithActivities();
+            expect(busy()).toBe('true');
+
+            modal.close();
+
+            expect(busy()).toBe('false');
+        });
+
+        it('is not busy once the preview has failed', () => {
+            modal.showLoading(true);
+
+            modal.showError('Something went wrong');
+
+            expect(busy()).toBe('false');
+        });
+
+        it('does not need the button to be there', () => {
+            modal.printBtn = null;
+
+            expect(() => modal.setBusy(true)).not.toThrow();
+        });
+    });
+
+    describe('ideviceName', () => {
+        it('gives the name the iDevice menu shows', () => {
+            global.eXeLearning.app.idevices = { getIdeviceInstalled: vi.fn(() => ({ title: 'Adivina' })) };
+
+            expect(modal.ideviceName('guess')).toBe('Adivina');
+            expect(global.eXeLearning.app.idevices.getIdeviceInstalled).toHaveBeenCalledWith('guess');
+        });
+
+        it('gives nothing when the iDevice is not installed or the menu is not there', () => {
+            expect(modal.ideviceName('guess')).toBe('');
+
+            global.eXeLearning.app.idevices = { getIdeviceInstalled: () => null };
+            expect(modal.ideviceName('guess')).toBe('');
         });
     });
 });

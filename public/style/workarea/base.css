@@ -838,9 +838,12 @@ html:not(.mode-teacher) .js .teacher-only {
    the rules further up take out of the layout with `!important` of their own, so nothing inside
    one is ever laid out — and an iDevice carrying either class keeps its own rule inside a block
    that does open. `teacher-only` is deliberately not excluded here: in teacher mode that block is
-   meant to print, folded or not. */
+   meant to print, folded or not.
+
+   The print preview can ask for the page to print as it is shown instead, by putting
+   `exe-print-as-shown` on <html>: folded blocks then stay folded on paper. */
 @media print {
-    .exe-export article.box.minimized > .box-content {
+    html:not(.exe-print-as-shown) .exe-export article.box.minimized > .box-content {
         display: block !important;
     }
 }

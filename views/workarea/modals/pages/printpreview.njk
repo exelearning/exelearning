@@ -1,10 +1,13 @@
 <!-- Print Preview Overlay (not using Bootstrap modal) -->
-<div id="printPreviewOverlay" class="print-preview-overlay" data-visible="false">
+<div id="printPreviewOverlay" class="print-preview-overlay" data-visible="false" data-busy="false">
     <div class="print-preview-header d-flex justify-content-between align-items-center p-2 border-bottom">
         <div class="print-preview-title h5 mb-0">
             <span class="print-preview-title-text">{{ 'Print preview' | trans }}</span>
         </div>
         <div class="print-preview-actions d-flex gap-2">
+            <button type="button" class="print-preview-options-btn btn btn-secondary" aria-controls="printOptionsPanel" aria-expanded="false" hidden>
+                {{ 'Print options' | trans }}
+            </button>
             <button type="button" class="print-preview-print-btn btn btn-primary" title="{{ 'Print' | trans }}">
                 {{ 'Print' | trans }}
             </button>
@@ -13,11 +16,39 @@
             </button>
         </div>
     </div>
-    <div class="print-preview-content">
-        <div class="print-preview-loading">
-            <div class="spinner-border" role="status"></div>
-            <p>{{ 'Generating preview...' | trans }}</p>
+    <div class="print-preview-body">
+        <div class="print-preview-content">
+            <div class="print-preview-loading">
+                <div class="spinner-border" role="status"></div>
+                <p>{{ 'Generating preview...' | trans }}</p>
+            </div>
+            <iframe class="print-preview-iframe" title="{{ 'Print preview' | trans }}"></iframe>
         </div>
-        <iframe class="print-preview-iframe" title="{{ 'Print preview' | trans }}"></iframe>
+        {# The options that change what the preview shows. The script fills in the choices about the interactive activities when the project has any; the document options are always there. #}
+        <aside id="printOptionsPanel" class="print-options-panel" aria-labelledby="printOptionsTitle" hidden>
+            <div class="print-options-header">
+                <h2 id="printOptionsTitle" class="print-options-title">{{ 'Print options' | trans }}</h2>
+                <button type="button" class="print-options-close" aria-label="{{ 'Close' | trans }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                        <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="print-options-body">
+                <div class="print-options-activities" hidden></div>
+                <fieldset class="print-options-group print-options-document">
+                    <legend class="print-options-group-title">{{ 'Document' | trans }}</legend>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="printOptLinkUrls" checked>
+                        <label class="form-check-label" for="printOptLinkUrls">{{ 'Show link URLs' | trans }}</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks" checked>
+                        <label class="form-check-label" for="printOptUnfoldBlocks">{{ 'Print all visible content' | trans }}</label>
+                    </div>
+                </fieldset>
+            </div>
+            <p class="print-options-status" role="status" aria-live="polite"></p>
+        </aside>
     </div>
 </div>

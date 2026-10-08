@@ -139,7 +139,7 @@ test.describe('Print iDevices', () => {
                 }
             });
 
-            await openPrintDialog(page);
+            await openPrintPanel(page);
             const { frame } = await choosePrintOption(page, mode);
             const quiz = frame.locator('.worksheet-activity[data-idevice="adaptative-quiz"]');
             await expect(quiz.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
@@ -318,7 +318,7 @@ test.describe('Print iDevices', () => {
                 // Keep the draw deterministic in this test's isolated page: Dog and Bird survive the cap.
                 Math.random = () => 0;
             }, components);
-            await openPrintDialog(page);
+            await openPrintPanel(page);
             const { frame } = await choosePrintOption(page, mode);
             const form = frame.locator('[data-idevice="form"]');
             await expect(form.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
@@ -431,7 +431,7 @@ test.describe('Print iDevices', () => {
                 },
                 { components, pictureId },
             );
-            await openPrintDialog(page);
+            await openPrintPanel(page);
             const { frame } = await choosePrintOption(page, mode);
             const rubric = frame.locator('.worksheet-rubric');
             await expect(rubric.locator('tbody th')).toHaveText('Content');
@@ -658,7 +658,7 @@ test.describe('Print iDevices', () => {
                     },
                     { htmlContent: html, idevice },
                 );
-                await openPrintDialog(page);
+                await openPrintPanel(page);
                 const { frame } = await choosePrintOption(page, mode);
                 await page.emulateMedia({ media: 'print' });
                 await page.locator('.print-preview-iframe').evaluate((iframe: HTMLIFrameElement) => {
@@ -779,7 +779,7 @@ test.describe('Print iDevices', () => {
                     binding.createComponent(parent.id, block, component.type, { htmlContent: component.html });
                 }
             }, components);
-            await openPrintDialog(page);
+            await openPrintPanel(page);
             const { frame } = await choosePrintOption(page, mode);
             const sort = frame.locator('[data-idevice="sort"]');
             await expect(sort.locator('.worksheet-prompt')).toHaveText('Arrange by increasing age');
@@ -930,15 +930,11 @@ test.describe('Print iDevices', () => {
         await overlay.locator('.print-preview-close-btn').click();
         await expect(overlay).toHaveAttribute('data-visible', 'false');
 
-        // The plain print preview shares this overlay, so its heading must come back. This
-        // project has interactive activities, so printing asks what to do with them first.
+        // The plain print preview shares this overlay, so its heading must come back.
         await page.locator('#dropdownFile').click();
         await page.locator('#navbar-button-export-print').click();
 
-        const dialog = page.locator('#modalConfirm');
-        await dialog.waitFor({ state: 'visible', timeout: 15000 });
-        await dialog.locator('button.btn.button-primary').click();
-
+        await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
         await expect(overlay.locator('.print-preview-title-text')).toHaveText('Print preview');
     });
 
@@ -1150,7 +1146,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="electrical-circuits"]');
@@ -1203,7 +1199,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="electrical-circuits"]');
@@ -1268,7 +1264,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="3dmol"]');
@@ -1323,7 +1319,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="3dmol"]');
@@ -1373,7 +1369,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="padlock"]');
@@ -1415,7 +1411,7 @@ test.describe('Print iDevices', () => {
                 { contents: [padlock('<p>Texto desbloqueado</p>'), padlock('')] },
             );
 
-            await openPrintDialog(page);
+            await openPrintPanel(page);
             const { frame } = await choosePrintOption(page, mode);
             const labels = await page.evaluate(() => ({
                 listed: (window as any)._('Not available in print'),
@@ -1480,7 +1476,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="sort"]');
@@ -1528,7 +1524,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="mathproblems"]');
@@ -1590,7 +1586,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="challenge"]');
@@ -1649,7 +1645,7 @@ test.describe('Print iDevices', () => {
             { htmlContent: html },
         );
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         const activity = frame.locator('.worksheet-activity[data-idevice="identify"]');
@@ -1848,7 +1844,7 @@ test.describe('Print iDevices', () => {
             for (const type of types) binding.createComponent(parent.id, block, type, { htmlContent: '' });
         }, types);
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
         const warning = frame.locator('.worksheet-unsupported');
         await expect(warning).toBeVisible();
@@ -1960,9 +1956,12 @@ test.describe('Print iDevices', () => {
 });
 
 /**
- * Open File → Print and return the dialog that asks about the interactive activities.
+ * Open File → Print and return the panel that offers the print options.
+ *
+ * Printing opens the preview at once, with the panel beside it. When the project has no
+ * interactive activity the panel offers only the document options.
  */
-async function openPrintDialog(page: Page) {
+async function openPrintPanel(page: Page) {
     await dismissImportAlert(page);
     await page.locator('#dropdownFile').click();
 
@@ -1970,20 +1969,19 @@ async function openPrintDialog(page: Page) {
     await entry.waitFor({ state: 'visible', timeout: 5000 });
     await entry.click();
 
-    return page.locator('#modalConfirm');
+    return page.locator('#printOptionsPanel');
 }
 
 /**
- * Answer the print dialog and wait for the preview it produces.
+ * Wait for the preview to be drawn: the overlay has stopped being busy and its document is shown.
+ *
+ * Changing an option draws the preview again, and until the new document has loaded the frame
+ * still holds the old one, so a test that read it sooner would be reading the wrong document.
  */
-async function choosePrintOption(page: Page, value: string) {
-    const dialog = page.locator('#modalConfirm');
-    await dialog.waitFor({ state: 'visible', timeout: 15000 });
-    await dialog.locator(`input[name="print-activity-mode"][value="${value}"]`).check();
-    await dialog.locator('button.btn.button-primary').click();
-
+async function waitForPreview(page: Page) {
     const overlay = page.locator('#printPreviewOverlay');
     await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
+    await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 60000 });
 
     const frame = page.frameLocator('.print-preview-iframe');
     // Hidden frames measure zero, so wait for the document to actually be shown.
@@ -1992,11 +1990,22 @@ async function choosePrintOption(page: Page, value: string) {
     return { overlay, frame };
 }
 
+/**
+ * Choose what to do with the interactive activities and wait for the preview that follows.
+ */
+async function choosePrintOption(page: Page, value: string) {
+    const panel = page.locator('#printOptionsPanel');
+    await panel.waitFor({ state: 'visible', timeout: 15000 });
+    await panel.locator(`input[name="print-activity-mode"][value="${value}"]`).check();
+
+    return waitForPreview(page);
+}
+
 test.describe('Print: choosing what happens to the interactive activities', () => {
     // Serial for the same reason as above: these import multi-megabyte fixtures.
     test.describe.configure({ mode: 'serial' });
 
-    test('prints without asking when the project has no interactive activity', async ({
+    test('offers only the document options when the project has no interactive activity', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -2006,46 +2015,257 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
 
-        await openPrintDialog(page);
+        const panel = await openPrintPanel(page);
 
-        await expect(page.locator('#modalConfirm')).toBeHidden();
         await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true', {
             timeout: 15000,
         });
+        await expect(panel).toBeVisible();
+        await expect(page.locator('.print-preview-options-btn')).toBeVisible();
+        await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(0);
+        await expect(panel.locator('#printOptLinkUrls')).toBeChecked();
     });
 
-    test('asks when the project has them, with printing them in place preselected', async ({
+    test('offers the options beside the preview when the project has them, with printing them in an appendix preselected', async ({
         authenticatedPage,
         createProject,
     }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        const dialog = await openPrintDialog(page);
-        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
 
-        await expect(dialog.locator('input[name="print-activity-mode"]')).toHaveCount(4);
-        await expect(dialog.locator('input[name="print-activity-mode"][value="in-place"]')).toBeChecked();
-        await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'false');
+        await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true');
+        await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(4);
+        await expect(panel.locator('input[name="print-activity-mode"][value="appendix"]')).toBeChecked();
+
+        // The preview is drawn at once, for the choice that is preselected: a pointer where each
+        // activity was, and the exercise itself in the appendix.
+        const { frame } = await waitForPreview(page);
+        await expect(frame.locator('.worksheet-reference').first()).toBeVisible();
+        await expect(
+            frame.locator('.worksheet-activity[data-idevice="guess"]:not(.worksheet-activity-reference)'),
+        ).toHaveCount(1);
     });
 
-    test('prints nothing when the dialog is cancelled', async ({ authenticatedPage, createProject }) => {
+    test('docks the panel beside the preview, as wide as the Styles panel', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        const dialog = await openPrintDialog(page);
-        await dialog.waitFor({ state: 'visible', timeout: 15000 });
-        await dialog.locator('button.cancel.btn.button-tertiary').click();
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
 
-        await expect(dialog).toBeHidden();
+        const panelBox = await panel.boundingBox();
+        const previewBox = await page.locator('.print-preview-content').boundingBox();
+        expect(Math.round(panelBox!.width)).toBe(320);
+        // Beside the preview, never over it.
+        expect(previewBox!.x + previewBox!.width).toBeLessThanOrEqual(panelBox!.x + 1);
+    });
+
+    test('closes the options with the preview', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        await page.locator('.print-preview-close-btn').click();
+
         await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'false');
+        await expect(panel).toBeHidden();
+    });
+
+    test('hides the options from their own button and shows them again from the header', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        const toggle = page.locator('.print-preview-options-btn');
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+        await panel.locator('.print-options-close').click();
+        await expect(panel).toBeHidden();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+        await toggle.click();
+        await expect(panel).toBeVisible();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    test('draws the preview again when the choice changes, without closing it', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        await openPrintPanel(page);
+        const { frame } = await waitForPreview(page);
+        await expect(frame.locator('.worksheet-reference').first()).toBeVisible();
+
+        await choosePrintOption(page, 'omit');
+        await expect(frame.locator('.worksheet-activity')).toHaveCount(0);
+        await expect(frame.locator('.exe-single-page')).toBeVisible();
+
+        await choosePrintOption(page, 'idevices');
+        await expect(frame.locator('.worksheet')).toBeVisible();
+        await expect(frame.locator('.exe-single-page')).toHaveCount(0);
+
+        await choosePrintOption(page, 'in-place');
+        await expect(frame.locator('.exe-single-page')).toBeVisible();
+        await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(1);
+        await expect(frame.locator('.worksheet-reference')).toHaveCount(0);
+    });
+
+    test('titles the overlay for the worksheet while only the activities are chosen', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        await openPrintPanel(page);
+        const { overlay } = await waitForPreview(page);
+        const title = overlay.locator('.print-preview-title-text');
+        await expect(title).toHaveText('Print preview');
+
+        await choosePrintOption(page, 'idevices');
+        await expect(title).toHaveText('Print iDevices');
+
+        await choosePrintOption(page, 'appendix');
+        await expect(title).toHaveText('Print preview');
+    });
+
+    test('does not allow printing while the preview is being drawn again', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const panel = await openPrintPanel(page);
+        await waitForPreview(page);
+        const print = page.locator('.print-preview-print-btn');
+        await expect(print).toBeEnabled();
+
+        await panel.locator('input[name="print-activity-mode"][value="in-place"]').check();
+        await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-busy', 'true');
+        await expect(print).toBeDisabled();
+
+        await waitForPreview(page);
+        await expect(print).toBeEnabled();
+    });
+
+    test('keeps printing disabled after a failed regeneration and recovers with new options', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+        const panel = await openPrintPanel(page);
+        await waitForPreview(page);
+        await page.evaluate(() => {
+            const app = window as any;
+            const original = app.generatePrintPreview;
+            app.generatePrintPreview = () => {
+                app.generatePrintPreview = original;
+                throw new Error('Print regeneration test failure');
+            };
+        });
+
+        await panel.locator('input[value="in-place"]').check();
+        await expect(page.locator('.print-preview-error')).toContainText('Print regeneration test failure');
+        await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-busy', 'false');
+        await expect(page.locator('.print-preview-print-btn')).toBeDisabled();
+        await expect(page.locator('.print-preview-iframe')).toHaveAttribute('src', 'about:blank');
+
+        const { frame } = await choosePrintOption(page, 'omit');
+        await expect(page.locator('.print-preview-print-btn')).toBeEnabled();
+        await expect(page.locator('.print-preview-error')).toHaveCount(0);
+        await expect(frame.locator('.worksheet-activity')).toHaveCount(0);
+        await expect(frame.locator('.exe-single-page')).toBeVisible();
+    });
+
+    test('runs only the latest pending options after a slow generation finishes', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+        const panel = await openPrintPanel(page);
+        await waitForPreview(page);
+        await page.evaluate(() => {
+            const app = window as any;
+            const state = { calls: [] as string[], release: () => {}, restore: () => {} };
+            const gate = new Promise<void>(resolve => {
+                state.release = resolve;
+            });
+            const originalDocument = app.generatePrintPreview;
+            const originalWorksheet = app.generateWorksheet;
+            const generateDocument = originalDocument || app.SharedExporters.generatePrintPreview;
+            const generateWorksheet = originalWorksheet || app.SharedExporters.generateWorksheet;
+            app.generatePrintPreview = async (...args: any[]) => {
+                state.calls.push(args[2].activities.mode);
+                if (state.calls.length === 1) await gate;
+                return generateDocument(...args);
+            };
+            app.generateWorksheet = async (...args: any[]) => {
+                state.calls.push('idevices');
+                return generateWorksheet(...args);
+            };
+            state.restore = () => {
+                app.generatePrintPreview = originalDocument;
+                app.generateWorksheet = originalWorksheet;
+            };
+            app.__printGenerationTest = state;
+        });
+        try {
+            await panel.locator('input[value="in-place"]').check();
+            await expect
+                .poll(() => page.evaluate(() => (window as any).__printGenerationTest.calls))
+                .toEqual(['in-place']);
+            for (const choice of ['omit', 'idevices', 'appendix']) {
+                await panel.locator(`input[value="${choice}"]`).check();
+                await expect
+                    .poll(() =>
+                        page.evaluate(
+                            () => (window as any).eXeLearning.app.modals.printpreview.regenerateTimer === null,
+                        ),
+                    )
+                    .toBe(true);
+            }
+            expect(await page.evaluate(() => (window as any).__printGenerationTest.calls)).toEqual(['in-place']);
+            await expect(page.locator('.print-preview-print-btn')).toBeDisabled();
+            await page.evaluate(() => (window as any).__printGenerationTest.release());
+            const { frame } = await waitForPreview(page);
+            expect(await page.evaluate(() => (window as any).__printGenerationTest.calls)).toEqual([
+                'in-place',
+                'appendix',
+            ]);
+            await expect(frame.locator('.worksheet-reference').first()).toBeVisible();
+            await expect(page.locator('.print-preview-print-btn')).toBeEnabled();
+        } finally {
+            await page.evaluate(() => {
+                const state = (window as any).__printGenerationTest;
+                state.release();
+                state.restore();
+                delete (window as any).__printGenerationTest;
+            });
+        }
     });
 
     test('leaves the activity out of the document when asked to', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'omit');
 
         // Neither the game nor an exercise in its place; the project's prose stays.
@@ -2058,7 +2278,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'in-place');
 
         // The exercise replaces the game board, inside the document rather than on a sheet of
@@ -2089,7 +2309,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'appendix');
 
         // One pointer per interactive activity, numbered from one without gaps.
@@ -2115,7 +2335,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        await openPrintDialog(page);
+        await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'idevices');
 
         // The same worksheet File → Print iDevices produces: the sheet, not the document.
@@ -2161,10 +2381,10 @@ test.describe('Print: choosing which interactive activities to print', () => {
                     addQuestion(child.id, binding.createBlock(child.id), 'hidden-question', 'Hidden question');
                 });
 
-                const dialog = await openPrintDialog(page);
-                await expect(dialog.locator(SELECTED)).toHaveCount(2);
-                await expect(dialog.locator(`${SELECTED}[value="hidden-question"]`)).toHaveCount(0);
-                if (selection === 'second') await dialog.locator(`${SELECTED}[value="20251021091936FIRST"]`).uncheck();
+                const panel = await openPrintPanel(page);
+                await expect(panel.locator(SELECTED)).toHaveCount(2);
+                await expect(panel.locator(`${SELECTED}[value="hidden-question"]`)).toHaveCount(0);
+                if (selection === 'second') await panel.locator(`${SELECTED}[value="20251021091936FIRST"]`).uncheck();
                 const { frame } = await choosePrintOption(page, mode);
 
                 await expect(frame.locator('.worksheet-prompt')).toHaveText(
@@ -2178,7 +2398,7 @@ test.describe('Print: choosing which interactive activities to print', () => {
         }
     }
 
-    /** The component id of the fixture's Guess activity, as the dialog lists it. */
+    /** The component id of the fixture's Guess activity, as the options panel lists it. */
     async function guessId(page: Page): Promise<string> {
         return page.evaluate(() => {
             const app = window as any;
@@ -2196,9 +2416,9 @@ test.describe('Print: choosing which interactive activities to print', () => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        const dialog = await openPrintDialog(page);
-        await dialog.waitFor({ state: 'visible', timeout: 15000 });
-        const selection = dialog.locator('.print-activities-selection');
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        const selection = panel.locator('.print-activities-selection');
 
         // A rubric, two forms, the Guess and a download button: five, each ticked.
         await expect(selection).toBeVisible();
@@ -2208,62 +2428,58 @@ test.describe('Print: choosing which interactive activities to print', () => {
         // Named by page, then by block or iDevice.
         await expect(selection.locator('.print-activities-list label').first()).toContainText(' — ');
 
-        await dialog.locator('input[name="print-activity-mode"][value="omit"]').check();
+        await panel.locator('input[name="print-activity-mode"][value="omit"]').check();
         await expect(selection).toBeHidden();
-        await dialog.locator('input[name="print-activity-mode"][value="appendix"]').check();
+        await panel.locator('input[name="print-activity-mode"][value="appendix"]').check();
         await expect(selection).toBeVisible();
-
-        // Five fit without scrolling.
-        const list = selection.locator('.print-activities-list');
-        expect(await list.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(false);
-
-        // Wider than the other confirm dialogs, which are 400px.
-        const width = await dialog.locator('.modal-content').evaluate(node => node.getBoundingClientRect().width);
-        expect(width).toBeGreaterThan(500);
     });
 
-    test('cannot be accepted with none ticked, unless none is to be printed', async ({
+    test('cannot be printed with none ticked, unless none is to be printed', async ({
         authenticatedPage,
         createProject,
     }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        const dialog = await openPrintDialog(page);
-        await dialog.waitFor({ state: 'visible', timeout: 15000 });
-        const accept = dialog.locator('button.btn.button-primary');
-        const selectAll = dialog.locator('#print-activity-select-all');
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        await waitForPreview(page);
+        const print = page.locator('.print-preview-print-btn');
+        const status = panel.locator('.print-options-status');
+        const selectAll = panel.locator('#print-activity-select-all');
+        await expect(print).toBeEnabled();
+        await expect(status).toBeEmpty();
 
         await selectAll.uncheck();
-        for (const box of await dialog.locator(SELECTED).all()) await expect(box).not.toBeChecked();
-        await expect(accept).toBeDisabled();
+        for (const box of await panel.locator(SELECTED).all()) await expect(box).not.toBeChecked();
+        await waitForPreview(page);
+        await expect(print).toBeDisabled();
+        await expect(status).toContainText('Select at least one activity');
 
-        await dialog.locator('input[name="print-activity-mode"][value="omit"]').check();
-        await expect(accept).toBeEnabled();
-        await dialog.locator('input[name="print-activity-mode"][value="in-place"]').check();
-        await expect(accept).toBeDisabled();
+        await panel.locator('input[name="print-activity-mode"][value="omit"]').check();
+        await waitForPreview(page);
+        await expect(print).toBeEnabled();
+        await expect(status).toBeEmpty();
+
+        await panel.locator('input[name="print-activity-mode"][value="in-place"]').check();
+        await waitForPreview(page);
+        await expect(print).toBeDisabled();
 
         // One is enough, and "all" shows that only some are ticked.
-        await dialog.locator(SELECTED).first().check();
-        await expect(accept).toBeEnabled();
+        await panel.locator(SELECTED).first().check();
+        await waitForPreview(page);
+        await expect(print).toBeEnabled();
+        await expect(status).toBeEmpty();
         expect(await selectAll.evaluate(node => (node as HTMLInputElement).indeterminate)).toBe(true);
-
-        // Cancelling leaves no disabled button behind for the next confirm dialog.
-        await selectAll.uncheck();
-        await dialog.locator('button.cancel.btn.button-tertiary').click();
-        await expect(dialog).toBeHidden();
-        const reopened = await openPrintDialog(page);
-        await reopened.waitFor({ state: 'visible', timeout: 15000 });
-        await expect(accept).toBeEnabled();
     });
 
     test('leaves out of the document an activity left unticked', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        const dialog = await openPrintDialog(page);
-        await dialog.waitFor({ state: 'visible', timeout: 15000 });
-        await dialog.locator(`${SELECTED}[value="${await guessId(page)}"]`).uncheck();
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        await panel.locator(`${SELECTED}[value="${await guessId(page)}"]`).uncheck();
         const { frame } = await choosePrintOption(page, 'appendix');
 
         // Neither the game, nor its exercise, nor a pointer to one.
@@ -2279,9 +2495,9 @@ test.describe('Print: choosing which interactive activities to print', () => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
 
-        const dialog = await openPrintDialog(page);
-        await dialog.waitFor({ state: 'visible', timeout: 15000 });
-        await dialog.locator(`${SELECTED}[value="${await guessId(page)}"]`).uncheck();
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        await panel.locator(`${SELECTED}[value="${await guessId(page)}"]`).uncheck();
         const { frame } = await choosePrintOption(page, 'idevices');
 
         await expect(frame.locator('.worksheet')).toBeVisible();
@@ -2289,7 +2505,7 @@ test.describe('Print: choosing which interactive activities to print', () => {
         await expect(frame.locator('.worksheet-activity').first()).toBeVisible();
     });
 
-    test('scrolls the list rather than growing the dialog beyond five activities', async ({
+    test('keeps every activity of a large project within reach by scrolling the panel', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -2299,17 +2515,19 @@ test.describe('Print: choosing which interactive activities to print', () => {
         await waitForAppReady(page);
         await openElpFile(page, CROSSWORD_FIXTURE);
 
-        const dialog = await openPrintDialog(page);
-        await dialog.waitFor({ state: 'visible', timeout: 15000 });
-        const list = dialog.locator('.print-activities-list');
-        expect(await list.locator(SELECTED).count()).toBeGreaterThan(5);
+        const panel = await openPrintPanel(page);
+        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        expect(await panel.locator(SELECTED).count()).toBeGreaterThan(5);
 
-        const { scrolls, rows } = await list.evaluate(node => {
-            const row = (node.querySelector('.form-check') as HTMLElement).getBoundingClientRect().height;
-            return { scrolls: node.scrollHeight > node.clientHeight, rows: node.clientHeight / row };
-        });
-        expect(scrolls).toBe(true);
-        expect(Math.round(rows)).toBe(5);
+        // The panel scrolls as a whole: the last activity is reached by scrolling it into view,
+        // and it stays inside the panel instead of spilling out below it.
+        const last = panel.locator(SELECTED).last();
+        await last.scrollIntoViewIfNeeded();
+        await expect(last).toBeVisible();
+        await expect(last).toBeChecked();
+        const lastBox = await last.boundingBox();
+        const panelBox = await panel.boundingBox();
+        expect(lastBox!.y + lastBox!.height).toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 1);
     });
 });
 
@@ -2343,9 +2561,10 @@ test.describe('Print: a folded block opens on paper', () => {
             }
         });
 
-        // Nothing here is an interactive activity, so Print opens the preview without asking —
-        // which is the path most projects take, and the one this rule has to hold on.
-        await openPrintDialog(page);
+        // Nothing here is an interactive activity, so Print opens the preview with nothing to
+        // choose about activities — which is the path most projects take, and the one this rule
+        // has to hold on.
+        await openPrintPanel(page);
         await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true', {
             timeout: 15000,
         });
@@ -2366,5 +2585,86 @@ test.describe('Print: a folded block opens on paper', () => {
 
         await page.emulateMedia({ media: 'screen' });
         await expect(content('ep-open')).toBeHidden();
+    });
+
+    test('prints the blocks as the preview shows them once "Print all visible content" is cleared', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print as shown');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        // Two blocks the author folded and one left open.
+        await page.evaluate(() => {
+            const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('As shown');
+            const kinds: [string, boolean][] = [
+                ['ep-folded', true],
+                ['ep-reopened', true],
+                ['ep-closed', false],
+            ];
+            for (const [cssClass, minimized] of kinds) {
+                const block = binding.createBlock(parent.id, `Block ${cssClass}`);
+                const properties = binding.getBlockMap(parent.id, block).get('properties');
+                properties.set('cssClass', cssClass);
+                properties.set('minimized', String(minimized));
+                binding.createComponent(parent.id, block, 'text', {
+                    htmlContent: `<p>Content of ${cssClass}</p>`,
+                });
+            }
+        });
+
+        const panel = await openPrintPanel(page);
+        await waitForPreview(page);
+        const frame = page.frameLocator('.print-preview-iframe');
+        const content = (cssClass: string) => frame.locator(`article.${cssClass} .box-content`);
+        const option = panel.locator('#printOptUnfoldBlocks');
+        await expect(option).toBeChecked();
+
+        // The reader opens one of the folded blocks and folds the open one, in the preview.
+        await frame.locator('article.ep-reopened .box-toggle').click();
+        await expect(content('ep-reopened')).toBeVisible();
+        await frame.locator('article.ep-closed .box-toggle').click();
+        await expect(content('ep-closed')).toBeHidden();
+
+        await option.uncheck();
+        await waitForPreview(page);
+        // The preview is not drawn again, or what the reader did would be lost.
+        await expect(frame.locator('html')).toHaveClass(/\bexe-print-as-shown\b/);
+        await expect(content('ep-reopened')).toBeVisible();
+        await expect(content('ep-closed')).toBeHidden();
+
+        await page.emulateMedia({ media: 'print' });
+        await expect(content('ep-folded')).toBeHidden();
+        await expect(content('ep-reopened')).toBeVisible();
+        await expect(content('ep-closed')).toBeHidden();
+
+        // Ticked again, every block prints unfolded, whatever the preview shows.
+        await page.emulateMedia({ media: 'screen' });
+        await option.check();
+        await expect(frame.locator('html')).not.toHaveClass(/\bexe-print-as-shown\b/);
+        await page.emulateMedia({ media: 'print' });
+        await expect(content('ep-folded')).toBeVisible();
+        await expect(content('ep-reopened')).toBeVisible();
+        await expect(content('ep-closed')).toBeVisible();
+        await page.emulateMedia({ media: 'screen' });
+    });
+
+    test('offers no choice about folded blocks for the worksheet', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Worksheet folds');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await openElpFile(page, FIXTURE);
+
+        const panel = await openPrintPanel(page);
+        await waitForPreview(page);
+        await expect(panel.locator('#printOptUnfoldBlocks')).toBeEnabled();
+
+        await choosePrintOption(page, 'idevices');
+        await expect(panel.locator('#printOptUnfoldBlocks')).toBeDisabled();
     });
 });

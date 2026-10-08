@@ -86,6 +86,13 @@ export interface PrintPreviewOptions {
      */
     printMode?: boolean;
     /**
+     * If true, shows URLs inline after external links in printed output.
+     * E.g., "Cedec" becomes "Cedec [https://cedec.intef.es]".
+     * Applied on screen as well, so the preview matches the printed output.
+     * Defaults to true.
+     */
+    showLinkUrls?: boolean;
+    /**
      * What to do with the project's interactive activities, and the strings to do it with.
      *
      * Left out, the document prints exactly as the browser draws it, which is how printing
@@ -107,6 +114,14 @@ export interface PrintPreviewResult {
     success: boolean;
     html?: string;
     error?: string;
+    /**
+     * Releases the blob URLs the HTML points at, one per project asset.
+     *
+     * Only the caller knows when the document has stopped being shown, so it must call this then.
+     * A preview that is drawn again each time an option changes would otherwise leave a copy of
+     * every asset behind each time.
+     */
+    dispose?: () => void;
 }
 
 /**
@@ -116,12 +131,8 @@ export interface PrintPreviewResult {
  */
 export class PrintPreviewExporter {
     private document: ExportDocument;
-    private ideviceRenderer: IdeviceRenderer;
-    private pageRenderer: PageRenderer;
     private assets: AssetProvider | null;
     private resources: ResourceProvider;
-    private assetExportPathMap: Map<string, string> | null = null;
-    private assetResolver: AssetUrlResolver;
 
     /**
      * Create a PrintPreviewExporter
@@ -137,11 +148,6 @@ export class PrintPreviewExporter {
         this.document = document;
         this.resources = resourceProvider;
         this.assets = assetProvider;
-        this.assetResolver = new AssetUrlResolver(assetProvider);
-        // User IdeviceRenderer to render content.
-        // We initialize it here to use it for single-page rendering and icon resolution
-        this.ideviceRenderer = new IdeviceRenderer();
-        this.pageRenderer = new PageRenderer(this.ideviceRenderer);
     }
 
     /**
@@ -150,6 +156,11 @@ export class PrintPreviewExporter {
      * @returns Preview result with HTML string
      */
     async generatePreview(options: PrintPreviewOptions = {}): Promise<PrintPreviewResult> {
+        // Each result owns its URLs and rendering state, even when this exporter is reused
+        // or two callers generate previews concurrently.
+        const assetResolver = new AssetUrlResolver(this.assets);
+        const ideviceRenderer = new IdeviceRenderer();
+        const pageRenderer = new PageRenderer(ideviceRenderer);
         try {
             const pages = this.document.getNavigation();
             const meta = this.document.getMetadata();
@@ -159,7 +170,7 @@ export class PrintPreviewExporter {
             }
 
             // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
-            let processedPages = await this.preprocessPages(pages);
+            let processedPages = await this.preprocessPages(pages, assetResolver);
 
             // Runtime artifacts may share a legacy timestamp prefix. Printable activities each
             // have their own stored data and selection id, so keep every one the dialog offers.
@@ -183,7 +194,7 @@ export class PrintPreviewExporter {
             const themeName = meta.theme || 'base';
             try {
                 const themeFilesMap = await this.resources.fetchTheme(themeName);
-                this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+                ideviceRenderer.setThemeIconFiles(themeFilesMap);
             } catch {
                 // Theme fetch not available - icons will use .png fallback
             }
@@ -203,7 +214,7 @@ export class PrintPreviewExporter {
 
             // Generate the single-page HTML components using PageRenderer
             // This ensures we use the exact same logic as the "Single Page" export
-            let html = this.pageRenderer.renderSinglePage(processedPages, {
+            let html = pageRenderer.renderSinglePage(processedPages, {
                 projectTitle: meta.title || 'eXeLearning',
                 projectSubtitle: meta.subtitle || '',
                 language: meta.language || 'en',
@@ -214,7 +225,7 @@ export class PrintPreviewExporter {
                 addExeLink: meta.addExeLink ?? true,
                 userFooterContent: meta.footer || '',
                 version, // From browser context
-                assetExportPathMap: this.assetExportPathMap || undefined,
+                assetExportPathMap: assetResolver.getExportPathMap(),
                 materialIconDataUris,
                 printContext: { kind: 'document', activities: options.activities?.mode ?? null },
             });
@@ -229,7 +240,7 @@ export class PrintPreviewExporter {
             // 2b. Resolve any remaining content/resources or asset:// URLs to blob URLs.
             // Block header custom icons are generated at render time, so they are not covered
             // by the page/component preprocess step above.
-            html = await this.resolveAssetUrls(html);
+            html = assetResolver.resolve(html);
 
             // 3. Make hidden feedback elements visible (remove display: none)
             html = this.revealFeedback(html);
@@ -280,7 +291,10 @@ export class PrintPreviewExporter {
             const logoUrl = getPath('app/common/exe_powered_logo/exe_powered_logo.png');
             // Only a mode that puts exercises in the document needs their styling.
             const convertsActivities = options.activities !== undefined && options.activities.mode !== 'omit';
-            html = this.injectPreviewStyles(html, logoUrl, convertsActivities);
+            html = this.injectPreviewStyles(html, logoUrl, {
+                includeActivityStyles: convertsActivities,
+                showLinkUrls: options.showLinkUrls !== false,
+            });
 
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
@@ -289,8 +303,9 @@ export class PrintPreviewExporter {
                 // Even in normal preview mode, we need to force init scripts because window.eXeLearning is defined
                 html = this.injectInitScripts(html);
             }
-            return { success: true, html };
+            return { success: true, html, dispose: () => assetResolver.dispose() };
         } catch (error) {
+            assetResolver.dispose();
             console.error('PrintPreview generate error:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { success: false, error: errorMessage };
@@ -349,8 +364,15 @@ export class PrintPreviewExporter {
 
     /**
      * Inject styles to force content to fit within the page width
+     *
+     * @param options.includeActivityStyles - Style the exercises the activities were turned into
+     * @param options.showLinkUrls - Write each external link's URL after it, on screen and paper
      */
-    private injectPreviewStyles(html: string, logoUrl?: string, includeActivityStyles = false): string {
+    private injectPreviewStyles(
+        html: string,
+        logoUrl?: string,
+        { includeActivityStyles = false, showLinkUrls = true } = {},
+    ): string {
         const logoCss = logoUrl
             ? `
 /* Fix for eXe logo 404 */
@@ -359,9 +381,33 @@ export class PrintPreviewExporter {
 }`
             : '';
 
+        // Build conditional link URL display CSS
+        const linkUrlsCss = showLinkUrls
+            ? `
+/* Show URLs inline after external links (screen and print, so the preview matches) */
+a[href^="http"]::after,
+a[href^="https"]::after {
+    content: " [" attr(href) "]";
+    font-size: 0.85em;
+    word-break: break-all;
+    color: #666;
+}
+/* Don't show URL for links whose text IS the URL */
+a[href^="http"]:-moz-only-whitespace::after,
+a[href^="https"]:-moz-only-whitespace::after { content: none; }
+/* Don't show URL for image-only links */
+a[href^="http"]:has(img:only-child)::after,
+a[href^="https"]:has(img:only-child)::after { content: none; }
+/* Show external iframe source URLs in print */
+.external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }
+/* Its link text already is the URL */
+.external-iframe-src a::after { content: none; }`
+            : '';
+
         const styles = `
 <style>
 /* PREVIEW MODE (Screen) */
+${linkUrlsCss}
 /* Create space around the document in preview mode */
 body {
     padding: 40px;
@@ -472,6 +518,22 @@ figure img {
         break-inside: avoid;
         border-bottom: none;
     }
+
+    /* Hide toggle content buttons — these are interactive-only controls */
+    .box-toggle { display: none !important; }
+
+    /* Hide game toolbar/score icons: they are background images, which browsers
+       omit by default when printing, leaving empty boxes */
+    [class*="exeQuextIcons"], .SopaIcons, .IDFPIcons { display: none !important; }
+
+    /* Hide map iDevice image overlays that are js-hidden */
+    .mapa-IDevice img.js-hidden { display: none !important; }
+
+    /* Ensure links are styled for PDF interactivity */
+    a[href] {
+        color: inherit;
+        text-decoration: underline;
+    }
 }
 
 /* Force visibility for feedback elements even if JS tries to hide them */
@@ -489,13 +551,10 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
      * Pre-process pages to resolve asset URLs
      * Replaces asset://UUID with content/resources/FILENAME
      */
-    private async preprocessPages(pages: ExportPage[]): Promise<ExportPage[]> {
+    private async preprocessPages(pages: ExportPage[], assetResolver: AssetUrlResolver): Promise<ExportPage[]> {
         if (!this.assets) return this.filterVisiblePages(pages);
 
-        // Build path map if not already done
-        if (!this.assetExportPathMap) {
-            await this.buildAssetExportPathMap();
-        }
+        await assetResolver.build();
 
         // Filter out hidden pages
         const visiblePages = this.filterVisiblePages(pages);
@@ -508,37 +567,17 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
-                        component.content = await this.resolveAssetUrls(component.content);
+                        component.content = assetResolver.resolve(component.content);
                     }
                     if (component.properties) {
                         const propsStr = JSON.stringify(component.properties);
-                        const processedStr = await this.resolveAssetUrls(propsStr);
+                        const processedStr = assetResolver.resolve(propsStr);
                         component.properties = JSON.parse(processedStr);
                     }
                 }
             }
         }
         return clonedPages;
-    }
-
-    /**
-     * Resolve asset:// and content/resources/ URLs to Blob URLs
-     */
-    private async resolveAssetUrls(content: string): Promise<string> {
-        return this.assetResolver.resolve(content);
-    }
-
-    /**
-     * Build map of asset UUIDs to Blob URLs
-     */
-    private async buildAssetExportPathMap(): Promise<void> {
-        if (!this.assets) {
-            console.warn('[PrintPreviewExporter] No assets provider available');
-            return;
-        }
-
-        await this.assetResolver.build();
-        this.assetExportPathMap = this.assetResolver.getExportPathMap() ?? null;
     }
 
     /**

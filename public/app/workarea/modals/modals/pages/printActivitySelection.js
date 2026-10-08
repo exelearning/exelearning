@@ -1,10 +1,10 @@
 /**
- * The list of interactive activities in the print dialog
+ * The list of interactive activities in the print options panel
  *
  * When printing is going to turn activities into exercises, the user picks which of them to print.
  * Each one is named by its page and by what the author called its block, so two Guess activities
  * on different pages can be told apart. All are ticked to begin with, since printing everything is
- * what the dialog did before there was a choice.
+ * what printing did before there was a choice.
  *
  * The markup is built with DOM nodes and read back as HTML, so page and block titles — which the
  * author typed and may contain anything — are always escaped.
@@ -132,6 +132,38 @@ export function readSelectedActivities(root) {
 }
 
 /**
+ * Put the tick-all checkbox in step with the activity checkboxes.
+ *
+ * It is ticked when every activity is, clear when none is, and half-ticked in between.
+ *
+ * @param {ParentNode} root - Element holding the selection box
+ */
+export function syncSelectAll(root) {
+    const all = root.querySelector(`#${PRINT_SELECTION_ALL}`);
+    if (!all) return;
+
+    const items = Array.from(root.querySelectorAll(`input[name="${PRINT_SELECTION_FIELD}"]`));
+    const ticked = items.filter((input) => input.checked).length;
+    all.checked = ticked === items.length;
+    all.indeterminate = ticked > 0 && ticked < items.length;
+}
+
+/**
+ * Tick the given activities and clear the rest.
+ *
+ * @param {ParentNode} root - Element holding the selection box
+ * @param {string[]|null} ids - Component ids to tick; null ticks every activity
+ */
+export function setSelectedActivities(root, ids = null) {
+    const wanted = Array.isArray(ids) ? new Set(ids) : null;
+
+    root.querySelectorAll(`input[name="${PRINT_SELECTION_FIELD}"]`).forEach((input) => {
+        input.checked = wanted ? wanted.has(input.value) : true;
+    });
+    syncSelectAll(root);
+}
+
+/**
  * Keep the tick-all checkbox and the activity checkboxes in step.
  *
  * Ticking "all" ticks every activity and clearing it clears them. Ticking activities one by one
@@ -145,12 +177,6 @@ export function bindActivitySelection(root, onChange) {
     const items = Array.from(root.querySelectorAll(`input[name="${PRINT_SELECTION_FIELD}"]`));
     if (!all) return;
 
-    const syncAll = () => {
-        const ticked = items.filter((input) => input.checked).length;
-        all.checked = ticked === items.length;
-        all.indeterminate = ticked > 0 && ticked < items.length;
-    };
-
     all.addEventListener('change', () => {
         items.forEach((input) => {
             input.checked = all.checked;
@@ -161,7 +187,7 @@ export function bindActivitySelection(root, onChange) {
 
     items.forEach((input) =>
         input.addEventListener('change', () => {
-            syncAll();
+            syncSelectAll(root);
             onChange();
         })
     );

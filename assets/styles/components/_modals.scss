@@ -215,26 +215,15 @@
     }
 }
 
-/* Print dialog: what to do with the interactive activities, and which of them */
-#modalConfirm:has(.modal-body[modal-content-id="print-activities"]) {
-    .modal-dialog,
-    .modal-dialog.modal-dialog-centered {
-        max-width: min(640px, calc(100vw - 24px));
-    }
-
-    .modal-content {
-        width: min(640px, calc(100vw - 24px));
-    }
-}
-
+/* The interactive activities the print options panel lets the user pick from */
 .print-activities-selection {
-    /* Height of one activity; the list shows five and scrolls beyond them. */
+    /* Height of one activity. */
     --print-activity-row: 1.75rem;
 
+    min-width: 0;
     margin: 1rem 0 0;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--elements-hover);
-    border-radius: 6px;
+    padding: 0;
+    border: 0;
 
     .print-activities-selection-title {
         float: none;
@@ -258,7 +247,7 @@
             margin: 0 var(--margin-m) 0 0;
         }
 
-        /* One line per activity, so five rows are exactly five activities. */
+        /* One line per activity; the whole title is in the tooltip. */
         .form-check-label {
             min-width: 0;
             margin: 0;
@@ -273,11 +262,6 @@
         padding-bottom: 0.5rem;
         border-bottom: 1px solid var(--elements-hover);
         box-sizing: content-box;
-    }
-
-    .print-activities-list {
-        max-height: calc(5 * var(--print-activity-row));
-        overflow-y: auto;
     }
 }
 
@@ -3605,14 +3589,29 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             font-size: 20px;
         }
 
-        &:hover {
+        &:hover:not(:disabled) {
             background: var(--brand-primary-dark);
             border-color: var(--brand-primary-dark);
         }
+
+        // Nothing to print yet: the preview is being drawn again, or no activity is left to print
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    // The preview and, when there is something to choose, the options beside it
+    .print-preview-body {
+        position: relative;
+        display: flex;
+        flex: 1;
+        min-height: 0;
     }
 
     .print-preview-content {
         flex: 1;
+        min-width: 0;
         display: flex;
         justify-content: center;
         align-items: flex-start;
@@ -3693,6 +3692,90 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             font-size: 16px;
         }
     }
+
+    // The options panel: the look of the Styles panel, docked beside the preview
+    .print-options-panel {
+        display: flex;
+        flex: 0 0 320px;
+        flex-direction: column;
+        width: 320px;
+        min-height: 0;
+        padding: 20px 15px;
+        background: var(--white, white);
+        border-left: 1px solid #eaecf0;
+        box-shadow: 0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03);
+        color: var(--text-black);
+
+        &[hidden] {
+            display: none;
+        }
+
+        .print-options-header {
+            display: flex;
+            flex-flow: row nowrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .print-options-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .print-options-close {
+            display: inline-flex;
+            padding: 4px;
+            background: transparent;
+            border: 0;
+            border-radius: 6px;
+            line-height: 0;
+            cursor: pointer;
+
+            &:hover {
+                background: var(--gray-100);
+            }
+        }
+
+        // The body scrolls as a whole, so a long list of activities needs no scrollbar of its own
+        .print-options-body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            scrollbar-color: var(--gray-border-dark) transparent;
+            scrollbar-width: thin;
+        }
+
+        .print-options-group {
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        .print-options-group-title {
+            float: none;
+            width: auto;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        // The document options follow the activity choices, when there are any
+        .print-options-activities:not([hidden]) + .print-options-document {
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--elements-hover);
+        }
+
+        .print-options-status {
+            min-height: 1.25rem;
+            margin: 0.75rem 0 0;
+            font-size: 13px;
+            color: #b42318;
+        }
+    }
 }
 
 @keyframes spin {
@@ -3733,6 +3816,16 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             height: calc(100vh - 60px);
             border-radius: 0;
             box-shadow: none;
+        }
+
+        // Too narrow to sit beside the preview: it covers it until closed
+        .print-options-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 20;
+            width: min(320px, 100%);
         }
     }
 }
