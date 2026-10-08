@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { gotoWorkarea, waitForAppReady, selectFirstPage, addIdevice } from '../helpers/workarea-helpers';
+import { gotoWorkarea, waitForAppReady, selectFirstPage, addIdevice, changeTheme } from '../helpers/workarea-helpers';
 
 /**
  * The "Show link URLs" print option lives in the options panel beside the print preview, and must
@@ -104,5 +104,74 @@ test.describe('Print preview', () => {
         await expect(overlay).toHaveAttribute('data-visible', 'true');
 
         await expect(page.locator('#printOptLinkUrls')).toBeDisabled();
+    });
+
+    test('leaves out the URLs a theme or the base styles would print, on screen and on paper', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+
+        // The embedded page is served here, so the preview never waits on the network to load.
+        const EMBED = 'https://embed.example.test/page';
+        await page.route(EMBED, route => route.fulfill({ contentType: 'text/html', body: '<p>Embedded</p>' }));
+
+        const projectUuid = await createProject(page, 'Print link URLs with a theme');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        // educablue appends the URL of each link in its own print styles, and base.css shows the
+        // address of each external iframe on paper. Neither applies on screen.
+        await changeTheme(page, 'educablue');
+        await page.evaluate(embed => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Links');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Links'), 'text', {
+                htmlContent:
+                    '<p>Visit <a href="https://cedec.intef.es/">Cedec</a> for more.</p>' +
+                    `<iframe src="${embed}" width="300" height="150" title="Embedded page"></iframe>`,
+            });
+        }, EMBED);
+
+        await page.evaluate(() => (window as any).eXeLearning.app.modals.printpreview.show());
+        const overlay = page.locator('#printPreviewOverlay');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        const frame = page.frameLocator('.print-preview-iframe');
+        await expect(frame.locator('link[href*="/themes/base/educablue/style.css"]')).toHaveCount(1);
+
+        const link = frame.locator('a[href="https://cedec.intef.es/"]');
+        const iframeSource = frame.locator('.external-iframe-src');
+        await expect(link).toBeVisible({ timeout: 30000 });
+        await expect(iframeSource).toHaveCount(1);
+
+        /** What the link and the iframe address look like, on the given medium. */
+        const measure = async (media: 'screen' | 'print') => {
+            await page.emulateMedia({ media });
+            return {
+                after: await link.evaluate(a => getComputedStyle(a, '::after').content),
+                iframeSource: await iframeSource.evaluate(span => getComputedStyle(span).display),
+            };
+        };
+        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
+
+        // On: the URL and the iframe address on both media, in the preview's own wording.
+        for (const media of ['screen', 'print'] as const) {
+            const shown = await measure(media);
+            expect(shown.after, media).toMatch(showsUrl);
+            expect(shown.iframeSource, media).toBe('block');
+        }
+
+        // Off: neither, on either medium, whatever the theme and base.css print.
+        await page.emulateMedia({ media: 'screen' });
+        await page.locator('#printOptLinkUrls').uncheck();
+        await expect
+            .poll(() => link.evaluate(a => getComputedStyle(a, '::after').content), { timeout: 30000 })
+            .toBe('none');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        await expect(iframeSource).toHaveCount(1);
+        for (const media of ['screen', 'print'] as const) {
+            expect(await measure(media), media).toEqual({ after: 'none', iframeSource: 'none' });
+        }
+        await page.emulateMedia({ media: null });
     });
 });

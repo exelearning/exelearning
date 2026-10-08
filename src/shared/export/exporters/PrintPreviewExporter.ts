@@ -88,6 +88,8 @@ export interface PrintPreviewOptions {
     /**
      * If true, shows URLs inline after external links in printed output.
      * E.g., "Cedec" becomes "Cedec [https://cedec.intef.es]".
+     * If false, also hides the URLs that a theme, an iDevice or base.css would print
+     * themselves, including the address of each external iframe.
      * Applied on screen as well, so the preview matches the printed output.
      * Defaults to true.
      */
@@ -381,7 +383,12 @@ export class PrintPreviewExporter {
 }`
             : '';
 
-        // Build conditional link URL display CSS
+        // Turning the URLs off has to undo the rules that print them elsewhere, not just leave ours
+        // out: a theme (educablue) and an iDevice (udl-content) append them in their own print
+        // styles, and base.css shows the address of each external iframe on paper. Those only
+        // apply when printing, so the preview would hide what the printout still shows. This
+        // sheet comes after theirs, so `!important` wins over both their plain declarations and
+        // base.css's own `!important`; outside @media print, it holds on screen as well.
         const linkUrlsCss = showLinkUrls
             ? `
 /* Show URLs inline after external links (screen and print, so the preview matches) */
@@ -402,7 +409,11 @@ a[href^="https"]:has(img:only-child)::after { content: none; }
 .external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }
 /* Its link text already is the URL */
 .external-iframe-src a::after { content: none; }`
-            : '';
+            : `
+/* Link URLs are off: undo the theme, iDevice and base rules that print them (screen and print) */
+a[href^="http"]::after,
+a[href^="https"]::after { content: none !important; }
+.external-iframe-src { display: none !important; }`;
 
         const styles = `
 <style>

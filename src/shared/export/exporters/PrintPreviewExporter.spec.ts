@@ -517,11 +517,23 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('content: " [" attr(href) "]"');
         });
 
-        it('should omit link URL CSS when showLinkUrls is false', async () => {
-            const result = await exporter.generatePreview({ showLinkUrls: false });
-            expect(result.html).not.toContain('a[href^="http"]::after');
-            expect(result.html).not.toContain('content: " [" attr(href) "]"');
-        });
+        it.each([false, true])(
+            'should override theme and iframe URL rules when disabled (printMode: %s)',
+            async printMode => {
+                const result = await exporter.generatePreview({ showLinkUrls: false, printMode });
+                expect(result.success).toBe(true);
+                expect(result.html).not.toContain('content: " [" attr(href) "]"');
+                expect(result.html).toContain(
+                    'a[href^="http"]::after,\na[href^="https"]::after { content: none !important; }',
+                );
+                expect(result.html).toContain('.external-iframe-src { display: none !important; }');
+
+                // Override the base/theme print rules on screen as well as on paper.
+                const style = result.html!.slice(result.html!.indexOf('/* PREVIEW MODE (Screen) */'));
+                const before = style.slice(0, style.indexOf('a[href^="http"]::after'));
+                expect(before.split('{').length).toBe(before.split('}').length);
+            },
+        );
 
         it('should apply link URL CSS on screen too, so the preview shows what will print', async () => {
             const result = await exporter.generatePreview();
