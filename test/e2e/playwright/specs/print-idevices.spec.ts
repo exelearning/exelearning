@@ -2700,8 +2700,9 @@ test.describe('Print: a folded block opens on paper', () => {
 
         const content = (cssClass: string) => frame.locator(`article.${cssClass} .box-content`);
 
-        // On screen the fold is what the reader chose, and printing does not touch it.
-        await expect(content('ep-open')).toBeHidden();
+        // The preview shows the folded block open, as it prints, with no toggle to fold it back.
+        await expect(content('ep-open')).toBeVisible();
+        await expect(frame.locator('article.ep-open .box-toggle')).toBeHidden();
 
         await page.emulateMedia({ media: 'print' });
         await expect(content('ep-open')).toBeVisible();
@@ -2710,8 +2711,10 @@ test.describe('Print: a folded block opens on paper', () => {
         await expect(frame.locator('article.ep-hidden')).toBeHidden();
         await expect(frame.locator('article.ep-teacher')).toBeHidden();
 
+        // Nor does opening it on screen show what is hidden.
         await page.emulateMedia({ media: 'screen' });
-        await expect(content('ep-open')).toBeHidden();
+        await expect(frame.locator('article.ep-hidden')).toBeHidden();
+        await expect(frame.locator('article.ep-teacher')).toBeHidden();
     });
 
     test('prints the blocks as the preview shows them once "Print all visible content" is cleared', async ({
@@ -2746,20 +2749,25 @@ test.describe('Print: a folded block opens on paper', () => {
         await waitForPreview(page);
         const frame = page.frameLocator('.print-preview-iframe');
         const content = (cssClass: string) => frame.locator(`article.${cssClass} .box-content`);
+        const toggle = (cssClass: string) => frame.locator(`article.${cssClass} .box-toggle`);
         const option = panel.locator('#printOptUnfoldBlocks');
         await expect(option).toBeChecked();
 
-        // The reader opens one of the folded blocks and folds the open one, in the preview.
-        await frame.locator('article.ep-reopened .box-toggle').click();
-        await expect(content('ep-reopened')).toBeVisible();
-        await frame.locator('article.ep-closed .box-toggle').click();
-        await expect(content('ep-closed')).toBeHidden();
+        // Printing everything, the preview opens every block, as it prints, and offers no toggle.
+        for (const cssClass of ['ep-folded', 'ep-reopened', 'ep-closed']) await expect(content(cssClass)).toBeVisible();
+        await expect(toggle('ep-folded')).toBeHidden();
 
+        // Printing as shown, the author's folds and the toggles come back. The reader opens one of
+        // the folded blocks and folds the open one, in the preview.
         await option.uncheck();
         await waitForPreview(page);
-        // The preview is not drawn again, or what the reader did would be lost.
+        // The preview is not drawn again, or what the reader does would be lost.
         await expect(frame.locator('html')).toHaveClass(/\bexe-print-as-shown\b/);
+        await expect(content('ep-folded')).toBeHidden();
+        await expect(content('ep-reopened')).toBeHidden();
+        await toggle('ep-reopened').click();
         await expect(content('ep-reopened')).toBeVisible();
+        await toggle('ep-closed').click();
         await expect(content('ep-closed')).toBeHidden();
 
         await page.emulateMedia({ media: 'print' });
@@ -2767,15 +2775,21 @@ test.describe('Print: a folded block opens on paper', () => {
         await expect(content('ep-reopened')).toBeVisible();
         await expect(content('ep-closed')).toBeHidden();
 
-        // Ticked again, every block prints unfolded, whatever the preview shows.
+        // Ticked again, every block is open, on screen and on paper.
         await page.emulateMedia({ media: 'screen' });
         await option.check();
         await expect(frame.locator('html')).not.toHaveClass(/\bexe-print-as-shown\b/);
+        await expect(content('ep-closed')).toBeVisible();
         await page.emulateMedia({ media: 'print' });
         await expect(content('ep-folded')).toBeVisible();
         await expect(content('ep-reopened')).toBeVisible();
         await expect(content('ep-closed')).toBeVisible();
+
+        // Cleared once more, what the reader did is still there.
         await page.emulateMedia({ media: 'screen' });
+        await option.uncheck();
+        await expect(content('ep-reopened')).toBeVisible();
+        await expect(content('ep-closed')).toBeHidden();
     });
 
     test('offers no choice about folded blocks for the worksheet', async ({
@@ -2793,6 +2807,24 @@ test.describe('Print: a folded block opens on paper', () => {
 
         await choosePrintOption(page, 'idevices');
         await expect(panel.locator('#printOptUnfoldBlocks')).toBeDisabled();
+    });
+});
+
+test.describe('Print: the link to eXe', () => {
+    test('stays out of the preview, as it stays off paper', async ({ authenticatedPage: page, createProject }) => {
+        const uuid = await createProject(page, 'Link to eXe');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        await openPrintPanel(page);
+        const { frame } = await waitForPreview(page);
+        const link = frame.locator('#made-with-eXe');
+
+        await expect(link).toHaveCount(1);
+        await expect(link).toBeHidden();
+        await page.emulateMedia({ media: 'print' });
+        await expect(link).toBeHidden();
+        await page.emulateMedia({ media: null });
     });
 });
 

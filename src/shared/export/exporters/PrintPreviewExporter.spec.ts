@@ -543,6 +543,40 @@ describe('PrintPreviewExporter', () => {
             expect(before.split('{').length).toBe(before.split('}').length);
         });
 
+        describe('the preview shows what goes on paper', () => {
+            /** The preview's own styles, from the screen section on. */
+            const previewStyles = async () => {
+                const { html } = await exporter.generatePreview();
+                return html!.slice(html!.indexOf('/* PREVIEW MODE (Screen) */'));
+            };
+            /** Whether a rule is in the styles outside any @media, so that it holds on screen too. */
+            const onScreen = (styles: string, rule: string) => {
+                const before = styles.slice(0, styles.indexOf(rule));
+                return styles.includes(rule) && before.split('{').length === before.split('}').length;
+            };
+
+            it('leaves out the link to eXe, which never prints', async () => {
+                expect(onScreen(await previewStyles(), '#made-with-eXe { display: none !important; }')).toBe(true);
+            });
+
+            it('opens folded blocks, and leaves out their toggles, unless printing the page as it is shown', async () => {
+                const styles = await previewStyles();
+
+                expect(
+                    onScreen(
+                        styles,
+                        'html:not(.exe-print-as-shown) .exe-export article.box.minimized > .box-content { display: block !important; }',
+                    ),
+                ).toBe(true);
+                expect(
+                    onScreen(
+                        styles,
+                        'html:not(.exe-print-as-shown) .exe-export .box-toggle { display: none !important; }',
+                    ),
+                ).toBe(true);
+            });
+        });
+
         it('should not append the URL again to the external iframe source link', async () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('.external-iframe-src a::after { content: none; }');

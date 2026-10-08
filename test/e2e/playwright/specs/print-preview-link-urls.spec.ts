@@ -71,8 +71,10 @@ test.describe('Print preview', () => {
         await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
 
         // Print prints the preview itself — the same document, as the user left it — rather than
-        // drawing another one or opening a window.
+        // drawing another one or opening a window. Folding a block is what the user does to
+        // print the page as it is shown, which is when the preview offers the toggles.
         const frame = page.frameLocator('.print-preview-iframe');
+        await panel.locator('#printOptUnfoldBlocks').uncheck();
         await frame.locator('article.box .box-toggle').first().click();
         await expect(frame.locator('article.box').first()).toHaveClass(/minimized/);
         await frame.locator('body').evaluate(() => {
