@@ -61,6 +61,7 @@ function styleZip(name: string, css: string, files: Record<string, Uint8Array>):
                 `<?xml version="1.0" encoding="UTF-8"?><theme><name>${name}</name><title>${name}</title><version>1.0</version></theme>`,
             ),
             'style.css': strToU8(css),
+            'style.js': strToU8('document.documentElement.dataset.printThemeScript = "loaded";'),
             ...files,
         }),
     );
@@ -114,6 +115,7 @@ test.describe('Print preview: the style', () => {
             // The style's own stylesheet applies, and its icon loads from the same place.
             await expect.poll(() => contentOutline(frame), { timeout: 15000 }).toBe('rgb(1, 2, 3)');
             await expect.poll(() => iconLoaded(frame), { timeout: 15000 }).toBe(true);
+            await expect(frame.locator('html')).toHaveAttribute('data-print-theme-script', 'loaded');
         } finally {
             await page.request.delete(`/api/admin/themes/${style.id}`);
         }
@@ -130,8 +132,22 @@ test.describe('Print preview: the style', () => {
         const name = `print-user-style-${Date.now()}`;
         const zip = styleZip(
             name,
-            '.exe-content { outline: 3px solid rgb(4, 5, 6); } .box-head { background-image: url(img/stripe.png); }',
-            { 'img/stripe.png': fixtureIcon(), 'icons/info.png': fixtureIcon() },
+            '@import "css/extra.css"; @import "css/print.css" print; ' +
+                '.exe-content { outline: 3px solid rgb(4, 5, 6); } ' +
+                '.box-head { background-image: url("img/stripe(1).png"); } ' +
+                '.box:has(.box-icon img[src*="eng_"]) .box-title { color: rgb(65, 130, 17); } ' +
+                '.box-icon img { filter: url("img/filters.svg#identity"); }',
+            {
+                'img/stripe(1).png': fixtureIcon(),
+                'icons/eng_info.png': fixtureIcon(),
+                'css/extra.css': strToU8(
+                    '.box-title { font-style: normal; } .box-head { outline: 3px solid rgb(7, 8, 9); }',
+                ),
+                'css/print.css': strToU8('.box-title { font-style: italic; }'),
+                'img/filters.svg': strToU8(
+                    '<svg xmlns="http://www.w3.org/2000/svg"><filter id="identity"><feColorMatrix type="saturate" values="1"/></filter></svg>',
+                ),
+            },
         );
         await page.locator('#dropdownStyles').click();
         await page.waitForSelector('#stylessidenav.active', { timeout: 5000 });
@@ -153,23 +169,36 @@ test.describe('Print preview: the style', () => {
             )
             .then(handle => handle.jsonValue() as Promise<string>);
         await page.evaluate(async theme => (window as any).eXeLearning.app.themes.selectTheme(theme, true, true), id);
-        await addBlockWithStyleIcon(page, 'info');
+        await addBlockWithStyleIcon(page, 'eng_info');
 
         const frame = await openPreview(page);
 
         // Taken from its own files: the stylesheet applies, what the stylesheet refers to is
         // handed over with it instead of resolving to nothing, and the icon loads.
         await expect.poll(() => contentOutline(frame), { timeout: 15000 }).toBe('rgb(4, 5, 6)');
-        await expect
-            .poll(
-                () =>
-                    frame
-                        .locator('.box-head')
-                        .first()
-                        .evaluate(el => getComputedStyle(el).backgroundImage),
-                { timeout: 15000 },
-            )
-            .toMatch(/^url\("blob:/);
+        await expect(frame.locator('html')).toHaveAttribute('data-print-theme-script', 'loaded');
+        const heading = frame.locator('.box-head').first();
+        await expect(heading).toHaveCSS('outline-color', 'rgb(7, 8, 9)');
+        const title = heading.locator('.box-title');
+        await expect(title).toHaveCSS('color', 'rgb(65, 130, 17)');
+        await expect(title).toHaveCSS('font-style', 'normal');
+        // A computed blob URL alone also passes for a revoked or invalid resource. Decode it
+        // in the iframe that owns it to establish that the image is actually available.
+        expect(
+            await heading.evaluate(async el => {
+                const reference = getComputedStyle(el).backgroundImage.match(/^url\("(blob:[^"]+)"\)$/)?.[1];
+                if (!reference) return false;
+                const image = new Image();
+                image.src = reference;
+                await image.decode();
+                return image.naturalWidth > 0;
+            }),
+        ).toBe(true);
         await expect.poll(() => iconLoaded(frame), { timeout: 15000 }).toBe(true);
+        await expect(frame.locator('.box-icon img')).toHaveCSS('filter', /^url\("blob:[^"]+#identity"\)$/);
+        await page.emulateMedia({ media: 'print' });
+        await expect(title).toHaveCSS('font-style', 'italic');
+        await expect(title).toHaveCSS('color', 'rgb(65, 130, 17)');
+        await page.emulateMedia({ media: null });
     });
 });

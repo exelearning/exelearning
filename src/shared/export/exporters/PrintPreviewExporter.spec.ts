@@ -1659,8 +1659,11 @@ describe('PrintPreviewExporter', () => {
             it('is taken from its own files when it is served from nowhere', async () => {
                 const { html } = await previewWith(STYLE, { themeFromFiles: true });
 
-                expect(html).toMatch(/<link rel="stylesheet" href="blob:[^"]+">/);
+                expect(html).toMatch(
+                    /<link rel="stylesheet" href="blob:[^"]+" data-exe-theme-href="theme\/style.css">/,
+                );
                 expect(html).toMatch(/<img src="blob:[^"]+"/);
+                expect(html).toContain('data-exe-theme-src="theme/icons/activity.png"');
                 expect(html).not.toContain('files/perm/themes/base/base/');
             });
 

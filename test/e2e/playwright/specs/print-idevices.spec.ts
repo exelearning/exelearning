@@ -2832,10 +2832,13 @@ test.describe('Print: Material icons reach the paper', () => {
     test('keeps the colour of a Material block icon when printing, and of nothing around it', async ({
         authenticatedPage: page,
         createProject,
-    }) => {
+    }, testInfo) => {
         const uuid = await createProject(page, 'Material icon');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
+        // Select a theme that shows icons on paper so this test does not depend on the default
+        // theme. Visibility also matters: print-color-adjust alone cannot prove an icon prints.
+        await page.evaluate(() => (window as any).eXeLearning.app.themes.selectTheme('universal', true, true));
 
         await page.evaluate(() => {
             const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
@@ -2857,9 +2860,101 @@ test.describe('Print: Material icons reach the paper', () => {
             return style.printColorAdjust || (style as any).webkitPrintColorAdjust;
         };
         await page.emulateMedia({ media: 'print' });
+        await expect(icon).toBeVisible();
         expect(await icon.evaluate(colourAdjust)).toBe('exact');
         // Only the icon: every other background stays the reader's choice.
         expect(await frame.locator('article.box').first().evaluate(colourAdjust)).toBe('economy');
+
+        // Give the real icon and an ordinary background distinct colours, then inspect the
+        // rendered PDF with backgrounds disabled. This catches a missing mask or an icon that
+        // has the right computed property but never reaches the paper.
+        const currentBrowser = page.context().browser()!;
+        const pdfBrowser =
+            currentBrowser.browserType().name() === 'chromium' ? currentBrowser : await chromium.launch();
+        const pdfContext = await pdfBrowser.newContext();
+        try {
+            const pdfPage = await pdfContext.newPage();
+            await pdfPage.setContent(`<!DOCTYPE html>${await frame.locator('html').evaluate(node => node.outerHTML)}`);
+            await pdfPage.locator('.exe-material-icon').evaluate(el => {
+                (el as HTMLElement).style.color = 'rgb(231, 17, 119)';
+            });
+            await pdfPage
+                .locator('article.box')
+                .first()
+                .evaluate(el => {
+                    (el as HTMLElement).style.backgroundColor = 'rgb(17, 31, 231)';
+                });
+            const bytes = await pdfPage.pdf({ format: 'A4', printBackground: false, preferCSSPageSize: true });
+            await testInfo.attach('material-icon-without-backgrounds.pdf', {
+                body: bytes,
+                contentType: 'application/pdf',
+            });
+            const colours = await page.evaluate(
+                async ({ data, moduleUrl }) => {
+                    const { getDocument, GlobalWorkerOptions } = await import(moduleUrl);
+                    GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.js', moduleUrl).href;
+                    const task = getDocument({ data: new Uint8Array(data) });
+                    let iconPixels = 0;
+                    let backgroundPixels = 0;
+                    try {
+                        const pdf = await task.promise;
+                        for (let index = 1; index <= pdf.numPages; index++) {
+                            const sheet = await pdf.getPage(index);
+                            const viewport = sheet.getViewport({ scale: 1 });
+                            const canvas = document.createElement('canvas');
+                            canvas.width = Math.ceil(viewport.width);
+                            canvas.height = Math.ceil(viewport.height);
+                            await sheet.render({ canvasContext: canvas.getContext('2d')!, viewport }).promise;
+                            const pixels = canvas
+                                .getContext('2d')!
+                                .getImageData(0, 0, canvas.width, canvas.height).data;
+                            for (let offset = 0; offset < pixels.length; offset += 4) {
+                                const r = pixels[offset];
+                                const g = pixels[offset + 1];
+                                const b = pixels[offset + 2];
+                                if (Math.abs(r - 231) < 3 && Math.abs(g - 17) < 3 && Math.abs(b - 119) < 3)
+                                    iconPixels++;
+                                if (Math.abs(r - 17) < 3 && Math.abs(g - 31) < 3 && Math.abs(b - 231) < 3)
+                                    backgroundPixels++;
+                            }
+                        }
+                    } finally {
+                        await task.destroy();
+                    }
+                    return { iconPixels, backgroundPixels };
+                },
+                { data: [...bytes], moduleUrl: new URL('/libs/pdfjs/pdf.min.js', page.url()).href },
+            );
+            expect(colours.iconPixels).toBeGreaterThan(10);
+            expect(colours.backgroundPixels).toBe(0);
+        } finally {
+            await pdfContext.close();
+            if (pdfBrowser !== currentBrowser) await pdfBrowser.close();
+        }
+        await page.emulateMedia({ media: null });
+    });
+
+    test('respects a theme that deliberately hides block icons on paper', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Educablue print icons');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(async () => {
+            await (window as any).eXeLearning.app.themes.selectTheme('educablue', true, true);
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Icons');
+            const block = binding.createBlock(parent.id, 'Hidden on paper');
+            binding.updateBlock(block, { icon: { source: 'material', value: 'lightbulb' } });
+            binding.createComponent(parent.id, block, 'text', { htmlContent: '<p>Some text</p>' });
+        });
+        await openPrintPanel(page);
+        const { frame } = await waitForPreview(page);
+        const icon = frame.locator('article.box .box-icon .exe-material-icon');
+        await expect(icon).toBeVisible();
+        await page.emulateMedia({ media: 'print' });
+        await expect(icon).toBeHidden();
         await page.emulateMedia({ media: null });
     });
 });

@@ -42,7 +42,7 @@ describe('ThemeFileUrlResolver', () => {
 
     /** The blob a stylesheet's reference now points at. */
     const referenced = (css: string, index = 0) =>
-        blobs.get([...css.matchAll(/url\(['"]?(blob:[^'")]+)/g)][index]?.[1]);
+        blobs.get([...css.matchAll(/url\(['"]?(blob:[^'")]+)/g)][index]?.[1]?.split('#')[0]);
 
     describe('the page', () => {
         it("points each reference to the style's files at a blob URL of the right type", () => {
@@ -50,7 +50,7 @@ describe('ThemeFileUrlResolver', () => {
                 '<link rel="stylesheet" href="theme/style.css"><script src="theme/style.js"></script><img src="theme/icons/info.svg">',
             );
 
-            expect(html).not.toContain('"theme/');
+            expect(html).not.toMatch(/\s(?:src|href)="theme\//);
             // Bun adds a charset to text types and names JavaScript text/javascript; browsers keep
             // the type as given. What matters is the kind: a stylesheet must be served as CSS to
             // be applied, and an SVG as SVG to be drawn.
@@ -66,7 +66,23 @@ describe('ThemeFileUrlResolver', () => {
             );
 
             expect(blobs.size).toBe(1);
-            expect(html).toBe('<img src="blob:http://localhost/1"><img src="blob:http://localhost/1">');
+            expect(html.match(/ src="blob:http:\/\/localhost\/1"/g)).toHaveLength(2);
+            expect(html.match(/ data-exe-theme-src="theme\/icons\/info.png"/g)).toHaveLength(2);
+        });
+
+        it('keeps SVG fragments and the original path without allocating another copy of the file', () => {
+            const resolver = style({ 'icons/sprite.svg': '<svg/>' });
+            const html = resolver.resolve(
+                '<img src="theme/icons/sprite.svg?v=2#first"><img src="theme/icons/sprite.svg#second">',
+            );
+
+            expect(html).toContain(' src="blob:http://localhost/1#first"');
+            expect(html).toContain(' src="blob:http://localhost/1#second"');
+            expect(html).toContain('data-exe-theme-src="theme/icons/sprite.svg?v=2#first"');
+            expect(blobs.size).toBe(1);
+            expect(resolver.resolve(html)).toBe(html);
+            resolver.dispose();
+            expect(revoked).toEqual(['blob:http://localhost/1']);
         });
 
         it('leaves alone a reference to a file the style does not have', () => {
@@ -122,6 +138,94 @@ describe('ThemeFileUrlResolver', () => {
             );
 
             expect(await referenced((await linkedStylesheet(html)) ?? '')?.text()).toBe('bg');
+        });
+
+        it('resolves string imports recursively without changing their conditions or cascade order', async () => {
+            const html = style({
+                'style.css': '@import "css/print.css" layer(paper) print;\n@import url(css/screen.css) screen;',
+                'css/print.css': "@import 'nested.css'; .print{background:url(../img/stripe.png)}",
+                'css/nested.css': '.nested{color:red}',
+                'css/screen.css': '.screen{color:blue}',
+                'img/stripe.png': 'stripe',
+            }).resolve('<link href="theme/style.css">');
+
+            const css = (await linkedStylesheet(html)) ?? '';
+            expect(css).toMatch(/^@import "blob:[^"]+" layer\(paper\) print;\n@import url\(blob:[^)]+\) screen;$/);
+            const print = (await blobs.get(css.match(/@import "([^"]+)"/)![1])!.text()) ?? '';
+            expect(await blobs.get(print.match(/@import '([^']+)'/)![1])!.text()).toBe('.nested{color:red}');
+            expect(await referenced(print)?.text()).toBe('stripe');
+            expect(await referenced(css)?.text()).toBe('.screen{color:blue}');
+        });
+
+        it('resolves parentheses and CSS escapes in quoted and unquoted URLs', async () => {
+            const html = style({
+                'style.css': String.raw`.a{background:URL("img/photo(1).png")} .b{--icon:url(img/photo\(1\).png)}`,
+                'img/photo(1).png': 'photo',
+            }).resolve('<link href="theme/style.css">');
+
+            const css = (await linkedStylesheet(html)) ?? '';
+            expect(await referenced(css, 0)?.text()).toBe('photo');
+            expect(referenced(css, 1)).toBe(referenced(css, 0));
+        });
+
+        it('preserves SVG fragment targets while sharing and releasing the underlying blob', async () => {
+            const resolver = style({
+                'style.css': '.a{filter:url(img/effects.svg?v=2#shadow)} .b{mask:url("img/effects.svg#mask")}',
+                'img/effects.svg': '<svg/>',
+            });
+            const css = (await linkedStylesheet(resolver.resolve('<link href="theme/style.css">'))) ?? '';
+
+            expect(css).toContain('url(blob:http://localhost/1#shadow)');
+            expect(css).toContain('url("blob:http://localhost/1#mask")');
+            expect(referenced(css, 0)).toBe(referenced(css, 1));
+            resolver.dispose();
+            expect(revoked).toEqual(['blob:http://localhost/1', 'blob:http://localhost/2']);
+        });
+
+        it('preserves comments, content strings, external imports and unrecognized CSS', async () => {
+            const original =
+                '/* url(icon.png) */ @import "https://example.test/theme.css"; ' +
+                ".a{content:'url(icon.png)';invalid ???;color:blue}";
+            const html = style({ 'style.css': original, 'icon.png': 'image' }).resolve('<link href="theme/style.css">');
+
+            expect(await linkedStylesheet(html)).toBe(original);
+            expect(blobs.size).toBe(1);
+        });
+
+        it('keeps attribute selectors matching both original theme paths and ordinary resources', async () => {
+            const html = style({
+                'style.css':
+                    '.box:has(img[src*="eng_" i]){color:green} ' +
+                    'a[href$=".pdf"]{color:red} [src],[title="src"]{color:blue}',
+            }).resolve('<link href="theme/style.css">');
+
+            expect(await linkedStylesheet(html)).toBe(
+                '.box:has(img:is([src*="eng_" i],[data-exe-theme-src*="eng_" i])){color:green} ' +
+                    'a:is([href$=".pdf"],[data-exe-theme-href$=".pdf"]){color:red} [src],[title="src"]{color:blue}',
+            );
+        });
+
+        it('keeps the original stylesheet and other resources usable if CSS analysis fails', async () => {
+            const original = '.box{color:green;background:url(image.png)}';
+            const resolver = new ThemeFileUrlResolver(
+                new Map([
+                    ['style.css', new TextEncoder().encode(original)],
+                    ['icons/info.svg', new TextEncoder().encode('<svg/>')],
+                ]),
+                () => {
+                    throw new Error('Cannot parse user CSS');
+                },
+            );
+            const html = resolver.resolve('<link href="theme/style.css"><img src="theme/icons/info.svg">');
+
+            expect(await linkedStylesheet(html)).toBe(original);
+            expect(html).toContain('src="blob:http://localhost/2"');
+            expect(resolver.resolve('<link href="theme/style.css">')).toContain('href="blob:http://localhost/1"');
+            resolver.dispose();
+            expect(revoked).toEqual(['blob:http://localhost/1', 'blob:http://localhost/2']);
+            // Parsing failure must not leave the cycle guard set after disposal.
+            expect(resolver.resolve('<link href="theme/style.css">')).toContain('href="blob:http://localhost/3"');
+            resolver.dispose();
         });
 
         it('leaves alone what is not relative to it, or names no file the style has', async () => {
