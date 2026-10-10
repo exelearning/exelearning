@@ -14,6 +14,7 @@ const {
     windowHasUnsavedChanges,
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
+const { createFileReadGrants } = require('./file-read-grants');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -179,6 +180,8 @@ log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'lo
 
 // files to open after app ready
 let pendingOpenFiles = [];
+// Files the renderer may read back through app:readFile (see file-read-grants.js)
+const fileReadGrants = createFileReadGrants();
 // Pending .elpx path per renderer WebContents id (sent when renderer is ready)
 const pendingOpenFileByWebContentsId = new Map();
 
@@ -811,7 +814,7 @@ async function createWindow() {
                     const firstFile = filesToOpen.shift();
                     if (firstFile) {
                         console.log('[main] Sending file to main window:', firstFile);
-                        mainWindow.webContents.send('app:open-file', firstFile);
+                        mainWindow.webContents.send('app:open-file', fileReadGrants.grant(firstFile));
                     }
                     // Open remaining files in new windows/tabs
                     for (const filePath of filesToOpen) {
@@ -1490,20 +1493,11 @@ ipcMain.handle('app:openElp', async e => {
     });
     if (canceled || !filePaths || !filePaths.length) return null;
     setLastUsedDir(path.dirname(filePaths[0]));
-    return filePaths[0];
+    return fileReadGrants.grant(filePaths[0]);
 });
 
-// Read file contents as base64 for upload (renderer builds a File)
-ipcMain.handle('app:readFile', async (_e, { filePath }) => {
-    try {
-        if (!filePath) return { ok: false, error: 'No path' };
-        const data = fs.readFileSync(filePath);
-        const stat = fs.statSync(filePath);
-        return { ok: true, base64: data.toString('base64'), mtimeMs: stat.mtimeMs };
-    } catch (err) {
-        return { ok: false, error: err.message };
-    }
-});
+// Read file contents as base64 for upload (renderer builds a File), only for granted paths
+ipcMain.handle('app:readFile', async (_e, { filePath } = {}) => fileReadGrants.read(filePath));
 
 // Check an external link from the main process, where CORS does not apply,
 // and report the real HTTP status — same outcome as server-side validation.
@@ -1731,7 +1725,7 @@ ipcMain.on('app:renderer-ready-for-open-file', (event) => {
     const wcId = event.sender.id;
     const filePath = pendingOpenFileByWebContentsId.get(wcId);
     if (!filePath) return;
-    event.sender.send('app:open-file', filePath);
+    event.sender.send('app:open-file', fileReadGrants.grant(filePath));
     pendingOpenFileByWebContentsId.delete(wcId);
 });
 
