@@ -35,6 +35,7 @@ import { webSocketInfoRoutes } from './routes/websocket-info';
 import { yjsDebugRoutes } from './routes/yjs-debug';
 import { getAppVersion } from './utils/version';
 import { getFilesDir } from './services/file-helper';
+import { serveFilesDirFile } from './services/files-dir-response';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
 import { migrateAssetStorage } from './services/asset-storage-migration';
@@ -330,45 +331,8 @@ const app = new Elysia()
         }
 
         // Handle /files/tmp/* and /files/dist/* - serve from FILES_DIR
-        const filesMatch = pathname.match(/^\/files\/(tmp|dist)\/(.+)$/);
-        if (filesMatch) {
-            const filesDir = getFilesDir();
-            const subPath = filesMatch[1]; // 'tmp' or 'dist'
-            const relativePath = filesMatch[2]; // rest of the path
-
-            // Prevent path traversal
-            const cleanPath = relativePath.replace(/\.\./g, '');
-            const filePath = path.join(filesDir, subPath, cleanPath);
-
-            // Security: ensure path is within FILES_DIR
-            const resolvedPath = path.resolve(filePath);
-            const resolvedBase = path.resolve(filesDir);
-            if (!resolvedPath.startsWith(resolvedBase)) {
-                return new Response('Forbidden', { status: 403 });
-            }
-
-            if (fs.existsSync(filePath)) {
-                try {
-                    const stats = fs.statSync(filePath);
-                    if (stats.isFile()) {
-                        const content = fs.readFileSync(filePath);
-                        const ext = path.extname(filePath).toLowerCase();
-                        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-                        return new Response(content, {
-                            headers: {
-                                'Content-Type': contentType,
-                                'Content-Length': stats.size.toString(),
-                                'Cache-Control': 'public, max-age=3600', // 1 hour cache
-                            },
-                        });
-                    }
-                } catch (err) {
-                    console.error('[StaticFiles] Error serving file:', filePath, err);
-                }
-            }
-            // File not found - let it fall through to 404
-        }
+        const filesResponse = serveFilesDirFile(pathname, getFilesDir());
+        if (filesResponse) return filesResponse;
 
         // Match /v{version}/libs/* and rewrite to /libs/*
         const versionedLibsMatch = pathname.match(/^\/v[\d.]+[^/]*\/libs\/(.+)$/);
