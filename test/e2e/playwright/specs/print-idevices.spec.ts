@@ -2810,6 +2810,56 @@ test.describe('Print: a folded block opens on paper', () => {
     });
 });
 
+test.describe('Print: when printing does not start', () => {
+    /** Open the preview of a new project, ready to print. */
+    async function openPreview(page: Page, createProject: (page: Page, title?: string) => Promise<string>) {
+        const uuid = await createProject(page, 'Printing does not start');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await openPrintPanel(page);
+        return waitForPreview(page);
+    }
+
+    test('says so, and opens the preview in a tab of its own', async ({ authenticatedPage: page, createProject }) => {
+        const { frame } = await openPreview(page, createProject);
+        // A browser that does not let the page print: print() returns, nothing opens, no error.
+        await frame.locator('body').evaluate(() => {
+            window.print = () => {};
+        });
+        const notice = page.locator('.print-preview-notice');
+        await expect(notice).toBeHidden();
+
+        await page.locator('.print-preview-print-btn').click();
+
+        await expect(notice).toBeVisible({ timeout: 10000 });
+        await expect(notice).toHaveAttribute('role', 'alert');
+        const [tab] = await Promise.all([
+            page.context().waitForEvent('page'),
+            page.locator('.print-preview-open-tab-btn').click(),
+        ]);
+        await tab.waitForLoadState();
+        expect(tab.url()).toMatch(/^blob:/);
+        await expect(tab.locator('body.exe-single-page')).toHaveCount(1);
+        await tab.close();
+    });
+
+    test('stays quiet when printing starts', async ({ authenticatedPage: page, createProject }) => {
+        const { frame } = await openPreview(page, createProject);
+        const started = frame
+            .locator('body')
+            .evaluate(
+                () => new Promise<boolean>(resolve => window.addEventListener('beforeprint', () => resolve(true))),
+            );
+
+        await page.locator('.print-preview-print-btn').click();
+
+        expect(await started).toBe(true);
+        // Past the wait for printing to start, which beforeprint has already ended.
+        await page.waitForTimeout(3000);
+        await expect(page.locator('.print-preview-notice')).toBeHidden();
+    });
+});
+
 test.describe('Print: the link to eXe', () => {
     test('stays out of the preview, as it stays off paper', async ({ authenticatedPage: page, createProject }) => {
         const uuid = await createProject(page, 'Link to eXe');

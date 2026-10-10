@@ -49,6 +49,15 @@ export const DEFAULT_ACTIVITY_MODE = ACTIVITY_MODE_APPENDIX;
  */
 export const REGENERATE_DELAY_MS = 250;
 
+/**
+ * How long to wait for printing to start before saying it did not.
+ *
+ * Measured: Chromium fires beforeprint a few milliseconds after print() returns, and the desktop
+ * app (Electron) fires it during the call, before its dialog opens. Two seconds leaves room for a
+ * slow machine without keeping a user who is waiting for a dialog in the dark for long.
+ */
+export const PRINT_START_TIMEOUT_MS = 2000;
+
 export default class ModalPrintPreview {
     constructor(manager) {
         this.manager = manager;
@@ -59,6 +68,8 @@ export default class ModalPrintPreview {
         this.closeBtn = this.overlay?.querySelector('.print-preview-close-btn');
         this.optionsBtn = this.overlay?.querySelector('.print-preview-options-btn');
         this.titleEl = this.overlay?.querySelector('.print-preview-title-text');
+        this.noticeEl = this.overlay?.querySelector('.print-preview-notice');
+        this.openTabBtn = this.overlay?.querySelector('.print-preview-open-tab-btn');
         const panelEl = this.overlay?.querySelector('.print-options-panel');
         /** The choices beside the preview. Null where the page has no markup for them. */
         this.panel = panelEl
@@ -90,6 +101,8 @@ export default class ModalPrintPreview {
         this.busy = false;
         /** False while the options ask for something that cannot be printed. */
         this.valid = true;
+        /** Stops waiting for the last print to start. Null when not waiting. */
+        this.stopPrintCheck = null;
     }
 
     /**
@@ -108,6 +121,11 @@ export default class ModalPrintPreview {
         // Close button
         this.closeBtn?.addEventListener('click', () => {
             this.close();
+        });
+
+        // The way out offered when printing did not start
+        this.openTabBtn?.addEventListener('click', () => {
+            this.openInNewTab();
         });
 
         // ESC key to close
@@ -675,13 +693,81 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Print the preview content
+     * Print the preview content, and say so if printing does not start.
      */
     print() {
         if (!this.canPrint()) return;
-        if (this.iframe?.contentWindow) {
-            this.iframe.contentWindow.print();
+        const win = this.iframe?.contentWindow;
+        if (!win) return;
+
+        this.setPrintNotice(false);
+        this.watchPrintStart(win);
+        try {
+            win.print();
+        } catch (error) {
+            // Nothing will start after this, which the wait for it reports.
+            console.warn('[PrintPreview] Printing failed:', error);
         }
+    }
+
+    /**
+     * Wait for printing to start, and show the notice if it does not.
+     *
+     * print() tells nothing either way. It returns at once in some browsers and only once its
+     * dialog closes in others (the desktop app), and when printing is blocked — a browser policy,
+     * no print service — it neither throws nor opens anything. What printing always does when it
+     * really starts is fire beforeprint in the document: during the call or a few milliseconds
+     * after it. So the preview waits a moment for that event, and speaks up if it never comes.
+     *
+     * The wait starts before the call: where print() holds the page while its dialog is open, the
+     * event has already cancelled it by the time the call returns.
+     *
+     * @param {Window} win - The preview's window, which is asked to print
+     */
+    watchPrintStart(win) {
+        this.cancelPrintCheck();
+
+        const started = () => this.cancelPrintCheck();
+        const timer = setTimeout(() => {
+            this.cancelPrintCheck();
+            this.setPrintNotice(true);
+        }, PRINT_START_TIMEOUT_MS);
+        win.addEventListener('beforeprint', started);
+        this.stopPrintCheck = () => {
+            clearTimeout(timer);
+            win.removeEventListener('beforeprint', started);
+            this.stopPrintCheck = null;
+        };
+    }
+
+    /**
+     * Stop waiting for the last print to start.
+     */
+    cancelPrintCheck() {
+        this.stopPrintCheck?.();
+    }
+
+    /**
+     * Show or hide the notice that printing did not start.
+     *
+     * The way out it offers, opening the preview in a tab of its own, is a browser's: the desktop
+     * app has no tabs to open it in.
+     *
+     * @param {boolean} show - true to show it
+     */
+    setPrintNotice(show) {
+        if (this.noticeEl) this.noticeEl.hidden = !show;
+        if (this.openTabBtn) this.openTabBtn.hidden = Boolean(window.electronAPI);
+    }
+
+    /**
+     * Open the preview in a tab of its own, for the browser's own printing to have a go.
+     *
+     * It is a fresh copy of the document: what the user folded or unfolded in the preview is not
+     * carried over.
+     */
+    openInNewTab() {
+        if (this.blobUrl) window.open(this.blobUrl, '_blank', 'noopener');
     }
 
     /**
@@ -752,6 +838,9 @@ export default class ModalPrintPreview {
         this.ready = false;
         this.syncPrintButton();
         this.cancelRegeneration();
+        // The document a print was waited for is going, and with it what the notice was about.
+        this.cancelPrintCheck();
+        this.setPrintNotice(false);
         this.disposePreview?.();
         this.disposePreview = null;
         if (this.blobUrl) {

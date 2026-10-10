@@ -6,6 +6,7 @@ import ModalPrintPreview, {
     PREVIEW_MODE_DOCUMENT,
     PREVIEW_MODE_IDEVICES,
     PRINT_AS_SHOWN_CLASS,
+    PRINT_START_TIMEOUT_MS,
     REGENERATE_DELAY_MS,
 } from './modalPrintPreview.js';
 
@@ -339,7 +340,7 @@ describe('ModalPrintPreview', () => {
             modal.ready = true;
             const mockPrint = vi.fn();
             modal.iframe = {
-                contentWindow: { print: mockPrint },
+                contentWindow: Object.assign(new EventTarget(), { print: mockPrint }),
                 classList: { toggle: vi.fn(), add: vi.fn() },
                 src: '',
             };
@@ -710,6 +711,9 @@ describe('ModalPrintPreview and its options panel', () => {
             <button class="print-preview-options-btn" aria-expanded="false" hidden></button>
             <button class="print-preview-print-btn"></button>
             <button class="print-preview-close-btn"></button>
+            <div class="print-preview-notice" role="alert" hidden>
+                <button class="print-preview-open-tab-btn"></button>
+            </div>
             <div class="print-preview-loading"></div>
             <iframe class="print-preview-iframe"></iframe>
             <aside class="print-options-panel" hidden>
@@ -1411,6 +1415,136 @@ describe('ModalPrintPreview and its options panel', () => {
             loaded();
 
             expect(printBtn().disabled).toBe(false);
+        });
+    });
+
+    describe('when printing does not start', () => {
+        const notice = () => overlayElement.querySelector('.print-preview-notice');
+        const openTabBtn = () => overlayElement.querySelector('.print-preview-open-tab-btn');
+        /** Give the preview a window whose print() does what the given function says. */
+        const previewWindow = (print) => {
+            const win = new EventTarget();
+            win.print = vi.fn(() => print(win));
+            Object.defineProperty(modal.iframe, 'contentWindow', { configurable: true, value: win });
+            return win;
+        };
+        const startsPrinting = (win) => win.dispatchEvent(new Event('beforeprint'));
+        const neverStarts = () => {};
+
+        beforeEach(async () => {
+            await showWithActivities();
+            loaded();
+        });
+
+        afterEach(() => {
+            delete window.electronAPI;
+        });
+
+        it('stays quiet when printing starts during the call, as in the desktop app', async () => {
+            previewWindow(startsPrinting);
+
+            printBtn().click();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('stays quiet when printing starts just after the call, as in Chromium', async () => {
+            previewWindow((win) => setTimeout(() => startsPrinting(win), 30));
+
+            printBtn().click();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('says so, with a way out, when printing never starts', async () => {
+            const win = previewWindow(neverStarts);
+
+            printBtn().click();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS - 1);
+            expect(notice().hidden).toBe(true);
+            await vi.advanceTimersByTimeAsync(1);
+
+            expect(win.print).toHaveBeenCalledOnce();
+            expect(notice().hidden).toBe(false);
+            expect(openTabBtn().hidden).toBe(false);
+        });
+
+        it('says so when print() fails outright', async () => {
+            vi.spyOn(console, 'warn').mockImplementation(() => {});
+            previewWindow(() => {
+                throw new Error('Blocked');
+            });
+
+            printBtn().click();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+
+            expect(notice().hidden).toBe(false);
+        });
+
+        it('offers no new tab in the desktop app, which has none', async () => {
+            window.electronAPI = {};
+            previewWindow(neverStarts);
+
+            printBtn().click();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+
+            expect(notice().hidden).toBe(false);
+            expect(openTabBtn().hidden).toBe(true);
+        });
+
+        it('opens the preview in a tab of its own', () => {
+            const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+            openTabBtn().click();
+
+            expect(open).toHaveBeenCalledWith('blob:test-url', '_blank', 'noopener');
+        });
+
+        it('opens nothing when there is no preview to open', () => {
+            const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+            modal.blobUrl = null;
+
+            modal.openInNewTab();
+
+            expect(open).not.toHaveBeenCalled();
+        });
+
+        it('takes the notice down when printing is tried again, and keeps it down if it starts', async () => {
+            const win = previewWindow(neverStarts);
+            printBtn().click();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+            expect(notice().hidden).toBe(false);
+
+            win.print.mockImplementation(() => startsPrinting(win));
+            printBtn().click();
+            expect(notice().hidden).toBe(true);
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('stops waiting when the preview is closed', async () => {
+            previewWindow(neverStarts);
+
+            printBtn().click();
+            modal.close();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('takes the notice down when the preview is drawn again', async () => {
+            previewWindow(neverStarts);
+            printBtn().click();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+            expect(notice().hidden).toBe(false);
+
+            choose(ACTIVITY_MODE_APPENDIX);
+            await settle();
+
+            expect(notice().hidden).toBe(true);
         });
     });
 

@@ -3601,6 +3601,28 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
         }
     }
 
+    // Printing did not start: said where it cannot be missed, with a way out where there is one
+    .print-preview-notice {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 24px;
+        background: #fef3f2;
+        border-bottom: 1px solid #fecdca;
+        color: #b42318;
+        flex-shrink: 0;
+
+        &[hidden] {
+            display: none;
+        }
+
+        .print-preview-notice-text {
+            margin: 0;
+            font-size: 14px;
+        }
+    }
+
     // The preview and, when there is something to choose, the options beside it
     .print-preview-body {
         position: relative;

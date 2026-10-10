@@ -456,6 +456,11 @@ describe('menu and modal HTML generation', () => {
         expect(preview).toContain('data-i18n="Show link URLs"');
         expect(preview).toContain('data-i18n="Print all visible content"');
         expect(preview).toContain('data-i18n="Show titles of non-printable activities"');
+        expect(preview).toContain('class="print-preview-notice" role="alert" hidden');
+        expect(preview).toContain(
+            'data-i18n="Printing did not start. Printing may be disabled in this browser or on this device."',
+        );
+        expect(preview).toContain('data-i18n="Open in a new tab"');
         expect(preview).toContain('data-i18n-aria-label="Close"');
     });
 });

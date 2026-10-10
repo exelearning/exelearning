@@ -16,6 +16,11 @@
             </button>
         </div>
     </div>
+    {# Shown by the script when printing did not start: the browser or the system did not let it. #}
+    <div class="print-preview-notice" role="alert" hidden>
+        <p class="print-preview-notice-text">{{ 'Printing did not start. Printing may be disabled in this browser or on this device.' | trans }}</p>
+        <button type="button" class="print-preview-open-tab-btn btn btn-secondary btn-sm">{{ 'Open in a new tab' | trans }}</button>
+    </div>
     <div class="print-preview-body">
         <div class="print-preview-content">
             <div class="print-preview-loading">
