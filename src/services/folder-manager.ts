@@ -17,6 +17,8 @@ import {
     tryResolveAssetStoragePath as defaultTryResolveAssetStoragePath,
 } from './file-helper';
 import { buildAssetStoragePath } from '../utils/asset-paths';
+import { inspectZipArchive } from '../shared/import/ElpxImporter';
+import { assertInspectionWithinLimits, DEFAULT_ZIP_LIMITS, ZipLimitError } from '../shared/import/importPolicy';
 
 // ============================================================================
 // Types and Interfaces
@@ -524,15 +526,19 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             };
         }
 
-        // Extract ZIP contents
+        // Extract ZIP contents, refusing archives over the import limits before any entry is inflated
         const uint8ZipData = new Uint8Array(zipData);
         let unzipped: Record<string, Uint8Array>;
         try {
+            assertInspectionWithinLimits(inspectZipArchive(uint8ZipData), DEFAULT_ZIP_LIMITS, 'ZIP file');
             unzipped = fflate.unzipSync(uint8ZipData);
-        } catch {
+        } catch (err) {
             return {
                 success: false,
-                error: 'Failed to extract ZIP file - invalid or corrupted archive',
+                error:
+                    err instanceof ZipLimitError
+                        ? err.message
+                        : 'Failed to extract ZIP file - invalid or corrupted archive',
                 extractedCount: 0,
                 folders: [],
                 assets: [],
