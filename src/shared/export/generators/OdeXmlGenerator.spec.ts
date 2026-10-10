@@ -123,6 +123,12 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('</odeProperties>');
         });
 
+        it('does not duplicate the screenshot data URL in content.xml', () => {
+            const xml = generateOdeXml({ title: 'T', screenshot: 'data:image/png;base64,iVBORw0KGgo=' }, []);
+            expect(xml).not.toContain('pp_screenshot');
+            expect(xml).not.toContain('data:image/png');
+        });
+
         it('should save the every-activity pass rule so it survives a reopen', () => {
             const xml = generateOdeXml({ title: 'T', passScoreEveryActivity: true }, []);
 
