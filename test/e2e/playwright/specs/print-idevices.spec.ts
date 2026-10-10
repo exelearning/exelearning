@@ -2936,6 +2936,38 @@ test.describe('Print: text is laid out in the preview as on paper', () => {
     });
 });
 
+test.describe('Print: titles stay legible without their backgrounds', () => {
+    // Each of these styles writes a title in white over a background browsers leave off the page.
+    for (const { style, title, colour } of [
+        { style: 'educablue', title: 'article.box .box-head .box-title', colour: 'rgb(0, 0, 0)' },
+        { style: 'flux', title: 'section > .main-header .page-title', colour: 'rgb(40, 37, 115)' },
+    ]) {
+        test(`prints the ${style} title dark rather than white`, async ({ authenticatedPage: page, createProject }) => {
+            const uuid = await createProject(page, `Legible titles ${style}`);
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            await page.evaluate(async theme => {
+                await (window as any).eXeLearning.app.themes.selectTheme(theme, true, true);
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Titled page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id, 'Titled block'), 'text', {
+                    htmlContent: '<p>Some text</p>',
+                });
+            }, style);
+
+            await openPrintPanel(page);
+            const { frame } = await waitForPreview(page);
+            const heading = frame.locator(title).first();
+            await expect(heading).toBeVisible();
+            await expect(heading).toHaveCSS('color', 'rgb(255, 255, 255)');
+
+            await page.emulateMedia({ media: 'print' });
+            await expect(heading).toHaveCSS('color', colour);
+            await page.emulateMedia({ media: null });
+        });
+    }
+});
+
 test.describe('Print: the link to eXe', () => {
     test('stays out of the preview, as it stays off paper', async ({ authenticatedPage: page, createProject }) => {
         const uuid = await createProject(page, 'Link to eXe');
