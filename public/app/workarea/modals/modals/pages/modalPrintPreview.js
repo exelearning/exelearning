@@ -70,6 +70,8 @@ export default class ModalPrintPreview {
         this.titleEl = this.overlay?.querySelector('.print-preview-title-text');
         this.noticeEl = this.overlay?.querySelector('.print-preview-notice');
         this.openTabBtn = this.overlay?.querySelector('.print-preview-open-tab-btn');
+        this.pdfBtn = this.overlay?.querySelector('.print-preview-pdf-btn');
+        this.noticePdfBtn = this.overlay?.querySelector('.print-preview-notice-pdf-btn');
         const panelEl = this.overlay?.querySelector('.print-options-panel');
         /** The choices beside the preview. Null where the page has no markup for them. */
         this.panel = panelEl
@@ -103,6 +105,8 @@ export default class ModalPrintPreview {
         this.valid = true;
         /** Stops waiting for the last print to start. Null when not waiting. */
         this.stopPrintCheck = null;
+        /** True while the desktop app is saving the preview as a PDF. */
+        this.savingPdf = false;
     }
 
     /**
@@ -127,6 +131,13 @@ export default class ModalPrintPreview {
         this.openTabBtn?.addEventListener('click', () => {
             this.openInNewTab();
         });
+
+        // Desktop app: a PDF, from the header or as the way out when printing did not start
+        for (const button of [this.pdfBtn, this.noticePdfBtn]) {
+            button?.addEventListener('click', () => {
+                this.savePdf();
+            });
+        }
 
         // ESC key to close
         document.addEventListener('keydown', (e) => {
@@ -700,7 +711,7 @@ export default class ModalPrintPreview {
         const win = this.iframe?.contentWindow;
         if (!win) return;
 
-        this.setPrintNotice(false);
+        this.showNotice(null);
         this.watchPrintStart(win);
         try {
             win.print();
@@ -730,7 +741,7 @@ export default class ModalPrintPreview {
         const started = () => this.cancelPrintCheck();
         const timer = setTimeout(() => {
             this.cancelPrintCheck();
-            this.setPrintNotice(true);
+            this.showNotice('not-started');
         }, PRINT_START_TIMEOUT_MS);
         win.addEventListener('beforeprint', started);
         this.stopPrintCheck = () => {
@@ -748,16 +759,23 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Show or hide the notice that printing did not start.
+     * Show one notice above the preview, or none.
      *
-     * The way out it offers, opening the preview in a tab of its own, is a browser's: the desktop
-     * app has no tabs to open it in.
+     * - 'not-started': printing did not start. Its way out is a browser's, opening the preview in a
+     *   tab of its own; the desktop app has no tabs, and offers a PDF instead, which needs no printer.
+     * - 'pdf-failed': the desktop app could not save the PDF.
      *
-     * @param {boolean} show - true to show it
+     * @param {'not-started'|'pdf-failed'|null} kind - The notice, or null for none
      */
-    setPrintNotice(show) {
-        if (this.noticeEl) this.noticeEl.hidden = !show;
-        if (this.openTabBtn) this.openTabBtn.hidden = Boolean(window.electronAPI);
+    showNotice(kind) {
+        if (!this.noticeEl) return;
+
+        this.noticeEl.hidden = !kind;
+        for (const text of this.noticeEl.querySelectorAll('[data-notice]')) {
+            text.hidden = text.dataset.notice !== kind;
+        }
+        if (this.openTabBtn) this.openTabBtn.hidden = kind !== 'not-started' || Boolean(window.electronAPI);
+        if (this.noticePdfBtn) this.noticePdfBtn.hidden = kind !== 'not-started' || !this.canSavePdf();
     }
 
     /**
@@ -768,6 +786,48 @@ export default class ModalPrintPreview {
      */
     openInNewTab() {
         if (this.blobUrl) window.open(this.blobUrl, '_blank', 'noopener');
+    }
+
+    /**
+     * Whether the preview can be saved as a PDF: in the desktop app, which makes it.
+     */
+    canSavePdf() {
+        return typeof window.electronAPI?.savePrintPreviewAsPdf === 'function';
+    }
+
+    /**
+     * Save the preview as a PDF, in the desktop app.
+     *
+     * The app makes it from this frame — the document as the user left it, folds included — and
+     * asks where to put it. No printer is needed, which is the point where printing cannot start.
+     * Closing the save dialog is not a failure; anything else is said in the notice.
+     */
+    async savePdf() {
+        if (!this.canPrint() || !this.canSavePdf() || this.savingPdf) return;
+
+        let title = '';
+        try {
+            title = this.iframe?.contentDocument?.title || '';
+        } catch {
+            // A document from another origin keeps its title; the app falls back to a generic name.
+        }
+
+        this.showNotice(null);
+        this.savingPdf = true;
+        this.syncPrintButton();
+        let result;
+        try {
+            result = await window.electronAPI.savePrintPreviewAsPdf(this.iframe?.name || '', title);
+        } catch (error) {
+            result = { saved: false, canceled: false, error: error?.message || String(error) };
+        } finally {
+            this.savingPdf = false;
+            this.syncPrintButton();
+        }
+
+        if (result?.saved || result?.canceled) return;
+        console.error('[PrintPreview] The PDF could not be saved:', result?.error);
+        if (this.isVisible()) this.showNotice('pdf-failed');
     }
 
     /**
@@ -810,6 +870,10 @@ export default class ModalPrintPreview {
 
     syncPrintButton() {
         if (this.printBtn) this.printBtn.disabled = !this.canPrint();
+        if (this.pdfBtn) {
+            this.pdfBtn.hidden = !this.canSavePdf();
+            this.pdfBtn.disabled = !this.canPrint() || this.savingPdf;
+        }
     }
 
     /**
@@ -840,7 +904,7 @@ export default class ModalPrintPreview {
         this.cancelRegeneration();
         // The document a print was waited for is going, and with it what the notice was about.
         this.cancelPrintCheck();
-        this.setPrintNotice(false);
+        this.showNotice(null);
         this.disposePreview?.();
         this.disposePreview = null;
         if (this.blobUrl) {

@@ -709,13 +709,17 @@ describe('ModalPrintPreview and its options panel', () => {
         overlayElement.innerHTML = `
             <span class="print-preview-title-text">Print preview</span>
             <button class="print-preview-options-btn" aria-expanded="false" hidden></button>
+            <button class="print-preview-pdf-btn" hidden></button>
             <button class="print-preview-print-btn"></button>
             <button class="print-preview-close-btn"></button>
             <div class="print-preview-notice" role="alert" hidden>
+                <p data-notice="not-started">Printing did not start.</p>
+                <p data-notice="pdf-failed" hidden>The PDF could not be saved.</p>
                 <button class="print-preview-open-tab-btn"></button>
+                <button class="print-preview-notice-pdf-btn" hidden></button>
             </div>
             <div class="print-preview-loading"></div>
-            <iframe class="print-preview-iframe"></iframe>
+            <iframe class="print-preview-iframe" name="exe-print-preview"></iframe>
             <aside class="print-options-panel" hidden>
                 <button class="print-options-close"></button>
                 <div class="print-options-body">
@@ -1544,6 +1548,134 @@ describe('ModalPrintPreview and its options panel', () => {
             choose(ACTIVITY_MODE_APPENDIX);
             await settle();
 
+            expect(notice().hidden).toBe(true);
+        });
+    });
+
+    describe('saving a PDF, in the desktop app', () => {
+        const pdfBtn = () => overlayElement.querySelector('.print-preview-pdf-btn');
+        const noticePdfBtn = () => overlayElement.querySelector('.print-preview-notice-pdf-btn');
+        const notice = () => overlayElement.querySelector('.print-preview-notice');
+        const noticeText = (kind) => overlayElement.querySelector(`[data-notice="${kind}"]`);
+        let savePrintPreviewAsPdf;
+
+        /** Show the preview of a project, in the desktop app, loaded with a document of the given title. */
+        const showInDesktop = async (result = { saved: true, canceled: false, filePath: 'C:/docs/Unit.pdf' }) => {
+            savePrintPreviewAsPdf = vi.fn().mockResolvedValue(result);
+            window.electronAPI = { savePrintPreviewAsPdf };
+            await showWithActivities();
+            const doc = frameDocument();
+            doc.title = 'Unit 1';
+            loaded();
+        };
+
+        afterEach(() => {
+            delete window.electronAPI;
+        });
+
+        it('is not offered in a browser, which cannot make one', async () => {
+            await showWithActivities();
+            loaded();
+
+            expect(pdfBtn().hidden).toBe(true);
+        });
+
+        it('is offered beside Print, and only once the preview can be printed', async () => {
+            await showInDesktop();
+            expect(pdfBtn().hidden).toBe(false);
+            expect(pdfBtn().disabled).toBe(false);
+
+            choose(ACTIVITY_MODE_APPENDIX);
+            expect(pdfBtn().disabled).toBe(true);
+        });
+
+        it('asks the app for a PDF of this frame, named after the document', async () => {
+            await showInDesktop();
+
+            pdfBtn().click();
+            await vi.waitFor(() => expect(savePrintPreviewAsPdf).toHaveBeenCalledOnce());
+
+            expect(savePrintPreviewAsPdf).toHaveBeenCalledWith('exe-print-preview', 'Unit 1');
+            await vi.waitFor(() => expect(pdfBtn().disabled).toBe(false));
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('asks once, however often it is clicked while saving', async () => {
+            await showInDesktop();
+            let finish;
+            savePrintPreviewAsPdf.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+
+            pdfBtn().click();
+            expect(pdfBtn().disabled).toBe(true);
+            pdfBtn().click();
+            finish({ saved: true, canceled: false });
+            await vi.waitFor(() => expect(pdfBtn().disabled).toBe(false));
+
+            expect(savePrintPreviewAsPdf).toHaveBeenCalledOnce();
+        });
+
+        it('says nothing when the user closes the save dialog', async () => {
+            await showInDesktop({ saved: false, canceled: true });
+
+            await modal.savePdf();
+
+            expect(notice().hidden).toBe(true);
+        });
+
+        it.each([
+            ['the app says it failed', (api) => api.mockResolvedValueOnce({ saved: false, canceled: false, error: 'EACCES' })],
+            ['the call itself fails', (api) => api.mockRejectedValueOnce(new Error('No handler'))],
+        ])('says the PDF could not be saved when %s', async (_case, fail) => {
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            await showInDesktop();
+            fail(savePrintPreviewAsPdf);
+
+            await modal.savePdf();
+
+            expect(notice().hidden).toBe(false);
+            expect(noticeText('pdf-failed').hidden).toBe(false);
+            expect(noticeText('not-started').hidden).toBe(true);
+            expect(noticePdfBtn().hidden).toBe(true);
+        });
+
+        it('says nothing of a failure once the preview has been closed', async () => {
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            await showInDesktop();
+            let finish;
+            savePrintPreviewAsPdf.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+
+            const saving = modal.savePdf();
+            modal.close();
+            finish({ saved: false, canceled: false, error: 'Print preview not found' });
+            await saving;
+
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('makes nothing when the preview cannot be printed yet', async () => {
+            await showInDesktop();
+            modal.ready = false;
+
+            await modal.savePdf();
+
+            expect(savePrintPreviewAsPdf).not.toHaveBeenCalled();
+        });
+
+        it('is the way out, instead of a new tab, when printing did not start', async () => {
+            await showInDesktop();
+            Object.defineProperty(modal.iframe, 'contentWindow', {
+                configurable: true,
+                value: Object.assign(new EventTarget(), { print: vi.fn() }),
+            });
+
+            printBtn().click();
+            await vi.advanceTimersByTimeAsync(PRINT_START_TIMEOUT_MS);
+            expect(noticeText('not-started').hidden).toBe(false);
+            expect(overlayElement.querySelector('.print-preview-open-tab-btn').hidden).toBe(true);
+            expect(noticePdfBtn().hidden).toBe(false);
+
+            noticePdfBtn().click();
+            await vi.waitFor(() => expect(savePrintPreviewAsPdf).toHaveBeenCalledOnce());
             expect(notice().hidden).toBe(true);
         });
     });

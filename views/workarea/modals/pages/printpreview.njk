@@ -8,6 +8,10 @@
             <button type="button" class="print-preview-options-btn btn btn-secondary" aria-controls="printOptionsPanel" aria-expanded="false" hidden>
                 {{ 'Print options' | trans }}
             </button>
+            {# Desktop app only: the script shows it where the app can make a PDF, which needs no printer. #}
+            <button type="button" class="print-preview-pdf-btn btn btn-secondary" hidden>
+                {{ 'Save as PDF' | trans }}
+            </button>
             <button type="button" class="print-preview-print-btn btn btn-primary" title="{{ 'Print' | trans }}">
                 {{ 'Print' | trans }}
             </button>
@@ -16,10 +20,12 @@
             </button>
         </div>
     </div>
-    {# Shown by the script when printing did not start: the browser or the system did not let it. #}
+    {# Shown by the script when printing did not start, or the PDF could not be saved; one message at a time. #}
     <div class="print-preview-notice" role="alert" hidden>
-        <p class="print-preview-notice-text">{{ 'Printing did not start. Printing may be disabled in this browser or on this device.' | trans }}</p>
+        <p class="print-preview-notice-text" data-notice="not-started">{{ 'Printing did not start. Printing may be disabled in this browser or on this device.' | trans }}</p>
+        <p class="print-preview-notice-text" data-notice="pdf-failed" hidden>{{ 'The PDF could not be saved.' | trans }}</p>
         <button type="button" class="print-preview-open-tab-btn btn btn-secondary btn-sm">{{ 'Open in a new tab' | trans }}</button>
+        <button type="button" class="print-preview-notice-pdf-btn btn btn-secondary btn-sm" hidden>{{ 'Save as PDF' | trans }}</button>
     </div>
     <div class="print-preview-body">
         <div class="print-preview-content">
@@ -27,7 +33,8 @@
                 <div class="spinner-border" role="status"></div>
                 <p>{{ 'Generating preview...' | trans }}</p>
             </div>
-            <iframe class="print-preview-iframe" title="{{ 'Print preview' | trans }}"></iframe>
+            {# The name lets the desktop app find this frame to make a PDF of it. #}
+            <iframe class="print-preview-iframe" name="exe-print-preview" title="{{ 'Print preview' | trans }}"></iframe>
         </div>
         {# The options that change what the preview shows. The script fills in the choices about the interactive activities when the project has any; the document options are always there. #}
         <aside id="printOptionsPanel" class="print-options-panel" aria-labelledby="printOptionsTitle" hidden>

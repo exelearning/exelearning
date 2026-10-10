@@ -461,6 +461,11 @@ describe('menu and modal HTML generation', () => {
             'data-i18n="Printing did not start. Printing may be disabled in this browser or on this device."',
         );
         expect(preview).toContain('data-i18n="Open in a new tab"');
+        // The desktop app finds the frame by name to make a PDF of it.
+        expect(preview).toContain('name="exe-print-preview"');
+        expect(preview).toContain('class="print-preview-pdf-btn btn btn-secondary" hidden');
+        expect(preview).toContain('data-i18n="Save as PDF"');
+        expect(preview).toContain('data-i18n="The PDF could not be saved."');
         expect(preview).toContain('data-i18n-aria-label="Close"');
     });
 });

@@ -2833,6 +2833,9 @@ test.describe('Print: when printing does not start', () => {
 
         await expect(notice).toBeVisible({ timeout: 10000 });
         await expect(notice).toHaveAttribute('role', 'alert');
+        // A browser cannot make a PDF of its own: that way out is the desktop app's.
+        await expect(page.locator('.print-preview-pdf-btn')).toBeHidden();
+        await expect(page.locator('.print-preview-notice-pdf-btn')).toBeHidden();
         const [tab] = await Promise.all([
             page.context().waitForEvent('page'),
             page.locator('.print-preview-open-tab-btn').click(),
