@@ -1,0 +1,4 @@
+# Replaces the root .dockerignore, which is written for the deployment image and would hide test/, docs and specs.
+node_modules
+dist
+.env
