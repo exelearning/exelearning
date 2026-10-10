@@ -573,6 +573,70 @@ out with a rule of equal or higher specificity:
 
 ---
 
+## Printing
+
+**File → Print** shows the whole project as one page in a preview, and prints that page. Your
+style's `@media print` rules decide what reaches the paper, and three things are worth knowing when
+you write them.
+
+### Backgrounds do not print
+
+To save ink, browsers leave background colours and images off the page unless the reader turns on
+**Background graphics** (Chrome and Edge, under *More settings*) or **Print backgrounds** (Firefox).
+The desktop app's print dialog has no such option, and its **Save as PDF** leaves backgrounds off
+as well.
+
+Light text on a coloured band suffers most. The band goes, and Chromium darkens the text only as far
+as `#ababab`: light grey on white paper, barely legible. Give such text a dark colour in your print
+rules, as Educablue does for its block titles:
+
+```css
+@media print {
+    .exe-content .box-head .box-title {
+        color: #000000;
+    }
+}
+```
+
+Keep `print-color-adjust: exact` for an element that *is* its background, which would vanish
+without it. General icons are one, and `base.css` already keeps their colour on paper, so your style
+does not need to. Forced on bands and surfaces, it prints them on every page whatever the reader
+chose.
+
+### The preview is on screen
+
+The preview is not paginated, and your `@media print` rules only apply once the browser prepares to
+print: the reader decides what to print looking at your screen rules. A change only paper shows,
+such as Educablue's 300 px limit on images, is a surprise there.
+
+eXeLearning brings its own print rules into the preview: folded blocks open (while *Print all
+visible content* is ticked), no *Made with eXeLearning* link, links in the text colour and
+underlined, long code lines wrapped. It also gives the page a 15 mm margin, the
+`@page { margin: 1.5cm; }` every base style prints with. Keep that margin and the preview breaks
+lines where the paper will.
+
+To see the paper itself, use the browser's own print preview, or **Save as PDF** in the desktop
+app.
+
+### Refer to your files with relative paths
+
+The preview loads your style from wherever it is kept: the base styles' folder,
+`/site-files/themes/` for one an administrator installed, or the project itself for one a user
+imported. A user style is not served from anywhere, so each of its files becomes a `blob:` URL and
+its stylesheets are rewritten to match. Relative `url()` and `@import` references follow,
+`#fragment`s included, and selectors on `src` or `href`, such as `img[src$="activity.png"]`, keep
+matching.
+
+Nothing else is rewritten. A root path (`/img/band.svg`), another site's URL or a path a script
+builds at run time does not reach the style's files:
+
+```css
+/* Correct: resolved against style.css wherever the style is kept */
+#siteNav a { background-image: url(img/example.svg); }
+```
+
+---
+
 ## JavaScript in Styles
 
 You can use jQuery (already included in exported content).  
