@@ -2,21 +2,30 @@
 
 [Read in English](moodle.md){ .lang-switch }
 
-<!-- --8<-- [start:guide] -->
+<!-- --8<-- [start:intro] -->
 
 Hay **tres plugins** de eXeLearning para Moodle. Se instalan igual y pueden convivir en el mismo sitio.
 
 | En el selector de actividades | Plugin | Úsalo para… | Calificación |
 | --- | --- | --- | --- |
-| **Recurso eXeLearning** | [`mod_exelearning`](#mod_exelearning) | Actividades interactivas evaluables. **Recomendado.** | Una columna por ejercicio |
-| **eXeLearning (SCORM)** | [`mod_exescorm`](#mod_exescorm) | Contenidos que deben ser un paquete SCORM 1.2 | Una nota global |
-| **eXeLearning (sitio web)** | [`mod_exeweb`](#mod_exeweb) | Materiales de consulta, sin nota | No califica |
+| **Recurso eXeLearning** | [`mod_exelearning`](moodle.es.md#mod_exelearning) | Actividades interactivas evaluables. **Recomendado.** | Una columna por ejercicio |
+| **eXeLearning (SCORM)** | [`mod_exescorm`](moodle.es.md#mod_exescorm) | Contenidos que deben ser un paquete SCORM 1.2 | Una nota global |
+| **eXeLearning (sitio web)** | [`mod_exeweb`](moodle.es.md#mod_exeweb) | Materiales de consulta, sin nota | No califica |
 
 !!! tip "Pruébalo antes de instalar"
     Cada plugin tiene una demostración en [Moodle Playground](https://moodle-playground.com/) que se
     abre en el navegador. Los enlaces están en la [introducción](index.es.md#pruebalos-sin-instalar-nada).
 
-## Requisitos
+<!-- --8<-- [end:intro] -->
+
+<!-- --8<-- [start:admin] -->
+
+## Para administración { #administracion }
+
+La administración del sitio instala y configura los plugins una sola vez para todo el sitio; el
+profesorado no tiene que instalar nada.
+
+### Requisitos
 
 | Plugin | Moodle | Archivo de la versión |
 | --- | --- | --- |
@@ -27,11 +36,11 @@ Hay **tres plugins** de eXeLearning para Moodle. Se instalan igual y pueden conv
 Cada ZIP pesa unos 30 MB porque **incluye el editor de eXeLearning**. Si tu Moodle limita el tamaño
 de subida, auméntalo o instala el plugin descomprimiéndolo en la carpeta `mod/` del servidor.
 
-## Instalación (los tres plugins) { #instalacion }
+### Instalación (los tres plugins) { #instalacion }
 
 Necesitas una cuenta de **administración** del sitio Moodle.
 
-1. Descarga el ZIP de la última versión desde la tabla de [requisitos](#requisitos).
+1. Descarga el ZIP de la última versión desde la tabla de [requisitos](moodle.es.md#requisitos).
 2. Entra en **Administración del sitio → Extensiones → Instalar complementos**, arrastra el ZIP a
    **Paquete ZIP** y pulsa **Instalar complemento desde archivo ZIP**.
 
@@ -56,19 +65,65 @@ Repite los pasos con cada plugin que quieras usar. Cuando estén instalados, apa
     Si no puedes subir el ZIP desde la web, descomprímelo en el servidor (`mod/exelearning`,
     `mod/exescorm` o `mod/exeweb`) y visita **Administración del sitio → Notificaciones**.
 
----
+!!! info "Despliegues regionales o con varios sitios"
+    Instala los plugins una vez en cada sitio Moodle (por ejemplo, el Moodle regional que comparten
+    todos los centros). Así todo el profesorado los tiene en todos sus cursos; no hay que instalar nada
+    por docente.
 
-## Recurso eXeLearning (`mod_exelearning`) { #mod_exelearning }
+### Configuración { #configuracion }
+
+#### Recurso eXeLearning (`mod_exelearning`)
+
+Ninguna. Funciona nada más instalarlo. En **Administración del sitio → Extensiones → Módulos de
+actividad → Recurso eXeLearning** puedes desactivar el editor integrado o gestionar los estilos
+disponibles.
+
+#### eXeLearning (SCORM) (`mod_exescorm`)
+
+**Imprescindible.** Tras instalarlo, el plugin espera un servidor de **eXeLearning Online**. Para usar
+el editor que viene incluido:
+
+1. Ve a **Administración del sitio → Extensiones → Módulos de actividad → eXeLearning (SCORM)**.
+2. En **Modo del editor** elige **Editor integrado (embebido)** y guarda.
+
+![Modo del editor integrado en eXeLearning (SCORM)](img/moodle/exescorm-settings.png)
+
+!!! note "¿Tienes un servidor de eXeLearning Online?"
+    Deja **eXeLearning Online (servidor remoto)** y rellena **URI remoto** y **Clave de firma** con los
+    datos de tu servidor. Consulta [Despliegue](../deployment.md) para instalarlo.
+
+#### eXeLearning (sitio web) (`mod_exeweb`)
+
+**Imprescindible.** Igual que con el plugin SCORM:
+
+1. Ve a **Administración del sitio → Extensiones → Módulos de actividad → eXeLearning (sitio web)**.
+2. En **Modo de editor** elige **Editor integrado (embebido)** y guarda.
+
+![Modo de editor integrado en eXeLearning (sitio web)](img/moodle/exeweb-settings.png)
+
+### Migrar desde `mod_exeweb` o `mod_exescorm`
+
+Puedes pasar las actividades de `mod_exeweb` y `mod_exescorm` a `mod_exelearning`. Con
+`mod_exelearning` y alguno de los otros instalados, aparece la página **Migrar a eXeLearning** en la
+administración del sitio.
+
+### Copias de seguridad
+
+Los tres plugins participan en las copias de seguridad y restauraciones de Moodle, contenido incluido.
+
+<!-- --8<-- [end:admin] -->
+
+<!-- --8<-- [start:teacher] -->
+
+## Para el profesorado { #profesorado }
+
+### Recurso eXeLearning (`mod_exelearning`) { #mod_exelearning }
 
 Crea, edita y **califica** recursos de eXeLearning dentro de Moodle. El recurso conserva su propio
 menú lateral y **cada ejercicio evaluable tiene su columna** en el libro de calificaciones (o una sola
 nota global, si lo prefieres).
 
-**Configuración:** ninguna. Funciona nada más instalarlo. En **Administración del sitio → Extensiones →
-Módulos de actividad → Recurso eXeLearning** puedes desactivar el editor integrado o gestionar los
-estilos disponibles.
-
-### Crear una actividad
+#### Crear una actividad
 
 1. En el curso, activa el **Modo de edición**, pulsa **+ → Actividad o recurso** y elige **Recurso
    eXeLearning**.
@@ -82,7 +137,7 @@ estilos disponibles.
 
 4. Pulsa **Guardar cambios y mostrar**. Moodle detecta los ejercicios evaluables y crea sus columnas.
 
-### Editar el contenido
+#### Editar el contenido
 
 En la página de la actividad, pulsa **Editar con eXeLearning**:
 
@@ -93,7 +148,7 @@ la nueva versión y las columnas de calificación se actualizan solas.
 
 ![El editor de eXeLearning dentro de Moodle](img/moodle/exelearning-editor.png)
 
-### Ver los resultados
+#### Ver los resultados
 
 Las notas llegan al **libro de calificaciones** del curso, con una columna por ejercicio:
 
@@ -115,26 +170,12 @@ ejercicio:
 
 ---
 
-## eXeLearning (SCORM) (`mod_exescorm`) { #mod_exescorm }
+### eXeLearning (SCORM) (`mod_exescorm`) { #mod_exescorm }
 
 Crea y edita contenidos de eXeLearning que Moodle reproduce como **paquete SCORM 1.2**, con intentos,
 puntuación y finalización, y **una nota global** en el libro de calificaciones.
 
-### Configuración (imprescindible)
-
-Tras instalarlo, el plugin espera un servidor de **eXeLearning Online**. Para usar el editor que viene
-incluido:
-
-1. Ve a **Administración del sitio → Extensiones → Módulos de actividad → eXeLearning (SCORM)**.
-2. En **Modo del editor** elige **Editor integrado (embebido)** y guarda.
-
-![Modo del editor integrado en eXeLearning (SCORM)](img/moodle/exescorm-settings.png)
-
-!!! note "¿Tienes un servidor de eXeLearning Online?"
-    Deja **eXeLearning Online (servidor remoto)** y rellena **URI remoto** y **Clave de firma** con los
-    datos de tu servidor. Consulta [Despliegue](../deployment.md) para instalarlo.
-
-### Crear una actividad
+#### Crear una actividad
 
 1. **+ → Actividad o recurso → eXeLearning (SCORM)**.
 2. En **Paquete → Tipo** elige **Crear con eXeLearning** para empezar desde cero, o **Paquete subido**
@@ -158,21 +199,12 @@ en el libro de calificaciones.
 
 ---
 
-## eXeLearning (sitio web) (`mod_exeweb`) { #mod_exeweb }
+### eXeLearning (sitio web) (`mod_exeweb`) { #mod_exeweb }
 
 Muestra contenidos de eXeLearning como un **sitio web** integrado en el curso, con su propio menú.
 **No califica**; solo registra la visualización (finalización de actividad).
 
-### Configuración (imprescindible)
-
-Igual que con el plugin SCORM:
-
-1. Ve a **Administración del sitio → Extensiones → Módulos de actividad → eXeLearning (sitio web)**.
-2. En **Modo de editor** elige **Editor integrado (embebido)** y guarda.
-
-![Modo de editor integrado en eXeLearning (sitio web)](img/moodle/exeweb-settings.png)
-
-### Crear un recurso
+#### Crear un recurso
 
 1. **+ → Actividad o recurso → eXeLearning (sitio web)**.
 2. En **Paquete → Tipo** elige **Crear con eXeLearning (editor integrado)** o **Paquete subido**
@@ -186,18 +218,12 @@ Igual que con el plugin SCORM:
 
 ---
 
-## Preguntas frecuentes { #faq }
+### Preguntas frecuentes { #faq }
 
 **No aparece el botón Editar con eXeLearning.**
-: Comprueba que instalaste el ZIP de la versión publicada (el código fuente no trae el editor), que en
-  `mod_exescorm` y `mod_exeweb` el modo de editor es **Editor integrado (embebido)** y que tu usuario
-  puede editar el curso.
+: Comprueba que tu usuario puede editar el curso. Si puede, pide a la administración de Moodle que
+  compruebe que instaló el ZIP de la versión publicada (el código fuente no trae el editor) y que en
+  `mod_exescorm` y `mod_exeweb` el modo de editor es **Editor integrado (embebido)** (consulta
+  [Configuración](moodle.es.md#configuracion)).
 
-**¿Puedo pasar mis actividades de `mod_exeweb` o `mod_exescorm` a `mod_exelearning`?**
-: Sí. Con `mod_exelearning` y alguno de los otros instalados, aparece la página **Migrar a
-  eXeLearning** en la administración del sitio.
-
-**¿Las copias de seguridad incluyen el contenido?**
-: Sí. Los tres plugins participan en las copias de seguridad y restauraciones de Moodle.
-
-<!-- --8<-- [end:guide] -->
+<!-- --8<-- [end:teacher] -->

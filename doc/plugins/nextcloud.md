@@ -2,7 +2,7 @@
 
 [Leer en español](nextcloud.es.md){ .lang-switch }
 
-<!-- --8<-- [start:guide] -->
+<!-- --8<-- [start:intro] -->
 
 The **eXeLearning** app for Nextcloud lets you **view, edit and create** eXeLearning resources
 (`.elpx`) straight from **Files**, without downloading them. It helps teachers keep and share their
@@ -13,12 +13,21 @@ material in the school cloud.
     (user `admin`, password `admin`). It comes with two sample resources in the `exelearning-samples`
     folder.
 
-## Requirements
+<!-- --8<-- [end:intro] -->
+
+<!-- --8<-- [start:admin] -->
+
+## For administrators { #admin }
+
+The administrator installs the app once on the Nextcloud server and it is available to every user;
+teachers install nothing. If all your schools share one Nextcloud, install it there once.
+
+### Requirements
 
 - Nextcloud 31, 32 or 33. With plugin version 4.0.5, Nextcloud 33 only.
 - An up-to-date browser (the preview uses *Service Workers*).
 
-## Installation
+### Installation
 
 You need **administrator** access to the Nextcloud server.
 
@@ -46,9 +55,15 @@ You need **administrator** access to the Nextcloud server.
     and run `occ maintenance:mimetype:update-js` and
     `occ maintenance:mimetype:update-db --repair-filecache`.
 
+### Configuration
+
 The app has no settings.
 
-## Usage
+<!-- --8<-- [end:admin] -->
+
+<!-- --8<-- [start:teacher] -->
+
+## For teachers { #teachers }
 
 ### Create a new resource
 
@@ -82,4 +97,4 @@ In the editor, click **Save** to store your changes in Nextcloud.
 
 Share the resource with Nextcloud's usual sharing (users, groups or a public link).
 
-<!-- --8<-- [end:guide] -->
+<!-- --8<-- [end:teacher] -->

@@ -2,7 +2,7 @@
 
 [Read in English](wordpress.md){ .lang-switch }
 
-<!-- --8<-- [start:guide] -->
+<!-- --8<-- [start:intro] -->
 
 El plugin **eXeLearning** para WordPress permite subir recursos (`.elpx`) a la **biblioteca de
 medios**, **editarlos** con el editor integrado y **publicarlos** en entradas y páginas con un bloque o
@@ -12,13 +12,23 @@ un código corto. Es ideal para el blog o la web del centro.
     [Abre la demostración en WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/exelearning/wp-exelearning/refs/heads/main/blueprint.json).
     Se abre en castellano, con la sesión iniciada y dos recursos de ejemplo en Medios.
 
-## Requisitos
+<!-- --8<-- [end:intro] -->
+
+<!-- --8<-- [start:admin] -->
+
+## Para administración { #administracion }
+
+La administración instala el plugin una sola vez en el sitio de WordPress y lo pueden usar todas
+las personas que publican; el profesorado no instala nada. En un WordPress multisitio compartido por
+varios centros, basta con instalarlo una vez para toda la red.
+
+### Requisitos
 
 - WordPress 6.1 o posterior.
 - PHP 8.0 o posterior.
 - Un límite de subida suficiente para el plugin (unos 30 MB) y para tus recursos.
 
-## Instalación
+### Instalación
 
 1. Descarga `exelearning-X.Y.Z.zip` de la
    [última versión](https://github.com/exelearning/wp-exelearning/releases/latest).
@@ -31,14 +41,18 @@ un código corto. Es ideal para el blog o la web del centro.
 
     ![Activar el plugin](img/wordpress/install-activate.png)
 
-## Configuración
+### Configuración
 
 No hace falta configurar nada. En **Ajustes → eXeLearning** puedes revisar el estado del editor,
 gestionar los estilos y ver ejemplos del código corto.
 
 ![Ajustes de eXeLearning](img/wordpress/settings.png)
 
-## Uso
+<!-- --8<-- [end:admin] -->
+
+<!-- --8<-- [start:teacher] -->
+
+## Para el profesorado { #profesorado }
 
 ### 1. Subir un recurso
 
@@ -87,4 +101,4 @@ Así lo ve el alumnado en la web:
     `show_download` permite descargar el recurso y `screenshot="poster"` muestra una imagen hasta que
     se pulsa **Cargar contenido interactivo**.
 
-<!-- --8<-- [end:guide] -->
+<!-- --8<-- [end:teacher] -->

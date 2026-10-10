@@ -40,7 +40,9 @@ nav:
       - WordPress: plugins/wordpress.md
       - Omeka S: plugins/omeka-s.md
       - Google Drive: plugins/google-drive.md
-      - Printable Manual: plugins/manual.md
+      - OneDrive: plugins/onedrive.md
+      - Administrator Manual: plugins/manual-admin.md
+      - Teacher Manual: plugins/manual-teacher.md
       - Español:
           - Introducción: plugins/index.es.md
           - Moodle: plugins/moodle.es.md
@@ -48,7 +50,9 @@ nav:
           - WordPress: plugins/wordpress.es.md
           - Omeka S: plugins/omeka-s.es.md
           - Google Drive: plugins/google-drive.es.md
-          - Manual imprimible: plugins/manual.es.md
+          - OneDrive: plugins/onedrive.es.md
+          - Manual de administración: plugins/manual-admin.es.md
+          - Manual del profesorado: plugins/manual-teacher.es.md
   - Profile Avatars: profile-avatars.md
   - Deployment: deployment.md
   - High Availability: high-availability.md

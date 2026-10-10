@@ -2,7 +2,7 @@
 
 [Leer en español](wordpress.es.md){ .lang-switch }
 
-<!-- --8<-- [start:guide] -->
+<!-- --8<-- [start:intro] -->
 
 The **eXeLearning** plugin for WordPress lets you upload resources (`.elpx`) to the **Media Library**,
 **edit** them with the embedded editor and **publish** them in posts and pages with a block or a
@@ -12,13 +12,23 @@ shortcode. It is a good fit for a school blog or website.
     [Open the demo in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/exelearning/wp-exelearning/refs/heads/main/blueprint.json).
     You are signed in automatically and two sample resources are already in Media.
 
-## Requirements
+<!-- --8<-- [end:intro] -->
+
+<!-- --8<-- [start:admin] -->
+
+## For administrators { #admin }
+
+The administrator installs the plugin once on the WordPress site and every author can use it;
+teachers install nothing. On a WordPress multisite shared by several schools, install it once for
+the whole network.
+
+### Requirements
 
 - WordPress 6.1 or later.
 - PHP 8.0 or later.
 - An upload limit large enough for the plugin (about 30 MB) and your resources.
 
-## Installation
+### Installation
 
 1. Download `exelearning-X.Y.Z.zip` from the
    [latest release](https://github.com/exelearning/wp-exelearning/releases/latest).
@@ -30,14 +40,18 @@ shortcode. It is a good fit for a school blog or website.
 
     ![Activate the plugin](img/wordpress/install-activate.png)
 
-## Configuration
+### Configuration
 
 Nothing to configure. In **Settings → eXeLearning** you can check the editor status, manage styles and
 see shortcode examples.
 
 ![eXeLearning settings](img/wordpress/settings.png)
 
-## Usage
+<!-- --8<-- [end:admin] -->
+
+<!-- --8<-- [start:teacher] -->
+
+## For teachers { #teachers }
 
 ### 1. Upload a resource
 
@@ -86,4 +100,4 @@ This is what students see on the site:
     lets visitors download the resource and `screenshot="poster"` shows an image until **Load
     interactive content** is clicked.
 
-<!-- --8<-- [end:guide] -->
+<!-- --8<-- [end:teacher] -->

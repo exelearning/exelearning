@@ -2,10 +2,10 @@
 
 [Read in English](index.md){ .lang-switch }
 
-<!-- --8<-- [start:guide] -->
+<!-- --8<-- [start:intro] -->
 
 Los plugins llevan eXeLearning a las plataformas que ya usa tu centro. El profesorado crea y edita los
-recursos **sin salir de Moodle, Nextcloud, WordPress, Omeka S o Google Drive**, y el alumnado los ve
+recursos **sin salir de Moodle, Nextcloud, WordPress, Omeka S, Google Drive u OneDrive**, y el alumnado los ve
 integrados en la página, sin descargas ni instalaciones.
 
 Todos los plugins son **gratuitos y de código abierto**, y cada versión publicada **incluye el editor
@@ -22,6 +22,7 @@ de eXeLearning**: basta con instalar el plugin para empezar a editar.
 | WordPress | [eXeLearning para WordPress](wordpress.es.md) | Publicar recursos en entradas y páginas | — |
 | Omeka S | [eXeLearning para Omeka S](omeka-s.es.md) | Catalogar y mostrar recursos en colecciones | — |
 | Google Drive | [eXeLearning para Google Drive](google-drive.es.md) | Abrir y editar recursos guardados en Drive | — |
+| OneDrive | [eXeLearning para OneDrive](onedrive.es.md) | Abrir y editar recursos guardados en OneDrive | — |
 
 !!! tip "¿Moodle? Empieza por `mod_exelearning`"
     Si vas a crear contenidos nuevos en Moodle, **eXeLearning** (`mod_exelearning`) es la opción
@@ -50,7 +51,8 @@ juega con ella y ciérrala: no se guarda nada.
 ## Cómo funcionan
 
 1. **La administración instala el plugin** una sola vez, desde el panel de la plataforma, con el
-   archivo ZIP de la versión publicada. No hace falta un servidor de eXeLearning aparte.
+   archivo ZIP de la versión publicada. No hace falta un servidor de eXeLearning aparte. Google Drive
+   y OneDrive no necesitan ninguna instalación.
 2. **El profesorado sube un recurso** (`.elpx`) o crea uno nuevo, y lo edita con el botón
    **Editar con eXeLearning**. El editor se abre dentro de la propia plataforma.
 3. **Al guardar**, el recurso actualizado vuelve a la plataforma. El alumnado ve siempre la última
@@ -61,6 +63,31 @@ juega con ella y ciérrala: no se guarda nada.
 !!! info "Archivos `.elpx` y `.elp`"
     `.elpx` es el formato de eXeLearning 3 y posteriores. Los archivos `.elp` de versiones antiguas
     se pueden abrir en el editor y se guardan convertidos a `.elpx`.
+
+## Administración y profesorado { #roles }
+
+Cada guía tiene una parte **Para administración** y otra **Para el profesorado**, y hay dos manuales:
+el [manual de administración](manual-admin.es.md) y el [manual del profesorado](manual-teacher.es.md).
+
+| | Moodle, Nextcloud, WordPress, Omeka S | Google Drive, OneDrive |
+| --- | --- | --- |
+| **Administración** | Instala el plugin **una vez por sitio**, desde el panel de la plataforma. | No hay nada que instalar. Opcionalmente, permite la aplicación en el dominio de Google Workspace o Microsoft 365, o aloja una copia propia. |
+| **Profesorado** | No instala nada. Encuentra eXeLearning en su curso, sus archivos o sus entradas. | Inicia sesión con la cuenta de su centro y empieza. |
+
+!!! tip "Despliegue en todos los centros de una comunidad"
+    La instalación no cambia con el número de docentes. Con una **plataforma compartida** (un solo
+    Moodle, Nextcloud, WordPress multisitio u Omeka S para todos los centros), se instala el plugin una
+    vez y todo el profesorado lo tiene. Con **una plataforma por centro**, se repite la misma
+    instalación en cada una. Para Google Drive y OneDrive, revisa una vez la configuración del dominio
+    en la consola de administración de Google Workspace o de Microsoft 365.
+
+!!! note "Capturas"
+    Las capturas de estas guías muestran la interfaz en español. Los pasos son los mismos en cualquier
+    idioma.
+
+<!-- --8<-- [end:intro] -->
+
+<!-- --8<-- [start:admin] -->
 
 ## Descargas
 
@@ -76,6 +103,11 @@ código fuente **no incluye el editor**.
 | WordPress | <https://github.com/exelearning/wp-exelearning/releases/latest> |
 | Omeka S | <https://github.com/exelearning/omeka-s-exelearning/releases/latest> |
 | Google Drive | No se instala: <https://exelearning.github.io/gdrive-exelearning/> |
+| OneDrive | No se instala: <https://exelearning.github.io/onedrive-exelearning/> |
+
+<!-- --8<-- [end:admin] -->
+
+<!-- --8<-- [start:help] -->
 
 ## ¿Necesitas ayuda?
 
@@ -84,7 +116,15 @@ Comunica errores y sugerencias en el
 etiqueta (`moodle`, `nextcloud`, `wordpress`, `omeka-s`, `gdrive`) para encontrar consultas
 parecidas.
 
-<!-- --8<-- [end:guide] -->
+<!-- --8<-- [end:help] -->
 
-Para tener todas las guías en un solo documento, abre el [manual completo](manual.es.md) y usa
-**Imprimir → Guardar como PDF** en el navegador.
+## Manuales
+
+Todas las guías, reunidas en dos manuales. Ábrelos y usa **Imprimir → Guardar como PDF** en el
+navegador, o descárgalos como **proyecto de eXeLearning** para adaptarlos a tu centro y publicarlos
+como sitio web, paquete SCORM o ePub.
+
+| Manual | Web y PDF | Proyecto de eXeLearning |
+| --- | --- | --- |
+| Manual de administración | [Abrir](manual-admin.es.md) | <a href="manual-admin.es.elpx" download>manual-admin.es.elpx</a> |
+| Manual del profesorado | [Abrir](manual-teacher.es.md) | <a href="manual-teacher.es.elpx" download>manual-teacher.es.elpx</a> |

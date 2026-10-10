@@ -2,7 +2,7 @@
 
 [Read in English](omeka-s.md){ .lang-switch }
 
-<!-- --8<-- [start:guide] -->
+<!-- --8<-- [start:intro] -->
 
 El módulo **ExeLearning** para Omeka S permite añadir recursos de eXeLearning (`.elpx`) como
 **medios** de las fichas (ítems), **verlos** integrados en la página y **editarlos** con el editor de
@@ -13,7 +13,17 @@ eXeLearning. Es útil para repositorios y colecciones de recursos educativos.
     (usuario `admin@example.com`, contraseña `password`). Incluye una ficha de ejemplo y un sitio
     público en `/s/demo`.
 
-## Requisitos
+<!-- --8<-- [end:intro] -->
+
+<!-- --8<-- [start:admin] -->
+
+## Para administración { #administracion }
+
+La administración instala el módulo una sola vez en el servidor de Omeka S y queda disponible en
+todos los sitios de esa instalación; el profesorado no instala nada. Si tus centros comparten un
+mismo Omeka S, basta con instalarlo allí una vez.
+
+### Requisitos
 
 - Omeka S 4.0 o posterior.
 - PHP 7.4 o posterior con la extensión ZIP.
@@ -21,7 +31,7 @@ eXeLearning. Es útil para repositorios y colecciones de recursos educativos.
   [README del módulo](https://github.com/exelearning/omeka-s-exelearning#readme). Con Apache no hace
   falta nada.
 
-## Instalación
+### Instalación
 
 1. Descarga `ExeLearning-X.Y.Z.zip` de la
    [última versión](https://github.com/exelearning/omeka-s-exelearning/releases/latest).
@@ -30,7 +40,7 @@ eXeLearning. Es útil para repositorios y colecciones de recursos educativos.
 
 ![Instalar el módulo ExeLearning](img/omeka-s/modules-install.png)
 
-## Configuración
+### Configuración
 
 Pulsa **Configurar** junto al módulo para ajustar la **Altura del visor (px)** y los **Formatos de
 descarga** que se ofrecen (`.elpx`, web, SCORM 1.2, IMS, EPUB3). Pulsa **Enviar** para guardar.
@@ -39,7 +49,11 @@ descarga** que se ofrecen (`.elpx`, web, SCORM 1.2, IMS, EPUB3). Pulsa **Enviar*
 
 Con **Abrir página de estilos** puedes subir y activar estilos propios.
 
-## Uso
+<!-- --8<-- [end:admin] -->
+
+<!-- --8<-- [start:teacher] -->
+
+## Para el profesorado { #profesorado }
 
 ### Añadir un recurso a un ítem
 
@@ -68,6 +82,7 @@ El recurso aparece automáticamente en la página de la ficha del sitio público
 
 !!! info "¿Quién puede editar?"
     La persona propietaria del medio y los roles de Omeka S que pueden modificar cualquier recurso
-    (administración, edición). Los visitantes solo ven el contenido.
+    (administración, edición). La administración decide quién tiene esos roles. Los visitantes solo
+    ven el contenido.
 
-<!-- --8<-- [end:guide] -->
+<!-- --8<-- [end:teacher] -->

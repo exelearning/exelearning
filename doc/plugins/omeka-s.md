@@ -2,7 +2,7 @@
 
 [Leer en español](omeka-s.es.md){ .lang-switch }
 
-<!-- --8<-- [start:guide] -->
+<!-- --8<-- [start:intro] -->
 
 The **ExeLearning** module for Omeka S lets you add eXeLearning resources (`.elpx`) as item **media**,
 **view** them embedded in the page and **edit** them with the eXeLearning editor. It is useful for
@@ -13,7 +13,17 @@ repositories and collections of learning resources.
     (user `admin@example.com`, password `password`). It includes a sample item and a public site at
     `/s/demo`.
 
-## Requirements
+<!-- --8<-- [end:intro] -->
+
+<!-- --8<-- [start:admin] -->
+
+## For administrators { #admin }
+
+The administrator installs the module once on the Omeka S server and it is available on every site
+of that installation; teachers install nothing. If your schools share one Omeka S, install it there
+once.
+
+### Requirements
 
 - Omeka S 4.0 or later.
 - PHP 7.4 or later with the ZIP extension.
@@ -21,7 +31,7 @@ repositories and collections of learning resources.
   [module README](https://github.com/exelearning/omeka-s-exelearning#readme). Nothing is needed with
   Apache.
 
-## Installation
+### Installation
 
 1. Download `ExeLearning-X.Y.Z.zip` from the
    [latest release](https://github.com/exelearning/omeka-s-exelearning/releases/latest).
@@ -30,7 +40,7 @@ repositories and collections of learning resources.
 
 ![Install the ExeLearning module](img/omeka-s/modules-install.png)
 
-## Configuration
+### Configuration
 
 Click **Configure** next to the module to set the **Viewer Height (px)** and the **Download formats**
 offered (`.elpx`, web, SCORM 1.2, IMS, EPUB3). Click **Submit** to save.
@@ -39,7 +49,11 @@ offered (`.elpx`, web, SCORM 1.2, IMS, EPUB3). Click **Submit** to save.
 
 **Open styles page** lets you upload and enable your own styles.
 
-## Usage
+<!-- --8<-- [end:admin] -->
+
+<!-- --8<-- [start:teacher] -->
+
+## For teachers { #teachers }
 
 ### Add a resource to an item
 
@@ -68,6 +82,6 @@ full screen or download it.
 
 !!! info "Who can edit?"
     The owner of the media and the Omeka S roles that can change any resource (administrators,
-    editors). Visitors only see the content.
+    editors). The administrator decides who has those roles. Visitors only see the content.
 
-<!-- --8<-- [end:guide] -->
+<!-- --8<-- [end:teacher] -->
