@@ -575,6 +575,31 @@ describe('PrintPreviewExporter', () => {
                     ),
                 ).toBe(true);
             });
+
+            it('styles links as they print: in the colour of the text around them, underlined', async () => {
+                expect(
+                    onScreen(
+                        await previewStyles(),
+                        'a[href] {\n    color: inherit;\n    text-decoration: underline;\n}',
+                    ),
+                ).toBe(true);
+            });
+
+            it('wraps long lines of code, and leaves quotes in their normal flow', async () => {
+                const styles = await previewStyles();
+
+                expect(onScreen(styles, 'pre {\n    white-space: pre-wrap;\n}')).toBe(true);
+                // pre-wrap would keep the line breaks of a quote's source and print them as blank lines.
+                expect(styles).not.toMatch(/blockquote[^{]*\{[^}]*white-space/);
+            });
+
+            it('gives the paper the margin the base styles print with, and no other', async () => {
+                const styles = await previewStyles();
+
+                // Outweighs a style's own body rule (body.exe-export), which took the margin away.
+                expect(styles).toMatch(/html body\.exe-single-page \{[^}]*padding: 15mm;/);
+                expect(onScreen(styles, 'html body.exe-single-page .exe-content {\n    padding: 0;\n}')).toBe(true);
+            });
         });
 
         it('should not append the URL again to the external iframe source link', async () => {
@@ -617,12 +642,6 @@ describe('PrintPreviewExporter', () => {
         it('should hide map iDevice image overlays in print CSS', async () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('.mapa-IDevice img.js-hidden { display: none !important; }');
-        });
-
-        it('should style links for PDF interactivity in print CSS', async () => {
-            const result = await exporter.generatePreview();
-            expect(result.html).toContain('a[href]');
-            expect(result.html).toContain('text-decoration: underline');
         });
     });
 

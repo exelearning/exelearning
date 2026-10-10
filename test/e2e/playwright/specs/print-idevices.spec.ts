@@ -2863,6 +2863,79 @@ test.describe('Print: when printing does not start', () => {
     });
 });
 
+test.describe('Print: text is laid out in the preview as on paper', () => {
+    test('styles links, code and quotes, and leaves the margin, as they print', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Text on paper');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Text');
+            // A quote written the way the editor writes it: its paragraph on a line of its own.
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Text'), 'text', {
+                htmlContent:
+                    '<p id="lead" style="color: rgb(10, 20, 30)">See <a id="link" href="#lead">the lead</a>.</p>' +
+                    `<pre id="code">${'x'.repeat(400)}</pre>` +
+                    '<blockquote id="quote">\n  <p>A quotation of one line.</p>\n</blockquote>',
+            });
+        });
+
+        await openPrintPanel(page);
+        const { frame } = await waitForPreview(page);
+        const measure = () =>
+            frame.locator('body').evaluate(() => {
+                const style = (id: string) => getComputedStyle(document.getElementById(id)!);
+                return {
+                    linkColour: style('link').color,
+                    linkLine: style('link').textDecorationLine,
+                    codeWraps: style('code').whiteSpace,
+                    quoteHeight: document.getElementById('quote')!.getBoundingClientRect().height,
+                    paperMargin: getComputedStyle(document.querySelector('.exe-single-page')!).paddingLeft,
+                };
+            });
+
+        const screen = await measure();
+        expect(screen.linkColour).toBe('rgb(10, 20, 30)');
+        expect(screen.linkLine).toBe('underline');
+        expect(screen.codeWraps).toBe('pre-wrap');
+        // 15 mm at 96 dpi.
+        expect(Number.parseFloat(screen.paperMargin)).toBeCloseTo(56.69, 1);
+
+        await page.emulateMedia({ media: 'print' });
+        const paper = await measure();
+        await page.emulateMedia({ media: null });
+        expect(paper.linkColour).toBe(screen.linkColour);
+        expect(paper.linkLine).toBe('underline');
+        expect(paper.codeWraps).toBe('pre-wrap');
+        // No blank lines from the quote's own line breaks on paper.
+        expect(paper.quoteHeight).toBe(screen.quoteHeight);
+    });
+
+    test('leaves the paper margin as the only one, with a style that pads its content on screen', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Padded style');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        // Universal pads its content on screen, and takes the padding off on paper.
+        await page.evaluate(() => (window as any).eXeLearning.app.themes.selectTheme('universal', true, true));
+
+        await openPrintPanel(page);
+        const { frame } = await waitForPreview(page);
+        const padding = await frame.locator('body').evaluate(() => ({
+            paper: getComputedStyle(document.body).paddingLeft,
+            content: getComputedStyle(document.querySelector('.exe-content')!).paddingLeft,
+        }));
+
+        expect(Number.parseFloat(padding.paper)).toBeCloseTo(56.69, 1);
+        expect(padding.content).toBe('0px');
+    });
+});
+
 test.describe('Print: the link to eXe', () => {
     test('stays out of the preview, as it stays off paper', async ({ authenticatedPage: page, createProject }) => {
         const uuid = await createProject(page, 'Link to eXe');

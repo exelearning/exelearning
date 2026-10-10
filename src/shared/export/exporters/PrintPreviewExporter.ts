@@ -397,19 +397,35 @@ ${linkUrlsCss}
 #made-with-eXe { display: none !important; }
 html:not(.exe-print-as-shown) .exe-export article.box.minimized > .box-content { display: block !important; }
 html:not(.exe-print-as-shown) .exe-export .box-toggle { display: none !important; }
+/* Links take the colour of the text around them and an underline, on screen as on paper. */
+a[href] {
+    color: inherit;
+    text-decoration: underline;
+}
+/* Long lines of code wrap, on screen as on paper. Quotes are left out: pre-wrap would also keep
+   the line breaks of their source, and print them as blank lines. */
+pre {
+    white-space: pre-wrap;
+}
 /* Create space around the document in preview mode */
 body {
     padding: 40px;
     background-color: #f5f5f5; /* Light grey background for the "paper" effect */
 }
-/* The page content acts as the paper */
-.exe-single-page {
+/* The page content acts as the paper. The selector outweighs a style's own body rules
+   (body.exe-export), which would otherwise take the paper's margin away. */
+html body.exe-single-page {
     background-color: white;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
     max-width: 210mm; /* A4 width approx */
     margin: 0 auto;
-    padding: 20mm; /* A4 margins approx */
+    padding: 15mm; /* the @page margin every base style prints with, so lines break where they will on paper */
     box-sizing: border-box;
+}
+/* Inside it, the content gives up the padding a style may give it on screen, as every base style
+   that has some does on paper: the margin above is the only one. */
+html body.exe-single-page .exe-content {
+    padding: 0;
 }
 
 /* Force content to fit within the page (no horizontal scroll) */
@@ -480,7 +496,6 @@ figure img {
     pre, blockquote {
         page-break-inside: avoid;
         break-inside: avoid;
-        white-space: pre-wrap;
     }
 
     /* 2. Hide Title and Subtitle (Header) */
@@ -517,12 +532,6 @@ figure img {
 
     /* Hide map iDevice image overlays that are js-hidden */
     .mapa-IDevice img.js-hidden { display: none !important; }
-
-    /* Ensure links are styled for PDF interactivity */
-    a[href] {
-        color: inherit;
-        text-decoration: underline;
-    }
 }
 
 /* Force visibility for feedback elements even if JS tries to hide them */
