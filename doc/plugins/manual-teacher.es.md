@@ -7,7 +7,7 @@
 Cómo crear, editar y publicar recursos de eXeLearning en Moodle, Nextcloud, WordPress, Omeka S,
 Google Drive y OneDrive. Para la instalación, consulta el [manual de administración](manual-admin.es.md).
 
-!!! tip "Guardar como PDF o como proyecto de eXeLearning"
+!!! tip manual-download "Guardar como PDF o como proyecto de eXeLearning"
     Usa **Imprimir → Guardar como PDF** en tu navegador para tener este manual en PDF. Cada guía
     empieza en una página nueva. También puedes descargarlo como proyecto de eXeLearning:
     <a href="../manual-teacher.es.elpx" download>manual-teacher.es.elpx</a>.

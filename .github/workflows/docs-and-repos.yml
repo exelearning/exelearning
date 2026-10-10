@@ -53,6 +53,18 @@ jobs:
           sed -i "1s|^|site_url: ${SITE_URL}\n|" mkdocs.yml
           mkdocs build -d site-docs
 
+      # ---- Plugin manuals as eXeLearning projects (.elpx) ----
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build plugin manuals (.elpx)
+        run: |
+          bun install --frozen-lockfile
+          SITE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          bun scripts/build-docs-elpx.ts site-docs "${SITE_URL}"
+
       # ---- Tools for repo metadata ----
       - name: Install repo tools
         run: |

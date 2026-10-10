@@ -7,7 +7,7 @@
 Cómo instalar y configurar los plugins de eXeLearning para Moodle, Nextcloud, WordPress, Omeka S,
 Google Drive y OneDrive. Para el profesorado, consulta el [manual del profesorado](manual-teacher.es.md).
 
-!!! tip "Guardar como PDF o como proyecto de eXeLearning"
+!!! tip manual-download "Guardar como PDF o como proyecto de eXeLearning"
     Usa **Imprimir → Guardar como PDF** en tu navegador para tener este manual en PDF. Cada guía
     empieza en una página nueva. También puedes descargarlo como proyecto de eXeLearning:
     <a href="../manual-admin.es.elpx" download>manual-admin.es.elpx</a>.
