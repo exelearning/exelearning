@@ -607,13 +607,17 @@ chose.
 
 The preview is not paginated, and your `@media print` rules only apply once the browser prepares to
 print: the reader decides what to print looking at your screen rules. A change only paper shows,
-such as Educablue's 300 px limit on images, is a surprise there.
+such as Educablue's bold, ununderlined links, is a surprise there.
 
 eXeLearning brings its own print rules into the preview: folded blocks open (while *Print all
 visible content* is ticked), no *Made with eXeLearning* link, links in the text colour and
 underlined, long code lines wrapped. It also gives the page a 15 mm margin, the
 `@page { margin: 1.5cm; }` every base style prints with. Keep that margin and the preview breaks
 lines where the paper will.
+
+Some of those rules are `!important` and win over yours when printing from the preview. Images, for
+one, are given `max-width: 100%`, so a narrower limit of your own, like Educablue's 300 px, applies
+only when an exported page is printed straight from the browser.
 
 To see the paper itself, use the browser's own print preview, or **Save as PDF** in the desktop
 app.
