@@ -15,6 +15,7 @@ const {
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
 const { savePrintPreviewAsPdf } = require('./print-to-pdf');
+const { printPreview } = require('./print-preview');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -1669,6 +1670,25 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
 }
 ipcMain.handle('app:saveBuffer', saveBufferWithDialog);
 ipcMain.handle('app:saveBufferAs', saveBufferWithDialog);
+
+ipcMain.handle('app:printPreview', (e, { url } = {}) =>
+    printPreview(url, {
+        createWindow: () => {
+            const win = new BrowserWindow({
+                show: false,
+                parent: BrowserWindow.fromWebContents(e.sender) || mainWindow,
+                webPreferences: {
+                    session: e.sender.session,
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    sandbox: true,
+                },
+            });
+            win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+            return win;
+        },
+    }),
+);
 
 // Save the print preview as a PDF: printing needs a print service and a printer, a PDF does not
 // (issue #1398). The PDF is made from the preview's own frame; see print-to-pdf.js.

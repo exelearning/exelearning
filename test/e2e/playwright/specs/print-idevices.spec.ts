@@ -2790,6 +2790,37 @@ test.describe('Print: a folded block opens on paper', () => {
         await option.uncheck();
         await expect(content('ep-reopened')).toBeVisible();
         await expect(content('ep-closed')).toBeHidden();
+
+        // The fallback must copy these live folds, not reload the author's original HTML.
+        await frame.locator('body').evaluate(() => {
+            window.print = () => {};
+            const canvas = document.createElement('canvas');
+            canvas.id = 'snapshot-drawing';
+            canvas.width = 20;
+            canvas.height = 20;
+            canvas.getContext('2d')!.fillRect(0, 0, 20, 20);
+            document.querySelector('article.ep-reopened .box-content')!.append(canvas);
+        });
+        await page.locator('.print-preview-print-btn').click();
+        await expect(page.locator('.print-preview-notice')).toBeVisible();
+        const [tab] = await Promise.all([
+            page.context().waitForEvent('page'),
+            page.locator('.print-preview-open-tab-btn').click(),
+        ]);
+        await tab.waitForURL(/^blob:/);
+        await tab.waitForLoadState();
+        await expect(tab.locator('html')).toHaveClass(/\bexe-print-as-shown\b/);
+        await expect(tab.locator('article.ep-folded .box-content')).toBeHidden();
+        await expect(tab.locator('article.ep-reopened .box-content')).toBeVisible();
+        await expect(tab.locator('article.ep-closed .box-content')).toBeHidden();
+        await expect(tab.locator('img#snapshot-drawing')).toHaveAttribute('src', /^data:image\/png/);
+        expect(await tab.evaluate(() => window.opener)).toBeNull();
+        await page.locator('.print-preview-close-btn').click();
+        await tab.emulateMedia({ media: 'print' });
+        await expect(tab.locator('article.ep-folded .box-content')).toBeHidden();
+        await expect(tab.locator('article.ep-reopened .box-content')).toBeVisible();
+        await expect(tab.locator('article.ep-closed .box-content')).toBeHidden();
+        await tab.close();
     });
 
     test('offers no choice about folded blocks for the worksheet', async ({
@@ -2840,11 +2871,38 @@ test.describe('Print: when printing does not start', () => {
             page.context().waitForEvent('page'),
             page.locator('.print-preview-open-tab-btn').click(),
         ]);
+        await tab.waitForURL(/^blob:/);
         await tab.waitForLoadState();
         expect(tab.url()).toMatch(/^blob:/);
         await expect(tab.locator('body.exe-single-page')).toHaveCount(1);
         await tab.close();
     });
+
+    for (const canceled of [false, true]) {
+        test(
+            'uses the native result after beforeprint, canceled=' + canceled,
+            async ({ authenticatedPage: page, createProject }) => {
+                await openPreview(page, createProject);
+                await page.evaluate(cancel => {
+                    (window as any).electronAPI = {
+                        printPreview: async (url: string) => {
+                            const frame = document.querySelector<HTMLIFrameElement>('.print-preview-iframe')!;
+                            frame.contentWindow!.dispatchEvent(new Event('beforeprint'));
+                            (window as any).__printedSnapshot = await (await fetch(url)).text();
+                            return { success: false, canceled: cancel, error: 'No valid printers available' };
+                        },
+                    };
+                }, canceled);
+                await page.locator('.print-preview-print-btn').click();
+                await expect
+                    .poll(() => page.evaluate(() => (window as any).__printedSnapshot || ''))
+                    .toContain('exe-single-page');
+                await expect(page.locator('.print-preview-print-btn')).toBeEnabled();
+                if (canceled) await expect(page.locator('.print-preview-notice')).toBeHidden();
+                else await expect(page.locator('.print-preview-notice')).toBeVisible();
+            },
+        );
+    }
 
     test('stays quiet when printing starts', async ({ authenticatedPage: page, createProject }) => {
         const { frame } = await openPreview(page, createProject);

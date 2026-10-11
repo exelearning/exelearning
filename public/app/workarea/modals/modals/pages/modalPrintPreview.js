@@ -14,8 +14,13 @@
  * user asks for their titles; the panel does it by leaving them out of the selection it reports.
  * The preview is drawn again whenever one of those changes, except how folded blocks print, which
  * the loaded preview takes in place.
+ *
+ * In a browser, Print calls the preview's own print() and waits for beforeprint to know it
+ * started. The desktop app instead hands a copy of the preview as it stands to its main process,
+ * which prints it and says whether printing failed or was cancelled.
  */
 import PrintOptionsPanel, { PRINT_UNFOLD_BLOCKS_FIELD } from './printOptionsPanel.js';
+import { printPreviewSnapshot } from './printPreviewSnapshot.js';
 
 /**
  * Class on the <html> of the preview that keeps folded blocks folded on paper, so the page prints
@@ -50,13 +55,20 @@ export const DEFAULT_ACTIVITY_MODE = ACTIVITY_MODE_APPENDIX;
 export const REGENERATE_DELAY_MS = 250;
 
 /**
- * How long to wait for printing to start before saying it did not.
+ * How long to wait, in a browser, for printing to start before saying it did not.
  *
- * Measured: Chromium fires beforeprint a few milliseconds after print() returns, and the desktop
- * app (Electron) fires it during the call, before its dialog opens. Two seconds leaves room for a
- * slow machine without keeping a user who is waiting for a dialog in the dark for long.
+ * Measured: Chromium fires beforeprint a few milliseconds after print() returns. Two seconds
+ * leaves room for a slow machine without keeping a user who is waiting for a dialog in the dark
+ * for long. The desktop app does not wait for the event: its main process prints and says how
+ * printing ended.
  */
 export const PRINT_START_TIMEOUT_MS = 2000;
+
+/**
+ * How often to check whether the tabs opened from the preview are still open, to release what
+ * they use once they are closed.
+ */
+export const OPEN_TAB_CHECK_MS = 1000;
 
 export default class ModalPrintPreview {
     constructor(manager) {
@@ -94,6 +106,7 @@ export default class ModalPrintPreview {
         this.unfoldBlocks = true;
         this.requestId = 0;
         this.disposePreview = null;
+        this.retainPreview = null;
         this.regenerateTimer = null;
         /** The exporter currently running; later requests wait for it and keep only the latest. */
         this.generationPromise = null;
@@ -107,6 +120,11 @@ export default class ModalPrintPreview {
         this.stopPrintCheck = null;
         /** True while the desktop app is saving the preview as a PDF. */
         this.savingPdf = false;
+        this.printing = false;
+        /** Tabs opened from the preview, each with the copy it shows and what keeps its assets. */
+        this.openTabs = new Set();
+        /** Checks whether those tabs are still open. Null while there are none. */
+        this.openTabTimer = null;
     }
 
     /**
@@ -681,7 +699,16 @@ export default class ModalPrintPreview {
 
         // Create blob URL and load into iframe
         this.cleanup();
-        this.disposePreview = result.dispose || null;
+        // A print job or another tab can outlive this overlay. Keep its assets until the last
+        // consumer finishes, even if this preview is closed or regenerated in the meantime.
+        let references = 0;
+        this.retainPreview = () => {
+            references++;
+            return () => {
+                if (--references === 0) result.dispose?.();
+            };
+        };
+        this.disposePreview = this.retainPreview();
         const blob = new Blob([html], { type: 'text/html' });
         try {
             this.blobUrl = URL.createObjectURL(blob);
@@ -706,12 +733,36 @@ export default class ModalPrintPreview {
     /**
      * Print the preview content, and say so if printing does not start.
      */
-    print() {
-        if (!this.canPrint()) return;
+    async print() {
+        if (!this.canPrint() || this.printing) return;
         const win = this.iframe?.contentWindow;
         if (!win) return;
 
         this.showNotice(null);
+        if (typeof window.electronAPI?.printPreview === 'function') {
+            const requestId = this.requestId;
+            const release = this.retainPreview?.();
+            let url;
+            this.printing = true;
+            this.syncPrintButton();
+            try {
+                const html = printPreviewSnapshot(this.iframe.contentDocument);
+                url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+                const result = await window.electronAPI.printPreview(url);
+                if (!result?.success && !result?.canceled && requestId === this.requestId && this.isVisible()) {
+                    this.showNotice('not-started');
+                }
+            } catch (error) {
+                console.warn('[PrintPreview] Printing failed:', error);
+                if (requestId === this.requestId && this.isVisible()) this.showNotice('not-started');
+            } finally {
+                if (url) URL.revokeObjectURL(url);
+                release?.();
+                this.printing = false;
+                this.syncPrintButton();
+            }
+            return;
+        }
         this.watchPrintStart(win);
         try {
             win.print();
@@ -725,10 +776,9 @@ export default class ModalPrintPreview {
      * Wait for printing to start, and show the notice if it does not.
      *
      * print() tells nothing either way. It returns at once in some browsers and only once its
-     * dialog closes in others (the desktop app), and when printing is blocked — a browser policy,
-     * no print service — it neither throws nor opens anything. What printing always does when it
-     * really starts is fire beforeprint in the document: during the call or a few milliseconds
-     * after it. So the preview waits a moment for that event, and speaks up if it never comes.
+     * dialog closes in others. A browser policy can block it without throwing. The event confirms
+     * only that the browser began preparing to print, not that a native dialog opened. Electron
+     * uses the native callback above instead, so printer/service failures are reported as well.
      *
      * The wait starts before the call: where print() holds the page while its dialog is open, the
      * event has already cancelled it by the time the call returns.
@@ -781,11 +831,48 @@ export default class ModalPrintPreview {
     /**
      * Open the preview in a tab of its own, for the browser's own printing to have a go.
      *
-     * It is a fresh copy of the document: what the user folded or unfolded in the preview is not
-     * carried over.
+     * Copy the live document, including its folding option and current block state. Do not rerun
+     * scripts, which would initialize the copied activities again.
      */
     openInNewTab() {
-        if (this.blobUrl) window.open(this.blobUrl, '_blank', 'noopener');
+        if (!this.canPrint() || !this.blobUrl) return;
+        let tab;
+        let url;
+        let release;
+        try {
+            const html = printPreviewSnapshot(this.iframe.contentDocument);
+            tab = window.open('', '_blank');
+            if (!tab) return;
+            tab.opener = null;
+            release = this.retainPreview?.();
+            url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+            tab.location.href = url;
+        } catch (error) {
+            tab?.close();
+            if (url) URL.revokeObjectURL(url);
+            release?.();
+            console.warn('[PrintPreview] Could not open the preview:', error);
+            return;
+        }
+        // Closing/regenerating the overlay must not revoke the tab's image and style assets.
+        this.openTabs.add({ tab, url, release });
+        this.openTabTimer ??= setInterval(() => this.releaseClosedTabs(), OPEN_TAB_CHECK_MS);
+    }
+
+    /**
+     * Release what each closed tab was using, and stop checking once no tab is left open.
+     */
+    releaseClosedTabs() {
+        for (const entry of this.openTabs) {
+            if (!entry.tab.closed) continue;
+            this.openTabs.delete(entry);
+            URL.revokeObjectURL(entry.url);
+            entry.release?.();
+        }
+        if (this.openTabs.size === 0) {
+            clearInterval(this.openTabTimer);
+            this.openTabTimer = null;
+        }
     }
 
     /**
@@ -869,7 +956,7 @@ export default class ModalPrintPreview {
     }
 
     syncPrintButton() {
-        if (this.printBtn) this.printBtn.disabled = !this.canPrint();
+        if (this.printBtn) this.printBtn.disabled = !this.canPrint() || this.printing;
         if (this.pdfBtn) {
             this.pdfBtn.hidden = !this.canSavePdf();
             this.pdfBtn.disabled = !this.canPrint() || this.savingPdf;
@@ -907,6 +994,7 @@ export default class ModalPrintPreview {
         this.showNotice(null);
         this.disposePreview?.();
         this.disposePreview = null;
+        this.retainPreview = null;
         if (this.blobUrl) {
             URL.revokeObjectURL(this.blobUrl);
             this.blobUrl = null;

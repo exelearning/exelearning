@@ -47,6 +47,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Check an external link from the main process (no CORS) so the link
   // validation report can show real HTTP statuses, like online mode does.
   checkLink: (url) => ipcRenderer.invoke('app:checkLink', { url }),
+  // Return the native print result, including failures after beforeprint and cancellation.
+  printPreview: (url) => ipcRenderer.invoke('app:printPreview', { url }),
   // Save the print preview as a PDF from the main process, which makes it from the preview's own
   // frame (named frameName) and asks where to put it. Works without a printer.
   savePrintPreviewAsPdf: (frameName, title) =>

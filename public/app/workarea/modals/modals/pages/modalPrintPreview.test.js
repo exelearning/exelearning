@@ -3,6 +3,7 @@ import ModalPrintPreview, {
     ACTIVITY_MODE_APPENDIX,
     ACTIVITY_MODE_IN_PLACE,
     ACTIVITY_MODE_OMIT,
+    OPEN_TAB_CHECK_MS,
     PREVIEW_MODE_DOCUMENT,
     PREVIEW_MODE_IDEVICES,
     PRINT_AS_SHOWN_CLASS,
@@ -1498,12 +1499,12 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(openTabBtn().hidden).toBe(true);
         });
 
-        it('opens the preview in a tab of its own', () => {
+        it('opens a blank tab before loading the snapshot, or stops if popups are blocked', () => {
             const open = vi.spyOn(window, 'open').mockImplementation(() => null);
 
             openTabBtn().click();
 
-            expect(open).toHaveBeenCalledWith('blob:test-url', '_blank', 'noopener');
+            expect(open).toHaveBeenCalledWith('', '_blank');
         });
 
         it('opens nothing when there is no preview to open', () => {
@@ -1549,6 +1550,183 @@ describe('ModalPrintPreview and its options panel', () => {
             await settle();
 
             expect(notice().hidden).toBe(true);
+        });
+    });
+
+    describe('printing through the desktop app', () => {
+        const notice = () => overlayElement.querySelector('.print-preview-notice');
+        beforeEach(async () => {
+            await showWithActivities();
+            frameDocument();
+            loaded();
+        });
+        afterEach(() => { delete window.electronAPI; });
+
+        it('reports a native failure even after beforeprint was emitted', async () => {
+            window.electronAPI = { printPreview: vi.fn(async () => {
+                modal.iframe.contentWindow.dispatchEvent(new Event('beforeprint'));
+                return { success: false, canceled: false, error: 'No valid printers available' };
+            }) };
+            const browserPrint = vi.fn();
+            modal.iframe.contentWindow.print = browserPrint;
+            await modal.print();
+            expect(window.electronAPI.printPreview).toHaveBeenCalledOnce();
+            expect(browserPrint).not.toHaveBeenCalled();
+            expect(notice().hidden).toBe(false);
+            expect(modal.stopPrintCheck).toBeNull();
+            expect(printBtn().disabled).toBe(false);
+        });
+
+        it.each([{ success: true, canceled: false }, { success: false, canceled: true }])('does not warn for success/cancellation: %j', async result => {
+            window.electronAPI = { printPreview: vi.fn().mockResolvedValue(result) };
+            await modal.print();
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('reports a rejected native request and releases the snapshot', async () => {
+            vi.spyOn(console, 'warn').mockImplementation(() => {});
+            window.electronAPI = { printPreview: vi.fn().mockRejectedValue(new Error('IPC failed')) };
+            URL.createObjectURL.mockReturnValueOnce('blob:native-snapshot');
+            await modal.print();
+            expect(notice().hidden).toBe(false);
+            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:native-snapshot');
+            expect(printBtn().disabled).toBe(false);
+        });
+
+        it('does not start another job while the native dialog is open', async () => {
+            let finish;
+            window.electronAPI = { printPreview: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
+            const printing = modal.print();
+            expect(printBtn().disabled).toBe(true);
+            await modal.print();
+            expect(window.electronAPI.printPreview).toHaveBeenCalledOnce();
+            finish({ success: false, canceled: true });
+            await printing;
+            expect(printBtn().disabled).toBe(false);
+        });
+
+        it('keeps assets during a native job and ignores its result after closing', async () => {
+            const dispose = vi.fn();
+            window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: '<html></html>', dispose });
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            let finish;
+            window.electronAPI = { printPreview: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
+            const printing = modal.print();
+            modal.close();
+            expect(dispose).not.toHaveBeenCalled();
+            finish({ success: false, canceled: false });
+            await printing;
+            expect(dispose).toHaveBeenCalledOnce();
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('does not put an old failure on a newly opened preview', async () => {
+            let finish;
+            window.electronAPI = { printPreview: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
+            const printing = modal.print();
+            modal.close();
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            finish({ success: false, canceled: false });
+            await printing;
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('reports snapshot errors without sending an incomplete document to the printer', async () => {
+            vi.spyOn(console, 'warn').mockImplementation(() => {});
+            window.electronAPI = { printPreview: vi.fn() };
+            URL.createObjectURL.mockImplementationOnce(() => { throw new Error('Snapshot failed'); });
+            await modal.print();
+            expect(window.electronAPI.printPreview).not.toHaveBeenCalled();
+            expect(notice().hidden).toBe(false);
+            expect(printBtn().disabled).toBe(false);
+        });
+    });
+
+    describe('opening a snapshot in a new tab', () => {
+        let tab;
+        beforeEach(async () => {
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            tab = { opener: window, location: { href: '' }, closed: false, close: vi.fn() };
+            vi.spyOn(window, 'open').mockReturnValue(tab);
+        });
+        afterEach(async () => {
+            tab.closed = true;
+            await vi.advanceTimersByTimeAsync(1000);
+        });
+
+        it('copies the current print option and folds, and severs the opener', async () => {
+            const doc = modal.iframe.contentDocument;
+            doc.documentElement.classList.add(PRINT_AS_SHOWN_CLASS);
+            doc.body.innerHTML = '<article class="box minimized"><div style="display:none">Folded</div></article>';
+            URL.createObjectURL.mockReturnValueOnce('blob:snapshot');
+            modal.openInNewTab();
+            const blob = URL.createObjectURL.mock.calls.at(-1)[0];
+            const html = await blob.text();
+            expect(html).toContain(PRINT_AS_SHOWN_CLASS);
+            expect(html).toContain('box minimized');
+            expect(html).toContain('display:none');
+            expect(tab.opener).toBeNull();
+            expect(tab.location.href).toBe('blob:snapshot');
+            expect(URL.revokeObjectURL).not.toHaveBeenCalledWith('blob:snapshot');
+            tab.closed = true;
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:snapshot');
+        });
+
+        it('keeps shared assets after closing the overlay until every tab closes', async () => {
+            const dispose = vi.fn();
+            window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: '<html></html>', dispose });
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            modal.openInNewTab();
+            const second = { ...tab, location: { href: '' } };
+            window.open.mockReturnValueOnce(second);
+            modal.openInNewTab();
+            modal.close();
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(dispose).not.toHaveBeenCalled();
+            tab.closed = true;
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(dispose).not.toHaveBeenCalled();
+            second.closed = true;
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(dispose).toHaveBeenCalledOnce();
+        });
+
+        it('checks every open tab with one timer, and stops checking once the last one closes', async () => {
+            modal.openInNewTab();
+            const second = { ...tab, location: { href: '' } };
+            window.open.mockReturnValueOnce(second);
+            modal.openInNewTab();
+            const timer = modal.openTabTimer;
+            expect(timer).not.toBeNull();
+            expect(modal.openTabs.size).toBe(2);
+
+            tab.closed = true;
+            await vi.advanceTimersByTimeAsync(OPEN_TAB_CHECK_MS);
+            expect(modal.openTabs.size).toBe(1);
+            expect(modal.openTabTimer).toBe(timer);
+
+            second.closed = true;
+            await vi.advanceTimersByTimeAsync(OPEN_TAB_CHECK_MS);
+            expect(modal.openTabs.size).toBe(0);
+            expect(modal.openTabTimer).toBeNull();
+        });
+
+        it('closes the blank tab and releases resources if snapshot navigation fails', () => {
+            vi.spyOn(console, 'warn').mockImplementation(() => {});
+            Object.defineProperty(tab.location, 'href', { set() { throw new Error('Navigation failed'); } });
+            URL.createObjectURL.mockReturnValueOnce('blob:failed-snapshot');
+            modal.openInNewTab();
+            expect(tab.close).toHaveBeenCalledOnce();
+            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:failed-snapshot');
         });
     });
 
