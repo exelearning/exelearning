@@ -14,7 +14,7 @@
  * screen, so the hint assertions below bound the count rather than pinning it.
  */
 
-import { chromium, type Page } from '@playwright/test';
+import { chromium, type FrameLocator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '../fixtures/auth.fixture';
@@ -2995,6 +2995,61 @@ test.describe('Print: text is laid out in the preview as on paper', () => {
 
         expect(Number.parseFloat(padding.paper)).toBeCloseTo(56.69, 1);
         expect(padding.content).toBe('0px');
+    });
+});
+
+test.describe('Print: a formula shows once', () => {
+    /**
+     * Whether the MathML a pre-rendered formula carries for screen readers is out of sight, on
+     * screen and on paper. Shown, it repeats the formula the SVG already draws.
+     */
+    async function mathmlHidden(page: Page, frame: FrameLocator) {
+        const hidden = () =>
+            frame
+                .locator('.exe-math-rendered math')
+                .first()
+                .evaluate(math => {
+                    const box = math.getBoundingClientRect();
+                    return getComputedStyle(math).position === 'absolute' && box.width <= 1 && box.height <= 1;
+                });
+        const screen = await hidden();
+        await page.emulateMedia({ media: 'print' });
+        const paper = await hidden();
+        await page.emulateMedia({ media: null });
+        return { screen, paper };
+    }
+
+    test('in the document and on the worksheet', async ({ authenticatedPage: page, createProject }) => {
+        const uuid = await createProject(page, 'Formulas print once');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(
+            guessHtml => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Formulas');
+                binding.createComponent(parent.id, binding.createBlock(parent.id, 'Text'), 'text', {
+                    htmlContent: '<div class="exe-text"><p>Pythagoras: \\(x^2 + y^2 = z^2\\)</p></div>',
+                });
+                binding.createComponent(parent.id, binding.createBlock(parent.id, 'Guess'), 'guess', {
+                    htmlContent: guessHtml,
+                });
+            },
+            `<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">${encryptDataGame(
+                JSON.stringify({
+                    wordsGame: [{ word: 'square', definition: 'The name of \\(x^2\\)', type: 0 }],
+                    percentajeQuestions: 100,
+                }),
+            )}</div></div>`,
+        );
+
+        await openPrintPanel(page);
+        let { frame } = await choosePrintOption(page, 'in-place');
+        await expect(frame.locator('.exe-math-rendered svg').first()).toBeVisible();
+        expect(await mathmlHidden(page, frame)).toEqual({ screen: true, paper: true });
+
+        ({ frame } = await choosePrintOption(page, 'idevices'));
+        await expect(frame.locator('.worksheet .exe-math-rendered svg').first()).toBeVisible();
+        expect(await mathmlHidden(page, frame)).toEqual({ screen: true, paper: true });
     });
 });
 

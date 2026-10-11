@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { PRERENDERED_LATEX_CSS } from '../constants';
 import { WORKSHEET_ACTIVITY_STYLES, renderActivityFragment, renderWorksheet } from './WorksheetRenderer';
 import type { CharacterBoxGroup, PrintableActivity, WorksheetModel } from './types';
 
@@ -44,6 +45,15 @@ describe('renderWorksheet', () => {
 
     it('falls back to english when the project declares no language', () => {
         expect(renderWorksheet(model({ language: '' }))).toContain('<html lang="en">');
+    });
+
+    it('hides the MathML that pre-rendered formulas carry, so each formula shows once', () => {
+        const styles = renderWorksheet(model()).match(/<style>([\s\S]*?)<\/style>/)![1];
+
+        expect(styles).toContain(PRERENDERED_LATEX_CSS);
+        // Outside any @media, so the formula shows once on screen as well as on paper.
+        const before = styles.slice(0, styles.indexOf(PRERENDERED_LATEX_CSS));
+        expect(before.split('{').length).toBe(before.split('}').length);
     });
 
     it('marks each activity with the iDevice it came from', () => {

@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, spyOn } from 'bun:test';
 import { PrintPreviewExporter, type PrintPreviewOptions } from './PrintPreviewExporter';
 import { PageRenderer } from '../renderers/PageRenderer';
+import { PRERENDERED_LATEX_CSS } from '../constants';
 import { encryptDataGame } from '../utils/dataGameCipher';
 import type {
     AssetProvider,
@@ -593,6 +594,14 @@ describe('PrintPreviewExporter', () => {
                 );
                 // pre-wrap would keep the line breaks of a quote's source and print them as blank lines.
                 expect(styles).not.toMatch(/blockquote[^{]*\{[^}]*white-space/);
+            });
+
+            it('hides the MathML that pre-rendered formulas carry, as the exports do', async () => {
+                const styles = await previewStyles();
+
+                // The preview links the editor's base.css, which lacks it: every formula showed twice.
+                expect(onScreen(styles, PRERENDERED_LATEX_CSS)).toBe(true);
+                expect(styles).toContain('.exe-math-rendered math { position: absolute;');
             });
 
             it('gives the paper the margin the base styles print with, and no other', async () => {

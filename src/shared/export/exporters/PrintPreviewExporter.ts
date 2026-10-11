@@ -23,6 +23,7 @@ import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
 import { renderMatchingLayoutScript } from '../worksheet/matchingLayout';
 import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
 import { resolveMaterialIconDataUris } from './BaseExporter';
+import { PRERENDERED_LATEX_CSS } from '../constants';
 import {
     applyActivityMode,
     PRINTABLE_ACTIVITY_TYPE,
@@ -539,6 +540,10 @@ figure img {
 .feedback.js-hidden {
     display: block !important;
 }
+/* Formulas pre-rendered as SVG carry their MathML alongside, for screen readers. The exports hide
+   it with this sheet, added to their own base.css; the preview links the editor's base.css, which
+   lacks it, so without it here every formula showed twice. */
+${PRERENDERED_LATEX_CSS}
 ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''}
 </style>
 `;

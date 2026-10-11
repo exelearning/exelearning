@@ -8,6 +8,7 @@
  * the same approach PrintPreviewExporter takes for its own injected styles.
  */
 
+import { PRERENDERED_LATEX_CSS } from '../constants';
 import { renderPrintContextScript } from '../printContext';
 import { accentOutline, readColor } from './cardColors';
 import { renderMatchingLayoutScript } from './matchingLayout';
@@ -1121,8 +1122,13 @@ const DOCUMENT_STYLES_AFTER = `
 }
 `;
 
-/** The worksheet document's complete stylesheet, in cascade order. */
-const STYLES = DOCUMENT_STYLES + WORKSHEET_ACTIVITY_STYLES + DOCUMENT_STYLES_AFTER;
+/**
+ * The worksheet document's complete stylesheet, in cascade order.
+ *
+ * The formulas are pre-rendered as SVG with their MathML alongside, for screen readers; the sheet
+ * the exports use for them hides that MathML, which would otherwise show every formula twice.
+ */
+const STYLES = DOCUMENT_STYLES + WORKSHEET_ACTIVITY_STYLES + PRERENDERED_LATEX_CSS + DOCUMENT_STYLES_AFTER;
 
 /**
  * Render the boxes a student writes the answer into.
