@@ -149,26 +149,7 @@ test.describe('Print preview: the style', () => {
                 ),
             },
         );
-        await page.locator('#dropdownStyles').click();
-        await page.waitForSelector('#stylessidenav.active', { timeout: 5000 });
-        await page.locator('#importedstylescontent-tab').click();
-        await page
-            .locator('#theme-file-import')
-            .setInputFiles({ name: `${name}.zip`, mimeType: 'application/zip', buffer: zip });
-        const id = await page
-            .waitForFunction(
-                prefix => {
-                    const installed = (window as any).eXeLearning?.app?.themes?.list?.installed || {};
-                    return (
-                        Object.keys(installed).find(key => key.startsWith(prefix) && installed[key]?.isUserTheme) ||
-                        null
-                    );
-                },
-                name,
-                { timeout: 15000 },
-            )
-            .then(handle => handle.jsonValue() as Promise<string>);
-        await page.evaluate(async theme => (window as any).eXeLearning.app.themes.selectTheme(theme, true, true), id);
+        await importUserStyle(page, name, zip);
         await addBlockWithStyleIcon(page, 'eng_info');
 
         const frame = await openPreview(page);
@@ -201,4 +182,55 @@ test.describe('Print preview: the style', () => {
         await expect(title).toHaveCSS('color', 'rgb(65, 130, 17)');
         await page.emulateMedia({ media: null });
     });
+
+    test('loads an older style the user imported, whose files are content.css and default.js', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print an older imported style');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const name = `print-older-style-${Date.now()}`;
+        const zip = Buffer.from(
+            zipSync({
+                'config.xml': strToU8(
+                    `<?xml version="1.0" encoding="UTF-8"?><theme><name>${name}</name><title>${name}</title><version>1.0</version></theme>`,
+                ),
+                'content.css': strToU8('.exe-content { outline: 3px solid rgb(10, 11, 12); }'),
+                'default.js': strToU8('document.documentElement.dataset.printThemeScript = "older";'),
+            }),
+        );
+        await importUserStyle(page, name, zip);
+        await addBlockWithStyleIcon(page, 'info');
+
+        const frame = await openPreview(page);
+
+        // The page links the files the style has, not style.css and style.js it lacks.
+        await expect.poll(() => contentOutline(frame), { timeout: 15000 }).toBe('rgb(10, 11, 12)');
+        await expect(frame.locator('html')).toHaveAttribute('data-print-theme-script', 'older');
+    });
 });
+
+/** Import a style from a ZIP through the Styles panel, and make it the project's style. */
+async function importUserStyle(page: Page, name: string, zip: Buffer) {
+    await page.locator('#dropdownStyles').click();
+    await page.waitForSelector('#stylessidenav.active', { timeout: 5000 });
+    await page.locator('#importedstylescontent-tab').click();
+    await page
+        .locator('#theme-file-import')
+        .setInputFiles({ name: `${name}.zip`, mimeType: 'application/zip', buffer: zip });
+    const id = await page
+        .waitForFunction(
+            prefix => {
+                const installed = (window as any).eXeLearning?.app?.themes?.list?.installed || {};
+                return (
+                    Object.keys(installed).find(key => key.startsWith(prefix) && installed[key]?.isUserTheme) || null
+                );
+            },
+            name,
+            { timeout: 15000 },
+        )
+        .then(handle => handle.jsonValue() as Promise<string>);
+    await page.evaluate(async theme => (window as any).eXeLearning.app.themes.selectTheme(theme, true, true), id);
+}

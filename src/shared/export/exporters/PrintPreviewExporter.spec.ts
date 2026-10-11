@@ -1562,6 +1562,25 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('icons/activity.svg');
         });
 
+        it("links an older style's content.css and default.js from where the style is served", async () => {
+            const provider = createMockResourceProvider();
+            provider.fetchTheme = async () =>
+                new Map([
+                    ['content.css', new Uint8Array(0)],
+                    ['default.js', new Uint8Array(0)],
+                    ['img/logo.png', new Uint8Array(0)],
+                ]);
+            const page = { id: 'page-1', title: 'Test Page', parentId: null, order: 0, blocks: [] };
+            const exp = new PrintPreviewExporter(createMockDocument([page]), provider);
+
+            const result = await exp.generatePreview({ themeUrl: 'https://example.org/site-files/themes/old/' });
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('href="https://example.org/site-files/themes/old/content.css"');
+            expect(result.html).toContain('src="https://example.org/site-files/themes/old/default.js"');
+            expect(result.html).not.toContain('style.css');
+        });
+
         it('should fall back to .png when theme fetch fails', async () => {
             const pagesWithIcon = [
                 {

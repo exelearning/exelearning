@@ -1253,6 +1253,8 @@ ${userFooterHtml}</div></footer>`;
             navLabels?: { previous?: string; next?: string; page?: string; license?: string };
             materialIconDataUris?: Map<string, string>;
             printContext?: PrintContext;
+            /** The style's root .js and .css files; style.js and style.css when not given. */
+            themeFiles?: string[];
         } = {},
     ): string {
         const {
@@ -1274,6 +1276,7 @@ ${userFooterHtml}</div></footer>`;
             addAccessibilityToolbar = false,
             navLabels,
             materialIconDataUris,
+            themeFiles = [],
         } = options;
 
         let contentHtml = '';
@@ -1344,6 +1347,19 @@ ${sectionContent}
             ? '\n<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">'
             : '';
 
+        // The style's own scripts, then its stylesheets, as the multi-page export links them. An
+        // older style calls them default.js and content.css, so the names come from the files it
+        // has; without them, the names every current style uses.
+        const rootFiles = themeFiles.length > 0 ? [...themeFiles].sort() : ['style.js', 'style.css'];
+        const themeIncludes = [
+            ...rootFiles
+                .filter(file => file.endsWith('.js'))
+                .map(file => `<script src="theme/${this.escapeAttr(file)}"> </script>`),
+            ...rootFiles
+                .filter(file => file.endsWith('.css'))
+                .map(file => `<link rel="stylesheet" href="theme/${this.escapeAttr(file)}">`),
+        ].join('\n');
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
@@ -1361,8 +1377,7 @@ ${options.printContext ? renderPrintContextScript(options.printContext) : ''}
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libraryIncludes}${atoolsIncludes}
 <link rel="stylesheet" href="content/css/base.css">
-<script src="theme/style.js"> </script>
-<link rel="stylesheet" href="theme/style.css">
+${themeIncludes}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>

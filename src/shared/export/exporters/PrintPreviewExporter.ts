@@ -206,9 +206,15 @@ export class PrintPreviewExporter {
 
             // Fetch theme files and configure icon resolution (from main)
             const themeName = meta.theme || 'base';
+            // The style's root scripts and stylesheets, which an older style calls default.js and
+            // content.css. Left empty, the page links style.js and style.css.
+            let themeRootFiles: string[] = [];
             try {
                 const themeFilesMap = await this.resources.fetchTheme(themeName);
                 ideviceRenderer.setThemeIconFiles(themeFilesMap);
+                themeRootFiles = [...themeFilesMap.keys()].filter(
+                    path => !path.includes('/') && (path.endsWith('.css') || path.endsWith('.js')),
+                );
                 if (options.themeFromFiles && !options.themeUrl && themeFilesMap.size > 0) {
                     themeFiles = new ThemeFileUrlResolver(themeFilesMap);
                 }
@@ -245,6 +251,7 @@ export class PrintPreviewExporter {
                 assetExportPathMap: assetResolver.getExportPathMap(),
                 materialIconDataUris,
                 printContext: { kind: 'document', activities: options.activities?.mode ?? null },
+                themeFiles: themeRootFiles,
             });
 
             // Post-process HTML:
