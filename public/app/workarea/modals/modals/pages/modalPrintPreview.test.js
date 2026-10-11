@@ -465,7 +465,25 @@ describe('ModalPrintPreview', () => {
             );
             expect(options.labels.studentName).toBe('Name');
             expect(options.labels.date).toBe('Date');
+            expect(options.labels.unsupportedHeading).toBe('Left out of this worksheet');
+            expect(options.labels.notPrintableYet).toBe('Cannot be printed yet');
             expect(options.ideviceTitles.guess).toBe('Guess');
+        });
+
+        it('names an activity the worksheet leaves out as the editor names its iDevice', () => {
+            global.eXeLearning.app.idevices = {
+                list: { installed: { map: { title: 'Mapa' }, guess: { title: 'Adivina' }, broken: {} } },
+            };
+            try {
+                const titles = modal.getIdeviceTitles();
+                // One with no printed form gets the editor's name, not its type.
+                expect(titles.map).toBe('Mapa');
+                // One with a printed form keeps the name chosen for paper.
+                expect(titles.guess).toBe('Guess');
+                expect(titles).not.toHaveProperty('broken');
+            } finally {
+                delete global.eXeLearning.app.idevices;
+            }
         });
 
         it('should switch the heading to match the mode', async () => {

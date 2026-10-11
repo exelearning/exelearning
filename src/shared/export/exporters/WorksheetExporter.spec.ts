@@ -495,6 +495,18 @@ describe('WorksheetExporter', () => {
             expect(reported.find(entry => entry.ideviceType === 'an-activity-with-no-adapter')?.reason).toBeUndefined();
         });
 
+        it('names an activity with no adapter by the title it is given for its iDevice', async () => {
+            const exporter = new WorksheetExporter(
+                documentOf([{ title: 'Geografía', components: [{ type: 'map', content: unadaptedContent() }] }]),
+            );
+
+            const reported = (await exporter.buildModel({ ideviceTitles: { map: 'Mapa' } })).unsupported;
+
+            expect(reported).toEqual([
+                { ideviceType: 'map', pageTitle: 'Geografía', title: 'Mapa', reason: 'not-printable' },
+            ]);
+        });
+
         it('prints only the activities the user ticked, and reports none left unticked', async () => {
             // Ids come out of documentOf as component-<page>-<index>.
             const exporter = new WorksheetExporter(
@@ -579,7 +591,7 @@ describe('WorksheetExporter', () => {
                 const result = await exporter.generate();
                 expect(result.success).toBe(true);
                 expect(result.html).toContain('<aside class="worksheet-unsupported">');
-                expect(result.html).toContain(`<li>${type} — JSON exercises</li>`);
+                expect(result.html).toContain(`<li>${type} — JSON exercises: Cannot be printed yet (1)</li>`);
             },
         );
 

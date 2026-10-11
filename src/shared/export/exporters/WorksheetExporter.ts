@@ -105,7 +105,12 @@ export class WorksheetExporter {
                     // Report only what a teacher would expect to find on the worksheet. A text
                     // block is not missing from it, it simply does not belong; an activity is.
                     if (isInteractiveActivity(component.type)) {
-                        this.reportUnsupported(unsupported, component.type, page.title);
+                        this.reportUnsupported(
+                            unsupported,
+                            component.type,
+                            page.title,
+                            options.ideviceTitles?.[component.type],
+                        );
                     }
                     continue;
                 }
@@ -190,9 +195,15 @@ export class WorksheetExporter {
     /**
      * Record an activity that has no adapter, once per type and page.
      *
-     * Three crosswords on one page are one gap to report, not three.
+     * Three crosswords on one page are one gap to report, not three. The title is the iDevice's
+     * name for the teacher to recognise it by; without one, the note falls back to its type.
      */
-    private reportUnsupported(collected: UnsupportedActivity[], ideviceType: string, pageTitle: string): void {
+    private reportUnsupported(
+        collected: UnsupportedActivity[],
+        ideviceType: string,
+        pageTitle: string,
+        title?: string,
+    ): void {
         const alreadyReported = collected.some(
             entry => entry.ideviceType === ideviceType && entry.pageTitle === pageTitle,
         );
@@ -202,8 +213,8 @@ export class WorksheetExporter {
         if (!alreadyReported)
             collected.push(
                 isNeverPrintable(ideviceType)
-                    ? { ideviceType, pageTitle, reason: 'not-printable' }
-                    : { ideviceType, pageTitle },
+                    ? { ideviceType, pageTitle, title, reason: 'not-printable' }
+                    : { ideviceType, pageTitle, title },
             );
     }
 

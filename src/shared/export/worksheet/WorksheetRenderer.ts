@@ -40,7 +40,8 @@ const DEFAULT_LABELS: Required<WorksheetLabels> = {
     studentName: 'Name',
     date: 'Date',
     empty: 'This project has no printable activities yet.',
-    unsupportedHeading: 'Activities that cannot be printed yet',
+    unsupportedHeading: 'Left out of this worksheet',
+    notPrintableYet: 'Cannot be printed yet',
     operation: 'Operation',
     result: 'Result',
     notAvailableInPrint: 'Not available in print',
@@ -1874,10 +1875,12 @@ export function resolveWorksheetLabels(labels: WorksheetLabels = {}): Required<W
 }
 
 /**
- * Render the note listing activities that have no adapter yet.
+ * Render the note listing what the worksheet left out, each with the reason.
  *
  * Without it, an unsupported activity would simply vanish from the worksheet and the teacher
- * would have no way to tell whether it was skipped or never there.
+ * would have no way to tell whether it was skipped or never there. The heading promises nothing:
+ * only an activity still waiting for an adapter says "yet", on its own line, so one that will
+ * never have a printed form is not read as a promise.
  */
 function renderUnsupported(model: WorksheetModel, labels: Required<WorksheetLabels>): string {
     if (model.unsupported.length === 0) return '';
@@ -1893,8 +1896,8 @@ function renderUnsupported(model: WorksheetModel, labels: Required<WorksheetLabe
                         ? labels.unplacedWords
                         : entry.reason === 'not-printable'
                           ? labels.notAvailableInPrint
-                          : '';
-            const detail = reason ? `: ${escapeText(reason)} (${entry.count ?? 1})` : '';
+                          : labels.notPrintableYet;
+            const detail = `: ${escapeText(reason)} (${entry.count ?? 1})`;
             return `<li>${escapeText(entry.title || entry.ideviceType)} — ${escapeText(entry.pageTitle)}${detail}</li>`;
         })
         .join('');

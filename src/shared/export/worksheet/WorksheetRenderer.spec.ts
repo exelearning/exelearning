@@ -361,24 +361,39 @@ describe('renderWorksheet', () => {
                 model({ unsupported: [{ ideviceType: 'crossword', pageTitle: 'La Edad Media' }] }),
             );
 
-            expect(html).toContain('Activities that cannot be printed yet');
-            expect(html).toContain('crossword — La Edad Media');
+            expect(html).toContain('Left out of this worksheet');
+            expect(html).toContain('crossword — La Edad Media: Cannot be printed yet (1)');
         });
 
-        it('says which of them are not waiting for anything', () => {
-            // The heading reads as a promise, so an activity that is never getting a printed form
-            // has to say so on its own line.
+        it('says "yet" only of the ones waiting for an adapter, never in the heading', () => {
+            // The heading promises nothing: an activity that will never have a printed form must
+            // not read as one on its way.
             const html = renderWorksheet(
                 model({
                     unsupported: [
-                        { ideviceType: 'map', pageTitle: 'Geografía' },
+                        { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Geografía' },
                         { ideviceType: 'trivial', pageTitle: 'Repaso', reason: 'not-printable' },
                     ],
                 }),
             );
+            const note = html.match(/<aside class="worksheet-unsupported">[\s\S]*?<\/aside>/)![0];
 
-            expect(html).toContain('map — Geografía</li>');
-            expect(html).toContain('trivial — Repaso: Not available in print');
+            expect(note).toContain('an-activity-with-no-adapter — Geografía: Cannot be printed yet (1)');
+            expect(note).toContain('trivial — Repaso: Not available in print (1)');
+            expect(note.match(/\byet\b/g)).toHaveLength(1);
+        });
+
+        it('names each activity by its title when it has one', () => {
+            const html = renderWorksheet(
+                model({
+                    unsupported: [
+                        { ideviceType: 'map', title: 'Mapa', pageTitle: 'Geografía', reason: 'not-printable' },
+                    ],
+                }),
+            );
+
+            expect(html).toContain('Mapa — Geografía: Not available in print (1)');
+            expect(html).not.toContain('map — Geografía');
         });
 
         it('omits the unsupported note when everything was printable', () => {

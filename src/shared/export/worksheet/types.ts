@@ -424,8 +424,10 @@ export interface WorksheetLabels {
     /** Column headings of a before-and-after comparison. */
     before?: string;
     after?: string;
-    /** Introduces the list of activities that have no adapter yet. */
+    /** Introduces the list of what the worksheet left out. */
     unsupportedHeading?: string;
+    /** Shown against an activity that is still waiting for a printed form. */
+    notPrintableYet?: string;
 }
 
 /**

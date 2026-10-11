@@ -2653,8 +2653,17 @@ test.describe('Print: the activities that can never be printed', () => {
         ({ frame } = await waitForPreview(page));
         const note = frame.locator('.worksheet-unsupported');
         await expect(note.locator('li')).toHaveCount(2);
-        await expect(note).toContainText('map');
-        await expect(note).toContainText('external-website');
+        // Named as the editor names their iDevices, not by their types, and promised nothing.
+        const names = await page.evaluate(() =>
+            ['map', 'external-website'].map(
+                type => (window as any).eXeLearning.app.idevices.getIdeviceInstalled(type).title as string,
+            ),
+        );
+        await expect(note.locator('li')).toHaveText([
+            `${names[0]} — Activities: Not available in print (1)`,
+            `${names[1]} — Activities: Not available in print (1)`,
+        ]);
+        await expect(note).not.toContainText(/\byet\b/);
     });
 });
 

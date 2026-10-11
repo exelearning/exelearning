@@ -485,7 +485,8 @@ export default class ModalPrintPreview {
             studentName: _('Name'),
             date: _('Date'),
             empty: _('This project has no printable activities yet.'),
-            unsupportedHeading: _('Activities that cannot be printed yet'),
+            unsupportedHeading: _('Left out of this worksheet'),
+            notPrintableYet: _('Cannot be printed yet'),
             notAvailableInPrint: _('Not available in print'),
             before: _('Before'),
             after: _('After'),
@@ -497,10 +498,22 @@ export default class ModalPrintPreview {
     /**
      * Translated heading for each activity, keyed by iDevice type.
      *
+     * Every installed iDevice is named as the editor shows it, so an activity the worksheet leaves
+     * out is listed by a name the teacher knows rather than by its type. The activities with a
+     * printed form keep the names chosen for them below.
+     *
      * @returns {object} Titles keyed by iDevice type
      */
     getIdeviceTitles() {
+        const installed = window.eXeLearning?.app?.idevices?.list?.installed || {};
+        const editorNames = Object.fromEntries(
+            Object.entries(installed)
+                .map(([type, idevice]) => [type, idevice?.title])
+                .filter(([, title]) => typeof title === 'string' && title.trim() !== ''),
+        );
+
         return {
+            ...editorNames,
             guess: _('Guess'),
             crossword: _('Crossword'),
             'quick-questions': _('Test'),
