@@ -2892,6 +2892,8 @@ test.describe('Print: text is laid out in the preview as on paper', () => {
                     linkColour: style('link').color,
                     linkLine: style('link').textDecorationLine,
                     codeWraps: style('code').whiteSpace,
+                    codeOverflows:
+                        document.getElementById('code')!.scrollWidth > document.getElementById('code')!.clientWidth,
                     quoteHeight: document.getElementById('quote')!.getBoundingClientRect().height,
                     paperMargin: getComputedStyle(document.querySelector('.exe-single-page')!).paddingLeft,
                 };
@@ -2901,6 +2903,7 @@ test.describe('Print: text is laid out in the preview as on paper', () => {
         expect(screen.linkColour).toBe('rgb(10, 20, 30)');
         expect(screen.linkLine).toBe('underline');
         expect(screen.codeWraps).toBe('pre-wrap');
+        expect(screen.codeOverflows).toBe(false);
         // 15 mm at 96 dpi.
         expect(Number.parseFloat(screen.paperMargin)).toBeCloseTo(56.69, 1);
 
@@ -2910,6 +2913,7 @@ test.describe('Print: text is laid out in the preview as on paper', () => {
         expect(paper.linkColour).toBe(screen.linkColour);
         expect(paper.linkLine).toBe('underline');
         expect(paper.codeWraps).toBe('pre-wrap');
+        expect(paper.codeOverflows).toBe(false);
         // No blank lines from the quote's own line breaks on paper.
         expect(paper.quoteHeight).toBe(screen.quoteHeight);
     });

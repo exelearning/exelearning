@@ -588,7 +588,9 @@ describe('PrintPreviewExporter', () => {
             it('wraps long lines of code, and leaves quotes in their normal flow', async () => {
                 const styles = await previewStyles();
 
-                expect(onScreen(styles, 'pre {\n    white-space: pre-wrap;\n}')).toBe(true);
+                expect(onScreen(styles, 'pre {\n    white-space: pre-wrap;\n    overflow-wrap: anywhere;\n}')).toBe(
+                    true,
+                );
                 // pre-wrap would keep the line breaks of a quote's source and print them as blank lines.
                 expect(styles).not.toMatch(/blockquote[^{]*\{[^}]*white-space/);
             });

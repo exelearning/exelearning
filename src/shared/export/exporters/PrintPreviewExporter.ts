@@ -406,6 +406,7 @@ a[href] {
    the line breaks of their source, and print them as blank lines. */
 pre {
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 /* Create space around the document in preview mode */
 body {
