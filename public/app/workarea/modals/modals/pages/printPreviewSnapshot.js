@@ -43,5 +43,32 @@ export function printPreviewSnapshot(doc) {
             target.toggleAttribute('checked', control.checked);
         }
     });
+
+    // A <model-viewer> draws its model inside its shadow root, which the copy does not carry, with
+    // scripts the copy leaves out. It can picture its current frame, so the copy shows that picture
+    // in its place, as wide as it is on the page. One that is not shown (the 3D viewer hides it
+    // while it draws an STL model itself) is left as it is. This runs last: the passes above pair
+    // elements by their position, which taking a viewer out of the copy would upset.
+    const viewers = copy.querySelectorAll('model-viewer');
+    doc.querySelectorAll('model-viewer').forEach((viewer, index) => {
+        const { width, height } = viewer.getBoundingClientRect();
+        if (!width || !height || typeof viewer.toDataURL !== 'function') return;
+        let pixels;
+        try {
+            pixels = viewer.toDataURL();
+        } catch {
+            return;
+        }
+        const image = doc.createElement('img');
+        for (const name of ['id', 'class', 'style', 'alt']) {
+            const value = viewers[index].getAttribute(name);
+            if (value !== null) image.setAttribute(name, value);
+        }
+        image.src = pixels;
+        image.style.width = `${width}px`;
+        image.style.maxWidth = '100%';
+        image.style.height = 'auto';
+        viewers[index].replaceWith(image);
+    });
     return '<!DOCTYPE html>\n' + copy.outerHTML;
 }

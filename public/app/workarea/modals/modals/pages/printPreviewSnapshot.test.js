@@ -66,6 +66,61 @@ describe('printPreviewSnapshot', () => {
         expect(copy.querySelector('#drawing').getAttribute('src')).toBe('data:image/png;base64,cGl4ZWxz');
     });
 
+    it('pictures a shown <model-viewer> in its place, and leaves the hidden, failing and undefined ones', () => {
+        const doc = documentWith(
+            '<model-viewer id="shown" class="viewer" style="display:block" alt="A duck" loading="lazy" src="duck.glb"></model-viewer>' +
+                '<model-viewer id="hidden" style="display:none"></model-viewer>' +
+                '<model-viewer id="failing"></model-viewer>' +
+                '<model-viewer id="undefined-element"></model-viewer>',
+        );
+        const [shown, hidden, failing, plain] = doc.querySelectorAll('model-viewer');
+        const box = (width, height) => () => ({ width, height });
+        shown.getBoundingClientRect = box(320, 240);
+        shown.toDataURL = vi.fn(() => 'data:image/png;base64,ZHVjaw==');
+        hidden.getBoundingClientRect = box(0, 0);
+        hidden.toDataURL = vi.fn(() => 'data:image/png;base64,aGlkZGVu');
+        failing.getBoundingClientRect = box(100, 100);
+        failing.toDataURL = vi.fn(() => {
+            throw new Error('No rendering context');
+        });
+        plain.getBoundingClientRect = box(100, 100);
+
+        const copy = parse(printPreviewSnapshot(doc));
+        const image = copy.querySelector('#shown');
+        expect(image.tagName).toBe('IMG');
+        expect(image.getAttribute('src')).toBe('data:image/png;base64,ZHVjaw==');
+        expect(image.className).toBe('viewer');
+        expect(image.getAttribute('alt')).toBe('A duck');
+        // Only what presents it: loading="lazy" on an <img> could leave the picture unloaded on paper.
+        expect(image.hasAttribute('loading')).toBe(false);
+        expect(image.style.display).toBe('block');
+        expect(image.style.width).toBe('320px');
+        expect(image.style.maxWidth).toBe('100%');
+        expect(hidden.toDataURL).not.toHaveBeenCalled();
+        expect(copy.querySelector('#hidden').tagName).toBe('MODEL-VIEWER');
+        expect(copy.querySelector('#failing').tagName).toBe('MODEL-VIEWER');
+        expect(copy.querySelector('#undefined-element').tagName).toBe('MODEL-VIEWER');
+        expect(doc.querySelector('#shown')).toBe(shown);
+    });
+
+    it('pictures a <model-viewer> without upsetting the controls and canvases after it', () => {
+        const doc = documentWith(
+            '<model-viewer><input id="inside" value="in"><canvas id="inner"></canvas></model-viewer>' +
+                '<input id="after" value="old"><canvas id="drawing"></canvas>',
+        );
+        const viewer = doc.querySelector('model-viewer');
+        viewer.getBoundingClientRect = () => ({ width: 200, height: 100 });
+        viewer.toDataURL = () => 'data:image/png;base64,dmlld2Vy';
+        doc.querySelector('#inner').toDataURL = () => 'data:image/png;base64,aW5uZXI=';
+        doc.querySelector('#drawing').toDataURL = () => 'data:image/png;base64,ZHJhd2luZw==';
+        doc.querySelector('#after').value = 'new';
+
+        const copy = parse(printPreviewSnapshot(doc));
+        expect(copy.querySelector('model-viewer')).toBeNull();
+        expect(copy.querySelector('#after').value).toBe('new');
+        expect(copy.querySelector('#drawing').getAttribute('src')).toBe('data:image/png;base64,ZHJhd2luZw==');
+    });
+
     it('preserves edited values and selections, including unchecked controls', () => {
         const doc = documentWith('<input value="old"><input type="checkbox" checked><textarea>old</textarea><select><option selected>Old</option><option>New</option></select>');
         doc.querySelector('input').value = 'New answer';
