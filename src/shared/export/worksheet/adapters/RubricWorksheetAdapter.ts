@@ -12,7 +12,8 @@
  * - The table is read by `rubricTable`, which handles both the shape the current editor writes and
  *   the plain HTML table an older project carries.
  * - Its own wording for the fields comes from the activity, and where it names none, none is
- *   printed. Name and date are left out only when the containing worksheet already asks for them.
+ *   printed. The date is left out when the containing worksheet already asks for it; the name
+ *   stays, under the activity it names.
  * - Nothing is left blank in the table. Every other adapter hides the answer; here the descriptors
  *   are what the teacher chooses between, so hiding them would leave a grid of numbers.
  */
