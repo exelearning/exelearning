@@ -9,7 +9,7 @@
  *   - readWrapperConfig: flat data-* attribute parsing
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -206,6 +206,50 @@ describe('three-d-viewer runtime', () => {
         it('is a no-op when renderer is null', () => {
             globalThis.THREE = { SRGBColorSpace: 'srgb' };
             expect(() => runtime.configureRendererColorManagement(null)).not.toThrow();
+        });
+    });
+
+    // ----------------------------------------------------------------
+    // bootSTL
+    // ----------------------------------------------------------------
+    describe('bootSTL', () => {
+        it('keeps the drawn frame readable, for the copy of the page the desktop app prints', async () => {
+            const rendererOptions = [];
+            class Stub {
+                constructor() {
+                    this.position = { set: () => {} };
+                }
+                add() {}
+            }
+            globalThis.THREE = {
+                STLLoader: class {},
+                Scene: Stub,
+                Color: class {},
+                PerspectiveCamera: Stub,
+                AmbientLight: Stub,
+                DirectionalLight: Stub,
+                WebGLRenderer: class {
+                    constructor(options) {
+                        rendererOptions.push(options);
+                    }
+                    setSize() {}
+                    setPixelRatio() {}
+                },
+            };
+            // Stop the boot once the renderer exists: the model itself is not needed here.
+            const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'));
+            const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const wrapper = document.createElement('div');
+            try {
+                await runtime.__bootSTL({ wrapper, options: { src: 'blob:model.stl' }, stopped: false });
+            } finally {
+                fetch.mockRestore();
+                error.mockRestore();
+            }
+
+            expect(rendererOptions).toHaveLength(1);
+            expect(rendererOptions[0]).toMatchObject({ antialias: true, preserveDrawingBuffer: true });
+            expect(rendererOptions[0].canvas).toBe(wrapper.querySelector('canvas.three-js-canvas'));
         });
     });
 

@@ -866,82 +866,101 @@ test.describe('3D Viewer iDevice', () => {
     });
 
     test.describe('Print', () => {
-        // The desktop app prints a copy of the preview made without its scripts, so a model drawn
-        // inside <model-viewer>'s shadow root has to reach the copy as a picture. The test stands
-        // in for the desktop app and keeps the copy instead of printing it.
-        test('keeps the model in the copy the desktop app prints', async ({
-            authenticatedPage: page,
-            createProject,
-        }) => {
-            const projectUuid = await createProject(page, '3D Viewer print');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await selectFirstPage(page);
-            await add3DViewerIdevice(page);
-            await uploadModelViaFilePicker(page, 'test/fixtures/Duck.glb');
-            await save3DViewerIdevice(page);
+        // The desktop app prints a copy of the preview made without its scripts, so the model has
+        // to reach the copy as a picture: a GLB model lives inside <model-viewer>'s shadow root, an
+        // STL model on a WebGL canvas. The test stands in for the desktop app and keeps the copy
+        // instead of printing it.
+        const models = [
+            { format: 'GLB', fixture: 'test/fixtures/Duck.glb', picture: 'img[src^="data:image/"]' },
+            {
+                format: 'STL',
+                fixture: 'test/fixtures/ascii-cube.stl',
+                picture: 'img.three-js-canvas[src^="data:image/"]',
+            },
+        ];
 
-            await page.locator('#dropdownFile').click();
-            await page.locator('#navbar-button-export-print').click();
-            const overlay = page.locator('#printPreviewOverlay');
-            await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
-            await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 60000 });
+        for (const model of models) {
+            test(`keeps the ${model.format} model in the copy the desktop app prints`, async ({
+                authenticatedPage: page,
+                createProject,
+            }) => {
+                const projectUuid = await createProject(page, `3D Viewer print ${model.format}`);
+                await gotoWorkarea(page, projectUuid);
+                await waitForAppReady(page);
+                await selectFirstPage(page);
+                await add3DViewerIdevice(page);
+                await uploadModelViaFilePicker(page, model.fixture);
+                await save3DViewerIdevice(page);
 
-            // Wait for the model to be drawn in the preview.
-            const viewer = page
-                .frameLocator('.print-preview-iframe')
-                .locator('.three-d-viewer-wrapper model-viewer')
-                .first();
-            await expect
-                .poll(() => viewer.evaluate((element: any) => Boolean(element.loaded && element.modelIsVisible)), {
-                    timeout: 30000,
-                })
-                .toBe(true);
+                await page.locator('#dropdownFile').click();
+                await page.locator('#navbar-button-export-print').click();
+                const overlay = page.locator('#printPreviewOverlay');
+                await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
+                await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 60000 });
 
-            await page.evaluate(() => {
-                (window as any).electronAPI = {
-                    printPreview: async (url: string) => {
-                        (window as any).__printedSnapshot = await (await fetch(url)).text();
-                        return { success: true, canceled: false };
-                    },
-                };
-            });
-            await page.locator('.print-preview-print-btn').click();
-            await expect
-                .poll(() => page.evaluate(() => (window as any).__printedSnapshot || ''), { timeout: 15000 })
-                .toContain('three-d-viewer-wrapper');
-
-            const picture = await page.evaluate(async () => {
-                const copy = new DOMParser().parseFromString((window as any).__printedSnapshot, 'text/html');
-                const image = copy.querySelector('.three-d-viewer-wrapper img[src^="data:image/"]');
-                if (!image) return null;
-
-                const decoded = new Image();
-                decoded.src = image.getAttribute('src')!;
-                await decoded.decode();
-                const canvas = document.createElement('canvas');
-                canvas.width = decoded.naturalWidth;
-                canvas.height = decoded.naturalHeight;
-                const context = canvas.getContext('2d')!;
-                context.drawImage(decoded, 0, 0);
-                const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-                const colours = new Set<string>();
-                for (let i = 0; i < data.length; i += 4 * 101) {
-                    colours.add(`${data[i]},${data[i + 1]},${data[i + 2]},${data[i + 3]}`);
+                // Wait for the model to be drawn in the preview.
+                const wrapper = page.frameLocator('.print-preview-iframe').locator('.three-d-viewer-wrapper').first();
+                if (model.format === 'GLB') {
+                    const viewer = wrapper.locator('model-viewer');
+                    await expect
+                        .poll(
+                            () => viewer.evaluate((element: any) => Boolean(element.loaded && element.modelIsVisible)),
+                            { timeout: 30000 },
+                        )
+                        .toBe(true);
+                } else {
+                    // The STL model is drawn by the iDevice itself, with the 3D libraries it loads
+                    // from beside its own script: in the preview, a blob: document, there is no
+                    // other folder to load them from.
+                    await expect(wrapper.locator('canvas.three-js-canvas')).toBeVisible({ timeout: 30000 });
+                    await expect(wrapper.locator('[data-empty]')).toBeHidden({ timeout: 30000 });
                 }
-                return {
-                    viewers: copy.querySelectorAll('.three-d-viewer-wrapper model-viewer').length,
-                    width: canvas.width,
-                    colours: colours.size,
-                };
-            });
 
-            // The viewer has become a picture of the model, not a blank frame: the model stands
-            // out from its background.
-            expect(picture).not.toBeNull();
-            expect(picture!.viewers).toBe(0);
-            expect(picture!.width).toBeGreaterThan(0);
-            expect(picture!.colours).toBeGreaterThan(1);
-        });
+                await page.evaluate(() => {
+                    (window as any).electronAPI = {
+                        printPreview: async (url: string) => {
+                            (window as any).__printedSnapshot = await (await fetch(url)).text();
+                            return { success: true, canceled: false };
+                        },
+                    };
+                });
+                await page.locator('.print-preview-print-btn').click();
+                await expect
+                    .poll(() => page.evaluate(() => (window as any).__printedSnapshot || ''), { timeout: 15000 })
+                    .toContain('three-d-viewer-wrapper');
+
+                const picture = await page.evaluate(async selector => {
+                    const copy = new DOMParser().parseFromString((window as any).__printedSnapshot, 'text/html');
+                    const image = copy.querySelector(`.three-d-viewer-wrapper ${selector}`);
+                    if (!image) return null;
+
+                    const decoded = new Image();
+                    decoded.src = image.getAttribute('src')!;
+                    await decoded.decode();
+                    const canvas = document.createElement('canvas');
+                    canvas.width = decoded.naturalWidth;
+                    canvas.height = decoded.naturalHeight;
+                    const context = canvas.getContext('2d')!;
+                    context.drawImage(decoded, 0, 0);
+                    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const colours = new Set<string>();
+                    for (let i = 0; i < data.length; i += 4 * 101) {
+                        colours.add(`${data[i]},${data[i + 1]},${data[i + 2]},${data[i + 3]}`);
+                    }
+                    // The STL path keeps a <model-viewer> it does not use, hidden.
+                    const shownViewers = [...copy.querySelectorAll('.three-d-viewer-wrapper model-viewer')].filter(
+                        viewer => (viewer as HTMLElement).style.display !== 'none',
+                    );
+                    return { shownViewers: shownViewers.length, width: canvas.width, colours: colours.size };
+                }, model.picture);
+
+                // The model has become a picture of it, not a blank frame: the model stands out
+                // from its background.
+                expect(picture).not.toBeNull();
+                expect(picture!.shownViewers).toBe(0);
+                expect(picture!.width).toBeGreaterThan(0);
+                expect(picture!.colours).toBeGreaterThan(1);
+            });
+        }
     });
 });

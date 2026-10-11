@@ -211,6 +211,48 @@ describe('three-d-viewer iDevice (export)', () => {
         });
     });
 
+    describe('getThreeJSBaseUrl', () => {
+        const scriptUrl = 'http://localhost:3001/v1/files/perm/idevices/base/three-d-viewer/export/three-d-viewer.js';
+
+        /** Load the iDevice again as a <script src> would, since it reads its URL while it runs. */
+        function loadFromScript(src) {
+            global.document.currentScript = src ? { src } : null;
+            const code = readFileSync(join(__dirname, 'three-d-viewer.js'), 'utf-8');
+            return loadExportIdevice(code);
+        }
+
+        it('uses the folder of its own script in a blob: document (the print preview)', () => {
+            global.location = {
+                origin: 'http://localhost:3001',
+                protocol: 'blob:',
+                host: '',
+                href: 'blob:http://localhost:3001/0b6e1f9c-6c4f-4a4f-9a3e-2f0d4c1f6a52',
+            };
+            global.document.documentElement.id = 'exe-index';
+
+            expect(loadFromScript(scriptUrl).getThreeJSBaseUrl()).toBe(
+                'http://localhost:3001/v1/files/perm/idevices/base/three-d-viewer/export/',
+            );
+        });
+
+        it('keeps resolving against the page outside a blob: document', () => {
+            global.document.documentElement.id = 'exe-index';
+
+            expect(loadFromScript(scriptUrl).getThreeJSBaseUrl()).toBe(
+                'http://localhost:8080/viewer/idevices/three-d-viewer/',
+            );
+        });
+
+        it('falls back to the modes in a blob: document when its script URL is unknown', () => {
+            global.location = { ...global.location, protocol: 'blob:' };
+            global.eXeLearning.config = { baseURL: 'https://example.com' };
+
+            expect(loadFromScript(null).getThreeJSBaseUrl()).toBe(
+                'https://example.com/files/perm/idevices/base/three-d-viewer/export/',
+            );
+        });
+    });
+
     describe('renderView', () => {
         it('returns HTML with model-viewer element', () => {
             const data = {
