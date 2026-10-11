@@ -898,8 +898,11 @@ test.describe('3D Viewer iDevice', () => {
                 await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
                 await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 60000 });
 
-                // Wait for the model to be drawn in the preview.
-                const wrapper = page.frameLocator('.print-preview-iframe').locator('.three-d-viewer-wrapper').first();
+                // Wait for the model to be drawn in the preview. The template wraps the viewer in a
+                // second element of the same class; the runtime knows the inner one.
+                const wrapper = page
+                    .frameLocator('.print-preview-iframe')
+                    .locator('.three-d-viewer-wrapper[data-three-d]');
                 if (model.format === 'GLB') {
                     const viewer = wrapper.locator('model-viewer');
                     await expect
@@ -911,9 +914,19 @@ test.describe('3D Viewer iDevice', () => {
                 } else {
                     // The STL model is drawn by the iDevice itself, with the 3D libraries it loads
                     // from beside its own script: in the preview, a blob: document, there is no
-                    // other folder to load them from.
-                    await expect(wrapper.locator('canvas.three-js-canvas')).toBeVisible({ timeout: 30000 });
-                    await expect(wrapper.locator('[data-empty]')).toBeHidden({ timeout: 30000 });
+                    // other folder to load them from. Its canvas and its hidden empty state do not
+                    // say the model is drawn: both are ready before the model has downloaded. Its
+                    // runtime does, as it starts drawing the moment it has the model.
+                    await expect
+                        .poll(
+                            () =>
+                                wrapper.evaluate((element: Element) => {
+                                    const instance = (window as any).eXe3DViewer?.getInstance?.(element);
+                                    return Boolean(instance?.mesh && instance.renderer?.info?.render?.frame > 0);
+                                }),
+                            { timeout: 30000 },
+                        )
+                        .toBe(true);
                 }
 
                 await page.evaluate(() => {
