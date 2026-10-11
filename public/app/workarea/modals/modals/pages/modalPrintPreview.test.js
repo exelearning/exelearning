@@ -1579,6 +1579,8 @@ describe('ModalPrintPreview and its options panel', () => {
             loaded();
         });
         afterEach(() => { delete window.electronAPI; });
+        /** Wait for the print dialog to open: the copy it prints is made first. */
+        const dialogOpened = () => vi.waitFor(() => expect(window.electronAPI.printPreview).toHaveBeenCalled());
 
         it('reports a native failure even after beforeprint was emitted', async () => {
             window.electronAPI = { printPreview: vi.fn(async () => {
@@ -1616,6 +1618,7 @@ describe('ModalPrintPreview and its options panel', () => {
             window.electronAPI = { printPreview: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
             const printing = modal.print();
             expect(printBtn().disabled).toBe(true);
+            await dialogOpened();
             await modal.print();
             expect(window.electronAPI.printPreview).toHaveBeenCalledOnce();
             finish({ success: false, canceled: true });
@@ -1632,6 +1635,7 @@ describe('ModalPrintPreview and its options panel', () => {
             let finish;
             window.electronAPI = { printPreview: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
             const printing = modal.print();
+            await dialogOpened();
             modal.close();
             expect(dispose).not.toHaveBeenCalled();
             finish({ success: false, canceled: false });
@@ -1644,6 +1648,7 @@ describe('ModalPrintPreview and its options panel', () => {
             let finish;
             window.electronAPI = { printPreview: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
             const printing = modal.print();
+            await dialogOpened();
             modal.close();
             await showWithActivities();
             frameDocument();
@@ -1683,7 +1688,7 @@ describe('ModalPrintPreview and its options panel', () => {
             doc.documentElement.classList.add(PRINT_AS_SHOWN_CLASS);
             doc.body.innerHTML = '<article class="box minimized"><div style="display:none">Folded</div></article>';
             URL.createObjectURL.mockReturnValueOnce('blob:snapshot');
-            modal.openInNewTab();
+            await modal.openInNewTab();
             const blob = URL.createObjectURL.mock.calls.at(-1)[0];
             const html = await blob.text();
             expect(html).toContain(PRINT_AS_SHOWN_CLASS);
@@ -1697,16 +1702,38 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:snapshot');
         });
 
+        it('opens the tab at once, and loads the copy in it once its 3D model is pictured', async () => {
+            const doc = modal.iframe.contentDocument;
+            doc.body.innerHTML = '<model-viewer id="duck"></model-viewer>';
+            const viewer = doc.querySelector('model-viewer');
+            viewer.getBoundingClientRect = () => ({ width: 200, height: 100 });
+            let picture;
+            viewer.toBlob = () => new Promise(resolve => { picture = resolve; });
+            URL.createObjectURL.mockReturnValueOnce('blob:snapshot');
+
+            // A browser allows a new tab only while the click is being handled.
+            const opening = modal.openInNewTab();
+            expect(window.open).toHaveBeenCalledWith('', '_blank');
+            expect(tab.location.href).toBe('');
+
+            picture(new Blob(['duck'], { type: 'image/png' }));
+            await opening;
+            const html = await URL.createObjectURL.mock.calls.at(-1)[0].text();
+            expect(html).toContain('<img id="duck"');
+            expect(html).toContain('data:image/png;base64,ZHVjaw==');
+            expect(tab.location.href).toBe('blob:snapshot');
+        });
+
         it('keeps shared assets after closing the overlay until every tab closes', async () => {
             const dispose = vi.fn();
             window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: '<html></html>', dispose });
             await showWithActivities();
             frameDocument();
             loaded();
-            modal.openInNewTab();
+            await modal.openInNewTab();
             const second = { ...tab, location: { href: '' } };
             window.open.mockReturnValueOnce(second);
-            modal.openInNewTab();
+            await modal.openInNewTab();
             modal.close();
             await vi.advanceTimersByTimeAsync(1000);
             expect(dispose).not.toHaveBeenCalled();
@@ -1719,10 +1746,10 @@ describe('ModalPrintPreview and its options panel', () => {
         });
 
         it('checks every open tab with one timer, and stops checking once the last one closes', async () => {
-            modal.openInNewTab();
+            await modal.openInNewTab();
             const second = { ...tab, location: { href: '' } };
             window.open.mockReturnValueOnce(second);
-            modal.openInNewTab();
+            await modal.openInNewTab();
             const timer = modal.openTabTimer;
             expect(timer).not.toBeNull();
             expect(modal.openTabs.size).toBe(2);
@@ -1738,11 +1765,11 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(modal.openTabTimer).toBeNull();
         });
 
-        it('closes the blank tab and releases resources if snapshot navigation fails', () => {
+        it('closes the blank tab and releases resources if snapshot navigation fails', async () => {
             vi.spyOn(console, 'warn').mockImplementation(() => {});
             Object.defineProperty(tab.location, 'href', { set() { throw new Error('Navigation failed'); } });
             URL.createObjectURL.mockReturnValueOnce('blob:failed-snapshot');
-            modal.openInNewTab();
+            await modal.openInNewTab();
             expect(tab.close).toHaveBeenCalledOnce();
             expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:failed-snapshot');
         });

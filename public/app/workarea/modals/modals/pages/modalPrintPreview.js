@@ -759,7 +759,7 @@ export default class ModalPrintPreview {
             this.printing = true;
             this.syncPrintButton();
             try {
-                const html = printPreviewSnapshot(this.iframe.contentDocument);
+                const html = await printPreviewSnapshot(this.iframe.contentDocument);
                 url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
                 const result = await window.electronAPI.printPreview(url);
                 if (!result?.success && !result?.canceled && requestId === this.requestId && this.isVisible()) {
@@ -846,22 +846,24 @@ export default class ModalPrintPreview {
      *
      * Copy the live document, including its folding option and current block state. Do not rerun
      * scripts, which would initialize the copied activities again.
+     *
+     * The tab opens before the copy is made: a browser lets a page open one only while it handles
+     * the click, and making the copy waits for the 3D models' pictures.
      */
-    openInNewTab() {
+    async openInNewTab() {
         if (!this.canPrint() || !this.blobUrl) return;
-        let tab;
+        const tab = window.open('', '_blank');
+        if (!tab) return;
         let url;
         let release;
         try {
-            const html = printPreviewSnapshot(this.iframe.contentDocument);
-            tab = window.open('', '_blank');
-            if (!tab) return;
             tab.opener = null;
             release = this.retainPreview?.();
+            const html = await printPreviewSnapshot(this.iframe.contentDocument);
             url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
             tab.location.href = url;
         } catch (error) {
-            tab?.close();
+            tab.close();
             if (url) URL.revokeObjectURL(url);
             release?.();
             console.warn('[PrintPreview] Could not open the preview:', error);

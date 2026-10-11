@@ -2,7 +2,10 @@
  * Copy the rendered preview without running its initializers again. Reloading the original HTML
  * loses the user's folds and can redraw activities with different random values.
  */
-export function printPreviewSnapshot(doc) {
+export async function printPreviewSnapshot(doc) {
+    // The pictures are taken first: the copy below is made in one go, so the page cannot change
+    // while it is being made.
+    const pictures = await Promise.all([...doc.querySelectorAll('model-viewer')].map(pictureModelViewer));
     const copy = doc.documentElement.cloneNode(true);
     copy.querySelectorAll('script, meta[http-equiv="refresh" i]').forEach((element) => element.remove());
     const policy = doc.createElement('meta');
@@ -49,26 +52,46 @@ export function printPreviewSnapshot(doc) {
     // in its place, as wide as it is on the page. One that is not shown (the 3D viewer hides it
     // while it draws an STL model itself) is left as it is. This runs last: the passes above pair
     // elements by their position, which taking a viewer out of the copy would upset.
-    const viewers = copy.querySelectorAll('model-viewer');
-    doc.querySelectorAll('model-viewer').forEach((viewer, index) => {
-        const { width, height } = viewer.getBoundingClientRect();
-        if (!width || !height || typeof viewer.toDataURL !== 'function') return;
-        let pixels;
-        try {
-            pixels = viewer.toDataURL();
-        } catch {
-            return;
-        }
+    copy.querySelectorAll('model-viewer').forEach((viewer, index) => {
+        const picture = pictures[index];
+        if (!picture) return;
         const image = doc.createElement('img');
         for (const name of ['id', 'class', 'style', 'alt']) {
-            const value = viewers[index].getAttribute(name);
+            const value = viewer.getAttribute(name);
             if (value !== null) image.setAttribute(name, value);
         }
-        image.src = pixels;
-        image.style.width = `${width}px`;
+        image.src = picture.src;
+        image.style.width = `${picture.width}px`;
         image.style.maxWidth = '100%';
         image.style.height = 'auto';
-        viewers[index].replaceWith(image);
+        viewer.replaceWith(image);
     });
     return '<!DOCTYPE html>\n' + copy.outerHTML;
+}
+
+/**
+ * Picture the frame a <model-viewer> shows, or null for one that is not shown or cannot say.
+ *
+ * toBlob() rather than toDataURL(): every viewer on the page draws on a canvas as large as the
+ * largest of them, in its top-left corner, and toDataURL() returns that whole canvas. Shrunk to
+ * the viewer's width, a smaller viewer's model would shrink with it. toBlob() crops to the viewer.
+ */
+async function pictureModelViewer(viewer) {
+    const { width, height } = viewer.getBoundingClientRect();
+    if (!width || !height || typeof viewer.toBlob !== 'function') return null;
+    try {
+        return { width, src: await readAsDataUrl(await viewer.toBlob()) };
+    } catch {
+        return null;
+    }
+}
+
+/** Read a blob as a data: URL, which the copy carries wherever it is loaded. */
+function readAsDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+    });
 }
