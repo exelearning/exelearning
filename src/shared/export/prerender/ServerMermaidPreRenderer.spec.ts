@@ -314,6 +314,28 @@ describe('ServerMermaidPreRenderer', () => {
         });
     });
 
+    describe('one process, several renderers', () => {
+        // Mermaid is imported once per process and keeps the window it was imported under.
+        it('draws HTML line breaks in a renderer created after the first was destroyed', async () => {
+            renderer.destroy();
+            const later = new ServerMermaidPreRenderer();
+            try {
+                const result = await later.preRender(
+                    '<pre class="mermaid">graph TD\nA[Begin] --> B["One<br/>Two"]</pre>',
+                );
+                expect(result.mermaidRendered).toBe(true);
+                const dom = new JSDOM(result.html);
+                try {
+                    expect(dom.window.document.querySelectorAll('g.node')[1].textContent).toBe('OneTwo');
+                } finally {
+                    dom.window.close();
+                }
+            } finally {
+                later.destroy();
+            }
+        });
+    });
+
     describe('module loading', () => {
         // In a fresh process: this file has already loaded jsdom, and only the
         // order of a first load reproduces the failure. The server imports the

@@ -213,6 +213,14 @@ function decodeHtmlEntities(text: string): string {
 let mermaidModule: MermaidAPI | null = null;
 
 /**
+ * The window Mermaid was imported under. Mermaid, and the sanitiser it carries, keep that window,
+ * and the import is cached for the process: a later renderer with a window of its own left them
+ * working on a closed one, and its HTML labels, line breaks included, came out empty. So every
+ * renderer shares this window, and none closes it.
+ */
+let mermaidDom: JSDOM | null = null;
+
+/**
  * Server-side Mermaid Pre-renderer using mermaid npm package
  */
 export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterface {
@@ -236,16 +244,19 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
             return;
         }
 
-        // Create jsdom with required features for mermaid
-        const jsdom = await import('jsdom');
-        this.dom = new jsdom.JSDOM(
-            '<!DOCTYPE html><html><head></head><body><div id="mermaid-container"></div></body></html>',
-            {
-                runScripts: 'dangerously',
-                pretendToBeVisual: true,
-                url: 'http://localhost',
-            },
-        );
+        // Create jsdom with required features for mermaid, once for the process (see mermaidDom)
+        if (!mermaidDom) {
+            const jsdom = await import('jsdom');
+            mermaidDom = new jsdom.JSDOM(
+                '<!DOCTYPE html><html><head></head><body><div id="mermaid-container"></div></body></html>',
+                {
+                    runScripts: 'dangerously',
+                    pretendToBeVisual: true,
+                    url: 'http://localhost',
+                },
+            );
+        }
+        this.dom = mermaidDom;
 
         const { window } = this.dom;
 
@@ -512,10 +523,8 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
      * Cleanup resources
      */
     destroy(): void {
-        if (this.dom) {
-            this.dom.window.close();
-            this.dom = null;
-        }
+        // The window stays open for the next renderer: Mermaid keeps using it (see mermaidDom).
+        this.dom = null;
         this.mermaid = null;
         this.initialized = false;
 
@@ -532,6 +541,8 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         delete global.HTMLElement;
         // @ts-expect-error - Cleaning up globals
         delete global.SVGElement;
+        // @ts-expect-error - Cleaning up globals
+        delete global.CSSStyleSheet;
     }
 }
 
