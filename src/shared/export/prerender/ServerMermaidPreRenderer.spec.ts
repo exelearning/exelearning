@@ -1,15 +1,14 @@
 /**
  * ServerMermaidPreRenderer Unit Tests
  *
- * Note: Mermaid rendering requires full SVG capabilities that jsdom doesn't provide.
- * These tests verify the detection logic and graceful fallback behavior.
- * In production, Mermaid pre-rendering may fail, in which case the Mermaid
- * library will be included in the export for client-side rendering.
+ * jsdom measures nothing, so the renderer supplies the SVG measuring Mermaid relies on. These tests
+ * render real diagrams with it, as well as checking the detection logic and the fallback.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import * as path from 'path';
-import { ServerMermaidPreRenderer } from './ServerMermaidPreRenderer';
+import { JSDOM } from 'jsdom';
+import { ServerMermaidPreRenderer, estimateBBox } from './ServerMermaidPreRenderer';
 
 describe('ServerMermaidPreRenderer', () => {
     let renderer: ServerMermaidPreRenderer;
@@ -120,6 +119,26 @@ describe('ServerMermaidPreRenderer', () => {
             expect(result.hasMermaid).toBe(true);
         });
 
+        it('draws a flowchart, with its labels and a box that fits it', async () => {
+            const result = await renderer.preRender('<pre class="mermaid">graph TD\n  A[Inicio] --> B[Fin]</pre>');
+
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.count).toBe(1);
+            expect(result.html).toMatch(/<div class="exe-mermaid-rendered"[^>]*><svg/);
+            expect(result.html).not.toContain('<pre class="mermaid"');
+            // As SVG text: an HTML label would sit in a box jsdom gives no size.
+            expect(result.html).not.toContain('<foreignObject');
+            expect(result.html).toContain('Inicio');
+            expect(result.html).toContain('Fin');
+            // Measured from the shapes drawn. Measured by the length of all its text, the diagram's
+            // own stylesheet included, it came out tens of thousands of pixels wide.
+            const [, , width, height] = (result.html.match(/viewBox="([^"]+)"/)?.[1] ?? '').split(' ').map(Number);
+            for (const side of [width, height]) {
+                expect(side).toBeGreaterThan(50);
+                expect(side).toBeLessThan(500);
+            }
+        });
+
         it('should handle multiple mermaid diagrams', async () => {
             const html = `
                 <pre class="mermaid">graph TD; A-->B</pre>
@@ -145,6 +164,54 @@ describe('ServerMermaidPreRenderer', () => {
                 localRenderer.destroy();
                 localRenderer.destroy();
             }).not.toThrow();
+        });
+    });
+
+    describe('estimateBBox', () => {
+        /** An SVG element built from markup, in a document of its own. */
+        const element = (markup: string, selector: string) =>
+            new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`).window.document.querySelector(
+                selector,
+            ) as Element;
+
+        it('measures text by its length, from its baseline', () => {
+            expect(estimateBBox(element('<text x="10" y="20">Inicio</text>', 'text'))).toEqual({
+                x: 10,
+                y: 8,
+                width: 48,
+                height: 16,
+            });
+        });
+
+        it('takes a shape from its own attributes', () => {
+            expect(estimateBBox(element('<rect x="-30" y="-15" width="60" height="30"/>', 'rect'))).toEqual({
+                x: -30,
+                y: -15,
+                width: 60,
+                height: 30,
+            });
+            expect(estimateBBox(element('<path d="M10,20L30,60"/>', 'path'))).toEqual({
+                x: 10,
+                y: 20,
+                width: 20,
+                height: 40,
+            });
+        });
+
+        it('unites what a group draws, each part where its translation puts it', () => {
+            const group = element(
+                '<g id="all"><style>.node { fill: red; } /* a long stylesheet draws nothing */</style>' +
+                    '<g transform="translate(100, 50)"><rect x="-10" y="-5" width="20" height="10"/></g>' +
+                    '<g transform="translate(0 0)"><circle cx="0" cy="0" r="5"/></g></g>',
+                '#all',
+            );
+
+            expect(estimateBBox(group)).toEqual({ x: -5, y: -5, width: 115, height: 60 });
+        });
+
+        it('finds nothing in an element that draws nothing', () => {
+            expect(estimateBBox(element('<defs><rect width="10" height="10"/></defs>', 'defs'))).toBeNull();
+            expect(estimateBBox(element('<g id="empty"></g>', '#empty'))).toBeNull();
         });
     });
 

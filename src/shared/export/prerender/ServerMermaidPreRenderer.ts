@@ -27,6 +27,132 @@ const HAS_MERMAID_PATTERN = /<pre\s+[^>]*class="[^"]*\bmermaid\b[^"]*"/i;
 // Counter for unique render IDs
 let renderCounter = 0;
 
+/** Approximate width of a character and height of a line, for text jsdom cannot measure. */
+const CHAR_WIDTH = 8;
+const LINE_HEIGHT = 16;
+
+/** Elements that draw nothing where they stand, so take no room in their parent's box. */
+const NOT_DRAWN = new Set([
+    'style',
+    'defs',
+    'marker',
+    'title',
+    'desc',
+    'metadata',
+    'script',
+    'clippath',
+    'mask',
+    'pattern',
+    'lineargradient',
+    'radialgradient',
+    'symbol',
+]);
+
+interface Box {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+/** A numeric attribute, or 0. */
+function attribute(element: Element, name: string): number {
+    const value = Number.parseFloat(element.getAttribute(name) ?? '');
+    return Number.isFinite(value) ? value : 0;
+}
+
+/** The box around a list of coordinates, read as x,y pairs. */
+function boxAroundPoints(values: number[]): Box | null {
+    if (values.length < 2) return null;
+    const xs = values.filter((_, index) => index % 2 === 0);
+    const ys = values.filter((_, index) => index % 2 === 1);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
+/** Every number in an attribute such as a path's `d` or a polygon's `points`. */
+function numbersIn(element: Element, name: string): number[] {
+    return (element.getAttribute(name)?.match(/-?\d*\.?\d+(?:e-?\d+)?/gi) ?? []).map(Number);
+}
+
+/**
+ * Estimate the bounding box jsdom cannot compute.
+ *
+ * Mermaid sizes each label from its box and the whole drawing from the box of the <svg>. Text is
+ * measured by its length, shapes by their own attributes, and anything else as the union of its
+ * children, each moved by its `translate`. Scaling and rotation are left out: mermaid lays its
+ * diagrams out by translating groups.
+ *
+ * @param element - An SVG element
+ * @returns Its box in its own coordinates, or null when it draws nothing
+ */
+export function estimateBBox(element: Element): Box | null {
+    const tag = element.tagName.toLowerCase();
+    if (NOT_DRAWN.has(tag)) return null;
+
+    switch (tag) {
+        case 'text':
+        case 'tspan': {
+            const text = element.textContent ?? '';
+            if (!text.trim()) return null;
+            const x = attribute(element, 'x');
+            const y = attribute(element, 'y');
+            // y is the baseline: most of a line sits above it.
+            return { x, y: y - LINE_HEIGHT * 0.75, width: text.length * CHAR_WIDTH, height: LINE_HEIGHT };
+        }
+        case 'rect':
+        case 'image':
+        case 'foreignobject':
+            return {
+                x: attribute(element, 'x'),
+                y: attribute(element, 'y'),
+                width: attribute(element, 'width'),
+                height: attribute(element, 'height'),
+            };
+        case 'circle': {
+            const r = attribute(element, 'r');
+            return { x: attribute(element, 'cx') - r, y: attribute(element, 'cy') - r, width: 2 * r, height: 2 * r };
+        }
+        case 'ellipse': {
+            const rx = attribute(element, 'rx');
+            const ry = attribute(element, 'ry');
+            return {
+                x: attribute(element, 'cx') - rx,
+                y: attribute(element, 'cy') - ry,
+                width: 2 * rx,
+                height: 2 * ry,
+            };
+        }
+        case 'line':
+            return boxAroundPoints(['x1', 'y1', 'x2', 'y2'].map(name => attribute(element, name)));
+        case 'polygon':
+        case 'polyline':
+            return boxAroundPoints(numbersIn(element, 'points'));
+        case 'path':
+            return boxAroundPoints(numbersIn(element, 'd'));
+        default: {
+            const boxes: Box[] = [];
+            for (const child of Array.from(element.children)) {
+                const box = estimateBBox(child);
+                if (!box) continue;
+                const moved = /translate\(\s*(-?[\d.e]+)(?:[\s,]+(-?[\d.e]+))?\s*\)/i.exec(
+                    child.getAttribute('transform') ?? '',
+                );
+                const dx = moved ? Number(moved[1]) : 0;
+                const dy = moved?.[2] ? Number(moved[2]) : 0;
+                boxes.push({ ...box, x: box.x + dx, y: box.y + dy });
+            }
+            if (boxes.length === 0) return null;
+            const x = Math.min(...boxes.map(box => box.x));
+            const y = Math.min(...boxes.map(box => box.y));
+            const right = Math.max(...boxes.map(box => box.x + box.width));
+            const bottom = Math.max(...boxes.map(box => box.y + box.height));
+            return { x, y, width: right - x, height: bottom - y };
+        }
+    }
+}
+
 /**
  * Escape HTML special characters for use in attributes
  */
@@ -87,30 +213,19 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
 
         const { window } = this.dom;
 
-        // Polyfill SVG methods that mermaid needs but jsdom doesn't implement
-        // getBBox returns bounding box dimensions for text measurement
-        if (!window.SVGElement.prototype.getBBox) {
-            (window.SVGElement.prototype as unknown as Record<string, unknown>).getBBox = function () {
-                // Return reasonable default dimensions for server-side rendering
-                const text = this.textContent || '';
-                return {
-                    x: 0,
-                    y: 0,
-                    width: text.length * 8, // Approximate 8px per character
-                    height: 16, // Approximate line height
-                };
+        // Polyfill the SVG measuring that mermaid needs and jsdom doesn't implement. jsdom has no
+        // class of its own for <text> or <tspan>, so both go on SVGElement.
+        const svgElement = window.SVGElement.prototype as unknown as Record<string, unknown>;
+        if (!svgElement.getBBox) {
+            svgElement.getBBox = function (this: Element) {
+                return estimateBBox(this) ?? { x: 0, y: 0, width: 0, height: 0 };
             };
         }
-
-        // getComputedTextLength for text elements
-        if (!window.SVGTextElement?.prototype?.getComputedTextLength) {
-            if (window.SVGTextElement) {
-                (window.SVGTextElement.prototype as unknown as Record<string, unknown>).getComputedTextLength =
-                    function () {
-                        const text = this.textContent || '';
-                        return text.length * 8;
-                    };
-            }
+        if (!svgElement.getComputedTextLength) {
+            svgElement.getComputedTextLength = function (this: Element) {
+                const text = this.textContent || '';
+                return text.length * CHAR_WIDTH;
+            };
         }
 
         // Set up minimal browser globals that Mermaid expects
@@ -126,6 +241,10 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         global.HTMLElement = window.HTMLElement;
         // @ts-expect-error - Adding globals for Mermaid compatibility
         global.SVGElement = window.SVGElement;
+        // Mermaid builds each diagram's styles in a constructed stylesheet; without it every
+        // diagram fails to render and the export keeps the source instead.
+        // @ts-expect-error - Adding globals for Mermaid compatibility
+        global.CSSStyleSheet = window.CSSStyleSheet;
 
         try {
             // Import mermaid from npm package (cached for subsequent initializations)
@@ -146,8 +265,12 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
                 logLevel: 'fatal',
                 securityLevel: 'loose',
                 theme: 'default',
+                // Labels as SVG text, which can be measured here: an HTML label is sized by the
+                // browser, and jsdom gives it no size, so it ends up in a 0x0 box. Only this
+                // root-level setting is read; the per-diagram one is deprecated.
+                htmlLabels: false,
                 // Use simple settings for server-side rendering
-                flowchart: { useMaxWidth: true, htmlLabels: false },
+                flowchart: { useMaxWidth: true },
                 sequence: { useMaxWidth: true },
                 gantt: { useMaxWidth: true },
             });
@@ -388,6 +511,7 @@ interface MermaidConfig {
     logLevel?: string;
     securityLevel?: string;
     theme?: string;
+    htmlLabels?: boolean;
     flowchart?: { useMaxWidth?: boolean; htmlLabels?: boolean };
     sequence?: { useMaxWidth?: boolean };
     gantt?: { useMaxWidth?: boolean };
