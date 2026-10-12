@@ -476,9 +476,12 @@ export default class ModalPrintPreview {
      * @returns {object} Translated worksheet labels
      */
     getWorksheetLabels() {
+        // A string is translated once, whatever it labels. "Down" and "Before" are in the catalog
+        // already with another sense ("Abajo", "Antes de optimizar"), so the crossword and the
+        // before/after headings use the words those activities use themselves.
         return {
-            across: _('Across'),
-            down: _('Down'),
+            across: _('Horizontals'),
+            down: _('Verticals'),
             mediaRequired: _('Requires multimedia'),
             invalidData: _('Invalid or empty activity data'),
             unplacedWords: _('Words that could not be placed'),
@@ -488,8 +491,8 @@ export default class ModalPrintPreview {
             unsupportedHeading: _('Left out of this worksheet'),
             notPrintableYet: _('Cannot be printed yet'),
             notAvailableInPrint: _('Not available in print'),
-            before: _('Before'),
-            after: _('After'),
+            before: _('Before image'),
+            after: _('After image'),
             operation: _('Operation'),
             result: _('Result'),
         };

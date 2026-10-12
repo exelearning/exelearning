@@ -365,6 +365,11 @@ export interface PrintableActivity {
      * short.
      */
     twoColumns?: boolean;
+    /**
+     * The activity's own words for the two directions a crossword's clues run in, in the language
+     * of the project. The worksheet's labels head a column the activity has no word for.
+     */
+    clueHeadings?: { across?: string; down?: string };
     items: PrintableItem[];
     /** Author's closing text, as sanitised HTML. */
     textAfter?: string;

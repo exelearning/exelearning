@@ -32,8 +32,8 @@ import type {
 } from './types';
 
 const DEFAULT_LABELS: Required<WorksheetLabels> = {
-    across: 'Across',
-    down: 'Down',
+    across: 'Horizontals',
+    down: 'Verticals',
     mediaRequired: 'Requires multimedia',
     invalidData: 'Invalid or empty activity data',
     unplacedWords: 'Words that could not be placed',
@@ -45,8 +45,8 @@ const DEFAULT_LABELS: Required<WorksheetLabels> = {
     operation: 'Operation',
     result: 'Result',
     notAvailableInPrint: 'Not available in print',
-    before: 'Before',
-    after: 'After',
+    before: 'Before image',
+    after: 'After image',
 };
 
 /**
@@ -1765,10 +1765,15 @@ function renderItem(item: PrintableItem): string {
  * Render a crossword's clues in two columns, across on the left and down on the right, as a
  * printed crossword sets them out.
  *
- * The heading of each column says which way its words run, so no clue repeats it. Each keeps its
+ * The heading of each column says which way its words run, so no clue repeats it. It is the
+ * activity's own word for that direction when it has one, as on screen. Each clue keeps its
  * number, which is the one in the grid, and the clues run in that order down their column.
  */
-function renderCluesByDirection(items: PrintableItem[], labels: Required<WorksheetLabels>): string {
+function renderCluesByDirection(
+    items: PrintableItem[],
+    labels: Required<WorksheetLabels>,
+    headings: PrintableActivity['clueHeadings'] = {},
+): string {
     const columns = (['across', 'down'] as const)
         .map(direction => ({
             direction,
@@ -1779,7 +1784,7 @@ function renderCluesByDirection(items: PrintableItem[], labels: Required<Workshe
         .map(
             ({ direction, clues }) =>
                 '<div class="worksheet-clue-column">' +
-                `<h4 class="worksheet-clue-heading">${escapeText(labels[direction])}</h4>` +
+                `<h4 class="worksheet-clue-heading">${escapeText(headings[direction] || labels[direction])}</h4>` +
                 `<ol class="worksheet-items">${clues.map(renderItem).join('')}</ol>` +
                 '</div>',
         );
@@ -1840,7 +1845,7 @@ function renderActivity(activity: PrintableActivity, labels: Required<WorksheetL
     // An activity whose whole exercise is its board, such as a matching one, has no questions.
     if (activity.items.length > 0) {
         html += activity.items.every(item => item.direction)
-            ? renderCluesByDirection(activity.items, labels)
+            ? renderCluesByDirection(activity.items, labels, activity.clueHeadings)
             : `<ol class="${listClass}">${activity.items.map(renderItem).join('')}</ol>`;
     }
 

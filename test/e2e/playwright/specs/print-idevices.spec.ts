@@ -1895,6 +1895,7 @@ test.describe('Print iDevices', () => {
                         { word: 'CASA', definition: 'Home' },
                         { word: 'CAMA', definition: 'Bed' },
                     ],
+                    msgs: { msgHorizontals: 'Horizontales', msgVerticals: 'Verticales' },
                 }),
             },
         ];
@@ -1944,12 +1945,13 @@ test.describe('Print iDevices', () => {
         for (const word of ['Madrid', 'Barcelona', 'Sevilla']) await expect(choices).toContainText(word);
         const crossword = frame.locator('[data-idevice="crossword"]');
         const gridNumbers = await crossword.locator('.worksheet-grid-number').allTextContents();
-        // Every clue sits in a column headed by its direction, with the number the grid shows.
+        // Every clue sits in a column headed by its direction, in the activity's own words, with
+        // the number the grid shows.
         const allClues = crossword.locator('.worksheet-item');
         await expect(crossword.locator('.worksheet-clue-column .worksheet-item')).toHaveCount(await allClues.count());
         for (const clue of await allClues.all()) expect(gridNumbers).toContain(await clue.getAttribute('value'));
         for (const heading of await crossword.locator('.worksheet-clue-heading').all())
-            await expect(heading).not.toBeEmpty();
+            await expect(heading).toHaveText(/^(Horizontales|Verticales)$/);
         await page.emulateMedia({ media: 'print' });
         await expect(choices).toBeVisible();
         await expect(testActivity.locator('svg')).toBeVisible();

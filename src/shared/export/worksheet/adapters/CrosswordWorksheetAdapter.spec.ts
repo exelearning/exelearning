@@ -15,6 +15,7 @@ interface CrosswordFixtureOptions {
     tilde?: boolean;
     hasBack?: boolean;
     authorBackImage?: string;
+    msgs?: Record<string, string>;
 }
 
 const FOUR_WORDS = [
@@ -37,6 +38,7 @@ function crosswordHtml(options: CrosswordFixtureOptions = {}): string {
         hasBack: options.hasBack,
         authorBackImage: options.authorBackImage,
         wordsGame: options.wordsGame ?? FOUR_WORDS,
+        msgs: options.msgs,
     });
 
     let html = '<div class="crucigrama-IDevice">';
@@ -74,6 +76,22 @@ describe('CrosswordWorksheetAdapter', () => {
         expect(activity?.board?.kind).toBe('crosswordGrid');
         expect(activity?.items.length).toBeGreaterThan(1);
         expect(grid(activity)).toContain('_');
+    });
+
+    it("heads its clues with the activity's own words, in the language of the project", () => {
+        const activity = CrosswordWorksheetAdapter.build(
+            crosswordHtml({ msgs: { msgHorizontals: 'Horizontales', msgVerticals: 'Verticales' } }),
+            {},
+        );
+
+        expect(activity?.clueHeadings).toEqual({ across: 'Horizontales', down: 'Verticales' });
+    });
+
+    it('leaves the clue headings to the worksheet when the activity has no words for them', () => {
+        expect(CrosswordWorksheetAdapter.build(crosswordHtml(), {})?.clueHeadings).toBeUndefined();
+        expect(
+            CrosswordWorksheetAdapter.build(crosswordHtml({ msgs: { msgHorizontals: '  ' } }), {})?.clueHeadings,
+        ).toBeUndefined();
     });
 
     it('numbers the clues to match the grid', () => {

@@ -1,8 +1,8 @@
 /**
  * Before/After ('beforeafter') worksheet adapter
  *
- * Turns a Before/After activity into a printable comparison: two columns headed "Before" and
- * "After", each pair on its own row, with the author's caption under each picture.
+ * Turns a Before/After activity into a printable comparison: two columns headed "Before image" and
+ * "After image", each pair on its own row, with the author's caption under each picture.
  *
  * On screen the two pictures are stacked and a slider wipes between them, which is a way of
  * looking rather than a question to answer. Paper cannot wipe, so both are simply shown side by
@@ -111,7 +111,7 @@ export const BeforeAfterWorksheetAdapter: WorksheetAdapter = {
 
         if (pairs.length === 0) return null;
 
-        const headings = [options.labels?.before ?? 'Before', options.labels?.after ?? 'After'];
+        const headings = [options.labels?.before ?? 'Before image', options.labels?.after ?? 'After image'];
         const groups: PrintableCardGroup[] = [];
         for (let start = 0; start < pairs.length; start += PAIRS_PER_GROUP) {
             const group = pairs.slice(start, start + PAIRS_PER_GROUP);

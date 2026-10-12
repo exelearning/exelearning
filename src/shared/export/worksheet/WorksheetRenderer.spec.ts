@@ -502,7 +502,25 @@ describe('renderActivityFragment', () => {
             activity({ ideviceType: 'crossword', items: [{ prompt: 'Ciudad', direction: 'down', number: 1 }] }),
         );
 
-        expect(html).toContain('Down');
+        expect(html).toContain('Verticals');
+    });
+
+    it("heads a crossword's clues with the activity's own words for each direction", () => {
+        const html = renderActivityFragment(
+            activity({
+                ideviceType: 'crossword',
+                clueHeadings: { across: 'Horizontales', down: 'Verticales' },
+                items: [
+                    { prompt: 'Ciudad', direction: 'down', number: 1 },
+                    { prompt: 'Río', direction: 'across', number: 2 },
+                ],
+            }),
+            { across: 'Across', down: 'Down' },
+        );
+
+        expect(html).toContain('<h4 class="worksheet-clue-heading">Horizontales</h4>');
+        expect(html).toContain('<h4 class="worksheet-clue-heading">Verticales</h4>');
+        expect(html).not.toContain('Down');
     });
 });
 

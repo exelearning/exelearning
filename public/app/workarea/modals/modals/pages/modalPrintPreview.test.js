@@ -601,8 +601,21 @@ describe('ModalPrintPreview and interactive activities', () => {
         expect(labels.appendixReference).toContain('%s');
         expect(labels.notPrintable).toBeTruthy();
         // The worksheet's own labels come along, since the same exercises are drawn either way.
-        expect(labels.across).toBe('Across');
+        expect(labels.across).toBe('Horizontals');
         expect(ideviceTitles.guess).toBe('Guess');
+    });
+
+    it('heads the crossword and before/after columns with strings the catalog gives no other sense', async () => {
+        await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX);
+        const { labels } = lastOptions().activities;
+
+        // "Down" and "Before" are translated already, as "Abajo" and "Antes de optimizar".
+        expect([labels.across, labels.down, labels.before, labels.after]).toEqual([
+            'Horizontals',
+            'Verticals',
+            'Before image',
+            'After image',
+        ]);
     });
 
     it('tells the exporter where the iDevice files are, for pictures they ship', async () => {

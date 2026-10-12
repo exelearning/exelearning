@@ -89,7 +89,7 @@ describe('BeforeAfterWorksheetAdapter', () => {
     });
 
     it('falls back to English headings, so the CLI is usable without them', () => {
-        expect(groupsOf()[0].headings).toEqual(['Before', 'After']);
+        expect(groupsOf()[0].headings).toEqual(['Before image', 'After image']);
     });
 
     it('says the rows line up, which is what stops them being shuffled', () => {

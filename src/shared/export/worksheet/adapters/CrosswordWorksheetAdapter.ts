@@ -14,6 +14,9 @@
  * - Clue numbers come from the grid, not from the order of the list, so items carry an explicit
  *   number. Vertical words are numbered first, then horizontal ones, as the activity does.
  * - A word the solver cannot cross into the grid is dropped, together with its clue.
+ * - `msgs.msgHorizontals` and `msgs.msgVerticals` are the activity's own words for the two
+ *   directions, which head its clues on screen. They are written in the project's language, so a
+ *   Spanish project heads its clues 'Horizontales' and 'Verticales' whatever the editor speaks.
  */
 
 import { buildCrosswordLayout } from '../crosswordLayout';
@@ -62,6 +65,8 @@ interface CrosswordDataGame {
     /** Background picture reference. The sidecar link carries the resolvable one. */
     urlBack?: string;
     authorBackImage?: string;
+    /** The activity's own words, which the author can edit under custom texts. */
+    msgs?: Record<string, string>;
 }
 
 /** A word paired with the index it had before selection, which the sidecars are keyed by. */
@@ -218,6 +223,12 @@ export const CrosswordWorksheetAdapter: WorksheetAdapter = {
             },
             items,
         };
+
+        // The clues are headed with the activity's own words for the two directions, as on screen.
+        const msgs = dataGame.msgs ?? {};
+        const across = (msgs.msgHorizontals ?? '').trim();
+        const down = (msgs.msgVerticals ?? '').trim();
+        if (across || down) activity.clueHeadings = { across: across || undefined, down: down || undefined };
 
         const instructions = sanitizeHtml(dataGame.instructions);
         if (instructions) activity.instructions = instructions;
