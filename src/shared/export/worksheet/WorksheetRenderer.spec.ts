@@ -525,6 +525,11 @@ describe('WORKSHEET_ACTIVITY_STYLES', () => {
         expect(renderWorksheet(model())).toContain(WORKSHEET_ACTIVITY_STYLES);
     });
 
+    it('keeps the heading of an activity that cannot be printed on the same sheet as its note', () => {
+        const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-activity-unprintable {')[1].split('}')[0];
+        expect(rule).toContain('break-inside: avoid');
+    });
+
     describe('the two-column boards', () => {
         /** The declarations of one rule, by property. */
         const rule = (selector: string) => {

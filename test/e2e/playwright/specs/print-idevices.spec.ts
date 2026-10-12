@@ -2618,6 +2618,8 @@ test.describe('Print: the activities that can never be printed', () => {
         await expect(notes.nth(0)).toContainText('Mapa de la península');
         await expect(notes.nth(1)).toHaveAttribute('data-idevice', 'external-website');
         await expect(notes.nth(1)).toContainText('Web del museo');
+        // An entry is its heading and its note, so a page break never comes between them.
+        await expect(notes.nth(0)).toHaveCSS('break-inside', 'avoid');
 
         // Where the author put them, each block keeps its title above the note.
         ({ frame } = await choosePrintOption(page, 'in-place'));

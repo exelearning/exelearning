@@ -1067,6 +1067,13 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     color: #666;
 }
 
+/* An appendix entry for an activity that cannot be printed is a heading and that one note. Split,
+   the heading would end one sheet and the note it introduces begin the next. */
+.worksheet-activity-unprintable {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
 /* What an activity had to leave out. Addressed to whoever is setting the work, so it is shown on
    screen and never printed: the student's sheet says nothing about questions they never saw. */
 .worksheet-unsupported {
