@@ -139,6 +139,49 @@ describe('ServerMermaidPreRenderer', () => {
             }
         });
 
+        it.each([
+            ['HTML breaks', 'One<br/>Two<br/>Three<br/>Four<br/>Five<br/>Six'],
+            ['Markdown lines', '`One\nTwo\nThree\nFour\nFive\nSix`'],
+        ])('gives a multiline node enough height for %s', async (_kind, label) => {
+            const result = await renderer.preRender(`<pre class="mermaid">graph TD\nA[Begin] --> B["${label}"]</pre>`);
+            expect(result.mermaidRendered).toBe(true);
+            const dom = new JSDOM(result.html);
+            try {
+                const node = dom.window.document.querySelectorAll('g.node')[1];
+                expect(node.textContent).toBe('OneTwoThreeFourFiveSix');
+                const rect = node.querySelector('rect.label-container')!;
+                // Six 16px lines need more than the single-line node's 46px. Their short words
+                // must not be laid out as one long line either.
+                expect(Number(rect.getAttribute('height'))).toBeGreaterThan(100);
+                expect(Number(rect.getAttribute('width'))).toBeLessThan(150);
+            } finally {
+                dom.window.close();
+            }
+        });
+
+        it.each([
+            ['directive', '%%{init: {"htmlLabels": true}}%%\n'],
+            ['frontmatter', '---\nconfig:\n  htmlLabels: true\n---\n'],
+            ['legacy option', '%%{init: {"flowchart": {"htmlLabels": true}}}%%\n'],
+            ['protected settings', '%%{init: {"secure": [], "maxTextSize": 1, "htmlLabels": true}}%%\n'],
+        ])('keeps SVG labels when a diagram requests HTML labels through %s', async (_kind, config) => {
+            const result = await renderer.preRender(
+                `<pre class="mermaid">${config}graph TD\nA[Start] --> B[End]</pre>`,
+            );
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.html).not.toContain('<foreignObject');
+            const dom = new JSDOM(result.html);
+            try {
+                const labels = Array.from(
+                    dom.window.document.querySelectorAll('g.node text'),
+                    node => node.textContent,
+                );
+                expect(labels).toEqual(['Start', 'End']);
+            } finally {
+                dom.window.close();
+            }
+        });
+
         it('should handle multiple mermaid diagrams', async () => {
             const html = `
                 <pre class="mermaid">graph TD; A-->B</pre>
@@ -181,6 +224,40 @@ describe('ServerMermaidPreRenderer', () => {
                 width: 48,
                 height: 16,
             });
+        });
+
+        it('measures positioned rows in em units, keeping inline spans on the same line', () => {
+            const box = estimateBBox(
+                element(
+                    '<text y="-10.1">' +
+                        '<tspan x="0" y="-0.1em" dy="1.1em"><tspan>First</tspan><tspan> line</tspan></tspan>' +
+                        '<tspan x="0" y="1em" dy="1.1em">Second line</tspan>' +
+                        '<tspan x="0" y="2.1em" dy="1.1em">Third</tspan></text>',
+                    'text',
+                ),
+            );
+            expect(box?.x).toBe(0);
+            expect(box?.y).toBeCloseTo(4);
+            expect(box?.width).toBe(88);
+            expect(box?.height).toBeCloseTo(51.2);
+        });
+
+        it('continues inline text and applies relative offsets and explicit line starts', () => {
+            expect(
+                estimateBBox(
+                    element(
+                        '<text x="10" y="20">A<tspan dx="2" dy="10">BC</tspan><tspan x="5" dy="10">D</tspan></text>',
+                        'text',
+                    ),
+                ),
+            ).toEqual({ x: 5, y: 8, width: 31, height: 36 });
+        });
+
+        it('ignores empty text and metadata inside text elements', () => {
+            expect(estimateBBox(element('<text>   </text>', 'text'))).toBeNull();
+            expect(
+                estimateBBox(element('<text><title>A description</title><!-- comment --></text>', 'text')),
+            ).toBeNull();
         });
 
         it('takes a shape from its own attributes', () => {

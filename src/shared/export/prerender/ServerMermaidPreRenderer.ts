@@ -76,6 +76,53 @@ function numbersIn(element: Element, name: string): number[] {
     return (element.getAttribute(name)?.match(/-?\d*\.?\d+(?:e-?\d+)?/gi) ?? []).map(Number);
 }
 
+/** The smallest box containing every measured part. */
+function unionBoxes(boxes: Box[]): Box | null {
+    if (boxes.length === 0) return null;
+    const x = Math.min(...boxes.map(box => box.x));
+    const y = Math.min(...boxes.map(box => box.y));
+    const right = Math.max(...boxes.map(box => box.x + box.width));
+    const bottom = Math.max(...boxes.map(box => box.y + box.height));
+    return { x, y, width: right - x, height: bottom - y };
+}
+
+/** SVG text positions may use em units, including Mermaid's line offsets. */
+function textPosition(element: Element, name: string): number {
+    const value = attribute(element, name);
+    return element.getAttribute(name)?.trim().endsWith('em') ? value * LINE_HEIGHT : value;
+}
+
+/**
+ * Measure the text runs at their SVG positions. A positioned tspan starts a new run; unpositioned
+ * nested spans (bold words, for example) continue from the previous run's end. In particular, a
+ * multiline label is as wide as its longest line, not the sum of all its lines, and its box must
+ * reach the last baseline. Widths and ascenders remain estimates at the default font size.
+ */
+function estimateTextBBox(element: Element): Box | null {
+    const boxes: Box[] = [];
+    let x = 0;
+    let y = 0;
+    const visit = (part: Element) => {
+        if (NOT_DRAWN.has(part.tagName.toLowerCase())) return;
+        if (part.hasAttribute('x')) x = textPosition(part, 'x');
+        if (part.hasAttribute('y')) y = textPosition(part, 'y');
+        x += textPosition(part, 'dx');
+        y += textPosition(part, 'dy');
+        for (const child of Array.from(part.childNodes)) {
+            if (child.nodeType === 1) {
+                visit(child as Element);
+            } else if (child.nodeType === 3) {
+                const text = child.textContent ?? '';
+                const width = text.length * CHAR_WIDTH;
+                if (text.trim()) boxes.push({ x, y: y - LINE_HEIGHT * 0.75, width, height: LINE_HEIGHT });
+                x += width;
+            }
+        }
+    };
+    visit(element);
+    return unionBoxes(boxes);
+}
+
 /**
  * Estimate the bounding box jsdom cannot compute.
  *
@@ -93,14 +140,8 @@ export function estimateBBox(element: Element): Box | null {
 
     switch (tag) {
         case 'text':
-        case 'tspan': {
-            const text = element.textContent ?? '';
-            if (!text.trim()) return null;
-            const x = attribute(element, 'x');
-            const y = attribute(element, 'y');
-            // y is the baseline: most of a line sits above it.
-            return { x, y: y - LINE_HEIGHT * 0.75, width: text.length * CHAR_WIDTH, height: LINE_HEIGHT };
-        }
+        case 'tspan':
+            return estimateTextBBox(element);
         case 'rect':
         case 'image':
         case 'foreignobject':
@@ -143,12 +184,7 @@ export function estimateBBox(element: Element): Box | null {
                 const dy = moved?.[2] ? Number(moved[2]) : 0;
                 boxes.push({ ...box, x: box.x + dx, y: box.y + dy });
             }
-            if (boxes.length === 0) return null;
-            const x = Math.min(...boxes.map(box => box.x));
-            const y = Math.min(...boxes.map(box => box.y));
-            const right = Math.max(...boxes.map(box => box.x + box.width));
-            const bottom = Math.max(...boxes.map(box => box.y + box.height));
-            return { x, y, width: right - x, height: bottom - y };
+            return unionBoxes(boxes);
         }
     }
 }
@@ -266,9 +302,11 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
                 securityLevel: 'loose',
                 theme: 'default',
                 // Labels as SVG text, which can be measured here: an HTML label is sized by the
-                // browser, and jsdom gives it no size, so it ends up in a 0x0 box. Only this
-                // root-level setting is read; the per-diagram one is deprecated.
+                // browser, and jsdom gives it no size, so it ends up in a 0x0 box. Protect this
+                // setting from diagram directives/frontmatter without dropping Mermaid's own
+                // protected settings.
                 htmlLabels: false,
+                secure: [...(this.mermaid.mermaidAPI.defaultConfig.secure ?? []), 'htmlLabels'],
                 // Use simple settings for server-side rendering
                 flowchart: { useMaxWidth: true },
                 sequence: { useMaxWidth: true },
@@ -501,6 +539,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
  * Mermaid API interface (minimal typing)
  */
 interface MermaidAPI {
+    mermaidAPI: { defaultConfig: MermaidConfig };
     initialize(config: MermaidConfig): void;
     render(id: string, code: string): Promise<{ svg: string }>;
 }
@@ -512,6 +551,7 @@ interface MermaidConfig {
     securityLevel?: string;
     theme?: string;
     htmlLabels?: boolean;
+    secure?: string[];
     flowchart?: { useMaxWidth?: boolean; htmlLabels?: boolean };
     sequence?: { useMaxWidth?: boolean };
     gantt?: { useMaxWidth?: boolean };
