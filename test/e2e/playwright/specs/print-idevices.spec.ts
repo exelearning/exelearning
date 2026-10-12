@@ -2965,8 +2965,17 @@ test.describe('Print: when printing does not start', () => {
         );
     }
 
-    test('stays quiet when printing starts', async ({ authenticatedPage: page, createProject }) => {
+    test('stays quiet when printing starts', async ({ authenticatedPage: page, createProject, browserName }) => {
         const { frame } = await openPreview(page, createProject);
+        if (browserName === 'firefox') {
+            // Firefox holds the page while its print dialog is open, so the click would never
+            // return. There print stands in for what it does first: firing beforeprint.
+            await frame.locator('body').evaluate(() => {
+                window.print = () => {
+                    window.dispatchEvent(new Event('beforeprint'));
+                };
+            });
+        }
         const started = frame
             .locator('body')
             .evaluate(
