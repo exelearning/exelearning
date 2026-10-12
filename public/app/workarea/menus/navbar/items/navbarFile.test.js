@@ -1700,19 +1700,17 @@ describe('NavbarFile', () => {
             expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document', 'appendix', ['c1'], activities);
         });
 
-        it('should name the right feature in the error for each mode', () => {
+        it('should say the print preview is not available, whatever the mode', () => {
             eXeLearning.app.modals.printpreview = null;
             const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-            navbarFile.openPrintPreview('idevices');
-            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
-                expect.objectContaining({ body: 'Print iDevices is not available.' })
-            );
-
-            navbarFile.openPrintPreview();
-            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
-                expect.objectContaining({ body: 'Print preview is not available.' })
-            );
+            for (const mode of ['idevices', undefined]) {
+                eXeLearning.app.modals.alert.show.mockClear();
+                navbarFile.openPrintPreview(mode);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({ body: 'Print preview is not available.' })
+                );
+            }
 
             consoleWarnSpy.mockRestore();
         });

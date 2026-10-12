@@ -9,11 +9,7 @@ import {
     openProjectFolderInBrowser,
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
-import {
-    DEFAULT_ACTIVITY_MODE,
-    PREVIEW_MODE_DOCUMENT,
-    PREVIEW_MODE_IDEVICES,
-} from '../../../modals/modals/pages/modalPrintPreview.js';
+import { DEFAULT_ACTIVITY_MODE, PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -922,10 +918,7 @@ export default class NavbarFile {
             console.warn('[NavbarFile] Print preview modal not available');
             eXeLearning?.app?.modals?.alert?.show({
                 title: _('Error'),
-                body:
-                    mode === PREVIEW_MODE_IDEVICES
-                        ? _('Print iDevices is not available.')
-                        : _('Print preview is not available.'),
+                body: _('Print preview is not available.'),
             });
         }
     }
