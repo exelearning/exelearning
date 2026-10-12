@@ -2743,7 +2743,7 @@ test.describe('Print: a folded block opens on paper', () => {
         // Nothing here is an interactive activity, so Print opens the preview with nothing to
         // choose about activities — which is the path most projects take, and the one this rule
         // has to hold on.
-        await openPrintPanel(page);
+        const panel = await openPrintPanel(page);
         await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true', {
             timeout: 15000,
         });
@@ -2752,7 +2752,9 @@ test.describe('Print: a folded block opens on paper', () => {
 
         const content = (cssClass: string) => frame.locator(`article.${cssClass} .box-content`);
 
-        // The preview shows the folded block open, as it prints, with no toggle to fold it back.
+        // With "Print all visible content" ticked, the preview shows the folded block open, as it
+        // prints, with no toggle to fold it back.
+        await panel.locator('#printOptUnfoldBlocks').check();
         await expect(content('ep-open')).toBeVisible();
         await expect(frame.locator('article.ep-open .box-toggle')).toBeHidden();
 
@@ -2769,7 +2771,7 @@ test.describe('Print: a folded block opens on paper', () => {
         await expect(frame.locator('article.ep-teacher')).toBeHidden();
     });
 
-    test('prints the blocks as the preview shows them once "Print all visible content" is cleared', async ({
+    test('prints the blocks as the preview shows them unless "Print all visible content" is ticked', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -2803,9 +2805,16 @@ test.describe('Print: a folded block opens on paper', () => {
         const content = (cssClass: string) => frame.locator(`article.${cssClass} .box-content`);
         const toggle = (cssClass: string) => frame.locator(`article.${cssClass} .box-toggle`);
         const option = panel.locator('#printOptUnfoldBlocks');
-        await expect(option).toBeChecked();
+
+        // Cleared at first: the preview keeps the author's folds, with their toggles.
+        await expect(option).not.toBeChecked();
+        await expect(frame.locator('html')).toHaveClass(/\bexe-print-as-shown\b/);
+        await expect(content('ep-folded')).toBeHidden();
+        await expect(content('ep-closed')).toBeVisible();
+        await expect(toggle('ep-folded')).toBeVisible();
 
         // Printing everything, the preview opens every block, as it prints, and offers no toggle.
+        await option.check();
         for (const cssClass of ['ep-folded', 'ep-reopened', 'ep-closed']) await expect(content(cssClass)).toBeVisible();
         await expect(toggle('ep-folded')).toBeHidden();
 

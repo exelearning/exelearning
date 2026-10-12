@@ -72,9 +72,9 @@ test.describe('Print preview', () => {
 
         // Print prints the preview itself — the same document, as the user left it — rather than
         // drawing another one or opening a window. Folding a block is what the user does to
-        // print the page as it is shown, which is when the preview offers the toggles.
+        // print the page as it is shown, which is when the preview offers the toggles: by default.
         const frame = page.frameLocator('.print-preview-iframe');
-        await panel.locator('#printOptUnfoldBlocks').uncheck();
+        await expect(panel.locator('#printOptUnfoldBlocks')).not.toBeChecked();
         await frame.locator('article.box .box-toggle').first().click();
         await expect(frame.locator('article.box').first()).toHaveClass(/minimized/);
         await frame.locator('body').evaluate(() => {

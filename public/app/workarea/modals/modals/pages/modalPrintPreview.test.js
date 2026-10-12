@@ -758,7 +758,7 @@ describe('ModalPrintPreview and its options panel', () => {
                     <div class="print-options-activities" hidden></div>
                     <fieldset class="print-options-document">
                         <input type="checkbox" id="printOptLinkUrls" checked>
-                        <input type="checkbox" id="printOptUnfoldBlocks" checked>
+                        <input type="checkbox" id="printOptUnfoldBlocks">
                         <div class="form-check" hidden><input type="checkbox" id="printOptUnprintableTitles"></div>
                     </fieldset>
                 </div>
@@ -1043,23 +1043,23 @@ describe('ModalPrintPreview and its options panel', () => {
     });
 
     describe('how folded blocks print', () => {
-        it('unfolds them on paper by default', async () => {
+        it('prints them as the preview shows them by default', async () => {
             await modal.show(PREVIEW_MODE_DOCUMENT);
             const page = loadedPage();
 
-            expect(modal.unfoldBlocks).toBe(true);
+            expect(modal.unfoldBlocks).toBe(false);
             expect(unfoldBlocks().disabled).toBe(false);
-            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
         });
 
-        it('keeps the preview as it is shown once the option is cleared, without drawing it again', async () => {
+        it('unfolds them on paper once the option is ticked, without drawing the preview again', async () => {
             await modal.show(PREVIEW_MODE_DOCUMENT);
             const page = loadedPage();
             global.window.generatePrintPreview.mockClear();
 
-            tick(unfoldBlocks(), false);
+            tick(unfoldBlocks(), true);
 
-            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
             expect(busy()).toBe('false');
             expect(printBtn().disabled).toBe(false);
             await settle();
@@ -1068,28 +1068,28 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
         });
 
-        it('unfolds them again once the option is ticked back', async () => {
+        it('prints them as shown again once the option is cleared back', async () => {
             await modal.show(PREVIEW_MODE_DOCUMENT);
             const page = loadedPage();
 
-            tick(unfoldBlocks(), false);
             tick(unfoldBlocks(), true);
+            tick(unfoldBlocks(), false);
 
-            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
-            expect(modal.unfoldBlocks).toBe(true);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
+            expect(modal.unfoldBlocks).toBe(false);
         });
 
         it('keeps the choice in a preview drawn again for another option', async () => {
             await showWithActivities();
             loadedPage();
-            tick(unfoldBlocks(), false);
+            tick(unfoldBlocks(), true);
 
             choose(ACTIVITY_MODE_OMIT);
             await settle();
             const page = loadedPage();
 
             expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_OMIT);
-            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
         });
 
         it('offers no choice for the worksheet, which has no blocks to fold', async () => {
@@ -1105,10 +1105,10 @@ describe('ModalPrintPreview and its options panel', () => {
             await modal.show(PREVIEW_MODE_DOCUMENT);
             Object.defineProperty(modal.iframe, 'contentDocument', { configurable: true, get: () => null });
 
-            expect(() => tick(unfoldBlocks(), false)).not.toThrow();
+            expect(() => tick(unfoldBlocks(), true)).not.toThrow();
 
             const page = loadedPage();
-            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
         });
 
         it('leaves a document that cannot be reached as it was built', async () => {
@@ -1120,8 +1120,8 @@ describe('ModalPrintPreview and its options panel', () => {
                 },
             });
 
-            expect(() => tick(unfoldBlocks(), false)).not.toThrow();
-            expect(modal.unfoldBlocks).toBe(false);
+            expect(() => tick(unfoldBlocks(), true)).not.toThrow();
+            expect(modal.unfoldBlocks).toBe(true);
         });
 
         it('ignores the option while the preview is closed', async () => {
@@ -1129,10 +1129,10 @@ describe('ModalPrintPreview and its options panel', () => {
             const page = loadedPage();
             modal.close();
 
-            tick(unfoldBlocks(), false);
+            tick(unfoldBlocks(), true);
 
-            expect(modal.unfoldBlocks).toBe(true);
-            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(false);
+            expect(modal.unfoldBlocks).toBe(false);
+            expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
         });
     });
 

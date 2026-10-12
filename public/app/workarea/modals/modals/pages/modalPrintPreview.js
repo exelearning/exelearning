@@ -103,7 +103,7 @@ export default class ModalPrintPreview {
         /** Write each external link's URL after it in the document. */
         this.showLinkUrls = true;
         /** Print folded blocks unfolded; false prints them as the preview shows them. */
-        this.unfoldBlocks = true;
+        this.unfoldBlocks = false;
         this.requestId = 0;
         this.disposePreview = null;
         this.retainPreview = null;

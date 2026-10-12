@@ -95,7 +95,7 @@ describe('PrintOptionsPanel', () => {
                             <label class="form-check-label" for="printOptLinkUrls">Show link URLs</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks" checked>
+                            <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks">
                             <label class="form-check-label" for="printOptUnfoldBlocks">Print all visible content</label>
                         </div>
                         <div class="form-check" hidden>
@@ -143,7 +143,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: null,
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -307,7 +307,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: null,
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -319,7 +319,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: ['c1', 'c3'],
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -331,7 +331,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: [],
                 valid: false,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -344,7 +344,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: ['c2', 'c3'],
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -357,7 +357,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: null,
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -367,10 +367,10 @@ describe('PrintOptionsPanel', () => {
             expect(panel.getState().showLinkUrls).toBe(false);
         });
 
-        it('says when the blocks are to print as the preview shows them', () => {
-            unfoldBlocks().checked = false;
+        it('says when folded blocks are to print unfolded', () => {
+            unfoldBlocks().checked = true;
 
-            expect(panel.getState()).toEqual(expect.objectContaining({ showLinkUrls: true, unfoldBlocks: false }));
+            expect(panel.getState()).toEqual(expect.objectContaining({ showLinkUrls: true, unfoldBlocks: true }));
         });
     });
 
@@ -386,7 +386,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: null,
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -398,7 +398,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: ['c2', 'c3'],
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -409,7 +409,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: [],
                 valid: false,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
 
             tick(selectAll(), true);
@@ -418,7 +418,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: null,
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -437,16 +437,16 @@ describe('PrintOptionsPanel', () => {
             expect(onChange).toHaveBeenCalledTimes(2);
         });
 
-        it('reports the unfolding of blocks being turned off and on, saying which option changed', () => {
-            tick(unfoldBlocks(), false);
+        it('reports the unfolding of blocks being turned on and off, saying which option changed', () => {
+            tick(unfoldBlocks(), true);
             expect(onChange).toHaveBeenLastCalledWith(
-                expect.objectContaining({ unfoldBlocks: false, showLinkUrls: true }),
+                expect.objectContaining({ unfoldBlocks: true, showLinkUrls: true }),
                 PRINT_UNFOLD_BLOCKS_FIELD
             );
 
-            tick(unfoldBlocks(), true);
+            tick(unfoldBlocks(), false);
             expect(onChange).toHaveBeenLastCalledWith(
-                expect.objectContaining({ unfoldBlocks: true }),
+                expect.objectContaining({ unfoldBlocks: false }),
                 PRINT_UNFOLD_BLOCKS_FIELD
             );
             expect(onChange).toHaveBeenCalledTimes(2);
@@ -454,7 +454,7 @@ describe('PrintOptionsPanel', () => {
 
         it('keeps the activity choice when a document option changes', () => {
             choose('appendix');
-            tick(unfoldBlocks(), false);
+            tick(unfoldBlocks(), true);
 
             expect(onChange).toHaveBeenLastCalledWith(
                 {
@@ -462,7 +462,7 @@ describe('PrintOptionsPanel', () => {
                     selectedActivities: null,
                     valid: true,
                     showLinkUrls: true,
-                    unfoldBlocks: false,
+                    unfoldBlocks: true,
                 },
                 PRINT_UNFOLD_BLOCKS_FIELD
             );
@@ -504,10 +504,10 @@ describe('PrintOptionsPanel', () => {
     describe('document options', () => {
         beforeEach(() => configure({ activities: [] }));
 
-        it('are both offered, checked, in the order they are shown', () => {
+        it('are both offered, in the order they are shown, with only the link URLs ticked', () => {
             expect(panel.documentOptions()).toEqual([linkUrls(), unfoldBlocks()]);
             expect(linkUrls().checked).toBe(true);
-            expect(unfoldBlocks().checked).toBe(true);
+            expect(unfoldBlocks().checked).toBe(false);
         });
 
         it('can be forbidden and allowed again', () => {
@@ -529,7 +529,7 @@ describe('PrintOptionsPanel', () => {
                     selectedActivities: null,
                     valid: true,
                     showLinkUrls: false,
-                    unfoldBlocks: true,
+                    unfoldBlocks: false,
                 },
                 PRINT_LINK_URLS_FIELD
             );
@@ -565,7 +565,7 @@ describe('PrintOptionsPanel', () => {
                 selectedActivities: ['c1', 'c2', 'c3'],
                 valid: true,
                 showLinkUrls: true,
-                unfoldBlocks: true,
+                unfoldBlocks: false,
             });
         });
 
@@ -581,7 +581,7 @@ describe('PrintOptionsPanel', () => {
                     selectedActivities: null,
                     valid: true,
                     showLinkUrls: true,
-                    unfoldBlocks: true,
+                    unfoldBlocks: false,
                 },
                 PRINT_UNPRINTABLE_TITLES_FIELD
             );
@@ -778,7 +778,7 @@ describe('PrintOptionsPanel', () => {
             toggle.click();
             root.querySelector('.print-options-close').click();
             tick(linkUrls(), false);
-            tick(unfoldBlocks(), false);
+            tick(unfoldBlocks(), true);
             tick(unprintable(), true);
 
             expect(toggleSpy).not.toHaveBeenCalled();
