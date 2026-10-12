@@ -20,6 +20,7 @@ import path from 'node:path';
 import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-helpers';
 import { encryptDataGame } from '../../../../src/shared/export/utils/dataGameCipher';
+import { unzipSync } from '../../../../src/shared/export';
 
 const FIXTURE = 'test/fixtures/old_el_cid.elp';
 
@@ -3062,6 +3063,67 @@ test.describe('Print: a formula shows once', () => {
         await expect(frame.locator('.worksheet .exe-math-rendered svg').first()).toBeVisible();
         expect(await mathmlHidden(page, frame)).toEqual({ screen: true, paper: true });
     });
+});
+
+test.describe('Print: a website whose style fixes its header', () => {
+    /** Export the open project as a website and return its files. */
+    async function exportWebsite(page: Page): Promise<Record<string, Uint8Array>> {
+        await page.locator('#dropdownFile').click();
+        const submenu = page.locator('#dropdownExportAs:visible, #dropdownExportAsOffline:visible').first();
+        if ((await submenu.count()) > 0) await submenu.click();
+        const option = page
+            .locator('#navbar-button-export-html5:visible, #navbar-button-exportas-html5:visible')
+            .first();
+        const download = page.waitForEvent('download', { timeout: 90000 });
+        await option.click();
+        return unzipSync(new Uint8Array(readFileSync((await (await download).path())!)));
+    }
+
+    const TYPES: Record<string, string> = {
+        html: 'text/html',
+        css: 'text/css',
+        js: 'text/javascript',
+        svg: 'image/svg+xml',
+    };
+
+    // On paper a fixed element is laid over the top of every sheet. These four styles fix their
+    // header, which on the first sheet covered the page title.
+    for (const style of ['flux', 'neo', 'nova', 'zen']) {
+        test(`keeps the ${style} page title clear of the header on paper`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, `Fixed header ${style}`);
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            await page.evaluate(theme => (window as any).eXeLearning.app.themes.selectTheme(theme, true, true), style);
+            const files = await exportWebsite(page);
+
+            const site = await page.context().newPage();
+            await site.route('http://export.test/**', route => {
+                const file = decodeURIComponent(new URL(route.request().url()).pathname.slice(1));
+                const body = files[file];
+                if (!body) return route.fulfill({ status: 404, body: '' });
+                const type = TYPES[file.split('.').pop() || ''] || 'application/octet-stream';
+                return route.fulfill({ status: 200, contentType: type, body: Buffer.from(body) });
+            });
+            // The width of an A4 sheet between its margins.
+            await site.setViewportSize({ width: 718, height: 1000 });
+            await site.goto('http://export.test/index.html');
+            await site.emulateMedia({ media: 'print' });
+
+            const paper = await site.evaluate(() => {
+                const header = document.querySelector('.main-header, .page > header') as HTMLElement;
+                const title = document.querySelector('.page-title') as HTMLElement;
+                const box = title.getBoundingClientRect();
+                const atTitle = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+                return { header: getComputedStyle(header).position, titleOnTop: !!atTitle && title.contains(atTitle) };
+            });
+            expect(paper.header).toBe('static');
+            expect(paper.titleOnTop).toBe(true);
+            await site.close();
+        });
+    }
 });
 
 test.describe('Print: titles stay legible without their backgrounds', () => {

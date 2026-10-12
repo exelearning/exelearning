@@ -834,6 +834,18 @@ html:not(.mode-teacher) .js .teacher-only {
     }
 }
 
+/* Some styles fix their header to the top of the screen (Flux, Neo, Nova, Zen). On paper a fixed
+   element is laid over the top of every sheet, where it covered the page title and whatever else
+   began there. It takes its place once, at the start, as the print preview already has it.
+   `!important` because a style fixes it with selectors of its own, some more specific than these. */
+@media print {
+    .exe-export .main-header,
+    .exe-export .page > header,
+    .exe-export .package-header {
+        position: static !important;
+    }
+}
+
 /* A block's heading goes to the sheet that holds the start of what it heads. What is kept whole,
    such as a 3D model, moves to the next sheet when it does not fit, and would leave its heading
    alone at the foot of the one before. */
