@@ -866,6 +866,9 @@ test.describe('3D Viewer iDevice', () => {
     });
 
     test.describe('Print', () => {
+        // Each test draws its models with WebGL, which is slow when several run at once.
+        test.setTimeout(120000);
+
         // The desktop app prints a copy of the preview made without its scripts, so the model has
         // to reach the copy as a picture: a GLB model lives inside <model-viewer>'s shadow root, an
         // STL model on a WebGL canvas. The tests stand in for the desktop app and keep the copy
@@ -879,12 +882,17 @@ test.describe('3D Viewer iDevice', () => {
             },
         ];
 
-        /** Add a 3D viewer with the given model to a new project, and open its print preview. */
+        /**
+         * Add a 3D viewer with the given model to a new project, and open its print preview.
+         *
+         * @param beforePreview - What to do to the project once the viewer is in it
+         */
         async function openPrintPreviewWith(
             page: Page,
             createProject: (page: Page, title: string) => Promise<string>,
             format: string,
             fixture: string,
+            beforePreview?: () => Promise<void>,
         ): Promise<FrameLocator> {
             const projectUuid = await createProject(page, `3D Viewer print ${format}`);
             await gotoWorkarea(page, projectUuid);
@@ -893,6 +901,7 @@ test.describe('3D Viewer iDevice', () => {
             await add3DViewerIdevice(page);
             await uploadModelViaFilePicker(page, fixture);
             await save3DViewerIdevice(page);
+            await beforePreview?.();
 
             await page.locator('#dropdownFile').click();
             await page.locator('#navbar-button-export-print').click();
@@ -956,6 +965,11 @@ test.describe('3D Viewer iDevice', () => {
                         )
                         .toBe(true);
                 }
+
+                // On paper the viewer is kept whole on one sheet.
+                await page.emulateMedia({ media: 'print' });
+                expect(await wrapper.evaluate(element => getComputedStyle(element).breakInside)).toBe('avoid');
+                await page.emulateMedia({ media: null });
 
                 await printDesktopCopy(page);
 
@@ -1037,6 +1051,66 @@ test.describe('3D Viewer iDevice', () => {
             expect(pictures.small).not.toBeNull();
             expect(shape(pictures.large!)).toBeCloseTo(shape(viewers.large), 1);
             expect(shape(pictures.small!)).toBeCloseTo(shape(viewers.small), 1);
+        });
+
+        test('pictures a GLB model the preview was never scrolled to', async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            // A long text above the viewer puts it well below what the preview shows.
+            const preview = await openPrintPreviewWith(page, createProject, 'GLB', 'test/fixtures/Duck.glb', () =>
+                page.evaluate(() => {
+                    const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                    const first = binding.getPages()[0];
+                    const block = binding.createBlock(first.id, 'Long text');
+                    binding.createComponent(first.id, block, 'text', {
+                        htmlContent: `<div class="exe-text">${'<p>A paragraph that pushes the viewer down.</p>'.repeat(60)}</div>`,
+                    });
+                    const blocks = binding.getBlocks(first.id);
+                    binding.moveBlockRelative(blocks[blocks.length - 1].id, -(blocks.length - 1));
+                }),
+            );
+            const viewer = preview.locator('.three-d-viewer-wrapper model-viewer').first();
+
+            // model-viewer waits for a viewer to scroll into view before loading its model. On a
+            // page built for printing it loads it at once, so the copy has something to picture.
+            await expect
+                .poll(() => viewer.evaluate((element: any) => Boolean(element.loaded)), { timeout: 30000 })
+                .toBe(true);
+            expect(await viewer.evaluate(element => element.getBoundingClientRect().top > window.innerHeight)).toBe(
+                true,
+            );
+
+            // Kept whole, the viewer can move to the next sheet; its block's heading goes with it.
+            await page.emulateMedia({ media: 'print' });
+            await expect(preview.locator('article.box:has(.three-d-viewer-wrapper) > .box-head').first()).toHaveCSS(
+                'break-after',
+                'avoid',
+            );
+            await page.emulateMedia({ media: null });
+
+            await printDesktopCopy(page);
+
+            const colours = await page.evaluate(async () => {
+                const copy = new DOMParser().parseFromString((window as any).__printedSnapshot, 'text/html');
+                const image = copy.querySelector('.three-d-viewer-wrapper img[src^="data:image/"]');
+                if (!image) return 0;
+                const decoded = new Image();
+                decoded.src = image.getAttribute('src')!;
+                await decoded.decode();
+                const canvas = document.createElement('canvas');
+                canvas.width = decoded.naturalWidth;
+                canvas.height = decoded.naturalHeight;
+                const context = canvas.getContext('2d')!;
+                context.drawImage(decoded, 0, 0);
+                const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+                const seen = new Set<string>();
+                for (let i = 0; i < data.length; i += 4 * 101) {
+                    seen.add(`${data[i]},${data[i + 1]},${data[i + 2]},${data[i + 3]}`);
+                }
+                return seen.size;
+            });
+            expect(colours).toBeGreaterThan(1);
         });
     });
 });

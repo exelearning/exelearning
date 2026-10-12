@@ -834,6 +834,16 @@ html:not(.mode-teacher) .js .teacher-only {
     }
 }
 
+/* A block's heading goes to the sheet that holds the start of what it heads. What is kept whole,
+   such as a 3D model, moves to the next sheet when it does not fit, and would leave its heading
+   alone at the foot of the one before. */
+@media print {
+    .exe-export .box-head {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+}
+
 /* Printing opens every block that is merely folded.
    A folded block is not hidden content: it is in the page, collapsed, and printing it gives a
    sheet with a heading and nothing under it — which reads as an empty block rather than a missing

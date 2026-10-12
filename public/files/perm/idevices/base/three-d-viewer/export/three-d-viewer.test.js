@@ -1134,6 +1134,48 @@ describe('three-d-viewer empty-state visibility (#1957)', () => {
         });
     });
 
+    describe('applyConfig on a page built for printing', () => {
+        function makeInstance() {
+            const RuntimeClass = $threedviewer.__ThreeDViewerRuntime;
+            const inst = Object.create(RuntimeClass.prototype);
+            inst.modelViewer = document.createElement('model-viewer');
+            inst.config = { src: 'content/resources/duck.glb', alt: '', cameraControls: true, autoRotate: false };
+            inst.ideviceId = '';
+            inst.applyAnimation = () => {};
+            inst.toggleEmpty = () => {};
+            return inst;
+        }
+        afterEach(() => {
+            delete window.$exeExport;
+        });
+
+        it('loads the model at once, as one never scrolled to would print blank', async () => {
+            window.$exeExport = { printing: { kind: 'document', activities: null } };
+            const inst = makeInstance();
+            await inst.applyConfig();
+            expect(inst.modelViewer.getAttribute('loading')).toBe('eager');
+        });
+
+        it('counts the viewer as visible once its model has loaded, in view or not', async () => {
+            window.$exeExport = { printing: { kind: 'document', activities: null } };
+            const inst = makeInstance();
+            await inst.applyConfig();
+            const viewer = inst.modelViewer;
+
+            expect(viewer.modelIsVisible).toBe(false);
+            Object.defineProperty(viewer, 'loaded', { configurable: true, value: true });
+            expect(viewer.modelIsVisible).toBe(true);
+        });
+
+        it('leaves an ordinary page loading and drawing the model when it scrolls into view', async () => {
+            window.$exeExport = { printing: null };
+            const inst = makeInstance();
+            await inst.applyConfig();
+            expect(inst.modelViewer.hasAttribute('loading')).toBe(false);
+            expect(Object.getOwnPropertyDescriptor(inst.modelViewer, 'modelIsVisible')).toBeUndefined();
+        });
+    });
+
     describe('renderSTL hides the overlay after booting the shared runtime', () => {
         let prevThree;
         let prevViewer;
