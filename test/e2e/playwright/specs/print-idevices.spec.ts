@@ -65,18 +65,21 @@ async function dismissImportAlert(page: Page) {
 }
 
 /**
- * Open File → Print iDevices and wait for the worksheet to load.
+ * Open File → Print, choose "Print only the activities" and wait for the worksheet to load.
  */
 async function openWorksheet(page: Page) {
     await dismissImportAlert(page);
     await page.locator('#dropdownFile').click();
 
-    const entry = page.locator('#navbar-button-print-idevices');
+    const entry = page.locator('#navbar-button-export-print');
     await entry.waitFor({ state: 'visible', timeout: 5000 });
     await entry.click();
 
+    // The document is drawn first; the worksheet is chosen once it is, as a user would see it.
     const overlay = page.locator('#printPreviewOverlay');
     await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
+    await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 60000 });
+    await page.locator('#printOptionsPanel input[name="print-activity-mode"][value="idevices"]').check();
 
     // The worksheet is generated in memory and handed to the iframe as a blob. Waiting for it to
     // be visible rather than merely attached matters: the overlay keeps the iframe hidden until it
@@ -534,7 +537,9 @@ test.describe('Print iDevices', () => {
             ).__moleculeCaptureProbe;
             return { viewers: state.viewers.size, surfaces: state.surfaces, captures: state.captures };
         });
-        expect(state).toEqual({ viewers: 1, surfaces: [true, true], captures: 4 });
+        // Each opening draws the molecules twice, two of them each time: the worksheet is reached
+        // through the document, whose appendix holds the same exercise.
+        expect(state).toEqual({ viewers: 1, surfaces: [true, true, true, true], captures: 8 });
     });
 
     for (const idevice of [
@@ -915,6 +920,39 @@ test.describe('Print iDevices', () => {
         const worksheet = frame.locator('.worksheet');
         await expect(worksheet).toContainText('é');
         await expect(worksheet).not.toContainText('Ã©');
+    });
+
+    test('is reached from the print preview, as the File menu has no entry of its own for it', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Worksheet from the preview');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(
+            guess => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Activities');
+                binding.createComponent(parent.id, binding.createBlock(parent.id, 'Riddles'), 'guess', {
+                    htmlContent: guess,
+                });
+            },
+            `<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">${encryptDataGame(
+                JSON.stringify({
+                    wordsGame: [{ word: 'sun', definition: 'A star', type: 0 }],
+                    percentajeQuestions: 100,
+                }),
+            )}</div></div>`,
+        );
+
+        await page.locator('#dropdownFile').click();
+        await expect(page.locator('#navbar-button-export-print')).toBeVisible();
+        await expect(page.locator('#navbar-button-print-idevices')).toHaveCount(0);
+        await page.keyboard.press('Escape');
+
+        const { overlay, frame } = await openWorksheet(page);
+        await expect(overlay.locator('.print-preview-title-text')).toHaveText('Print iDevices');
+        await expect(frame.locator('.worksheet')).toContainText('A star');
     });
 
     test('titles the overlay for the worksheet and restores it afterwards', async ({

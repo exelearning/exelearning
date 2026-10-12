@@ -51,7 +51,6 @@ describe('NavbarFile', () => {
             exportHTML5SPButton: createButton('navbar-button-export-html5-sp'),
             exportHTML5SPAsButton: createButton('navbar-button-exportas-html5-sp'),
             exportPrintButton: createButton('navbar-button-export-print'),
-            printIdevicesButton: createButton('navbar-button-print-idevices'),
             exportSCORM12Button: createButton('navbar-button-export-scorm12'),
             exportSCORM12AsButton: createButton('navbar-button-exportas-scorm12'),
             exportSCORM2004Button: createButton('navbar-button-export-scorm2004'),
@@ -1716,67 +1715,6 @@ describe('NavbarFile', () => {
             );
 
             consoleWarnSpy.mockRestore();
-        });
-    });
-
-    describe('setPrintIdevicesEvent', () => {
-        beforeEach(() => {
-            navbarFile = new NavbarFile(mockMenu);
-        });
-
-        it('should find the print idevices button', () => {
-            expect(navbarFile.printIdevicesButton).toBe(mockButtons.printIdevicesButton);
-        });
-
-        it('should register a click listener', () => {
-            navbarFile.setPrintIdevicesEvent();
-
-            expect(mockButtons.printIdevicesButton.addEventListener).toHaveBeenCalledWith(
-                'click',
-                expect.any(Function)
-            );
-        });
-
-        it('should open the worksheet overlay on click', () => {
-            const openSpy = vi.spyOn(navbarFile, 'openPrintPreview').mockImplementation(() => {});
-            vi.spyOn(navbarFile, 'listInteractiveActivities').mockReturnValue([]);
-            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
-            navbarFile.setPrintIdevicesEvent();
-
-            const handler = mockButtons.printIdevicesButton.addEventListener.mock.calls[0][1];
-            handler();
-
-            expect(openSpy).toHaveBeenCalledWith('idevices', null, null, []);
-        });
-
-        it('should let the worksheet overlay offer the activities to choose from', () => {
-            const openSpy = vi.spyOn(navbarFile, 'openPrintPreview').mockImplementation(() => {});
-            const activities = [{ id: 'c1', type: 'guess', pageTitle: 'Tema 1', blockTitle: '' }];
-            vi.spyOn(navbarFile, 'listInteractiveActivities').mockReturnValue(activities);
-            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
-            navbarFile.setPrintIdevicesEvent();
-
-            const handler = mockButtons.printIdevicesButton.addEventListener.mock.calls[0][1];
-            handler();
-
-            expect(openSpy).toHaveBeenCalledWith('idevices', null, null, activities);
-        });
-
-        it('should do nothing while an iDevice is open for editing', () => {
-            const openSpy = vi.spyOn(navbarFile, 'openPrintPreview').mockImplementation(() => {});
-            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
-            navbarFile.setPrintIdevicesEvent();
-
-            const handler = mockButtons.printIdevicesButton.addEventListener.mock.calls[0][1];
-            handler();
-
-            expect(openSpy).not.toHaveBeenCalled();
-        });
-
-        it('should not throw when the button is absent', () => {
-            navbarFile.printIdevicesButton = null;
-
-            expect(() => navbarFile.setPrintIdevicesEvent()).not.toThrow();
         });
     });
 

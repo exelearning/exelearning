@@ -87,9 +87,6 @@ export default class NavbarFile {
         this.exportPrintButton = this.menu.navbar.querySelector(
             '#navbar-button-export-print'
         );
-        this.printIdevicesButton = this.menu.navbar.querySelector(
-            '#navbar-button-print-idevices'
-        );
         this.exportSCORM12Button = this.menu.navbar.querySelector(
             '#navbar-button-export-scorm12'
         );
@@ -154,7 +151,6 @@ export default class NavbarFile {
         this.setExportHTML5SPEvent();
         this.setExportHTML5SPAsEvent();
         this.setExportPrintEvent();
-        this.setPrintIdevicesEvent();
         this.setExportSCORM12Event();
         this.setExportSCORM12AsEvent();
         this.setExportSCORM2004Event();
@@ -900,17 +896,6 @@ export default class NavbarFile {
             console.warn('[NavbarFile] Could not inspect the project:', error);
             return [];
         }
-    }
-
-    /**
-     * Open the worksheet built from the activities in the project.
-     */
-    setPrintIdevicesEvent() {
-        if (!this.printIdevicesButton) return;
-        this.printIdevicesButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.openPrintPreview(PREVIEW_MODE_IDEVICES, null, null, this.listInteractiveActivities());
-        });
     }
 
     /**
