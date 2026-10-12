@@ -209,9 +209,9 @@ console.error = (...args) => {
 process.on('uncaughtException', e => log.error('uncaughtException:', e));
 process.on('unhandledRejection', e => log.error('unhandledRejection:', e));
 
-// Locale detection for fallback strings
-const defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
-console.log(`Default locale: ${defaultLocale}.`);
+// Locale for the fallback strings of the native dialogs. It is read once the app is ready: before
+// that app.getLocale() returns an empty string, and every dialog spoke English on a Spanish system.
+let defaultLocale = 'en';
 
 let appDataPath;
 
@@ -1372,6 +1372,9 @@ app.on('new-window-for-tab', () => {
 });
 
 app.whenReady().then(() => {
+    defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
+    console.log(`Default locale: ${defaultLocale}.`);
+
     // A fresh process has no file "currently associated" with the window
     // yet — clear the on-disk slot so a leftover filename from a previous
     // run does not shadow the title-derived suggestedName on first Save.
