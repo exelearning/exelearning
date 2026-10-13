@@ -213,7 +213,12 @@ describe('three-d-viewer runtime', () => {
     // bootSTL
     // ----------------------------------------------------------------
     describe('bootSTL', () => {
-        it('keeps the drawn frame readable, for the copy of the page the desktop app prints', async () => {
+        afterEach(() => {
+            delete window.$exeExport;
+        });
+
+        /** The options the STL viewer creates its renderer with. */
+        async function rendererOptionsOf() {
             const rendererOptions = [];
             class Stub {
                 constructor() {
@@ -248,8 +253,20 @@ describe('three-d-viewer runtime', () => {
             }
 
             expect(rendererOptions).toHaveLength(1);
-            expect(rendererOptions[0]).toMatchObject({ antialias: true, preserveDrawingBuffer: true });
             expect(rendererOptions[0].canvas).toBe(wrapper.querySelector('canvas.three-js-canvas'));
+            return rendererOptions[0];
+        }
+
+        it('keeps the drawn frame readable on a page built for printing, for the copy the desktop app prints', async () => {
+            window.$exeExport = { printing: { kind: 'document', activities: null } };
+
+            expect(await rendererOptionsOf()).toMatchObject({ antialias: true, preserveDrawingBuffer: true });
+        });
+
+        it('does not keep it anywhere else, where it would only cost drawing speed', async () => {
+            window.$exeExport = { printing: null };
+
+            expect(await rendererOptionsOf()).toMatchObject({ antialias: true, preserveDrawingBuffer: false });
         });
     });
 
