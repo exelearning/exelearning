@@ -610,7 +610,7 @@ print: the reader decides what to print looking at your screen rules. A change o
 such as Educablue's bold, ununderlined links, is a surprise there.
 
 eXeLearning brings its own print rules into the preview: folded blocks open (while *Print all
-visible content* is ticked), no *Made with eXeLearning* link, links in the text colour and
+visible content* is ticked), no *Made with eXeLearning* link, external links in the text colour and
 underlined, long code lines wrapped. It also gives the page a 15 mm margin, the
 `@page { margin: 1.5cm; }` every base style prints with. Keep that margin and the preview breaks
 lines where the paper will.

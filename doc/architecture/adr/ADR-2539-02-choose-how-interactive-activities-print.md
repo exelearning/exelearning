@@ -265,8 +265,10 @@ for the piece under it, which a block does not need.
   window.
 - The worksheet renderer gains a second consumer without changing: it already produces per-activity
   fragments.
-- Assets need no extra work — `preprocessPages` has already resolved `asset://` to blob URLs before
-  the hook point.
+- Assets need little extra work — `preprocessPages` has already resolved the `asset://` references
+  the pages hold to blob URLs before the hook point. A picture that only appears once an exercise is
+  read from its encrypted payload is copied and resolved after rendering, and an asset nothing
+  printed refers to is never copied.
 - Adding an adapter improves all four choices at once.
 
 ### Negative
