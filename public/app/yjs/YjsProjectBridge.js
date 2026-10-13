@@ -3966,6 +3966,11 @@ class YjsProjectBridge {
       if (typeof this.documentManager?.markClean === 'function') {
         this.documentManager.markClean();
       }
+      // Without server storage (Electron, static) assets are never uploaded:
+      // the file just opened already holds them, so they are not unsaved (#2540).
+      if (window.eXeLearning?.app?.capabilities?.storage?.remote === false) {
+        this.assetManager?.markAssetsSavedLocally?.();
+      }
       if (!this.documentManager?._initialized && typeof this.documentManager?.captureBaselineState === 'function') {
         this.documentManager.captureBaselineState();
       }
