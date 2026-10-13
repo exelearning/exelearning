@@ -49,8 +49,11 @@ function page(components: ExportComponent[], overrides: Partial<ExportPage> = {}
 
 const text = () => component({ id: 'text-1', type: 'text', content: '<p>El Cid</p>' });
 
-/** An activity with no adapter yet, whose note says it cannot be printed *yet*. */
-const WAITING = 'an-activity-with-no-adapter';
+/**
+ * An activity whose adapter cannot read what it stores (the tests give it no payload): the one
+ * left with no printed form that is not settled, so its note says it cannot be printed *yet*.
+ */
+const WAITING = 'guess';
 
 /** A padlock that guards no writing: its instructions only say how to open it. */
 const emptyPadlock = () =>
@@ -213,6 +216,19 @@ describe('applyActivityMode', () => {
             expect(settled).toContain('No disponible en impresión');
             expect(waiting).toContain('Aún no');
         });
+
+        it.each(['in-place', 'appendix', 'omit'] as const)(
+            'prints an iDevice it does not know as it always has, in %s mode',
+            mode => {
+                // One an administrator installed is content of its own, not an activity.
+                const custom = component({ id: 'custom', type: 'my-accordion', content: '<p>Contenido propio</p>' });
+
+                const result = run([page([custom])], mode);
+
+                expect(result).toHaveLength(1);
+                expect(componentsOf(result)).toEqual([custom]);
+            },
+        );
 
         it('prints the same note when the payload cannot be read', () => {
             const broken = component({ content: '<div class="adivina-DataGame js-hidden">not a payload</div>' });
@@ -636,8 +652,10 @@ describe('listInteractiveActivities', () => {
                 // A padlock prints the writing it guards. One that guards none says so, but that is
                 // about this component, not about padlocks.
                 { ...emptyPadlock(), id: 'padlock' },
-                // Still waiting for an adapter, which is a gap to report rather than a decision.
+                // Data its adapter cannot read, which is a gap to report rather than a decision.
                 component({ id: 'waiting', type: WAITING, content: '' }),
+                // Content of its own, which is not offered at all.
+                component({ id: 'custom', type: 'my-accordion', content: '<p>Contenido propio</p>' }),
             ]),
         ];
 

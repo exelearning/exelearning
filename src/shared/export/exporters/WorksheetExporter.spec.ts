@@ -450,27 +450,29 @@ describe('WorksheetExporter', () => {
     });
 
     describe('activities with no adapter', () => {
-        it('reports gamified activities that cannot be printed yet', async () => {
+        it('does not report an iDevice it does not know, which is content rather than a missing activity', async () => {
+            // One an administrator installed: no more missing from the worksheet than text is.
             const exporter = new WorksheetExporter(
                 documentOf([
                     {
                         title: 'La Edad Media',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
+                            { type: 'my-accordion', content: '<p>Contenido propio</p>' },
                         ],
                     },
                 ]),
             );
 
-            expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'La Edad Media' },
-            ]);
+            const model = await exporter.buildModel();
+
+            expect(model.pages[0].activities).toHaveLength(1);
+            expect(model.unsupported).toEqual([]);
         });
 
         it('marks as settled the activities that will never have a printed form', async () => {
-            // Identify is waiting for an adapter; these three are not. The list has to say which
-            // is which, or a teacher reads the whole of it as a promise.
+            // A Guess whose data cannot be read is a gap to fix; these three are not. The list has
+            // to say which is which, or a teacher reads the whole of it as a promise.
             const exporter = new WorksheetExporter(
                 documentOf([
                     {
@@ -479,7 +481,7 @@ describe('WorksheetExporter', () => {
                             { type: 'trivial', content: unadaptedContent() },
                             { type: 'interactive-video', content: unadaptedContent() },
                             { type: 'quick-questions-video', content: unadaptedContent() },
-                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
+                            { type: 'guess', content: unadaptedContent() },
                         ],
                     },
                 ]),
@@ -492,7 +494,7 @@ describe('WorksheetExporter', () => {
                 'interactive-video',
                 'quick-questions-video',
             ]);
-            expect(reported.find(entry => entry.ideviceType === 'an-activity-with-no-adapter')?.reason).toBeUndefined();
+            expect(reported.find(entry => entry.ideviceType === 'guess')?.reason).toBe('invalid-data');
         });
 
         it('names an activity with no adapter by the title it is given for its iDevice', async () => {
@@ -515,7 +517,7 @@ describe('WorksheetExporter', () => {
                         components: [
                             { type: 'guess', content: guessContent([{ word: 'Uno', definition: 'Primero' }]) },
                             { type: 'guess', content: guessContent([{ word: 'Dos', definition: 'Segundo' }]) },
-                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
+                            { type: 'trivial', content: unadaptedContent() },
                         ],
                     },
                 ]),
@@ -571,39 +573,35 @@ describe('WorksheetExporter', () => {
             expect((await exporter.buildModel()).unsupported).toHaveLength(0);
         });
 
-        // A type no iDevice answers to: every one that exists now has a paper form, and this test is
-        // about what happens to an activity without one rather than about any particular activity.
-        it.each(['true-or-false', 'an-activity-with-no-adapter'])(
-            'reports an unsupported %s activity even when its HTML is empty',
-            async type => {
-                const exporter = new WorksheetExporter(
-                    documentOf([
-                        {
-                            title: 'JSON exercises',
-                            components: [{ type, content: '', properties: { questions: [{ text: 'Question' }] } }],
-                        },
-                    ]),
-                );
+        // What counts is the type, not what it drew: one stores JSON, the other is HTML.
+        it.each(['magnifier', 'trivial'])('reports a %s activity even when its HTML is empty', async type => {
+            const exporter = new WorksheetExporter(
+                documentOf([
+                    {
+                        title: 'Exercises',
+                        components: [{ type, content: '', properties: { questions: [{ text: 'Question' }] } }],
+                    },
+                ]),
+            );
 
-                const model = await exporter.buildModel();
-                expect(model.pages).toHaveLength(0);
-                expect(model.unsupported).toEqual([{ ideviceType: type, pageTitle: 'JSON exercises' }]);
-                const result = await exporter.generate();
-                expect(result.success).toBe(true);
-                expect(result.html).toContain('<aside class="worksheet-unsupported">');
-                expect(result.html).toContain(`<li>${type} — JSON exercises: Cannot be printed yet (1)</li>`);
-            },
-        );
+            const model = await exporter.buildModel();
+            expect(model.pages).toHaveLength(0);
+            expect(model.unsupported).toEqual([{ ideviceType: type, pageTitle: 'Exercises', reason: 'not-printable' }]);
+            const result = await exporter.generate();
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('<aside class="worksheet-unsupported">');
+            expect(result.html).toContain(`<li>${type} — Exercises: Not available in print (1)</li>`);
+        });
 
-        it('reports JSON omissions alongside printable exercises, once per type and page', async () => {
+        it('reports what it leaves out alongside printable exercises, once per type and page', async () => {
             const exporter = new WorksheetExporter(
                 documentOf([
                     {
                         title: 'Mixed exercises',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'an-activity-with-no-adapter', content: '' },
-                            { type: 'an-activity-with-no-adapter', content: '' },
+                            { type: 'trivial', content: '' },
+                            { type: 'trivial', content: '' },
                         ],
                     },
                 ]),
@@ -612,7 +610,7 @@ describe('WorksheetExporter', () => {
             const model = await exporter.buildModel();
             expect(model.pages[0].activities).toHaveLength(1);
             expect(model.unsupported).toEqual([
-                { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Mixed exercises' },
+                { ideviceType: 'trivial', pageTitle: 'Mixed exercises', reason: 'not-printable' },
             ]);
         });
 
@@ -622,20 +620,20 @@ describe('WorksheetExporter', () => {
                     {
                         title: 'Una',
                         components: [
-                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
-                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
+                            { type: 'trivial', content: unadaptedContent() },
+                            { type: 'trivial', content: unadaptedContent() },
                         ],
                     },
                     {
                         title: 'Otra',
-                        components: [{ type: 'an-activity-with-no-adapter', content: unadaptedContent() }],
+                        components: [{ type: 'trivial', content: unadaptedContent() }],
                     },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Una' },
-                { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Otra' },
+                { ideviceType: 'trivial', pageTitle: 'Una', reason: 'not-printable' },
+                { ideviceType: 'trivial', pageTitle: 'Otra', reason: 'not-printable' },
             ]);
         });
     });

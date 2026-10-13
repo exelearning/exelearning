@@ -123,26 +123,19 @@ interactive activity, these are all the panel offers, and nothing has to be chan
 Every change draws the preview again after a short pause (250 ms), so ticking several activities in
 a row draws it once, and Print is disabled while the preview is being drawn.
 
-**"Interactive" is mostly derived, with the exceptions written down.** The common case comes from
-`getIdeviceConfig(type).componentType === 'html'`, so a new iDevice is classified the day it is
-added. Lists record where storage format and activity part company, each entry carrying its reason:
+**"Interactive" is an allow-list: the iDevices printing has an answer for.** An activity is one a
+worksheet adapter turns into an exercise, or one listed as never printable (see below), each entry
+with its reason. Everything else prints as it always has: content iDevices, and any type the code
+does not know, such as one an administrator installed. How an iDevice stores its data plays no
+part: the form stores JSON and is an activity, the checklist is HTML and is not.
 
-- **`html` but not an activity** — `udl-content` and `checklist`. They print correctly as they are.
-- **`json` but an activity all the same** — `adaptative-quiz`, `form`, `trueorfalse` (also stored as
-  `true-or-false`) and `scrambled-list`. They render from stored data, but what they render is an
-  exercise the student works through.
-- **Never printable** — see below. Being listed there is enough to count as an activity, whatever
-  the component type: a magnifier stores JSON and a website embed is HTML, and both print as a broken
-  widget.
-
-The first list was longer. Downloads, embedded websites, the progress report and GeoGebra were in
-it, on the grounds that they print as they are; but what they print is a button, a frame or a
-report with nothing to report, so they moved to the never-printable list. The rubric left it when it
-got an adapter.
-
-The second list exists because the first cut of this decision used the derived rule alone, and
-choosing "do not print them" then left four genuine activities printing as interfaces. How an
-iDevice stores its data was never the question; whether the student has to work through it is.
+The first cut derived the rule from the storage format instead: every `html` iDevice counted unless
+a list said otherwise, so that a new one was classified the day it was added. Review showed the
+cost. An administrator's own content iDevice is HTML like the games, so it counted too, and the
+default appendix replaced its content with a pointer to a note saying it could not be printed. With
+the allow-list, a new game added without an adapter prints as its HTML until it gets one, which is
+how everything printed before this decision and loses nothing. For the 52 iDevices shipped today the
+two rules give the same 40 activities.
 
 **Everything that asks "is this an activity?" asks the same code.** The panel's list, the
 document's modes and the worksheet's own list of what it could not print all go through the
@@ -164,10 +157,9 @@ stylesheet hides when printing. The worksheet path already reported these, and p
 document should not be the quieter way to lose content.
 
 **An activity without a printed form still prints.** A line stands in for it — in place, or in the
-appendix where it also takes a number. A missing adapter must never turn into a silent hole in the
-handout. Every interactive iDevice shipped today has either an adapter (29) or a settled answer
-(11), so the line is left for an iDevice the classifier does not know and for data an adapter
-cannot read.
+appendix where it also takes a number. An exercise that could not be built must never turn into a
+silent hole in the handout. Every activity has either an adapter (29) or a settled answer (11), so
+the line is left for data an adapter cannot read.
 
 **"Not yet" and "never" are two different messages.** An activity with no printed form is either
 waiting for one, and the line says so, or will never have one. Eleven are of the second kind: a
@@ -198,8 +190,8 @@ that fills the panel.
 
 Two near cases stay outside the option. A padlock prints the writing it guards; one that guards
 none says it is not available, but that is about the component, not about padlocks, so the option
-does not hide it. And "not yet" keeps its line whatever the option says: an iDevice the classifier
-does not know, or data an adapter cannot read, is a problem the teacher has to see.
+does not hide it. And "not yet" keeps its line whatever the option says: data an adapter cannot
+read is a problem the teacher has to see.
 
 **An exercise is named after the block the author put it in, never after its iDevice.**
 'CLASIFICA' above an exercise named the tool rather than the work. What names it is the author's
@@ -295,15 +287,14 @@ for the piece under it, which a block does not need.
 - This supersedes nothing formally: ADR-01 chose a conversion mechanism, not an integration, and
   the mechanism is unchanged. What changes is that the worksheet stops being a separate output and
   becomes one of the ways the document can be printed.
-- The three lists are a judgement about what a teacher considers an activity, and about which
-  activities paper can carry, not a technical classification. They will need revisiting as iDevices
-  are added.
+- The never-printable list is a judgement about which activities paper can carry, not a technical
+  classification. It will need revisiting as iDevices are added.
 
 ## Risks
 
-- **The exception lists drift.** Medium likelihood, low severity: a new `html` iDevice that is not
-  an activity gets listed in the panel and printed slightly oddly in one choice. Caught by review,
-  not by tests.
+- **A new activity prints as a game board until it has an adapter.** Medium likelihood, low
+  severity: it prints as its HTML, as everything did before this decision, and printing does not
+  ask about it. Caught by review, not by tests.
 - **Appendix numbering diverges from the body.** Low likelihood, medium severity — a handout whose
   cross-references point at the wrong exercise is worse than no appendix. Both numbers come from
   one pass over the pages, and an E2E case asserts the correspondence.
@@ -349,10 +340,12 @@ for the piece under it, which a block does not need.
 - [ADR-2539-01](ADR-2539-01-generate-printable-content-from-idevice-data.md)
 - `src/shared/export/exporters/PrintPreviewExporter.ts` — the document printing path
 - `src/shared/export/exporters/printActivityModes.ts` — the four modes, applied to the page model
-- `src/shared/export/worksheet/interactiveActivities.ts` — what counts as an activity, and the three
-  lists
+- `src/shared/export/worksheet/interactiveActivities.ts` — what counts as an activity, and the
+  never-printable list
+- `src/shared/export/worksheet/adapters/registry.ts` — the adapters the allow-list is drawn from
 - `src/shared/export/renderers/PageRenderer.ts` — `renderSinglePage`, the hook point's neighbour
-- `src/shared/export/browser/idevice-config-browser.ts` — where `componentType` comes from
+- `src/shared/export/browser/idevice-config-browser.ts` — how a type is normalised before it is
+  looked up
 - `public/app/workarea/modals/modals/pages/printOptionsPanel.js` — the panel beside the preview
 - `public/app/workarea/modals/modals/pages/modalPrintPreview.js` — the preview, its choices and the
   default

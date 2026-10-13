@@ -6,52 +6,22 @@
  * dragged or typed into, and that therefore print as a half-played game board rather than as an
  * exercise.
  *
- * The rule is mostly derived rather than listed. An iDevice whose `config.xml` declares
- * `<component-type>json</component-type>` renders its content from stored JSON; everything else is
- * HTML that the iDevice's own script brings to life. Deriving the common case from
- * `getIdeviceConfig` keeps one source of truth — a new iDevice is classified the day it is added,
- * with nothing here to remember to update.
+ * The rule is an allow-list: an activity is an iDevice printing has an answer for. Either a
+ * worksheet adapter turns it into an exercise, or it is listed here as one that will never have
+ * a printed form. Everything else prints as it always has, content iDevices and any type this
+ * code does not know alike: one an administrator installed is HTML of its own, and taking it for
+ * an activity would replace it with a note.
  *
- * How an iDevice stores its data is not, however, the same question as whether it is an activity,
- * and two lists record where the two part company. Both are exceptions to the derived rule, and
- * each entry says why.
+ * How an iDevice stores its data plays no part. A JSON iDevice is an activity when it has an
+ * adapter, as the form does, and an HTML one is not without one, as the checklist is not.
  *
- * A third list answers a different question again. Being an activity says printing should ask
- * what to do with it; it does not say a printed form is on its way. For most of them one is, and
- * the note they carry meanwhile says "not yet". For the ones in `NEVER_PRINTABLE` the answer is
- * settled, and saying "yet" would promise a release that is not coming.
+ * Being an activity says printing should ask what to do with it. For the ones in
+ * `NEVER_PRINTABLE` the answer is settled, and the note they carry says so rather than "yet".
+ * "Not yet" is left for an activity whose data its adapter could not read.
  */
 
 import { getIdeviceConfig } from '../browser/idevice-config-browser';
-
-/**
- * HTML iDevices that are not activities.
- *
- * These print correctly as they are, so they are never offered to the print dialog and always
- * appear in place. The value is the reason, kept next to the entry so a later reader can tell
- * whether it still holds.
- */
-const NOT_ACTIVITIES = new Map<string, string>([
-    ['udl-content', 'presents the same content several ways; the printable way already prints'],
-    ['checklist', 'is already a list of boxes to tick, which is what it should be on paper'],
-]);
-
-/**
- * JSON iDevices that are activities all the same.
- *
- * They render from stored data, but what they render is an exercise the student works through, so
- * printing must offer the same choices for them as for the gamified ones. None has an adapter
- * yet; until one does they print a heading and a note, which is the honest answer rather than a
- * half-played interface.
- */
-const JSON_ACTIVITIES = new Map<string, string>([
-    ['adaptative-quiz', 'asks questions and picks the next one from the answers'],
-    ['form', 'is a form the student fills in'],
-    ['trueorfalse', 'asks the student to judge each statement'],
-    // Spelled both ways across the codebase, and only one of them reaches this function.
-    ['true-or-false', 'asks the student to judge each statement'],
-    ['scrambled-list', 'asks the student to put the items in order'],
-]);
+import { getWorksheetAdapter } from './adapters/registry';
 
 /**
  * iDevices that will not be given a printed form.
@@ -85,8 +55,8 @@ const NEVER_PRINTABLE = new Map<string, string>([
 /**
  * Whether printing should promise an exercise for this activity later.
  *
- * False for the ones whose answer is settled. Everything else that lacks an adapter is simply
- * waiting for one.
+ * True for the ones whose answer is settled. An activity with an adapter that could not read its
+ * data is not one of them: that is a note saying "not yet".
  *
  * @param type - iDevice type as stored in the document, e.g. 'trivial'
  * @returns true when no printed form is coming
@@ -113,34 +83,13 @@ export function getNeverPrintableIdevices(): { type: string; reason: string }[] 
  * ('GeoGebraActivityIdevice') is recognised exactly as the shim recognises it everywhere else.
  *
  * @param type - iDevice type as stored in the document, e.g. 'guess'
- * @returns true when printing should ask what to do with it
+ * @returns true when printing should ask what to do with it: it has an adapter, or will never
+ *   have a printed form
  */
 export function isInteractiveActivity(type: string): boolean {
-    const config = getIdeviceConfig(type);
+    const { cssClass } = getIdeviceConfig(type);
 
-    if (NEVER_PRINTABLE.has(config.cssClass)) return true;
-    if (config.componentType !== 'html') return JSON_ACTIVITIES.has(config.cssClass);
-    return !NOT_ACTIVITIES.has(config.cssClass);
-}
-
-/**
- * The HTML iDevices deliberately left out, with the reason for each.
- *
- * Exposed so the list can be reviewed and tested rather than buried.
- *
- * @returns Type/reason pairs, sorted by type for stable output
- */
-export function getNonActivityIdevices(): { type: string; reason: string }[] {
-    return listed(NOT_ACTIVITIES);
-}
-
-/**
- * The JSON iDevices counted as activities anyway, with the reason for each.
- *
- * @returns Type/reason pairs, sorted by type for stable output
- */
-export function getJsonActivityIdevices(): { type: string; reason: string }[] {
-    return listed(JSON_ACTIVITIES);
+    return NEVER_PRINTABLE.has(cssClass) || Boolean(getWorksheetAdapter(type) ?? getWorksheetAdapter(cssClass));
 }
 
 function listed(entries: Map<string, string>): { type: string; reason: string }[] {

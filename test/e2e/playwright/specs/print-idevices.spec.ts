@@ -324,9 +324,13 @@ test.describe('Print iDevices', () => {
                     properties: {},
                     html: pack('periodic-table', { ...data, gameType: 2 }),
                 })),
-                // A type no iDevice answers to: every one that exists now has a paper form, and the
-                // note that stands in for a missing one still needs covering in the browser.
-                { type: 'an-activity-with-no-adapter', properties: {}, html: '<div class="no-adapter-IDevice"></div>' },
+                // A Guess whose data its adapter cannot read: the note that stands in for an exercise
+                // that could not be built still needs covering in the browser.
+                {
+                    type: 'guess',
+                    properties: {},
+                    html: '<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">not a payload</div></div>',
+                },
             ];
             await page.evaluate(components => {
                 const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
@@ -383,15 +387,12 @@ test.describe('Print iDevices', () => {
             expect(actinides).toHaveLength(3);
             expect(actinides.every(number => Number(number) >= 89 && Number(number) <= 103)).toBe(true);
 
-            // The one activity here with no paper form is still accounted for, each path saying so
-            // in its own way: the worksheet lists it at the end, the document stands a note where
+            // The one activity here that could not be built is still accounted for, each path saying
+            // so in its own way: the worksheet lists it at the end, the document stands a note where
             // the activity was.
             if (mode === 'idevices')
-                await expect(frame.locator('.worksheet-unsupported')).toContainText('an-activity-with-no-adapter');
-            else
-                await expect(
-                    frame.locator('.worksheet-activity-unprintable[data-idevice="an-activity-with-no-adapter"]'),
-                ).toHaveCount(1);
+                await expect(frame.locator('.worksheet-unsupported')).toContainText('Invalid or empty activity data');
+            else await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="guess"]')).toHaveCount(1);
         });
     }
 
@@ -1903,15 +1904,15 @@ test.describe('Print iDevices', () => {
         });
     }
 
-    test('warns about unsupported JSON exercises when printing only activities', async ({
+    test('warns about JSON exercises it cannot read when printing only activities', async ({
         authenticatedPage: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'JSON worksheet omissions');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
-        // The json activities that still have no paper form. `form` is no longer one of them.
-        const types = ['an-activity-with-no-adapter'];
+        // Every json activity now has a paper form; one with nothing stored is one it cannot build.
+        const types = ['form'];
         await page.evaluate(types => {
             const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('JSON exercises');
@@ -1924,7 +1925,7 @@ test.describe('Print iDevices', () => {
         const warning = frame.locator('.worksheet-unsupported');
         await expect(warning).toBeVisible();
         await expect(warning.locator('li')).toHaveCount(types.length);
-        for (const type of types) await expect(warning).toContainText(`${type} — JSON exercises`);
+        await expect(warning).toContainText('— JSON exercises: Invalid or empty activity data');
         await expect(frame.locator('.worksheet-activity')).toHaveCount(0);
         await page.emulateMedia({ media: 'print' });
         await expect(warning).toBeHidden();
@@ -2103,6 +2104,33 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await expect(panel.locator('#printOptLinkUrls')).toBeChecked();
         // With no activity at all, there is none that cannot be printed to ask about.
         await expect(panel.locator('#printOptUnprintableTitles')).toBeHidden();
+    });
+
+    test('prints an iDevice it does not know as it always has, rather than as an activity', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Print a custom iDevice');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        // One an administrator installed: content of its own, which no adapter knows.
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Custom content');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Custom block'), 'my-accordion', {
+                htmlContent: '<p>Content of the custom block</p>',
+            });
+        });
+
+        const panel = await openPrintPanel(page);
+        const { frame } = await waitForPreview(page);
+
+        // Nothing to ask about, so nothing moves: the content prints where the author put it.
+        await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(0);
+        await expect(frame.getByText('Content of the custom block')).toBeVisible();
+        await expect(frame.locator('.worksheet-reference')).toHaveCount(0);
+        await expect(frame.locator('#section-worksheet-appendix')).toHaveCount(0);
     });
 
     test('offers the options beside the preview when the project has them, with printing them in an appendix preselected', async ({
