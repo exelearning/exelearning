@@ -288,15 +288,12 @@ export default class PrintOptionsPanel {
         }
 
         this.offered = this.offeredActivities();
-        this.activitiesEl.insertAdjacentHTML(
-            'beforeend',
-            renderActivitySelection(
-                this.offered,
-                { heading: this.labels.selectionHeading, selectAll: this.labels.selectAll },
-                this.ideviceName
-            )
+        this.selection = renderActivitySelection(
+            this.offered,
+            { heading: this.labels.selectionHeading, selectAll: this.labels.selectAll },
+            this.ideviceName
         );
-        this.selection = this.activitiesEl.querySelector('.print-activities-selection');
+        this.activitiesEl.append(this.selection);
         setSelectedActivities(
             this.selection,
             this.offered.filter(({ id }) => this.ticks.get(id) !== false).map(({ id }) => id)

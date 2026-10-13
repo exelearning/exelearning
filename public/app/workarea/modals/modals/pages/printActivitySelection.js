@@ -6,8 +6,8 @@
  * on different pages can be told apart. All are ticked to begin with, since printing everything is
  * what printing did before there was a choice.
  *
- * The markup is built with DOM nodes and read back as HTML, so page and block titles — which the
- * author typed and may contain anything — are always escaped.
+ * The box is built with DOM nodes, so page and block titles — which the author typed and may
+ * contain anything — are only ever text, never markup.
  */
 
 /** Name shared by the activity checkboxes. */
@@ -66,7 +66,7 @@ function checkbox({ id, name, value, label, title }) {
     input.id = id;
     if (name) input.name = name;
     if (value) input.value = value;
-    input.setAttribute('checked', '');
+    input.checked = true;
 
     const text = document.createElement('label');
     text.className = 'form-check-label';
@@ -86,7 +86,7 @@ function checkbox({ id, name, value, label, title }) {
  * @param {string} strings.heading - Title of the box
  * @param {string} strings.selectAll - Label of the tick-all checkbox
  * @param {(type: string) => string} ideviceName - Translated name of an iDevice type
- * @returns {string} HTML for the box
+ * @returns {HTMLFieldSetElement} The box, to be put in the panel
  */
 export function renderActivitySelection(activities, { heading, selectAll }, ideviceName) {
     const box = document.createElement('fieldset');
@@ -116,7 +116,7 @@ export function renderActivitySelection(activities, { heading, selectAll }, idev
     });
 
     box.append(legend, all, list);
-    return box.outerHTML;
+    return box;
 }
 
 /**

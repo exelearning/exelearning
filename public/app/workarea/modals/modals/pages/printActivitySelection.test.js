@@ -24,7 +24,7 @@ function activity(overrides = {}) {
 /** Render the box into a live element, so it can be queried and clicked. */
 function mount(activities) {
     const host = document.createElement('div');
-    host.innerHTML = renderActivitySelection(activities, STRINGS, ideviceName);
+    host.append(renderActivitySelection(activities, STRINGS, ideviceName));
     document.body.append(host);
     return host;
 }
@@ -99,6 +99,13 @@ describe('renderActivitySelection', () => {
         activity(),
         activity({ id: 'c2', type: 'crossword', pageTitle: 'Tema 2', blockTitle: 'Repaso final' }),
     ];
+
+    it('hands back the box itself, for the panel to put in place without parsing it again', () => {
+        const box = renderActivitySelection(two, STRINGS, ideviceName);
+
+        expect(box).toBeInstanceOf(HTMLFieldSetElement);
+        expect(box.classList.contains('print-activities-selection')).toBe(true);
+    });
 
     it('titles the box as given', () => {
         expect(mount(two).querySelector('legend').textContent).toBe('Select the activities');
