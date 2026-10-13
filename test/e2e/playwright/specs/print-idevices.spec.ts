@@ -3094,10 +3094,12 @@ test.describe('Print: text is laid out in the preview as on paper', () => {
         await page.evaluate(() => {
             const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('Text');
-            // A quote written the way the editor writes it: its paragraph on a line of its own.
+            // A quote written the way the editor writes it: its paragraph on a line of its own. The
+            // link is external: those take the text's colour, while a link within the page keeps
+            // the style's, as the controls iDevices build from links do.
             binding.createComponent(parent.id, binding.createBlock(parent.id, 'Text'), 'text', {
                 htmlContent:
-                    '<p id="lead" style="color: rgb(10, 20, 30)">See <a id="link" href="#lead">the lead</a>.</p>' +
+                    '<p id="lead" style="color: rgb(10, 20, 30)">See <a id="link" href="https://example.org/">the lead</a>.</p>' +
                     `<pre id="code">${'x'.repeat(400)}</pre>` +
                     '<blockquote id="quote">\n  <p>A quotation of one line.</p>\n</blockquote>',
             });
