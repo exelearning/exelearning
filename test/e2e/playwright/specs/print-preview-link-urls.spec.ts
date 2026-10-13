@@ -54,7 +54,9 @@ test.describe('Print preview', () => {
         await expect(linkUrls).toBeChecked();
 
         const link = page.frameLocator('.print-preview-iframe').locator('a[href="https://cedec.intef.es/"]');
-        const afterContent = () => link.evaluate(a => getComputedStyle(a, '::after').content);
+        // A changed option draws the preview again, which can replace the document mid-read: that
+        // read counts as not there yet, and the poll tries again.
+        const afterContent = () => link.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null);
         // Chromium resolves attr(href); Firefox reports the declared value unresolved.
         const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
 
@@ -166,8 +168,12 @@ test.describe('Print preview', () => {
         // Off: neither, on either medium, whatever the theme and base.css print.
         await page.emulateMedia({ media: 'screen' });
         await page.locator('#printOptLinkUrls').uncheck();
+        // The preview is drawn again, which can replace the document mid-read: that read counts as
+        // not there yet, and the poll tries again.
         await expect
-            .poll(() => link.evaluate(a => getComputedStyle(a, '::after').content), { timeout: 30000 })
+            .poll(() => link.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null), {
+                timeout: 30000,
+            })
             .toBe('none');
         await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
         await expect(iframeSource).toHaveCount(1);

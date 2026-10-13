@@ -6,6 +6,7 @@ import {
     expandIdeviceCategory,
     saveProject,
     reloadPage,
+    hasWebGL,
 } from '../../helpers/workarea-helpers';
 import { unzipSync } from '../../../../../src/shared/export';
 import type { Download, FrameLocator, Locator, Page } from '@playwright/test';
@@ -894,6 +895,13 @@ test.describe('3D Viewer iDevice', () => {
             fixture: string,
             beforePreview?: () => Promise<void>,
         ): Promise<FrameLocator> {
+            // Without it drawn there is no model to picture: <model-viewer> (GLB) draws with WebGL 2,
+            // the STL viewer with WebGL 1. Firefox on the GPU-less CI runners has neither.
+            const webgl = format === 'GLB' ? 2 : 1;
+            test.skip(
+                !(await hasWebGL(page, webgl)),
+                `This browser has no WebGL ${webgl} to draw the ${format} model with`,
+            );
             const projectUuid = await createProject(page, `3D Viewer print ${format}`);
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);

@@ -14,11 +14,11 @@
  * screen, so the hint assertions below bound the count rather than pinning it.
  */
 
-import { chromium, type FrameLocator, type Page } from '@playwright/test';
+import { chromium, type Browser, type FrameLocator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-helpers';
+import { waitForAppReady, gotoWorkarea, openElpFile, hasWebGL } from '../helpers/workarea-helpers';
 import { encryptDataGame } from '../../../../src/shared/export/utils/dataGameCipher';
 import { unzipSync } from '../../../../src/shared/export';
 
@@ -88,6 +88,25 @@ async function openWorksheet(page: Page) {
     await frame.locator('.worksheet').waitFor({ state: 'visible', timeout: 30000 });
 
     return { overlay, frame };
+}
+
+/**
+ * A Chromium to print a PDF with, as only Chromium makes PDFs.
+ *
+ * The page's own browser when it is Chromium; otherwise an installed one, borrowed. A CI job for
+ * another browser installs none, so there the caller leaves the paper to the Chromium project.
+ *
+ * @returns The browser and whether it was borrowed, to close it after; null when there is none
+ */
+async function chromiumForPdf(page: Page): Promise<{ browser: Browser; borrowed: boolean } | null> {
+    const current = page.context().browser()!;
+    if (current.browserType().name() === 'chromium') return { browser: current, borrowed: false };
+    try {
+        return { browser: await chromium.launch(), borrowed: true };
+    } catch (error) {
+        if (/Executable doesn't exist/.test(String(error))) return null;
+        throw error;
+    }
 }
 
 test.describe('Print iDevices', () => {
@@ -463,6 +482,8 @@ test.describe('Print iDevices', () => {
         authenticatedPage: page,
         createProject,
     }) => {
+        // Without WebGL no molecule is drawn, as with Firefox on the GPU-less CI runners.
+        test.skip(!(await hasWebGL(page)), 'This browser has no WebGL to draw the molecules with');
         const uuid = await createProject(page, 'Molecule capture regressions');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -1835,9 +1856,17 @@ test.describe('Print iDevices', () => {
 
             // Inspect real page breaks as well as the unpaginated DOM. Chromium provides PDF
             // output even when the editor flow above is exercised by the Firefox project.
-            const pdfBrowser = await chromium.launch();
+            const pdf = await chromiumForPdf(page);
+            if (!pdf) {
+                testInfo.annotations.push({
+                    type: 'note',
+                    description: 'No Chromium to print the PDF with; the Chromium project checks the sheets.',
+                });
+                return;
+            }
+            const pdfContext = await pdf.browser.newContext();
             try {
-                const pdfPage = await pdfBrowser.newPage();
+                const pdfPage = await pdfContext.newPage();
                 await pdfPage.setContent(
                     `<!DOCTYPE html>${await frame.locator('html').evaluate(node => node.outerHTML)}`,
                 );
@@ -1868,7 +1897,8 @@ test.describe('Print iDevices', () => {
                     await task.destroy();
                 }
             } finally {
-                await pdfBrowser.close();
+                await pdfContext.close();
+                if (pdf.borrowed) await pdf.browser.close();
             }
         });
     }
@@ -3280,10 +3310,16 @@ test.describe('Print: Material icons reach the paper', () => {
         // Give the real icon and an ordinary background distinct colours, then inspect the
         // rendered PDF with backgrounds disabled. This catches a missing mask or an icon that
         // has the right computed property but never reaches the paper.
-        const currentBrowser = page.context().browser()!;
-        const pdfBrowser =
-            currentBrowser.browserType().name() === 'chromium' ? currentBrowser : await chromium.launch();
-        const pdfContext = await pdfBrowser.newContext();
+        const pdf = await chromiumForPdf(page);
+        if (!pdf) {
+            testInfo.annotations.push({
+                type: 'note',
+                description: 'No Chromium to print the PDF with; the Chromium project checks the paper.',
+            });
+            await page.emulateMedia({ media: null });
+            return;
+        }
+        const pdfContext = await pdf.browser.newContext();
         try {
             const pdfPage = await pdfContext.newPage();
             await pdfPage.setContent(`<!DOCTYPE html>${await frame.locator('html').evaluate(node => node.outerHTML)}`);
@@ -3341,7 +3377,7 @@ test.describe('Print: Material icons reach the paper', () => {
             expect(colours.backgroundPixels).toBe(0);
         } finally {
             await pdfContext.close();
-            if (pdfBrowser !== currentBrowser) await pdfBrowser.close();
+            if (pdf.borrowed) await pdf.browser.close();
         }
         await page.emulateMedia({ media: null });
     });
