@@ -632,13 +632,17 @@ describe('PrintPreviewExporter', () => {
                 ).toBe(true);
             });
 
-            it('styles links as they print: in the colour of the text around them, underlined', async () => {
+            it('styles external links as they print: in the colour of the text around them, underlined', async () => {
+                const styles = await previewStyles();
+
                 expect(
                     onScreen(
-                        await previewStyles(),
-                        'a[href] {\n    color: inherit;\n    text-decoration: underline;\n}',
+                        styles,
+                        '.exe-content a[href^="http"] {\n    color: inherit;\n    text-decoration: underline;\n}',
                     ),
                 ).toBe(true);
+                // Not every anchor: a control an iDevice builds from a link keeps the style of its class.
+                expect(styles).not.toContain('\na[href] {');
             });
 
             it('wraps long lines of code, and leaves quotes in their normal flow', async () => {

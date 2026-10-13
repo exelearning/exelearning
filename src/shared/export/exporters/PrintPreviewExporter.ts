@@ -443,8 +443,9 @@ ${linkUrlsCss}
 #made-with-eXe { display: none !important; }
 html:not(.exe-print-as-shown) .exe-export article.box.minimized > .box-content { display: block !important; }
 html:not(.exe-print-as-shown) .exe-export .box-toggle { display: none !important; }
-/* Links take the colour of the text around them and an underline, on screen as on paper. */
-a[href] {
+/* External links take the colour of the text around them and an underline, on screen as on paper.
+   Only those: iDevices and styles build controls out of links too, and style them by class. */
+.exe-content a[href^="http"] {
     color: inherit;
     text-decoration: underline;
 }

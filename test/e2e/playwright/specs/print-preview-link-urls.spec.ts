@@ -150,6 +150,47 @@ test.describe('Print preview', () => {
         await page.emulateMedia({ media: null });
     });
 
+    test('underlines external links in the colour of their text, and leaves controls built from links alone', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, 'Print link styles');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Links');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Links'), 'text', {
+                htmlContent:
+                    '<p style="color: rgb(0, 100, 0)">Visit <a href="https://cedec.intef.es/">Cedec</a> or ' +
+                    '<a href="#" class="exe-test-control">Next</a>. <a class="exe-test-styled">Styled</a></p>',
+            });
+        });
+
+        await page.evaluate(() => (window as any).eXeLearning.app.modals.printpreview.show());
+        const overlay = page.locator('#printPreviewOverlay');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        const frame = page.frameLocator('.print-preview-iframe');
+        const external = frame.locator('a[href="https://cedec.intef.es/"]');
+        // A control an iDevice builds from a link, as a game's "Next" or a toggle.
+        const control = frame.locator('a.exe-test-control');
+        await expect(external).toBeVisible({ timeout: 30000 });
+
+        const colour = (link: typeof external) => link.evaluate(a => getComputedStyle(a).color);
+        for (const media of ['screen', 'print'] as const) {
+            await page.emulateMedia({ media });
+            // The colour the style gives a link, from an anchor no rule of the preview reaches.
+            const styleColour = await colour(frame.locator('a.exe-test-styled'));
+            expect(styleColour, media).not.toBe('rgb(0, 100, 0)');
+            expect(await colour(external), media).toBe('rgb(0, 100, 0)');
+            expect(await external.evaluate(a => getComputedStyle(a).textDecorationLine), media).toBe('underline');
+            expect(await colour(control), media).toBe(styleColour);
+        }
+        await page.emulateMedia({ media: null });
+    });
+
     test('leaves out the URLs a theme or the base styles would print, on screen and on paper', async ({
         authenticatedPage: page,
         createProject,
