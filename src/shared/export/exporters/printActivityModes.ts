@@ -304,6 +304,39 @@ export function listInteractiveActivities(pages: ExportPage[]): InteractiveActiv
     return entries;
 }
 
+/** The activities the user left ticked, or null when every one is. */
+function selection(options: ApplyActivityModeOptions): ReadonlySet<string> | null {
+    return options.selectedActivities ? new Set(options.selectedActivities) : null;
+}
+
+/** Whether the mode drops an activity printing acts on: every one in `omit`, and any left unticked. */
+function isDropped(
+    component: ExportComponent,
+    mode: DocumentActivityMode,
+    selected: ReadonlySet<string> | null,
+): boolean {
+    return mode === 'omit' || (selected !== null && !selected.has(component.id));
+}
+
+/**
+ * Which components the chosen mode turns into exercises, the same ones `applyActivityMode` does.
+ *
+ * Whatever has to be drawn before a conversion is drawn for these alone: every other component
+ * prints as it is, or not at all.
+ *
+ * @param mode - What to do with the interactive activities
+ * @param options - The selection the user made, if any
+ * @returns Whether a component, in its block, is converted
+ */
+export function convertedBy(
+    mode: DocumentActivityMode,
+    options: ApplyActivityModeOptions = {},
+): (block: ExportBlock, component: ExportComponent) => boolean {
+    const selected = selection(options);
+
+    return (block, component) => isActedOn(block, component) && !isDropped(component, mode, selected);
+}
+
 /**
  * Apply the chosen mode to a project's pages.
  *
@@ -319,7 +352,7 @@ export function applyActivityMode(
 ): ExportPage[] {
     const appendix: ExportComponent[] = [];
     let numbered = 0;
-    const selected = options.selectedActivities ? new Set(options.selectedActivities) : null;
+    const selected = selection(options);
 
     const transformed = pages.map(page => ({
         ...page,
@@ -335,7 +368,7 @@ export function applyActivityMode(
 
                 // One the user left unticked goes as every activity goes in `omit`. It is dropped
                 // before it is numbered, so the appendix has no gap where it would have been.
-                if (mode === 'omit' || (selected && !selected.has(component.id))) continue;
+                if (isDropped(component, mode, selected)) continue;
 
                 if (mode === 'in-place') {
                     const markup = convert(component, options);

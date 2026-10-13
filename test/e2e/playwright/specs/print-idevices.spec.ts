@@ -562,6 +562,21 @@ test.describe('Print iDevices', () => {
         // Each opening draws the molecules twice, two of them each time: the worksheet is reached
         // through the document, whose appendix holds the same exercise.
         expect(state).toEqual({ viewers: 1, surfaces: [true, true, true, true], captures: 8 });
+
+        // Left out, the activity has no exercise to hold a picture, so none is drawn for it.
+        const { overlay, frame } = await openWorksheet(page);
+        await expect(frame.locator('[data-idevice="3dmol"] .worksheet-media img')).toHaveCount(2);
+        const captures = () =>
+            page.evaluate(
+                () =>
+                    (window as unknown as { __moleculeCaptureProbe: { captures: number } }).__moleculeCaptureProbe
+                        .captures,
+            );
+        const drawn = await captures();
+        await page.locator('#printOptionsPanel input[name="print-activity-mode"][value="omit"]').check();
+        await expect(frame.locator('.dmole-DataGame, [data-idevice="3dmol"]')).toHaveCount(0, { timeout: 30000 });
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 60000 });
+        expect(await captures()).toBe(drawn);
     });
 
     for (const idevice of [

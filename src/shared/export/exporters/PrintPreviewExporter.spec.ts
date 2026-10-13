@@ -9,6 +9,7 @@ import { encryptDataGame } from '../utils/dataGameCipher';
 import type {
     AssetProvider,
     ExportAsset,
+    ExportComponent,
     ExportDocument,
     ExportMetadata,
     ExportPage,
@@ -2418,7 +2419,8 @@ describe('the molecules the document has to draw before it can convert them', ()
         return `<div class="dmole-IDevice"><div class="dmole-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
     }
 
-    function projectWithMolecule(): ExportDocument {
+    /** One block with a molecule activity for each of the given components. */
+    function projectWithMolecule(components: Partial<ExportComponent>[] = [{ id: 'c1' }]): ExportDocument {
         return createMockDocument([
             {
                 id: 'page-1',
@@ -2430,16 +2432,23 @@ describe('the molecules the document has to draw before it can convert them', ()
                         id: 'b1',
                         name: 'Bloque',
                         order: 0,
-                        components: [{ id: 'c1', type: '3dmol', order: 0, content: moleculeHtml(), properties: {} }],
+                        components: components.map((component, order) => ({
+                            id: `c${order + 1}`,
+                            type: '3dmol',
+                            order,
+                            content: moleculeHtml(),
+                            properties: {},
+                            ...component,
+                        })),
                     },
                 ],
             },
         ]);
     }
 
-    async function preview(options: PrintPreviewOptions): Promise<string> {
+    async function preview(options: PrintPreviewOptions, components?: Partial<ExportComponent>[]): Promise<string> {
         const result = await new PrintPreviewExporter(
-            projectWithMolecule(),
+            projectWithMolecule(components),
             createMockResourceProvider(),
         ).generatePreview(options);
 
@@ -2467,6 +2476,45 @@ describe('the molecules the document has to draw before it can convert them', ()
 
         expect(asked).toBe(0);
         expect(html).toContain('dmole-DataGame');
+    });
+
+    it('draws nothing when the activities are left out', async () => {
+        const drawn: unknown[] = [];
+        await preview({
+            activities: { mode: 'omit', labels: {}, ideviceTitles: {} },
+            captureMolecule: async view => {
+                drawn.push(view);
+                return PICTURE;
+            },
+        });
+
+        expect(drawn).toEqual([]);
+    });
+
+    it('draws only the molecules of the activities it converts', async () => {
+        // Left unticked, hidden or for teachers only, an activity prints as it is or not at all,
+        // so a picture of its molecule would go nowhere. Each drawing costs a graphics context.
+        const drawn: unknown[] = [];
+        const html = await preview(
+            {
+                activities: { mode: 'in-place', labels: {}, ideviceTitles: {}, selectedActivities: ['c2', 'c3', 'c4'] },
+                captureMolecule: async view => {
+                    drawn.push(view);
+                    return PICTURE;
+                },
+            },
+            [
+                {},
+                {},
+                { structureProperties: { visibility: 'false' } },
+                { structureProperties: { teacherOnly: 'true' } },
+            ],
+        );
+
+        expect(drawn).toHaveLength(1);
+        expect(html).toContain(PICTURE);
+        // The restricted ones still carry their own payloads, with no picture written into them.
+        expect(html.match(/dmole-DataGame/g)).toHaveLength(2);
     });
 
     it('converts what it can when nothing is there to draw', async () => {

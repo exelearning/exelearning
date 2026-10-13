@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../utils/dataGameCipher';
-import type { ExportComponent, ExportPage } from '../interfaces';
+import type { ExportBlock, ExportComponent, ExportPage } from '../interfaces';
 import {
     applyActivityMode,
+    convertedBy,
     listInteractiveActivities,
     PRINTABLE_ACTIVITY_TYPE,
     type ApplyActivityModeOptions,
@@ -610,6 +611,62 @@ describe('the activities the user chose to print', () => {
 
         expect(componentsOf(run([page([restricted])], 'in-place', { selectedActivities: [] }))).toEqual([restricted]);
     });
+});
+
+describe('convertedBy', () => {
+    const block: ExportBlock = { id: 'b1', name: 'Bloque', order: 0, components: [] };
+
+    it('says yes for an activity the mode turns into an exercise', () => {
+        expect(convertedBy('in-place')(block, component())).toBe(true);
+        expect(convertedBy('appendix', { selectedActivities: ['c1'] })(block, component())).toBe(true);
+    });
+
+    it.each([
+        ['an activity left out', convertedBy('omit'), block, component()],
+        ['an activity left unticked', convertedBy('in-place', { selectedActivities: [] }), block, component()],
+        ['what is not an activity', convertedBy('in-place'), block, text()],
+        [
+            'a hidden activity',
+            convertedBy('in-place'),
+            block,
+            component({ structureProperties: { visibility: 'false' } }),
+        ],
+        [
+            'a teacher-only activity',
+            convertedBy('in-place'),
+            block,
+            component({ structureProperties: { teacherOnly: 'true' } }),
+        ],
+        [
+            'an activity in a hidden block',
+            convertedBy('in-place'),
+            { ...block, properties: { visibility: false } } as never,
+            component(),
+        ],
+    ])('says no for %s, which prints as it is or not at all', (_name, converted, where, what) => {
+        expect(converted(where, what)).toBe(false);
+    });
+
+    it.each(['omit', 'in-place', 'appendix'] as DocumentActivityMode[])(
+        'picks out the components applyActivityMode converts in %s',
+        mode => {
+            const components = [
+                text(),
+                component({ id: 'ticked' }),
+                component({ id: 'unticked' }),
+                component({ id: 'hidden', structureProperties: { visibility: 'false' } }),
+                component({ id: 'teacher', structureProperties: { teacherOnly: 'true' } }),
+            ];
+            const options = { selectedActivities: ['ticked', 'hidden', 'teacher'] };
+            const converted = convertedBy(mode, options);
+            // A converted component leaves a printable one where it was, an exercise or a pointer.
+            const replaced = componentsOf([run([page(components)], mode, options)[0]])
+                .filter(c => c.type === PRINTABLE_ACTIVITY_TYPE)
+                .map(c => c.id);
+
+            expect(components.filter(c => converted(block, c)).map(c => c.id)).toEqual(replaced);
+        },
+    );
 });
 
 describe('listInteractiveActivities', () => {

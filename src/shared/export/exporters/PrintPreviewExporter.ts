@@ -7,6 +7,7 @@
 import type {
     ExportDocument,
     ExportPage,
+    ExportBlock,
     ExportComponent,
     ResourceProvider,
     AssetProvider,
@@ -26,6 +27,7 @@ import { resolveMaterialIconDataUris } from './BaseExporter';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import {
     applyActivityMode,
+    convertedBy,
     PRINTABLE_ACTIVITY_TYPE,
     type ApplyActivityModeOptions,
     type DocumentActivityMode,
@@ -193,7 +195,11 @@ export class PrintPreviewExporter {
             // Anything that has to be drawn before it can be printed is drawn first: converting an
             // activity into an exercise is synchronous and has no browser to draw with.
             if (options.activities && options.captureMolecule) {
-                processedPages = await this.captureDrawings(processedPages, options.captureMolecule);
+                processedPages = await this.captureDrawings(
+                    processedPages,
+                    options.captureMolecule,
+                    convertedBy(options.activities.mode, options.activities),
+                );
             }
 
             // Carry out what the user chose to do with the interactive activities. This works on
@@ -314,8 +320,15 @@ export class PrintPreviewExporter {
      * One component at a time: a drawing may need a graphics context, and a browser hands out only
      * a handful of those at once — a project with a dozen molecules in it would run dry partway
      * through if they were all drawn together.
+     *
+     * Only the components that are converted are drawn. The rest print as they are, or not at
+     * all: left out, left unticked, hidden or for teachers only.
      */
-    private async captureDrawings(pages: ExportPage[], render: MoleculeRenderer): Promise<ExportPage[]> {
+    private async captureDrawings(
+        pages: ExportPage[],
+        render: MoleculeRenderer,
+        isConverted: (block: ExportBlock, component: ExportComponent) => boolean,
+    ): Promise<ExportPage[]> {
         const captured: ExportPage[] = [];
 
         // The navigation is flat by the time it gets here, which is also what the conversion that
@@ -325,7 +338,11 @@ export class PrintPreviewExporter {
             for (const block of page.blocks || []) {
                 const components = [];
                 for (const component of block.components || []) {
-                    components.push({ ...component, content: await captureMolecules(component.content || '', render) });
+                    components.push(
+                        isConverted(block, component)
+                            ? { ...component, content: await captureMolecules(component.content || '', render) }
+                            : component,
+                    );
                 }
                 blocks.push({ ...block, components });
             }
