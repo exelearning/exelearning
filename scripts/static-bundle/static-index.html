@@ -71,8 +71,12 @@
         window.__APP_DEBUG__ = "0";
         window.__APP_ONLINE_MODE__ = false;
 
-        // Get saved locale from localStorage (returns null if not saved)
+        // Get the locale chosen for this session: the embedding override
+        // (__EXE_EMBEDDING_CONFIG__.locale, see doc/development/embedding.md)
+        // wins over the preference saved in localStorage (null if neither)
         function getSavedLocale() {
+            const embeddedLocale = window.__EXE_EMBEDDING_CONFIG__?.locale;
+            if (typeof embeddedLocale === 'string' && embeddedLocale) return embeddedLocale;
             try {
                 const prefs = JSON.parse(localStorage.getItem('exe_user_preferences') || '{}');
                 // UserPreferences saves as { userPreferences: { locale: { value: 'eu' } } }
