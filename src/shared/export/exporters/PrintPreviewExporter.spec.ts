@@ -224,6 +224,32 @@ describe('PrintPreviewExporter', () => {
                 expect(result.html).not.toContain('asset://a2');
                 expect(revoked).toEqual(['blob:mock-url-5']);
             });
+
+            it.each([
+                ['left out', { mode: 'omit' }],
+                ['left unticked', { mode: 'appendix', selectedActivities: [] }],
+            ])('leaves out the pictures of an activity %s', async (_label, choice) => {
+                const pages = mockDocument.getNavigation();
+                pages[0].blocks[0].components[0].content = '<img src="asset://a1">';
+                pages[1].blocks[0].components[0] = {
+                    id: 'guess-1',
+                    type: 'guess',
+                    order: 0,
+                    content: '<div class="adivina-IDevice"><img src="asset://a2"></div>',
+                    properties: {},
+                };
+
+                const result = await new PrintPreviewExporter(
+                    createMockDocument(pages),
+                    mockResourceProvider,
+                    twoAssets(),
+                ).generatePreview({
+                    activities: { labels: {}, ideviceTitles: {}, ...choice } as PrintPreviewOptions['activities'],
+                });
+                result.dispose?.();
+
+                expect(revoked).toEqual(['blob:mock-url-3']);
+            });
         });
 
         it('hands back a way to release the asset URLs, and releases nothing while the document is shown', async () => {

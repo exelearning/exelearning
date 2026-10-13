@@ -4,6 +4,7 @@ import type { ExportBlock, ExportComponent, ExportPage } from '../interfaces';
 import {
     applyActivityMode,
     convertedBy,
+    droppedBy,
     listInteractiveActivities,
     PRINTABLE_ACTIVITY_TYPE,
     type ApplyActivityModeOptions,
@@ -667,6 +668,37 @@ describe('convertedBy', () => {
             expect(components.filter(c => converted(block, c)).map(c => c.id)).toEqual(replaced);
         },
     );
+});
+
+describe('droppedBy', () => {
+    const block: ExportBlock = { id: 'b1', name: 'Bloque', order: 0, components: [] };
+
+    it.each(['omit', 'in-place', 'appendix'] as DocumentActivityMode[])(
+        'picks out the components applyActivityMode leaves out in %s',
+        mode => {
+            const components = [
+                text(),
+                component({ id: 'ticked' }),
+                component({ id: 'unticked' }),
+                component({ id: 'hidden', structureProperties: { visibility: 'false' } }),
+                component({ id: 'teacher', structureProperties: { teacherOnly: 'true' } }),
+            ];
+            const options = { selectedActivities: ['ticked', 'hidden', 'teacher'] };
+            const dropped = droppedBy(mode, options);
+            const kept = new Set(componentsOf([run([page(components)], mode, options)[0]]).map(c => c.id));
+
+            expect(components.filter(c => dropped(block, c)).map(c => c.id)).toEqual(
+                components.filter(c => !kept.has(c.id)).map(c => c.id),
+            );
+        },
+    );
+
+    it('leaves out nothing that is not an activity, nor what the author restricted', () => {
+        const dropped = droppedBy('omit');
+
+        expect(dropped(block, text())).toBe(false);
+        expect(dropped(block, component({ structureProperties: { teacherOnly: 'true' } }))).toBe(false);
+    });
 });
 
 describe('listInteractiveActivities', () => {

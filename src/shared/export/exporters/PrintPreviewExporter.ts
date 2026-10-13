@@ -30,6 +30,7 @@ import { PRERENDERED_LATEX_CSS } from '../constants';
 import {
     applyActivityMode,
     convertedBy,
+    droppedBy,
     PRINTABLE_ACTIVITY_TYPE,
     type ApplyActivityModeOptions,
     type DocumentActivityMode,
@@ -188,7 +189,11 @@ export class PrintPreviewExporter {
             }
 
             // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
-            let processedPages = await this.preprocessPages(pages, assetResolver);
+            let processedPages = await this.preprocessPages(
+                pages,
+                assetResolver,
+                options.activities && droppedBy(options.activities.mode, options.activities),
+            );
 
             // Runtime artifacts may share a legacy timestamp prefix. Printable activities each
             // have their own stored data and selection id, so keep every one the dialog offers.
@@ -609,15 +614,26 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
      * Pre-process pages to resolve asset URLs
      * Replaces asset://UUID with content/resources/FILENAME
      */
-    private async preprocessPages(pages: ExportPage[], assetResolver: AssetUrlResolver): Promise<ExportPage[]> {
+    private async preprocessPages(
+        pages: ExportPage[],
+        assetResolver: AssetUrlResolver,
+        isDropped: (block: ExportBlock, component: ExportComponent) => boolean = () => false,
+    ): Promise<ExportPage[]> {
         if (!this.assets) return this.filterVisiblePages(pages);
 
         // Filter out hidden pages
         const visiblePages = this.filterVisiblePages(pages);
 
         // Only the assets these pages use: a project's media can be heavy, and the preview is
-        // drawn again each time an option changes.
-        await assetResolver.build(JSON.stringify(visiblePages));
+        // drawn again each time an option changes. An activity the chosen mode leaves out uses none.
+        const printed = visiblePages.map(page => ({
+            ...page,
+            blocks: (page.blocks || []).map(block => ({
+                ...block,
+                components: (block.components || []).filter(component => !isDropped(block, component)),
+            })),
+        }));
+        await assetResolver.build(JSON.stringify(printed));
 
         // Note: filterVisiblePages returns shallow copies, but preprocessPages was deep cloning.
         // Let's do a deep clone of the filtered result to be safe and consistent with previous logic

@@ -338,6 +338,25 @@ export function convertedBy(
 }
 
 /**
+ * Which components the chosen mode leaves out of the document, the same ones `applyActivityMode`
+ * drops: every activity in `omit`, and any the user left unticked.
+ *
+ * Nothing these alone use needs preparing for the preview, such as a copy of their pictures.
+ *
+ * @param mode - What to do with the interactive activities
+ * @param options - The selection the user made, if any
+ * @returns Whether a component, in its block, is left out
+ */
+export function droppedBy(
+    mode: DocumentActivityMode,
+    options: ApplyActivityModeOptions = {},
+): (block: ExportBlock, component: ExportComponent) => boolean {
+    const selected = selection(options);
+
+    return (block, component) => isActedOn(block, component) && isDropped(component, mode, selected);
+}
+
+/**
  * Apply the chosen mode to a project's pages.
  *
  * @param pages - Pages as they come out of preprocessing

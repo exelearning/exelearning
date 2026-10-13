@@ -267,8 +267,9 @@ for the piece under it, which a block does not need.
   fragments.
 - Assets need little extra work — `preprocessPages` has already resolved the `asset://` references
   the pages hold to blob URLs before the hook point. A picture that only appears once an exercise is
-  read from its encrypted payload is copied and resolved after rendering, and an asset nothing
-  printed refers to is never copied.
+  read from its encrypted payload is copied and resolved after rendering. Hidden pages and the
+  activities the chosen mode leaves out have nothing copied for them. A converted activity still has
+  every picture its stored content refers to copied, whether its exercise prints it or not.
 - Adding an adapter improves all four choices at once.
 
 ### Negative
