@@ -1417,12 +1417,6 @@ export function renderInlineGap(characters: number, options?: string[]): string 
 }
 
 /**
- * Render the two columns of a matching exercise.
- *
- * Cards on the left, containers on the right, with room between them for the student to draw the
- * pairing. Both columns are centred, so the sheet reads as one exercise rather than two lists.
- */
-/**
  * Render one card of a two-column exercise: the picture first, with any text underneath it.
  *
  * A card the author coloured opens with a band in that colour. It is drawn as a child of the card
@@ -1686,6 +1680,12 @@ function renderOperationTable(rows: PrintableOperationRow[], labels: Required<Wo
     );
 }
 
+/**
+ * Render the two columns of a matching exercise.
+ *
+ * Cards on the left, containers on the right, with room between them for the student to draw the
+ * pairing. Both columns are centred, so the sheet reads as one exercise rather than two lists.
+ */
 function renderMatchColumns(cards: PrintableCard[], containers: PrintableContainer[]): string {
     const renderedContainers = containers
         .map(

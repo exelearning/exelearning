@@ -630,16 +630,6 @@ export async function exportAndDownload(
 }
 
 /**
- * Generate print preview HTML from Yjs document
- * Creates a single-page HTML with all pages visible for printing
- *
- * @param documentManager - YjsDocumentManager instance
- * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
- * @param options - Preview options (baseUrl, basePath, version)
- * @param assetProvider - Optional AssetProvider (or manager/cache to create it)
- * @returns Preview result with HTML string
- */
-/**
  * List the interactive activities a printed document would contain.
  *
  * Printing asks the user what to do with them and which of them to print, and this is what it asks
@@ -657,6 +647,16 @@ export function listProjectInteractiveActivities(documentManager: YjsDocumentMan
     return listInteractiveActivities(new YjsDocumentAdapter(documentManager as any).getNavigation());
 }
 
+/**
+ * Generate print preview HTML from Yjs document
+ * Creates a single-page HTML with all pages visible for printing
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
+ * @param options - Preview options (baseUrl, basePath, version)
+ * @param assetProvider - Optional AssetProvider (or manager/cache to create it)
+ * @returns Preview result with HTML string
+ */
 export async function generatePrintPreview(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
