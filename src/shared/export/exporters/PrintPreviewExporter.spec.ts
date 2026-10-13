@@ -524,9 +524,7 @@ describe('PrintPreviewExporter', () => {
                 const result = await exporter.generatePreview({ showLinkUrls: false, printMode });
                 expect(result.success).toBe(true);
                 expect(result.html).not.toContain('content: " [" attr(href) "]"');
-                expect(result.html).toContain(
-                    'a[href^="http"]::after,\na[href^="https"]::after { content: none !important; }',
-                );
+                expect(result.html).toContain('a[href^="http"]::after { content: none !important; }');
                 expect(result.html).toContain('.external-iframe-src { display: none !important; }');
 
                 // Override the base/theme print rules on screen as well as on paper.
@@ -616,6 +614,81 @@ describe('PrintPreviewExporter', () => {
         it('should not append the URL again to the external iframe source link', async () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('.external-iframe-src a::after { content: none; }');
+        });
+
+        describe('a link whose text already is its address', () => {
+            /** The preview of a page with this content, and the links in it marked as showing their address. */
+            const preview = async (content: string, showLinkUrls = true) => {
+                const page: ExportPage = {
+                    id: 'page-links',
+                    title: 'Links',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-links',
+                            name: 'Links',
+                            order: 0,
+                            components: [{ id: 'comp-links', type: 'text', order: 0, content, properties: {} }],
+                        },
+                    ],
+                };
+                const linksExporter = new PrintPreviewExporter(
+                    createMockDocument([page]),
+                    createMockResourceProvider(),
+                );
+                const { html } = await linksExporter.generatePreview({ showLinkUrls });
+                return { html: html!, marked: html!.match(/<a data-exe-text-is-url[^>]*>[\s\S]*?<\/a>/g) ?? [] };
+            };
+
+            it('is not followed by its address a second time', async () => {
+                const { html, marked } = await preview(
+                    '<p><a href="https://example.com/a?b=1&amp;c=2">https://example.com/a?b=1&amp;c=2</a></p>',
+                );
+
+                expect(marked).toEqual([
+                    '<a data-exe-text-is-url href="https://example.com/a?b=1&amp;c=2">https://example.com/a?b=1&amp;c=2</a>',
+                ]);
+                expect(html).toContain('a[href^="http"][data-exe-text-is-url]::after { content: none; }');
+            });
+
+            it.each([
+                ['without the protocol or the trailing slash', '<a href="https://example.com/">example.com</a>'],
+                ['in other letter case', '<a href="https://Example.com/Page">https://example.com/page</a>'],
+                [
+                    'inside other markup',
+                    '<a class="x" href="http://example.com"><strong> http://example.com </strong></a>',
+                ],
+            ])('is recognised with its address written %s', async (_label, link) => {
+                expect((await preview(`<p>${link}</p>`)).marked).toHaveLength(1);
+            });
+
+            it.each([
+                ['text of its own', '<a href="https://example.com">Example site</a>'],
+                ['another address', '<a href="https://example.com">https://example.org</a>'],
+                ['only an image', '<a href="https://example.com"><img src="https://example.com/x.png" alt=""></a>'],
+                [
+                    'an address that is not its href',
+                    '<a data-href="https://example.com" href="#top">https://example.com</a>',
+                ],
+                ['an internal address', '<a href="#top">#top</a>'],
+            ])('is told apart from a link with %s', async (_label, link) => {
+                expect((await preview(`<p>${link}</p>`)).marked).toEqual([]);
+            });
+
+            it('is left unmarked when no address is written after links', async () => {
+                expect(
+                    (await preview('<p><a href="https://example.com">https://example.com</a></p>', false)).marked,
+                ).toEqual([]);
+            });
+
+            it('is not left to a selector only Firefox knows, nor to rules repeated for https', async () => {
+                // A selector Chromium does not know drops its whole rule, and ^="http" covers https.
+                const { html } = await preview('<p>No links</p>');
+
+                expect(html).not.toContain('-moz-only-whitespace');
+                expect(html).not.toContain('a[href^="https"]');
+            });
         });
 
         it('should include external-iframe-src display rule when link URLs are on', async () => {

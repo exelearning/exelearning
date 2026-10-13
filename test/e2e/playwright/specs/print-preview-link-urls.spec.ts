@@ -110,6 +110,46 @@ test.describe('Print preview', () => {
         await expect(page.locator('#printOptLinkUrls')).toBeDisabled();
     });
 
+    test('does not write the address again after a link whose text already is it', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, 'Print link URLs written as text');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        // educablue appends the URL of each link in its own print styles, so paper is checked too.
+        await changeTheme(page, 'educablue');
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Links');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Links'), 'text', {
+                htmlContent:
+                    '<p>Visit <a href="https://cedec.intef.es/">Cedec</a> or ' +
+                    '<a href="https://example.org/">https://example.org/</a> for more.</p>',
+            });
+        });
+
+        await page.evaluate(() => (window as any).eXeLearning.app.modals.printpreview.show());
+        const overlay = page.locator('#printPreviewOverlay');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        const frame = page.frameLocator('.print-preview-iframe');
+        const named = frame.locator('a[href="https://cedec.intef.es/"]');
+        const written = frame.locator('a[href="https://example.org/"]');
+        await expect(written).toBeVisible({ timeout: 30000 });
+
+        const textAfter = (link: typeof named) => link.evaluate(a => getComputedStyle(a, '::after').content);
+        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
+        for (const media of ['screen', 'print'] as const) {
+            await page.emulateMedia({ media });
+            expect(await textAfter(named), media).toMatch(showsUrl);
+            expect(await textAfter(written), media).toBe('none');
+        }
+        await page.emulateMedia({ media: null });
+    });
+
     test('leaves out the URLs a theme or the base styles would print, on screen and on paper', async ({
         authenticatedPage: page,
         createProject,

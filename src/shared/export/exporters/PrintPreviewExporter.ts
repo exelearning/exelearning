@@ -277,10 +277,9 @@ export class PrintPreviewExporter {
             // 5. Inject styles to avoid horizontal scroll
             // Only a mode that puts exercises in the document needs their styling.
             const convertsActivities = options.activities !== undefined && options.activities.mode !== 'omit';
-            html = this.injectPreviewStyles(html, {
-                includeActivityStyles: convertsActivities,
-                showLinkUrls: options.showLinkUrls !== false,
-            });
+            const showLinkUrls = options.showLinkUrls !== false;
+            if (showLinkUrls) html = this.markLinksShowingTheirUrl(html);
+            html = this.injectPreviewStyles(html, { includeActivityStyles: convertsActivities, showLinkUrls });
 
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
@@ -357,6 +356,28 @@ export class PrintPreviewExporter {
     }
 
     /**
+     * Mark the external links whose text already is their address, so that it is not written
+     * after them a second time.
+     *
+     * CSS cannot compare a link's text with its href, so the HTML says it. The protocol and a
+     * trailing slash may differ: "example.com" is the address of "https://example.com/".
+     */
+    private markLinksShowingTheirUrl(html: string): string {
+        const bare = (url: string) =>
+            url
+                .trim()
+                .replace(/^https?:\/\//i, '')
+                .replace(/\/$/, '')
+                .toLowerCase();
+
+        return html.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (link, attributes: string, content: string) => {
+            const href = /(?:^|\s)href=(["'])(https?:\/\/[^"']*)\1/i.exec(attributes)?.[2];
+            if (!href || bare(content.replace(/<[^>]*>/g, '')) !== bare(href)) return link;
+            return `<a data-exe-text-is-url${attributes}>${content}</a>`;
+        });
+    }
+
+    /**
      * Inject styles to force content to fit within the page width
      *
      * @param options.includeActivityStyles - Style the exercises the activities were turned into
@@ -372,27 +393,23 @@ export class PrintPreviewExporter {
         const linkUrlsCss = showLinkUrls
             ? `
 /* Show URLs inline after external links (screen and print, so the preview matches) */
-a[href^="http"]::after,
-a[href^="https"]::after {
+a[href^="http"]::after {
     content: " [" attr(href) "]";
     font-size: 0.85em;
     word-break: break-all;
     color: #666;
 }
-/* Don't show URL for links whose text IS the URL */
-a[href^="http"]:-moz-only-whitespace::after,
-a[href^="https"]:-moz-only-whitespace::after { content: none; }
+/* Don't show URL for links whose text IS the URL (marked by markLinksShowingTheirUrl) */
+a[href^="http"][data-exe-text-is-url]::after { content: none; }
 /* Don't show URL for image-only links */
-a[href^="http"]:has(img:only-child)::after,
-a[href^="https"]:has(img:only-child)::after { content: none; }
+a[href^="http"]:has(img:only-child)::after { content: none; }
 /* Show external iframe source URLs in print */
 .external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }
 /* Its link text already is the URL */
 .external-iframe-src a::after { content: none; }`
             : `
 /* Link URLs are off: undo the theme, iDevice and base rules that print them (screen and print) */
-a[href^="http"]::after,
-a[href^="https"]::after { content: none !important; }
+a[href^="http"]::after { content: none !important; }
 .external-iframe-src { display: none !important; }`;
 
         const styles = `
