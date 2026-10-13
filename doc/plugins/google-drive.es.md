@@ -5,8 +5,8 @@
 <!-- --8<-- [start:intro] -->
 
 **eXeLearning para Google Drive** permite **abrir, editar y crear** recursos de eXeLearning
-(`.elpx`) guardados en tu Drive. No hay que instalar nada: funciona en el navegador y los archivos
-nunca salen de Drive.
+(`.elpx`) guardados en tu Drive, y **compartirlos con el alumnado** mediante un enlace público. No hay
+que instalar nada: funciona en el navegador y los archivos nunca salen de Drive.
 
 <!-- --8<-- [end:intro] -->
 
@@ -26,6 +26,10 @@ Workspace debe permitir **eXeLearning** en la **Consola de administración de Go
 Control de acceso y de datos → Controles de API → Gestionar el acceso de aplicaciones de terceros**).
 Si no, el profesorado verá un error al autorizarla.
 
+Los enlaces públicos para el alumnado necesitan que el archivo se comparta como **Cualquier persona
+con el enlace**. Si tu dominio no permite compartir fuera de la organización, el profesorado verá un
+error al crearlos; aun así podrá compartir archivos con personas del dominio desde Google Drive.
+
 ### Alojar una copia propia (opcional)
 
 Una administración puede publicar su propia copia en lugar de usar la pública, por ejemplo para que
@@ -37,6 +41,8 @@ una web estática, así que sirve cualquier servidor web. Necesitas:
    **ID de cliente OAuth** para la dirección de tu web.
 3. La **integración con la interfaz de Drive** apuntando a tu copia, para que eXeLearning aparezca en
    los menús **Abrir con** y **Nuevo** de Drive.
+4. Una **clave de API** restringida a la API de Google Drive y a tu web, que usa la vista pública.
+   Sin ella, el botón **Compartir enlace público** aparece desactivado.
 
 Todos los pasos están en la
 [guía de autoalojamiento](https://github.com/exelearning/gdrive-exelearning/blob/main/SELF-HOSTING.md)
@@ -56,33 +62,41 @@ Todos los pasos están en la
 ### Primeros pasos
 
 1. Entra en <https://exelearning.github.io/gdrive-exelearning/>.
-2. Pulsa **Authorize Google** y acepta los permisos. Así eXeLearning aparece en los menús **Abrir con**
-   y **Nuevo** de Drive.
+2. Pulsa **Conectar Google Drive** y acepta los permisos. Así eXeLearning aparece en los menús
+   **Abrir con** y **Nuevo** de Drive.
 
-![Página de inicio de eXeLearning para Google Drive](img/google-drive/landing.png)
+![Página de inicio de eXeLearning para Google Drive](img/google-drive/landing.es.png)
 
 !!! info "Permisos que pide"
     Solo accede a los archivos que abras o crees con eXeLearning (permiso `drive.file`), no a todo tu
     Drive.
 
+### Idioma
+
+La aplicación está disponible en los mismos idiomas que eXeLearning. Usa el idioma de tu navegador;
+para cambiarlo, elige otro en **Idioma**, al pie de la página de inicio. Los menús de Drive siguen el
+idioma de tu cuenta de Google, y el editor mantiene el idioma que tenga configurado en sus
+preferencias.
+
 ### Abrir un recurso
 
 En Google Drive, haz clic derecho sobre un `.elpx` y elige **Abrir con → eXeLearning**. La primera
-vez, pulsa **Authorize and open**.
+vez, pulsa **Autorizar y abrir**.
 
 ![Abrir con → eXeLearning en Google Drive](img/google-drive/open-with.png)
 
-Se muestra una vista previa del recurso, lista para navegar. Pulsa **Edit in eXeLearning** para
-editarlo.
+Se muestra una vista previa del recurso, lista para navegar. Pulsa **Editar en eXeLearning** para
+editarlo, o **Compartir enlace público** para
+[compartirlo con tu alumnado](#compartir-con-el-alumnado).
 
-![Vista previa del recurso con el botón Edit in eXeLearning](img/google-drive/preview.png)
+![Vista previa del recurso con los botones Compartir enlace público y Editar en eXeLearning](img/google-drive/preview.es.png)
 
 ### Editar y guardar
 
-El editor se abre en la misma pestaña. Cuando termines, pulsa **Save to Drive** (o Ctrl/Cmd + S). El
-archivo se actualiza en Drive, con su miniatura.
+El editor se abre en la misma pestaña. Cuando termines, pulsa **Guardar en Drive** (o Ctrl/Cmd + S).
+El archivo se actualiza en Drive, con su miniatura.
 
-![El editor de eXeLearning con el botón Save to Drive](img/google-drive/editor.png)
+![El editor de eXeLearning con el botón Guardar en Drive](img/google-drive/editor.es.png)
 
 - Si alguien cambió el archivo mientras lo editabas, podrás elegir entre sobrescribirlo, guardar una
   copia o cancelar.
@@ -91,17 +105,40 @@ archivo se actualiza en Drive, con su miniatura.
 
 ### Crear un recurso nuevo
 
-En Drive, pulsa **Nuevo → Más → eXeLearning**. La primera vez, pulsa **Authorize and create**. El
+En Drive, pulsa **Nuevo → Más → eXeLearning**. La primera vez, pulsa **Autorizar y crear**. El
 archivo nuevo se crea en la carpeta en la que estás y se abre en el editor.
 
 ![Nuevo → Más → eXeLearning en Google Drive](img/google-drive/new-menu.png)
 
-### Compartir
+### Compartir con el alumnado { #compartir-con-el-alumnado }
 
-Usa el botón **Compartir** de Google Drive, como con cualquier otro archivo.
+Un enlace público permite al alumnado abrir el recurso en su navegador **sin cuenta de Google**.
 
-!!! note "Idioma"
-    Por ahora las pantallas propias de esta aplicación están solo en inglés. Los menús de Drive y el
-    editor se muestran en tu idioma.
+1. Pulsa **Compartir enlace público**, en la vista previa o en el editor.
+2. El diálogo avisa de que el archivo pasará a **Cualquier persona con el enlace** como **Lector** en
+   Google Drive. Pulsa **Crear enlace público**.
+
+    ![Diálogo de compartir antes de crear el enlace público](img/google-drive/share-confirm.es.png)
+
+3. Pulsa **Copiar enlace** y envía el enlace a tu alumnado: en tu curso, por correo o donde sueles
+   compartir los materiales.
+
+    ![Diálogo de compartir con el enlace público para el alumnado](img/google-drive/share-link.es.png)
+
+El alumnado ve el recurso como una web, con su menú, sin instalar nada ni iniciar sesión.
+
+![Vista pública del recurso, abierta sin iniciar sesión](img/google-drive/public-view.png)
+
+!!! warning "Cualquiera con el enlace puede verlo y descargarlo"
+    Quien tenga el enlace puede ver el recurso y descargar su archivo `.elpx`. Para dejar de
+    compartirlo, pulsa **Gestionar en Google Drive** (o usa el botón **Compartir** de Drive) y vuelve
+    a poner el **Acceso general** en **Restringido**. A partir de ahí el enlace deja de funcionar.
+
+Si el Google Workspace de tu centro no permite compartir fuera de la organización, el diálogo muestra
+el error de Google. Aun así puedes compartir el archivo con docentes de tu dominio con el botón
+**Compartir** de Drive; lo abrirán con **Abrir con → eXeLearning**.
+
+Para que otros docentes puedan editar el archivo, usa el botón **Compartir** de Google Drive, como
+con cualquier otro archivo.
 
 <!-- --8<-- [end:teacher] -->

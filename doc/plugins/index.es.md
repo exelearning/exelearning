@@ -21,7 +21,7 @@ de eXeLearning**: basta con instalar el plugin para empezar a editar.
 | Nextcloud | [eXeLearning para Nextcloud](nextcloud.es.md) | Ver, editar y crear recursos en Archivos | — |
 | WordPress | [eXeLearning para WordPress](wordpress.es.md) | Publicar recursos en entradas y páginas | — |
 | Omeka S | [eXeLearning para Omeka S](omeka-s.es.md) | Catalogar y mostrar recursos en colecciones | — |
-| Google Drive | [eXeLearning para Google Drive](google-drive.es.md) | Abrir y editar recursos guardados en Drive | — |
+| Google Drive | [eXeLearning para Google Drive](google-drive.es.md) | Abrir, editar y compartir recursos guardados en Drive | — |
 | OneDrive | [eXeLearning para OneDrive](onedrive.es.md) | Abrir y editar recursos guardados en OneDrive | — |
 
 !!! tip "¿Moodle? Empieza por `mod_exelearning`"
