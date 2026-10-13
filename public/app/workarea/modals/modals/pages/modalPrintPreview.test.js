@@ -1671,6 +1671,39 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(notice().hidden).toBe(true);
         });
 
+        it('lets a print whose dialog never answers go when the preview closes', async () => {
+            window.electronAPI = { printPreview: vi.fn(() => new Promise(() => {})) };
+            modal.print();
+            await dialogOpened();
+            expect(printBtn().disabled).toBe(true);
+            modal.close();
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            expect(printBtn().disabled).toBe(false);
+            modal.print();
+            await vi.waitFor(() => expect(window.electronAPI.printPreview).toHaveBeenCalledTimes(2));
+        });
+
+        it('ignores the late answer of a print it let go', async () => {
+            const answers = [];
+            window.electronAPI = { printPreview: vi.fn(() => new Promise(resolve => answers.push(resolve))) };
+            const abandoned = modal.print();
+            await dialogOpened();
+            modal.close();
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            const current = modal.print();
+            await vi.waitFor(() => expect(window.electronAPI.printPreview).toHaveBeenCalledTimes(2));
+            answers[0]({ success: false, canceled: true });
+            await abandoned;
+            expect(printBtn().disabled).toBe(true);
+            answers[1]({ success: false, canceled: true });
+            await current;
+            expect(printBtn().disabled).toBe(false);
+        });
+
         it('reports snapshot errors without sending an incomplete document to the printer', async () => {
             vi.spyOn(console, 'warn').mockImplementation(() => {});
             window.electronAPI = { printPreview: vi.fn() };

@@ -120,7 +120,8 @@ export default class ModalPrintPreview {
         this.stopPrintCheck = null;
         /** True while the desktop app is saving the preview as a PDF. */
         this.savingPdf = false;
-        this.printing = false;
+        /** The desktop print waiting for its dialog to answer. Null when none is. */
+        this.printJob = null;
         /** Tabs opened from the preview, each with the copy it shows and what keeps its assets. */
         this.openTabs = new Set();
         /** Checks whether those tabs are still open. Null while there are none. */
@@ -248,8 +249,21 @@ export default class ModalPrintPreview {
         if (this.overlay) {
             this.overlay.setAttribute('data-visible', 'false');
         }
+        // A desktop print dialog that never answers would leave Print disabled for good: on macOS
+        // it may be a sheet of the hidden window that prints, which nobody can see. Closing lets
+        // that print go. Its assets stay until it answers, in case it is still printing.
+        this.endPrintJob();
         this.cleanup();
         this.setBusy(false);
+    }
+
+    /**
+     * Stop waiting for the desktop print dialog, which re-enables Print. An answer that comes
+     * later is ignored.
+     */
+    endPrintJob() {
+        this.printJob = null;
+        this.syncPrintButton();
     }
 
     /**
@@ -750,7 +764,7 @@ export default class ModalPrintPreview {
      * Print the preview content, and say so if printing does not start.
      */
     async print() {
-        if (!this.canPrint() || this.printing) return;
+        if (!this.canPrint() || this.printJob) return;
         const win = this.iframe?.contentWindow;
         if (!win) return;
 
@@ -759,7 +773,8 @@ export default class ModalPrintPreview {
             const requestId = this.requestId;
             const release = this.retainPreview?.();
             let url;
-            this.printing = true;
+            const job = {};
+            this.printJob = job;
             this.syncPrintButton();
             try {
                 const html = await printPreviewSnapshot(this.iframe.contentDocument);
@@ -774,8 +789,7 @@ export default class ModalPrintPreview {
             } finally {
                 if (url) URL.revokeObjectURL(url);
                 release?.();
-                this.printing = false;
-                this.syncPrintButton();
+                if (this.printJob === job) this.endPrintJob();
             }
             return;
         }
@@ -974,7 +988,7 @@ export default class ModalPrintPreview {
     }
 
     syncPrintButton() {
-        if (this.printBtn) this.printBtn.disabled = !this.canPrint() || this.printing;
+        if (this.printBtn) this.printBtn.disabled = !this.canPrint() || Boolean(this.printJob);
         if (this.pdfBtn) {
             this.pdfBtn.hidden = !this.canSavePdf();
             this.pdfBtn.disabled = !this.canPrint() || this.savingPdf;
