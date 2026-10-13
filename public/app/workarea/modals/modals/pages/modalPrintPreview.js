@@ -464,21 +464,34 @@ export default class ModalPrintPreview {
      *
      * Some activities fall back to a picture shipped with their iDevice rather than one stored in
      * the project. The worksheet is a standalone document, so it needs an absolute URL to reach
-     * one. Mirrors the path PrintPreviewExporter builds for the same files.
+     * one. Mirrors the path PrintPreviewExporter builds for the same files, from the same
+     * server paths it is given.
      *
      * @returns {string} Base URL ending in a slash
      */
     getIdeviceBasePath() {
-        const config = window.eXeLearning?.config || {};
-        const baseUrl = config.isStaticMode
-            ? window.location.origin
-            : config.baseURL || window.location.origin;
-        const basePath = (config.basePath || '').replace(/\/$/, '');
-        const version = config.isStaticMode ? '' : config.version || '';
+        const { baseUrl, basePath, version } = this.getServerPaths();
         // v1.0.0 is the unversioned development default, which is not part of the path.
         const versionSegment = version && version !== 'v1.0.0' ? `/${version}` : '';
 
-        return `${baseUrl}${basePath}${versionSegment}/files/perm/idevices/base/`;
+        return `${baseUrl}${basePath.replace(/\/$/, '')}${versionSegment}/files/perm/idevices/base/`;
+    }
+
+    /**
+     * Where the app serves its files from, as the document preview is told.
+     *
+     * @returns {{ baseUrl: string, basePath: string, version: string }}
+     */
+    getServerPaths() {
+        const config = window.eXeLearning?.config || {};
+        // Static mode requires absolute URLs for Blob compatibility
+        const baseUrl = config.isStaticMode ? window.location.origin : config.baseURL || window.location.origin;
+
+        return {
+            baseUrl,
+            basePath: config.basePath || '',
+            version: config.isStaticMode ? '' : config.version || 'v1.0.0',
+        };
     }
 
     /**
@@ -665,16 +678,11 @@ export default class ModalPrintPreview {
      * @returns {object}
      */
     buildPreviewOptions() {
-        // Static mode requires absolute URLs for Blob compatibility
-        const baseUrl = window.eXeLearning?.config?.isStaticMode
-            ? window.location.origin
-            : (window.eXeLearning?.config?.baseURL || window.location.origin);
+        const paths = this.getServerPaths();
 
         return {
-            baseUrl,
-            basePath: window.eXeLearning?.config?.basePath || '',
-            version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
-            ...this.getThemeOptions(baseUrl),
+            ...paths,
+            ...this.getThemeOptions(paths.baseUrl),
             ...this.getPrintOptions(),
             ...this.getActivityOptions(),
         };

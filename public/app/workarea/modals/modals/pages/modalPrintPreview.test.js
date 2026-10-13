@@ -626,6 +626,18 @@ describe('ModalPrintPreview and interactive activities', () => {
         );
     });
 
+    it.each([
+        [{ basePath: '/exe/', version: 'v4.0.0' }, 'http://localhost:8080/exe/v4.0.0/files/perm/idevices/base/'],
+        [{ isStaticMode: true, version: 'v4.0.0' }, `${window.location.origin}/files/perm/idevices/base/`],
+    ])('takes that path from the server paths the preview is given: %j', async (config, expected) => {
+        Object.assign(global.eXeLearning.config, config);
+        await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE);
+        const { baseUrl, basePath, activities } = lastOptions();
+
+        expect(activities.ideviceBasePath).toBe(expected);
+        expect(activities.ideviceBasePath.startsWith(`${baseUrl}${basePath.replace(/\/$/, '')}/`)).toBe(true);
+    });
+
     it('forgets the mode when the next preview does not ask for one', async () => {
         await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE);
         await modal.show(PREVIEW_MODE_DOCUMENT);
