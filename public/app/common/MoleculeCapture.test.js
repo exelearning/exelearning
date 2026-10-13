@@ -314,6 +314,15 @@ describe('MoleculeCapture', () => {
             expect(loseContext).toHaveBeenCalledOnce();
         });
 
+        test('takes a WebGL probe that throws as no WebGL', () => {
+            globalThis.document.createElement.mockReturnValue({
+                getContext: () => {
+                    throw new Error('WebGL blocked');
+                },
+            });
+            expect(MoleculeCapture._isWebGLAvailable()).toBe(false);
+        });
+
         test('takes the stage down once the picture is read', async () => {
             const { viewer } = install3Dmol();
 

@@ -706,6 +706,33 @@ describe('two-column boards and the page break', () => {
         expect(html.match(/worksheet-pairs/g)).toHaveLength(2);
     });
 
+    it('keeps on a shuffled block the rows its cards came from', () => {
+        const html = renderActivityFragment(
+            activity({
+                ideviceType: 'dragdrop',
+                board: {
+                    kind: 'groupColumns',
+                    groups: [
+                        {
+                            columns: [
+                                [{ text: 'Gato' }, { text: 'Perro' }],
+                                [{ text: 'Dog' }, { text: 'Cat' }],
+                            ],
+                            rowIndices: [
+                                [0, 1],
+                                [1, 0],
+                            ],
+                        },
+                    ],
+                } as never,
+                items: [],
+            }),
+        );
+
+        expect(html).toContain('<div class="worksheet-matching-set" data-worksheet-matches="[[0,1],[1,0]]">');
+        expect(html.match(/<div class="worksheet-match worksheet-pairs"/g)).toHaveLength(1);
+    });
+
     it('asks the browser to keep each block on one sheet', () => {
         // Without this the two columns split and a pairing becomes impossible to draw.
         const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-match {')[1].split('}')[0];

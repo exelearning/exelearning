@@ -220,6 +220,23 @@ describe('applyActivityMode', () => {
             expect(componentsOf(run([page([broken])], 'in-place'))[0].content).toContain('worksheet-not-printable');
         });
 
+        it('prints the same note when the adapter fails on the data, rather than failing the print', () => {
+            // The list is always shuffled, so a draw that fails is an error inside the adapter.
+            const list = component({
+                type: 'scrambled-list',
+                content: '',
+                properties: { options: ['Primero', 'Segundo', 'Tercero'] },
+            });
+            const random = () => {
+                throw new Error('No draw');
+            };
+
+            const content = componentsOf(run([page([list])], 'in-place', { random }))[0].content;
+
+            expect(content).toContain('worksheet-not-printable');
+            expect(content).not.toContain('Primero');
+        });
+
         it('adds no appendix', () => {
             expect(run([page([component()])], 'in-place')).toHaveLength(1);
         });

@@ -994,6 +994,28 @@ describe('NavbarFile', () => {
             expect(navbarFile.downloadProjectEvent).toHaveBeenCalled();
         });
 
+        it('setExportPrintEvent should not print while an idevice is open', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+            vi.spyOn(navbarFile, 'startPrint').mockImplementation(() => {});
+            navbarFile.setExportPrintEvent();
+
+            const clickHandler = mockButtons.exportPrintButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.startPrint).not.toHaveBeenCalled();
+        });
+
+        it('setExportPrintEvent should start printing when no idevice is open', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            vi.spyOn(navbarFile, 'startPrint').mockImplementation(() => {});
+            navbarFile.setExportPrintEvent();
+
+            const clickHandler = mockButtons.exportPrintButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.startPrint).toHaveBeenCalledOnce();
+        });
+
         it('setDownloadProjectEvent should return false if idevice is open', () => {
             eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
             vi.spyOn(navbarFile, 'downloadProjectEvent');
