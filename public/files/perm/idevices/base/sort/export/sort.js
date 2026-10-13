@@ -67,6 +67,7 @@ var $eXeOrdena = {
             const ordena = $eXeOrdena.createInterfaceOrdena(i);
 
             dl.before(ordena).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ordenaGameMinimize-' + i).hide();
             $('#ordenaGameContainer-' + i).hide();

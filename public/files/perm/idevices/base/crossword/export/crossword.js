@@ -1348,7 +1348,7 @@ var $eXeCrucigrama = {
                 .replace('%s', score.toFixed(2))
                 .replace('%s', hits)
                 .replace('%s', totalWords),
-            type = score < 5 ? 1 : 2;
+            type = score < $exe.passScore.resolve(mOptions) ? 1 : 2;
         $('#ccgmMainContainer-' + instance)
             .find('li.CCGMP-FlexSpan')
             .each(function () {
@@ -1771,6 +1771,7 @@ var $eXeCrucigrama = {
             const ccgm = $eXeCrucigrama.createInterfaceCrucigrama(i);
 
             dl.before(ccgm).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ccgmGameMinimize-' + i).hide();
             $('#ccgmGameContainer-' + i).hide();

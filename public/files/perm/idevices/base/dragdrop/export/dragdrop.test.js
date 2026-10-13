@@ -451,6 +451,53 @@ describe('dragdrop iDevice export', () => {
     });
   });
 
+  /**
+   * showScoreGame picks the colour of the message the learner reads. It used to
+   * compare against a literal 5, which contradicted the progress report sitting
+   * on the same page -- the report called a 6 out of 10 "not passed" against a
+   * mark of 8 while this message painted it green.
+   *
+   * Colour 2 is the pass colour, 1 the fail colour; showMessage is where they
+   * are turned into a style, so that is what is observed.
+   */
+  describe('the message colour follows the pass mark', () => {
+    const instance = 0;
+
+    const play = (passScoreMode, passScoreCustom) => {
+      const showMessage = vi.spyOn($eXeDragDrop, 'showMessage').mockImplementation(() => {});
+      $eXeDragDrop.options[instance] = {
+        hits: 6,
+        errors: 4,
+        numberCards: 10,
+        realNumberCards: 10,
+        cardsGame: new Array(10),
+        passScoreMode,
+        passScoreCustom,
+        itinerary: { showClue: false },
+        msgs: { msgEndGameM: '%s' },
+      };
+      document.body.innerHTML = `<div id="dadPRepeatActivity-${instance}"></div>`;
+      $eXeDragDrop.showScoreGame(instance);
+      return showMessage.mock.calls[0][0];
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('passes a 6 on the project mark of 5', () => {
+      expect(play('global')).toBe(2);
+    });
+
+    it('fails the same 6 when the author set the mark at 8', () => {
+      expect(play('custom', 8)).toBe(1);
+    });
+
+    it('passes the same 6 when the author set the mark at 4.5', () => {
+      expect(play('custom', 4.5)).toBe(2);
+    });
+  });
+
   // The editor never reloads the document between pages, and a game's ids are
   // numbered by position: the next page's first game takes the ids this one
   // had. The clock used to find that game by id and run it, counting down on
@@ -503,5 +550,18 @@ describe('dragdrop iDevice export', () => {
       expect($eXeDragDrop.gameOver).not.toHaveBeenCalled();
       expect($eXeDragDrop.options[instance].counter).toBe(240);
     });
+  });
+});
+
+describe('dragdrop minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'dragdrop.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
   });
 });

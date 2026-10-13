@@ -120,6 +120,7 @@ var $eXeDesafio = {
             const desafio = $eXeDesafio.createInterfaceChallenger(i);
 
             dl.before(desafio).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#desafioGameMinimize-' + i).show();
             $('#desafioGameContainer-' + i).show();
             if (mOption.showMinimize) {

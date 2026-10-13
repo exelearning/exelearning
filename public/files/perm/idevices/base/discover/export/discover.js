@@ -91,6 +91,7 @@ var $eXeDescubre = {
             const descubre = $eXeDescubre.createInterfaceDescubre(i);
 
             dl.before(descubre).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#descubreGameMinimize-' + i)
                 .css({
                     cursor: 'pointer',

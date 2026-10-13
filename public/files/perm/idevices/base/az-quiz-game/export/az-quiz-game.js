@@ -83,6 +83,12 @@ var $azquizgame = {
 
             const rosco = $azquizgame.createInterfaceRosco(i);
             dl.before(rosco).remove();
+            // Before .rosco-Main rather than inside it: its scoreboard is
+            // positioned absolutely at its top and would sit on the notice.
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+                option,
+                '#roscoMain-' + i
+            );
 
             const msg = $azquizgame.options[i].msgs.msgPlayStart;
 

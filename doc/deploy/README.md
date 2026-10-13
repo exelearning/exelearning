@@ -52,6 +52,7 @@ You can customize the deployment by setting these environment variables:
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD`: Admin user credentials (created/updated when ADMIN_PASSWORD is set)
 - `ONLINE_THEMES_INSTALL`: Allow users to import/install styles
 - `ONLINE_IDEVICES_INSTALL`: Allow users to import/install iDevices
+- `PUBLIC_VIEW_ENABLED`: Allow project owners to publish a public read-only link to their projects (default: `false`). Administrators can also change it from `/admin` > Sharing; the value saved there takes precedence.
 
 ### Database-Specific Variables
 - PostgreSQL:
