@@ -120,6 +120,72 @@ describe('AssetUrlResolver', () => {
         expect(resolver.getExportPathMap()?.get('uuid-1')).toBe('blob:http://localhost/1');
     });
 
+    describe('building only what some content references', () => {
+        const three = () => [
+            assetOf({ id: 'a', filename: 'a.png' }),
+            assetOf({ id: 'b', filename: 'b.png', folderPath: 'docs' }),
+            assetOf({ id: 'c', filename: 'c.png' }),
+        ];
+        let walks: number;
+        /** The three assets, counting how often they are walked. */
+        const counted = () => {
+            walks = 0;
+            const provider = providerOf(three());
+            const walk = provider.forEachAsset!;
+            provider.forEachAsset = async callback => {
+                walks++;
+                await walk(callback);
+            };
+            return provider;
+        };
+
+        it('copies only the assets the content references', async () => {
+            const resolver = new AssetUrlResolver(counted());
+            await resolver.build('<img src="asset://a.png"><img src="content/resources/docs/b.png">');
+
+            expect(resolver.resolve('asset://a content/resources/docs/b.png asset://c')).toBe(
+                'blob:http://localhost/1 blob:http://localhost/2 content/resources/c',
+            );
+        });
+
+        it('adds what a later call references, without copying again what is mapped', async () => {
+            const resolver = new AssetUrlResolver(counted());
+            await resolver.build('asset://a');
+            await resolver.build('asset://a asset://c');
+
+            expect(resolver.resolve('asset://a asset://c')).toBe('blob:http://localhost/1 blob:http://localhost/2');
+        });
+
+        it('does not walk the assets again when everything referenced is mapped', async () => {
+            const resolver = new AssetUrlResolver(counted());
+            await resolver.build('asset://a');
+            await resolver.build('<img src="asset://a.png"> <img src="content/resources/a.png">');
+
+            expect(walks).toBe(1);
+        });
+
+        it('maps the rest when later asked for every asset, and nothing after that', async () => {
+            const resolver = new AssetUrlResolver(counted());
+            await resolver.build('asset://a');
+            await resolver.build();
+            await resolver.build('asset://missing');
+
+            expect(resolver.resolve('asset://a asset://b asset://c')).toBe(
+                'blob:http://localhost/1 blob:http://localhost/2 blob:http://localhost/3',
+            );
+            expect(walks).toBe(2);
+        });
+
+        it('starts again once disposed', async () => {
+            const resolver = new AssetUrlResolver(counted());
+            await resolver.build();
+            resolver.dispose();
+            await resolver.build('asset://b');
+
+            expect(resolver.resolve('asset://b')).toBe('blob:http://localhost/4');
+        });
+    });
+
     describe('without usable assets', () => {
         it('passes content through when there is no provider', async () => {
             const resolver = new AssetUrlResolver(null);

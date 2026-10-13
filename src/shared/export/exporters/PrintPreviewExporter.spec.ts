@@ -164,10 +164,66 @@ describe('PrintPreviewExporter', () => {
             global.URL.revokeObjectURL = ((url: string) => {
                 revoked.push(url);
             }) as typeof URL.revokeObjectURL;
+            // Only the assets the document uses are copied, so it uses both.
+            mockDocument.getNavigation()[0].blocks[0].components[0].content =
+                '<img src="asset://a1"><img src="asset://a2">';
         });
 
         afterEach(() => {
             global.URL.revokeObjectURL = originalRevokeObjectURL;
+        });
+
+        describe('copying only the assets the document uses', () => {
+            it('leaves out one nothing points at, and one only a hidden page does', async () => {
+                const pages = mockDocument.getNavigation();
+                pages[0].blocks[0].components[0].content = '<img src="asset://a1">';
+                pages[1].properties = { visibility: false };
+                pages[1].blocks[0].components[0].content = '<img src="asset://a2">';
+                const assets = createAssets([
+                    imageAsset('a1', 'one.png', 3),
+                    imageAsset('a2', 'two.png', 5),
+                    imageAsset('a3', 'three.png', 7),
+                ]);
+
+                const result = await new PrintPreviewExporter(
+                    createMockDocument(pages),
+                    mockResourceProvider,
+                    assets,
+                ).generatePreview();
+                result.dispose?.();
+
+                expect(result.html).toContain('<img src="blob:mock-url-3">');
+                expect(revoked).toEqual(['blob:mock-url-3']);
+            });
+
+            it('still copies the picture of an exercise drawn from an encrypted payload', async () => {
+                // No sidecar link carries it, so the picture only appears once the payload is read.
+                const payload = JSON.stringify({
+                    typeGame: 'Adivina',
+                    wordsGame: [
+                        { type: 1, url: 'asset://a2', definition: 'Castillo', word: 'Loarre', percentageShow: 0 },
+                    ],
+                });
+                const pages = mockDocument.getNavigation();
+                pages[0].blocks[0].components[0] = {
+                    id: 'guess-1',
+                    type: 'guess',
+                    order: 0,
+                    content: `<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`,
+                    properties: {},
+                };
+
+                const result = await new PrintPreviewExporter(
+                    createMockDocument(pages),
+                    mockResourceProvider,
+                    twoAssets(),
+                ).generatePreview({ activities: { mode: 'in-place', labels: {}, ideviceTitles: {} } });
+                result.dispose?.();
+
+                expect(result.html).toContain('blob:mock-url-5');
+                expect(result.html).not.toContain('asset://a2');
+                expect(revoked).toEqual(['blob:mock-url-5']);
+            });
         });
 
         it('hands back a way to release the asset URLs, and releases nothing while the document is shown', async () => {

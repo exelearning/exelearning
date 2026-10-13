@@ -17,6 +17,8 @@ export class AssetUrlResolver {
     private assets: AssetProvider | null;
     private byId: Map<string, string> | null = null;
     private byFilename: Map<string, string> | null = null;
+    /** Whether every asset is mapped already, so that no content can need another. */
+    private complete = false;
     private ownedUrls = new Set<string>();
 
     /**
@@ -27,29 +29,41 @@ export class AssetUrlResolver {
     }
 
     /**
-     * Map every asset to a blob URL. Safe to call more than once; later calls are no-ops.
+     * Map assets to blob URLs: the ones the content references, or every one without content.
+     *
+     * Calls add up. A later call maps what its content references and the earlier ones did not,
+     * so a reference that only appears later (in an exercise drawn from a decrypted payload) can
+     * still be resolved, and an asset already mapped is not copied again.
+     *
+     * @param content - Any string that may embed asset references (HTML, or serialised JSON)
      */
     async build(content?: string): Promise<void> {
-        if (this.byId || !this.assets) return;
+        if (this.complete || !this.assets) return;
 
-        this.byId = new Map();
-        this.byFilename = new Map();
+        const byId = (this.byId ??= new Map());
+        this.byFilename ??= new Map();
         const references =
             content === undefined
                 ? null
-                : new Set([...content.matchAll(ASSET_REFERENCE_PATTERN)].map(match => match[1]));
+                : new Set(
+                      [...content.matchAll(ASSET_REFERENCE_PATTERN)]
+                          .map(match => match[1])
+                          .filter(reference => !this.lookup(reference)),
+                  );
         if (references?.size === 0) return;
+        if (!references) this.complete = true;
         const referencedIds = new Set(
             [...(references ?? [])].map(reference =>
                 reference.includes('.') ? reference.slice(0, reference.lastIndexOf('.')) : reference,
             ),
         );
         const needed = (asset: { id: string; filename: string; folderPath?: string }) =>
-            !references ||
-            references.has(asset.id) ||
-            referencedIds.has(asset.id) ||
-            references.has(asset.filename) ||
-            references.has(`${asset.folderPath}/${asset.filename}`);
+            !byId.has(asset.id) &&
+            (!references ||
+                references.has(asset.id) ||
+                referencedIds.has(asset.id) ||
+                references.has(asset.filename) ||
+                references.has(`${asset.folderPath}/${asset.filename}`));
 
         try {
             const add = async (asset: ExportAsset) => {
@@ -90,6 +104,7 @@ export class AssetUrlResolver {
         this.ownedUrls.clear();
         this.byId = null;
         this.byFilename = null;
+        this.complete = false;
     }
 
     /**
@@ -105,17 +120,21 @@ export class AssetUrlResolver {
         if (!content || !this.byId) return content;
 
         return content.replace(ASSET_REFERENCE_PATTERN, (match, reference: string) => {
-            let blobUrl = this.byId?.get(reference) || this.byFilename?.get(reference);
-
-            // Stored references often carry an extension the asset id does not have.
-            if (!blobUrl && reference.includes('.')) {
-                blobUrl = this.byId?.get(reference.substring(0, reference.lastIndexOf('.')));
-            }
-
+            const blobUrl = this.lookup(reference);
             if (blobUrl) return blobUrl;
 
             return match.startsWith('asset://') ? `content/resources/${reference}` : match;
         });
+    }
+
+    /** The blob URL a reference resolves to, if its asset is mapped. */
+    private lookup(reference: string): string | undefined {
+        const blobUrl = this.byId?.get(reference) || this.byFilename?.get(reference);
+        if (blobUrl) return blobUrl;
+
+        // Stored references often carry an extension the asset id does not have.
+        if (reference.includes('.')) return this.byId?.get(reference.substring(0, reference.lastIndexOf('.')));
+        return undefined;
     }
 
     /**

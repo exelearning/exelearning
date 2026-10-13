@@ -130,11 +130,11 @@ export interface PrintPreviewResult {
     html?: string;
     error?: string;
     /**
-     * Releases the blob URLs the HTML points at, one per project asset.
+     * Releases the blob URLs the HTML points at, one per asset it uses.
      *
      * Only the caller knows when the document has stopped being shown, so it must call this then.
      * A preview that is drawn again each time an option changes would otherwise leave a copy of
-     * every asset behind each time.
+     * each of those assets behind each time.
      */
     dispose?: () => void;
 }
@@ -271,7 +271,9 @@ export class PrintPreviewExporter {
 
             // 2b. Resolve any remaining content/resources or asset:// URLs to blob URLs.
             // Block header custom icons are generated at render time, so they are not covered
-            // by the page/component preprocess step above.
+            // by the page/component preprocess step above. Nor is an exercise drawn from a
+            // decrypted payload, whose pictures are mapped here.
+            await assetResolver.build(html);
             html = assetResolver.resolve(html);
 
             // 3. Make hidden feedback elements visible (remove display: none)
@@ -600,10 +602,12 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
     private async preprocessPages(pages: ExportPage[], assetResolver: AssetUrlResolver): Promise<ExportPage[]> {
         if (!this.assets) return this.filterVisiblePages(pages);
 
-        await assetResolver.build();
-
         // Filter out hidden pages
         const visiblePages = this.filterVisiblePages(pages);
+
+        // Only the assets these pages use: a project's media can be heavy, and the preview is
+        // drawn again each time an option changes.
+        await assetResolver.build(JSON.stringify(visiblePages));
 
         // Note: filterVisiblePages returns shallow copies, but preprocessPages was deep cloning.
         // Let's do a deep clone of the filtered result to be safe and consistent with previous logic

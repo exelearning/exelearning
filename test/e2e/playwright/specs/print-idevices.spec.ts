@@ -2042,6 +2042,19 @@ test.describe('Print iDevices', () => {
         for (const clue of await allClues.all()) expect(gridNumbers).toContain(await clue.getAttribute('value'));
         for (const heading of await crossword.locator('.worksheet-clue-heading').all())
             await expect(heading).toHaveText(/^(Horizontales|Verticales)$/);
+
+        // The document holds the same exercise in its appendix. There the picture only appears once
+        // the payload is read, after the assets the pages use were copied, and it still loads.
+        await choosePrintOption(page, 'appendix');
+        const appended = frame.locator(
+            '#section-worksheet-appendix [data-idevice="quick-questions"] .worksheet-option img',
+        );
+        await expect(appended).toHaveAttribute('src', /^blob:/, { timeout: 30000 });
+        await expect
+            .poll(() => appended.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+            .toBe(true);
+        await choosePrintOption(page, 'idevices');
+        await expect(choices).toBeVisible();
         await page.emulateMedia({ media: 'print' });
         await expect(choices).toBeVisible();
         await expect(testActivity.locator('svg')).toBeVisible();
