@@ -7197,6 +7197,15 @@ describe('YjsProjectBridge', () => {
 
         expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
       });
+
+      it('opens fine with an asset handler that does not track local saves', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+        bridge.assetManager = {};
+
+        const stats = await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(stats.pages).toBe(1);
+      });
     });
   });
 
