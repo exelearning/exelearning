@@ -1676,6 +1676,7 @@ ipcMain.handle('app:saveBufferAs', saveBufferWithDialog);
 
 ipcMain.handle('app:printPreview', (e, { url } = {}) =>
     printPreview(url, {
+        owner: e.sender.id,
         createWindow: () => {
             const win = new BrowserWindow({
                 show: false,

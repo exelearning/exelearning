@@ -119,4 +119,61 @@ describe('native print preview', () => {
         });
         expect(deps.win.destroy).not.toHaveBeenCalled();
     });
+
+    describe('a print whose dialog never answers', () => {
+        /** A window whose dialog never answers, and which closes when destroyed, as Electron's does. */
+        function hanging() {
+            const deps = setup();
+            deps.win.webContents.print = mock(() => {});
+            deps.win.destroy = mock(() => {
+                deps.win.isDestroyed = mock(() => true);
+                deps.win.emit('closed');
+            });
+            return deps;
+        }
+        const asked = (deps: ReturnType<typeof setup>) =>
+            new Promise<void>(resolve => {
+                const wait = () => (deps.win.webContents.print.mock.calls.length ? resolve() : setTimeout(wait, 1));
+                wait();
+            });
+
+        it('is given up on when the same editor prints again, which releases its window', async () => {
+            const stuck = hanging();
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await asked(stuck);
+            const next = setup();
+
+            expect(await printPreview('blob:next', { ...next, owner: 1 })).toEqual({ success: true, canceled: false });
+            expect(await first).toEqual({ success: false, canceled: true });
+            expect(stuck.win.destroy).toHaveBeenCalledTimes(1);
+            expect(stuck.win.listenerCount('closed')).toBe(0);
+        });
+
+        it('is given up on while still loading too', async () => {
+            const stuck = hanging();
+            stuck.win.loadURL = mock(
+                () =>
+                    new Promise<void>((_resolve, reject) =>
+                        stuck.win.once('closed', () => reject(new Error('aborted'))),
+                    ),
+            );
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await printPreview('blob:next', { ...setup(), owner: 1 });
+
+            expect(await first).toEqual({ success: false, canceled: true });
+        });
+
+        it('is left alone when another editor prints', async () => {
+            const stuck = hanging();
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await asked(stuck);
+
+            await printPreview('blob:other', { ...setup(), owner: 2 });
+
+            expect(stuck.win.destroy).not.toHaveBeenCalled();
+            // Settle it, so the test leaves nothing behind.
+            await printPreview('blob:next', { ...setup(), owner: 1 });
+            expect(await first).toEqual({ success: false, canceled: true });
+        });
+    });
 });
