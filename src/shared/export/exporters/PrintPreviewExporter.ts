@@ -23,6 +23,8 @@ import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
 import { renderMatchingLayoutScript } from '../worksheet/matchingLayout';
 import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
+import { nodeText } from '../worksheet/sanitizeHtml';
+import { parseFragment } from 'parse5';
 import { resolveMaterialIconDataUris } from './BaseExporter';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import {
@@ -378,21 +380,28 @@ export class PrintPreviewExporter {
      * Mark the external links whose text already is their address, so that it is not written
      * after them a second time.
      *
-     * CSS cannot compare a link's text with its href, so the HTML says it. The protocol and a
-     * trailing slash may differ: "example.com" is the address of "https://example.com/".
+     * CSS cannot compare a link's text with its href, so the HTML says it. Both are compared as
+     * the reader sees them, entities decoded. The protocol, a trailing slash and the letter case
+     * of the host may differ: "Example.com" is the address of "https://example.com/". The rest
+     * may not, since a path or a query can tell two addresses apart by case alone.
      */
     private markLinksShowingTheirUrl(html: string): string {
-        const bare = (url: string) =>
-            url
+        const bare = (url: string) => {
+            const address = url
                 .trim()
                 .replace(/^https?:\/\//i, '')
-                .replace(/\/$/, '')
-                .toLowerCase();
+                .replace(/\/$/, '');
+            const hostEnd = address.search(/[/?#]/);
+            if (hostEnd < 0) return address.toLowerCase();
+            return address.slice(0, hostEnd).toLowerCase() + address.slice(hostEnd);
+        };
 
-        return html.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (link, attributes: string, content: string) => {
-            const href = /(?:^|\s)href=(["'])(https?:\/\/[^"']*)\1/i.exec(attributes)?.[2];
-            if (!href || bare(content.replace(/<[^>]*>/g, '')) !== bare(href)) return link;
-            return `<a data-exe-text-is-url${attributes}>${content}</a>`;
+        return html.replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, link => {
+            const anchor = parseFragment(link).childNodes[0];
+            if (anchor?.nodeName !== 'a' || !('attrs' in anchor)) return link;
+            const href = anchor.attrs.find(attribute => attribute.name === 'href')?.value ?? '';
+            if (!/^https?:\/\//i.test(href) || bare(nodeText(anchor)) !== bare(href)) return link;
+            return link.replace(/^<a\b/i, '<a data-exe-text-is-url');
         });
     }
 

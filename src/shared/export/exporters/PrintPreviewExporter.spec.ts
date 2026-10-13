@@ -715,10 +715,17 @@ describe('PrintPreviewExporter', () => {
 
             it.each([
                 ['without the protocol or the trailing slash', '<a href="https://example.com/">example.com</a>'],
-                ['in other letter case', '<a href="https://Example.com/Page">https://example.com/page</a>'],
+                [
+                    'with its host in other letter case',
+                    '<a href="https://Example.COM/Page">https://example.com/Page</a>',
+                ],
                 [
                     'inside other markup',
                     '<a class="x" href="http://example.com"><strong> http://example.com </strong></a>',
+                ],
+                [
+                    'with its characters as other entities',
+                    '<a href="https://example.com/?a=1&amp;b=2">https://example.com/?a=1&#38;b=2</a>',
                 ],
             ])('is recognised with its address written %s', async (_label, link) => {
                 expect((await preview(`<p>${link}</p>`)).marked).toHaveLength(1);
@@ -727,6 +734,11 @@ describe('PrintPreviewExporter', () => {
             it.each([
                 ['text of its own', '<a href="https://example.com">Example site</a>'],
                 ['another address', '<a href="https://example.com">https://example.org</a>'],
+                // A path and a query can tell two addresses apart by case alone.
+                [
+                    'an address whose path differs in case',
+                    '<a href="https://example.com/Page?ID=A">https://example.com/page?id=a</a>',
+                ],
                 ['only an image', '<a href="https://example.com"><img src="https://example.com/x.png" alt=""></a>'],
                 [
                     'an address that is not its href',
