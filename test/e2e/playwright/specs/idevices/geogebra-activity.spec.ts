@@ -62,19 +62,31 @@ async function addGeogebraIdevice(page: Page): Promise<string> {
 }
 
 /**
- * Open "General Settings", where the URL, title, authorship and size controls live.
- *
- * A form fieldset toggles when its legend is clicked, and GeoGebra's General Settings starts
- * open (its fieldset has no exe-fieldset-closed), so the legend is clicked only while it is
- * closed: clicking an open one closes it.
+ * Every iDevice form fieldset (Instructions, General Settings, Advanced
+ * Options, Content after) starts collapsed until its legend is clicked —
+ * this is generic accordion behavior shared by all iDevices, not something
+ * specific to GeoGebra. The URL/Title/Authorship/Size controls all live
+ * inside "General Settings", so it must be expanded before interacting with
+ * any of them.
  */
 async function openGeneralSettings(page: Page, ideviceId: string): Promise<void> {
-    const fieldset = page
-        .locator(`#${ideviceId} fieldset.exe-fieldset`)
-        .filter({ has: page.locator('legend', { hasText: 'General Settings' }) });
-    const open = await fieldset.evaluate(fs => fs.classList.contains('exe-fieldset-open'));
-    if (!open) await fieldset.locator('legend a').click();
-    await expect(fieldset).toHaveClass(/\bexe-fieldset-open\b/, { timeout: 5000 });
+    const legend = page
+        .locator(`#${ideviceId} fieldset.exe-fieldset legend`)
+        .filter({ hasText: 'General Settings' })
+        .locator('a');
+    await legend.click();
+    await page.waitForFunction(
+        id => {
+            const node = document.getElementById(id);
+            const fieldsets = Array.from(node?.querySelectorAll('fieldset.exe-fieldset') || []);
+            const generalSettings = fieldsets.find(fs =>
+                fs.querySelector('legend')?.textContent?.includes('General Settings'),
+            );
+            return generalSettings?.classList.contains('exe-fieldset-open') ?? false;
+        },
+        ideviceId,
+        { timeout: 5000 },
+    );
 }
 
 test.describe('GeoGebra Activity iDevice — display sizing (#2029)', () => {
