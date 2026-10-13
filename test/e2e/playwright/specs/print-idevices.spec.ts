@@ -1765,12 +1765,18 @@ test.describe('Print iDevices', () => {
         const containerBox = await containers.first().boundingBox();
         expect(cardBox?.x ?? 0).toBeLessThan(containerBox?.x ?? 0);
 
-        // Each container is outlined in its own colour rather than filled.
+        // Each container is outlined in its own colour rather than filled. A 2px border is measured
+        // beside it, as Firefox can report one at the width it draws it (1.6px on Windows).
         const outline = await containers.first().evaluate(node => {
             const style = getComputedStyle(node as HTMLElement);
-            return { width: style.borderTopWidth, color: style.borderTopColor, fill: style.backgroundColor };
+            const probe = document.createElement('div');
+            probe.style.border = '2px solid';
+            document.body.append(probe);
+            const twoPixels = getComputedStyle(probe).borderTopWidth;
+            probe.remove();
+            return { width: style.borderTopWidth, twoPixels, color: style.borderTopColor, fill: style.backgroundColor };
         });
-        expect(outline.width).toBe('2px');
+        expect(outline.width).toBe(outline.twoPixels);
         expect(outline.color).not.toBe('rgb(26, 26, 26)');
         expect(outline.fill).toBe('rgba(0, 0, 0, 0)');
 
