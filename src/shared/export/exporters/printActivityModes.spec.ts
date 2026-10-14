@@ -570,6 +570,21 @@ describe("the author's own heading", () => {
     });
 });
 
+describe('an activity stored under its legacy name', () => {
+    it('is converted with the adapter it is listed by', () => {
+        // Listing reads 'GuessIdevice' as 'guess'; converting has to find the same adapter, or the
+        // activity it offered would print as a note that it cannot be printed.
+        const legacy = component({ type: 'GuessIdevice' });
+        expect(listInteractiveActivities([page([legacy])]).map(entry => entry.id)).toEqual(['c1']);
+
+        const [converted] = componentsOf(run([page([legacy])], 'in-place'));
+
+        expect(converted.type).toBe(PRINTABLE_ACTIVITY_TYPE);
+        expect(converted.content).toContain('Ciudad conquistada');
+        expect(converted.content).not.toContain('worksheet-not-printable');
+    });
+});
+
 describe('the activities the user chose to print', () => {
     const two = () => [
         page([text(), component({ id: 'a' }), component({ id: 'b', content: guessHtml('Río', 'Ebro') })]),

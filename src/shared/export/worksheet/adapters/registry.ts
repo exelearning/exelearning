@@ -6,6 +6,7 @@
  * iDevices are supported.
  */
 
+import { getIdeviceConfig } from '../../browser/idevice-config-browser';
 import type { WorksheetAdapter } from '../types';
 import { AzQuizGameWorksheetAdapter } from './AzQuizGameWorksheetAdapter';
 import { BeforeAfterWorksheetAdapter } from './BeforeAfterWorksheetAdapter';
@@ -75,11 +76,15 @@ const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapt
 /**
  * Look up the adapter for an iDevice type.
  *
+ * The type is read as `getIdeviceConfig` reads it, so a legacy spelling ('CrosswordIdevice') finds
+ * the adapter 'crossword' does. Every lookup goes through here: whether printing counts something
+ * as an activity and how it then converts it cannot disagree about which adapter is its own.
+ *
  * @param ideviceType - Type as stored in the document, e.g. 'guess'
- * @returns The adapter, or undefined when the type is not printable yet
+ * @returns The adapter, or undefined when the type is not printable
  */
 export function getWorksheetAdapter(ideviceType: string): WorksheetAdapter | undefined {
-    return BY_TYPE.get(ideviceType);
+    return BY_TYPE.get(ideviceType) ?? BY_TYPE.get(getIdeviceConfig(ideviceType).cssClass);
 }
 
 /**

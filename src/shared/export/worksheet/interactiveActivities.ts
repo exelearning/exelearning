@@ -89,7 +89,7 @@ export function getNeverPrintableIdevices(): { type: string; reason: string }[] 
 export function isInteractiveActivity(type: string): boolean {
     const { cssClass } = getIdeviceConfig(type);
 
-    return NEVER_PRINTABLE.has(cssClass) || Boolean(getWorksheetAdapter(type) ?? getWorksheetAdapter(cssClass));
+    return NEVER_PRINTABLE.has(cssClass) || Boolean(getWorksheetAdapter(type));
 }
 
 function listed(entries: Map<string, string>): { type: string; reason: string }[] {

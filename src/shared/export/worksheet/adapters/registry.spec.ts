@@ -13,6 +13,12 @@ describe('worksheet adapter registry', () => {
         );
     });
 
+    it('finds the same adapter for a type written the legacy way', () => {
+        // The rest of the app reads 'CrosswordIdevice' as 'crossword', so this lookup must too.
+        expect(getWorksheetAdapter('CrosswordIdevice')).toBe(getWorksheetAdapter('crossword'));
+        expect(getWorksheetAdapter('GuessIdevice')).toBe(getWorksheetAdapter('guess'));
+    });
+
     it('returns undefined for iDevices that are not printable yet', () => {
         expect(getWorksheetAdapter('text')).toBeUndefined();
         expect(getWorksheetAdapter('')).toBeUndefined();

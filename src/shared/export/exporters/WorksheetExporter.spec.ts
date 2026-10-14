@@ -54,6 +54,15 @@ function documentOf(pageSpecs: PageSpec[], metadata: Record<string, unknown> = {
 }
 
 describe('WorksheetExporter', () => {
+    it('prints an activity stored under its legacy name, rather than reporting it', async () => {
+        const model = await new WorksheetExporter(
+            documentOf([{ components: [{ type: 'GuessIdevice', content: guessContent() }] }]),
+        ).buildModel();
+
+        expect(model.pages.flatMap(page => page.activities)).toHaveLength(1);
+        expect(model.unsupported).toEqual([]);
+    });
+
     it('prints legacy quiz prompts literally, preserves answer case and reads arbitrary list wrappers', async () => {
         const result = await new WorksheetExporter(
             documentOf([
