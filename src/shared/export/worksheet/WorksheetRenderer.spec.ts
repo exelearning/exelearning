@@ -356,31 +356,36 @@ describe('renderWorksheet', () => {
             expect(html).toContain('This project has no printable activities yet.');
         });
 
-        it('lists activities that have no adapter yet', () => {
+        it('lists the activities it left out', () => {
             const html = renderWorksheet(
-                model({ unsupported: [{ ideviceType: 'crossword', pageTitle: 'La Edad Media' }] }),
+                model({
+                    unsupported: [{ ideviceType: 'trivial', pageTitle: 'La Edad Media', reason: 'not-printable' }],
+                }),
             );
 
             expect(html).toContain('Left out of this worksheet');
-            expect(html).toContain('crossword — La Edad Media: Cannot be printed yet (1)');
+            expect(html).toContain('trivial — La Edad Media: Not available in print (1)');
         });
 
-        it('says "yet" only of the ones waiting for an adapter, never in the heading', () => {
-            // The heading promises nothing: an activity that will never have a printed form must
-            // not read as one on its way.
+        it('says why for each of them, and promises none for later', () => {
+            // Neither the heading nor a reason says "yet": no printed form is on its way for any.
             const html = renderWorksheet(
                 model({
                     unsupported: [
-                        { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Geografía' },
+                        { ideviceType: 'guess', pageTitle: 'Geografía', reason: 'invalid-data' },
                         { ideviceType: 'trivial', pageTitle: 'Repaso', reason: 'not-printable' },
+                        { ideviceType: 'quick-questions', pageTitle: 'Repaso', reason: 'media-required', count: 2 },
+                        { ideviceType: 'crossword', pageTitle: 'Repaso', reason: 'unplaced-word' },
                     ],
                 }),
             );
             const note = html.match(/<aside class="worksheet-unsupported">[\s\S]*?<\/aside>/)![0];
 
-            expect(note).toContain('an-activity-with-no-adapter — Geografía: Cannot be printed yet (1)');
+            expect(note).toContain('guess — Geografía: Invalid or empty activity data (1)');
             expect(note).toContain('trivial — Repaso: Not available in print (1)');
-            expect(note.match(/\byet\b/g)).toHaveLength(1);
+            expect(note).toContain('quick-questions — Repaso: Requires multimedia (2)');
+            expect(note).toContain('crossword — Repaso: Words that could not be placed (1)');
+            expect(note).not.toMatch(/\byet\b/);
         });
 
         it('names each activity by its title when it has one', () => {

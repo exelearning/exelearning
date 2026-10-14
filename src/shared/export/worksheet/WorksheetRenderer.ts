@@ -27,6 +27,7 @@ import type {
     PrintableElementCard,
     PrintableItem,
     PrintableRubric,
+    UnsupportedActivity,
     WorksheetLabels,
     WorksheetModel,
 } from './types';
@@ -41,7 +42,6 @@ const DEFAULT_LABELS: Required<WorksheetLabels> = {
     date: 'Date',
     empty: 'This project has no printable activities yet.',
     unsupportedHeading: 'Left out of this worksheet',
-    notPrintableYet: 'Cannot be printed yet',
     operation: 'Operation',
     result: 'Result',
     notAvailableInPrint: 'Not available in print',
@@ -1890,25 +1890,21 @@ export function resolveWorksheetLabels(labels: WorksheetLabels = {}): Required<W
  * Render the note listing what the worksheet left out, each with the reason.
  *
  * Without it, an unsupported activity would simply vanish from the worksheet and the teacher
- * would have no way to tell whether it was skipped or never there. The heading promises nothing:
- * only an activity still waiting for an adapter says "yet", on its own line, so one that will
- * never have a printed form is not read as a promise.
+ * would have no way to tell whether it was skipped or never there. Neither the heading nor any
+ * reason promises a printed form for later.
  */
 function renderUnsupported(model: WorksheetModel, labels: Required<WorksheetLabels>): string {
     if (model.unsupported.length === 0) return '';
 
+    const wording: Record<UnsupportedActivity['reason'], string> = {
+        'media-required': labels.mediaRequired,
+        'invalid-data': labels.invalidData,
+        'unplaced-word': labels.unplacedWords,
+        'not-printable': labels.notAvailableInPrint,
+    };
     const entries = model.unsupported
         .map(entry => {
-            const reason =
-                entry.reason === 'media-required'
-                    ? labels.mediaRequired
-                    : entry.reason === 'invalid-data'
-                      ? labels.invalidData
-                      : entry.reason === 'unplaced-word'
-                        ? labels.unplacedWords
-                        : entry.reason === 'not-printable'
-                          ? labels.notAvailableInPrint
-                          : labels.notPrintableYet;
+            const reason = wording[entry.reason];
             const detail = `: ${escapeText(reason)} (${entry.count ?? 1})`;
             return `<li>${escapeText(entry.title || entry.ideviceType)} — ${escapeText(entry.pageTitle)}${detail}</li>`;
         })

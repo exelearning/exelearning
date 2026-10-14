@@ -466,7 +466,8 @@ describe('ModalPrintPreview', () => {
             expect(options.labels.studentName).toBe('Name');
             expect(options.labels.date).toBe('Date');
             expect(options.labels.unsupportedHeading).toBe('Left out of this worksheet');
-            expect(options.labels.notPrintableYet).toBe('Cannot be printed yet');
+            expect(options.labels.invalidData).toBe('Invalid or empty activity data');
+            expect(options.labels).not.toHaveProperty('notPrintableYet');
             expect(options.ideviceTitles.guess).toBe('Guess');
         });
 
@@ -599,7 +600,10 @@ describe('ModalPrintPreview and interactive activities', () => {
 
         expect(labels.appendixTitle).toBe('Appendix');
         expect(labels.appendixReference).toContain('%s');
-        expect(labels.notPrintable).toBeTruthy();
+        expect(labels.notAvailable).toBe('Not available in print.');
+        // An activity whose data cannot be read is named in the worksheet's words, in either path.
+        expect(labels.invalidData).toBe('Invalid or empty activity data');
+        expect(labels).not.toHaveProperty('notPrintable');
         // The worksheet's own labels come along, since the same exercises are drawn either way.
         expect(labels.across).toBe('Horizontals');
         expect(ideviceTitles.guess).toBe('Guess');

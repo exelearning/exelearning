@@ -517,7 +517,6 @@ export default class ModalPrintPreview {
             date: _('Date'),
             empty: _('This project has no printable activities yet.'),
             unsupportedHeading: _('Left out of this worksheet'),
-            notPrintableYet: _('Cannot be printed yet'),
             notAvailableInPrint: _('Not available in print'),
             before: _('Before image'),
             after: _('After image'),
@@ -631,7 +630,6 @@ export default class ModalPrintPreview {
                     appendixTitle: _('Appendix'),
                     // %s is the activity's number in the appendix.
                     appendixReference: _('See appendix, activity %s'),
-                    notPrintable: _('This activity cannot be printed yet.'),
                     notAvailable: _('Not available in print.'),
                 },
                 ideviceTitles: this.getIdeviceTitles(),

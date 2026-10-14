@@ -61,9 +61,7 @@ export interface PrintActivityLabels extends WorksheetLabels {
     appendixTitle?: string;
     /** Pointer left where the activity was. `%s` is replaced by the activity's number. */
     appendixReference?: string;
-    /** Shown in place of an activity that has no printable form yet. */
-    notPrintable?: string;
-    /** Shown in place of an activity that will not be given one. */
+    /** Shown in place of an activity that will not be given a printable form. */
     notAvailable?: string;
 }
 
@@ -101,7 +99,6 @@ export interface InteractiveActivityEntry {
 const DEFAULT_LABELS = {
     appendixTitle: 'Appendix',
     appendixReference: 'See appendix, activity %s',
-    notPrintable: 'This activity cannot be printed yet.',
     notAvailable: 'Not available in print.',
 };
 
@@ -173,10 +170,10 @@ function appendixHeading(entry?: { number: number; blockTitle: string }): string
  * wondering whether the page lost it. It does not name the iDevice: that name belongs to the
  * editor, not to the handout.
  *
- * Which note depends on whether one is coming. An activity that is simply waiting for an adapter
- * says so; one whose answer is settled says that instead, because "yet" would have the teacher
- * waiting for a release that is not on its way. The answer is settled for a whole iDevice type, or
- * for one component whose adapter found nothing in it that paper could carry.
+ * Which note depends on why. One whose answer is settled says it is not available in print: a whole
+ * iDevice type that has no printed form, or one component whose adapter found nothing in it that
+ * paper could carry. One whose data could not be read says so, in the worksheet's words, so both
+ * printing paths tell the teacher the same thing; nothing promises it for later.
  */
 function unprintableMarkup(
     type: string,
@@ -186,7 +183,7 @@ function unprintableMarkup(
 ): string {
     const label = settled
         ? options.labels?.notAvailable || DEFAULT_LABELS.notAvailable
-        : options.labels?.notPrintable || DEFAULT_LABELS.notPrintable;
+        : resolveWorksheetLabels(options.labels).invalidData;
 
     return (
         `<article class="worksheet-activity worksheet-activity-unprintable" data-idevice="${escapeText(type)}">` +
@@ -234,7 +231,7 @@ function convert(
             onOmission: (reason, count = 1) => omissions.set(reason, (omissions.get(reason) ?? 0) + count),
         });
         // An adapter that found nothing for paper in this component says so, and the note is the
-        // settled one rather than the "not yet" left for data it could not read.
+        // settled one rather than the one for data it could not read.
         if (!activity) {
             return omissions.has('not-printable') ? unprintableMarkup(component.type, options, appendix, true) : null;
         }

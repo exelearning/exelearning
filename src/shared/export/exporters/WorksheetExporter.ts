@@ -15,7 +15,7 @@ import type { AssetProvider, ExportBlock, ExportComponent, ExportDocument, Latex
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { isComponentVisible, isStudentBlock, isTeacherOnly, visibleWorksheetPages } from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
-import { isInteractiveActivity, isNeverPrintable } from '../worksheet/interactiveActivities';
+import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
 import { renderWorksheet } from '../worksheet/WorksheetRenderer';
 import type {
@@ -195,8 +195,10 @@ export class WorksheetExporter {
     /**
      * Record an activity that has no adapter, once per type and page.
      *
-     * Three crosswords on one page are one gap to report, not three. The title is the iDevice's
-     * name for the teacher to recognise it by; without one, the note falls back to its type.
+     * An activity without one is one that will never have a printed form: the note says it is not
+     * available in print, not that it is coming. Three on one page are one gap to report, not
+     * three. The title is the iDevice's name for the teacher to recognise it by; without one, the
+     * note falls back to its type.
      */
     private reportUnsupported(
         collected: UnsupportedActivity[],
@@ -208,14 +210,7 @@ export class WorksheetExporter {
             entry => entry.ideviceType === ideviceType && entry.pageTitle === pageTitle,
         );
 
-        // Saying "not yet" about an activity that is never getting a printed form would have the
-        // teacher waiting for a release that is not coming.
-        if (!alreadyReported)
-            collected.push(
-                isNeverPrintable(ideviceType)
-                    ? { ideviceType, pageTitle, title, reason: 'not-printable' }
-                    : { ideviceType, pageTitle, title },
-            );
+        if (!alreadyReported) collected.push({ ideviceType, pageTitle, title, reason: 'not-printable' });
     }
 
     /**

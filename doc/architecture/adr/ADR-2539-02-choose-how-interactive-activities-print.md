@@ -161,8 +161,9 @@ appendix where it also takes a number. An exercise that could not be built must 
 silent hole in the handout. Every activity has either an adapter (29) or a settled answer (11), so
 the line is left for data an adapter cannot read.
 
-**"Not yet" and "never" are two different messages.** An activity with no printed form is either
-waiting for one, and the line says so, or will never have one. Eleven are of the second kind: a
+**No line says "not yet".** An activity with no printed form either has data its adapter could not
+read, and the line says so in the worksheet's words, or will never have one. Eleven are of the
+second kind: a
 board game played in turns, a map answered by placing things on it, a GeoGebra construction, a
 progress report, a puzzle, an interactive video, a set of questions asked over a video, an embedded
 website, a download button, a set of file attachments and a magnifier. Each is the interaction
@@ -174,8 +175,8 @@ each entry, so the answer to "why is this one never printable" is in the code ra
 commit message.
 
 **What can never be printed is left out unless asked for.** A handout dotted with "not available
-in print" tells the student about the editor rather than about the subject, and unlike "not yet"
-there is nothing to wait for: the hole is the decision, not a gap. So printing leaves these
+in print" tells the student about the editor rather than about the subject, and unlike data that
+could not be read there is nothing to fix: the hole is the decision, not a gap. So printing leaves these
 activities out by default — of the panel's list, of the document, and of the worksheet's note for
 the teacher — and *Show titles of non-printable activities* brings them back. Ticked, each comes
 back as it was: its block's title and the note where the author put it, or a numbered entry in the
@@ -190,8 +191,8 @@ that fills the panel.
 
 Two near cases stay outside the option. A padlock prints the writing it guards; one that guards
 none says it is not available, but that is about the component, not about padlocks, so the option
-does not hide it. And "not yet" keeps its line whatever the option says: data an adapter cannot
-read is a problem the teacher has to see.
+does not hide it. And the line for data an adapter cannot read stays whatever the option says:
+that is a problem the teacher has to see.
 
 **An exercise is named after the block the author put it in, never after its iDevice.**
 'CLASIFICA' above an exercise named the tool rather than the work. What names it is the author's

@@ -16,8 +16,9 @@
  * adapter, as the form does, and an HTML one is not without one, as the checklist is not.
  *
  * Being an activity says printing should ask what to do with it. For the ones in
- * `NEVER_PRINTABLE` the answer is settled, and the note they carry says so rather than "yet".
- * "Not yet" is left for an activity whose data its adapter could not read.
+ * `NEVER_PRINTABLE` the answer is settled, and the note they carry says they are not available in
+ * print. An activity whose data its adapter could not read carries the worksheet's note for that
+ * instead. Neither promises a printed form for later.
  */
 
 import { getIdeviceConfig } from '../browser/idevice-config-browser';
@@ -53,10 +54,10 @@ const NEVER_PRINTABLE = new Map<string, string>([
 ]);
 
 /**
- * Whether printing should promise an exercise for this activity later.
+ * Whether an activity will never be given a printed form.
  *
  * True for the ones whose answer is settled. An activity with an adapter that could not read its
- * data is not one of them: that is a note saying "not yet".
+ * data is not one of them: its note says the data is invalid or empty.
  *
  * @param type - iDevice type as stored in the document, e.g. 'trivial'
  * @returns true when no printed form is coming

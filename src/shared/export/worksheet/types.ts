@@ -382,14 +382,14 @@ export interface PrintablePage {
     activities: PrintableActivity[];
 }
 
-/** An activity that was found but has no adapter yet. */
+/** An activity, or part of one, the worksheet could not print, and why. */
 export interface UnsupportedActivity {
     ideviceType: string;
     pageTitle: string;
     pageId?: string;
     componentId?: string;
     title?: string;
-    reason?: 'unsupported' | 'invalid-data' | 'media-required' | 'unplaced-word' | 'not-printable';
+    reason: 'invalid-data' | 'media-required' | 'unplaced-word' | 'not-printable';
     count?: number;
 }
 
@@ -431,8 +431,6 @@ export interface WorksheetLabels {
     after?: string;
     /** Introduces the list of what the worksheet left out. */
     unsupportedHeading?: string;
-    /** Shown against an activity that is still waiting for a printed form. */
-    notPrintableYet?: string;
 }
 
 /**

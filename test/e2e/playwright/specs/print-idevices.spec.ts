@@ -387,12 +387,14 @@ test.describe('Print iDevices', () => {
             expect(actinides).toHaveLength(3);
             expect(actinides.every(number => Number(number) >= 89 && Number(number) <= 103)).toBe(true);
 
-            // The one activity here that could not be built is still accounted for, each path saying
-            // so in its own way: the worksheet lists it at the end, the document stands a note where
+            // The one activity here that could not be built is still accounted for, in the same words
+            // on either path: the worksheet lists it at the end, the document stands a note where
             // the activity was.
-            if (mode === 'idevices')
-                await expect(frame.locator('.worksheet-unsupported')).toContainText('Invalid or empty activity data');
-            else await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="guess"]')).toHaveCount(1);
+            const accounted =
+                mode === 'idevices'
+                    ? frame.locator('.worksheet-unsupported')
+                    : frame.locator('.worksheet-activity-unprintable[data-idevice="guess"]');
+            await expect(accounted).toContainText('Invalid or empty activity data');
         });
     }
 

@@ -163,12 +163,14 @@ describe('applyActivityMode', () => {
             expect(componentsOf(run([page([withProps])], 'in-place'))[0].properties).toEqual({});
         });
 
-        it('prints a note where an activity has no printable form yet', () => {
+        it('prints a note where an activity has data its adapter could not read, as the worksheet words it', () => {
             const content = componentsOf(run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place'))[0]
                 .content;
 
             expect(content).toContain('worksheet-activity-unprintable');
-            expect(content).toContain('This activity cannot be printed yet.');
+            // The worksheet's words for the same case, and no promise of a printed form for later.
+            expect(content).toContain('Invalid or empty activity data');
+            expect(content).not.toMatch(/\byet\b/);
             // The type survives as an attribute, for stylesheets and tests, but is not written out
             // anywhere a reader would see it.
             expect(content).toContain(`data-idevice="${WAITING}"`);
@@ -191,7 +193,7 @@ describe('applyActivityMode', () => {
                     .content;
 
                 expect(content).toContain('Not available in print.');
-                expect(content).not.toContain('cannot be printed yet');
+                expect(content).not.toContain('Invalid or empty activity data');
             }
         });
 
@@ -202,21 +204,21 @@ describe('applyActivityMode', () => {
 
             expect(content).toContain('worksheet-activity-unprintable');
             expect(content).toContain('Not available in print.');
-            expect(content).not.toContain('cannot be printed yet');
+            expect(content).not.toContain('Invalid or empty activity data');
             expect(content).not.toContain('Busca el código');
         });
 
         it('lets the caller word both notes', () => {
-            const labels = { notPrintable: 'Aún no', notAvailable: 'No disponible en impresión' };
+            const labels = { invalidData: 'Datos no válidos', notAvailable: 'No disponible en impresión' };
             const settled = componentsOf(
                 run([page([component({ type: 'trivial', content: '<div/>' })])], 'in-place', { labels }),
             )[0].content;
-            const waiting = componentsOf(
+            const unreadable = componentsOf(
                 run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place', { labels }),
             )[0].content;
 
             expect(settled).toContain('No disponible en impresión');
-            expect(waiting).toContain('Aún no');
+            expect(unreadable).toContain('Datos no válidos');
         });
 
         it.each(['in-place', 'appendix', 'omit'] as const)(
@@ -309,7 +311,7 @@ describe('applyActivityMode', () => {
             expect(componentsOf([result[0]])[1].content).toContain('See appendix, activity 2');
             expect(entry).toContain('>2. Bloque<');
             expect(entry).toContain('Not available in print.');
-            expect(entry).not.toContain('cannot be printed yet');
+            expect(entry).not.toContain('Invalid or empty activity data');
         });
 
         it('builds the appendix as an ordinary page, after the last one', () => {
@@ -342,7 +344,7 @@ describe('applyActivityMode', () => {
                 labels: {
                     appendixTitle: 'Anexo',
                     appendixReference: 'Ver anexo, actividad %s',
-                    notPrintable: 'Todavía no se puede imprimir',
+                    invalidData: 'Datos no válidos o vacíos',
                 },
                 ideviceTitles: { guess: 'Adivina', puzzle: 'Puzle' },
             });
@@ -350,7 +352,7 @@ describe('applyActivityMode', () => {
             expect(result[1].title).toBe('Anexo');
             expect(componentsOf([result[0]])[0].content).toContain('Ver anexo, actividad 1');
             expect(componentsOf([result[1]])[0].content).toContain('>1. Bloque<');
-            expect(componentsOf([result[1]])[1].content).toContain('Todavía no se puede imprimir');
+            expect(componentsOf([result[1]])[1].content).toContain('Datos no válidos o vacíos');
             expect(componentsOf([result[1]])[1].content).toContain('>2. Bloque<');
         });
 
@@ -377,7 +379,7 @@ describe('applyActivityMode', () => {
 
         it('escapes a translated label before putting it in markup', () => {
             const result = run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place', {
-                labels: { notPrintable: '<img src=x onerror=alert(1)>' },
+                labels: { invalidData: '<img src=x onerror=alert(1)>' },
             });
 
             expect(componentsOf(result)[0].content).not.toContain('<img');

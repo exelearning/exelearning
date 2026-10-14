@@ -292,7 +292,8 @@ all 52 iDevices in both directions.
 
 The answer key and PDF/ODT export. Every interactive iDevice now has a paper form: the last of them
 was the padlock, and the jsonProperties family went the same way, `form` being the first of it to
-print. Eleven iDevices are outside it for good, and say so rather than saying "not yet".
+print. Eleven iDevices are outside it for good, and say so rather than promising a printed form
+for later.
 
 With none left, the tests that need an activity without an adapter use a type no iDevice answers
 to. That is the better fixture anyway — what they are about is what happens to an activity with no
