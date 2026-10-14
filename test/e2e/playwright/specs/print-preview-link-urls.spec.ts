@@ -127,7 +127,14 @@ test.describe('Print preview', () => {
             binding.createComponent(parent.id, binding.createBlock(parent.id, 'Links'), 'text', {
                 htmlContent:
                     '<p>Visit <a href="https://cedec.intef.es/">Cedec</a> or ' +
-                    '<a href="https://example.org/">https://example.org/</a> for more.</p>',
+                    '<a href="https://example.org/">https://example.org/</a> for more.</p>' +
+                    '<p><a class="percent-url" href="https://example.org/Le%C3%B3n">https://example.org/León</a></p>' +
+                    '<div><a name="top"/>Intro <a class="after-anchor" href="https://example.org/top">' +
+                    'https://example.org/top</a></div>' +
+                    '<p><a class="reconstructed" href="https://example.org/split">Read' +
+                    '<div>https://example.org/split</a></div>' +
+                    '<p><a class="url-copies" href="https://example.org/copies">https://example.org/copies' +
+                    '<div>https://example.org/copies</a></div>',
             });
         });
 
@@ -137,7 +144,11 @@ test.describe('Print preview', () => {
         const frame = page.frameLocator('.print-preview-iframe');
         const named = frame.locator('a[href="https://cedec.intef.es/"]');
         const written = frame.locator('a[href="https://example.org/"]');
+        const reconstructed = frame.locator('a.reconstructed').filter({ hasText: /^Read$/ });
+        const copies = frame.locator('a.url-copies');
         await expect(written).toBeVisible({ timeout: 30000 });
+        await expect(reconstructed).toHaveCount(1);
+        await expect(copies).toHaveCount(2);
 
         const textAfter = (link: typeof named) => link.evaluate(a => getComputedStyle(a, '::after').content);
         // Chromium resolves attr(href); Firefox reports the declared value unresolved.
@@ -146,6 +157,15 @@ test.describe('Print preview', () => {
             await page.emulateMedia({ media });
             expect(await textAfter(named), media).toMatch(showsUrl);
             expect(await textAfter(written), media).toBe('none');
+            expect(await textAfter(frame.locator('a.percent-url')), media).toBe('none');
+            expect(await textAfter(frame.locator('a.after-anchor')), media).toBe('none');
+            expect(await textAfter(reconstructed), media).toMatch(
+                /\[(https:\/\/example\.org\/split|" attr\(href\) ")\]/,
+            );
+            expect(
+                await copies.evaluateAll(links => links.map(a => getComputedStyle(a, '::after').content)),
+                media,
+            ).toEqual(['none', 'none']);
         }
         await page.emulateMedia({ media: null });
     });

@@ -753,8 +753,133 @@ describe('PrintPreviewExporter', () => {
                     'with its characters as other entities',
                     '<a href="https://example.com/?a=1&amp;b=2">https://example.com/?a=1&#38;b=2</a>',
                 ],
+                [
+                    'with its href percent-encoded',
+                    '<a href="https://es.wikipedia.org/wiki/Le%C3%B3n">https://es.wikipedia.org/wiki/León</a>',
+                ],
+                // A pattern would start at the anchor never closed and swallow the link after it.
+                [
+                    'after an anchor that is never closed',
+                    '<a name="top"/>Intro <a href="https://example.org/">https://example.org/</a>',
+                ],
+                // The parser's places have to be the document's, line breaks and all.
+                ['after Windows line breaks', 'One\r\ntwo\r\n<a href="https://example.org/">https://example.org/</a>'],
+                [
+                    'with its text percent-encoded',
+                    '<a href="https://example.org/León">https://example.org/Le%C3%B3n</a>',
+                ],
+                [
+                    'with an encoded literal percent sign',
+                    '<a href="https://example.org/100%25">https://example.org/100%</a>',
+                ],
+                ['with a malformed percent escape', '<a href="https://example.org/%ZZ">https://example.org/%ZZ</a>'],
+                [
+                    'inside a custom element starting with a',
+                    '<a-widget>Intro <a href="https://example.org/">https://example.org/</a></a-widget>',
+                ],
+                [
+                    'with a closing angle bracket inside an attribute',
+                    '<a title="x > y" href="https://example.org/">https://example.org/</a>',
+                ],
             ])('is recognised with its address written %s', async (_label, link) => {
                 expect((await preview(`<p>${link}</p>`)).marked).toHaveLength(1);
+            });
+
+            it('marks the link where it starts, and leaves the rest of the document as it was', async () => {
+                const content = '<p>Intro <a href="https://example.org/">https://example.org/</a> and more.</p>';
+                const { html, marked } = await preview(content);
+
+                expect(marked).toEqual([
+                    '<a data-exe-text-is-url href="https://example.org/">https://example.org/</a>',
+                ]);
+                expect(html.replace(' data-exe-text-is-url', '')).toContain(content);
+            });
+
+            it('leaves alone a link written inside a script', async () => {
+                const script = `<script>var link = '<a href="https://example.org/">https://example.org/</a>';</script>`;
+                const { html, marked } = await preview(`<p>Text</p>${script}`);
+
+                expect(html).toContain(script);
+                expect(marked).toEqual([]);
+            });
+
+            it.each(['style', 'textarea', 'title', 'noscript'])(
+                'leaves link-shaped text inside %s unchanged',
+                async tag => {
+                    const content = `<${tag}><a href="https://example.org/">https://example.org/</a></${tag}>`;
+                    const { html, marked } = await preview(content);
+
+                    expect(html).toContain(content);
+                    expect(marked).toEqual([]);
+                },
+            );
+
+            it('does not treat a custom element as an anchor', async () => {
+                const content = '<a-widget href="https://example.org/">https://example.org/</a-widget>';
+                const { html, marked } = await preview(content);
+
+                expect(html).toContain(content);
+                expect(marked).toEqual([]);
+            });
+
+            it('marks multiple start tags without changing their case, attributes or surrounding source', async () => {
+                const content = [
+                    '<p>🙂\r\n',
+                    "<A HREF='https://example.org/one' title='x > y'>https://example.org/one</A>",
+                    '<!-- <a href="https://example.org/">https://example.org/</a> -->',
+                    '<a href="https://example.org/two"><strong>https://example.org/two</strong></a>',
+                    '<a href="https://example.org/three">Named link</a></p>',
+                ].join('');
+                const expected = content
+                    .replace('<A HREF=', '<A data-exe-text-is-url HREF=')
+                    .replace(
+                        '<a href="https://example.org/two"',
+                        '<a data-exe-text-is-url href="https://example.org/two"',
+                    );
+                const { html } = await preview(content);
+
+                expect(html).toContain(expected);
+                expect(html.replaceAll(' data-exe-text-is-url', '')).toContain(content);
+            });
+
+            it.each([
+                ['before', 'Read', 'https://example.org/'],
+                ['after', 'https://example.org/', 'Read'],
+            ])(
+                'keeps the address visible when a reconstructed named link comes %s the URL text',
+                async (_order, first, second) => {
+                    // HTML reconstruction creates two anchors sharing this source start tag: one
+                    // says "Read", the other shows the address. A source attribute reaches both.
+                    const content = `<p><a href="https://example.org/">${first}<div>${second}</a></div>`;
+                    const { html, marked } = await preview(content);
+
+                    expect(marked).toEqual([]);
+                    expect(html).toContain(content);
+                },
+            );
+
+            it('marks a shared start tag once when every reconstructed link shows its address', async () => {
+                const content =
+                    '<p><a href="https://example.org/">https://example.org/<div>https://example.org/</a></div>';
+                const { html, marked } = await preview(content);
+
+                expect(marked).toHaveLength(1);
+                expect(html).toContain(content.replace('<a ', '<a data-exe-text-is-url '));
+            });
+
+            it('preserves a long sequence of URL links interspersed with named links', async () => {
+                const entries = Array.from({ length: 1000 }, (_, index) => {
+                    const url = `https://example.org/page-${index}`;
+                    return `<p><a href="${url}">${url}</a> <a href="${url}">Read ${index}</a></p>`;
+                });
+                const content = entries.join('\r\n');
+                const { html, marked } = await preview(content);
+
+                expect(marked).toHaveLength(entries.length);
+                expect(html).toContain(
+                    entries.map(entry => entry.replace('<a ', '<a data-exe-text-is-url ')).join('\r\n'),
+                );
+                expect(html.replaceAll(' data-exe-text-is-url', '')).toContain(content);
             });
 
             it.each([
@@ -771,6 +896,18 @@ describe('PrintPreviewExporter', () => {
                     '<a data-href="https://example.com" href="#top">https://example.com</a>',
                 ],
                 ['an internal address', '<a href="#top">#top</a>'],
+                [
+                    'an encoded slash instead of a path separator',
+                    '<a href="https://example.org/a%2Fb">https://example.org/a/b</a>',
+                ],
+                [
+                    'an encoded question mark instead of a query separator',
+                    '<a href="https://example.org/a%3Fb">https://example.org/a?b</a>',
+                ],
+                [
+                    'a percent-encoded path whose decoded case differs',
+                    '<a href="https://example.org/%50age">https://example.org/page</a>',
+                ],
             ])('is told apart from a link with %s', async (_label, link) => {
                 expect((await preview(`<p>${link}</p>`)).marked).toEqual([]);
             });
