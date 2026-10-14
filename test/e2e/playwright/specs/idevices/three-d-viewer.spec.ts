@@ -897,10 +897,11 @@ test.describe('3D Viewer iDevice', () => {
         ): Promise<FrameLocator> {
             // Without it drawn there is no model to picture: <model-viewer> (GLB) draws with WebGL 2,
             // the STL viewer with WebGL 1. Firefox on the GPU-less CI runners has neither.
+            // https://github.com/exelearning/exelearning/issues/2547
             const webgl = format === 'GLB' ? 2 : 1;
             test.skip(
                 !(await hasWebGL(page, webgl)),
-                `This browser has no WebGL ${webgl} to draw the ${format} model with`,
+                `This browser has no WebGL ${webgl} to draw the ${format} model with (issue #2547)`,
             );
             const projectUuid = await createProject(page, `3D Viewer print ${format}`);
             await gotoWorkarea(page, projectUuid);

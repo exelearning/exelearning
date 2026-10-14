@@ -486,7 +486,8 @@ test.describe('Print iDevices', () => {
         createProject,
     }) => {
         // Without WebGL no molecule is drawn, as with Firefox on the GPU-less CI runners.
-        test.skip(!(await hasWebGL(page)), 'This browser has no WebGL to draw the molecules with');
+        // https://github.com/exelearning/exelearning/issues/2547
+        test.skip(!(await hasWebGL(page)), 'This browser has no WebGL to draw the molecules with (issue #2547)');
         const uuid = await createProject(page, 'Molecule capture regressions');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -1874,11 +1875,13 @@ test.describe('Print iDevices', () => {
 
             // Inspect real page breaks as well as the unpaginated DOM. Chromium provides PDF
             // output even when the editor flow above is exercised by the Firefox project.
+            // Without one, as in the CI Firefox job: https://github.com/exelearning/exelearning/issues/2547
             const pdf = await chromiumForPdf(page);
             if (!pdf) {
                 testInfo.annotations.push({
                     type: 'note',
-                    description: 'No Chromium to print the PDF with; the Chromium project checks the sheets.',
+                    description:
+                        'No Chromium to print the PDF with; the Chromium project checks the sheets (issue #2547).',
                 });
                 return;
             }
@@ -3369,12 +3372,13 @@ test.describe('Print: Material icons reach the paper', () => {
 
         // Give the real icon and an ordinary background distinct colours, then inspect the
         // rendered PDF with backgrounds disabled. This catches a missing mask or an icon that
-        // has the right computed property but never reaches the paper.
+        // has the right computed property but never reaches the paper. Without a Chromium, as in
+        // the CI Firefox job: https://github.com/exelearning/exelearning/issues/2547
         const pdf = await chromiumForPdf(page);
         if (!pdf) {
             testInfo.annotations.push({
                 type: 'note',
-                description: 'No Chromium to print the PDF with; the Chromium project checks the paper.',
+                description: 'No Chromium to print the PDF with; the Chromium project checks the paper (issue #2547).',
             });
             await page.emulateMedia({ media: null });
             return;

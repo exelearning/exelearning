@@ -203,7 +203,8 @@ test.describe('Three Sixty Viewer iDevice', () => {
     }) => {
         const page = authenticatedPage;
         // Without WebGL the viewer draws its fallback whatever the order, as on the GPU-less runners.
-        test.skip(!(await hasWebGL(page)), 'This browser has no WebGL to draw the viewer with');
+        // https://github.com/exelearning/exelearning/issues/2547
+        test.skip(!(await hasWebGL(page)), 'This browser has no WebGL to draw the viewer with (issue #2547)');
         // The editor starts a JSON iDevice as soon as its own script has defined its object. A slow
         // three.js shows whether the libraries it needs are loaded before that script.
         await page.route('**/three-sixty-viewer/export/three.min.js', async route => {
