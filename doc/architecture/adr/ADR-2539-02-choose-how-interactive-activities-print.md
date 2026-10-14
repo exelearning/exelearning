@@ -297,8 +297,13 @@ for the piece under it, which a block does not need.
 ## Risks
 
 - **A new activity prints as a game board until it has an adapter.** Medium likelihood, low
-  severity: it prints as its HTML, as everything did before this decision, and printing does not
-  ask about it. Caught by review, not by tests.
+  severity: in the document it prints as its HTML, as everything did before this decision, and
+  printing does not ask about it. On the worksheet (Print iDevices) it is left out without a word:
+  not being an activity, it is neither printed nor listed among what the worksheet left out. The
+  same goes for a game an administrator installed. Listing every iDevice without an adapter there
+  is not the answer: it would also list content iDevices, which never belong on a worksheet, and
+  nothing tells a third-party game from, say, a third-party accordion. Caught by review, not by
+  tests.
 - **Appendix numbering diverges from the body.** Low likelihood, medium severity — a handout whose
   cross-references point at the wrong exercise is worse than no appendix. Both numbers come from
   one pass over the pages, and an E2E case asserts the correspondence.
