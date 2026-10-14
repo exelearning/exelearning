@@ -53,7 +53,7 @@ const text = () => component({ id: 'text-1', type: 'text', content: '<p>El Cid</
 
 /**
  * An activity whose adapter cannot read what it stores (the tests give it no payload): the one
- * left with no printed form that is not settled, so its note says it cannot be printed *yet*.
+ * left with no printed form because its data is invalid or empty.
  */
 const WAITING = 'guess';
 
@@ -484,6 +484,56 @@ describe('what the author restricted', () => {
 });
 
 describe('questions an adapter had to leave out', () => {
+    const onlyVideoQuestions = (includeInvalid = false) => {
+        const payload = JSON.stringify({
+            typeGame: 'Adivina',
+            wordsGame: [
+                { type: 2, definition: 'Identify the city in the video', word: 'Valencia' },
+                { type: 2, definition: 'Identify the river in the video', word: 'Ebro' },
+                ...(includeInvalid ? [null] : []),
+            ],
+        });
+        return component({ content: `<div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div>` });
+    };
+
+    it.each(['in-place', 'appendix'] as const)('keeps the reason when every question needs media in %s', mode => {
+        const markup = componentsOf(run([page([onlyVideoQuestions()])], mode))
+            .map(entry => entry.content)
+            .join('');
+
+        expect(markup).toContain('worksheet-activity-unprintable');
+        expect(markup).toContain('Requires multimedia');
+        expect(markup).not.toContain('Invalid or empty activity data');
+        expect(markup.match(/Requires multimedia/g)).toHaveLength(1);
+        if (mode === 'appendix') {
+            expect(markup).toContain('See appendix, activity 1');
+            expect(markup).toContain('>1. Bloque<');
+        }
+    });
+
+    it.each(['in-place', 'appendix'] as const)('escapes translated reasons when nothing can print in %s', mode => {
+        const markup = componentsOf(
+            run([page([onlyVideoQuestions()])], mode, {
+                labels: { mediaRequired: 'Media <img src=x onerror=alert(1)>' },
+            }),
+        )
+            .map(entry => entry.content)
+            .join('');
+
+        expect(markup).toContain('Media &lt;img src=x onerror=alert(1)&gt;');
+        expect(markup).not.toContain('<img');
+        expect(markup).not.toContain('Invalid or empty activity data');
+    });
+
+    it.each(['in-place', 'appendix'] as const)('keeps distinct reasons when no questions can print in %s', mode => {
+        const markup = componentsOf(run([page([onlyVideoQuestions(true)])], mode))
+            .map(entry => entry.content)
+            .join('');
+
+        expect(markup).toContain('Requires multimedia');
+        expect(markup).toContain('Invalid or empty activity data');
+    });
+
     /** A Guess activity with one answerable question and one that needs a video. */
     const withVideoQuestion = () => {
         const payload = JSON.stringify({

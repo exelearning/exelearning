@@ -115,6 +115,40 @@ test.describe('Print iDevices', () => {
     test.describe.configure({ mode: 'serial' });
 
     for (const mode of ['idevices', 'in-place', 'appendix']) {
+        test(`reports multimedia requirements when every question needs video in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Video-only print regression');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const payload = encryptDataGame(
+                JSON.stringify({
+                    typeGame: 'Adivina',
+                    wordsGame: [{ type: 2, definition: 'Identify the city in the video', word: 'Valencia' }],
+                }),
+            );
+            await page.evaluate(content => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Video activities');
+                const block = binding.createBlock(parent.id);
+                binding.createComponent(parent.id, block, 'guess', { htmlContent: content });
+            }, `<div class="adivina-DataGame js-hidden">${payload}</div>`);
+
+            await openPrintPanel(page);
+            const { frame } = await choosePrintOption(page, mode);
+            const note =
+                mode === 'idevices'
+                    ? frame.locator('.worksheet-unsupported')
+                    : frame.locator('.worksheet-activity-unprintable[data-idevice="guess"]');
+            await expect(note).toContainText('Requires multimedia');
+            await expect(note).not.toContainText('Invalid or empty activity data');
+            if (mode === 'appendix') {
+                await expect(frame.locator('.worksheet-activity-reference')).toContainText('See appendix, activity 1');
+                await expect(note.locator('.worksheet-activity-title')).toContainText('1.');
+            }
+        });
+
         test(`prints literal legacy quiz prompts, case-sensitive hints and wrapped lists in ${mode} mode`, async ({
             authenticatedPage: page,
             createProject,

@@ -127,6 +127,17 @@ function activityTitle(type: string, options: ApplyActivityModeOptions): string 
     return options.ideviceTitles?.[type] || getWorksheetAdapter(type)?.defaultTitle || type;
 }
 
+/** The same reasons name a partial omission and an activity with nothing left to print. */
+function omissionWording(options: ApplyActivityModeOptions): Record<UnsupportedActivity['reason'], string> {
+    const labels = resolveWorksheetLabels(options.labels);
+    return {
+        'media-required': labels.mediaRequired,
+        'invalid-data': labels.invalidData,
+        'unplaced-word': labels.unplacedWords,
+        'not-printable': options.labels?.notAvailable || DEFAULT_LABELS.notAvailable,
+    };
+}
+
 /**
  * A note listing what an adapter had to leave out of an exercise.
  *
@@ -141,15 +152,10 @@ function omissionNote(
     if (omissions.size === 0) return '';
 
     // Resolved through the renderer so this note and the worksheet's own list say the same thing.
-    const labels = resolveWorksheetLabels(options.labels);
-    const wording: Record<string, string> = {
-        'media-required': labels.mediaRequired,
-        'invalid-data': labels.invalidData,
-        'unplaced-word': labels.unplacedWords,
-    };
+    const wording = omissionWording(options);
 
     const entries = [...omissions.entries()]
-        .map(([reason, count]) => `<li>${escapeText(wording[reason] || reason)} (${count})</li>`)
+        .map(([reason, count]) => `<li>${escapeText(wording[reason])} (${count})</li>`)
         .join('');
 
     return `<aside class="worksheet-unsupported"><ul>${entries}</ul></aside>`;
@@ -172,23 +178,21 @@ function appendixHeading(entry?: { number: number; blockTitle: string }): string
  *
  * Which note depends on why. One whose answer is settled says it is not available in print: a whole
  * iDevice type that has no printed form, or one component whose adapter found nothing in it that
- * paper could carry. One whose data could not be read says so, in the worksheet's words, so both
- * printing paths tell the teacher the same thing; nothing promises it for later.
+ * paper could carry. Otherwise preserve the adapter's reasons, such as requiring multimedia or
+ * unreadable data, in the worksheet's words; nothing promises a printed form for later.
  */
 function unprintableMarkup(
     type: string,
     options: ApplyActivityModeOptions,
     entry?: { number: number; blockTitle: string },
-    settled = isNeverPrintable(type),
+    reasons: readonly UnsupportedActivity['reason'][] = [isNeverPrintable(type) ? 'not-printable' : 'invalid-data'],
 ): string {
-    const label = settled
-        ? options.labels?.notAvailable || DEFAULT_LABELS.notAvailable
-        : resolveWorksheetLabels(options.labels).invalidData;
+    const wording = omissionWording(options);
 
     return (
         `<article class="worksheet-activity worksheet-activity-unprintable" data-idevice="${escapeText(type)}">` +
         appendixHeading(entry) +
-        `<p class="worksheet-not-printable">${escapeText(label)}</p>` +
+        reasons.map(reason => `<p class="worksheet-not-printable">${escapeText(wording[reason])}</p>`).join('') +
         `</article>`
     );
 }
@@ -207,8 +211,8 @@ function referenceMarkup(type: string, options: ApplyActivityModeOptions, number
 /**
  * Convert one activity into printable markup.
  *
- * @returns The markup — the settled note when the adapter found nothing to print — or null when the
- *   iDevice has no adapter or its data could not be read
+ * @returns The markup, including the adapter's reasons when nothing can print, or null when no
+ *   adapter or omission reason was available
  */
 function convert(
     component: ExportComponent,
@@ -230,10 +234,10 @@ function convert(
             ideviceBasePath: options.ideviceBasePath,
             onOmission: (reason, count = 1) => omissions.set(reason, (omissions.get(reason) ?? 0) + count),
         });
-        // An adapter that found nothing for paper in this component says so, and the note is the
-        // settled one rather than the one for data it could not read.
+        // A valid activity may contain only multimedia questions. Keep every reason its adapter
+        // reported even when it could build no exercise, rather than calling that data invalid.
         if (!activity) {
-            return omissions.has('not-printable') ? unprintableMarkup(component.type, options, appendix, true) : null;
+            return omissions.size ? unprintableMarkup(component.type, options, appendix, [...omissions.keys()]) : null;
         }
 
         // In place the block draws its own heading, so the exercise carries none. In the appendix
