@@ -1,6 +1,14 @@
 import { describe, expect, it, mock } from 'bun:test';
 import { EventEmitter } from 'node:events';
-const { printPreview } = require('./print-preview');
+const { printPreview, GIVE_UP_AFTER_MS } = require('./print-preview');
+
+/** The time every print here reads, moved on by the tests that need a print to have waited. */
+let clock = 0;
+const now = () => clock;
+/** Let the prints waiting now become ones that printing again gives up. */
+const aMinuteLater = () => {
+    clock += GIVE_UP_AFTER_MS;
+};
 
 function setup(success = true, reason = '') {
     const win = Object.assign(new EventEmitter(), {
@@ -14,7 +22,7 @@ function setup(success = true, reason = '') {
             ),
         },
     });
-    return { win, createWindow: mock(() => win) };
+    return { win, createWindow: mock(() => win), now };
 }
 
 describe('native print preview', () => {
@@ -186,16 +194,34 @@ describe('native print preview', () => {
                 wait();
             });
 
-        it('is given up on when the same editor prints again, which releases its window', async () => {
+        it('is given up on when the same editor prints again a minute on, which releases its window', async () => {
             const stuck = hanging();
             const first = printPreview('blob:first', { ...stuck, owner: 1 });
             await asked(stuck);
+            aMinuteLater();
             const next = setup();
 
             expect(await printPreview('blob:next', { ...next, owner: 1 })).toEqual({ success: true, canceled: false });
             expect(await first).toEqual({ success: false, canceled: true });
             expect(stuck.win.destroy).toHaveBeenCalledTimes(1);
             expect(stuck.win.listenerCount('closed')).toBe(0);
+        });
+
+        it('is left alone when the same editor prints again within a minute, as it may be on its way', async () => {
+            // Its dialog may have been answered already, and the copy still be going to the printer:
+            // Electron only says so once it has been sent.
+            const sending = hanging();
+            const first = printPreview('blob:first', { ...sending, owner: 1 });
+            await asked(sending);
+
+            await printPreview('blob:soon', { ...setup(), owner: 1 });
+            clock += GIVE_UP_AFTER_MS - 1;
+            await printPreview('blob:later', { ...setup(), owner: 1 });
+            expect(sending.win.destroy).not.toHaveBeenCalled();
+
+            clock += 1;
+            await printPreview('blob:a-minute-on', { ...setup(), owner: 1 });
+            expect(await first).toEqual({ success: false, canceled: true });
         });
 
         it('is given up on while still loading too', async () => {
@@ -207,6 +233,7 @@ describe('native print preview', () => {
                     ),
             );
             const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            aMinuteLater();
             await printPreview('blob:next', { ...setup(), owner: 1 });
 
             expect(await first).toEqual({ success: false, canceled: true });
@@ -254,6 +281,7 @@ describe('native print preview', () => {
             const stuck = waitingForFonts();
             const first = printPreview('blob:first', { ...stuck, owner: 1 });
             await stuck.fontsAsked;
+            aMinuteLater();
 
             expect(await printPreview('blob:next', { ...setup(), owner: 1 })).toEqual({
                 success: true,
@@ -284,6 +312,7 @@ describe('native print preview', () => {
             expect(stuck.win.webContents.print).not.toHaveBeenCalled();
             expect(stuck.win.listenerCount('closed')).toBe(0);
             stuck.win.isDestroyed.mockClear();
+            aMinuteLater();
             await printPreview('blob:next', { ...setup(), owner: 1 });
             expect(stuck.win.isDestroyed).not.toHaveBeenCalled();
         });
@@ -314,6 +343,7 @@ describe('native print preview', () => {
 
             expect(stuck.win.destroy).not.toHaveBeenCalled();
             expect(stuck.win.webContents.print).not.toHaveBeenCalled();
+            aMinuteLater();
             await printPreview('blob:next', { ...setup(), owner: 1 });
             expect(await first).toEqual({ success: false, canceled: true });
         });
@@ -327,6 +357,7 @@ describe('native print preview', () => {
             const first = printPreview('blob:first', { ...stuck, owner: 1 });
             await asked(stuck);
 
+            aMinuteLater();
             const next = hanging();
             const second = printPreview('blob:next', { ...next, owner: 1 });
             await asked(next);
@@ -349,6 +380,7 @@ describe('native print preview', () => {
 
             expect(stuck.win.destroy).not.toHaveBeenCalled();
             // Settle it, so the test leaves nothing behind.
+            aMinuteLater();
             await printPreview('blob:next', { ...setup(), owner: 1 });
             expect(await first).toEqual({ success: false, canceled: true });
         });

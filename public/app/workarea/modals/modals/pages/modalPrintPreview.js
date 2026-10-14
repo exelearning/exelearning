@@ -252,7 +252,8 @@ export default class ModalPrintPreview {
         // A desktop print dialog that never answers would leave Print disabled for good: on macOS
         // it may be a sheet of the hidden window that prints, which nobody can see. Closing lets
         // that print go. Its assets stay until it answers, in case it is still printing; if it
-        // never does, the desktop app gives it up when the editor prints again, which settles it.
+        // never does, the desktop app gives it up when the editor prints again a minute or more
+        // after it started, which settles it.
         this.endPrintJob();
         this.cleanup();
         this.setBusy(false);
