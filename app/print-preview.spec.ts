@@ -239,6 +239,42 @@ describe('native print preview', () => {
             expect(await first).toEqual({ success: false, canceled: true });
         });
 
+        it.each(['page', 'fonts'])('cancels a replaced print still loading its %s within a minute', async step => {
+            const stuck = hanging();
+            let ready!: () => void;
+            let started!: () => void;
+            const pending = new Promise<void>(resolve => {
+                ready = resolve;
+            });
+            const askedToLoad = new Promise<void>(resolve => {
+                started = resolve;
+            });
+            const load = mock(() => {
+                started();
+                return pending;
+            });
+            if (step === 'page') stuck.win.loadURL = load;
+            else stuck.win.webContents.executeJavaScript = load;
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await askedToLoad;
+            clock += 10_000;
+
+            try {
+                await printPreview('blob:next', { ...setup(), owner: 1 });
+                expect(stuck.win.destroy).toHaveBeenCalledTimes(1);
+                // Cancellation settles even if the abandoned load never does.
+                expect(await first).toEqual({ success: false, canceled: true });
+                ready();
+                await new Promise<void>(resolve => setTimeout(resolve, 0));
+                expect(stuck.win.webContents.print).not.toHaveBeenCalled();
+                expect(stuck.win.listenerCount('closed')).toBe(0);
+            } finally {
+                if (!stuck.win.isDestroyed()) stuck.win.destroy();
+                ready();
+                await first;
+            }
+        });
+
         it('ends when its window closes even if loading never settles', async () => {
             const stuck = hanging();
             stuck.win.loadURL = mock(() => new Promise<void>(() => {}));
@@ -276,6 +312,27 @@ describe('native print preview', () => {
                 fontsFailed: (error: Error) => fontsFailed(error),
             };
         };
+
+        it('protects a newly requested dialog for a minute even after a slow font load', async () => {
+            const sending = waitingForFonts();
+            const first = printPreview('blob:first', { ...sending, owner: 1 });
+            await sending.fontsAsked;
+            clock += 2 * GIVE_UP_AFTER_MS;
+            sending.fontsReady();
+            await asked(sending);
+
+            try {
+                clock += GIVE_UP_AFTER_MS - 1;
+                await printPreview('blob:soon', { ...setup(), owner: 1 });
+                expect(sending.win.destroy).not.toHaveBeenCalled();
+                clock += 1;
+                await printPreview('blob:a-minute-on', { ...setup(), owner: 1 });
+                expect(await first).toEqual({ success: false, canceled: true });
+            } finally {
+                if (!sending.win.isDestroyed()) sending.win.destroy();
+                await first;
+            }
+        });
 
         it('is given up on while waiting for its fonts, which releases its window', async () => {
             const stuck = waitingForFonts();

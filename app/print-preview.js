@@ -1,20 +1,21 @@
 /**
- * How long a print must have been waiting before printing again gives it up.
+ * How long a native print must have been waiting before printing again gives it up.
  *
  * Electron says nothing when its dialog is answered, only when the copy has been sent, so a print
- * that has just been confirmed looks like one whose dialog never answered. Seconds after it
- * started, it may still be on its way to the printer; a minute on, it is the dialog that hangs.
+ * that has just been confirmed looks like one whose dialog never answered. Allow a minute from
+ * asking for the dialog before a later print can give it up. A copy still loading has not asked
+ * the printer for anything and can be cancelled immediately.
  */
 const GIVE_UP_AFTER_MS = 60_000;
 
-/** The print windows waiting for their dialog to answer: who asked for each, and since when. */
+/** Pending print windows, their editor and when each asked for its native print dialog. */
 const waiting = new Map();
 
 /** Windows whose print was given up on, so that their closing reads as a cancellation. */
 const givenUp = new WeakSet();
 
 /**
- * Give up on the prints an editor has been waiting on for a while.
+ * Give up on an editor's copies still loading and native prints waiting beyond the grace period.
  *
  * On macOS the dialog of a hidden window may be a sheet nobody can see, which never answers. Left
  * alone, its window and the copy it holds would stay until the editor closes. Destroying the
@@ -25,7 +26,8 @@ const givenUp = new WeakSet();
  */
 function giveUpPrints(owner, now) {
     for (const [win, print] of waiting) {
-        if (print.owner !== owner || now - print.since < GIVE_UP_AFTER_MS) continue;
+        if (print.owner !== owner) continue;
+        if (print.printingSince !== null && now - print.printingSince < GIVE_UP_AFTER_MS) continue;
         givenUp.add(win);
         if (!win.isDestroyed()) win.destroy();
     }
@@ -41,16 +43,16 @@ async function printPreview(url, { createWindow, owner = null, now = Date.now })
         return { success: false, canceled: false, error: 'Invalid print preview URL' };
     }
 
-    // The editor can only print again once its preview was closed, so a print it has been waiting
-    // on for a while has been given up on. It is not done when the preview closes, nor to a recent
-    // print: the dialog may have been answered already, and the copy still be on its way.
+    // Printing again abandons copies still loading. Once the native dialog has been requested,
+    // allow time for a recently confirmed copy to reach the printer before giving it up.
     giveUpPrints(owner, now());
 
     let win;
     let stopWatching = () => {};
     try {
         win = createWindow();
-        waiting.set(win, { owner, since: now() });
+        const pending = { owner, printingSince: null };
+        waiting.set(win, pending);
         // Each step also ends if the window closes first. Electron leaves executeJavaScript
         // pending for good on a destroyed window, and that print would never be settled.
         const closing = new Promise((_resolve, reject) => {
@@ -66,6 +68,7 @@ async function printPreview(url, { createWindow, owner = null, now = Date.now })
         return await untilClosed(
             new Promise((resolve, reject) => {
                 try {
+                    pending.printingSince = now();
                     win.webContents.print({ silent: false, printBackground: false }, (success, failureReason) => {
                         const canceled = !success && /cancel(l)?ed/i.test(failureReason);
                         resolve({ success, canceled, ...(!success && !canceled ? { error: failureReason } : {}) });
