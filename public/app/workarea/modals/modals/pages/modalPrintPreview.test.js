@@ -1683,6 +1683,206 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(notice().hidden).toBe(true);
         });
 
+        /** A 3D model whose picture is taken only when the test says, as a slow one would be. */
+        const slowModel = () => {
+            let failPicture;
+            let takePicture;
+            const viewer = modal.iframe.contentDocument.createElement('model-viewer');
+            viewer.getBoundingClientRect = () => ({ width: 100, height: 80 });
+            viewer.toBlob = () =>
+                new Promise((resolve, reject) => {
+                    takePicture = resolve;
+                    failPicture = reject;
+                });
+            modal.iframe.contentDocument.body.append(viewer);
+            return {
+                pictureAsked: () => vi.waitFor(() => expect(failPicture).toBeDefined()),
+                // Its picture fails, which leaves it out: the copy needs nothing more to finish.
+                finish: () => failPicture(new Error('Not drawn')),
+                finishWithPicture: () => takePicture(new Blob(['model'], { type: 'image/png' })),
+            };
+        };
+
+        it('does not open the print dialog when the preview closes while its copy is made', async () => {
+            const model = slowModel();
+            window.electronAPI = { printPreview: vi.fn().mockResolvedValue({ success: true, canceled: false }) };
+            const urlsBefore = URL.createObjectURL.mock.calls.length;
+            const printing = modal.print();
+            await model.pictureAsked();
+
+            modal.close();
+            model.finish();
+            await printing;
+
+            expect(window.electronAPI.printPreview).not.toHaveBeenCalled();
+            // No copy was handed over, so none was made into a URL to load.
+            expect(URL.createObjectURL.mock.calls.length).toBe(urlsBefore);
+        });
+
+        it('opens the print dialog once a slow copy is made, if the preview is still open', async () => {
+            const model = slowModel();
+            window.electronAPI = { printPreview: vi.fn().mockResolvedValue({ success: true, canceled: false }) };
+            const printing = modal.print();
+            await model.pictureAsked();
+
+            model.finish();
+            await printing;
+
+            expect(window.electronAPI.printPreview).toHaveBeenCalledOnce();
+            expect(printBtn().disabled).toBe(false);
+        });
+
+        it('releases retained assets after a successful picture finishes following close', async () => {
+            const dispose = vi.fn();
+            window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: '<html></html>', dispose });
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            const model = slowModel();
+            window.electronAPI = { printPreview: vi.fn() };
+            const urlsBefore = URL.createObjectURL.mock.calls.length;
+            const printing = modal.print();
+            await model.pictureAsked();
+
+            modal.close();
+            expect(dispose).not.toHaveBeenCalled();
+            model.finishWithPicture();
+            await printing;
+
+            expect(dispose).toHaveBeenCalledOnce();
+            expect(window.electronAPI.printPreview).not.toHaveBeenCalled();
+            expect(URL.createObjectURL.mock.calls.length).toBe(urlsBefore);
+            expect(modal.printJob).toBeNull();
+            expect(notice().hidden).toBe(true);
+        });
+
+        it('does not revive an old copy when the preview is reopened without printing again', async () => {
+            const model = slowModel();
+            window.electronAPI = { printPreview: vi.fn() };
+            const printing = modal.print();
+            await model.pictureAsked();
+            modal.close();
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            const urlsBefore = URL.createObjectURL.mock.calls.length;
+
+            model.finishWithPicture();
+            await printing;
+
+            expect(window.electronAPI.printPreview).not.toHaveBeenCalled();
+            expect(URL.createObjectURL.mock.calls.length).toBe(urlsBefore);
+            expect(printBtn().disabled).toBe(false);
+            expect(notice().hidden).toBe(true);
+        });
+
+        it.each(['before', 'after'])('leaves a newer job alone when the old copy finishes %s its dialog opens', async order => {
+            const disposeOld = vi.fn();
+            const disposeNew = vi.fn();
+            window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: '<html></html>', dispose: disposeOld });
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            const oldModel = slowModel();
+            let answer;
+            window.electronAPI = { printPreview: vi.fn(() => new Promise(resolve => { answer = resolve; })) };
+            const abandoned = modal.print();
+            await oldModel.pictureAsked();
+            modal.close();
+
+            window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: '<html></html>', dispose: disposeNew });
+            await showWithActivities();
+            frameDocument();
+            loaded();
+            const newModel = slowModel();
+            const current = modal.print();
+            const currentJob = modal.printJob;
+            await newModel.pictureAsked();
+
+            if (order === 'before') {
+                oldModel.finishWithPicture();
+                await abandoned;
+                expect(window.electronAPI.printPreview).not.toHaveBeenCalled();
+                expect(modal.printJob).toBe(currentJob);
+                expect(printBtn().disabled).toBe(true);
+            }
+            URL.createObjectURL.mockReturnValueOnce('blob:current-copy');
+            newModel.finishWithPicture();
+            await dialogOpened();
+            const urlsAfterCurrent = URL.createObjectURL.mock.calls.length;
+            if (order === 'after') {
+                oldModel.finishWithPicture();
+                await abandoned;
+            }
+
+            expect(window.electronAPI.printPreview).toHaveBeenCalledExactlyOnceWith('blob:current-copy');
+            expect(URL.createObjectURL.mock.calls.length).toBe(urlsAfterCurrent);
+            expect(URL.revokeObjectURL).not.toHaveBeenCalledWith('blob:current-copy');
+            expect(disposeOld).toHaveBeenCalledOnce();
+            expect(disposeNew).not.toHaveBeenCalled();
+            expect(modal.printJob).toBe(currentJob);
+            expect(printBtn().disabled).toBe(true);
+
+            answer({ success: true, canceled: false });
+            await current;
+            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:current-copy');
+            expect(printBtn().disabled).toBe(false);
+            modal.close();
+            expect(disposeNew).toHaveBeenCalledOnce();
+            expect(disposeOld).toHaveBeenCalledOnce();
+        });
+
+        it('keeps printing the retained copy when an option regenerates the visible preview', async () => {
+            const disposeOld = vi.fn();
+            const disposeNew = vi.fn();
+            window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: '<html></html>', dispose: disposeOld });
+            await showWithActivities();
+            frameDocument().body.innerHTML = '<p>Original preview</p>';
+            loaded();
+            const model = slowModel();
+            window.electronAPI = { printPreview: vi.fn().mockResolvedValue({ success: true, canceled: false }) };
+            const printing = modal.print();
+            const requestBefore = modal.requestId;
+            const job = modal.printJob;
+            await model.pictureAsked();
+
+            window.generatePrintPreview.mockResolvedValueOnce({ success: true, html: '<html></html>', dispose: disposeNew });
+            tick(linkUrls(), false);
+            await settle();
+            frameDocument().body.innerHTML = '<p>Updated preview</p>';
+            loaded();
+            expect(modal.requestId).toBeGreaterThan(requestBefore);
+            expect(modal.printJob).toBe(job);
+            expect(disposeOld).not.toHaveBeenCalled();
+            URL.createObjectURL.mockReturnValueOnce('blob:retained-copy');
+
+            model.finishWithPicture();
+            await printing;
+
+            expect(window.electronAPI.printPreview).toHaveBeenCalledExactlyOnceWith('blob:retained-copy');
+            const html = await URL.createObjectURL.mock.calls.at(-1)[0].text();
+            expect(html).toContain('Original preview');
+            expect(html).not.toContain('Updated preview');
+            expect(html).toContain('data:image/png;base64,bW9kZWw=');
+            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:retained-copy');
+            expect(disposeOld).toHaveBeenCalledOnce();
+            expect(disposeNew).not.toHaveBeenCalled();
+            expect(printBtn().disabled).toBe(false);
+            modal.close();
+            expect(disposeNew).toHaveBeenCalledOnce();
+        });
+
+        it('cancels a copy without 3D models when closed before its promise resumes', async () => {
+            window.electronAPI = { printPreview: vi.fn() };
+            const urlsBefore = URL.createObjectURL.mock.calls.length;
+            const printing = modal.print();
+            modal.close();
+            await printing;
+
+            expect(window.electronAPI.printPreview).not.toHaveBeenCalled();
+            expect(URL.createObjectURL.mock.calls.length).toBe(urlsBefore);
+        });
+
         it('lets a print whose dialog never answers go when the preview closes', async () => {
             window.electronAPI = { printPreview: vi.fn(() => new Promise(() => {})) };
             modal.print();

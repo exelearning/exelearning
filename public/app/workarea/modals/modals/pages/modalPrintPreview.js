@@ -787,6 +787,9 @@ export default class ModalPrintPreview {
             this.syncPrintButton();
             try {
                 const html = await printPreviewSnapshot(this.iframe.contentDocument);
+                // Closed while the copy was being made, which a few 3D models can make take a
+                // while: the user no longer wants the print dialog.
+                if (this.printJob !== job) return;
                 url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
                 const result = await window.electronAPI.printPreview(url);
                 if (!result?.success && !result?.canceled && requestId === this.requestId && this.isVisible()) {
