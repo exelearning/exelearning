@@ -37,34 +37,40 @@ async function printPreview(url, { createWindow, owner = null }) {
     giveUpPrints(owner);
 
     let win;
+    let stopWatching = () => {};
     try {
         win = createWindow();
         waiting.set(win, owner);
-        await win.loadURL(url);
-        // Stylesheets/images finish with loadURL; web fonts may still be settling.
-        await win.webContents.executeJavaScript('document.fonts.ready.then(() => undefined)');
-        return await new Promise((resolve, reject) => {
-            const closed = () =>
-                givenUp.has(win)
-                    ? resolve({ success: false, canceled: true })
-                    : reject(new Error('Print window closed'));
+        // Each step also ends if the window closes first. Electron leaves executeJavaScript
+        // pending for good on a destroyed window, and that print would never be settled.
+        const closing = new Promise((_resolve, reject) => {
+            const closed = () => reject(new Error('Print window closed'));
             win.once('closed', closed);
-            try {
-                win.webContents.print({ silent: false, printBackground: false }, (success, failureReason) => {
-                    win.removeListener('closed', closed);
-                    const canceled = !success && /cancel(l)?ed/i.test(failureReason);
-                    resolve({ success, canceled, ...(!success && !canceled ? { error: failureReason } : {}) });
-                });
-            } catch (error) {
-                win.removeListener('closed', closed);
-                reject(error);
-            }
+            stopWatching = () => win.removeListener('closed', closed);
         });
+        const untilClosed = step => Promise.race([step, closing]);
+
+        await untilClosed(win.loadURL(url));
+        // Stylesheets/images finish with loadURL; web fonts may still be settling.
+        await untilClosed(win.webContents.executeJavaScript('document.fonts.ready.then(() => undefined)'));
+        return await untilClosed(
+            new Promise((resolve, reject) => {
+                try {
+                    win.webContents.print({ silent: false, printBackground: false }, (success, failureReason) => {
+                        const canceled = !success && /cancel(l)?ed/i.test(failureReason);
+                        resolve({ success, canceled, ...(!success && !canceled ? { error: failureReason } : {}) });
+                    });
+                } catch (error) {
+                    reject(error);
+                }
+            }),
+        );
     } catch (error) {
-        // Given up on while it was still loading.
+        // Given up on before its dialog answered.
         if (win && givenUp.has(win)) return { success: false, canceled: true };
         return { success: false, canceled: false, error: error?.message || String(error) };
     } finally {
+        stopWatching();
         if (win) waiting.delete(win);
         if (win && !win.isDestroyed()) win.destroy();
     }

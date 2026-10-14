@@ -46,6 +46,35 @@ describe('native print preview', () => {
         expect(deps.win.webContents.print).toHaveBeenCalledTimes(1);
     });
 
+    it('waits for fonts before asking the printer and removes its watcher before destroying the window', async () => {
+        const deps = setup();
+        let fontsReady!: () => void;
+        let fontsRequested!: () => void;
+        const fontsAsked = new Promise<void>(resolve => {
+            fontsRequested = resolve;
+        });
+        deps.win.webContents.executeJavaScript = mock(() => {
+            fontsRequested();
+            return new Promise<void>(resolve => {
+                fontsReady = resolve;
+            });
+        });
+        deps.win.destroy = mock(() => {
+            expect(deps.win.listenerCount('closed')).toBe(0);
+            deps.win.isDestroyed = mock(() => true);
+            deps.win.emit('closed');
+        });
+
+        const printing = printPreview('blob:preview', deps);
+        await fontsAsked;
+        expect(deps.win.webContents.print).not.toHaveBeenCalled();
+        fontsReady();
+
+        expect(await printing).toEqual({ success: true, canceled: false });
+        expect(deps.win.webContents.print).toHaveBeenCalledTimes(1);
+        expect(deps.win.destroy).toHaveBeenCalledTimes(1);
+    });
+
     for (const reason of ['No valid printers available', 'Failed to enumerate printers', 'Print job failed']) {
         it('reports the native error: ' + reason, async () => {
             const deps = setup(false, reason);
@@ -106,6 +135,26 @@ describe('native print preview', () => {
         });
     }
 
+    for (const stage of ['loadURL', 'executeJavaScript']) {
+        it('releases the window and watcher after ' + stage + ' rejects asynchronously', async () => {
+            const deps = setup();
+            const target = stage === 'loadURL' ? deps.win : deps.win.webContents;
+            (target as any)[stage] = mock(async () => {
+                await Promise.resolve();
+                throw new Error('Preparation failed');
+            });
+
+            expect(await printPreview('blob:preview', deps)).toEqual({
+                success: false,
+                canceled: false,
+                error: 'Preparation failed',
+            });
+            expect(deps.win.webContents.print).not.toHaveBeenCalled();
+            expect(deps.win.destroy).toHaveBeenCalledTimes(1);
+            expect(deps.win.listenerCount('closed')).toBe(0);
+        });
+    }
+
     it('finishes if the window closes while printing', async () => {
         const deps = setup();
         deps.win.webContents.print = mock(() => {
@@ -161,6 +210,134 @@ describe('native print preview', () => {
             await printPreview('blob:next', { ...setup(), owner: 1 });
 
             expect(await first).toEqual({ success: false, canceled: true });
+        });
+
+        it('ends when its window closes even if loading never settles', async () => {
+            const stuck = hanging();
+            stuck.win.loadURL = mock(() => new Promise<void>(() => {}));
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+
+            stuck.win.destroy();
+
+            expect(await first).toEqual({ success: false, canceled: false, error: 'Print window closed' });
+            expect(stuck.win.webContents.executeJavaScript).not.toHaveBeenCalled();
+            expect(stuck.win.webContents.print).not.toHaveBeenCalled();
+            expect(stuck.win.listenerCount('closed')).toBe(0);
+            expect(stuck.win.destroy).toHaveBeenCalledTimes(1);
+        });
+
+        /** Electron 44 leaves executeJavaScript pending for good once its window is destroyed. */
+        const waitingForFonts = () => {
+            const stuck = hanging();
+            let fontsRequested!: () => void;
+            let fontsReady!: () => void;
+            let fontsFailed!: (error: Error) => void;
+            const fontsAsked = new Promise<void>(resolve => {
+                fontsRequested = resolve;
+            });
+            stuck.win.webContents.executeJavaScript = mock(() => {
+                fontsRequested();
+                return new Promise<void>((resolve, reject) => {
+                    fontsReady = resolve;
+                    fontsFailed = reject;
+                });
+            });
+            return {
+                ...stuck,
+                fontsAsked,
+                fontsReady: () => fontsReady(),
+                fontsFailed: (error: Error) => fontsFailed(error),
+            };
+        };
+
+        it('is given up on while waiting for its fonts, which releases its window', async () => {
+            const stuck = waitingForFonts();
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await stuck.fontsAsked;
+
+            expect(await printPreview('blob:next', { ...setup(), owner: 1 })).toEqual({
+                success: true,
+                canceled: false,
+            });
+
+            expect(await first).toEqual({ success: false, canceled: true });
+            expect(stuck.win.webContents.print).not.toHaveBeenCalled();
+            expect(stuck.win.destroy).toHaveBeenCalledTimes(1);
+            expect(stuck.win.listenerCount('closed')).toBe(0);
+
+            // A settled print must no longer be visited by giveUpPrints.
+            stuck.win.isDestroyed.mockClear();
+            await printPreview('blob:third', { ...setup(), owner: 1 });
+            expect(stuck.win.isDestroyed).not.toHaveBeenCalled();
+        });
+
+        it('ends when its window closes while waiting for its fonts', async () => {
+            const stuck = waitingForFonts();
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await stuck.fontsAsked;
+
+            stuck.win.isDestroyed = mock(() => true);
+            stuck.win.emit('closed');
+
+            expect(await first).toEqual({ success: false, canceled: false, error: 'Print window closed' });
+            expect(stuck.win.destroy).not.toHaveBeenCalled();
+            expect(stuck.win.webContents.print).not.toHaveBeenCalled();
+            expect(stuck.win.listenerCount('closed')).toBe(0);
+            stuck.win.isDestroyed.mockClear();
+            await printPreview('blob:next', { ...setup(), owner: 1 });
+            expect(stuck.win.isDestroyed).not.toHaveBeenCalled();
+        });
+
+        it.each(['resolve', 'reject'])('ignores a late font %s after its window closes', async settlement => {
+            const stuck = waitingForFonts();
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await stuck.fontsAsked;
+            stuck.win.destroy();
+            expect(await first).toEqual({ success: false, canceled: false, error: 'Print window closed' });
+
+            if (settlement === 'resolve') stuck.fontsReady();
+            else stuck.fontsFailed(new Error('Late font failure'));
+            // Let any stale continuation or unhandled rejection run.
+            await new Promise<void>(resolve => setTimeout(resolve, 0));
+
+            expect(stuck.win.webContents.print).not.toHaveBeenCalled();
+            expect(stuck.win.destroy).toHaveBeenCalledTimes(1);
+            expect(stuck.win.listenerCount('closed')).toBe(0);
+        });
+
+        it('keeps waiting for fonts when another editor prints', async () => {
+            const stuck = waitingForFonts();
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await stuck.fontsAsked;
+
+            await printPreview('blob:other', { ...setup(), owner: 2 });
+
+            expect(stuck.win.destroy).not.toHaveBeenCalled();
+            expect(stuck.win.webContents.print).not.toHaveBeenCalled();
+            await printPreview('blob:next', { ...setup(), owner: 1 });
+            expect(await first).toEqual({ success: false, canceled: true });
+        });
+
+        it('ignores a late dialog callback after cancellation without closing the next job', async () => {
+            const stuck = hanging();
+            let answer!: (success: boolean, reason: string) => void;
+            stuck.win.webContents.print = mock((_options: object, callback: typeof answer) => {
+                answer = callback;
+            });
+            const first = printPreview('blob:first', { ...stuck, owner: 1 });
+            await asked(stuck);
+
+            const next = hanging();
+            const second = printPreview('blob:next', { ...next, owner: 1 });
+            await asked(next);
+            expect(await first).toEqual({ success: false, canceled: true });
+            answer(true, '');
+            await new Promise<void>(resolve => setTimeout(resolve, 0));
+
+            expect(next.win.destroy).not.toHaveBeenCalled();
+            expect(stuck.win.listenerCount('closed')).toBe(0);
+            next.win.destroy();
+            expect(await second).toEqual({ success: false, canceled: false, error: 'Print window closed' });
         });
 
         it('is left alone when another editor prints', async () => {
