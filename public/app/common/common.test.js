@@ -238,6 +238,26 @@ describe('common.js $exe helpers', () => {
     it('does not throw in chrome', () => {
       expect(() => global.$exe.setModalWindowContentSize()).not.toThrow();
     });
+
+    it('only fixes the dialog images inside the given context', () => {
+      const hadChrome = 'chrome' in window;
+      const previousChrome = window.chrome;
+      window.chrome = {};
+      document.body.innerHTML = `
+        <div class="exe-dialog-text"><img id="outside" width="240" height="120"></div>
+        <div id="idevice"><div class="exe-dialog-text"><img id="inside" width="240" height="120"></div></div>
+      `;
+
+      try {
+        global.$exe.setModalWindowContentSize(document.getElementById('idevice'));
+
+        expect(document.getElementById('inside').style.height).toBe('120px');
+        expect(document.getElementById('outside').style.height).toBe('');
+      } finally {
+        if (hadChrome) window.chrome = previousChrome;
+        else delete window.chrome;
+      }
+    });
   });
 
   describe('$exe.dl', () => {
@@ -1299,6 +1319,76 @@ describe('common.js $exe helpers', () => {
       // element.href property returns absolute URL in happy-dom; use getAttribute for raw value
       expect(link.getAttribute('href')).toBe('#');
       expect(link.title).toContain('Photo');
+    });
+
+    // #2510: JSON iDevices replace their markup after the page-wide call, so
+    // $exeExport.afterIdeviceRendered() calls it again for the rendered node.
+    describe('with a context', () => {
+      it('only transforms the media links inside the context', () => {
+        document.body.innerHTML = `
+          <a id="outside" rel="lightbox" href="audio/outside.mp3">Out</a>
+          <div id="idevice"><a id="inside" rel="lightbox" href="audio/inside.mp3">In</a></div>
+        `;
+
+        global.$exe.setMultimediaGalleries(document.getElementById('idevice'));
+
+        expect(document.getElementById('inside').getAttribute('href')).toBe('#media-box-0');
+        expect(document.getElementById('outside').getAttribute('href')).toBe('audio/outside.mp3');
+      });
+
+      it('does not reuse the id of a media box created by an earlier call', () => {
+        document.body.innerHTML = `
+          <a id="first" rel="lightbox" href="audio/first.mp3">First</a>
+          <div id="idevice"><a id="second" rel="lightbox" href="video/second.mp4">Second</a></div>
+        `;
+        global.$exe.setMultimediaGalleries(document.getElementById('first').parentNode);
+        const idevice = document.getElementById('idevice');
+        idevice.innerHTML = '<a id="second" rel="lightbox" href="video/second.mp4">Second</a>';
+
+        global.$exe.setMultimediaGalleries(idevice);
+
+        expect(document.getElementById('second').getAttribute('href')).toBe('#media-box-2');
+        expect(document.querySelectorAll('#media-box-2 video')).toHaveLength(1);
+        const ids = Array.from(document.querySelectorAll('.exe-media-box'), (box) => box.id);
+        expect(new Set(ids).size).toBe(ids.length);
+      });
+
+      it('binds prettyPhoto to every lightbox link of the page', () => {
+        document.body.innerHTML = `
+          <a rel="lightbox" href="#a">A</a>
+          <div id="idevice"><a rel="lightbox" href="#b">B</a></div>
+        `;
+        let boundLinks = null;
+        global.$.fn.prettyPhoto = vi.fn(function () {
+          boundLinks = this.length;
+          return this;
+        });
+
+        global.$exe.setMultimediaGalleries(document.getElementById('idevice'));
+        vi.runAllTimers();
+
+        expect(boundLinks).toBe(2);
+      });
+
+      it('leaves the GalleryIdevice fallback to the page-wide call', () => {
+        delete global.exe_editor_mode;
+        document.body.innerHTML = `
+          <div class="GalleryIdevice">
+            <div class="exeImageGallery">
+              <ul id="gallery-1">
+                <li><a href="http://example.com/img.jpg" title="Photo">img</a></li>
+              </ul>
+            </div>
+          </div>
+        `;
+
+        global.$exe.setMultimediaGalleries(document.querySelector('.GalleryIdevice'));
+        vi.runAllTimers();
+
+        const link = document.querySelector('.exeImageGallery a');
+        expect(link.getAttribute('href')).toBe('http://example.com/img.jpg');
+        expect(link.title).toBe('Photo');
+      });
     });
   });
 
