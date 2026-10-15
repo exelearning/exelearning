@@ -288,6 +288,19 @@ describe('ResourceCache', () => {
       expect(stored.cachedAt).toBeLessThanOrEqual(after);
     });
 
+    it('does not persist a bundle assembled with missing files', async () => {
+      // A loose-file bundle where some fetches failed (e.g. a host that does
+      // not serve the theme folder). Persisting it would keep the theme broken
+      // for every later session of this version, even after the host is fixed.
+      const files = new Map([['style.css', new Blob(['/* empty fallback */'])]]);
+      files.incomplete = true;
+
+      await cache.set('theme', 'flux', 'v4.0.5', files);
+
+      expect(mockStore.put).not.toHaveBeenCalled();
+      expect(storedResources.has('theme:flux:v4.0.5')).toBe(false);
+    });
+
     it('throws if database not initialized', async () => {
       const uninitCache = new ResourceCache();
       await expect(uninitCache.set('theme', 'base', 'v1.0.0', new Map())).rejects.toThrow(

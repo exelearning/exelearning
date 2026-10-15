@@ -121,6 +121,7 @@ var $quickquestionsvideo = {
 
             const vquext = $quickquestionsvideo.createInterfaceVideoQuExt(i);
             dl.before(vquext).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#vquextGameMinimize-' + i).hide();
             $('#vquextGameContainer-' + i).hide();
 

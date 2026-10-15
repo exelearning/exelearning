@@ -332,3 +332,16 @@ describe('guess iDevice export', () => {
     });
   });
 });
+
+describe('guess minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'guess.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
+  });
+});

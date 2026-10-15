@@ -54,6 +54,7 @@ services:
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForHADeployment}"
       APP_ONLINE_MODE: 1
       ONLINE_THEMES_INSTALL: ${ONLINE_THEMES_INSTALL:-0}
+      PUBLIC_VIEW_ENABLED: ${PUBLIC_VIEW_ENABLED:-false}
 
       # Database settings (PostgreSQL)
       DB_DRIVER: pdo_pgsql

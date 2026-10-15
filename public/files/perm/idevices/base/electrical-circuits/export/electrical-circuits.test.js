@@ -788,6 +788,37 @@ describe('electrical-circuits iDevice export', () => {
         });
     });
 
+    /**
+     * The end-of-attempt colour was a fixed 2, the pass colour, so every
+     * attempt closed green -- including one the progress report beside it
+     * called failed. There was no literal threshold to scan for, which is why
+     * only a behavioural test protects this.
+     */
+    describe('the end-of-attempt colour follows the pass mark', () => {
+        const attempt = (scoreGame, passScoreMode, passScoreCustom) => {
+            $eXeEC.options[0] = {
+                activityMode: 'test',
+                scoreGame,
+                scoreTotal: 10,
+                passScoreMode,
+                passScoreCustom,
+            };
+            return $eXeEC.getVerdictColor(0);
+        };
+
+        it('passes six out of ten on the project mark of 5', () => {
+            expect(attempt(6, 'global')).toBe(2);
+        });
+
+        it('fails the same attempt when the author set the mark at 8', () => {
+            expect(attempt(6, 'custom', 8)).toBe(1);
+        });
+
+        it('no longer paints an empty attempt in the pass colour', () => {
+            expect(attempt(0, 'global')).toBe(1);
+        });
+    });
+
     // The editor never reloads the document between pages, and a game's ids
     // are numbered by position: the next page's first game takes the ids this
     // one had. The clock used to find that game by id and run it, counting
@@ -839,5 +870,18 @@ describe('electrical-circuits iDevice export', () => {
             expect($eXeEC.newQuestion).not.toHaveBeenCalled();
             expect($eXeEC.options[instance].counter).toBe(30);
         });
+    });
+});
+
+describe('electrical-circuits minimum score notice', () => {
+    it('asks for the notice right after its interface replaces the stored data', () => {
+        const source = readFileSync(join(__dirname, 'electrical-circuits.js'), 'utf-8');
+        const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+        // The main container comes with the interface, so from that line on the
+        // notice can go right before it, below the instructions.
+        expect(loadGame).toMatch(
+            /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+        );
     });
 });

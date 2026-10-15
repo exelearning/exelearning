@@ -134,6 +134,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgNext: c_('Next'),
             msgTypeGame: c_('TriviExt'),
             msgRestart: c_('Restart'),
@@ -1072,7 +1073,6 @@ var $exeDevice = {
                                 <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center flex-nowrap gap-2 mb-3 flex-wrap">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -1355,7 +1355,7 @@ var $exeDevice = {
                         ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                     <p class="exe-block-warning exe-block-dismissible" style="position:relative">
                         ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
@@ -1696,6 +1696,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#trivialEGlobalTimes').val(game.globalTime);
 
@@ -2423,6 +2427,8 @@ var $exeDevice = {
             temas = [],
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#trivialEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
@@ -2546,6 +2552,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             globalTime: globalTime,
             id: id,
         };
@@ -2964,6 +2972,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#trivialGlobalTimeButton').on('click', function (e) {
             e.preventDefault();
