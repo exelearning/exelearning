@@ -60,6 +60,11 @@ window.$exeExport = {
             } catch (err) {
                 console.error('Error: Failed to initialize Teacher Mode');
             }
+            try {
+                $exeExport.presentationMode.init();
+            } catch (err) {
+                console.error('Error: Failed to initialize Presentation mode');
+            }
         }, 100);
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
         setTimeout(() => {
@@ -94,6 +99,44 @@ window.$exeExport = {
     },
 
     // Set one query param on an href (null removes it), keeping the rest and the fragment.
+    /**
+     * Append a `name=value` navigation parameter to an in-package href so a reader-chosen
+     * mode (Teacher Mode, Presentation mode) survives navigation between pages — works in
+     * same-origin AND opaque-origin iframes (where storage is unavailable). Leaves external
+     * links, non-relative schemes and pure fragments untouched.
+     */
+    withNavParam : function(href, navParams){
+        if (!href || !navParams) return href;
+        if (!this.isInPackageHref(href)) return href;
+        var eq = navParams.indexOf('=');
+        var name = eq === -1 ? navParams : navParams.slice(0, eq);
+        var value = eq === -1 ? '' : navParams.slice(eq + 1);
+        return this.setUrlParam(href, name, value);
+    },
+
+    /** False for external links, non-relative schemes and pure fragments. */
+    isInPackageHref : function(href){
+        return !!href && !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href);
+    },
+
+    /** Rewrite the menu and prev/next links so navigation keeps the chosen mode. */
+    propagateNavParam : function(navParams){
+        if (!navParams) return;
+        var self = this;
+        document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]').forEach(function(a){
+            a.setAttribute('href', self.withNavParam(a.getAttribute('href'), navParams));
+        });
+    },
+
+    /** Like propagateNavParam, but a null value removes the parameter from the links. */
+    setNavLinksParam : function(name, value){
+        var self = this;
+        document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]').forEach(function(a){
+            var href = a.getAttribute('href');
+            if (self.isInPackageHref(href)) a.setAttribute('href', self.setUrlParam(href, name, value));
+        });
+    },
+
     setUrlParam : function (href, name, value) {
         if (!href || !name) return href;
         // A query would turn a fragment-only jump into a page load.
@@ -168,28 +211,13 @@ window.$exeExport = {
                 // Keep student mode (no toggle) as the safe default.
             }
         },
-        /**
-         * Append the active teacher params to an in-package navigation href so the chosen
-         * view survives navigation between pages — works in same-origin AND opaque-origin
-         * iframes (where storage is unavailable). Leaves external links, non-relative
-         * schemes and pure fragments untouched.
-         */
+        /** Keep the teacher view across in-package navigation (see $exeExport.withNavParam). */
         withTeacherParams : function(href){
-            if (!href || !this._navParams) return href;
-            if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
-            var eq = this._navParams.indexOf('=');
-            var name = eq === -1 ? this._navParams : this._navParams.slice(0, eq);
-            var value = eq === -1 ? '' : this._navParams.slice(eq + 1);
-            return $exeExport.setUrlParam(href, name, value);
+            return $exeExport.withNavParam(href, this._navParams);
         },
         /** Rewrite the menu and prev/next links so navigation keeps the teacher view. */
         propagateNavParams : function(){
-            if (!this._navParams) return;
-            var self = this;
-            var links = document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]');
-            links.forEach(function(a){
-                a.setAttribute('href', self.withTeacherParams(a.getAttribute('href')));
-            });
+            $exeExport.propagateNavParam(this._navParams);
         },
         init : function(){
             // Reveal is already applied by bootstrap() (flicker-free); here we only carry
@@ -613,6 +641,288 @@ window.$exeExport = {
         if (params.get('print') === '1' && typeof window.print === 'function') {
             window.print();
         }
+    },
+
+    /**
+     * Presentation mode
+     *
+     * Lets a reader present a web site export with the keyboard or a presenter remote:
+     * the navigation menu collapses, Left/PageUp go to the previous page and
+     * Right/PageDown to the next one, M shows/hides the menu and T toggles Teacher Mode
+     * where its toggle exists (never shadows Ctrl/Cmd+T). Pages stay the navigation unit
+     * and long pages keep scrolling normally (Up/Down are never captured). Nothing is
+     * stored in the .elpx and there is no export option: the READER activates the mode,
+     * like Teacher Mode.
+     *
+     *   ?exe-presentation=1|true|yes   present: the mode is on and a visible
+     *                                  "Exit presentation mode" control leaves it.
+     *   ?exe-presentation=0            the control is available but the mode is off.
+     *   (no parameter)                 nothing is injected and no key is captured.
+     *
+     * The parameter IS the state: entering or leaving rewrites it in the current URL
+     * (history.replaceState) and in the menu, prev/next and search-result links, so the
+     * choice survives page changes and reloads without any storage.
+     *
+     * The menu is a reader preference too. The mode collapses it only when entering
+     * without one; while presenting, the links and the URL carry nav=true|false (the
+     * state the reader chose with M or the style's toggler) and later pages honour it
+     * instead of collapsing again. Leaving restores the menu as it was before the mode
+     * collapsed it, unless the reader has chosen a state since; outside the mode only
+     * the style's own nav=false convention is kept.
+     *
+     * Scope: web site exports opened as the top-level document. Never SCORM/IMS (the LMS
+     * owns navigation), EPUB, or content embedded in an iframe. Fullscreen is deliberately
+     * left to the browser (F11): the Fullscreen API needs a user gesture, is lost on
+     * navigation in Firefox/Safari and on file://, and is unavailable on iPhone. An
+     * iDevice that goes fullscreen on its own counts as an open overlay (see
+     * overlaySignals) and the keys stay inactive while it is.
+     *
+     * The control is appended to <body> as a sibling of #made-with-eXe (styled in
+     * base.css the same way, and stacked below it so the badge can expand over it):
+     * outside .exe-content and the footer, present in every web site export whatever
+     * the style does to the page layout.
+     */
+    presentationMode : {
+        PARAM : 'exe-presentation',
+        _available : false,
+        _requested : false,
+        _active : false,
+        _navPref : null,
+        _menuBefore : null,
+        _ownMenuToggle : false,
+        _boundHandleKeydown : null,
+        _truthy : function(v){ return v === '1' || v === 'true' || v === 'yes'; },
+        /**
+         * Runs in <head>: read the parameter and mark the requested mode on <html>
+         * flicker-free. Never throws.
+         */
+        bootstrap : function(){
+            try {
+                var params = new URLSearchParams(window.location.search);
+                var value = params.get(this.PARAM);
+                var nav = params.get('nav');
+                this._available = value !== null;
+                this._navPref = nav === 'true' || nav === 'false' ? nav : null;
+                this._requested = this._truthy(value);
+                if (this._requested) document.documentElement.classList.add('mode-presentation');
+            } catch (e) {
+                // No presentation mode is the safe default.
+            }
+        },
+        isActive : function(){ return this._active; },
+        /** The parameter to carry in navigation links: the current state, or nothing. */
+        navParams : function(){
+            return this._available ? this.PARAM + '=' + (this._active ? '1' : '0') : '';
+        },
+        /** Keep the mode across in-package navigation (see $exeExport.withNavParam). */
+        withParams : function(href){
+            href = $exeExport.withNavParam(href, this.navParams());
+            var menu = this._menuParam();
+            if (this._active && menu) href = $exeExport.withNavParam(href, 'nav=' + menu);
+            return href;
+        },
+        /** Web site export (never SCORM/IMS/EPUB) opened as the top-level document. */
+        isSupported : function(){
+            if (!document.body || !document.body.classList.contains('exe-web-site')) return false;
+            try { return window.self === window.top; } catch (e) { return false; }
+        },
+        init : function(){
+            if (!this._available) return;
+            if (!this.isSupported()) {
+                document.documentElement.classList.remove('mode-presentation');
+                return;
+            }
+            $exeExport.propagateNavParam(this.navParams());
+            if (document.getElementById('exe-presentation-toggler')) return;
+            var control = document.createElement('button');
+            control.type = 'button';
+            control.id = 'exe-presentation-toggler';
+            control.textContent = this._label();
+            control.title = $exe_i18n.presentation_mode_keys
+                || 'Keys: Left/Right change page, M menu, T teacher mode, F11 full screen';
+            var self = this;
+            control.addEventListener('click', function(){ self.toggle(); });
+            document.body.appendChild(control);
+            // Registered after the style's own handler, so the new state is already set.
+            var toggler = document.getElementById('siteNavToggler');
+            if (toggler) toggler.addEventListener('click', function(){ self._onMenuToggled(); });
+            if (this._requested) this.enter(true);
+        },
+        toggle : function(){
+            if (this._active) this.leave(); else this.enter();
+        },
+        /** @param {boolean} [fromUrl] the page was opened presenting (keep its nav=true|false). */
+        enter : function(fromUrl){
+            if (this._active) return;
+            this._active = true;
+            document.documentElement.classList.add('mode-presentation');
+            if (fromUrl === true && this._navPref !== null) {
+                this._menuBefore = null;
+                this._setMenuExpanded(this._navPref === 'true');
+            } else {
+                this._menuBefore = this._isMenuExpanded();
+                this._setMenuExpanded(false);
+            }
+            this._syncState();
+            this._boundHandleKeydown = this.handleKeydown.bind(this);
+            document.addEventListener('keydown', this._boundHandleKeydown);
+        },
+        leave : function(){
+            if (!this._active) return;
+            this._active = false;
+            document.documentElement.classList.remove('mode-presentation');
+            if (this._menuBefore !== null) this._setMenuExpanded(this._menuBefore);
+            this._menuBefore = null;
+            this._syncState();
+            document.removeEventListener('keydown', this._boundHandleKeydown);
+            this._boundHandleKeydown = null;
+        },
+        _label : function(){
+            return this._active
+                ? ($exe_i18n.exit_presentation_mode || 'Exit presentation mode')
+                : ($exe_i18n.presentation_mode || 'Presentation mode');
+        },
+        // The menu state to carry in the nav parameter: nav=true|false while presenting,
+        // the style's own convention (nav=false or nothing) otherwise; undefined without
+        // a toggler (leave the parameter alone).
+        _navValue : function(){
+            var menu = this._menuParam();
+            if (!menu) return undefined;
+            if (this._active) return menu;
+            return menu === 'false' ? 'false' : null;
+        },
+        // The parameter is the state: mirror it in the URL, the links and the control.
+        _syncState : function(){
+            $exeExport.propagateNavParam(this.navParams());
+            var nav = this._navValue();
+            if (nav !== undefined) $exeExport.setNavLinksParam('nav', nav);
+            try {
+                var url = $exeExport.setUrlParam(window.location.href, this.PARAM, this._active ? '1' : '0');
+                if (nav !== undefined) url = $exeExport.setUrlParam(url, 'nav', nav);
+                window.history.replaceState(window.history.state, '', url);
+            } catch (e) {
+                // The links still carry the state; only a reload of this page forgets it.
+            }
+            var control = document.getElementById('exe-presentation-toggler');
+            if (control) control.textContent = this._label();
+        },
+        // Reuse the style's own menu toggler so its state classes, nav=false links and
+        // low-resolution behaviour stay the single source of truth. The menu can still be
+        // opened normally while presenting.
+        _setMenuExpanded : function(expanded){
+            var toggler = document.getElementById('siteNavToggler');
+            if (!toggler) return;
+            if ((toggler.getAttribute('aria-expanded') === 'true') === expanded) return;
+            this._ownMenuToggle = true;
+            try {
+                toggler.click();
+            } finally {
+                this._ownMenuToggle = false;
+            }
+        },
+        /** true/false from the style's toggler, or null when the style has none. */
+        _isMenuExpanded : function(){
+            var toggler = document.getElementById('siteNavToggler');
+            return toggler ? toggler.getAttribute('aria-expanded') === 'true' : null;
+        },
+        _menuParam : function(){
+            var expanded = this._isMenuExpanded();
+            return expanded === null ? null : String(expanded);
+        },
+        // The reader showed or hid the menu (M or the style's toggler) while presenting:
+        // that choice now wins, travels in the links and survives leaving the mode.
+        _onMenuToggled : function(){
+            if (!this._active || this._ownMenuToggle) return;
+            this._menuBefore = null;
+            this._syncState();
+        },
+        // Never hijack keys while the reader is typing or composing text.
+        isTypingTarget : function(target){
+            if (!target || typeof target.closest !== 'function') return false;
+            return !!target.closest(
+                'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]'
+            );
+        },
+        isHidden : function(el){
+            if (!el) return true;
+            if (el.hidden) return true;
+            var style = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(el) : el.style;
+            return style.display === 'none';
+        },
+        // Single source of truth for "some overlay currently owns the keyboard, so we must
+        // not" (an open image-gallery lightbox must fully prevail over our keys — PR #2020
+        // review from @ignaciogros). Add one entry here to cover a future overlay/widget;
+        // nothing else in this module needs to change.
+        overlaySignals : [
+            {
+                name: 'exe_lightbox (prettyPhoto, rel="lightbox[...]")',
+                // .pp_pic_holder is created once on first open and never removed; open/closed
+                // is toggled via jQuery show/hide, so existence alone is NOT enough.
+                isActive: function (pm) {
+                    var el = document.querySelector('.pp_pic_holder');
+                    return !!el && !pm.isHidden(el);
+                }
+            },
+            {
+                name: 'SimpleLightbox (Image Gallery iDevice)',
+                // .sl-wrapper exists only while open. Its own arrow-key nav runs on `keyup`:
+                // without this our keydown would change page before it ever ran.
+                isActive: function () { return !!document.querySelector('.sl-wrapper'); }
+            },
+            {
+                name: 'Fullscreen image overlay (Magnifier + other Games-* iDevices)',
+                // common.js showFullscreenImage(): appended while shown, removed on close.
+                isActive: function () { return !!document.querySelector('.Games-OverlayImage'); }
+            },
+            {
+                name: 'MediaElement.js fullscreen video (Interactive Video iDevice)',
+                isActive: function () { return !!document.querySelector('.mejs-container-fullscreen'); }
+            },
+            {
+                name: 'Fullscreen API (an iDevice that went fullscreen on its own)',
+                isActive: function () { return !!document.fullscreenElement; }
+            }
+        ],
+        isOverlayActive : function(){
+            var pm = this;
+            return this.overlaySignals.some(function (signal) {
+                try {
+                    return signal.isActive(pm);
+                } catch (err) {
+                    // A single broken probe must never mask the others.
+                    return false;
+                }
+            });
+        },
+        handleKeydown : function(event){
+            if (event.defaultPrevented || event.isComposing) return;
+            // Plain keys only: never shadow Alt/Ctrl/Cmd/Shift combinations the browser
+            // reserves (e.g. Alt+Left/Right for history).
+            if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+            if (this.isTypingTarget(event.target) || this.isOverlayActive()) return;
+            var target = null;
+            if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+                target = document.querySelector('a.nav-button-left');
+            } else if (event.key === 'ArrowRight' || event.key === 'PageDown') {
+                target = document.querySelector('a.nav-button-right');
+            } else if (this._isKey(event, 'KeyM', 'm')) {
+                // The style's own toggler keeps its state classes and nav=false links.
+                target = document.getElementById('siteNavToggler');
+            } else if (this._isKey(event, 'KeyT', 't')) {
+                // Only exists when Teacher Mode is available on this page (?exe-teacher=1
+                // and teacher-only content); its change handler owns the reveal logic.
+                target = document.getElementById('teacher-mode-toggler');
+            }
+            if (!target) return;
+            target.click();
+            if (event.cancelable) event.preventDefault();
+        },
+        // KeyboardEvent.code identifies the physical key on any layout (Option+M gives
+        // "µ" on macOS); fall back to .key where .code is unavailable.
+        _isKey : function(event, code, key){
+            if (event.code) return event.code === code;
+            return event.key === key || event.key === key.toUpperCase();
+        }
     }
 }
 } // End of if (typeof window.$exeExport === 'undefined')
@@ -623,6 +933,7 @@ var $exeExport = window.$exeExport;
 // Apply the Teacher Mode reveal as early as possible. This script runs in <head>, so
 // doing it now (before DOMContentLoaded and the first paint) avoids any content flicker.
 try { $exeExport.teacherMode.bootstrap(); } catch (e) { /* student mode is the safe default */ }
+try { $exeExport.presentationMode.bootstrap(); } catch (e) { /* no presentation mode is the safe default */ }
 
 $(function () {
     $exeExport.init();
@@ -802,6 +1113,7 @@ $exeExport.searchBar = {
         $("#exe-client-search-results-list a").on("click", function(){
             // Hits come from the search index, so they inherit no params.
             var href = $exeExport.teacherMode.withTeacherParams(this.getAttribute('href'));
+            href = $exeExport.presentationMode.withParams(href);
             if (!$("#siteNav").is(":visible")) {
                 // Deep links: the param goes before the fragment.
                 href = $exeExport.setUrlParam(href, 'nav', 'false');
