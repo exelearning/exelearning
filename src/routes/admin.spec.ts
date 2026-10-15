@@ -1534,6 +1534,24 @@ describe('Admin Routes', () => {
             const data = await response.json();
             expect(data.settings.ONLINE_THEMES_INSTALL.value).toBe('0');
         });
+
+        it('should expose PUBLIC_VIEW_ENABLED as a boolean that defaults to disabled', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps({ getAllSettings: async () => [] })));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            const data = await response.json();
+            expect(data.settings.PUBLIC_VIEW_ENABLED).toEqual({
+                value: process.env.PUBLIC_VIEW_ENABLED ?? 'false',
+                type: 'boolean',
+            });
+        });
     });
 
     describe('PUT /api/admin/settings', () => {
@@ -1568,6 +1586,33 @@ describe('Admin Routes', () => {
             expect(data.success).toBe(true);
             expect(savedSettings).toHaveLength(1);
             expect(savedSettings[0].key).toBe('ONLINE_THEMES_INSTALL');
+        });
+
+        it('should save the PUBLIC_VIEW_ENABLED toggle', async () => {
+            const token = await generateAdminToken();
+            const savedSettings: Array<{ key: string; value: string }> = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        setSetting: async (_db, key, value) => {
+                            savedSettings.push({ key, value });
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [{ key: 'PUBLIC_VIEW_ENABLED', value: 'true', type: 'boolean' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(savedSettings).toEqual([{ key: 'PUBLIC_VIEW_ENABLED', value: 'true' }]);
         });
 
         it('should reject unknown setting key', async () => {
