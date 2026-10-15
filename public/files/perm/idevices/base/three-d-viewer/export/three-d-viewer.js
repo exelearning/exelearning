@@ -554,6 +554,15 @@
                 if (globalScope.customElements?.get?.('model-viewer')) return;
 
                 try {
+                    // Local Draco/KTX2 decoder locations go in first, so no model can
+                    // reach model-viewer's CDN defaults (see model-viewer-decoders.js).
+                    await new Promise((resolve) => {
+                        const d = document.createElement('script');
+                        d.src = url.replace(/model-viewer\.min\.js$/, 'model-viewer-decoders.js');
+                        d.onload = resolve;
+                        d.onerror = resolve;
+                        document.head.appendChild(d);
+                    });
                     // Inject script and wait for it to load
                     await new Promise((resolve, reject) => {
                         const s = document.createElement('script');

@@ -179,7 +179,7 @@ test.describe('Three Sixty Viewer iDevice', () => {
 
     test('exports the expected vendored dependencies', async ({ authenticatedPage }) => {
         const page = authenticatedPage;
-        // Query the browser helper to confirm three.js + OrbitControls are registered
+        // Query the browser helper to confirm three.js (OrbitControls bundled) is registered
         const files = await page.evaluate(async () => {
             try {
                 const mod = await import('/src/shared/export/browser/idevice-config-browser.ts');
@@ -193,8 +193,29 @@ test.describe('Three Sixty Viewer iDevice', () => {
         if (files) {
             expect(files).toContain('three-sixty-viewer.js');
             expect(files).toContain('three.min.js');
-            expect(files).toContain('OrbitControls.js');
         }
+    });
+
+    test('vendored three.min.js defines THREE and OrbitControls as a classic script', async ({ authenticatedPage }) => {
+        const page = authenticatedPage;
+        const result = await page.evaluate(async () => {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = '/files/perm/idevices/base/three-sixty-viewer/export/three.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            const T = (window as any).THREE;
+            const camera = new T.PerspectiveCamera(75, 1, 0.1, 1000);
+            const controls = new T.OrbitControls(camera, document.createElement('canvas'));
+            controls.update();
+            controls.dispose();
+            return { revision: T.REVISION, sphere: typeof T.SphereGeometry, textures: typeof T.TextureLoader };
+        });
+        expect(Number(result.revision)).toBeGreaterThanOrEqual(186);
+        expect(result.sphere).toBe('function');
+        expect(result.textures).toBe('function');
     });
 
     test('exposes scene list and hotspot list controls', async ({ authenticatedPage, createProject }) => {
