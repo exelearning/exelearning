@@ -213,6 +213,55 @@ describe('TinyMCE 5 Settings', () => {
       expect(templates[0]).toHaveProperty('url');
     });
 
+    // Template content is copied into the author's page and every export of
+    // it, so a remote URL there is a third-party request from each of them.
+    const REMOTE_URL = /^\s*(?:[a-z][a-z0-9+.-]*:)?\/\//i;
+    const REMOTE_IN_TEXT = /(?:https?:)?\/\/[a-z0-9-]+\.[a-z]/i;
+    const readTemplate = (url) => {
+      const fs = require('node:fs');
+      const path = require('node:path');
+      const html = fs.readFileSync(path.join(__dirname, '../..', url), 'utf8');
+      return new DOMParser().parseFromString(html, 'text/html');
+    };
+
+    it('ships every template without a remote resource URL', () => {
+      for (const { url } of globalThis.$exeTinyMCE.getTemplates()) {
+        for (const el of readTemplate(url).querySelectorAll('*')) {
+          for (const attr of ['src', 'href', 'poster', 'data', 'srcset', 'action']) {
+            const value = el.getAttribute(attr);
+            if (value !== null) expect(value, `${url} ${el.tagName}[${attr}]`).not.toMatch(REMOTE_URL);
+          }
+          for (const attr of ['srcdoc', 'style']) {
+            const value = el.getAttribute(attr);
+            if (value !== null) expect(value, `${url} ${el.tagName}[${attr}]`).not.toMatch(REMOTE_IN_TEXT);
+          }
+        }
+      }
+    });
+
+    it('keeps the author, title and license caption in every template figure', () => {
+      for (const { url } of globalThis.$exeTinyMCE.getTemplates()) {
+        for (const figure of readTemplate(url).querySelectorAll('figure.exe-figure')) {
+          const caption = figure.querySelector('figcaption.figcaption');
+          for (const part of ['.author', '.title', '.license']) {
+            expect(caption?.querySelector(part), `${url} ${part}`).toBeTruthy();
+          }
+        }
+      }
+    });
+
+    it('keeps 2-videos as two editable media placeholders with nothing to fetch', () => {
+      const doc = readTemplate('/libs/tinymce_5/js/tinymce/templates/2-videos.html');
+      const videos = doc.querySelectorAll('figure.exe-figure.exe-media > video');
+      expect(videos).toHaveLength(2);
+      expect(doc.querySelector('figure.exe-image')).toBeNull();
+      for (const video of videos) {
+        expect(video.getAttribute('src')).toBeNull();
+        expect(video.querySelector('source')).toBeNull();
+        expect(video.getAttribute('poster')).toMatch(/^data:image\/svg\+xml,/);
+      }
+    });
+
     it('getAssetURL constructs correct URL', () => {
       const url = '/libs/test.js';
       const result = globalThis.$exeTinyMCE.getAssetURL(url);
