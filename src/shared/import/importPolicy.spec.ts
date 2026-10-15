@@ -13,6 +13,7 @@ import {
     CONSERVATIVE_ZIP_LIMITS,
     DESKTOP_ZIP_LIMITS,
     DESKTOP_CONFIRM_ENTRY_BYTES,
+    COMPONENT_IMPORT_LIMITS,
     getZipLimitsForRuntime,
     validateZipLimits,
     assertInspectionWithinLimits,
@@ -43,6 +44,28 @@ describe('conservative vs desktop limits', () => {
 
     it('asks for desktop confirmation exactly at the conservative per-entry threshold', () => {
         expect(DESKTOP_CONFIRM_ENTRY_BYTES).toBe(CONSERVATIVE_ZIP_LIMITS.maxEntryBytes);
+    });
+});
+
+describe('component import limits (.idevice/.block)', () => {
+    it('keeps the component budget at 50 MiB compressed / 200 MiB cumulative uncompressed', () => {
+        expect(COMPONENT_IMPORT_LIMITS.maxFileBytes).toBe(50 * MiB);
+        expect(COMPONENT_IMPORT_LIMITS.maxTotalBytes).toBe(200 * MiB);
+    });
+
+    it('introduces no additional per-entry or entry-count cap beyond the cumulative one (ADR-2473-01)', () => {
+        expect(COMPONENT_IMPORT_LIMITS.maxEntryBytes).toBe(COMPONENT_IMPORT_LIMITS.maxTotalBytes);
+        expect(COMPONENT_IMPORT_LIMITS.maxEntries).toBe(Number.MAX_SAFE_INTEGER);
+    });
+
+    it('is a valid ZipDecompressionLimits object', () => {
+        expect(() => validateZipLimits(COMPONENT_IMPORT_LIMITS)).not.toThrow();
+    });
+
+    it('stays smaller than the conservative project total and leaves the project tiers untouched', () => {
+        expect(COMPONENT_IMPORT_LIMITS.maxTotalBytes).toBeLessThan(CONSERVATIVE_ZIP_LIMITS.maxTotalBytes);
+        expect(CONSERVATIVE_ZIP_LIMITS.maxTotalBytes).toBe(500 * MiB);
+        expect(DESKTOP_ZIP_LIMITS.maxTotalBytes).toBe(2048 * MiB);
     });
 });
 

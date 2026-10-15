@@ -1062,6 +1062,7 @@ export default class IdeviceBlockNode {
             </button>
             <ul class="dropdown-menu button-action-block exe-advanced" aria-labelledby="dropdownMenuButton${id}">
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-properties${id}"><span class="small-icon settings-icon-green"></span>${_('Box properties')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-import-idevice${id}"><span class="small-icon import-icon-green"></span>${_('Import iDevice')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone box')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="small-icon move-icon-green"></span>${_('Move to page')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="small-icon download-icon-green"></span>${_('Export box')}</button></li>
@@ -1085,6 +1086,7 @@ export default class IdeviceBlockNode {
         this.addBehaviourButtonCloneBlock();
         this.addBehaviourMoveToPageBlockButton();
         this.addBehaviourExportBlockButton();
+        this.addBehaviourImportIdeviceButton();
         this.addBehaviourToggleBlockButton();
         this.addTooltips();
         this.addNoTranslateForGoogle();
@@ -1429,6 +1431,82 @@ export default class IdeviceBlockNode {
                         }
                     });
             });
+    }
+
+    /**
+     * Import iDevice (.idevice file) into this block
+     *
+     */
+    addBehaviourImportIdeviceButton() {
+        this.blockButtons
+            .querySelector('#dropdownBlockMore-button-import-idevice' + this.blockId)
+            .addEventListener('click', () => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                // Create a one-shot hidden file input restricted to .idevice
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.idevice';
+                input.classList.add('d-none');
+                document.body.appendChild(input);
+                const removeInput = () => {
+                    if (input.parentNode) input.parentNode.removeChild(input);
+                };
+                input.addEventListener('cancel', removeInput);
+                input.addEventListener('change', async () => {
+                    const file = input.files && input.files[0];
+                    removeInput();
+                    if (!file) return;
+                    await this.importIdeviceFileIntoBlock(file);
+                });
+                input.click();
+            });
+    }
+
+    /**
+     * Import a .idevice file, inserting its component(s) into this block.
+     *
+     * @param {File} file
+     */
+    async importIdeviceFileIntoBlock(file) {
+        try {
+            const bridge = eXeLearning.app.project._yjsBridge;
+            const documentManager = bridge?.getDocumentManager?.();
+            const assetManager = bridge?.assetManager;
+            const ComponentImporter = window.ComponentImporter;
+            if (!documentManager) throw new Error('Yjs document manager not available');
+            if (!ComponentImporter) throw new Error('ComponentImporter not loaded');
+
+            const importer = new ComponentImporter(documentManager, assetManager);
+            const pageId =
+                this.pageId ||
+                eXeLearning.app.menus.menuStructure.menuStructureBehaviour
+                    .nodeSelected?.getAttribute('nav-id');
+            if (!pageId) throw new Error('No page selected');
+
+            const result = await importer.importIdeviceIntoBlock(
+                file,
+                pageId,
+                this.blockId
+            );
+            if (!result || !result.success) {
+                throw new Error((result && result.error) || 'Import failed');
+            }
+
+            // Preload assets so images resolve immediately, then refresh page
+            if (assetManager && typeof assetManager.preloadAllAssets === 'function') {
+                await assetManager.preloadAllAssets();
+            }
+            await eXeLearning.app.project.idevices.loadApiIdevicesInPage(true);
+        } catch (error) {
+            console.error('[BlockNode] Import iDevice failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Import error'),
+                body:
+                    error.message ||
+                    _('An error occurred while importing the component.'),
+                contentId: 'error',
+            });
+        }
     }
 
     /**
