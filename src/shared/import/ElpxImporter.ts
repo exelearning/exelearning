@@ -47,6 +47,7 @@ import {
     defaultLogger,
 } from './interfaces';
 import { PASS_SCORE_DEFAULT, normalizePassScore } from '../export/metadata-properties';
+import { splitInteractiveVideoSurroundingContent } from './interactiveVideoContentSplit';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 import { isLegacyGenericTextTemplate } from './legacyGenericTextTemplate';
 import { addUnresolvedAssetRefs, type UnresolvedAssetRef } from './unresolvedAssetRefs';
@@ -678,6 +679,10 @@ export class ElpxImporter {
         // Remap exe-node: internal links to new page IDs
         this.remapInternalPageLinks(pageStructures, idRemap);
 
+        // Interactive Video: convert the retired contentBefore/contentAfter
+        // fields into sibling Text iDevices in the same block.
+        splitInteractiveVideoSurroundingContent(pageStructures);
+
         // Phase 3: Importing structure (50-80%)
         this.reportProgress('structure', 50, 'Importing structure...');
 
@@ -916,6 +921,11 @@ export class ElpxImporter {
 
         // Remap exe-node: internal links to new page IDs
         this.remapInternalPageLinks(pageStructures, pageIdRemap);
+
+        // Interactive Video: convert the retired contentBefore/contentAfter
+        // fields into sibling Text iDevices in the same block (a no-op for
+        // true legacy content, which never carried those fields).
+        splitInteractiveVideoSurroundingContent(pageStructures);
 
         return pageStructures;
     }

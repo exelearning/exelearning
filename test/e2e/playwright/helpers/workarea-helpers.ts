@@ -2433,16 +2433,33 @@ export async function downloadProject(page: Page): Promise<Download> {
         return capabilities && !capabilities.storage?.remote;
     });
 
-    const triggerDownload = async (): Promise<void> => {
-        if (isStaticMode) {
-            // STATIC MODE: The save button triggers download in offline mode
+    if (isStaticMode) {
+        // STATIC MODE: The save button triggers download in offline mode
+        const trigger = async (): Promise<void> => {
             const saveBtn = page.locator('#head-top-save-button');
             await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
             await saveBtn.click();
-            return;
-        }
+        };
+        const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), trigger()]);
+        return download;
+    }
 
-        // ONLINE MODE: Navigate through File menu dropdown
+    return downloadViaFileMenu(page, {
+        submenu: '#dropdownExportAs',
+        item: '#navbar-button-download-project',
+    });
+}
+
+/**
+ * Open the File menu (advanced mode, retry-guarded against blocking alert
+ * modals), optionally open a nested submenu, click a download-triggering item
+ * and return the resulting download. Selector unions may target both the
+ * online and the static navbar, whose ids differ (e.g. `#dropdownExportAs`
+ * online vs `#dropdownExportAsOffline` static) — pass `:visible`-filtered
+ * unions so whichever variant the mode renders is picked.
+ */
+export async function downloadViaFileMenu(page: Page, target: { submenu?: string; item: string }): Promise<Download> {
+    const trigger = async (): Promise<void> => {
         await page.evaluate(() => {
             document.querySelector('body')?.setAttribute('mode', 'advanced');
         });
@@ -2464,18 +2481,18 @@ export async function downloadProject(page: Page): Promise<Download> {
             }
         }
 
-        // Click "Download as" submenu to open nested dropdown (Bootstrap dropend)
-        const downloadAsSubmenu = page.locator('#dropdownExportAs').first();
-        await downloadAsSubmenu.waitFor({ state: 'visible', timeout: 5000 });
-        await downloadAsSubmenu.click();
+        if (target.submenu) {
+            const submenu = page.locator(target.submenu).first();
+            await submenu.waitFor({ state: 'visible', timeout: 5000 });
+            await submenu.click();
+        }
 
-        // Click Download project as ELPX
-        const downloadBtn = page.locator('#navbar-button-download-project').first();
-        await downloadBtn.waitFor({ state: 'visible', timeout: 5000 });
-        await downloadBtn.click();
+        const item = page.locator(target.item).first();
+        await item.waitFor({ state: 'visible', timeout: 10000 });
+        await item.click();
     };
 
-    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), triggerDownload()]);
+    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), trigger()]);
     return download;
 }
 
@@ -2503,4 +2520,26 @@ export async function listZipContents(buffer: Buffer): Promise<string[]> {
 export async function zipContainsFile(buffer: Buffer, filename: string): Promise<boolean> {
     const files = await listZipContents(buffer);
     return files.some(path => path.endsWith(filename) || path.includes(`/${filename}`));
+}
+
+/**
+ * Unpack a downloaded ZIP into a fresh temp dir and return its path, so a spec
+ * can open exported files (e.g. `index.html`) straight from disk.
+ */
+export async function extractZipToTempDir(zipPath: string, prefix = 'exe-e2e-export-'): Promise<string> {
+    const [fflate, fs, os, pathMod] = await Promise.all([
+        import('fflate'),
+        import('node:fs'),
+        import('node:os'),
+        import('node:path'),
+    ]);
+    const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), prefix));
+    const files = fflate.unzipSync(new Uint8Array(fs.readFileSync(zipPath)));
+    for (const [name, bytes] of Object.entries(files)) {
+        if (name.endsWith('/')) continue;
+        const out = pathMod.join(dir, name);
+        fs.mkdirSync(pathMod.dirname(out), { recursive: true });
+        fs.writeFileSync(out, Buffer.from(bytes));
+    }
+    return dir;
 }
