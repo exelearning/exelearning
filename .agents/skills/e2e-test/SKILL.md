@@ -1,9 +1,11 @@
 ---
 name: e2e-test
-description: Writing Playwright E2E tests in test/e2e/playwright/. New user-visible features require an E2E spec in the same PR; specs must be deterministic (no `waitForTimeout`), isolated (each test creates its own project), and green under `make test-e2e` (and `make test-e2e-static` when the static build or embedding is affected) alongside `make fix`, `make test-unit`, and `make test-integration` before submission.
+description: "Write or debug repository Playwright specs, including isolated projects, preview frames and multi-user fixtures."
 ---
 
 # Skill: E2E Test
+
+> Completion: [verify-change](../verify-change/SKILL.md).
 
 > Parent: [AGENTS.md](../../../AGENTS.md) | Related: [frontend-module](../frontend-module/SKILL.md)
 
@@ -43,7 +45,7 @@ import {
 ## Common Workflows
 
 ```typescript
-// Create isolated project
+// Server mode only: create an isolated project (static specs use their local/import helpers)
 const response = await page.request.post('/api/project/create-quick', { data: { title: 'Test' } });
 const { uuid } = await response.json();
 await page.goto(`/workarea?project=${uuid}`);
@@ -61,19 +63,9 @@ await frame.locator('article').first().waitFor({ timeout: 10000 });
 
 ### Multi-User (Collaboration) Tests
 
-```typescript
-import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
-import { waitForYjsSync } from '../../helpers/sync-helpers';
-
-// Create separate browser contexts for each user
-async function loginAsUser(browser, baseURL, email, password) {
-    const context = await browser.newContext({ baseURL });
-    const page = await context.newPage();
-    const loginResponse = await page.request.post('/api/auth/login', { /* ... */ });
-    // Extract cookie, set in context
-    return page;
-}
-```
+Reuse `collaboration.fixture` and `waitForYjsSync` from the existing multi-user specs. Each user needs a
+separate authenticated browser context. Do not hand-roll another login/context helper or rely on shared
+cookies. Use `skipInStaticMode` for server-only collaboration, preserving the existing justified skip.
 
 ### Verify Both UI and Backend State
 
@@ -100,7 +92,7 @@ make fix                                                                        
 
 - **NEVER `waitForTimeout()` for async** — use deterministic waits (`waitForFunction`, `waitFor`, `waitForSelector`). Acceptable: brief 200-500ms pauses for CSS animations only.
 - **Always use helpers** from `workarea-helpers.ts` — reinventing selectors leads to brittle tests.
-- **One project per test** — create via API (`/api/project/create-quick`) for isolation.
+- **One project per test** — create via API (`/api/project/create-quick`) in server mode; reuse static specs' local/import setup in static mode, which has no API server.
 - **Validate UI state AND system state** — don't just check what the user sees. Also verify Yjs metadata, API responses, and database state where relevant.
 - **Collaboration tests need `collaboration.fixture`** — and must use `skipInStaticMode` since static mode has no server.
 - **Library loading must work** — tests should NOT accept 404 errors. All MathJax/library resources must resolve correctly.

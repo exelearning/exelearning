@@ -1,76 +1,26 @@
 ---
 name: api-v1
-description: Adding or modifying external REST API v1 endpoints in src/routes/api/v1/. Every change must ship with colocated `*.spec.ts` tests covering auth, success, and error paths, update `doc/development/rest-api.md`, keep patch coverage ≥ 90% on changed lines, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
+description: "Add or change external REST API v1 endpoints and their documented authentication/authorization contracts."
 ---
 
-# Skill: REST API v1 (External)
+# External REST API v1
 
-> Parent: [AGENTS.md](../../../AGENTS.md) | Related: [backend-route](../backend-route/SKILL.md), [backend-service](../backend-service/SKILL.md)
+Read `src/routes/api/v1/`, its `types.ts` authentication/response helpers, `index.ts` registration and
+Swagger configuration, affected `.spec.ts` files and `doc/development/rest-api.md`.
 
-## When to Use
+- `/api/v1/*` serves external integrations. Internal `public/app/` code uses the existing project APIs
+  and Yjs/WebSocket flows; do not migrate it to v1 as a convenience.
+- Preserve the JWT `Authorization: Bearer <token>` contract of `authenticateRequest()`. Reuse the real
+  login harness in `projects.spec.ts` for authenticated tests rather than inventing `createTestJwt()`
+  or setting an unrelated cookie.
+- Authentication does not grant project access or admin rights. Cover the endpoint's actual owner,
+  collaborator and administrator rules, including a different user's resource and denied mutations.
+- Keep success/error envelopes, status codes, validation and pagination consistent with neighboring
+  endpoints. Test invalid input and service failures as well as 200/401/403 paths where applicable.
+- Preserve Yjs mutation/broadcast and persistence behavior for project content changes; a successful
+  REST response must not leave connected editors or the next reload with stale content.
+- Register new routes in `src/routes/api/v1/index.ts`; update both Swagger contracts and
+  `doc/development/rest-api.md` when the external API changes.
 
-Adding or modifying external REST API v1 endpoints for third-party integrations.
-
-## Key Files
-
-- `src/routes/api/v1/*.ts` — API v1 route files (projects, pages, blocks, metadata, assets, components, export, users, types)
-- `src/routes/api/v1/*.spec.ts` — colocated tests
-- `src/routes/api/v1/index.ts` — v1 route aggregation
-- `doc/development/rest-api.md` — API documentation (MUST be updated)
-
-## Critical Rule
-
-**`/api/v1/*` is for EXTERNAL integrations only** (LMS, mobile apps, automation scripts, third-party tools).
-
-| Use Case | Technology | Reason |
-|----------|-----------|--------|
-| External clients | REST API v1 | Stateless, JWT auth, easy to integrate |
-| Internal UI | Yjs + WebSocket | Real-time sync, CRDT conflict resolution |
-
-Internal frontend code (`public/app/`) must **NEVER** call `/api/v1/*`.
-
-## Test Pattern
-
-```typescript
-import { describe, it, expect } from 'bun:test';
-
-const app = new Elysia().use(v1Routes);
-
-it('returns 401 without JWT', async () => {
-    const res = await app.handle(new Request('http://localhost/api/v1/projects'));
-    expect(res.status).toBe(401);
-});
-
-it('returns projects for authenticated user', async () => {
-    const token = createTestJwt({ userId: 1 });
-    const res = await app.handle(new Request('http://localhost/api/v1/projects', {
-        headers: { Cookie: `token=${token}` },
-    }));
-    expect(res.status).toBe(200);
-});
-```
-
-## Commands
-
-```bash
-bun test src/routes/api/v1/my-endpoint.spec.ts     # Single endpoint
-bun test src/routes/api/v1/                         # All v1 tests
-make fix                                            # Lint
-```
-
-## Gotchas
-
-- **Update `doc/development/rest-api.md`** — every endpoint change must be reflected in docs. Reviewers will reject PRs that skip this.
-- **JWT auth on every endpoint** — test both authenticated (200) and unauthenticated (401) paths.
-- **Authorization != Authentication** — test that User A cannot access User B's resources (403).
-- **Register in `src/routes/api/v1/index.ts`** — new route files won't be loaded otherwise.
-- **Internal frontend must never call v1** — if you see `fetch('/api/v1/...')` in `public/app/`, that's a bug.
-
-## Done When
-
-- [ ] Route in `src/routes/api/v1/` with `.spec.ts`
-- [ ] Registered in `src/routes/api/v1/index.ts`
-- [ ] `doc/development/rest-api.md` updated
-- [ ] Tests cover 200, 401, and 403 paths
-- [ ] 90%+ coverage
-- [ ] `make fix` passes clean
+Run `bun test src/routes/api/v1/<affected>.spec.ts` (or the v1 suite for shared helpers), followed by
+[verify-change](../verify-change/SKILL.md). Assert response data and persisted/synchronized state.

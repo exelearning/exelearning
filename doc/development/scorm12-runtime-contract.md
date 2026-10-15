@@ -266,8 +266,8 @@ count as applied.
    **[POLICY]**. (The legacy runtime converted `incomplete` to `unknown`, which
    the wrapper mapped to `not attempted`, erasing progress on every page view.)
 2. Probe the optional `cmi.student_data.mastery_score`. When the LMS publishes
-   one in 0–100 it becomes the success threshold; otherwise the eXeLearning
-   default of 50 stays in force **[POLICY]**.
+   one in 0–100 it becomes the success threshold; otherwise the activities' own
+   pass marks decide it (§9.1) **[POLICY]**.
 3. Restore the activity registry from `cmi.suspend_data` (§9).
 4. **Adopt a restored terminal status the restored registry derives** **[POLICY]**.
    When the stored `cmi.core.lesson_status` is terminal *and* the just-restored
@@ -503,12 +503,15 @@ scorm.activities.register('idevice-node-id', {
     answered: 2, total: 5,
     score: 40,                // in the activity's own scale
     minimumScore: 0, maximumScore: 100,
-    weight: 1
+    weight: 1,
+    successThreshold: 70      // this activity's pass mark, 0-100; optional
 });
 scorm.activities.update('idevice-node-id', { completed: true, score: 80 });
 scorm.activities.summary();   // { total, evaluable, required, requiredCompleted,
                               //   hasRequired, allRequiredComplete, answered,
                               //   questions, score }
+scorm.activities.successThreshold(50); // the page's pass mark (§9.1)
+scorm.activities.unmetThresholds(50);  // ids below their own mark (§9.1)
 ```
 
 Registration is idempotent: re-registering an id updates the declaration and
@@ -540,6 +543,7 @@ completion and success collapse onto `cmi.core.lesson_status`:
 | All required complete, no success threshold in force | `completed` | `""` |
 | All required complete, aggregate ≥ threshold | `passed` | `""` |
 | All required complete, aggregate < threshold | `failed` | `""` |
+| All required complete, the page requires every activity at its own mark, no LMS or content threshold | `passed` if none is below its mark, `failed` otherwise | `""` |
 
 The table is the status the runtime *reports*. When it becomes visible in the
 LMS is decided by the commit points in §7 — see §6.1: a page open and untouched
@@ -661,9 +665,46 @@ still reads `not attempted`.
   would otherwise throw inside the exit write — taking the exit, the session
   time and `LMSFinish` with it.
 - The success threshold is `cmi.student_data.mastery_score` when the LMS
-  publishes one, otherwise **50**, which is the threshold eXeLearning game
-  iDevices have always applied. `policy.setSuccessThreshold(null)` disables the
-  pass/fail distinction entirely, leaving completion only.
+  publishes one. Otherwise it is the **weighted mean of the evaluable
+  activities' own pass marks** (`activities.successThreshold()`), over the same
+  activities and with the same weights as the aggregate score, so the page
+  passes when `sum(weight × score) ≥ sum(weight × mark)`. An activity that
+  declares no `successThreshold` counts at the page's threshold: the project
+  mark the page publishes in `<meta name="exe-pass-score">` (out of 10, so ×10),
+  or **50** without one, which is the threshold eXeLearning game iDevices have
+  always applied. A lone activity is therefore judged by its own mark, and a
+  page whose activities all follow the project by the project's. The mean is
+  computed on every decision, because activities keep registering after the
+  session opens. The mark is stored with each record, like the weight (§9.2),
+  because the entry policy recognises its own earlier verdict only if the
+  restored registry derives it again, and a game iDevice opens the session from
+  `initGame()` before it registers: judged by the page's mark instead, a
+  verdict the activity's own mark decided would not be recognised, and a
+  restart could never reopen it. A live declaration replaces the stored mark,
+  as it does the weight. `policy.setSuccessThreshold(value)` overrides all of
+  this, and
+  `policy.setSuccessThreshold(null)` disables the pass/fail distinction
+  entirely, leaving completion only.
+- **A page can require every activity to reach its own mark** instead of the
+  mean. The page asks for it with
+  `<meta name="exe-pass-score-every-activity" content="true">`, which the
+  exporter writes only when the project option `pp_passScoreEveryActivity` is
+  on. The policy then judges each evaluable activity against its own
+  `successThreshold`, or the page's threshold when it declares none: `passed` when
+  `activities.unmetThresholds()` is empty, `failed` otherwise, with the reason
+  `own-marks-evaluated`. Both sides are rounded to two decimals, so the page
+  agrees with the activity's own report at the boundary. An activity with no
+  score counts as 0, as it does in the aggregate. The rule applies only when the
+  threshold comes from the activities or the page. With `mastery_score` from the
+  LMS, or a threshold set by `setSuccessThreshold()`, the aggregate is judged
+  against that value as above. The score written to `cmi.core.score.raw` does
+  not change, and nothing new is stored: the marks already travel in
+  `cmi.suspend_data` (§9.2). Without the META the mean decides, so earlier
+  packages grade as before. `getSuccessThreshold()` still answers the mean, as
+  information: with the rule in force it is not what decides the page.
+  `policy.getPassRule()` answers which rule does, `{ everyActivity, threshold }`,
+  with the same choice as `decideStatus()`. `common.js` reads it for the label
+  that shows the page's minimum score before its score.
 - The **exit policy** never downgrades: a terminal status (`passed`,
   `completed`, `failed`) already recorded is preserved.
 - The **in-session re-evaluation** (`policy.recordActivityOutcome()`, called by
@@ -680,8 +721,14 @@ still reads `not attempted`.
 The registry serialises itself into `cmi.suspend_data`:
 
 ```
-exe12/1|<uri-encoded id>;<flags>;<answered>;<total>;<score>;<weight>;<min>;<max>|…
+exe12/1|<uri-encoded id>;<flags>;<answered>;<total>;<score>;<weight>;<min>;<max>[;<mark>]|…
 ```
+
+- **Pass mark**: the optional ninth field is the activity's own pass mark
+  (0–100), written only when the activity declared one. It is optional and
+  last so the version does not change: a runtime that predates it reads the
+  first eight fields and ignores the ninth, and a record without it restores
+  with no mark of its own, judged by the page's threshold as before.
 
 - **Single owner**: on a SCORM 1.2 page the registry is the *only* writer of
   `cmi.suspend_data`. Every `common.js` helper that used to read or write the

@@ -150,6 +150,7 @@ global.eXeLearning = {
 
 // Import after setting up mocks
 import IdevicesEngine from './idevicesEngine.js';
+import IdeviceNode from './content/ideviceNode.js';
 
 describe('IdevicesEngine', () => {
     let engine;
@@ -1987,6 +1988,14 @@ describe('IdevicesEngine', () => {
             expect(engine.enableInternalLinks).toHaveBeenCalled();
         });
 
+        it('reloads the export runtime through the shared helper', async () => {
+            vi.spyOn(engine, 'reloadExportRuntime');
+
+            await engine.resetCurrentIdevicesExportView([]);
+
+            expect(engine.reloadExportRuntime).toHaveBeenCalledTimes(1);
+        });
+
         it('regenerates HTML content before reloading scripts', async () => {
             const callOrder = [];
             const mockIdevice = {
@@ -2028,6 +2037,49 @@ describe('IdevicesEngine', () => {
 
             expect(mockIdevice1.generateContentExportView).not.toHaveBeenCalled();
             expect(mockIdevice2.generateContentExportView).toHaveBeenCalled();
+        });
+    });
+
+    describe('reloadExportRuntime', () => {
+        it('re-inserts export scripts, runs legacy functionalities and wires internal links, in order', () => {
+            const callOrder = [];
+            vi.spyOn(engine, 'clearNeedlessScripts').mockImplementation(() => callOrder.push('clear'));
+            vi.spyOn(engine, 'loadIdevicesExportScripts').mockImplementation(() => callOrder.push('scripts'));
+            vi.spyOn(engine, 'loadLegacyExeFunctionalitiesExport').mockImplementation(() => callOrder.push('legacy'));
+            vi.spyOn(engine, 'enableInternalLinks').mockImplementation(() => callOrder.push('links'));
+
+            engine.reloadExportRuntime();
+
+            expect(callOrder).toEqual(['clear', 'scripts', 'legacy', 'links']);
+        });
+    });
+
+    describe('scheduleRemoteExportRuntimeReload', () => {
+        it('reloads the page through the bridge, which debounces and defers while editing', () => {
+            const schedulePageReloadIfCurrent = vi.fn();
+            engine.project._yjsBridge = { schedulePageReloadIfCurrent };
+
+            engine.scheduleRemoteExportRuntimeReload('page-1');
+
+            expect(schedulePageReloadIfCurrent).toHaveBeenCalledWith('page-1');
+        });
+
+        it('never re-executes export scripts piecemeal (#2434)', () => {
+            engine.project._yjsBridge = { schedulePageReloadIfCurrent: vi.fn() };
+            vi.spyOn(engine, 'clearNeedlessScripts');
+            vi.spyOn(engine, 'loadIdevicesExportScripts');
+            vi.spyOn(engine, 'loadLegacyExeFunctionalitiesExport');
+
+            engine.scheduleRemoteExportRuntimeReload('page-1');
+
+            expect(engine.clearNeedlessScripts).not.toHaveBeenCalled();
+            expect(engine.loadIdevicesExportScripts).not.toHaveBeenCalled();
+            expect(engine.loadLegacyExeFunctionalitiesExport).not.toHaveBeenCalled();
+        });
+
+        it('survives a project without a Yjs bridge', () => {
+            delete engine.project._yjsBridge;
+            expect(() => engine.scheduleRemoteExportRuntimeReload('page-1')).not.toThrow();
         });
     });
 
@@ -2390,6 +2442,7 @@ describe('IdevicesEngine', () => {
         });
 
         it('does not wipe saved htmlView on lock-only remote updates', async () => {
+            const reloadSpy = vi.spyOn(engine, 'scheduleRemoteExportRuntimeReload').mockImplementation(() => {});
             const mockIdevice = {
                 odeIdeviceId: 'comp-1',
                 htmlView: '<p>Original content</p>',
@@ -2415,6 +2468,7 @@ describe('IdevicesEngine', () => {
             expect(mockIdevice.htmlView).toBe('<p>Original content</p>');
             expect(mockIdevice.ideviceBody.innerHTML).toBe('<p>Original content</p>');
             expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(reloadSpy).not.toHaveBeenCalled();
             expect(mockIdevice.lockedByRemote).toBe(true);
             expect(mockIdevice.lockUserName).toBe('Remote User');
             expect(mockIdevice.updateLockIndicator).toHaveBeenCalled();
@@ -3370,6 +3424,7 @@ describe('IdevicesEngine', () => {
                 blockId: 'new-block',
             });
             vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
+            vi.spyOn(engine, 'scheduleRemoteExportRuntimeReload').mockImplementation(() => {});
         });
 
         it('creates new block when block container not found', async () => {
@@ -3381,9 +3436,76 @@ describe('IdevicesEngine', () => {
 
             expect(engine.newBlockNode).toHaveBeenCalled();
         });
+
+        it('reloads the export runtime once the remote iDevice is in the DOM (#2428)', async () => {
+            const callOrder = [];
+            engine.scheduleRemoteExportRuntimeReload.mockImplementation(() => callOrder.push('runtime'));
+            vi.spyOn(IdeviceNode.prototype, 'loadInitScriptIdevice').mockImplementation(async () => {
+                callOrder.push('init');
+            });
+
+            await engine.renderRemoteIdevice(
+                { id: 'comp-1', ideviceType: 'text', htmlContent: '<p>Test</p>' },
+                'page-1',
+                'nonexistent-block'
+            );
+
+            expect(callOrder).toEqual(['init', 'runtime']);
+            expect(engine.scheduleRemoteExportRuntimeReload).toHaveBeenCalledWith('page-1');
+        });
     });
 
     describe('updateRemoteIdeviceContent with ideviceBody', () => {
+        beforeEach(() => {
+            vi.spyOn(engine, 'scheduleRemoteExportRuntimeReload').mockImplementation(() => {});
+        });
+
+        it('reloads the export runtime after applying remote content (#2428)', async () => {
+            const callOrder = [];
+            engine.scheduleRemoteExportRuntimeReload.mockImplementation(() => callOrder.push('runtime'));
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: 'old',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockImplementation(async () => {
+                    callOrder.push('init');
+                }),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent(
+                {
+                    id: 'comp-1',
+                    htmlContent: '<pre class="abc-music">X:1</pre>',
+                },
+                'page-1'
+            );
+
+            expect(callOrder).toEqual(['init', 'runtime']);
+            expect(engine.scheduleRemoteExportRuntimeReload).toHaveBeenCalledWith('page-1');
+        });
+
+        it('does not reload the export runtime while the iDevice is being edited locally', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: 'old',
+                mode: 'edition',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({ id: 'comp-1', htmlContent: '<p>New</p>' });
+
+            expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(engine.scheduleRemoteExportRuntimeReload).not.toHaveBeenCalled();
+        });
+
         it('updates idevice body innerHTML', async () => {
             const mockIdevice = {
                 odeIdeviceId: 'comp-1',

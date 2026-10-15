@@ -223,4 +223,136 @@ describe('checklist iDevice export', () => {
             global.$exeDevices = origHelpers;
         });
     });
+
+    describe('where a checklist keeps its list', () => {
+        let previousLocalStorage;
+        let previousExeDevices;
+        let store;
+
+        // One checkbox item, as createItems renders it, plus the learner's name and date.
+        const renderList = () => {
+            document.body.innerHTML = `
+                <input type="text" id="ctjUserName-0">
+                <input type="text" id="ctjUserDate-0">
+                <div id="ctjItems-0"><div class="CTJP-Item"><input type="checkbox"></div></div>
+                <button type="button" id="ctjReboot-0"></button>`;
+        };
+        const ticked = () => $('#ctjItems-0 input[type="checkbox"]').is(':checked');
+
+        beforeEach(() => {
+            previousLocalStorage = global.localStorage;
+            previousExeDevices = global.$exeDevices;
+            store = {};
+            global.localStorage = {
+                getItem: (key) => (key in store ? store[key] : null),
+                setItem: (key, value) => {
+                    store[key] = String(value);
+                },
+                removeItem: (key) => {
+                    delete store[key];
+                },
+            };
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        helpers: {
+                            isJsonString: (value) => (typeof value === 'string' ? JSON.parse(value) : false),
+                        },
+                        math: { hasLatex: () => false },
+                    },
+                },
+            };
+            renderList();
+        });
+
+        afterEach(() => {
+            global.localStorage = previousLocalStorage;
+            global.$exeDevices = previousExeDevices;
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+            vi.unstubAllGlobals();
+        });
+
+        it("names the entry after the checklist's own component", () => {
+            document.body.innerHTML =
+                '<div class="idevice_node checklist" id="idevice-abc"><div class="listacotejo-IDevice"></div></div>';
+
+            expect($checklist.storageKeyOf(document.querySelector('.listacotejo-IDevice'))).toBe(
+                'dataCotejo-idevice-abc'
+            );
+        });
+
+        it('gives no key to a checklist outside any component', () => {
+            document.body.innerHTML = '<div class="listacotejo-IDevice"></div>';
+
+            expect($checklist.storageKeyOf(document.querySelector('.listacotejo-IDevice'))).toBe('');
+        });
+
+        it('keeps the list under its own component, not under the id its data carries', () => {
+            $checklist.options = [
+                { id: 'idevice-original', storageKey: 'dataCotejo-idevice-copy', saveData: true, save: true },
+            ];
+            $('#ctjItems-0 input[type="checkbox"]').prop('checked', true);
+
+            $checklist.saveCotejo(0);
+
+            expect(JSON.parse(store['dataCotejo-idevice-copy']).items).toEqual([{ type: 0, state: 1, text: '' }]);
+            expect(store['dataCotejo-idevice-original']).toBeUndefined();
+        });
+
+        it('keeps nothing when it belongs to no component', () => {
+            $checklist.options = [{ id: 'idevice-original', storageKey: '', saveData: true, save: true }];
+
+            $checklist.saveCotejo(0);
+
+            expect(Object.keys(store)).toEqual([]);
+        });
+
+        it("comes back with its own list, not another checklist's", () => {
+            const tickedList = JSON.stringify({ name: '', date: '', items: [{ type: 0, state: 1, text: '' }] });
+            store['dataCotejo-idevice-original'] = tickedList;
+            vi.spyOn($checklist, 'counter').mockImplementation(() => {});
+            $checklist.options = [
+                { id: 'idevice-original', storageKey: 'dataCotejo-idevice-copy', saveData: true, msgs: {} },
+            ];
+
+            $checklist.addEvents(0);
+            expect(ticked()).toBe(false);
+
+            store['dataCotejo-idevice-copy'] = tickedList;
+            renderList();
+            $checklist.addEvents(0);
+            expect(ticked()).toBe(true);
+        });
+
+        it('starting over forgets its own list only', () => {
+            store['dataCotejo-idevice-copy'] = '{}';
+            store['dataCotejo-idevice-original'] = '{}';
+            vi.spyOn($checklist, 'counter').mockImplementation(() => {});
+            vi.spyOn($checklist, 'createItems').mockReturnValue('');
+            vi.stubGlobal('confirm', () => true);
+            $checklist.options = [
+                { id: 'idevice-original', storageKey: 'dataCotejo-idevice-copy', saveData: true, msgs: {} },
+            ];
+            $checklist.addEvents(0);
+
+            $('#ctjReboot-0').trigger('click');
+
+            expect(store['dataCotejo-idevice-copy']).toBeUndefined();
+            expect(store['dataCotejo-idevice-original']).toBe('{}');
+        });
+
+        it('starting over touches no entry when it belongs to no component', () => {
+            store['dataCotejo-'] = '{}';
+            vi.spyOn($checklist, 'counter').mockImplementation(() => {});
+            vi.spyOn($checklist, 'createItems').mockReturnValue('');
+            vi.stubGlobal('confirm', () => true);
+            $checklist.options = [{ id: false, storageKey: '', saveData: true, msgs: {} }];
+            $checklist.addEvents(0);
+
+            $('#ctjReboot-0').trigger('click');
+
+            expect(store['dataCotejo-']).toBe('{}');
+        });
+    });
 });

@@ -321,6 +321,12 @@ window.$exeExport = {
                     window.unloadPage(isSCORM);
                 });
             }
+            // loadPage() has just read the LMS's own pass mark, if it sets
+            // one, after the iDevices drew the page's minimum score.
+            const scorm = window.$exeDevices?.iDevice?.gamification?.scorm;
+            if (scorm && typeof scorm.showPagePassScore === 'function') {
+                scorm.showPagePassScore();
+            }
         }
     },
 

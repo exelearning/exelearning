@@ -407,6 +407,29 @@ describe('exe_export.js', () => {
     expect(window.unloadPage).toHaveBeenCalledWith(true);
   });
 
+  it.each([
+    ['the legacy runtime', undefined],
+    ['the SCORM 1.2 runtime', { setPageHasScoredActivities: () => {} }],
+  ])('refreshes the page minimum score once loadPage() has read the LMS, under %s', (_label, runtime) => {
+    window.scorm = {};
+    window.exeScorm12 = runtime;
+    const order = [];
+    window.loadPage = vi.fn(() => order.push('loadPage'));
+    window.unloadPage = vi.fn();
+    const previousDevices = window.$exeDevices;
+    window.$exeDevices = {
+      iDevice: { gamification: { scorm: { showPagePassScore: vi.fn(() => order.push('label')) } } },
+    };
+
+    try {
+      window.$exeExport.initScorm();
+      expect(order).toEqual(['loadPage', 'label']);
+    } finally {
+      window.$exeDevices = previousDevices;
+      delete window.exeScorm12;
+    }
+  });
+
   it('the legacy pagehide bridge stands down when the page enters the back/forward cache', () => {
     window.scorm = {};
     window.loadPage = vi.fn();

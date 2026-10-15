@@ -1,0 +1,43 @@
+name: Agent Skills Parity
+
+on:
+  pull_request:
+    paths:
+      - '.agents/skills/**'
+      - '.claude/skills/**'
+      - '.github/workflows/agent-skills-parity.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.agents/skills/**'
+      - '.claude/skills/**'
+      - '.github/workflows/agent-skills-parity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Reject symlinks in skill trees
+        run: |
+          links="$(find .agents/skills .claude/skills -type l)"
+          if [ -n "$links" ]; then
+            echo "::error::Skill trees must contain regular files only (Windows checkouts):"
+            echo "$links"
+            exit 1
+          fi
+
+      - name: Compare canonical and Claude skill copies
+        run: |
+          if ! diff -r .agents/skills .claude/skills; then
+            echo "::error::.claude/skills must be an identical copy of .agents/skills."
+            echo "Fix: rm -rf .claude/skills && cp -R .agents/skills .claude/skills"
+            exit 1
+          fi

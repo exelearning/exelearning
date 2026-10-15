@@ -490,6 +490,99 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         }
     });
 
+    test('fails a page whose high mark makes up for a low one when every activity must reach its own', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(180000);
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'SCORM 1.2 every activity at its own mark');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await addTextIdeviceWithContent(page, '<p>Every-activity pass rule check.</p>');
+        // The checkbox itself is covered in project-pass-score.spec.ts.
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('passScoreEveryActivity', 'true');
+        });
+
+        const download = await exportScorm12(page);
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scorm12-every-activity-'));
+        const zipPath = path.join(tmpDir, download.suggestedFilename());
+        await download.saveAs(zipPath);
+        const zip = unzipSync(new Uint8Array(fs.readFileSync(zipPath)));
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+
+        expect(Buffer.from(zip['index.html']).toString('utf8')).toContain(
+            '<meta name="exe-pass-score-every-activity" content="true">',
+        );
+
+        await page.route(`${ORIGIN}/**`, async route => {
+            const url = new URL(route.request().url());
+            const pathname = decodeURIComponent(url.pathname);
+            if (pathname === '/lms.html') {
+                await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: harnessPage() });
+                return;
+            }
+            const key = pathname.replace(/^\/package\//, '');
+            const bytes = zip[key];
+            if (bytes) {
+                await route.fulfill({ status: 200, contentType: exportContentType(key), body: Buffer.from(bytes) });
+            } else {
+                await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${key}` });
+            }
+        });
+
+        /** Open a fresh attempt, finish both activities with these scores and exit. */
+        async function attempt(firstScore: number): Promise<Record<string, string>> {
+            await page.goto(`${ORIGIN}/lms.html`);
+            await page.waitForFunction(
+                () => (window as any).__scorm.calls.some((call: any) => call.method === 'LMSInitialize'),
+                null,
+                { timeout: 30000 },
+            );
+            await page.evaluate(score => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                const activities = sco.scorm.activities;
+                activities.register('act-1', { evaluable: true, completionRequired: true, successThreshold: 80 });
+                activities.register('act-2', { evaluable: true, completionRequired: true, successThreshold: 40 });
+                activities.update('act-1', { completed: true, score });
+                activities.update('act-2', { completed: true, score: 100 });
+            }, firstScore);
+            return page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                sco.dispatchEvent(new sco.PageTransitionEvent('pagehide', { persisted: false }));
+                return (window as any).__scorm.data;
+            });
+        }
+
+        try {
+            // ---- 70 against a mark of 80, made up for by 100 against 40 ------
+            const compensated = await attempt(70);
+            // The weighted mean would pass the page (85 against 60)...
+            const mean = await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                return {
+                    score: sco.scorm.activities.summary().score,
+                    threshold: sco.scorm.activities.successThreshold(50),
+                    unmet: sco.scorm.activities.unmetThresholds(50),
+                };
+            });
+            expect(mean).toEqual({ score: 85, threshold: 60, unmet: ['act-1'] });
+            // ...but the first activity is below its own mark.
+            expect(compensated['cmi.core.lesson_status']).toBe('failed');
+
+            // ---- A new attempt where each activity reaches its own mark -----
+            const reached = await attempt(80);
+            expect(reached['cmi.core.lesson_status']).toBe('passed');
+
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+        } finally {
+            await page.unroute(`${ORIGIN}/**`);
+        }
+    });
+
     test('drives real exported iDevices through the common.js bridge', async ({ authenticatedPage, createProject }) => {
         test.setTimeout(180000);
         const page = authenticatedPage;
@@ -588,6 +681,13 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             });
             expect(nodeIds).toHaveLength(2);
 
+            // The page's minimum score sits before its score: both activities
+            // follow the project's 5, which is 50 on the score's 0-100 scale.
+            const passScoreLabel = page.frameLocator('#sco').locator('#exeScoreNode > #eXeScoreNodePassScore');
+            await expect(passScoreLabel).toBeVisible();
+            await expect(passScoreLabel).toContainText('50/100');
+            await expect(passScoreLabel.locator('+ #eXeScoreNodeScore')).toBeVisible();
+
             // Two required activities pending: the page must stay incomplete.
             expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe(
                 'incomplete',
@@ -651,6 +751,35 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe('60');
             expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe('passed');
 
+            // An explicit threshold keeps all its decimals. The minimum shown
+            // must itself pass, even when the threshold has more than five.
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                sco.exeScorm12.policy.setSuccessThreshold(45.000001);
+            });
+            // sendScoreNew keeps two decimals on the 0-10 activity scale.
+            // Weights 90/10 make marks 4.50/4.51 aggregate to exactly 45.01.
+            for (const [secondMark, score, status] of [
+                [4.5, 45, 'failed'],
+                [4.51, 45.01, 'passed'],
+            ] as const) {
+                await page.evaluate(mark => {
+                    const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                    sco.__bridgeGames[0].weighted = 90;
+                    sco.__bridgeGames[0].scorerp = 4.5;
+                    sco.__bridgeGames[1].weighted = 10;
+                    sco.__bridgeGames[1].scorerp = mark;
+                    for (const game of sco.__bridgeGames) {
+                        sco.$exeDevices.iDevice.gamification.scorm.sendScoreNew(game.isScorm === 1, game);
+                    }
+                }, secondMark);
+                await expect(passScoreLabel).toHaveText('Minimum score to pass: 45.01/100');
+                expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe(
+                    String(score),
+                );
+                expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe(status);
+            }
+
             // ---- Exit: one finish, a normal end ------------------------------
             await page.evaluate(() => {
                 const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
@@ -683,7 +812,9 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Options', exact: true }).click();
         await expect(page.locator('#modalAlert')).toBeHidden();
         await page.locator('#rclETypeNavigation').check();
-        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'SCORM', exact: true }).click();
+        // The tab is "Grading" now: it gathers the pass score, the SCORM
+        // options and the progress report, which used to be scattered.
+        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Grading', exact: true }).click();
         await page.locator('#eXeGameSCORMAutoSave').check();
         const ideviceId = await page.locator('#node-content .idevice_node.relate').getAttribute('id');
         expect(ideviceId).toBeTruthy();
@@ -749,6 +880,223 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             const stored = await page.evaluate(() => (window as any).__scorm.data);
             expect(stored['cmi.core.lesson_status']).toBe('incomplete');
             expect(stored['cmi.suspend_data']).not.toContain(';80;');
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+        } finally {
+            await page.unroute(`${ORIGIN}/**`);
+        }
+    });
+
+    test('judges a page by the pass mark its only activity customised, across a resumed attempt', async ({
+        authenticatedPage: page,
+        createProject,
+    }, testInfo) => {
+        test.setTimeout(180000);
+        // The project keeps the default 5 and the rubric demands 8. The page
+        // used to be judged by the project's mark alone, so a 7.5 passed in the
+        // LMS while the rubric told the learner they had failed.
+        const uuid = await createProject(page, 'SCORM 1.2 custom pass mark');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await addIdevice(page, 'rubric');
+        await page.locator('#ri_CreateNewRubric').click();
+        await expect(page.locator('#ri_Table')).toBeVisible();
+        const rows = page.locator('#ri_Table tbody tr');
+        for (let index = 0; index < (await rows.count()); index++) {
+            await rows.nth(index).locator('input.ri_Weight').nth(0).fill('4');
+            await rows.nth(index).locator('input.ri_Weight').nth(1).fill('3');
+        }
+        await page
+            .locator('.exe-form-tabs a')
+            .filter({ hasText: /^Grading$/ })
+            .click();
+        await page.locator('#eXeGameSCORMAutoSave').check();
+        await page.locator('#eXePassScoreCustom').check();
+        await page.locator('#eXePassScoreValue').fill('8');
+        const ideviceId = await page.locator('#node-content .idevice_node.rubric').getAttribute('id');
+        expect(ideviceId).toBeTruthy();
+        await saveIdevice(page, ideviceId!);
+
+        const download = await exportScorm12(page);
+        const zipPath = testInfo.outputPath('rubric-pass-mark-scorm.zip');
+        await download.saveAs(zipPath);
+        const zip = unzipSync(new Uint8Array(fs.readFileSync(zipPath)));
+        // The second visit replays what the LMS stored when the first one ended.
+        let resumeSeed: Record<string, string> = {};
+        await page.route(`${ORIGIN}/**`, async route => {
+            const pathname = decodeURIComponent(new URL(route.request().url()).pathname);
+            if (pathname === '/lms.html' || pathname === '/lms-resume.html') {
+                const seed = pathname === '/lms.html' ? {} : resumeSeed;
+                await route.fulfill({ contentType: 'text/html', body: harnessPage(seed) });
+                return;
+            }
+            const key = pathname.replace(/^\/package\//, '');
+            const bytes = zip[key];
+            await route.fulfill({
+                status: bytes ? 200 : 404,
+                contentType: exportContentType(key),
+                body: bytes ? Buffer.from(bytes) : `not in export: ${key}`,
+            });
+        });
+
+        const sco = page.frameLocator('#sco');
+        const scoRows = sco.locator('.idevice_node.rubric tbody tr');
+        const lmsValue = (element: string) => page.evaluate(name => (window as any).__scorm.data[name], element);
+        const openSco = async (harness: string) => {
+            await page.goto(`${ORIGIN}/${harness}`);
+            await expect(scoRows.first().locator('input[type="checkbox"]').nth(1)).toBeVisible({ timeout: 30000 });
+            await expect
+                .poll(() => sco.locator('body').evaluate(() => (window as any).exeScorm12?.policy.hasAppliedEntry()))
+                .toBe(true);
+        };
+
+        try {
+            // ---- First visit: 3 of 4 points on every criterion ---------------
+            // 7.5: under the rubric's own 8 and over the project's 5.
+            await openSco('lms.html');
+            for (let index = 0; index < (await scoRows.count()); index++) {
+                await scoRows.nth(index).locator('input[type="checkbox"]').nth(1).check();
+            }
+            await expect.poll(() => lmsValue('cmi.core.lesson_status')).toBe('failed');
+            expect(await lmsValue('cmi.core.score.raw')).toBe('75');
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+
+            await page.evaluate(() => {
+                const win = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                win.dispatchEvent(new win.PageTransitionEvent('pagehide', { persisted: false }));
+            });
+            const stored = await page.evaluate(() => (window as any).__scorm.data);
+            expect(stored['cmi.core.exit']).toBe('');
+            resumeSeed = {
+                'cmi.core.lesson_status': stored['cmi.core.lesson_status'],
+                'cmi.core.score.raw': stored['cmi.core.score.raw'],
+                'cmi.core.exit': stored['cmi.core.exit'],
+                'cmi.core.entry': 'resume',
+                'cmi.suspend_data': stored['cmi.suspend_data'],
+            };
+
+            // ---- Second visit, same SCORM attempt ----------------------------
+            // Clearing the rubric must reopen the attempt rather than leave
+            // "failed" next to a 0. The rubric registers before the session
+            // opens; the opposite order, which game iDevices take, is the next
+            // test.
+            await openSco('lms-resume.html');
+            expect(await lmsValue('cmi.core.lesson_status')).toBe('failed');
+            page.once('dialog', dialog => dialog.accept());
+            await sco.locator('.exe-rubrics-reset').click();
+            await expect.poll(() => lmsValue('cmi.core.score.raw')).toBe('0');
+            expect(await lmsValue('cmi.core.lesson_status')).toBe('incomplete');
+            expect(await lmsValue('cmi.core.exit')).toBe('suspend');
+
+            // Every criterion at its top level: 10.
+            for (let index = 0; index < (await scoRows.count()); index++) {
+                await scoRows.nth(index).locator('input[type="checkbox"]').first().check();
+            }
+            await expect.poll(() => lmsValue('cmi.core.lesson_status')).toBe('passed');
+            expect(await lmsValue('cmi.core.score.raw')).toBe('100');
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+        } finally {
+            await page.unroute(`${ORIGIN}/**`);
+        }
+    });
+
+    test('reopens a verdict judged by a customised mark when the game registers after the session opens', async ({
+        authenticatedPage: page,
+        createProject,
+    }, testInfo) => {
+        test.setTimeout(180000);
+        // Game iDevices open the session from initGame() before they register
+        // (common.js), so on a second visit the entry policy meets an empty
+        // registry and must recognise the stored verdict from cmi.suspend_data
+        // alone. A mark of 0 makes the two thresholds disagree with one card:
+        // an unanswered check scores 0, which passes at 0 and fails at the
+        // project's 5.
+        const uuid = await createProject(page, 'Relate custom pass mark resume');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await addIdevice(page, 'relate');
+        await page.locator('#rclEText').fill('France');
+        await page.locator('#rclETextBack').fill('Paris');
+        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Options', exact: true }).click();
+        await expect(page.locator('#modalAlert')).toBeHidden();
+        await page.locator('#rclETypeNavigation').check();
+        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Grading', exact: true }).click();
+        await page.locator('#eXeGameSCORMAutoSave').check();
+        await page.locator('#eXePassScoreCustom').check();
+        await page.locator('#eXePassScoreValue').fill('0');
+        const ideviceId = await page.locator('#node-content .idevice_node.relate').getAttribute('id');
+        expect(ideviceId).toBeTruthy();
+        await saveIdevice(page, ideviceId!);
+        await expect(page.locator('#node-content .RLCP-Word')).toHaveCount(1);
+
+        const download = await exportScorm12(page);
+        const zipPath = testInfo.outputPath('relate-pass-mark-scorm.zip');
+        await download.saveAs(zipPath);
+        const zip = unzipSync(new Uint8Array(fs.readFileSync(zipPath)));
+        let resumeSeed: Record<string, string> = {};
+        await page.route(`${ORIGIN}/**`, async route => {
+            const pathname = decodeURIComponent(new URL(route.request().url()).pathname);
+            if (pathname === '/lms.html' || pathname === '/lms-resume.html') {
+                const seed = pathname === '/lms.html' ? {} : resumeSeed;
+                await route.fulfill({ contentType: 'text/html', body: harnessPage(seed) });
+                return;
+            }
+            const key = pathname.replace(/^\/package\//, '');
+            const bytes = zip[key];
+            await route.fulfill({
+                status: bytes ? 200 : 404,
+                contentType: exportContentType(key),
+                body: bytes ? Buffer.from(bytes) : `not in export: ${key}`,
+            });
+        });
+
+        const sco = page.frameLocator('#sco');
+        const lmsValue = (element: string) => page.evaluate(name => (window as any).__scorm.data[name], element);
+        const openSco = async (harness: string) => {
+            await page.goto(`${ORIGIN}/${harness}`);
+            await expect(sco.locator('.RLCP-Word')).toHaveText('France');
+            await expect
+                .poll(() =>
+                    sco.locator('body').evaluate(() => {
+                        const win = window as any;
+                        return win.$eXeRelaciona?.options[0]?.gameStarted && win.exeScorm12?.policy.hasAppliedEntry();
+                    }),
+                )
+                .toBe(true);
+        };
+
+        try {
+            // ---- First visit: an unanswered check ----------------------------
+            await openSco('lms.html');
+            await sco.locator('[id^="rlcCheckButton-"]').click();
+            await expect.poll(() => lmsValue('cmi.core.lesson_status')).toBe('passed');
+            expect(await lmsValue('cmi.core.score.raw')).toBe('0');
+            await page.evaluate(() => {
+                const win = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                win.dispatchEvent(new win.PageTransitionEvent('pagehide', { persisted: false }));
+            });
+            const stored = await page.evaluate(() => (window as any).__scorm.data);
+            resumeSeed = {
+                'cmi.core.lesson_status': stored['cmi.core.lesson_status'],
+                'cmi.core.score.raw': stored['cmi.core.score.raw'],
+                'cmi.core.exit': stored['cmi.core.exit'],
+                'cmi.core.entry': 'resume',
+                'cmi.suspend_data': stored['cmi.suspend_data'],
+            };
+
+            // ---- Second visit, same SCORM attempt: play it again -------------
+            // Checking again repeats the stored verdict, which is not the same
+            // as having written it: only recognising the restored one lets the
+            // restart reopen the attempt.
+            await openSco('lms-resume.html');
+            expect(await lmsValue('cmi.core.lesson_status')).toBe('passed');
+            await sco.locator('[id^="rlcCheckButton-"]').click();
+            await expect(sco.locator('[id^="rlcResetButton-"]')).toBeVisible();
+            expect(await lmsValue('cmi.core.lesson_status')).toBe('passed');
+            await sco.locator('[id^="rlcResetButton-"]').click();
+            await expect.poll(() => lmsValue('cmi.core.lesson_status')).toBe('incomplete');
+            expect(await lmsValue('cmi.core.exit')).toBe('suspend');
             expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
         } finally {
             await page.unroute(`${ORIGIN}/**`);

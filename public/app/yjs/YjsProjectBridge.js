@@ -1242,6 +1242,13 @@ class YjsProjectBridge {
     }
 
     this._pageReloadTimer = setTimeout(async () => {
+      // Check again: the user may have opened an editor during the debounce, and
+      // the reload would then save that half-initialised edition (#2434).
+      if (this.hasLocalIdeviceInEdition()) {
+        this._deferredPageReloadId = pageId;
+        Logger.log('[YjsProjectBridge] Page reload deferred until the local iDevice edition ends');
+        return;
+      }
       Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
       const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
         `.nav-element[nav-id="${pageId}"]`
@@ -1520,7 +1527,7 @@ class YjsProjectBridge {
         return;
       }
 
-      await idevicesEngine.updateRemoteIdeviceContent(componentData);
+      await idevicesEngine.updateRemoteIdeviceContent(componentData, pageId);
     } catch (e) {
       console.error('[YjsProjectBridge] Error updating remote component:', e);
     }
@@ -1612,6 +1619,17 @@ class YjsProjectBridge {
     metadata.observe((event, transaction) => {
       const isRemote = transaction.origin === 'remote';
       Logger.log('[YjsProjectBridge] Metadata changed, remote:', isRemote);
+
+      // This only refreshes notices, so it is safe during editing and undo/redo:
+      // the activity DOM, answers and scores must not be rebuilt or reset.
+      if (event.keysChanged.has('passScore')) {
+        try {
+          window.$exeDevices?.iDevice?.gamification?.report?.refreshPassScoreNotices?.();
+        } catch (error) {
+          // A notice that fails to refresh must not stop the metadata sync below.
+          console.error('[YjsProjectBridge] Error refreshing pass score notices:', error);
+        }
+      }
 
       // During undo/redo, skip structure updates to prevent form recreation cascade
       // The undo/redo methods handle UI sync directly via forceTitleSync()
@@ -2071,6 +2089,8 @@ class YjsProjectBridge {
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
       'pp_globalFont': 'globalFont',
+      'pp_passScore': 'passScore',
+      'pp_passScoreEveryActivity': 'passScoreEveryActivity',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
