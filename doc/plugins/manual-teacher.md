@@ -1,6 +1,6 @@
 # eXeLearning Plugins: Teacher Manual
 
-[Leer en español](manual-teacher.es.md){ .lang-switch }
+[Leer en español](manual.es.md){ .lang-switch }
 
 ![eXeLearning](../logo.svg){ .manual-logo }
 

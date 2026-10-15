@@ -66,8 +66,8 @@ juega con ella y ciérrala: no se guarda nada.
 
 ## Administración y profesorado { #roles }
 
-Cada guía tiene una parte **Para administración** y otra **Para el profesorado**, y hay dos manuales:
-el [manual de administración](manual-admin.es.md) y el [manual del profesorado](manual-teacher.es.md).
+El [manual unificado de plugins](manual.es.md) reúne las instrucciones **para administración** y
+**para el profesorado** en una sola guía, con textos, imágenes y diseño revisados.
 
 | | Moodle, Nextcloud, WordPress, Omeka S | Google Drive, OneDrive |
 | --- | --- | --- |
@@ -118,13 +118,12 @@ parecidas.
 
 <!-- --8<-- [end:help] -->
 
-## Manuales
+## Manual unificado
 
-Todas las guías, reunidas en dos manuales. Ábrelos y usa **Imprimir → Guardar como PDF** en el
-navegador, o descárgalos como **proyecto de eXeLearning** para adaptarlos a tu centro y publicarlos
-como sitio web, paquete SCORM o ePub.
+Las instrucciones de instalación, configuración y uso están reunidas en un único manual en
+castellano. Consúltalo en su versión web o descarga el **proyecto de eXeLearning** para adaptarlo
+a tu centro y publicarlo como sitio web, paquete SCORM o ePub.
 
-| Manual | Web y PDF | Proyecto de eXeLearning |
+| Manual | Versión web | Proyecto de eXeLearning |
 | --- | --- | --- |
-| Manual de administración | [Abrir](manual-admin.es.md) | <a href="manual-admin.es.elpx" download>manual-admin.es.elpx</a> |
-| Manual del profesorado | [Abrir](manual-teacher.es.md) | <a href="manual-teacher.es.elpx" download>manual-teacher.es.elpx</a> |
+| Plugins de integración de eXeLearning | [Abrir](manual.es.md) | <a href="../manual.es.elpx" download>manual.es.elpx</a> |

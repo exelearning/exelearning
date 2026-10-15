@@ -1,5 +1,10 @@
 # Plugins de eXeLearning: manual del profesorado
 
+!!! info "Manual unificado disponible"
+    Las instrucciones de administración y uso se han reunido en un
+    [manual unificado](manual.es.md), con textos, imágenes y diseño revisados.
+    Consulta esa versión para acceder a la guía actualizada o descargar su proyecto `.elpx`.
+
 [Read in English](manual-teacher.md){ .lang-switch }
 
 ![eXeLearning](../logo.svg){ .manual-logo }

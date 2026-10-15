@@ -1,6 +1,6 @@
 # eXeLearning Plugins: Administrator Manual
 
-[Leer en español](manual-admin.es.md){ .lang-switch }
+[Leer en español](manual.es.md){ .lang-switch }
 
 ![eXeLearning](../logo.svg){ .manual-logo }
 

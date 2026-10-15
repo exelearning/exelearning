@@ -10,6 +10,11 @@ exclude_docs: |
   architecture/adr/
   architecture/changes/
   architecture/migration-map.md
+# Preserve old split-manual URLs for bookmarks and the existing ELPX builder.
+# The Spanish navigation points to the revised unified manual instead.
+not_in_nav: |
+  plugins/manual-admin.es.md
+  plugins/manual-teacher.es.md
 repo_url: https://github.com/exelearning/exelearning
 edit_uri: edit/main/doc/
 
@@ -51,8 +56,7 @@ nav:
           - Omeka S: plugins/omeka-s.es.md
           - Google Drive: plugins/google-drive.es.md
           - OneDrive: plugins/onedrive.es.md
-          - Manual de administración: plugins/manual-admin.es.md
-          - Manual del profesorado: plugins/manual-teacher.es.md
+          - Manual unificado: plugins/manual.es.md
   - Profile Avatars: profile-avatars.md
   - Deployment: deployment.md
   - High Availability: high-availability.md
