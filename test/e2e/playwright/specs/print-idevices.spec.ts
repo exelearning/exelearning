@@ -2620,7 +2620,7 @@ test.describe('Print: choosing which interactive activities to print', () => {
         });
     }
 
-    test('lists every activity, all ticked, only while activities are to be printed', async ({
+    test('lists every activity, those with a printed form ticked, only while activities are to be printed', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -2631,12 +2631,17 @@ test.describe('Print: choosing which interactive activities to print', () => {
         await panel.waitFor({ state: 'visible', timeout: 15000 });
         const selection = panel.locator('.print-activities-selection');
 
-        // A rubric, two forms and the Guess: four, each ticked. The download button, which can never
-        // be printed, is not listed until its title is asked for.
+        // A rubric, two forms and the Guess, each ticked, and the download button: it can never be
+        // printed, so it is listed cleared and marked as printing its title only.
         await expect(selection).toBeVisible();
-        await expect(selection.locator(SELECTED)).toHaveCount(4);
-        for (const box of await selection.locator(SELECTED).all()) await expect(box).toBeChecked();
-        await expect(selection.locator('#print-activity-select-all')).toBeChecked();
+        await expect(selection.locator(SELECTED)).toHaveCount(5);
+        await expect(selection.locator(`${SELECTED}:checked`)).toHaveCount(4);
+        const cleared = selection.locator(`${SELECTED}:not(:checked)`);
+        await expect(cleared).toHaveCount(1);
+        await expect(cleared).toHaveAccessibleDescription('Title only');
+        const selectAll = selection.locator('#print-activity-select-all');
+        await expect(selectAll).not.toBeChecked();
+        expect(await selectAll.evaluate(node => (node as HTMLInputElement).indeterminate)).toBe(true);
         // Named by page, then by block or iDevice.
         await expect(selection.locator('.print-activities-list label').first()).toContainText(' — ');
 
@@ -2662,6 +2667,9 @@ test.describe('Print: choosing which interactive activities to print', () => {
         await expect(print).toBeEnabled();
         await expect(status).toBeEmpty();
 
+        // "Select all" starts half ticked, as the download button starts cleared: ticking it ticks
+        // every activity, and clearing it then clears them all.
+        await selectAll.check();
         await selectAll.uncheck();
         for (const box of await panel.locator(SELECTED).all()) await expect(box).not.toBeChecked();
         await waitForPreview(page);
@@ -2736,7 +2744,11 @@ test.describe('Print: choosing which interactive activities to print', () => {
         const last = panel.locator(SELECTED).last();
         await last.scrollIntoViewIfNeeded();
         await expect(last).toBeVisible();
-        await expect(last).toBeChecked();
+        // It can be clicked there, ticked or cleared as it starts: the last may be one that can
+        // never be printed.
+        const wasChecked = await last.isChecked();
+        await last.click();
+        await expect(last).toBeChecked({ checked: !wasChecked });
         const lastBox = await last.boundingBox();
         const panelBox = await panel.boundingBox();
         expect(lastBox!.y + lastBox!.height).toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 1);

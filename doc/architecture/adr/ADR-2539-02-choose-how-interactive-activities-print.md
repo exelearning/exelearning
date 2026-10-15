@@ -325,9 +325,9 @@ for the piece under it, which a block does not need.
   when a choice changes; Print disabled while the preview is being drawn; one case per choice,
   including the appendix cross-reference matching its exercise; and the worksheet reached from the
   preview alone, with no File menu entry of its own.
-- E2E for the selection: every activity listed and ticked only while activities are to be printed;
-  no printing with none ticked, unless none is to be printed; an unticked activity left out of the
-  document and off the worksheet.
+- E2E for the selection: every activity listed only while activities are to be printed, those with
+  a printed form ticked; no printing with none ticked, unless none is to be printed; an unticked
+  activity left out of the document and off the worksheet.
 - E2E for the activities that can never be printed: none marked *Title only* when the project has
   none (an empty padlock included, which keeps its note); listed cleared and marked, and left out of
   the document and the worksheet's note, by default; printed with their titles, in place and in the
