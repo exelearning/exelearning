@@ -44,6 +44,10 @@ const dynamicServerEnv = {
     ADMIN_PASSWORD: 'AdminPass123!',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
     PUBLIC_VIEW_ENABLED: 'true', // Enable public read-only links for E2E tests
+    // Platform (Moodle) integration: specs run a stand-in Moodle on localhost and
+    // sign its JWTs with this secret (see specs/platform-edit-reuses-project.spec.ts).
+    APP_SECRET: 'e2e-platform-secret',
+    PROVIDER_URLS: 'http://localhost',
 };
 
 // Dynamic server config (used by chromium/firefox projects)

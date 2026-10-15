@@ -11,8 +11,10 @@ import {
 } from './platform-integration';
 import {
     configure as configureService,
+    hashPlatformPackage,
     resetDependencies as resetServiceDependencies,
 } from '../services/platform-integration';
+import { getJwtSecret } from './auth';
 
 describe('Platform Integration Routes', () => {
     // Store original environment variables
@@ -245,6 +247,68 @@ describe('Platform Integration Routes', () => {
             expect(data.responseMessage).toBe('OK');
             expect(data.elpFile).toBe('base64EncodedContent');
             expect(data.elpFileName).toBe('test-project.elp');
+        });
+
+        it('tells the editor to keep the project when it already holds the platform package', async () => {
+            const token = await createValidToken();
+            const packageBytes = Buffer.from('PK stored package');
+            configureService({
+                findProjectByUuid: async () =>
+                    makeProjectRow({
+                        uuid: 'bound-uuid',
+                        platform_id: '456',
+                        platform_site: 'https://moodle.example.com',
+                        platform_package_hash: hashPlatformPackage(packageBytes),
+                    }),
+            });
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({ ode_file: packageBytes.toString('base64'), ode_filename: 'a.zip', status: '0' }),
+                    { status: 200 },
+                );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/openPlatformElp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: token, projectUuid: 'bound-uuid' }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(await response.json()).toEqual({ responseMessage: 'OK', unchanged: true });
+        });
+
+        it('returns the package and its hash when the project does not hold it yet', async () => {
+            const token = await createValidToken();
+            const packageBytes = Buffer.from('PK changed package');
+            configureService({
+                findProjectByUuid: async () =>
+                    makeProjectRow({
+                        uuid: 'bound-uuid',
+                        platform_id: '456',
+                        platform_site: 'https://moodle.example.com',
+                        platform_package_hash: hashPlatformPackage(Buffer.from('PK older package')),
+                    }),
+            });
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({ ode_file: packageBytes.toString('base64'), ode_filename: 'a.zip', status: '0' }),
+                    { status: 200 },
+                );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/openPlatformElp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: token, projectUuid: 'bound-uuid' }),
+                }),
+            );
+
+            const data = await response.json();
+            expect(data.unchanged).toBeUndefined();
+            expect(data.elpFile).toBe(packageBytes.toString('base64'));
+            expect(data.packageHash).toBe(hashPlatformPackage(packageBytes));
         });
 
         it('should return 500 when platform returns error', async () => {
@@ -581,6 +645,170 @@ describe('Platform Integration Routes', () => {
         });
     });
 
+    describe('POST /api/platform/integration/set_platform_new_ode (activity bindings)', () => {
+        async function postServerExport(token: string): Promise<Response> {
+            return app.handle(
+                new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ projectUuid: 'bound-uuid', jwt_token: token }),
+                }),
+            );
+        }
+
+        it('accepts a project bound to the activity when Moodle signs cmid as a number', async () => {
+            const token = await createValidToken({ cmid: 456 });
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () =>
+                    makeProjectRow({
+                        uuid: 'bound-uuid',
+                        platform_id: '456',
+                        platform_site: 'https://moodle.example.com',
+                    }),
+            });
+            configureService({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'bound-uuid' }),
+                findSnapshotByProjectId: async () => createMockSnapshot(),
+                updateProjectByUuid: async () => undefined,
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            const response = await postServerExport(token);
+
+            expect(response.status).toBe(200);
+        });
+
+        it('rejects a project bound to the same cmid on another platform site', async () => {
+            const token = await createValidToken({ cmid: 456 });
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () =>
+                    makeProjectRow({
+                        uuid: 'bound-uuid',
+                        platform_id: '456',
+                        platform_site: 'https://other-moodle.example.com',
+                    }),
+            });
+            let fetchCalled = false;
+            globalThis.fetch = async () => {
+                fetchCalled = true;
+                return new Response(JSON.stringify({ status: '0' }), { status: 200 });
+            };
+
+            const response = await postServerExport(token);
+
+            expect(response.status).toBe(403);
+            expect(fetchCalled).toBe(false);
+        });
+    });
+
+    describe('POST /api/platform/integration/confirmPlatformElpImport', () => {
+        const packageHash = hashPlatformPackage(Buffer.from('PK imported package'));
+
+        async function signIn(userId: number): Promise<string> {
+            return new SignJWT({ sub: userId, email: `user${userId}@test.com`, roles: ['ROLE_USER'] })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(new TextEncoder().encode(getJwtSecret()));
+        }
+
+        async function confirmImport(body: Record<string, unknown>, userId: number | null = 1): Promise<Response> {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (userId !== null) {
+                headers.Cookie = `auth=${await signIn(userId)}`;
+            }
+            return app.handle(
+                new Request('http://localhost/api/platform/integration/confirmPlatformElpImport', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                }),
+            );
+        }
+
+        function bindProject(overrides: Parameters<typeof makeProjectRow>[0] = {}): Record<string, unknown>[] {
+            const updates: Record<string, unknown>[] = [];
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () =>
+                    makeProjectRow({
+                        uuid: 'bound-uuid',
+                        platform_id: '456',
+                        platform_site: 'https://moodle.example.com',
+                        ...overrides,
+                    }),
+            });
+            configureService({
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    updates.push(data);
+                    return undefined;
+                },
+            });
+            return updates;
+        }
+
+        it("records the imported package on the user's project for the activity", async () => {
+            const updates = bindProject();
+            const token = await createValidToken({ cmid: 456 });
+
+            const response = await confirmImport({ jwt_token: token, projectUuid: 'bound-uuid', packageHash });
+
+            expect(response.status).toBe(200);
+            expect(await response.json()).toEqual({ responseMessage: 'OK' });
+            expect(updates).toEqual([
+                { platform_id: '456', platform_site: 'https://moodle.example.com', platform_package_hash: packageHash },
+            ]);
+        });
+
+        it('requires an eXeLearning session', async () => {
+            const updates = bindProject();
+            const token = await createValidToken({ cmid: 456 });
+
+            const response = await confirmImport({ jwt_token: token, projectUuid: 'bound-uuid', packageHash }, null);
+
+            expect(response.status).toBe(401);
+            expect(updates).toHaveLength(0);
+        });
+
+        it("refuses to record a package on another user's project", async () => {
+            const updates = bindProject({ owner_id: 2 });
+            const token = await createValidToken({ cmid: 456 });
+
+            const response = await confirmImport({ jwt_token: token, projectUuid: 'bound-uuid', packageHash });
+
+            expect(response.status).toBe(403);
+            expect(updates).toHaveLength(0);
+        });
+
+        it('refuses a project bound to another activity', async () => {
+            const updates = bindProject({ platform_id: '999' });
+            const token = await createValidToken({ cmid: 456 });
+
+            const response = await confirmImport({ jwt_token: token, projectUuid: 'bound-uuid', packageHash });
+
+            expect(response.status).toBe(403);
+            expect(updates).toHaveLength(0);
+        });
+
+        it('rejects an invalid platform token, a missing project or a malformed hash', async () => {
+            const updates = bindProject();
+            const token = await createValidToken({ cmid: 456 });
+
+            const invalidToken = await confirmImport({ jwt_token: 'invalid', projectUuid: 'bound-uuid', packageHash });
+            const malformedHash = await confirmImport({
+                jwt_token: token,
+                projectUuid: 'bound-uuid',
+                packageHash: 'x',
+            });
+            configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
+            const missingProject = await confirmImport({ jwt_token: token, projectUuid: 'gone-uuid', packageHash });
+
+            expect(invalidToken.status).toBe(401);
+            expect(malformedHash.status).toBe(400);
+            expect(missingProject.status).toBe(404);
+            expect(updates).toHaveLength(0);
+        });
+    });
+
     describe('Token validation', () => {
         it('should reject expired tokens', async () => {
             // Create an expired token
@@ -756,9 +984,10 @@ describe('Platform Integration Routes', () => {
             };
 
             // Capture the platform_id linkage. The endpoint should persist
-            // the cmid even though the project was newly created in this test.
+            // the cmid on a project that is not bound to any activity yet.
             let linkedCmid: string | null = null;
             configureService({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'project-uuid-123' }),
                 updateProjectByUuid: async (_db, _uuid, updates) => {
                     linkedCmid = (updates.platform_id as string) ?? null;
                     return undefined;
@@ -853,21 +1082,33 @@ describe('Platform Integration Routes', () => {
  * Only the fields read by the ownership gate matter; the rest are filled with
  * representative defaults so the object satisfies the Project shape.
  */
-function makeProjectRow(overrides: { uuid?: string; platform_id?: string | null } = {}) {
+function makeProjectRow(
+    overrides: {
+        uuid?: string;
+        owner_id?: number;
+        platform_id?: string | null;
+        platform_site?: string | null;
+        platform_package_hash?: string | null;
+    } = {},
+) {
     return {
         id: 1,
         uuid: overrides.uuid ?? 'test-uuid',
         title: 'Test Project',
         description: null,
-        owner_id: 1,
+        owner_id: overrides.owner_id ?? 1,
         status: 'active',
         visibility: 'private',
+        public_view_id: null,
+        public_view_enabled: 0,
         language: 'en',
         author: null,
         license: null,
         last_accessed_at: null,
         saved_once: 1,
         platform_id: overrides.platform_id ?? null,
+        platform_site: overrides.platform_site ?? null,
+        platform_package_hash: overrides.platform_package_hash ?? null,
         created_at: Date.now(),
         updated_at: Date.now(),
     };

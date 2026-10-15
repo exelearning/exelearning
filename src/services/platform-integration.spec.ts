@@ -8,6 +8,8 @@ import {
     platformPetitionGet,
     platformPetitionSet,
     platformPetitionSetForward,
+    hashPlatformPackage,
+    isPlatformPackageCurrent,
     configure,
     resetDependencies,
 } from './platform-integration';
@@ -498,6 +500,29 @@ describe('Platform Integration Service', () => {
             expect(storedPlatformId).toBe('456'); // mockPayload.cmid
         });
 
+        it('records the hash of the exported package it posted', async () => {
+            let postedFile = '';
+            let storedHash: string | null | undefined;
+            configure({
+                findProjectByUuid: async () => ({ id: 1, uuid: 'test-uuid', platform_id: null }) as never,
+                findSnapshotByProjectId: async () => createMockSnapshot(),
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    storedHash = data.platform_package_hash;
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async (_url, init) => {
+                const body = init?.body as FormData;
+                postedFile = JSON.parse(body.get('ode_data') as string).ode_file;
+                return new Response(JSON.stringify({ success: true }), { status: 200 });
+            };
+
+            const result = await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
+
+            expect(result.success).toBe(true);
+            expect(storedHash).toBe(hashPlatformPackage(Buffer.from(postedFile, 'base64')));
+        });
+
         it('should not store platform_id when upload fails', async () => {
             const mockSnapshot = createMockSnapshot();
             let updateCalled = false;
@@ -587,6 +612,7 @@ describe('Platform Integration Service', () => {
             // platform_id linkage is performed only when the upload succeeds.
             let linkedCmid: string | null = null;
             configure({
+                findProjectByUuid: async () => ({ uuid: 'project-uuid', platform_id: null }) as never,
                 updateProjectByUuid: async (_db, _uuid, updates) => {
                     linkedCmid = (updates.platform_id as string) ?? null;
                     return undefined;
@@ -671,6 +697,72 @@ describe('Platform Integration Service', () => {
             expect(result.error).toContain('Platform responded with status 503');
         });
 
+        it('binds the project to the site and cmid and records the hash of the package it sent', async () => {
+            const updates: Record<string, unknown>[] = [];
+            configure({
+                findProjectByUuid: async () => ({ uuid: 'project-uuid', platform_id: null }) as never,
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    updates.push(data);
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            // Moodle signs cmid as a JSON number.
+            const payload = { ...forwardPayload, cmid: 42 as unknown as string };
+            const result = await platformPetitionSetForward(payload, 'jwt', 'project-uuid', samplePackage, 'p.zip');
+
+            expect(result.success).toBe(true);
+            expect(updates).toEqual([
+                {
+                    platform_id: '42',
+                    platform_site: 'https://moodle.example.com',
+                    platform_package_hash: hashPlatformPackage(samplePackage),
+                },
+            ]);
+        });
+
+        it('upgrades a binding stored before platform sites were recorded', async () => {
+            const updates: Record<string, unknown>[] = [];
+            configure({
+                findProjectByUuid: async () =>
+                    ({ uuid: 'project-uuid', platform_id: '42', platform_site: null }) as never,
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    updates.push(data);
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            await platformPetitionSetForward(forwardPayload, 'jwt', 'project-uuid', samplePackage, 'p.zip');
+
+            expect(updates[0]?.platform_site).toBe('https://moodle.example.com');
+        });
+
+        it('keeps the binding of a project that belongs to another activity', async () => {
+            let updateCalled = false;
+            configure({
+                findProjectByUuid: async () =>
+                    ({ uuid: 'project-uuid', platform_id: '42', platform_site: 'https://other.example.com' }) as never,
+                updateProjectByUuid: async () => {
+                    updateCalled = true;
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt',
+                'project-uuid',
+                samplePackage,
+                'p.zip',
+            );
+
+            expect(result.success).toBe(true);
+            expect(updateCalled).toBe(false);
+        });
+
         it('does not link platform_id when projectUuid is empty', async () => {
             let updateCalled = false;
             configure({
@@ -697,6 +789,57 @@ describe('Platform Integration Service', () => {
             expect(result.success).toBe(true);
             expect(updateCalled).toBe(false);
         });
+    });
+});
+
+describe('Platform package tracking', () => {
+    const payload = {
+        userid: '7',
+        cmid: 42 as unknown as string,
+        returnurl: 'https://example.com/moodle/mod/exescorm/view.php?id=42',
+        pkgtype: 'scorm',
+        exp: 0,
+        iat: 0,
+    } as PlatformJWTPayload;
+    const site = 'https://example.com/moodle';
+    const packageHash = hashPlatformPackage(Buffer.from('PK package'));
+
+    afterEach(() => {
+        resetDependencies();
+    });
+
+    function withProject(project: Record<string, unknown> | undefined): void {
+        configure({ findProjectByUuid: async () => project as never });
+    }
+
+    it('hashes packages with SHA-256', () => {
+        expect(hashPlatformPackage(Buffer.from('abc'))).toBe(
+            'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+        );
+    });
+
+    it('reports a package as current when the project bound to the activity already holds it', async () => {
+        withProject({ platform_id: '42', platform_site: site, platform_package_hash: packageHash });
+
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(true);
+    });
+
+    it('reports a changed package, an unknown one or another activity as not current', async () => {
+        withProject({ platform_id: '42', platform_site: site, platform_package_hash: 'b'.repeat(64) });
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(false);
+
+        withProject({ platform_id: '42', platform_site: site, platform_package_hash: null });
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(false);
+
+        withProject({
+            platform_id: '42',
+            platform_site: 'https://other.example.com',
+            platform_package_hash: packageHash,
+        });
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(false);
+
+        withProject(undefined);
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(false);
     });
 });
 

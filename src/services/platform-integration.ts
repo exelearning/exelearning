@@ -4,8 +4,9 @@
  * Handles communication between eXeLearning and external platforms (Moodle, etc.)
  * for bidirectional project transfer.
  */
+import { createHash } from 'crypto';
 import type { PlatformJWTPayload } from '../utils/platform-jwt';
-import { buildIntegrationUrl, getExportTypeFromPkgType } from '../utils/platform-jwt';
+import { buildIntegrationUrl, getExportTypeFromPkgType, getPlatformBinding } from '../utils/platform-jwt';
 import { db as defaultDb } from '../db/client';
 import {
     findProjectByUuid as findProjectByUuidDefault,
@@ -17,7 +18,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/types';
+import type { Database, Project } from '../db/types';
 import { getAppVersion } from '../utils/version';
 
 // Centralized export system
@@ -103,6 +104,74 @@ export function resetDependencies(): void {
  */
 export function getDependencies(): PlatformIntegrationDependencies {
     return deps;
+}
+
+/**
+ * Fingerprint of a package exchanged with the platform.
+ *
+ * The platform stores the package eXeLearning sends and returns those same
+ * bytes on the next edit, so equal hashes mean the package did not change.
+ */
+export function hashPlatformPackage(data: Uint8Array): string {
+    return createHash('sha256').update(data).digest('hex');
+}
+
+/**
+ * Whether a project is already bound to an activity other than the one the
+ * JWT was issued for. Bindings stored before platform sites were recorded only
+ * carry the cmid, so they are compared on the cmid alone.
+ */
+export function isBoundToOtherPlatformActivity(project: Project, payload: PlatformJWTPayload): boolean {
+    if (project.platform_id == null) {
+        return false;
+    }
+    if (project.platform_id !== String(payload.cmid)) {
+        return true;
+    }
+    return project.platform_site != null && project.platform_site !== getPlatformBinding(payload)?.site;
+}
+
+/**
+ * Whether the project bound to the JWT's activity already holds the package
+ * the platform returned, so reopening it keeps work not yet sent back.
+ */
+export async function isPlatformPackageCurrent(
+    projectUuid: string,
+    payload: PlatformJWTPayload,
+    packageHash: string,
+): Promise<boolean> {
+    const binding = getPlatformBinding(payload);
+    const project = binding ? await deps.findProjectByUuid(deps.db, projectUuid) : undefined;
+    return (
+        !!project &&
+        project.platform_id === binding?.cmid &&
+        project.platform_site === binding?.site &&
+        project.platform_package_hash === packageHash
+    );
+}
+
+/**
+ * Bind a project to the JWT's activity and remember the package it now holds.
+ *
+ * A project bound to another activity keeps its binding. Returns whether the
+ * project was updated.
+ */
+export async function recordPlatformPackage(
+    project: Project,
+    payload: PlatformJWTPayload,
+    packageHash: string,
+): Promise<boolean> {
+    const binding = getPlatformBinding(payload);
+    if (!binding || isBoundToOtherPlatformActivity(project, payload)) {
+        return false;
+    }
+
+    await deps.updateProjectByUuid(deps.db, project.uuid, {
+        platform_id: binding.cmid,
+        platform_site: binding.site,
+        platform_package_hash: packageHash,
+    });
+    return true;
 }
 
 /**
@@ -311,11 +380,9 @@ export async function platformPetitionSet(
             };
         }
 
-        // Store platform_id (cmid) in project for future lookups
-        // This allows finding the project when user returns from platform
-        await deps.updateProjectByUuid(deps.db, projectUuid, {
-            platform_id: payload.cmid,
-        });
+        // Bind the project to the activity so the next edit reopens it, and
+        // remember the package the platform now holds.
+        await recordPlatformPackage(project, payload, hashPlatformPackage(exportResult.data));
 
         return {
             success: true,
@@ -428,14 +495,15 @@ export async function platformPetitionSetForward(
             };
         }
 
-        // Best-effort link the project to the Moodle cmid so subsequent
-        // re-edit redirects can find it again. Failures here must not abort
-        // the upload because the platform already accepted the package.
+        // Best-effort link the project to the activity so the next edit
+        // reopens it. Failures here must not abort the upload because the
+        // platform already accepted the package.
         if (projectUuid) {
             try {
-                await deps.updateProjectByUuid(deps.db, projectUuid, {
-                    platform_id: payload.cmid,
-                });
+                const project = await deps.findProjectByUuid(deps.db, projectUuid);
+                if (project) {
+                    await recordPlatformPackage(project, payload, hashPlatformPackage(buffer));
+                }
             } catch (linkError) {
                 const linkMessage = linkError instanceof Error ? linkError.message : String(linkError);
                 console.warn('[PlatformIntegration] Could not update platform_id after upload:', linkMessage);

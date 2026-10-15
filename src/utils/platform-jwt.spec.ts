@@ -8,6 +8,7 @@ import {
     extractProviderId,
     decodePlatformJWT,
     buildIntegrationUrl,
+    getPlatformBinding,
     getPlatformIntegrationParams,
     getExportTypeFromPkgType,
     validateProviderConfiguration,
@@ -608,6 +609,63 @@ describe('Platform JWT Utilities', () => {
         it('should return null for unknown URL pattern', () => {
             const returnUrl = 'https://moodle.com/some/other/path';
             expect(buildIntegrationUrl(returnUrl, 'set')).toBeNull();
+        });
+    });
+
+    describe('getPlatformBinding', () => {
+        const binding = (returnurl: string, ...cmid: unknown[]) =>
+            getPlatformBinding({ returnurl, cmid: cmid.length ? cmid[0] : 1234 } as unknown as PlatformJWTPayload);
+
+        it('binds the cmid to the site that serves the module callbacks', () => {
+            expect(binding('https://moodle.example.com/mod/exescorm/view.php?id=1234&forceview=1')).toEqual({
+                site: 'https://moodle.example.com',
+                cmid: '1234',
+            });
+        });
+
+        it('keeps the path of a Moodle installed in a subdirectory', () => {
+            expect(binding('https://example.com/moodle/mod/exeweb/view.php?id=1234')).toEqual({
+                site: 'https://example.com/moodle',
+                cmid: '1234',
+            });
+        });
+
+        it('derives the same site from the module return script and the course section page', () => {
+            const returnto = binding('https://example.com/moodle/mod/exescorm/returnto.php?id=1234&returnurl=%2Fx');
+            const section = binding('https://example.com/moodle/course/section.php?id=7');
+            expect(returnto?.site).toBe('https://example.com/moodle');
+            expect(section?.site).toBe('https://example.com/moodle');
+        });
+
+        it('normalizes host case and default ports so one site has one key', () => {
+            expect(binding('https://Moodle.Example.COM:443/mod/exescorm/view.php?id=1')?.site).toBe(
+                'https://moodle.example.com',
+            );
+            expect(binding('http://moodle.example.com:8080/mod/exescorm/view.php?id=1')?.site).toBe(
+                'http://moodle.example.com:8080',
+            );
+        });
+
+        it('stores numeric cmids (as Moodle sends them) as strings', () => {
+            expect(binding('https://moodle.example.com/mod/exescorm/view.php?id=1', 42)?.cmid).toBe('42');
+            expect(binding('https://moodle.example.com/mod/exescorm/view.php?id=1', '42')?.cmid).toBe('42');
+        });
+
+        it('returns null when the JWT carries no usable cmid', () => {
+            const url = 'https://moodle.example.com/mod/exescorm/view.php?id=1';
+            expect(binding(url, undefined)).toBeNull();
+            expect(binding(url, '')).toBeNull();
+            expect(binding(url, 'x'.repeat(65))).toBeNull();
+        });
+
+        it('returns null when the return URL does not point at a known module path', () => {
+            expect(binding('https://moodle.example.com/some/other/path')).toBeNull();
+            expect(binding('https://moodle.example.com/view.php?next=/mod/exescorm/view.php')).toBeNull();
+            expect(binding('not a url')).toBeNull();
+        });
+
+        it('returns null when the site does not fit the stored column', () => {
+            expect(binding(`https://moodle.example.com/${'a'.repeat(250)}/mod/exescorm/view.php?id=1`)).toBeNull();
         });
     });
 
