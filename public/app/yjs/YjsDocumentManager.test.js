@@ -135,6 +135,7 @@ describe('YjsDocumentManager', () => {
   let originalRemoveEventListener;
   let originalLocalStorage;
   let originalSessionStorage;
+  let originalIndexedDB;
 
   beforeEach(() => {
     originalWindowY = global.window.Y;
@@ -147,6 +148,7 @@ describe('YjsDocumentManager', () => {
     originalRemoveEventListener = global.window.removeEventListener;
     originalLocalStorage = global.localStorage;
     originalSessionStorage = global.sessionStorage;
+    originalIndexedDB = global.window.indexedDB;
 
     // Setup global mocks
     global.window.Y = global.window.Y || global.Y;
@@ -228,6 +230,9 @@ describe('YjsDocumentManager', () => {
     global.window.removeEventListener = originalRemoveEventListener;
     global.localStorage = originalLocalStorage;
     global.sessionStorage = originalSessionStorage;
+    // A hanging indexedDB mock left behind makes every later initialize() wait out
+    // the 2s _validateIndexedDb fallback.
+    global.window.indexedDB = originalIndexedDB;
     global._ = originalTranslate;
     if (originalNavigatorDescriptor) {
       Object.defineProperty(global, 'navigator', originalNavigatorDescriptor);
