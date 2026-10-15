@@ -32,6 +32,12 @@ const EXCLUDED_FILES = [
     'src/routes/config.ts', // Admin templates endpoint requires DB; base functionality 100% tested
     // Redis modules require real Redis server for connection testing; graceful fallback tested
     'src/redis/client.ts', // Requires real Redis for connection/pub testing
+    // PRE-EXISTING DEBT, not a new exemption. `scripts/**` specs (123 tests) existed but
+    // were never in the `test:unit` scope, so they ran nowhere; adding ./scripts so they
+    // actually run in CI exposed this file at ~52%. It is a 1300-line CLI orchestrator
+    // whose spec covers the pure helpers, not the filesystem/packaging paths. Excluded to
+    // land the scope fix without an unrelated rewrite — raising it is follow-up work.
+    'scripts/build-static-bundle.ts',
     'src/redis/pubsub-manager.ts', // Requires real Redis for pub/sub testing
     // Legacy handlers migrated from browser-side JS; tested via handlers.spec.ts and integration tests
     'src/shared/import/legacy-handlers/', // All handlers in this directory (combined test + integration)

@@ -106,6 +106,22 @@ export class Capabilities {
         });
 
         /**
+         * Preview trust-boundary transports (ADR-2199-02). Which isolation the
+         * preview can offer is a property of the RUNTIME, never of content,
+         * and there is no fallback between transports. Kept consistent with
+         * resolvePreviewTransport() in utils/previewContentPolicy.js (a unit
+         * test asserts the two agree for every runtime mode).
+         */
+        this.preview = Object.freeze({
+            /** Opaque snapshot via eXe's own capability routes (web/server editor). */
+            selfHostedOpaqueSnapshot: isServer && !isEmbedded,
+            /** Opaque snapshot via the embedding host's capability routes. */
+            hostOpaqueSnapshot: isEmbedded,
+            /** Same-origin consent path — only where no backend exists to mint capability URLs. */
+            consentSameOrigin: isStatic && !isEmbedded,
+        });
+
+        /**
          * UI visibility (for embedded mode — controls which UI elements are shown)
          */
         const hideUI = config.embeddingConfig?.hideUI || {};

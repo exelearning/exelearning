@@ -1,0 +1,358 @@
+{
+  "core": {
+    "buildHash": "43c776daa551fd770b6dade520629362e5a8ca8745e4245c359447c4689b34d6",
+    "sourceCommit": "3bee9769e",
+    "files": {
+      "child": {
+        "path": "exe-external-media-child.min.js",
+        "sha256": "2b5466f3bcc66e1f793f7b15b75f2912b602cc383ae6031a8fa7a8f77ceedc8e",
+        "bytes": 12973
+      },
+      "host": {
+        "path": "exe-external-media-host.min.js",
+        "sha256": "3bb1cd19df99f8a981315fdeafafe26e4ad42ad0ca92995e257ccebdf7146f49",
+        "bytes": 25539
+      }
+    }
+  },
+  "plugins": [
+    {
+      "id": "moodle",
+      "name": "Moodle",
+      "repo": "/Users/ernesto/Downloads/git/mod_exelearning_2",
+      "vendored": "js/exe_external_media",
+      "url": "http://localhost/mod/exelearning/view.php?id=2",
+      "pageBytes": 186718,
+      "reachable": true,
+      "vendoredBuildHash": "43c776daa551fd770b6dade520629362e5a8ca8745e4245c359447c4689b34d6",
+      "matchesCore": true,
+      "bytesIdentical": {
+        "child": true,
+        "host": true
+      },
+      "verifier": "pass",
+      "markers": [
+        {
+          "key": "bundle",
+          "pattern": "exe-external-media-host | exeExternalMediaHost",
+          "want": true,
+          "why": "the canonical bundle is on the page",
+          "found": true,
+          "ok": true
+        },
+        {
+          "key": "init",
+          "pattern": "exeEmbedRelay.init",
+          "want": true,
+          "why": "the host states its policy explicitly",
+          "found": true,
+          "ok": true
+        },
+        {
+          "key": "ytPlayer",
+          "pattern": "YT.Player",
+          "want": false,
+          "why": "no YouTube IFrame SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "vimeoPlayer",
+          "pattern": "Vimeo.Player",
+          "want": false,
+          "why": "no Vimeo SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelay",
+          "pattern": "exe-embed-relay.js",
+          "want": false,
+          "why": "the superseded relay file is not loaded",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelayUnderscore",
+          "pattern": "exe_embed_relay.js",
+          "want": false,
+          "why": "nor its underscore-named twin",
+          "found": false,
+          "ok": true
+        }
+      ],
+      "ok": true
+    },
+    {
+      "id": "wordpress",
+      "name": "WordPress",
+      "repo": "/Users/ernesto/Dropbox/Trabajo/ate/exelearning/wp-exelearning_2",
+      "vendored": "assets/js/exe_external_media",
+      "url": "http://localhost:8888/?p=45",
+      "pageBytes": 97562,
+      "reachable": true,
+      "vendoredBuildHash": "43c776daa551fd770b6dade520629362e5a8ca8745e4245c359447c4689b34d6",
+      "matchesCore": true,
+      "bytesIdentical": {
+        "child": true,
+        "host": true
+      },
+      "verifier": "pass",
+      "markers": [
+        {
+          "key": "bundle",
+          "pattern": "exe-external-media-host | exeExternalMediaHost",
+          "want": true,
+          "why": "the canonical bundle is on the page",
+          "found": true,
+          "ok": true
+        },
+        {
+          "key": "init",
+          "pattern": "exeEmbedRelay.init",
+          "want": true,
+          "why": "the host states its policy explicitly",
+          "found": true,
+          "ok": true
+        },
+        {
+          "key": "ytPlayer",
+          "pattern": "YT.Player",
+          "want": false,
+          "why": "no YouTube IFrame SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "vimeoPlayer",
+          "pattern": "Vimeo.Player",
+          "want": false,
+          "why": "no Vimeo SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelay",
+          "pattern": "exe-embed-relay.js",
+          "want": false,
+          "why": "the superseded relay file is not loaded",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelayUnderscore",
+          "pattern": "exe_embed_relay.js",
+          "want": false,
+          "why": "nor its underscore-named twin",
+          "found": false,
+          "ok": true
+        }
+      ],
+      "ok": true
+    },
+    {
+      "id": "omeka",
+      "name": "Omeka S",
+      "repo": "/Users/ernesto/Dropbox/Trabajo/ate/exelearning/omeka-s-exelearning",
+      "vendored": "asset/js/exe_external_media",
+      "url": "http://localhost:8080/s/exelearning-demo/item/5",
+      "pageBytes": 11349,
+      "reachable": true,
+      "vendoredBuildHash": "43c776daa551fd770b6dade520629362e5a8ca8745e4245c359447c4689b34d6",
+      "matchesCore": true,
+      "bytesIdentical": {
+        "child": true,
+        "host": true
+      },
+      "verifier": "pass",
+      "markers": [
+        {
+          "key": "bundle",
+          "pattern": "exe-external-media-host | exeExternalMediaHost",
+          "want": true,
+          "why": "the canonical bundle is on the page",
+          "found": true,
+          "ok": true
+        },
+        {
+          "key": "init",
+          "pattern": "exeEmbedRelay.init",
+          "want": true,
+          "why": "the host states its policy explicitly",
+          "found": true,
+          "ok": true
+        },
+        {
+          "key": "ytPlayer",
+          "pattern": "YT.Player",
+          "want": false,
+          "why": "no YouTube IFrame SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "vimeoPlayer",
+          "pattern": "Vimeo.Player",
+          "want": false,
+          "why": "no Vimeo SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelay",
+          "pattern": "exe-embed-relay.js",
+          "want": false,
+          "why": "the superseded relay file is not loaded",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelayUnderscore",
+          "pattern": "exe_embed_relay.js",
+          "want": false,
+          "why": "nor its underscore-named twin",
+          "found": false,
+          "ok": true
+        }
+      ],
+      "ok": true
+    },
+    {
+      "id": "nextcloud",
+      "name": "Nextcloud",
+      "repo": "/Users/ernesto/Downloads/git/nextcloud-exelearning",
+      "vendored": "src/embed/exe_external_media",
+      "clientRendered": true,
+      "url": "http://localhost:8081/apps/exelearning/view?path=/evil.elpx",
+      "pageBytes": 43,
+      "reachable": true,
+      "vendoredBuildHash": "43c776daa551fd770b6dade520629362e5a8ca8745e4245c359447c4689b34d6",
+      "matchesCore": true,
+      "bytesIdentical": {
+        "child": true,
+        "host": true
+      },
+      "verifier": "pass",
+      "markers": [
+        {
+          "key": "bundle",
+          "pattern": "exe-external-media-host | exeExternalMediaHost",
+          "want": true,
+          "why": "the canonical bundle is on the page",
+          "found": false,
+          "ok": false
+        },
+        {
+          "key": "init",
+          "pattern": "exeEmbedRelay.init",
+          "want": true,
+          "why": "the host states its policy explicitly",
+          "found": false,
+          "ok": false
+        },
+        {
+          "key": "ytPlayer",
+          "pattern": "YT.Player",
+          "want": false,
+          "why": "no YouTube IFrame SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "vimeoPlayer",
+          "pattern": "Vimeo.Player",
+          "want": false,
+          "why": "no Vimeo SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelay",
+          "pattern": "exe-embed-relay.js",
+          "want": false,
+          "why": "the superseded relay file is not loaded",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelayUnderscore",
+          "pattern": "exe_embed_relay.js",
+          "want": false,
+          "why": "nor its underscore-named twin",
+          "found": false,
+          "ok": true
+        }
+      ],
+      "ok": false
+    },
+    {
+      "id": "procomun",
+      "name": "Procomún",
+      "repo": "/Users/ernesto/Downloads/git/procomun",
+      "vendored": "apps/frontend/public/elpx/exe_external_media",
+      "clientRendered": true,
+      "url": "http://localhost:5173/src/islands/catalog/ResourceDetailIsland.tsx",
+      "pageUrl": "http://localhost:5173/recurso",
+      "pageBytes": 103591,
+      "reachable": true,
+      "vendoredBuildHash": "43c776daa551fd770b6dade520629362e5a8ca8745e4245c359447c4689b34d6",
+      "matchesCore": true,
+      "bytesIdentical": {
+        "child": true,
+        "host": true
+      },
+      "verifier": "pass",
+      "markers": [
+        {
+          "key": "bundle",
+          "pattern": "exe-external-media-host | exeExternalMediaHost",
+          "want": true,
+          "why": "the canonical bundle is on the page",
+          "found": true,
+          "ok": true
+        },
+        {
+          "key": "init",
+          "pattern": "exeEmbedRelay.init",
+          "want": true,
+          "why": "the host states its policy explicitly",
+          "found": true,
+          "ok": true
+        },
+        {
+          "key": "ytPlayer",
+          "pattern": "YT.Player",
+          "want": false,
+          "why": "no YouTube IFrame SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "vimeoPlayer",
+          "pattern": "Vimeo.Player",
+          "want": false,
+          "why": "no Vimeo SDK on the page",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelay",
+          "pattern": "exe-embed-relay.js",
+          "want": false,
+          "why": "the superseded relay file is not loaded",
+          "found": false,
+          "ok": true
+        },
+        {
+          "key": "oldRelayUnderscore",
+          "pattern": "exe_embed_relay.js",
+          "want": false,
+          "why": "nor its underscore-named twin",
+          "found": false,
+          "ok": true
+        }
+      ],
+      "ok": true
+    }
+  ]
+}

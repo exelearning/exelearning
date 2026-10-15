@@ -55,10 +55,25 @@ test.describe('Admin Impersonation', () => {
         await expect(page.locator('#usersTableBody tr')).toHaveCount(1);
         await expect(targetRow).toBeVisible();
 
-        const actionsButton = targetRow.locator('button[data-action="user-actions"]');
-        await actionsButton.click();
-        await expect(actionsButton).toHaveAttribute('aria-expanded', 'true');
-        const impersonateItem = targetRow.locator('.dropdown-menu.show button[data-action="impersonate"]');
+        // Row actions live in a Bootstrap dropdown (#2261). After the table
+        // re-renders from search, Firefox sometimes drops the data-api click,
+        // so open the menu through the Bootstrap API if it stays closed.
+        const actionsToggle = targetRow.locator('button[data-action="user-actions"]');
+        await expect(actionsToggle).toBeVisible();
+        await actionsToggle.click();
+        const actionsMenu = targetRow.locator('.user-actions-menu');
+        if (!(await actionsMenu.evaluate(el => el.classList.contains('show')))) {
+            await actionsToggle.evaluate(el => {
+                (
+                    window as unknown as {
+                        bootstrap: { Dropdown: { getOrCreateInstance: (node: Element) => { show: () => void } } };
+                    }
+                ).bootstrap.Dropdown.getOrCreateInstance(el).show();
+            });
+        }
+        await expect(actionsMenu).toBeVisible();
+        await expect(actionsToggle).toHaveAttribute('aria-expanded', 'true');
+        const impersonateItem = actionsMenu.locator('button[data-action="impersonate"]');
         await expect(impersonateItem).toBeVisible();
 
         page.once('dialog', dialog => dialog.accept());

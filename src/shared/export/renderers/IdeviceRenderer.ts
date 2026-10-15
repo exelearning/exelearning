@@ -272,7 +272,17 @@ ${contentHtml}
      * such as `vimeo.com.example.org` is not mistaken for the provider.
      */
     private isReferrerSensitiveEmbed(src: string): boolean {
-        const PROVIDER_HOSTS = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com'];
+        // Include education/media providers that this branch tracks (Dailymotion, Mediateca Madrid)
+        // on top of the YouTube/Vimeo set hardened on main.
+        const PROVIDER_HOSTS = [
+            'youtube.com',
+            'youtube-nocookie.com',
+            'youtu.be',
+            'vimeo.com',
+            'dailymotion.com',
+            'dai.ly',
+            'mediateca.educa.madrid.org',
+        ];
         let hostname: string;
         try {
             // The base resolves protocol-relative URLs; genuinely relative ones land on the
