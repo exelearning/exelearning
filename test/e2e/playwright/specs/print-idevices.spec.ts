@@ -109,6 +109,18 @@ async function chromiumForPdf(page: Page): Promise<{ browser: Browser; borrowed:
     }
 }
 
+// Let the print preview finish what it is drawing before the page closes: in Firefox, a page closed
+// in the middle of a drawing held up the next test's page past its timeout. The drawing goes on
+// after the preview closes, so the overlay's busy flag is not enough to tell.
+test.afterEach(async ({ page }) => {
+    const idle = () =>
+        page.evaluate(() => {
+            const preview = (window as any).eXeLearning?.app?.modals?.printpreview;
+            return !preview?.generationPromise && !preview?.regenerateTimer;
+        });
+    await expect.poll(idle, { timeout: 30000 }).toBe(true);
+});
+
 test.describe('Print iDevices', () => {
     // Serial: several of these import multi-megabyte fixtures, and running them against one
     // another starves the dev server enough to time out the workarea handshake.
