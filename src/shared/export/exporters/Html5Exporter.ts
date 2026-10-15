@@ -337,7 +337,7 @@ export class Html5Exporter extends BaseExporter {
                 addFile('theme/style.js', this.getFallbackThemeJs());
             }
 
-            // 7. Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
+            // 7. Fetch base libraries (always included - jQuery, Bootstrap, common.js, etc.)
             try {
                 const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [libPath, content] of baseLibs) {

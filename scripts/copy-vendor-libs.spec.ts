@@ -65,12 +65,14 @@ describe('copy-vendor-libs', () => {
             expect(missing).toEqual([]);
         });
 
-        it('never overwrites the eXe-patched SimpleLightbox fork of the image-gallery iDevice', () => {
-            // image-gallery/export/simple-lightbox.min.{js,css} is a locally patched
-            // SimpleLightbox 2.10.3 tracked in git. An npm copy here would replace it
-            // with upstream and drop the author/license captions.
-            const dests = COPIES.map(c => c.dest.replace(/\\/g, '/'));
-            expect(dests.filter(d => d.includes('simple-lightbox'))).toEqual([]);
+        it('copies stock SimpleLightbox into the image-gallery iDevice export folder', () => {
+            // config.xml, idevice-config-browser.ts and the exporters load these exact
+            // file names; the files are gitignored, so they must come from npm here.
+            const lightbox = COPIES.filter(c => c.src.replace(/\\/g, '/').includes('/simplelightbox/dist/')).map(c =>
+                c.dest.replace(/\\/g, '/'),
+            );
+            expect(lightbox.some(d => d.endsWith('image-gallery/export/simple-lightbox.min.js'))).toBe(true);
+            expect(lightbox.some(d => d.endsWith('image-gallery/export/simple-lightbox.min.css'))).toBe(true);
         });
 
         it('strips sourceMappingURL from the Bootstrap dist copies exports actually load', () => {

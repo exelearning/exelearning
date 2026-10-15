@@ -10,12 +10,6 @@
  *   public/app/common/exe_math/ is a customized subset that mixes files from different
  *   sources (MathJax 3.x + 4.x extensions, extra adaptors, SRE mathmaps).
  *   It requires a dedicated migration — see the migration plan for details.
- *
- * SimpleLightbox (image-gallery iDevice) is intentionally excluded:
- *   public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
- *   is an eXe-patched fork of SimpleLightbox 2.10.3 (array `captionsData`, title/
- *   author/license caption links, SDWEB CSS block) that image-gallery.js depends on.
- *   It stays tracked in git until the patch is ported to an upstream release.
  */
 
 'use strict';
@@ -145,6 +139,17 @@ const COPIES = [
     {
         src: nm('html2canvas/dist/html2canvas.min.js'),
         dest: pub('files/perm/idevices/base/rubric/export/html2canvas.js'),
+    },
+
+    // SimpleLightbox — image-gallery iDevice. image-gallery.js builds the
+    // title/author/license caption itself (captionSelector function).
+    {
+        src: nm('simplelightbox/dist/simple-lightbox.min.js'),
+        dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js'),
+    },
+    {
+        src: nm('simplelightbox/dist/simple-lightbox.min.css'),
+        dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css'),
     },
 
     // DOMPurify (slide iDevice — loaded lazily by edition/slide.js before the editor bundle)
