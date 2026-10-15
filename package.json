@@ -85,7 +85,7 @@
     "edicuatex": "1.5.5",
     "elysia": "^1.4.30",
     "fast-xml-parser": "^5.11.1",
-    "fs-extra": "^11.4.0",
+    "fs-extra": "^11.4.1",
     "fzstd": "0.1.1",
     "i18n": "^0.15.4",
     "ioredis": "^6.0.0",
