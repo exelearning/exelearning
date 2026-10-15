@@ -239,6 +239,22 @@ CLI := $(LOCAL_ENV) bun run src/cli/index.ts
 cli: check-bun
 	@$(CLI) $(ARGS)
 
+# Bun-native profiling (see doc/development/profiling.md). Writes to profiles/ on exit.
+# HEAP=1 adds a DevTools heap profile, HEAP=md a markdown one (Bun cannot write both).
+PROFILE_DIR ?= profiles
+PROFILE_FLAGS = --cpu-prof --cpu-prof-md --cpu-prof-dir=$(PROFILE_DIR) \
+	$(if $(HEAP),$(if $(filter md,$(HEAP)),--heap-prof-md,--heap-prof) --heap-prof-dir=$(PROFILE_DIR))
+
+# Usage: make profile-server [HEAP=1|md]   (reproduce the slow action, then Ctrl+C)
+.PHONY: profile-server
+profile-server: check-bun check-env deps css bundle
+	$(LOCAL_ENV) bun $(PROFILE_FLAGS) src/index.ts
+
+# Usage: make profile-cli ARGS='elp:export in.elpx out --format=html5' [HEAP=1|md]
+.PHONY: profile-cli
+profile-cli: check-bun
+	$(LOCAL_ENV) bun $(PROFILE_FLAGS) src/cli/index.ts $(ARGS)
+
 # Create a new user
 # Usage: make create-user EMAIL=x PASSWORD=y [ROLES=ROLE_USER,ROLE_ADMIN] [QUOTA=4096]
 .PHONY: create-user
@@ -912,6 +928,8 @@ help:
 	@echo ""
 	@echo "CLI Commands:"
 	@echo "  make cli ARGS='...'                           Generic CLI access"
+	@echo "  make profile-cli ARGS='...' [HEAP=1|md]       Run a CLI command under the Bun profiler"
+	@echo "  make profile-server [HEAP=1|md]               Run the local server under the Bun profiler"
 	@echo "  make change-password EMAIL=x                  Change a local account password"
 	@echo "  make create-user EMAIL=x PASSWORD=y           Create a new user"
 	@echo "  make demote-admin EMAIL=x                     Remove ROLE_ADMIN"
