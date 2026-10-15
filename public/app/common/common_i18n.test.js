@@ -22,7 +22,7 @@ describe('common_i18n.js', () => {
       'noSearchResults', 'searchResults', 'hideResults', 'more', 'newWindow',
       'fullSize', 'search', 'accessibility_tools', 'close_toolbar',
       'default_font', 'increase_text_size', 'decrease_text_size', 'read',
-      'stop_reading', 'translate', 'drag_and_drop', 'reset', 'mode_toggler',
+      'stop_reading', 'drag_and_drop', 'reset', 'mode_toggler',
       'teacher_mode'
     ];
 

@@ -48,11 +48,38 @@ const VENDORED_DIRECTORIES = ['css', 'icons', 'js', 'lang', 'menus'] as const;
  */
 const VENDORED_FILES = ['index.html', 'favicon.svg', 'LICENSE.txt'] as const;
 
+export interface VendorPatch {
+    /** Must match exactly once, so an upstream change fails the build instead of shipping unpatched. */
+    find: RegExp;
+    replace: string;
+}
+
+/**
+ * Edits applied while copying, keyed by vendored path.
+ *
+ * Standalone EdiCuaTeX falls back to MathJax on cdnjs when its own copy is missing.
+ * Inside eXeLearning the host always supplies MathJax (edicuatex_mathjax_url) and the
+ * fallback is never used, but shipping the URL still means the bundle contains code
+ * that loads a script from a remote server. Null the constant: every use of it is a
+ * comparison or an `if (fallbackUrl)` guard, so a null disables the fallback cleanly.
+ */
+export const VENDOR_PATCHES: Record<string, VendorPatch[]> = {
+    'js/edicuatex-tools.js': [
+        {
+            find: /var MATHJAX_CDN_URL = '[^']*';/g,
+            replace: 'var MATHJAX_CDN_URL = null; // eXeLearning: never load MathJax from a CDN',
+        },
+        { find: /https:\/\/cdn\.jsdelivr\.net\/npm\/@mathjax/g, replace: "MathJax's CDN" },
+    ],
+};
+
 export interface VendorPlanEntry {
     /** Path relative to the vendored root, using POSIX separators. */
     relativePath: string;
     /** Absolute path of the source file inside node_modules. */
     sourcePath: string;
+    /** Edits applied to the source while copying it. */
+    patches?: VendorPatch[];
 }
 
 function listFilesRecursively(root: string, prefix = ''): string[] {
@@ -73,7 +100,10 @@ function listFilesRecursively(root: string, prefix = ''): string[] {
  * Builds the list of files the vendored tree must contain, sorted by path.
  * Pure -- takes the package root, touches nothing else.
  */
-export function buildVendorPlan(packageRoot: string): VendorPlanEntry[] {
+export function buildVendorPlan(
+    packageRoot: string,
+    patches: Record<string, VendorPatch[]> = VENDOR_PATCHES,
+): VendorPlanEntry[] {
     const entries: VendorPlanEntry[] = [];
 
     for (const file of VENDORED_FILES) {
@@ -87,11 +117,33 @@ export function buildVendorPlan(packageRoot: string): VendorPlanEntry[] {
         }
     }
 
+    for (const entry of entries) {
+        if (patches[entry.relativePath]) entry.patches = patches[entry.relativePath];
+    }
+
     return entries.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 }
 
-function sha256(filePath: string): string {
-    return createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+/** The bytes a plan entry must have once vendored: the source with its patches applied. */
+export function vendoredContents(entry: VendorPlanEntry): Buffer {
+    const source = fs.readFileSync(entry.sourcePath);
+    if (!entry.patches?.length) return source;
+    let text = source.toString('utf8');
+    for (const patch of entry.patches) {
+        const matches = text.match(patch.find)?.length ?? 0;
+        if (matches !== 1) {
+            throw new Error(
+                `${entry.relativePath}: patch ${patch.find} matched ${matches} times, expected 1. ` +
+                    'Upstream changed; review VENDOR_PATCHES in scripts/vendor-edicuatex.ts.',
+            );
+        }
+        text = text.replace(patch.find, patch.replace);
+    }
+    return Buffer.from(text, 'utf8');
+}
+
+function sha256(contents: Buffer): string {
+    return createHash('sha256').update(contents).digest('hex');
 }
 
 export interface VendorDrift {
@@ -102,30 +154,36 @@ export interface VendorDrift {
 
 /** Compares the vendored tree against the plan without writing anything. */
 export function detectDrift(plan: VendorPlanEntry[], targetRoot: string): VendorDrift {
-    const expected = new Map(plan.map((entry) => [entry.relativePath, entry.sourcePath]));
+    const expected = new Map(plan.map(entry => [entry.relativePath, entry]));
     const actual = fs.existsSync(targetRoot) ? new Set(listFilesRecursively(targetRoot)) : new Set<string>();
 
     const missing: string[] = [];
     const changed: string[] = [];
-    for (const [relativePath, sourcePath] of expected) {
+    for (const [relativePath, entry] of expected) {
         if (!actual.has(relativePath)) {
             missing.push(relativePath);
-        } else if (sha256(sourcePath) !== sha256(path.join(targetRoot, ...relativePath.split('/')))) {
+        } else if (
+            sha256(vendoredContents(entry)) !==
+            sha256(fs.readFileSync(path.join(targetRoot, ...relativePath.split('/'))))
+        ) {
             changed.push(relativePath);
         }
     }
-    const extra = [...actual].filter((relativePath) => !expected.has(relativePath)).sort();
+    const extra = [...actual].filter(relativePath => !expected.has(relativePath)).sort();
 
     return { missing: missing.sort(), extra, changed: changed.sort() };
 }
 
 /** Writes the plan to disk, removing anything the plan does not list. */
 export function writeVendoredTree(plan: VendorPlanEntry[], targetRoot: string): void {
+    // Patch everything before touching the target, so a patch that no longer applies
+    // leaves the previous tree in place instead of a half-written one.
+    const files = plan.map(entry => ({ entry, contents: vendoredContents(entry) }));
     fs.rmSync(targetRoot, { recursive: true, force: true });
-    for (const entry of plan) {
+    for (const { entry, contents } of files) {
         const destination = path.join(targetRoot, ...entry.relativePath.split('/'));
         fs.mkdirSync(path.dirname(destination), { recursive: true });
-        fs.copyFileSync(entry.sourcePath, destination);
+        fs.writeFileSync(destination, contents);
     }
 }
 
@@ -141,7 +199,7 @@ export interface CliIo {
     error: (message: string) => void;
 }
 
-const consoleIo: CliIo = { log: (m) => console.log(m), error: (m) => console.error(m) };
+const consoleIo: CliIo = { log: m => console.log(m), error: m => console.error(m) };
 
 /** Runs the command and returns the process exit code. */
 export function run(argv: string[], repoRoot: string, io: CliIo = consoleIo): number {
