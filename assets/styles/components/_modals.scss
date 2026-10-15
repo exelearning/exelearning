@@ -262,6 +262,16 @@
             white-space: nowrap;
             text-overflow: ellipsis;
         }
+
+        /* At the end of the line of an activity that can never be printed; the title gives way. */
+        .print-activities-title-only {
+            flex: none;
+            margin-left: auto;
+            padding-left: 0.5rem;
+            font-size: 12px;
+            color: var(--gray-600);
+            white-space: nowrap;
+        }
     }
 
     .print-activities-select-all {

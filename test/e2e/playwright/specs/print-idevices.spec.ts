@@ -2174,8 +2174,8 @@ test.describe('Print: choosing what happens to the interactive activities', () =
             'All visible content will be printed. You can choose whether to show hidden content.',
             { useInnerText: true },
         );
-        // With no activity at all, there is none that cannot be printed to ask about.
-        await expect(panel.locator('#printOptUnprintableTitles')).toBeHidden();
+        // With no activity at all, there is no list of them to choose from.
+        await expect(panel.locator('.print-activities-selection')).toHaveCount(0);
     });
 
     test('prints an iDevice it does not know as it always has, rather than as an activity', async ({
@@ -2745,7 +2745,7 @@ test.describe('Print: choosing which interactive activities to print', () => {
 
 test.describe('Print: the activities that can never be printed', () => {
     const SELECTED = 'input[name="print-activity-selected"]';
-    const OPTION = '#printOptUnprintableTitles';
+    const TITLE_ONLY = '.print-activities-title-only';
 
     /** A padlock's markup, guarding the given writing. */
     const padlock = (feedback: string) =>
@@ -2778,7 +2778,7 @@ test.describe('Print: the activities that can never be printed', () => {
         { type: 'external-website', html: '', block: 'Web del museo' },
     ];
 
-    test('offers no option about them when the project has none, a padlock guarding nothing included', async ({
+    test('marks none as printing its title only when the project has none, a padlock guarding nothing included', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -2787,14 +2787,15 @@ test.describe('Print: the activities that can never be printed', () => {
         const panel = await openPrintPanel(page);
         await panel.waitFor({ state: 'visible', timeout: 15000 });
         await expect(panel.locator(SELECTED)).toHaveCount(1);
-        await expect(panel.locator(OPTION)).toBeHidden();
+        await expect(panel.locator(SELECTED)).toBeChecked();
+        await expect(panel.locator(TITLE_ONLY)).toHaveCount(0);
 
         // A padlock can be printed. One that guards nothing still says so where it stood.
         const { frame } = await choosePrintOption(page, 'in-place');
         await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="padlock"]')).toHaveCount(1);
     });
 
-    test('leaves them out of the list and the document until their titles are asked for', async ({
+    test('lists them cleared and marked title only, and prints their titles once ticked', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -2802,10 +2803,14 @@ test.describe('Print: the activities that can never be printed', () => {
 
         const panel = await openPrintPanel(page);
         await panel.waitFor({ state: 'visible', timeout: 15000 });
-        const option = panel.locator(OPTION);
-        await expect(option).toBeVisible();
-        await expect(option).not.toBeChecked();
-        await expect(panel.locator(SELECTED)).toHaveCount(1);
+        const boxes = panel.locator(SELECTED);
+        await expect(boxes).toHaveCount(3);
+        // Listed with the others, each marked; only the activity with a printed form starts ticked.
+        await expect(boxes.nth(0)).toBeChecked();
+        await expect(boxes.nth(1)).not.toBeChecked();
+        await expect(boxes.nth(2)).not.toBeChecked();
+        await expect(panel.locator(TITLE_ONLY)).toHaveText(['Title only', 'Title only']);
+        await expect(panel.locator('#print-activity-select-all')).not.toBeChecked();
 
         // In the appendix, where printing starts: no pointer, no entry and no block for them.
         let { frame } = await waitForPreview(page);
@@ -2817,10 +2822,10 @@ test.describe('Print: the activities that can never be printed', () => {
         await expect(frame.locator('body')).not.toContainText('Mapa de la península');
         await expect(frame.locator('body')).not.toContainText('Web del museo');
 
-        // Asked for, they are listed and ticked, and each takes a number, a pointer and its note.
-        await option.check();
-        await expect(panel.locator(SELECTED)).toHaveCount(3);
-        for (const box of await panel.locator(SELECTED).all()) await expect(box).toBeChecked();
+        // Ticked, each takes a number, a pointer and its note.
+        await boxes.nth(1).check();
+        await boxes.nth(2).check();
+        await expect(panel.locator('#print-activity-select-all')).toBeChecked();
         ({ frame } = await waitForPreview(page));
         await expect(frame.locator('.worksheet-reference')).toHaveCount(3);
         const notes = frame.locator('#section-worksheet-appendix .worksheet-activity-unprintable');
@@ -2837,19 +2842,19 @@ test.describe('Print: the activities that can never be printed', () => {
         await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(2);
         await expect(frame.locator('body')).toContainText('Mapa de la península');
 
-        // Cleared again, they go: from the list and from the page, blocks and all.
-        await option.uncheck();
-        await expect(panel.locator(SELECTED)).toHaveCount(1);
+        // Cleared again, they go from the page, blocks and all.
+        await boxes.nth(1).uncheck();
+        await boxes.nth(2).uncheck();
         ({ frame } = await waitForPreview(page));
         await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(0);
         await expect(frame.locator('body')).not.toContainText('Mapa de la península');
 
-        // With no activity to print there is nothing for the option to act on.
+        // With no activity to print, there is no list to choose from.
         await panel.locator('input[name="print-activity-mode"][value="omit"]').check();
-        await expect(option).toBeDisabled();
+        await expect(panel.locator('.print-activities-selection')).toBeHidden();
     });
 
-    test('leaves them out of the teacher’s note on the worksheet until their titles are asked for', async ({
+    test('leaves them out of the teacher’s note on the worksheet until ticked', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -2860,9 +2865,10 @@ test.describe('Print: the activities that can never be printed', () => {
         await expect(frame.locator('.worksheet-activity[data-idevice="padlock"]')).toHaveCount(1);
         await expect(frame.locator('.worksheet-unsupported')).toHaveCount(0);
 
-        const option = panel.locator(OPTION);
-        await expect(option).toBeEnabled();
-        await option.check();
+        const boxes = panel.locator(SELECTED);
+        await expect(boxes.nth(1)).toBeEnabled();
+        await boxes.nth(1).check();
+        await boxes.nth(2).check();
         ({ frame } = await waitForPreview(page));
         const note = frame.locator('.worksheet-unsupported');
         await expect(note.locator('li')).toHaveCount(2);

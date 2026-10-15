@@ -121,6 +121,35 @@ describe('renderActivitySelection', () => {
         expect(mount(two).querySelector('.print-activities-selection-hint')).toBeNull();
     });
 
+    describe('an activity that can never be printed', () => {
+        const mixed = [activity(), activity({ id: 'm1', type: 'map', pageTitle: 'Tema 2', neverPrintable: true })];
+        const boxOf = (box, id) => box.querySelector(`input[value="${id}"]`);
+
+        it('is marked as printing its title only, at the end of its line', () => {
+            const box = renderActivitySelection(mixed, { ...STRINGS, titleOnly: 'Title only' }, ideviceName);
+            const line = boxOf(box, 'm1').closest('.form-check');
+
+            expect(line.lastElementChild.className).toBe('print-activities-title-only');
+            expect(line.lastElementChild.textContent).toBe('Title only');
+            expect(boxOf(box, 'c1').closest('.form-check').querySelector('.print-activities-title-only')).toBeNull();
+        });
+
+        it('has its checkbox described by the mark, so a screen reader says it too', () => {
+            const box = renderActivitySelection(mixed, { ...STRINGS, titleOnly: 'Title only' }, ideviceName);
+            const input = boxOf(box, 'm1');
+
+            expect(box.querySelector(`#${input.getAttribute('aria-describedby')}`).textContent).toBe('Title only');
+            expect(boxOf(box, 'c1').hasAttribute('aria-describedby')).toBe(false);
+        });
+
+        it('carries no mark when there are no words for it', () => {
+            const box = renderActivitySelection(mixed, STRINGS, ideviceName);
+
+            expect(box.querySelector('.print-activities-title-only')).toBeNull();
+            expect(boxOf(box, 'm1').hasAttribute('aria-describedby')).toBe(false);
+        });
+    });
+
     it('titles the box as given', () => {
         expect(mount(two).querySelector('legend').textContent).toBe('Select the activities');
     });

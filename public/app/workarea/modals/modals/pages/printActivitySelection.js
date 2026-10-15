@@ -3,8 +3,10 @@
  *
  * When printing is going to turn activities into exercises, the user picks which of them to print.
  * Each one is named by its page and by what the author called its block, so two Guess activities
- * on different pages can be told apart. All are ticked to begin with, since printing everything is
- * what printing did before there was a choice.
+ * on different pages can be told apart. The panel says which are ticked to begin with.
+ *
+ * An activity that can never be printed is listed like the others, marked as printing its title
+ * only: ticked, its block prints its title and a note saying it is not available in print.
  *
  * The box is built with DOM nodes, so page and block titles — which the author typed and may
  * contain anything — are only ever text, never markup.
@@ -54,9 +56,11 @@ export function activityLabel(activity, ideviceName, shorten = true) {
 /**
  * One labelled checkbox, ticked.
  *
- * @returns {HTMLElement} The wrapper holding both
+ * A note, when given, follows the label and describes the checkbox, so a screen reader says it too.
+ *
+ * @returns {HTMLElement} The wrapper holding them
  */
-function checkbox({ id, name, value, label, title }) {
+function checkbox({ id, name, value, label, title, note }) {
     const wrapper = document.createElement('div');
     wrapper.className = 'form-check';
 
@@ -75,21 +79,31 @@ function checkbox({ id, name, value, label, title }) {
     if (title) text.title = title;
 
     wrapper.append(input, text);
+    if (note) {
+        const mark = document.createElement('span');
+        mark.className = 'print-activities-title-only';
+        mark.id = `${id}-note`;
+        mark.textContent = note;
+        input.setAttribute('aria-describedby', mark.id);
+        wrapper.append(mark);
+    }
     return wrapper;
 }
 
 /**
  * Build the selection box.
  *
- * @param {Array<{id: string, pageTitle: string, blockTitle: string, type: string}>} activities
+ * @param {Array<{id: string, pageTitle: string, blockTitle: string, type: string,
+ *     neverPrintable?: boolean}>} activities
  * @param {object} strings - Translated strings
  * @param {string} strings.heading - Title of the box
  * @param {string} [strings.hint] - Line under the title saying when the box is shown; none if empty
  * @param {string} strings.selectAll - Label of the tick-all checkbox
+ * @param {string} [strings.titleOnly] - Mark beside an activity that can never be printed
  * @param {(type: string) => string} ideviceName - Translated name of an iDevice type
  * @returns {HTMLFieldSetElement} The box, to be put in the panel
  */
-export function renderActivitySelection(activities, { heading, hint = '', selectAll }, ideviceName) {
+export function renderActivitySelection(activities, { heading, hint = '', selectAll, titleOnly = '' }, ideviceName) {
     const box = document.createElement('fieldset');
     box.className = 'print-activities-selection';
 
@@ -120,6 +134,7 @@ export function renderActivitySelection(activities, { heading, hint = '', select
                 label: activityLabel(activity, name),
                 // The whole page title, for when the label had to cut it short.
                 title: activityLabel(activity, name, false),
+                note: activity.neverPrintable ? titleOnly : '',
             })
         );
     });

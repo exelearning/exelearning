@@ -709,7 +709,6 @@ describe('ModalPrintPreview and its options panel', () => {
     const status = () => overlayElement.querySelector('.print-options-status').textContent;
     const linkUrls = () => overlayElement.querySelector('#printOptLinkUrls');
     const unfoldBlocks = () => overlayElement.querySelector('#printOptUnfoldBlocks');
-    const unprintable = () => overlayElement.querySelector('#printOptUnprintableTitles');
     const busy = () => overlayElement.getAttribute('data-busy');
     const lastOptions = () => global.window.generatePrintPreview.mock.calls.at(-1)[2];
     const lastWorksheetOptions = () => global.window.generateWorksheet.mock.calls.at(-1)[1];
@@ -774,7 +773,6 @@ describe('ModalPrintPreview and its options panel', () => {
                     <fieldset class="print-options-document">
                         <input type="checkbox" id="printOptLinkUrls" checked>
                         <input type="checkbox" id="printOptUnfoldBlocks">
-                        <div class="form-check" hidden><input type="checkbox" id="printOptUnprintableTitles"></div>
                     </fieldset>
                     <div class="print-options-activities" hidden></div>
                 </div>
@@ -982,26 +980,36 @@ describe('ModalPrintPreview and its options panel', () => {
     describe('the activities that can never be printed', () => {
         const MAP = { id: 'm1', type: 'map', pageTitle: 'Tema 4', blockTitle: '', neverPrintable: true };
         const WITH_MAP = [...ACTIVITIES, MAP];
+        const mapBox = () => boxes().find((box) => box.value === 'm1');
 
-        it('are left out of the document unless their titles are asked for', async () => {
+        it('are listed, cleared and marked as printing their title only', async () => {
             await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX, null, WITH_MAP);
 
-            expect(unprintable().checked).toBe(false);
+            expect(boxes().map((box) => box.value)).toEqual(['c1', 'c2', 'c3', 'm1']);
+            expect(mapBox().checked).toBe(false);
+            expect(mapBox().closest('.form-check').querySelector('.print-activities-title-only').textContent).toBe(
+                'Title only'
+            );
+        });
+
+        it('are left out of the document unless ticked', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX, null, WITH_MAP);
+
             expect(lastOptions().activities.selectedActivities).toEqual(['c1', 'c2', 'c3']);
         });
 
-        it('are left off the worksheet unless their titles are asked for', async () => {
+        it('are left off the worksheet unless ticked', async () => {
             await modal.show(PREVIEW_MODE_IDEVICES, null, null, WITH_MAP);
 
             expect(lastWorksheetOptions().selectedActivities).toEqual(['c1', 'c2', 'c3']);
         });
 
-        it('come back, with the preview drawn again, once their titles are asked for', async () => {
+        it('come back, with the preview drawn again, once ticked', async () => {
             await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE, null, WITH_MAP);
             loaded();
             global.window.generatePrintPreview.mockClear();
 
-            tick(unprintable(), true);
+            tick(mapBox(), true);
             expect(busy()).toBe('true');
             await settle();
 
@@ -1019,10 +1027,10 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(status()).toBe('');
         });
 
-        it('can be asked for in the worksheet too, where the other document options cannot', async () => {
+        it('can be ticked for the worksheet too, where the document options cannot be changed', async () => {
             await modal.show(PREVIEW_MODE_IDEVICES, null, null, WITH_MAP);
 
-            expect(unprintable().disabled).toBe(false);
+            expect(mapBox().disabled).toBe(false);
             expect(linkUrls().disabled).toBe(true);
         });
     });

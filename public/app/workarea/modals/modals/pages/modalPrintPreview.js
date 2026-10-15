@@ -430,6 +430,8 @@ export default class ModalPrintPreview {
             selectionHeading: _('Activities'),
             selectionHint: _('Shown when a printing mode that includes activities is selected.'),
             selectAll: _('Select all'),
+            // Beside an activity that can never be printed: ticked, only its title is.
+            titleOnly: _('Title only'),
             noneSelected: _('Select at least one activity to print.'),
         };
     }

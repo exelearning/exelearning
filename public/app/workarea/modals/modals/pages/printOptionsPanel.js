@@ -2,22 +2,20 @@
  * Print options panel
  *
  * The panel at the right of the print preview. It holds the choices that change what is printed —
- * what to do with the project's interactive activities and which of them to print, whether to
- * write the URL of each link, whether folded blocks print unfolded, and whether the activities that
- * can never be printed leave their title and a note behind — and tells its owner whenever one of
- * them changes, so the preview can follow at once.
+ * whether to write the URL of each link, whether folded blocks print unfolded, what to print and
+ * which activities — and tells its owner whenever one of them changes, so the preview can follow
+ * at once.
  *
  * It knows nothing about the exporter. The owner hands it the activities, the choices and the
  * strings, and reads the state back. It looks like the Styles panel, but sits beside the preview
  * instead of over the workarea, because the preview is already a full-screen overlay.
  *
- * The choices about the activities are drawn only when the project has some; the document options
- * are part of the markup and always there, except the one about the activities that can never be
- * printed, which shows only when the project has any.
+ * The document options are part of the markup and always there; what to print and which
+ * activities are drawn only when the project has some.
  *
- * Those activities are left out by naming the others: the selection the panel reports never
- * includes them while they are not wanted, so the exporter leaves them out as it leaves out any
- * activity the user cleared, with no rule of its own.
+ * The activities that can never be printed are listed with the others, marked as printing their
+ * title only, and start cleared: ticked, each prints as its title and a note. Left cleared, they
+ * are left out as any activity the user cleared is, with no rule of the exporter's own.
  */
 import {
     bindActivitySelection,
@@ -35,12 +33,6 @@ export const PRINT_LINK_URLS_FIELD = 'printOptLinkUrls';
 /** Id of the checkbox that prints folded blocks unfolded, rather than as the preview shows them. */
 export const PRINT_UNFOLD_BLOCKS_FIELD = 'printOptUnfoldBlocks';
 
-/**
- * Id of the checkbox that keeps the activities that can never be printed, each as its title and a
- * note saying so. Cleared, they are left out of the list and of the document altogether.
- */
-export const PRINT_UNPRINTABLE_TITLES_FIELD = 'printOptUnprintableTitles';
-
 export default class PrintOptionsPanel {
     /**
      * @param {HTMLElement} root - The panel element
@@ -57,8 +49,6 @@ export default class PrintOptionsPanel {
         this.activitiesEl = root?.querySelector('.print-options-activities') ?? null;
         this.linkUrlsInput = root?.querySelector(`#${PRINT_LINK_URLS_FIELD}`) ?? null;
         this.unfoldBlocksInput = root?.querySelector(`#${PRINT_UNFOLD_BLOCKS_FIELD}`) ?? null;
-        this.unprintableInput = root?.querySelector(`#${PRINT_UNPRINTABLE_TITLES_FIELD}`) ?? null;
-        this.unprintableRow = this.unprintableInput?.closest('.form-check') ?? null;
         this.statusEl = root?.querySelector('.print-options-status') ?? null;
         this.closeButton = root?.querySelector('.print-options-close') ?? null;
         /** The notice's last sentence, one for a project with activities to choose and one without. */
@@ -69,10 +59,6 @@ export default class PrintOptionsPanel {
         this.labels = {};
         this.ideviceName = () => '';
         this.selection = null;
-        /** The activities the list shows now. */
-        this.offered = [];
-        /** Whether each activity is ticked, kept for those the list is not showing. */
-        this.ticks = new Map();
         this.disposers = [];
     }
 
@@ -91,18 +77,10 @@ export default class PrintOptionsPanel {
         for (const input of this.documentOptions()) {
             this.listen(input, 'change', () => this.onChange(this.getState(), input.id));
         }
-        this.listen(this.unprintableInput, 'change', () => {
-            this.renderSelection();
-            this.refresh();
-            this.onChange(this.getState(), PRINT_UNPRINTABLE_TITLES_FIELD);
-        });
     }
 
     /**
-     * The document options the markup provides that change how the document itself is drawn.
-     *
-     * The one about the activities that can never be printed is not among them: it changes which
-     * activities are printed, so it goes with the activity choices rather than with these.
+     * The document options the markup provides, which change how the document itself is drawn.
      *
      * @returns {HTMLInputElement[]} The checkboxes, in the order they are shown
      */
@@ -139,35 +117,13 @@ export default class PrintOptionsPanel {
     }
 
     /**
-     * Whether the project has activities that can never be printed, for the option about them to
-     * act on.
+     * Whether any of the project's activities has a printed form, as an exercise. With none, their
+     * titles are all there is to choose, and choosing none of them is no mistake.
      *
-     * @returns {boolean} true when at least one of the activities is one of them
+     * @returns {boolean} true when at least one activity is not one that can never be printed
      */
-    hasUnprintable() {
-        return this.activities.some((activity) => activity.neverPrintable);
-    }
-
-    /**
-     * Whether the activities that can never be printed are listed and printed, as their title and a
-     * note. Where the markup has no option for it they are, as they were before there was one.
-     *
-     * @returns {boolean} true when they are wanted
-     */
-    showsUnprintable() {
-        return this.unprintableInput ? this.unprintableInput.checked : true;
-    }
-
-    /**
-     * The activities the list offers: all of them, or only those that can be printed while the
-     * others are not wanted.
-     *
-     * @returns {Array<object>} The activities, in document order
-     */
-    offeredActivities() {
-        if (this.showsUnprintable()) return this.activities;
-
-        return this.activities.filter((activity) => !activity.neverPrintable);
+    hasPrintable() {
+        return this.activities.some((activity) => !activity.neverPrintable);
     }
 
     /**
@@ -181,9 +137,10 @@ export default class PrintOptionsPanel {
      * @param {Array<{value: string, label: string, prints: boolean}>} config.choices - What can be
      *     done with them. `prints` is false for the choice that leaves them all out
      * @param {string|null} config.choice - The value to preselect
-     * @param {string[]|null} config.selectedActivities - Ids to tick; null ticks every one
+     * @param {string[]|null} config.selectedActivities - Ids to tick; null ticks every activity
+     *     but those that can never be printed
      * @param {object} config.labels - Translated strings: choicesHeading, selectionHeading,
-     *     selectionHint, selectAll and noneSelected
+     *     selectionHint, selectAll, titleOnly and noneSelected
      * @param {(type: string) => string} config.ideviceName - Translated name of an iDevice type
      */
     configure({
@@ -198,18 +155,14 @@ export default class PrintOptionsPanel {
         this.choices = choices;
         this.labels = labels;
         this.ideviceName = ideviceName;
-        const wanted = Array.isArray(selectedActivities) ? new Set(selectedActivities) : null;
-        this.ticks = new Map(this.activities.map(({ id }) => [id, wanted ? wanted.has(id) : true]));
         this.selection = null;
-        this.offered = [];
         if (this.activitiesEl) this.activitiesEl.textContent = '';
         this.setStatus('');
-        if (this.unprintableRow) this.unprintableRow.hidden = !this.hasUnprintable();
 
         if (this.hasActivities() && this.activitiesEl) {
             this.activitiesEl.append(this.renderChoices(choice));
             this.listenToChoices();
-            this.renderSelection();
+            this.renderSelection(selectedActivities);
             this.refresh();
         }
 
@@ -278,35 +231,28 @@ export default class PrintOptionsPanel {
     }
 
     /**
-     * Draw the list of the activities offered now, ticked as they were.
+     * Draw the list of the activities, every one of them, ticked as asked.
      *
-     * The list is drawn again when the activities that can never be printed come and go. What was
-     * ticked is kept for every activity, shown or not, so one that comes back is ticked or clear as
-     * the user left it.
+     * @param {string[]|null} selectedActivities - Ids to tick. Null ticks every activity but those
+     *     that can never be printed: a handout has no use for their notes unless they are asked for
      */
-    renderSelection() {
-        if (!this.activitiesEl || !this.hasActivities()) return;
-
-        if (this.selection) {
-            const ticked = new Set(readSelectedActivities(this.selection));
-            for (const { id } of this.offered) this.ticks.set(id, ticked.has(id));
-            this.selection.remove();
-        }
-
-        this.offered = this.offeredActivities();
+    renderSelection(selectedActivities) {
         this.selection = renderActivitySelection(
-            this.offered,
+            this.activities,
             {
                 heading: this.labels.selectionHeading,
                 hint: this.labels.selectionHint,
                 selectAll: this.labels.selectAll,
+                titleOnly: this.labels.titleOnly,
             },
             this.ideviceName
         );
         this.activitiesEl.append(this.selection);
         setSelectedActivities(
             this.selection,
-            this.offered.filter(({ id }) => this.ticks.get(id) !== false).map(({ id }) => id)
+            Array.isArray(selectedActivities)
+                ? selectedActivities
+                : this.activities.filter((activity) => !activity.neverPrintable).map(({ id }) => id)
         );
         bindActivitySelection(this.selection, () => this.activityOptionChanged());
     }
@@ -342,10 +288,9 @@ export default class PrintOptionsPanel {
      *
      * @returns {{choice: string|null, selectedActivities: string[]|null, valid: boolean,
      *     showLinkUrls: boolean, unfoldBlocks: boolean}} The chosen value; the ids to print, or
-     *     null for every one of them (which also covers the activities someone adds later), never
-     *     while those that can never be printed are not wanted; whether the choice can be printed
-     *     at all; whether to write the URL of each link; and whether to print folded blocks
-     *     unfolded rather than as the preview shows them
+     *     null for every one of them (which also covers the activities someone adds later);
+     *     whether the choice can be printed at all; whether to write the URL of each link; and
+     *     whether to print folded blocks unfolded rather than as the preview shows them
      */
     getState() {
         const documentState = {
@@ -362,13 +307,22 @@ export default class PrintOptionsPanel {
 
         return {
             choice,
-            // Only what the list shows can be ticked, so this is every activity only while the list
-            // shows them all and nothing in it is cleared.
+            // The list holds every activity, so this is all of them only while none is cleared.
             selectedActivities: ids.length === this.activities.length ? null : ids,
-            // A list with nothing ticked is a mistake; one with nothing in it to tick is not.
-            valid: ids.length > 0 || this.offeredActivities().length === 0,
+            valid: this.isValidSelection(ids),
             ...documentState,
         };
+    }
+
+    /**
+     * Whether a selection can be printed. Nothing ticked is a mistake, unless the titles of
+     * activities that can never be printed are all there is to choose: then it leaves them out.
+     *
+     * @param {string[]} ids - The ids ticked
+     * @returns {boolean} true when it can be printed
+     */
+    isValidSelection(ids) {
+        return ids.length > 0 || !this.hasPrintable();
     }
 
     /**
@@ -382,17 +336,14 @@ export default class PrintOptionsPanel {
 
     /**
      * Keep what is shown in step with the choice: the list only matters while activities are going
-     * to be printed and it has some to offer, the activities that can never be printed only while
-     * any is printed at all, and printing none of them is a mistake worth saying so.
+     * to be printed, and a selection that cannot be printed is a mistake worth saying so.
      */
     refresh() {
         if (!this.selection) return;
 
         const { prints, ids } = this.snapshot();
-        const offers = this.offered.length > 0;
-        this.selection.hidden = !prints || !offers;
-        if (this.unprintableInput) this.unprintableInput.disabled = !prints;
-        this.setStatus(prints && offers && ids.length === 0 ? this.labels.noneSelected || '' : '');
+        this.selection.hidden = !prints;
+        this.setStatus(prints && !this.isValidSelection(ids) ? this.labels.noneSelected || '' : '');
     }
 
     /**
@@ -440,8 +391,6 @@ export default class PrintOptionsPanel {
         if (this.activitiesEl) this.activitiesEl.textContent = '';
         this.selection = null;
         this.activities = [];
-        this.offered = [];
-        this.ticks = new Map();
         if (this.root) this.root.hidden = true;
     }
 }
