@@ -97,28 +97,33 @@ preview (option 5).** It avoids a second window, and the preview opens at once w
 seen next to its effect, with no closing and reopening to try another.
 
 File → Print opens the preview straight away, with an options panel docked beside it, as wide as the
-Styles panel. When the project has interactive activities, the panel offers four mutually exclusive
-choices:
+Styles panel. The panel runs in sections, one under another and each set off by a rule, as the design
+reviewed in #2539 lays them out: a note saying that all visible content will be printed and what can
+be chosen; *Document*; *What would you like to print?*; and *Activities*. The last two show only
+when the project has interactive activities. *What would you like to print?* offers four mutually
+exclusive choices, each named by what it prints:
 
 | Choice | Result |
 |---|---|
-| Do not print them | The document without them |
-| Print them where they are | Each activity printed as an exercise where the author put it |
-| **Print them in an appendix** (default) | Title plus a cross-reference in place; the exercises numbered at the back |
-| Print only the activities | The worksheet alone — what *Print iDevices* used to produce |
+| Content without activities | The document without them |
+| Content with activities | Each activity printed as an exercise where the author put it |
+| **Content with activities in an appendix** (default) | Title plus a cross-reference in place; the exercises numbered at the back |
+| Activities only (no other content) | The worksheet alone — what *Print iDevices* used to produce |
 
 **The appendix is the default because both the text and the activities print better that way.** The
 text runs on as the author wrote it, without exercises breaking it up, and in the appendix each
 exercise starts on a page of its own. A pointer marks where each one was.
 
 **Which activities print is chosen in the same panel.** While a choice prints activities, the panel
-lists them all, ticked. Unticking one leaves it out of the document, or off the worksheet, as if the
-author had not put it there. Print is disabled with none ticked, unless the choice is to print none.
+lists them all under *Activities*: those with a printed form ticked, and those that can never be
+printed cleared and marked *Title only* (see below). Unticking one leaves it out of the document, or
+off the worksheet, as if the author had not put it there. Print is disabled with none ticked, unless
+the choice is to print none, or every activity is one that can never be printed.
 
 **The panel also holds the document options**, which apply with or without activities: *Show link
-URLs* (ticked), *Print all visible content* (clear; see "Folded is not hidden" below) and *Show
-titles of non-printable activities* (clear, and shown only when the project has any). With no
-interactive activity, these are all the panel offers, and nothing has to be changed before printing.
+URLs* (ticked) and *Show all hidden dropdown content* (clear; see "Folded is not hidden" below).
+With no interactive activity, these are all the panel offers, and nothing has to be changed before
+printing.
 
 Every change draws the preview again after a short pause (250 ms), so ticking several activities in
 a row draws it once, and Print is disabled while the preview is being drawn.
@@ -177,22 +182,22 @@ commit message.
 **What can never be printed is left out unless asked for.** A handout dotted with "not available
 in print" tells the student about the editor rather than about the subject, and unlike data that
 could not be read there is nothing to fix: the hole is the decision, not a gap. So printing leaves these
-activities out by default — of the panel's list, of the document, and of the worksheet's note for
-the teacher — and *Show titles of non-printable activities* brings them back. Ticked, each comes
-back as it was: its block's title and the note where the author put it, or a numbered entry in the
-appendix with a pointer to it. A page that held nothing else keeps its title either way, as it does
-when every activity is left out.
+activities out by default — of the document, and of the worksheet's note for the teacher — but lists
+them under *Activities* with the others, cleared and marked *Title only*, so the teacher sees they
+are there and can ask for them one by one. Ticked, each comes back as it was: its block's title and
+the note where the author put it, or a numbered entry in the appendix with a pointer to it. *Select
+all* ticks them with the others. A page that held nothing else keeps its title either way, as it
+does when every activity is left out.
 
-The exporters have no rule of their own for this. While the option is clear, the panel names the
-activities to print and leaves these out of the list, and the exporters drop them as they drop any
-activity the user unticked: a block left empty goes with its title, and the appendix is numbered
-without a gap. Which activities they are comes from `isNeverPrintable`, through the same listing
-that fills the panel.
+The exporters have no rule of their own for this. The panel starts with these cleared and names the
+activities to print, and the exporters drop them as they drop any activity the user unticked: a
+block left empty goes with its title, and the appendix is numbered without a gap. Which activities
+they are comes from `isNeverPrintable`, through the same listing that fills the panel.
 
-Two near cases stay outside the option. A padlock prints the writing it guards; one that guards
-none says it is not available, but that is about the component, not about padlocks, so the option
-does not hide it. And the line for data an adapter cannot read stays whatever the option says:
-that is a problem the teacher has to see.
+Two near cases are not marked. A padlock prints the writing it guards; one that guards none says it
+is not available, but that is about the component, not about padlocks, so it is listed ticked like
+any other padlock. And the line for data an adapter cannot read prints with its activity, which
+starts ticked: that is a problem the teacher has to see.
 
 **An exercise is named after the block the author put it in, never after its iDevice.**
 'CLASIFICA' above an exercise named the tool rather than the work. What names it is the author's
@@ -216,8 +221,8 @@ both the wrapper and the exercise inside it.
 *Why not reuse the `text` type as the inert wrapper:* its `renderView` rewrites the component's
 content from `jsonProperties` at load, which would erase the fragment.
 
-**File → Print iDevices is gone.** The worksheet is reached from File → Print, as *Print only the
-activities*, so the File menu keeps a single entry for printing.
+**File → Print iDevices is gone.** The worksheet is reached from File → Print, as *Activities only
+(no other content)*, so the File menu keeps a single entry for printing.
 
 ### Folded is not hidden, and print does not confuse the two
 
@@ -238,13 +243,13 @@ It takes `!important`, which the surrounding rules do not. The toggle collapses 
 style; the author's own fold is a class and would not need it.
 
 **In the preview, folding is the user's choice, and by default the page prints as it is shown.**
-*Print all visible content* is clear by default, which puts `exe-print-as-shown` on the preview's
-`<html>`: the rule, written as `html:not(.exe-print-as-shown) …`, stands down, the author's folds and
-the toggles stay, and the page prints as the preview shows it, so a user can fold what they do not
-want on paper and open what they do. Ticking the option takes the class away: the preview shows
-folded blocks open and without their toggles, as they will print. Exports never carry the class, so
-Ctrl+P on an exported resource always prints folded blocks open. The worksheet has no blocks to fold,
-and its panel offers no such option.
+*Show all hidden dropdown content* is clear by default, which puts `exe-print-as-shown` on the
+preview's `<html>`: the rule, written as `html:not(.exe-print-as-shown) …`, stands down, the
+author's folds and the toggles stay, and the page prints as the preview shows it, so a user can fold
+what they do not want on paper and open what they do. Ticking the option takes the class away: the
+preview shows folded blocks open and without their toggles, as they will print. Exports never carry
+the class, so Ctrl+P on an exported resource always prints folded blocks open. The worksheet has no
+blocks to fold, and its panel offers no such option.
 
 **What the author hid stays hidden, and `teacher-only` is deliberately not excluded.** `novisible`
 and `teacher-only` sit on the `<article>`, which the existing rules take out of the layout with
@@ -282,9 +287,10 @@ for the piece under it, which a block does not need.
 - The appendix introduces numbering that has to agree between the body's cross-references and the
   back of the document — a correspondence with no compiler to check it.
 - By default the handout no longer shows that an activity that can never be printed stood there. A
-  teacher who wants it to say so has to tick the option.
+  teacher who wants it to say so has to tick it in the list.
+- With such an activity in the project, *Select all* starts half ticked, since those are cleared.
 - From the preview, a block folded with its toggle turned off prints with its title alone unless
-  *Print all visible content* is ticked: there is nothing on it to open.
+  *Show all hidden dropdown content* is ticked: there is nothing on it to open.
 
 ### Neutral
 
@@ -322,21 +328,21 @@ for the piece under it, which a block does not need.
 - E2E for the selection: every activity listed and ticked only while activities are to be printed;
   no printing with none ticked, unless none is to be printed; an unticked activity left out of the
   document and off the worksheet.
-- E2E for the activities that can never be printed: no option when the project has none (an empty
-  padlock included, which keeps its note); left out of the list, the document and the worksheet's
-  note by default; listed and printed with their titles, in place and in the appendix, once the
-  option is ticked.
+- E2E for the activities that can never be printed: none marked *Title only* when the project has
+  none (an empty padlock included, which keeps its note); listed cleared and marked, and left out of
+  the document and the worksheet's note, by default; printed with their titles, in place and in the
+  appendix, once ticked.
 - E2E for folded blocks: the page printed as shown by default; a visible folded block printed open,
-  and the hidden ones left folded, once *Print all visible content* is ticked; no such option for
-  the worksheet.
+  and the hidden ones left folded, once *Show all hidden dropdown content* is ticked; no such option
+  for the worksheet.
 - Manual pass over `test/fixtures/todos-los-idevices_dos_informes.elpx`, which contains both
   adapted and unadapted interactive activities.
 - Widening the definition is expected to move E2E numbers, and did: a fixture that held one
   convertible activity turned out to hold two unconvertible ones beside it. A case that counts
   activities without saying which kind it means will keep breaking for the right reason and being
   fixed for the wrong one, so they are counted apart.
-- Revisit once the feature is in use: if nobody picks "do not print them" or "print only the
-  activities", the panel is offering a question that no longer has three answers.
+- Revisit once the feature is in use: if nobody picks "Content without activities" or "Activities
+  only (no other content)", the panel is offering a question that no longer has three answers.
 
 ## Follow-up work
 

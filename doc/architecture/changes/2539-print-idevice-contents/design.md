@@ -101,7 +101,7 @@ File → Print
    │
    ▼ listInteractiveActivities → the options panel beside the preview
    │
-   ├─ "Print only the activities"        └─ any other choice
+   ├─ "Activities only"                  └─ any other choice
    │                                        │
    ▼ WorksheetExporter                      ▼ PrintPreviewExporter
    │  walk, group by page                   │    preprocessPages  (asset:// → blob)
@@ -257,8 +257,10 @@ cleanup to change one call.
 **File → Print** is the only way in: the File menu has no *Print iDevices* entry. It lists the
 project's interactive activities and opens the preview straight away, with an options panel beside
 it. With none, the panel offers only the document options and the document prints as it always did.
-With some, it offers four mutually exclusive choices, with *print them in an appendix* preselected;
-*Print only the activities* switches the overlay to the worksheet.
+With some, *What would you like to print?* offers four mutually exclusive choices, with *Content
+with activities in an appendix* preselected; *Activities only (no other content)* switches the
+overlay to the worksheet. *Activities* then lists each one to tick or clear; those that can never be
+printed are marked *Title only* and start cleared.
 
 Translated strings are passed from `modalPrintPreview.js` into the shared code, because the export
 layer's `trans()` is a pass-through. Nothing under `translations/` is touched.
