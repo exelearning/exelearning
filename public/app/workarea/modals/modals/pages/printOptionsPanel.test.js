@@ -87,7 +87,6 @@ describe('PrintOptionsPanel', () => {
                     <button type="button" class="print-options-close">Close</button>
                 </div>
                 <div class="print-options-body">
-                    <div class="print-options-activities" hidden></div>
                     <fieldset class="print-options-group print-options-document">
                         <legend class="print-options-group-title">Document</legend>
                         <div class="form-check">
@@ -103,6 +102,7 @@ describe('PrintOptionsPanel', () => {
                             <label class="form-check-label" for="printOptUnprintableTitles">Show titles of non-printable activities</label>
                         </div>
                     </fieldset>
+                    <div class="print-options-activities" hidden></div>
                 </div>
                 <p class="print-options-status" role="status"></p>
             </aside>
@@ -217,9 +217,14 @@ describe('PrintOptionsPanel', () => {
             expect(toggle.getAttribute('aria-expanded')).toBe('true');
         });
 
-        it('shows the activity choices above the document options', () => {
+        it('shows what to print, then which activities, below the document options', () => {
             expect(activitiesEl().hidden).toBe(false);
-            expect(activitiesEl().nextElementSibling.classList.contains('print-options-document')).toBe(true);
+            expect(activitiesEl().previousElementSibling.classList.contains('print-options-document')).toBe(true);
+            // One section under another: the choices first, then the list to pick from.
+            expect([...activitiesEl().children].map((section) => section.className)).toEqual([
+                'print-options-group',
+                'print-activities-selection',
+            ]);
         });
 
         it('offers the choices in order, with the one asked for preselected', () => {
@@ -238,7 +243,7 @@ describe('PrintOptionsPanel', () => {
         });
 
         it('titles the groups as given', () => {
-            expect(root.querySelector('.print-options-group-title').textContent).toBe('Interactive activities');
+            expect(activitiesEl().querySelector('.print-options-group-title').textContent).toBe('Interactive activities');
             expect(root.querySelector('.print-activities-selection-title').textContent).toBe('Select the activities');
             expect(root.querySelector(`label[for="${PRINT_SELECTION_ALL}"]`).textContent).toBe('Select all');
         });

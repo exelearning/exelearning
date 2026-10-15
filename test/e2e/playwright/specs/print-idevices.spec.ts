@@ -2214,6 +2214,25 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(4);
         await expect(panel.locator('input[name="print-activity-mode"][value="appendix"]')).toBeChecked();
 
+        // One section under another, each set off from the one above by a rule: the document
+        // options, then what to print, then which activities.
+        const sections = [
+            panel.locator('.print-options-document'),
+            panel.locator('.print-options-activities > .print-options-group'),
+            panel.locator('.print-activities-selection'),
+        ];
+        const tops: number[] = [];
+        for (const section of sections) tops.push((await section.boundingBox())!.y);
+        expect(tops).toEqual([...tops].sort((a, b) => a - b));
+        for (const section of sections.slice(1)) {
+            const rule = await section.evaluate(node => {
+                const style = getComputedStyle(node);
+                return { style: style.borderTopStyle, width: Number.parseFloat(style.borderTopWidth) };
+            });
+            expect(rule.style).toBe('solid');
+            expect(rule.width).toBeGreaterThan(0);
+        }
+
         // The preview is drawn at once, for the choice that is preselected: a pointer where each
         // activity was, and the exercise itself in the appendix.
         const { frame } = await waitForPreview(page);

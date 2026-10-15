@@ -771,12 +771,12 @@ describe('ModalPrintPreview and its options panel', () => {
             <aside class="print-options-panel" hidden>
                 <button class="print-options-close"></button>
                 <div class="print-options-body">
-                    <div class="print-options-activities" hidden></div>
                     <fieldset class="print-options-document">
                         <input type="checkbox" id="printOptLinkUrls" checked>
                         <input type="checkbox" id="printOptUnfoldBlocks">
                         <div class="form-check" hidden><input type="checkbox" id="printOptUnprintableTitles"></div>
                     </fieldset>
+                    <div class="print-options-activities" hidden></div>
                 </div>
                 <p class="print-options-status"></p>
             </aside>

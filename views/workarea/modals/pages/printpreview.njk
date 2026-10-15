@@ -36,7 +36,7 @@
             {# The name lets the desktop app find this frame to make a PDF of it. #}
             <iframe class="print-preview-iframe" name="exe-print-preview" title="{{ 'Print preview' | trans }}"></iframe>
         </div>
-        {# The options that change what the preview shows. The script fills in the choices about the interactive activities when the project has any; the document options are always there. #}
+        {# The options that change what the preview shows, one section under another: the document options, always there, then what to print and which activities, which the script fills in when the project has any. #}
         <aside id="printOptionsPanel" class="print-options-panel" aria-labelledby="printOptionsTitle" hidden>
             <div class="print-options-header">
                 <h2 id="printOptionsTitle" class="print-options-title">{{ 'Print options' | trans }}</h2>
@@ -47,7 +47,6 @@
                 </button>
             </div>
             <div class="print-options-body">
-                <div class="print-options-activities" hidden></div>
                 <fieldset class="print-options-group print-options-document">
                     <legend class="print-options-group-title">{{ 'Document' | trans }}</legend>
                     <div class="form-check">
@@ -64,6 +63,7 @@
                         <label class="form-check-label" for="printOptUnprintableTitles">{{ 'Show titles of non-printable activities' | trans }}</label>
                     </div>
                 </fieldset>
+                <div class="print-options-activities" hidden></div>
             </div>
             <p class="print-options-status" role="status" aria-live="polite"></p>
         </aside>

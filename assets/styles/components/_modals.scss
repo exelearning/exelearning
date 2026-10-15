@@ -3784,8 +3784,10 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             font-weight: 600;
         }
 
-        // The document options follow the activity choices, when there are any
-        .print-options-activities:not([hidden]) + .print-options-document {
+        // The sections run down the panel, each set off from the one above by a rule: the document
+        // options, then what to print, then which activities
+        .print-options-activities > .print-options-group,
+        .print-options-activities > .print-activities-selection {
             margin-top: 1.25rem;
             padding-top: 1rem;
             border-top: 1px solid var(--elements-hover);
