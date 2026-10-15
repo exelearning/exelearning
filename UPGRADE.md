@@ -4,6 +4,57 @@ This document describes breaking changes and migration steps between major versi
 
 ---
 
+## Security hardening: production requires real secrets
+
+**What changed:**
+- A production deployment now **refuses to boot** (`process.exit(1)`) when
+  `API_JWT_SECRET` (the API JWT signing key) **or** `APP_SECRET` (which verifies
+  platform-integration JWTs) is missing or still an in-repo default. Leaving
+  either at its default made tokens forgeable by anyone who reads the
+  open-source repository.
+- The check now treats **`APP_ENV=prod`** as production, not only
+  `NODE_ENV=production`. The Docker image already sets `NODE_ENV=production`, so
+  Docker deployments were already guarded on the JWT secret; the newly-covered
+  surface is **non-Docker production** (`APP_ENV=prod` via systemd / PaaS / bare
+  `bun`) and the **`APP_SECRET`** key.
+- `.env.dist` now defaults to `APP_ENV=dev`, so a fresh clone boots for local
+  development without extra setup.
+
+**Impact / action required:**
+- Production hosts must export a real `API_JWT_SECRET` **and** `APP_SECRET`
+  (e.g. `openssl rand -hex 32` each) before starting the server. See
+  `doc/development/authentication.md` and `doc/development/environment.md`.
+- No action for local development or the Docker image beyond providing secrets
+  in production compose/env as documented.
+
+---
+
+## Security hardening: platform integration requires a `PROVIDER_URLS` allow-list
+
+**What changed:**
+- `PROVIDER_URLS` moved from optional/permissive to a **required, fail-closed
+  allow-list** for platform integration (Moodle `exescorm`/`exeweb`). When it is
+  empty, **every** platform-integration callback is now rejected — previously an
+  empty value allowed any `returnurl` host, which was an SSRF fail-open.
+- The allow-list is matched on the parsed **protocol + host + port** and, when an
+  entry includes a path, a `/`-boundary **base-path** prefix (so `/moodle` does
+  not also match `/moodleXX`). Embedded credentials (`user:pass@host`) are
+  rejected. A one-time startup warning (`warnIfProviderUrlsMissing`) flags a
+  deployment that sets `PROVIDER_IDS`/`PROVIDER_TOKENS` but leaves `PROVIDER_URLS`
+  empty.
+
+**Impact / action required:**
+- Deployments that use platform integration must set an explicit allow-list, e.g.:
+
+  ```env
+  PROVIDER_URLS=https://moodle.example.org
+  ```
+
+  List several origins comma-separated if needed. Deployments that do not use
+  platform integration need no action.
+
+---
+
 ## Upgrading from 3.x to 4.x
 
 ### Breaking Change: Docker container user
