@@ -3732,12 +3732,13 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
         }
     }
 
-    // The options panel: the look of the Styles panel, docked beside the preview
+    // The options panel: the look of the Styles panel, docked beside the preview, and 30% wider
+    // so that the activities' titles fit
     .print-options-panel {
         display: flex;
-        flex: 0 0 320px;
+        flex: 0 0 416px;
         flex-direction: column;
-        width: 320px;
+        width: 416px;
         min-height: 0;
         padding: 20px 15px;
         background: var(--white, white);
@@ -3888,7 +3889,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             right: 0;
             bottom: 0;
             z-index: 20;
-            width: min(320px, 100%);
+            width: min(416px, 100%);
         }
     }
 }

@@ -2262,7 +2262,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         ).toHaveCount(1);
     });
 
-    test('docks the panel beside the preview, as wide as the Styles panel', async ({
+    test('docks the panel beside the preview, 30% wider than the Styles panel', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -2274,7 +2274,8 @@ test.describe('Print: choosing what happens to the interactive activities', () =
 
         const panelBox = await panel.boundingBox();
         const previewBox = await page.locator('.print-preview-content').boundingBox();
-        expect(Math.round(panelBox!.width)).toBe(320);
+        // The Styles panel is 320px wide.
+        expect(Math.round(panelBox!.width)).toBe(416);
         // Beside the preview, never over it.
         expect(previewBox!.x + previewBox!.width).toBeLessThanOrEqual(panelBox!.x + 1);
     });

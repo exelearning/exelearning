@@ -96,12 +96,12 @@ whenever one of them changes.
 preview (option 5).** It avoids a second window, and the preview opens at once with each choice
 seen next to its effect, with no closing and reopening to try another.
 
-File → Print opens the preview straight away, with an options panel docked beside it, as wide as the
-Styles panel. The panel runs in sections, one under another and each set off by a rule, as the design
-reviewed in #2539 lays them out: a note saying that all visible content will be printed and what can
-be chosen; *Document*; *What would you like to print?*; and *Activities*. The last two show only
-when the project has interactive activities. *What would you like to print?* offers four mutually
-exclusive choices, each named by what it prints:
+File → Print opens the preview straight away, with an options panel docked beside it, 30% wider than
+the Styles panel so that activity titles fit. The panel runs in sections, one under another and each
+set off by a rule, as the design reviewed in #2539 lays them out: a note saying that all visible
+content will be printed and what can be chosen; *Document*; *What would you like to print?*; and
+*Activities*. The last two show only when the project has interactive activities. *What would you
+like to print?* offers four mutually exclusive choices, each named by what it prints:
 
 | Choice | Result |
 |---|---|
