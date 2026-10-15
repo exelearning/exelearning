@@ -158,6 +158,7 @@ public/libs/jquery-ui/jquery-ui.min.js
 public/libs/jquery-ui/jquery-ui.min.css
 public/libs/fabric/fabric.min.js
 public/libs/dompurify/purify.min.js
+public/libs/jspdf/jspdf.umd.min.js
 
 ###> claude-code ###
 .claude/settings.local.json

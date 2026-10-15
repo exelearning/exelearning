@@ -1656,6 +1656,7 @@ describe('progress-report iDevice (export)', () => {
 
     it('fallbackPng uses electronAPI.saveBufferAs with Uint8Array when jsPDF unavailable', async () => {
       window.jspdf = undefined;
+      vi.stubGlobal('$exe', { loadJsPDF: vi.fn((onReady, onError) => onError()) });
 
       const canvas = document.createElement('canvas');
       canvas.width = 100;
@@ -1677,6 +1678,8 @@ describe('progress-report iDevice (export)', () => {
       await new Promise((r) => setTimeout(r, 300));
 
       expect(mockSaveBufferAs).toHaveBeenCalledTimes(1);
+      expect($exe.loadJsPDF).toHaveBeenCalledTimes(1);
+      vi.unstubAllGlobals();
       expect(mockSaveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
       expect(mockSaveBufferAs.mock.calls[0][0].length).toBeGreaterThan(0);
       expect(mockSaveBufferAs.mock.calls[0][1]).toBe('progress-report-png');
@@ -1763,4 +1766,13 @@ describe('progress-report iDevice (export)', () => {
       vi.restoreAllMocks();
     });
   });
+});
+
+describe('jsPDF loading', () => {
+    it('uses the shared bundled copy through $exe.loadJsPDF, never a CDN', () => {
+        const code = readFileSync(join(__dirname, 'progress-report.js'), 'utf-8');
+        expect(code).not.toMatch(/https?:\/\/[^'"`]*jspdf/i);
+        expect(code).toContain('$exe.loadJsPDF(');
+        expect(code).not.toContain('ensureJsPDF');
+    });
 });

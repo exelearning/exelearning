@@ -282,6 +282,17 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         isDirectory: true,
     },
 
+    // jsPDF for the "save as PDF" button of checklist, progress report and rubric.
+    // Loaded on demand by $exe.loadJsPDF (common.js), so no <script> tag is added.
+    {
+        name: 'jspdf',
+        type: 'regex',
+        pattern:
+            /class\s*=\s*["'][^"']*\b(?:listacotejo-IDevice|informe-IDevice|rubric-IDevice|exe-rubrics-DataGame)\b/,
+        files: ['jspdf/jspdf.umd.min.js'],
+        loadOnDemand: true,
+    },
+
     // ELPX download support (for download-source-file iDevice)
     // Includes fflate for client-side ZIP generation
     {
