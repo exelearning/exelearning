@@ -46,6 +46,7 @@ import { trans } from '../services/translation';
 import { getBasePath } from '../utils/basepath.util';
 import { logActivity } from '../services/activity-logger';
 import { getSystemInfo } from '../services/system-info';
+import { getDefaultQuotaMb as getDefaultQuotaMbDefault } from '../services/app-settings';
 import {
     getActiveUserMetrics as getActiveUserMetricsDefault,
     getActivityTimeSeries as getActivityTimeSeriesDefault,
@@ -94,6 +95,7 @@ export interface AdminQueries {
     updateUserStatus: typeof updateUserStatusDefault;
     createUserAsAdmin: typeof createUserAsAdminDefault;
     updateUserQuota: typeof updateUserQuotaDefault;
+    getDefaultQuotaMb: typeof getDefaultQuotaMbDefault;
     deleteUser: typeof deleteUserDefault;
     getSystemStats: typeof getSystemStatsDefault;
     getUserStorageUsage: typeof getUserStorageUsageDefault;
@@ -137,6 +139,7 @@ const defaultDependencies: AdminDependencies = {
         updateUserStatus: updateUserStatusDefault,
         createUserAsAdmin: createUserAsAdminDefault,
         updateUserQuota: updateUserQuotaDefault,
+        getDefaultQuotaMb: getDefaultQuotaMbDefault,
         deleteUser: deleteUserDefault,
         getSystemStats: getSystemStatsDefault,
         getUserStorageUsage: getUserStorageUsageDefault,
@@ -353,11 +356,9 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         storage_and_quotas: trans('Storage and quotas', {}, locale),
         quota_mb: trans('Quota (MB)', {}, locale),
         quota_help: trans('Leave empty for unlimited quota', {}, locale),
-        default_quota_mb: trans('Default quota (MB).', {}, locale),
-        max_storage_per_user: trans('Maximum storage per user (MB).', {}, locale),
+        default_quota_mb: trans('Default quota (MB) for new users. Existing users keep their own quota.', {}, locale),
         max_upload_size: trans('Maximum upload size (MB).', {}, locale),
         unlimited: trans('Unlimited', {}, locale),
-        count_autosave_in_quota: trans('Counts autosave in quota.', {}, locale),
         // Settings — autosave
         autosave: trans('Autosave', {}, locale),
         autosave_interval: trans('Autosave interval (seconds).', {}, locale),
@@ -586,7 +587,8 @@ const createUserSchema = t.Object({
     email: t.String({ format: 'email' }),
     password: t.String({ minLength: 4 }),
     roles: t.Optional(t.Array(t.String())),
-    quota_mb: t.Optional(t.Number()),
+    // Omitted: DEFAULT_QUOTA. null: unlimited.
+    quota_mb: t.Optional(t.Union([t.Number(), t.Null()])),
 });
 
 const updateRolesSchema = t.Object({
@@ -637,12 +639,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     DEFAULT_PROJECT_VISIBILITY: { value: process.env.DEFAULT_PROJECT_VISIBILITY || 'private', type: 'string' },
     USER_RECENT_ODE_FILES_AMOUNT: { value: process.env.USER_RECENT_ODE_FILES_AMOUNT ?? '3', type: 'number' },
     COLLABORATIVE_BLOCK_LEVEL: { value: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice', type: 'string' },
-    USER_STORAGE_MAX_DISK_SPACE: { value: process.env.USER_STORAGE_MAX_DISK_SPACE ?? '1024', type: 'number' },
     DEFAULT_QUOTA: { value: process.env.DEFAULT_QUOTA ?? '4096', type: 'number' },
-    COUNT_USER_AUTOSAVE_SPACE_ODE_FILES: {
-        value: process.env.COUNT_USER_AUTOSAVE_SPACE_ODE_FILES ?? 'true',
-        type: 'boolean',
-    },
     FILE_UPLOAD_MAX_SIZE: { value: process.env.FILE_UPLOAD_MAX_SIZE ?? '1024', type: 'number' },
     PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL: {
         value: process.env.PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL ?? '600',
@@ -1090,7 +1087,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         email: body.email,
                         password: hashedPassword,
                         roles,
-                        quotaMb: body.quota_mb,
+                        quotaMb: body.quota_mb === undefined ? await queries.getDefaultQuotaMb(db) : body.quota_mb,
                     });
 
                     set.status = 201;
