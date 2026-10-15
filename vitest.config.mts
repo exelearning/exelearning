@@ -54,7 +54,6 @@ export default defineConfig({
             'public/app/common/exe_media/**',
             'public/app/common/exe_math/**',
             'public/app/common/exe_magnify/**',
-            'public/app/common/exe_lightbox/**',
             'public/app/common/exe_highlighter/**',
             'public/files/perm/themes/**',
         ],
