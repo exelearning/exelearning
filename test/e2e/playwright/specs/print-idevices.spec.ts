@@ -14,7 +14,7 @@
  * screen, so the hint assertions below bound the count rather than pinning it.
  */
 
-import { chromium, type Browser, type FrameLocator, type Page } from '@playwright/test';
+import { chromium, type Browser, type FrameLocator, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '../fixtures/auth.fixture';
@@ -2726,11 +2726,13 @@ test.describe('Print: choosing which interactive activities to print', () => {
         await expect(frame.locator('.worksheet-activity').first()).toBeVisible();
     });
 
-    test('keeps every activity of a large project within reach by scrolling the panel', async ({
+    test('scrolls only the list of a large project, and the whole panel when the window is short', async ({
         authenticatedPage,
         createProject,
     }) => {
         const page = authenticatedPage;
+        // Tall enough for the options and part of the list.
+        await page.setViewportSize({ width: 1280, height: 900 });
         const uuid = await createProject(page, 'Print many activities');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -2739,20 +2741,44 @@ test.describe('Print: choosing which interactive activities to print', () => {
         const panel = await openPrintPanel(page);
         await panel.waitFor({ state: 'visible', timeout: 15000 });
         expect(await panel.locator(SELECTED).count()).toBeGreaterThan(5);
+        const body = panel.locator('.print-options-body');
+        const list = panel.locator('.print-activities-list');
+        const overflows = (box: Locator) => box.evaluate(node => node.scrollHeight > node.clientHeight + 1);
 
-        // The panel scrolls as a whole: the last activity is reached by scrolling it into view,
-        // and it stays inside the panel instead of spilling out below it.
-        const last = panel.locator(SELECTED).last();
-        await last.scrollIntoViewIfNeeded();
-        await expect(last).toBeVisible();
-        // It can be clicked there, ticked or cleared as it starts: the last may be one that can
-        // never be printed.
-        const wasChecked = await last.isChecked();
-        await last.click();
-        await expect(last).toBeChecked({ checked: !wasChecked });
-        const lastBox = await last.boundingBox();
-        const panelBox = await panel.boundingBox();
-        expect(lastBox!.y + lastBox!.height).toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 1);
+        /**
+         * Reach the last activity by scrolling it into view, and check that it shows inside the list
+         * and the panel, and that it can be clicked there, ticked or cleared as it starts: the last
+         * may be one that can never be printed.
+         */
+        async function clickLastActivity() {
+            const last = panel.locator(SELECTED).last();
+            await last.scrollIntoViewIfNeeded();
+            await expect(last).toBeInViewport();
+            const wasChecked = await last.isChecked();
+            await last.click();
+            await expect(last).toBeChecked({ checked: !wasChecked });
+            const lastBox = (await last.boundingBox())!;
+            const listBox = (await list.boundingBox())!;
+            const panelBox = (await panel.boundingBox())!;
+            const bottom = Math.min(listBox.y + listBox.height, panelBox.y + panelBox.height);
+            expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(bottom + 1);
+        }
+
+        // Only the list scrolls, so the options above it stay where they are.
+        expect(await overflows(list)).toBe(true);
+        expect(await overflows(body)).toBe(false);
+        const choice = panel.locator('input[name="print-activity-mode"]').first();
+        const choiceTop = (await choice.boundingBox())!.y;
+        await clickLastActivity();
+        expect((await choice.boundingBox())!.y).toBeCloseTo(choiceTop, 0);
+
+        // Too short for the options and three activities: the list keeps three, and the panel
+        // scrolls as a whole to reach them.
+        await page.setViewportSize({ width: 1280, height: 600 });
+        await expect.poll(() => overflows(body)).toBe(true);
+        const row = (await list.locator('.form-check').first().boundingBox())!.height;
+        expect((await list.boundingBox())!.height).toBeGreaterThanOrEqual(3 * row - 1);
+        await clickLastActivity();
     });
 });
 
