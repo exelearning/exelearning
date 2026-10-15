@@ -15693,6 +15693,42 @@
         <source>To save the score, the activity needs at least one question.</source>
         <target>~Pentru a salva scorul, activitatea are nevoie de cel puțin o întrebare.</target>
       </trans-unit>
+      <trans-unit id="mzdsag0" resname="Mind map saved">
+        <source>Mind map saved</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bc3p647" resname="This is your main idea">
+        <source>This is your main idea</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rkcmefx" resname="Double click an idea to edit its text. Move the mouse over an idea and drag the red circle to create a new idea.">
+        <source>Double click an idea to edit its text. Move the mouse over an idea and drag the red circle to create a new idea.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d4jas5l" resname="This is the navigator">
+        <source>This is the navigator</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cabohbg" resname="Use this panel to get an overview of your map. You can navigate around by dragging the red rectangle or change the zoom by clicking on the magnifier buttons.">
+        <source>Use this panel to get an overview of your map. You can navigate around by dragging the red rectangle or change the zoom by clicking on the magnifier buttons.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="skuw0ou" resname="This is the inspector">
+        <source>This is the inspector</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tur20us" resname="Use these controls to change the appearance of your ideas. Try clicking the icon in the upper right corner to minimize this panel.">
+        <source>Use these controls to change the appearance of your ideas. Try clicking the icon in the upper right corner to minimize this panel.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="duvn78p" resname="This is your toolbar">
+        <source>This is your toolbar</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pad7eiz" resname="Those buttons do what they say. You can use them or work with keyboard shortcuts. Hover over the buttons for the key combinations.">
+        <source>Those buttons do what they say. You can use them or work with keyboard shortcuts. Hover over the buttons for the key combinations.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
