@@ -412,10 +412,10 @@ export default class ModalPrintPreview {
      */
     getChoices() {
         return [
-            { value: ACTIVITY_MODE_OMIT, label: _('Do not print them'), prints: false },
-            { value: ACTIVITY_MODE_IN_PLACE, label: _('Print them where they are'), prints: true },
-            { value: ACTIVITY_MODE_APPENDIX, label: _('Print them in an appendix'), prints: true },
-            { value: PREVIEW_MODE_IDEVICES, label: _('Print only the activities'), prints: true },
+            { value: ACTIVITY_MODE_OMIT, label: _('Content without activities'), prints: false },
+            { value: ACTIVITY_MODE_IN_PLACE, label: _('Content with activities'), prints: true },
+            { value: ACTIVITY_MODE_APPENDIX, label: _('Content with activities in an appendix'), prints: true },
+            { value: PREVIEW_MODE_IDEVICES, label: _('Activities only (no other content)'), prints: true },
         ];
     }
 
@@ -426,8 +426,9 @@ export default class ModalPrintPreview {
      */
     getPanelLabels() {
         return {
-            choicesHeading: _('Interactive activities'),
-            selectionHeading: _('Select the interactive activities you want to print'),
+            choicesHeading: _('What would you like to print?'),
+            selectionHeading: _('Activities'),
+            selectionHint: _('Shown when a printing mode that includes activities is selected.'),
             selectAll: _('Select all'),
             noneSelected: _('Select at least one activity to print.'),
         };

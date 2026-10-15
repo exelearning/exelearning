@@ -65,7 +65,7 @@ async function dismissImportAlert(page: Page) {
 }
 
 /**
- * Open File → Print, choose "Print only the activities" and wait for the worksheet to load.
+ * Open File → Print, choose "Activities only (no other content)" and wait for the worksheet to load.
  */
 async function openWorksheet(page: Page) {
     await dismissImportAlert(page);
@@ -2169,6 +2169,11 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await expect(page.locator('.print-preview-options-btn')).toBeVisible();
         await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(0);
         await expect(panel.locator('#printOptLinkUrls')).toBeChecked();
+        // With no activities to choose, the note does not offer to. What it shows is what counts.
+        await expect(panel.locator('.print-options-intro-text')).toHaveText(
+            'All visible content will be printed. You can choose whether to show hidden content.',
+            { useInnerText: true },
+        );
         // With no activity at all, there is none that cannot be printed to ask about.
         await expect(panel.locator('#printOptUnprintableTitles')).toBeHidden();
     });
@@ -2232,6 +2237,21 @@ test.describe('Print: choosing what happens to the interactive activities', () =
             expect(rule.style).toBe('solid');
             expect(rule.width).toBeGreaterThan(0);
         }
+
+        // Worded as the reviewed design words them, under a note that says what can be chosen.
+        await expect(panel.locator('.print-options-intro-text')).toHaveText(
+            'All visible content will be printed. You can choose which activities to include and whether to show hidden content.',
+            { useInnerText: true },
+        );
+        await expect(panel.locator('label[for="printOptUnfoldBlocks"]')).toHaveText('Show all hidden dropdown content');
+        await expect(sections[1].locator('legend')).toHaveText('What would you like to print?');
+        await expect(sections[1].locator('label')).toHaveText([
+            'Content without activities',
+            'Content with activities',
+            'Content with activities in an appendix',
+            'Activities only (no other content)',
+        ]);
+        await expect(sections[2].locator('legend')).toHaveText('Activities');
 
         // The preview is drawn at once, for the choice that is preselected: a pointer where each
         // activity was, and the exercise itself in the appendix.
@@ -2902,7 +2922,7 @@ test.describe('Print: a folded block opens on paper', () => {
 
         const content = (cssClass: string) => frame.locator(`article.${cssClass} .box-content`);
 
-        // With "Print all visible content" ticked, the preview shows the folded block open, as it
+        // With "Show all hidden dropdown content" ticked, the preview shows the folded block open, as it
         // prints, with no toggle to fold it back.
         await panel.locator('#printOptUnfoldBlocks').check();
         await expect(content('ep-open')).toBeVisible();
@@ -2921,7 +2941,7 @@ test.describe('Print: a folded block opens on paper', () => {
         await expect(frame.locator('article.ep-teacher')).toBeHidden();
     });
 
-    test('prints the blocks as the preview shows them unless "Print all visible content" is ticked', async ({
+    test('prints the blocks as the preview shows them unless "Show all hidden dropdown content" is ticked', async ({
         authenticatedPage: page,
         createProject,
     }) => {

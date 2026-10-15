@@ -107,6 +107,20 @@ describe('renderActivitySelection', () => {
         expect(box.classList.contains('print-activities-selection')).toBe(true);
     });
 
+    it('says under its title when it is shown, if told', () => {
+        const hint = 'Shown when a printing mode that includes activities is selected.';
+        const box = renderActivitySelection(two, { ...STRINGS, hint }, ideviceName);
+        const note = box.querySelector('.print-activities-selection-hint');
+
+        expect(note.textContent).toBe(hint);
+        // Right under the title, above the checkbox that ticks them all.
+        expect(box.querySelector('legend').nextElementSibling).toBe(note);
+    });
+
+    it('leaves the line out when it has nothing to say', () => {
+        expect(mount(two).querySelector('.print-activities-selection-hint')).toBeNull();
+    });
+
     it('titles the box as given', () => {
         expect(mount(two).querySelector('legend').textContent).toBe('Select the activities');
     });

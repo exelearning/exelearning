@@ -8,15 +8,16 @@ import PrintOptionsPanel, {
 import { PRINT_SELECTION_ALL, PRINT_SELECTION_FIELD } from './printActivitySelection.js';
 
 const CHOICES = [
-    { value: 'omit', label: 'Do not print them', prints: false },
-    { value: 'in-place', label: 'Print them where they are', prints: true },
-    { value: 'appendix', label: 'Print them in an appendix', prints: true },
-    { value: 'idevices', label: 'Print only the activities', prints: true },
+    { value: 'omit', label: 'Content without activities', prints: false },
+    { value: 'in-place', label: 'Content with activities', prints: true },
+    { value: 'appendix', label: 'Content with activities in an appendix', prints: true },
+    { value: 'idevices', label: 'Activities only (no other content)', prints: true },
 ];
 
 const LABELS = {
-    choicesHeading: 'Interactive activities',
-    selectionHeading: 'Select the activities',
+    choicesHeading: 'What would you like to print?',
+    selectionHeading: 'Activities',
+    selectionHint: 'Shown when a printing mode that includes activities is selected.',
     selectAll: 'Select all',
     noneSelected: 'Select at least one activity to print.',
 };
@@ -87,6 +88,13 @@ describe('PrintOptionsPanel', () => {
                     <button type="button" class="print-options-close">Close</button>
                 </div>
                 <div class="print-options-body">
+                    <div class="print-options-intro">
+                        <p class="print-options-intro-text">
+                            All visible content will be printed.
+                            <span class="print-options-intro-activities" hidden>You can choose which activities to include and whether to show hidden content.</span>
+                            <span class="print-options-intro-document">You can choose whether to show hidden content.</span>
+                        </p>
+                    </div>
                     <fieldset class="print-options-group print-options-document">
                         <legend class="print-options-group-title">Document</legend>
                         <div class="form-check">
@@ -95,7 +103,7 @@ describe('PrintOptionsPanel', () => {
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks">
-                            <label class="form-check-label" for="printOptUnfoldBlocks">Print all visible content</label>
+                            <label class="form-check-label" for="printOptUnfoldBlocks">Show all hidden dropdown content</label>
                         </div>
                         <div class="form-check" hidden>
                             <input class="form-check-input" type="checkbox" id="printOptUnprintableTitles">
@@ -135,6 +143,11 @@ describe('PrintOptionsPanel', () => {
             expect(root.hidden).toBe(false);
             expect(toggle.hidden).toBe(false);
             expect(toggle.getAttribute('aria-expanded')).toBe('true');
+        });
+
+        it('says in its notice only what can be chosen: no activities, there being none', () => {
+            expect(root.querySelector('.print-options-intro-document').hidden).toBe(false);
+            expect(root.querySelector('.print-options-intro-activities').hidden).toBe(true);
         });
 
         it('leaves the activities alone, and writes the URL of each link', () => {
@@ -243,9 +256,26 @@ describe('PrintOptionsPanel', () => {
         });
 
         it('titles the groups as given', () => {
-            expect(activitiesEl().querySelector('.print-options-group-title').textContent).toBe('Interactive activities');
-            expect(root.querySelector('.print-activities-selection-title').textContent).toBe('Select the activities');
+            expect(activitiesEl().querySelector('.print-options-group-title').textContent).toBe(
+                'What would you like to print?'
+            );
+            expect(root.querySelector('.print-activities-selection-title').textContent).toBe('Activities');
+            expect(root.querySelector('.print-activities-selection-hint').textContent).toBe(
+                'Shown when a printing mode that includes activities is selected.'
+            );
             expect(root.querySelector(`label[for="${PRINT_SELECTION_ALL}"]`).textContent).toBe('Select all');
+        });
+
+        it('says in its notice that the activities to include can be chosen', () => {
+            expect(root.querySelector('.print-options-intro-activities').hidden).toBe(false);
+            expect(root.querySelector('.print-options-intro-document').hidden).toBe(true);
+        });
+
+        it('takes the notice back to the document alone for a project with no activities', () => {
+            configure({ activities: [] });
+
+            expect(root.querySelector('.print-options-intro-activities').hidden).toBe(true);
+            expect(root.querySelector('.print-options-intro-document').hidden).toBe(false);
         });
 
         it('lists every activity, ticked and named by the iDevice when the block has no name', () => {

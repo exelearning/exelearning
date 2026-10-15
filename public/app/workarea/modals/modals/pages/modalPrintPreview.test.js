@@ -823,6 +823,23 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(lastOptions().showLinkUrls).toBe(true);
         });
 
+        it('names what to print by what is printed, under its question, as the reviewed design does', async () => {
+            await showWithActivities();
+            const choices = overlayElement.querySelector('.print-options-activities');
+
+            expect(choices.querySelector('.print-options-group-title').textContent).toBe('What would you like to print?');
+            expect(radios().map((radio) => choices.querySelector(`label[for="${radio.id}"]`).textContent)).toEqual([
+                'Content without activities',
+                'Content with activities',
+                'Content with activities in an appendix',
+                'Activities only (no other content)',
+            ]);
+            expect(choices.querySelector('.print-activities-selection-title').textContent).toBe('Activities');
+            expect(choices.querySelector('.print-activities-selection-hint').textContent).toBe(
+                'Shown when a printing mode that includes activities is selected.'
+            );
+        });
+
         it('offers the choices when it has some, with the one it is given preselected', async () => {
             await showWithActivities();
 

@@ -225,12 +225,19 @@
     padding: 0;
     border: 0;
 
+    // Floated, as the panel's other titles are, below the rule above the section rather than on it
     .print-activities-selection-title {
-        float: none;
-        width: auto;
+        float: left;
+        width: 100%;
         margin-bottom: 0.5rem;
         font-size: 1rem;
         font-weight: 600;
+    }
+
+    .print-activities-selection-hint {
+        margin: -0.25rem 0 0.5rem;
+        font-size: 13px;
+        color: var(--gray-600);
     }
 
     /* A flex row, so no margin inherited by the label can collapse through it and add height. */
@@ -3776,16 +3783,38 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             border: 0;
         }
 
+        // Floated, as Bootstrap floats a legend, so that it sits below the rule above its section
+        // rather than on it; Bootstrap also clears what follows it.
         .print-options-group-title {
-            float: none;
-            width: auto;
+            float: left;
+            width: 100%;
             margin-bottom: 0.5rem;
             font-size: 1rem;
             font-weight: 600;
         }
 
-        // The sections run down the panel, each set off from the one above by a rule: the document
-        // options, then what to print, then which activities
+        // A note above the options, its icon beside the first line
+        .print-options-intro {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .print-options-intro-icon {
+            flex: none;
+            margin-top: 2.5px;
+            color: var(--gray-600);
+        }
+
+        .print-options-intro-text {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        // The sections run down the panel, each set off from the one above by a rule: the note,
+        // the document options, then what to print, then which activities
+        .print-options-intro + .print-options-document,
         .print-options-activities > .print-options-group,
         .print-options-activities > .print-activities-selection {
             margin-top: 1.25rem;

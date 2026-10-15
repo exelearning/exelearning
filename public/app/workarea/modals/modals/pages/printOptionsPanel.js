@@ -61,6 +61,9 @@ export default class PrintOptionsPanel {
         this.unprintableRow = this.unprintableInput?.closest('.form-check') ?? null;
         this.statusEl = root?.querySelector('.print-options-status') ?? null;
         this.closeButton = root?.querySelector('.print-options-close') ?? null;
+        /** The notice's last sentence, one for a project with activities to choose and one without. */
+        this.introActivities = root?.querySelector('.print-options-intro-activities') ?? null;
+        this.introDocument = root?.querySelector('.print-options-intro-document') ?? null;
         this.activities = [];
         this.choices = [];
         this.labels = {};
@@ -180,7 +183,7 @@ export default class PrintOptionsPanel {
      * @param {string|null} config.choice - The value to preselect
      * @param {string[]|null} config.selectedActivities - Ids to tick; null ticks every one
      * @param {object} config.labels - Translated strings: choicesHeading, selectionHeading,
-     *     selectAll and noneSelected
+     *     selectionHint, selectAll and noneSelected
      * @param {(type: string) => string} config.ideviceName - Translated name of an iDevice type
      */
     configure({
@@ -211,6 +214,9 @@ export default class PrintOptionsPanel {
         }
 
         if (this.activitiesEl) this.activitiesEl.hidden = !this.hasActivities();
+        // The notice only offers a choice of activities when the project has some to choose.
+        if (this.introActivities) this.introActivities.hidden = !this.hasActivities();
+        if (this.introDocument) this.introDocument.hidden = this.hasActivities();
         if (this.toggleButton) this.toggleButton.hidden = !this.hasContent();
         this.setOpen(this.hasContent());
     }
@@ -290,7 +296,11 @@ export default class PrintOptionsPanel {
         this.offered = this.offeredActivities();
         this.selection = renderActivitySelection(
             this.offered,
-            { heading: this.labels.selectionHeading, selectAll: this.labels.selectAll },
+            {
+                heading: this.labels.selectionHeading,
+                hint: this.labels.selectionHint,
+                selectAll: this.labels.selectAll,
+            },
             this.ideviceName
         );
         this.activitiesEl.append(this.selection);

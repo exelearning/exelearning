@@ -84,17 +84,26 @@ function checkbox({ id, name, value, label, title }) {
  * @param {Array<{id: string, pageTitle: string, blockTitle: string, type: string}>} activities
  * @param {object} strings - Translated strings
  * @param {string} strings.heading - Title of the box
+ * @param {string} [strings.hint] - Line under the title saying when the box is shown; none if empty
  * @param {string} strings.selectAll - Label of the tick-all checkbox
  * @param {(type: string) => string} ideviceName - Translated name of an iDevice type
  * @returns {HTMLFieldSetElement} The box, to be put in the panel
  */
-export function renderActivitySelection(activities, { heading, selectAll }, ideviceName) {
+export function renderActivitySelection(activities, { heading, hint = '', selectAll }, ideviceName) {
     const box = document.createElement('fieldset');
     box.className = 'print-activities-selection';
 
     const legend = document.createElement('legend');
     legend.className = 'print-activities-selection-title';
     legend.textContent = heading;
+    box.append(legend);
+
+    if (hint) {
+        const note = document.createElement('p');
+        note.className = 'print-activities-selection-hint';
+        note.textContent = hint;
+        box.append(note);
+    }
 
     const all = checkbox({ id: PRINT_SELECTION_ALL, label: selectAll });
     all.classList.add('print-activities-select-all');
@@ -115,7 +124,7 @@ export function renderActivitySelection(activities, { heading, selectAll }, idev
         );
     });
 
-    box.append(legend, all, list);
+    box.append(all, list);
     return box;
 }
 
