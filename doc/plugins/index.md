@@ -65,8 +65,8 @@ it and close it: nothing is kept.
 
 ## Administrators and teachers { #roles }
 
-Each guide has a **For administrators** part and a **For teachers** part, and there are two manuals:
-the [administrator manual](manual-admin.md) and the [teacher manual](manual-teacher.md).
+Each platform guide covers **administration** and **teaching** tasks. The
+[unified Spanish manual](manual.es.md) brings installation, configuration and use together in one guide.
 
 | | Moodle, Nextcloud, WordPress, Omeka S | Google Drive, OneDrive |
 | --- | --- | --- |
@@ -115,13 +115,12 @@ label (`moodle`, `nextcloud`, `wordpress`, `omeka-s`, `gdrive`) so you can find 
 
 <!-- --8<-- [end:help] -->
 
-## Manuals
+## Unified manual
 
-Every guide, gathered in two manuals. Open one and use **Print → Save as PDF** in your browser, or
-download it as an **eXeLearning project** to adapt it to your school and publish it as a website,
-SCORM package or ePub.
+The **Spanish manual for eXeLearning 4.0.6** brings installation, configuration and use together
+in one guide, with revised text, screenshots and design. Read it online or download the editable
+**eXeLearning project** to adapt it and publish it as a website, SCORM package or ePub.
 
-| Manual | Web and PDF | eXeLearning project |
+| Manual | Website | eXeLearning project |
 | --- | --- | --- |
-| Administrator manual | [Open](manual-admin.md) | <a href="manual-admin.elpx" download>manual-admin.elpx</a> |
-| Teacher manual | [Open](manual-teacher.md) | <a href="manual-teacher.elpx" download>manual-teacher.elpx</a> |
+| eXeLearning integration plugins (Spanish) | [Open](manual.es.md) | <a href="manual.es.elpx" download>manual.es.elpx</a> |
