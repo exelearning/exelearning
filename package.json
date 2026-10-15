@@ -102,7 +102,7 @@
     "uuid": "^14.0.2",
     "ws": "^8.21.3",
     "y-websocket": "^3.1.0",
-    "yjs": "^13.6.32"
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
