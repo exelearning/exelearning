@@ -17,7 +17,6 @@ import type { ExportBlock, ExportComponent, ExportPage } from '../interfaces';
 import {
     isBlockVisible,
     isComponentVisible,
-    isStudentBlock,
     isTeacherOnly,
     isTeacherOnlyBlock,
     visibleWorksheetPages,
@@ -85,6 +84,11 @@ export interface ApplyActivityModeOptions {
      * `omit` mode leaves out all of them. Absent means every one of them is printed.
      */
     selectedActivities?: readonly string[];
+    /**
+     * Whether the content kept for teachers prints. Its activities are then treated as any other
+     * is; otherwise they are left alone, and the document leaves them out.
+     */
+    teacherOnly?: boolean;
 }
 
 /** One interactive activity printing acts on, as the print dialog offers it for choosing. */
@@ -101,6 +105,11 @@ export interface InteractiveActivityEntry {
      * print options leave these out unless the user asks for the note that stands in for them.
      */
     neverPrintable: boolean;
+    /**
+     * True for an activity kept for teachers, by its block or by itself. The print options offer
+     * it only while the content kept for teachers is to be printed.
+     */
+    teacherOnly: boolean;
 }
 
 const DEFAULT_LABELS = {
@@ -262,36 +271,44 @@ function convert(
     }
 }
 
+/** Whether a component is kept for teachers, by its block or by itself. */
+function isKeptForTeachers(block: ExportBlock, component: ExportComponent): boolean {
+    return isTeacherOnlyBlock(block) || isTeacherOnly(component);
+}
+
 /**
  * Whether printing acts on this component at all.
  *
- * What the author restricted stays exactly as the document prints it. Converting it would be
- * harmless, but moving it to the appendix would not: the appendix is a block of our own, and a copy
- * there would not carry the restriction its own block applies. `novisible` and `teacher-only` are
- * display:none in the export stylesheet, so a copy that loses them puts hidden or teacher-only
- * material on the student's sheet.
+ * What the author hid stays exactly as the document prints it. Converting it would be harmless,
+ * but moving it to the appendix would not: the appendix is a block of our own, and a copy there
+ * would not carry the restriction its own block applies. `novisible` is display:none in the export
+ * stylesheet, so a copy that loses it puts hidden material on the student's sheet. The same goes for
+ * `teacher-only`, unless the content kept for teachers is to be printed: then a copy without the
+ * class prints just as the rest of that content does, and its activities are acted on as any other.
+ *
+ * @param teacherOnly - Whether the content kept for teachers prints
  */
-function isActedOn(block: ExportBlock, component: ExportComponent): boolean {
+function isActedOn(block: ExportBlock, component: ExportComponent, teacherOnly = false): boolean {
     return (
-        isStudentBlock(block) &&
+        isBlockVisible(block) &&
         isComponentVisible(component) &&
-        !isTeacherOnly(component) &&
-        isInteractiveActivity(component.type)
+        isInteractiveActivity(component.type) &&
+        (teacherOnly || !isKeptForTeachers(block, component))
     );
 }
 
 /** Whether a component is an interactive activity kept for teachers, by its block or by itself. */
 function isTeacherOnlyActivity(block: ExportBlock, component: ExportComponent): boolean {
-    return isInteractiveActivity(component.type) && (isTeacherOnlyBlock(block) || isTeacherOnly(component));
+    return isInteractiveActivity(component.type) && isKeptForTeachers(block, component);
 }
 
 /**
- * Leave out of the printed document the interactive activities kept for teachers.
+ * Leave out of the printed document the interactive activities kept for teachers, for when that
+ * content is not to be printed.
  *
- * Teacher-only content prints when the user asks for it, but its activities never do. Printing
- * has no say over them, since the print options neither list nor convert what is restricted, so
- * they would reach paper as the game the screen shows. A block they leave with nothing goes, as a
- * block the modes empty does.
+ * The print options then neither list nor convert them, so they would reach paper as the game the
+ * screen shows, were teacher-only content shown. A block they leave with nothing goes, as a block
+ * the modes empty does.
  *
  * @param pages - The project's pages
  * @returns New pages, without those activities
@@ -313,13 +330,13 @@ export function leaveOutTeacherOnlyActivities(pages: ExportPage[]): ExportPage[]
 /**
  * Whether the printed document would hold teacher-only content, which the print options can then
  * offer to print: a teacher-only block, or a teacher-only component in an open one, on a page that
- * prints. Its activities do not count, since they never print.
+ * prints. Its activities count too, since they print with it.
  *
  * @param pages - The project's pages
  * @returns true when there is some
  */
 export function hasTeacherOnlyContent(pages: ExportPage[]): boolean {
-    return visibleWorksheetPages(leaveOutTeacherOnlyActivities(pages)).some(page =>
+    return visibleWorksheetPages(pages).some(page =>
         (page.blocks || []).some(block => {
             if (!isBlockVisible(block)) return false;
             const shown = (block.components || []).filter(isComponentVisible);
@@ -337,10 +354,11 @@ export function hasTeacherOnlyContent(pages: ExportPage[]): boolean {
  * nothing on them is listed.
  *
  * Each entry says whether its activity is one that will never be given a printed form, so the
- * print options can offer to leave those out without asking the exporter again.
+ * print options can offer to leave those out without asking the exporter again, and whether it is
+ * kept for teachers, which the print options offer only while that content is to be printed.
  *
  * @param pages - The project's pages, as the export document gives them
- * @returns One entry per activity
+ * @returns One entry per activity, those kept for teachers included
  */
 export function listInteractiveActivities(pages: ExportPage[]): InteractiveActivityEntry[] {
     const entries: InteractiveActivityEntry[] = [];
@@ -348,13 +366,14 @@ export function listInteractiveActivities(pages: ExportPage[]): InteractiveActiv
     for (const page of visibleWorksheetPages(pages))
         for (const block of page.blocks || [])
             for (const component of block.components || [])
-                if (isActedOn(block, component))
+                if (isActedOn(block, component, true))
                     entries.push({
                         id: component.id,
                         type: component.type,
                         pageTitle: (page.title || '').trim(),
                         blockTitle: (block.name || '').trim(),
                         neverPrintable: isNeverPrintable(component.type),
+                        teacherOnly: isKeptForTeachers(block, component),
                     });
 
     return entries;
@@ -390,7 +409,8 @@ export function convertedBy(
 ): (block: ExportBlock, component: ExportComponent) => boolean {
     const selected = selection(options);
 
-    return (block, component) => isActedOn(block, component) && !isDropped(component, mode, selected);
+    return (block, component) =>
+        isActedOn(block, component, options.teacherOnly) && !isDropped(component, mode, selected);
 }
 
 /**
@@ -409,7 +429,8 @@ export function droppedBy(
 ): (block: ExportBlock, component: ExportComponent) => boolean {
     const selected = selection(options);
 
-    return (block, component) => isActedOn(block, component) && isDropped(component, mode, selected);
+    return (block, component) =>
+        isActedOn(block, component, options.teacherOnly) && isDropped(component, mode, selected);
 }
 
 /**
@@ -436,7 +457,7 @@ export function applyActivityMode(
             const kept: ExportComponent[] = [];
 
             for (const component of components) {
-                if (!isActedOn(block, component)) {
+                if (!isActedOn(block, component, options.teacherOnly)) {
                     kept.push(component);
                     continue;
                 }

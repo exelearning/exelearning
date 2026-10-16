@@ -276,15 +276,20 @@ however much a teacher wanted, say, the notes or solutions they keep for themsel
 teacher-only content* puts `mode-teacher` on the preview's `<html>`, the class an export's teacher
 mode sets, and that content prints as teacher mode shows it. Like folding, it is applied in place,
 not by drawing the preview again. The option is offered only when a page that prints holds such
-content, and starts clear.
+content, and starts clear on every preview.
 
-**Its interactive activities never print.** The print options neither list nor convert what is
-restricted, so a teacher-only activity would reach paper as the game the screen shows, in every
-choice, including the one that prints no activities. The preview leaves them out of the document
-instead (`leaveOutTeacherOnlyActivities`), and a teacher-only block left with nothing goes with
-them. Treating them like the other activities once the option is ticked was considered and set
-aside: the list of activities would change with a document option, and teacher-only boxes hold
-notes far more often than games.
+**Its interactive activities print with it, as the others do.** While the option is clear, a
+teacher-only activity is neither listed nor printed: the preview leaves it out of the document
+(`leaveOutTeacherOnlyActivities`), and a teacher-only block left with nothing goes with it.
+Ticked, the panel lists it under *Activities*, marked *Teacher only* and ticked unless it can never
+be printed, and the chosen mode treats it as any other: converted where it is, moved to the
+appendix, or left out with the rest. Converting it rather than letting it print as it is matters:
+shown as teacher mode shows it, it would reach paper as the game the screen shows. Since the list
+then changes with a document option, ticking it draws the preview again when the project has such
+activities, and only then. On the worksheet the option stays available, and puts them on it too.
+
+A first version left these activities out whatever the option said, since teacher-only boxes hold
+notes far more often than games. The review asked for them to print with the rest of that content.
 
 Tabs and accordions are the same question and are **not** answered here. Their panels are hidden
 by `exe_effects.css` and only the open one prints, so an author's other panels are lost the same

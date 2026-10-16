@@ -111,6 +111,12 @@ export interface PrintPreviewOptions {
      */
     showLinkUrls?: boolean;
     /**
+     * Whether the content kept for teachers prints. Its interactive activities are then treated
+     * as any other is; otherwise they are left out of the document. Showing the rest of that
+     * content is the preview's own business, by putting it in teacher mode. Defaults to false.
+     */
+    teacherOnly?: boolean;
+    /**
      * What to do with the project's interactive activities, and the strings to do it with.
      *
      * Left out, the document prints exactly as the browser draws it, which is how printing
@@ -188,21 +194,25 @@ export class PrintPreviewExporter {
                 return { success: false, error: 'No pages to preview' };
             }
 
-            // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map). The
-            // activities kept for teachers never print, even when teacher-only content does.
+            // The activities kept for teachers print only with the rest of that content, and then
+            // the chosen mode treats them as any other.
+            const teacherOnly = options.teacherOnly === true;
+            const activities = options.activities && { ...options.activities, teacherOnly };
+
+            // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
             let processedPages = await this.preprocessPages(
-                leaveOutTeacherOnlyActivities(pages),
+                teacherOnly ? pages : leaveOutTeacherOnlyActivities(pages),
                 assetResolver,
-                options.activities && droppedBy(options.activities.mode, options.activities),
+                activities && droppedBy(activities.mode, activities),
             );
 
             // Anything that has to be drawn before it can be printed is drawn first: converting an
             // activity into an exercise is synchronous and has no browser to draw with.
-            if (options.activities && options.captureMolecule) {
+            if (activities && options.captureMolecule) {
                 processedPages = await this.captureDrawings(
                     processedPages,
                     options.captureMolecule,
-                    convertedBy(options.activities.mode, options.activities),
+                    convertedBy(activities.mode, activities),
                 );
             }
 
@@ -210,8 +220,8 @@ export class PrintPreviewExporter {
             // the page model, so everything below renders it as it would any other document.
             // Asset URLs are already resolved by this point, which is what lets a converted
             // activity keep its pictures.
-            if (options.activities) {
-                processedPages = applyActivityMode(processedPages, options.activities.mode, options.activities);
+            if (activities) {
+                processedPages = applyActivityMode(processedPages, activities.mode, activities);
             }
 
             // Fetch theme files and configure icon resolution (from main)

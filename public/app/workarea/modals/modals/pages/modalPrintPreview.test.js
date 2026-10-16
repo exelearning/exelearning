@@ -1237,12 +1237,58 @@ describe('ModalPrintPreview and its options panel', () => {
             tick(teacherOnly(), true);
             expect(page.classList.contains(TEACHER_MODE_CLASS)).toBe(true);
             await settle();
+            // With no activities kept for teachers, nothing of the document changes but what shows.
             expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
-            // What prints for teachers is no business of the exporter either.
-            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true, teacherOnly: true });
 
             tick(teacherOnly(), false);
             expect(page.classList.contains(TEACHER_MODE_CLASS)).toBe(false);
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
+        });
+
+        it('draws the document again for the activities kept for teachers, which it then acts on', async () => {
+            withTeacherOnlyContent(true);
+            const teacherActivity = { id: 't1', type: 'guess', pageTitle: 'Notes', blockTitle: '', teacherOnly: true };
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE, null, [...ACTIVITIES, teacherActivity]);
+            loadedPage();
+            expect(boxes().map((box) => box.value)).not.toContain('t1');
+            global.window.generatePrintPreview.mockClear();
+
+            tick(teacherOnly(), true);
+            await settle();
+
+            expect(boxes().map((box) => box.value)).toContain('t1');
+            expect(global.window.generatePrintPreview).toHaveBeenCalled();
+            expect(lastOptions().teacherOnly).toBe(true);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_IN_PLACE);
+        });
+
+        it('puts the activities kept for teachers on the worksheet once asked for', async () => {
+            withTeacherOnlyContent(true);
+            const teacherActivity = { id: 't1', type: 'guess', pageTitle: 'Notes', blockTitle: '', teacherOnly: true };
+            await modal.show(PREVIEW_MODE_IDEVICES, null, null, [...ACTIVITIES, teacherActivity]);
+            loadedPage();
+            expect(lastWorksheetOptions()).not.toHaveProperty('teacherOnly');
+
+            tick(teacherOnly(), true);
+            await settle();
+
+            expect(lastWorksheetOptions().teacherOnly).toBe(true);
+        });
+
+        it('prints the document as it is while the only activities, kept for teachers, are not offered', async () => {
+            withTeacherOnlyContent(true);
+            const teacherActivity = { id: 't1', type: 'guess', pageTitle: 'Notes', blockTitle: '', teacherOnly: true };
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX, null, [teacherActivity]);
+
+            expect(modal.activityMode).toBeNull();
+            expect(lastOptions()).not.toHaveProperty('activities');
+
+            loadedPage();
+            tick(teacherOnly(), true);
+            await settle();
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_APPENDIX);
+            expect(lastOptions().teacherOnly).toBe(true);
         });
 
         it('keeps the choice in a preview drawn again for another option', async () => {
@@ -1257,11 +1303,12 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(loadedPage().classList.contains(TEACHER_MODE_CLASS)).toBe(true);
         });
 
-        it('offers no choice for the worksheet, which holds no teacher-only content', async () => {
+        it('stays offered for the worksheet, whose activities it decides too', async () => {
             withTeacherOnlyContent(true);
             await showWithActivities(PREVIEW_MODE_IDEVICES, null);
 
-            expect(teacherOnly().disabled).toBe(true);
+            expect(teacherOnly().disabled).toBe(false);
+            expect(unfoldBlocks().disabled).toBe(true);
         });
     });
 

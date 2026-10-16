@@ -332,6 +332,13 @@ export default class ModalPrintPreview {
         if (this.panel.hasActivities()) {
             this.applyPanelState(state);
             this.valid = state.valid;
+        } else if (this.panel.hasTeacherOnlyActivities()) {
+            // Its only activities are kept for teachers and not offered: the document prints as
+            // it is, without them, whatever was chosen while they were.
+            this.mode = PREVIEW_MODE_DOCUMENT;
+            this.activityMode = null;
+            this.selectedActivities = null;
+            this.valid = true;
         }
         this.showLinkUrls = state.showLinkUrls;
         this.unfoldBlocks = state.unfoldBlocks;
@@ -396,7 +403,8 @@ export default class ModalPrintPreview {
 
     /**
      * An option changed: draw the preview again for it, unless it only says how folded blocks or
-     * teacher-only content print, which the loaded preview takes in place.
+     * teacher-only content print, which the loaded preview takes in place. Teacher-only content
+     * with activities in it is drawn again all the same: its activities come and go.
      *
      * @param {{choice: string|null, selectedActivities: string[]|null, valid: boolean}} state
      * @param {string} [changed] - Id of the document option that changed, if one did
@@ -411,7 +419,7 @@ export default class ModalPrintPreview {
         }
         if (changed === PRINT_TEACHER_ONLY_FIELD) {
             this.applyTeacherMode();
-            return;
+            if (!this.panel.hasTeacherOnlyActivities()) return;
         }
         this.applyTitle();
         this.scheduleRegeneration();
@@ -478,6 +486,8 @@ export default class ModalPrintPreview {
             selectAll: _('Select all'),
             // Beside an activity that can never be printed: ticked, only its title is.
             titleOnly: _('Title only'),
+            // Beside an activity kept for teachers, offered while teacher-only content prints.
+            teacherOnly: _('Teacher only'),
             noneSelected: _('Select at least one activity to print.'),
         };
     }
@@ -647,9 +657,19 @@ export default class ModalPrintPreview {
                 ideviceTitles: this.getIdeviceTitles(),
                 ideviceBasePath: this.getIdeviceBasePath(),
                 ...this.getSelectionOptions(),
+                ...this.getTeacherOnlyOptions(),
             },
             yjsBridge.assetManager || null
         );
+    }
+
+    /**
+     * Whether the content kept for teachers prints, its activities with it.
+     *
+     * @returns {object} An options fragment, empty while it does not
+     */
+    getTeacherOnlyOptions() {
+        return this.teacherOnly ? { teacherOnly: true } : {};
     }
 
     /**
@@ -715,10 +735,10 @@ export default class ModalPrintPreview {
     /**
      * The print options the document preview applies, as the options panel left them.
      *
-     * @returns {{ showLinkUrls: boolean }}
+     * @returns {{ showLinkUrls: boolean, teacherOnly?: boolean }}
      */
     getPrintOptions() {
-        return { showLinkUrls: this.showLinkUrls };
+        return { showLinkUrls: this.showLinkUrls, ...this.getTeacherOnlyOptions() };
     }
 
     /**

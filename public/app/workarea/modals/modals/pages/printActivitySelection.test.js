@@ -150,6 +150,32 @@ describe('renderActivitySelection', () => {
         });
     });
 
+    describe('an activity kept for teachers', () => {
+        const kept = [
+            activity(),
+            activity({ id: 't1', teacherOnly: true }),
+            activity({ id: 't2', type: 'map', teacherOnly: true, neverPrintable: true }),
+        ];
+        const markOf = (box, id) =>
+            box.querySelector(`input[value="${id}"]`).closest('.form-check').querySelector('.print-activities-title-only');
+        const strings = { ...STRINGS, titleOnly: 'Title only', teacherOnly: 'Teacher only' };
+
+        it('is marked as kept for teachers, before saying when only its title prints', () => {
+            const box = renderActivitySelection(kept, strings, ideviceName);
+
+            expect(markOf(box, 't1').textContent).toBe('Teacher only');
+            expect(markOf(box, 't2').textContent).toBe('Teacher only · Title only');
+            expect(markOf(box, 'c1')).toBeNull();
+        });
+
+        it('carries no such mark when there are no words for it', () => {
+            const box = renderActivitySelection(kept, { ...STRINGS, titleOnly: 'Title only' }, ideviceName);
+
+            expect(markOf(box, 't1')).toBeNull();
+            expect(markOf(box, 't2').textContent).toBe('Title only');
+        });
+    });
+
     it('titles the box as given', () => {
         expect(mount(two).querySelector('legend').textContent).toBe('Select the activities');
     });

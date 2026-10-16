@@ -13,7 +13,13 @@
 
 import type { AssetProvider, ExportBlock, ExportComponent, ExportDocument, LatexPreRenderResult } from '../interfaces';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
-import { isComponentVisible, isStudentBlock, isTeacherOnly, visibleWorksheetPages } from '../utils/visibility';
+import {
+    isBlockVisible,
+    isComponentVisible,
+    isStudentBlock,
+    isTeacherOnly,
+    visibleWorksheetPages,
+} from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
 import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
@@ -54,6 +60,11 @@ export interface WorksheetOptions {
      * Absent means every one of them is printed.
      */
     selectedActivities?: readonly string[];
+    /**
+     * Whether the activities kept for teachers go on the sheet too. Without it, the sheet is the
+     * student's copy and leaves them out.
+     */
+    teacherOnly?: boolean;
 }
 
 export interface WorksheetResult {
@@ -95,7 +106,7 @@ export class WorksheetExporter {
         for (const page of visibleWorksheetPages(this.document.getNavigation())) {
             const activities: PrintableActivity[] = [];
 
-            for (const { component, blockTitle } of this.collectComponents(page.blocks || [])) {
+            for (const { component, blockTitle } of this.collectComponents(page.blocks || [], options.teacherOnly)) {
                 if (selected && isInteractiveActivity(component.type) && !selected.has(component.id)) continue;
 
                 let content = component.content || '';
@@ -216,19 +227,24 @@ export class WorksheetExporter {
     /**
      * Flatten a page's blocks into the components a student should see, in document order.
      *
-     * Hidden and teacher-only blocks and components are dropped: the worksheet is the
-     * student's copy.
+     * Hidden blocks and components are dropped, and so are teacher-only ones unless the teacher
+     * asked for them: otherwise the worksheet is the student's copy.
+     *
+     * @param teacherOnly - Whether the content kept for teachers goes on the sheet too
      */
-    private collectComponents(blocks: ExportBlock[]): { component: ExportComponent; blockTitle: string }[] {
+    private collectComponents(
+        blocks: ExportBlock[],
+        teacherOnly = false,
+    ): { component: ExportComponent; blockTitle: string }[] {
         const components: { component: ExportComponent; blockTitle: string }[] = [];
 
         for (const block of blocks) {
             // A block can be hidden or reserved for teachers, which excludes everything in it
             // however each component is marked.
-            if (!isStudentBlock(block)) continue;
+            if (!(teacherOnly ? isBlockVisible(block) : isStudentBlock(block))) continue;
 
             for (const component of block.components || []) {
-                if (!isComponentVisible(component) || isTeacherOnly(component)) continue;
+                if (!isComponentVisible(component) || (!teacherOnly && isTeacherOnly(component))) continue;
                 // The block's own heading comes along: on the worksheet nothing else draws it, and
                 // it is what the author called the exercise.
                 components.push({ component, blockTitle: (block.name || '').trim() });

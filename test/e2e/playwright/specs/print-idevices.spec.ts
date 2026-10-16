@@ -3232,7 +3232,7 @@ test.describe('Print: every iDevice of a block', () => {
 });
 
 test.describe('Print: teacher-only content', () => {
-    test('is offered when the project has some, prints once ticked, and never prints its activities', async ({
+    test('is offered when the project has some, and prints once ticked, its activities as the others', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -3264,28 +3264,47 @@ test.describe('Print: teacher-only content', () => {
 
         const panel = await openPrintPanel(page);
         const option = panel.locator('#printOptTeacherOnly');
+        const teacherBox = panel.locator('input[name="print-activity-selected"][value="teacher-quiz"]');
         let { frame } = await waitForPreview(page);
         const notes = () => frame.locator('#teacher-notes');
 
-        // Offered, and clear: content kept for teachers prints only when asked for.
+        // Offered, and clear: content kept for teachers prints only when asked for, its activity
+        // neither listed nor in the document.
         await expect(option).toBeVisible();
         await expect(option).not.toBeChecked();
+        await expect(teacherBox).toHaveCount(0);
+        await expect(frame.locator('#teacher-quiz')).toHaveCount(0);
         await page.emulateMedia({ media: 'print' });
         await expect(notes()).toBeHidden();
         await page.emulateMedia({ media: 'screen' });
 
+        // Ticked, the notes print, and the activity is listed, marked and ticked: in the appendix,
+        // where printing starts, a pointer stands where it was and its exercise is at the back.
         await option.check();
+        await expect(teacherBox).toBeChecked();
+        await expect(teacherBox).toHaveAccessibleDescription('Teacher only');
+        ({ frame } = await waitForPreview(page));
         await page.emulateMedia({ media: 'print' });
         await expect(notes()).toBeVisible();
         await expect(notes()).toContainText('Teacher notes');
-        // Its activity is not in the document at all, whatever is chosen for the others.
-        await expect(frame.locator('#teacher-quiz')).toHaveCount(0);
+        await expect(frame.locator('#teacher-quiz .worksheet-reference')).toBeVisible();
+        await expect(frame.locator('#teacher-quiz-appendix')).toBeVisible();
         await page.emulateMedia({ media: 'screen' });
 
+        // Where it was, an exercise, as any other activity.
         ({ frame } = await choosePrintOption(page, 'in-place'));
         await page.emulateMedia({ media: 'print' });
         await expect(notes()).toBeVisible();
+        await expect(frame.locator('#teacher-quiz .worksheet-activity')).toBeVisible();
+        await page.emulateMedia({ media: 'screen' });
+
+        // Cleared again, both go.
+        await option.uncheck();
+        await expect(teacherBox).toHaveCount(0);
+        ({ frame } = await waitForPreview(page));
         await expect(frame.locator('#teacher-quiz')).toHaveCount(0);
+        await page.emulateMedia({ media: 'print' });
+        await expect(notes()).toBeHidden();
         await page.emulateMedia({ media: 'screen' });
     });
 

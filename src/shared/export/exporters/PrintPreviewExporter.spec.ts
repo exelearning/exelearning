@@ -2633,6 +2633,37 @@ describe('PrintPreviewExporter and interactive activities', () => {
         }
     });
 
+    it('treats the activities of a teacher-only block as any other once that content prints', async () => {
+        const withTeacherBlock = () => {
+            const pages = projectWithActivity().getNavigation();
+            pages[0].blocks.push({
+                id: 'teacher-block',
+                name: 'For the teacher',
+                order: 1,
+                properties: { teacherOnly: 'true' },
+                components: [{ id: 'teacher-guess', type: 'guess', order: 0, content: guessHtml(), properties: {} }],
+            } as ExportBlock);
+            return createMockDocument(pages);
+        };
+        const preview = async (mode: 'omit' | 'in-place' | 'appendix') => {
+            const result = await new PrintPreviewExporter(withTeacherBlock(), resources).generatePreview({
+                teacherOnly: true,
+                activities: { mode },
+            });
+            expect(result.success).toBe(true);
+            return result.html ?? '';
+        };
+
+        // In place, an exercise, which the raw game would not be.
+        const inPlace = await preview('in-place');
+        expect(inPlace).toContain('id="teacher-guess"');
+        expect(inPlace.match(/Ciudad conquistada/g)).toHaveLength(2);
+        // At the back with the others, a pointer left where it was.
+        expect(await preview('appendix')).toContain('id="teacher-guess-appendix"');
+        // And left out with the others.
+        expect(await preview('omit')).not.toContain('id="teacher-guess"');
+    });
+
     for (const mode of ['omit', 'in-place', 'appendix'] as const) {
         it(`prints two Text iDevices of a block whose ids begin alike in ${mode} mode`, async () => {
             const pages = projectWithActivity().getNavigation();

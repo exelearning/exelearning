@@ -427,6 +427,26 @@ describe('WorksheetExporter', () => {
             expect((await byType.buildModel()).pages).toHaveLength(0);
         });
 
+        it('puts teacher-only activities on the sheet once the teacher asks for them, hidden ones still not', async () => {
+            const exporter = new WorksheetExporter(
+                documentOf([
+                    {
+                        components: [
+                            { type: 'guess', content: guessContent(), structureProperties: { teacherOnly: true } },
+                            { type: 'guess', content: guessContent(), properties: { visibilityType: 'teacher' } },
+                            { type: 'guess', content: guessContent(), structureProperties: { visibility: false } },
+                        ],
+                    },
+                ]),
+            );
+
+            const activities = async (teacherOnly?: boolean) =>
+                (await exporter.buildModel({ teacherOnly })).pages.flatMap(page => page.activities);
+
+            expect(await activities(true)).toHaveLength(2);
+            expect(await activities()).toHaveLength(0);
+        });
+
         it('skips an activity whose questions have no solutions', async () => {
             const exporter = new WorksheetExporter(
                 documentOf([

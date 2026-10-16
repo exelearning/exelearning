@@ -94,16 +94,21 @@ function checkbox({ id, name, value, label, title, note }) {
  * Build the selection box.
  *
  * @param {Array<{id: string, pageTitle: string, blockTitle: string, type: string,
- *     neverPrintable?: boolean}>} activities
+ *     neverPrintable?: boolean, teacherOnly?: boolean}>} activities
  * @param {object} strings - Translated strings
  * @param {string} strings.heading - Title of the box
  * @param {string} [strings.hint] - Line under the title saying when the box is shown; none if empty
  * @param {string} strings.selectAll - Label of the tick-all checkbox
  * @param {string} [strings.titleOnly] - Mark beside an activity that can never be printed
+ * @param {string} [strings.teacherOnly] - Mark beside an activity kept for teachers
  * @param {(type: string) => string} ideviceName - Translated name of an iDevice type
  * @returns {HTMLFieldSetElement} The box, to be put in the panel
  */
-export function renderActivitySelection(activities, { heading, hint = '', selectAll, titleOnly = '' }, ideviceName) {
+export function renderActivitySelection(
+    activities,
+    { heading, hint = '', selectAll, titleOnly = '', teacherOnly = '' },
+    ideviceName
+) {
     const box = document.createElement('fieldset');
     box.className = 'print-activities-selection';
 
@@ -134,7 +139,10 @@ export function renderActivitySelection(activities, { heading, hint = '', select
                 label: activityLabel(activity, name),
                 // The whole page title, for when the label had to cut it short.
                 title: activityLabel(activity, name, false),
-                note: activity.neverPrintable ? titleOnly : '',
+                // Whom it is for, then what of it prints, when either is worth saying.
+                note: [activity.teacherOnly && teacherOnly, activity.neverPrintable && titleOnly]
+                    .filter(Boolean)
+                    .join(' · '),
             })
         );
     });

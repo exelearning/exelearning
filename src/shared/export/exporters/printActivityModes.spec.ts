@@ -790,13 +790,21 @@ describe('listInteractiveActivities', () => {
         ];
 
         expect(listInteractiveActivities(pages)).toEqual([
-            { id: 'a', type: 'guess', pageTitle: 'La Edad Media', blockTitle: 'Bloque', neverPrintable: false },
+            {
+                id: 'a',
+                type: 'guess',
+                pageTitle: 'La Edad Media',
+                blockTitle: 'Bloque',
+                neverPrintable: false,
+                teacherOnly: false,
+            },
             {
                 id: 'b',
                 type: 'crossword',
                 pageTitle: 'Repaso',
                 blockTitle: 'Crucigrama final',
                 neverPrintable: false,
+                teacherOnly: false,
             },
         ]);
     });
@@ -832,7 +840,7 @@ describe('listInteractiveActivities', () => {
         expect(listInteractiveActivities([unnamed])[0].blockTitle).toBe('');
     });
 
-    it('lists what the modes act on, and nothing they leave alone', () => {
+    it('lists what the modes can act on, marking what is kept for teachers, and nothing hidden', () => {
         const hiddenPage = page([component({ id: 'on-hidden-page' })], {
             id: 'hidden',
             properties: { visibility: false },
@@ -861,8 +869,12 @@ describe('listInteractiveActivities', () => {
             { id: 'p4', order: 3 },
         );
 
-        expect(listInteractiveActivities([hiddenPage, underHidden, restrictedBlock, mixed]).map(e => e.id)).toEqual([
-            'listed',
+        // Those kept for teachers are listed, marked: the options offer them with that content.
+        const listed = listInteractiveActivities([hiddenPage, underHidden, restrictedBlock, mixed]);
+        expect(listed.map(entry => [entry.id, entry.teacherOnly])).toEqual([
+            ['in-teacher-block', true],
+            ['teacher-only', true],
+            ['listed', false],
         ]);
     });
 
@@ -877,6 +889,46 @@ const blockPage = (properties: Record<string, unknown>, components: ExportCompon
     page(components, { blocks: [{ id: 'b1', name: 'Bloque', order: 0, components, properties } as ExportBlock] });
 
 const teacherText = () => component({ id: 'notes', type: 'text', content: '<p>Notas</p>' });
+
+describe('the activities kept for teachers, once that content prints', () => {
+    const teacherBlock = () => blockPage({ teacherOnly: 'true' }, [teacherText(), component({ id: 'kept' })]);
+    const teacherComponent = () => page([component({ id: 'own', structureProperties: { teacherOnly: 'true' } })]);
+
+    it('are converted where they are, or moved to the appendix, as any other activity is', () => {
+        for (const pages of [[teacherBlock()], [teacherComponent()]]) {
+            const inPlace = applyActivityMode(pages, 'in-place', { teacherOnly: true });
+            expect(componentsOf(inPlace).map(entry => entry.type)).toContain(PRINTABLE_ACTIVITY_TYPE);
+
+            const appendix = applyActivityMode(pages, 'appendix', { teacherOnly: true });
+            expect(appendix).toHaveLength(2);
+            expect(componentsOf(appendix.slice(1))).toHaveLength(1);
+        }
+    });
+
+    it('are left out with the others, or when unticked', () => {
+        expect(componentsOf(applyActivityMode([teacherBlock()], 'omit', { teacherOnly: true })).map(e => e.id)).toEqual(
+            ['notes'],
+        );
+        const unticked = applyActivityMode([teacherBlock()], 'in-place', { teacherOnly: true, selectedActivities: [] });
+        expect(componentsOf(unticked).map(e => e.id)).toEqual(['notes']);
+    });
+
+    it('are drawn and left out by the same rule the modes follow', () => {
+        const [block] = teacherBlock().blocks;
+        const activity = block.components[1];
+
+        expect(convertedBy('in-place', { teacherOnly: true })(block, activity)).toBe(true);
+        expect(convertedBy('in-place')(block, activity)).toBe(false);
+        expect(droppedBy('omit', { teacherOnly: true })(block, activity)).toBe(true);
+        expect(droppedBy('omit')(block, activity)).toBe(false);
+    });
+
+    it('are still left alone when hidden', () => {
+        const hidden = blockPage({ teacherOnly: 'true', visibility: 'false' }, [component({ id: 'hidden' })]);
+
+        expect(componentsOf(applyActivityMode([hidden], 'in-place', { teacherOnly: true }))[0].type).toBe('guess');
+    });
+});
 
 describe('leaveOutTeacherOnlyActivities', () => {
     it('leaves out the activities of a teacher-only block, keeping its other content', () => {
@@ -926,11 +978,9 @@ describe('hasTeacherOnlyContent', () => {
         expect(hasTeacherOnlyContent([])).toBe(false);
     });
 
-    it('does not count teacher-only activities, which never print', () => {
-        expect(hasTeacherOnlyContent([blockPage({ teacherOnly: 'true' }, [component()])])).toBe(false);
-        expect(hasTeacherOnlyContent([page([component({ structureProperties: { teacherOnly: 'true' } })])])).toBe(
-            false,
-        );
+    it('counts teacher-only activities, which print with that content', () => {
+        expect(hasTeacherOnlyContent([blockPage({ teacherOnly: 'true' }, [component()])])).toBe(true);
+        expect(hasTeacherOnlyContent([page([component({ structureProperties: { teacherOnly: 'true' } })])])).toBe(true);
     });
 
     it('does not count what does not print anyway: hidden pages, blocks and components', () => {

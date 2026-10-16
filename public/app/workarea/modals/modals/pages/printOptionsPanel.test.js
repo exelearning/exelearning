@@ -20,6 +20,7 @@ const LABELS = {
     selectionHint: 'Shown when a printing mode that includes activities is selected.',
     selectAll: 'Select all',
     titleOnly: 'Title only',
+    teacherOnly: 'Teacher only',
     noneSelected: 'Select at least one activity to print.',
 };
 
@@ -634,13 +635,79 @@ describe('PrintOptionsPanel', () => {
             expect(teacherOnly().checked).toBe(false);
         });
 
-        it('is forbidden and allowed with the other document options', () => {
+        it('stays allowed when the other document options are not, deciding the worksheet too', () => {
             configure({ teacherOnlyContent: true });
 
             panel.setDocumentOptionsEnabled(false);
-            expect(teacherOnly().disabled).toBe(true);
-            panel.setDocumentOptionsEnabled(true);
+            expect(linkUrls().disabled).toBe(true);
             expect(teacherOnly().disabled).toBe(false);
+        });
+
+        describe('with activities kept for teachers', () => {
+            const TEACHER = [
+                { id: 't1', type: 'guess', pageTitle: 'Notes', blockTitle: 'For me', teacherOnly: true },
+                {
+                    id: 't2',
+                    type: 'map',
+                    pageTitle: 'Notes',
+                    blockTitle: 'Map',
+                    teacherOnly: true,
+                    neverPrintable: true,
+                },
+            ];
+            const mark = (id) => root.querySelector(`input[value="${id}"]`)?.closest('.form-check')
+                ?.querySelector('.print-activities-title-only')?.textContent;
+
+            it('offers them only while their content is to be printed', () => {
+                configure({ activities: [...ACTIVITIES, ...TEACHER], teacherOnlyContent: true });
+                expect(panel.hasTeacherOnlyActivities()).toBe(true);
+                expect(listed()).toEqual(ACTIVITIES.map(({ id }) => id));
+
+                tick(teacherOnly(), true);
+                expect(listed()).toEqual([...ACTIVITIES.map(({ id }) => id), 't1', 't2']);
+                expect(onChange).toHaveBeenLastCalledWith(
+                    expect.objectContaining({ teacherOnly: true }),
+                    PRINT_TEACHER_ONLY_FIELD
+                );
+
+                tick(teacherOnly(), false);
+                expect(listed()).toEqual(ACTIVITIES.map(({ id }) => id));
+            });
+
+            it('marks them, starts them ticked unless they can never be printed, and keeps what was chosen', () => {
+                configure({ activities: [...ACTIVITIES, ...TEACHER], teacherOnlyContent: true, labels: LABELS });
+                boxes()[0].checked = false;
+                boxes()[0].dispatchEvent(new Event('change'));
+                choose('appendix');
+
+                tick(teacherOnly(), true);
+
+                expect(mark('t1')).toBe(LABELS.teacherOnly);
+                expect(mark('t2')).toBe(`${LABELS.teacherOnly} · ${LABELS.titleOnly}`);
+                const ticked = boxes().filter((box) => box.checked).map((box) => box.value);
+                expect(ticked).not.toContain(ACTIVITIES[0].id);
+                expect(ticked).toContain('t1');
+                expect(ticked).not.toContain('t2');
+                expect(checkedChoice()).toBe('appendix');
+            });
+
+            it('asks for every activity, those kept for teachers included, while all offered are ticked', () => {
+                configure({ activities: [...ACTIVITIES, TEACHER[0]], teacherOnlyContent: true });
+                tick(teacherOnly(), true);
+
+                expect(panel.getState()).toEqual(expect.objectContaining({ selectedActivities: null, teacherOnly: true }));
+            });
+
+            it('offers what to print only once they are offered, when they are all a project has', () => {
+                configure({ activities: TEACHER, teacherOnlyContent: true });
+                expect(panel.hasActivities()).toBe(false);
+                expect(activitiesEl().hidden).toBe(true);
+
+                tick(teacherOnly(), true);
+                expect(panel.hasActivities()).toBe(true);
+                expect(activitiesEl().hidden).toBe(false);
+                expect(radios()).not.toHaveLength(0);
+            });
         });
     });
 

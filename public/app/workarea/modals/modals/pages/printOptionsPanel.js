@@ -59,8 +59,12 @@ export default class PrintOptionsPanel {
         /** The notice's last sentence, one for a project with activities to choose and one without. */
         this.introActivities = root?.querySelector('.print-options-intro-activities') ?? null;
         this.introDocument = root?.querySelector('.print-options-intro-document') ?? null;
+        /** Every interactive activity of the project, those kept for teachers included. */
+        this.projectActivities = [];
+        /** The activities offered now, as `offeredActivities` gives them. */
         this.activities = [];
         this.choices = [];
+        this.initialChoice = null;
         this.labels = {};
         this.ideviceName = () => '';
         this.selection = null;
@@ -80,7 +84,10 @@ export default class PrintOptionsPanel {
         });
         this.listen(this.toggleButton, 'click', () => this.toggle());
         for (const input of this.documentOptions()) {
-            this.listen(input, 'change', () => this.onChange(this.getState(), input.id));
+            this.listen(input, 'change', () => {
+                if (input === this.teacherOnlyInput) this.teacherOptionChanged();
+                this.onChange(this.getState(), input.id);
+            });
         }
     }
 
@@ -104,12 +111,42 @@ export default class PrintOptionsPanel {
     }
 
     /**
-     * Whether the project has interactive activities to choose about.
+     * Whether the project has interactive activities to choose about, as offered now: those kept
+     * for teachers only while their content is to be printed.
      *
      * @returns {boolean} true when there are activities
      */
     hasActivities() {
         return this.activities.length > 0;
+    }
+
+    /**
+     * Whether any of the project's activities is kept for teachers, offered or not.
+     *
+     * @returns {boolean} true when at least one is
+     */
+    hasTeacherOnlyActivities() {
+        return this.projectActivities.some((activity) => activity.teacherOnly);
+    }
+
+    /**
+     * Whether the content kept for teachers is to be printed: offered, and ticked.
+     *
+     * @returns {boolean} true when it is
+     */
+    printsTeacherOnly() {
+        return Boolean(this.teacherOnlyInput?.checked && !this.teacherOnlyRow?.hidden);
+    }
+
+    /**
+     * The project's activities the panel offers now: those kept for teachers only while their
+     * content is to be printed.
+     *
+     * @returns {Array<object>} The activities, in document order
+     */
+    offeredActivities() {
+        const teacherOnly = this.printsTeacherOnly();
+        return this.projectActivities.filter((activity) => teacherOnly || !activity.teacherOnly);
     }
 
     /**
@@ -138,14 +175,15 @@ export default class PrintOptionsPanel {
      *
      * @param {object} config
      * @param {Array<{id: string, type: string, pageTitle: string, blockTitle: string,
-     *     neverPrintable?: boolean}>} config.activities - The interactive activities in the project
+     *     neverPrintable?: boolean, teacherOnly?: boolean}>} config.activities - The interactive
+     *     activities in the project, those kept for teachers included
      * @param {Array<{value: string, label: string, prints: boolean}>} config.choices - What can be
      *     done with them. `prints` is false for the choice that leaves them all out
      * @param {string|null} config.choice - The value to preselect
      * @param {string[]|null} config.selectedActivities - Ids to tick; null ticks every activity
      *     but those that can never be printed
      * @param {object} config.labels - Translated strings: choicesHeading, selectionHeading,
-     *     selectionHint, selectAll, titleOnly and noneSelected
+     *     selectionHint, selectAll, titleOnly, teacherOnly and noneSelected
      * @param {(type: string) => string} config.ideviceName - Translated name of an iDevice type
      * @param {boolean} [config.teacherOnlyContent] - Whether the document holds teacher-only
      *     content, which only then is offered to print
@@ -163,10 +201,27 @@ export default class PrintOptionsPanel {
         // It starts clear every time: content kept for teachers prints only when asked for anew.
         if (this.teacherOnlyInput) this.teacherOnlyInput.checked = false;
 
-        this.activities = Array.isArray(activities) ? activities : [];
+        this.projectActivities = Array.isArray(activities) ? activities : [];
+        this.activities = this.offeredActivities();
         this.choices = choices;
+        this.initialChoice = choice;
         this.labels = labels;
         this.ideviceName = ideviceName;
+        this.renderActivities(choice, selectedActivities);
+
+        if (this.toggleButton) this.toggleButton.hidden = !this.hasContent();
+        this.setOpen(this.hasContent());
+    }
+
+    /**
+     * Draw what to print and which activities, for the activities offered now, or nothing when
+     * there are none.
+     *
+     * @param {string|null} choice - The value to preselect
+     * @param {string[]|null} selectedActivities - Ids to tick; null ticks every activity but those
+     *     that can never be printed
+     */
+    renderActivities(choice, selectedActivities) {
         this.selection = null;
         if (this.activitiesEl) this.activitiesEl.textContent = '';
         this.setStatus('');
@@ -182,8 +237,26 @@ export default class PrintOptionsPanel {
         // The notice only offers a choice of activities when the project has some to choose.
         if (this.introActivities) this.introActivities.hidden = !this.hasActivities();
         if (this.introDocument) this.introDocument.hidden = this.hasActivities();
-        if (this.toggleButton) this.toggleButton.hidden = !this.hasContent();
-        this.setOpen(this.hasContent());
+    }
+
+    /**
+     * Offer the activities kept for teachers, or stop offering them, as the content kept for
+     * teachers is now to be printed or not.
+     *
+     * What the user chose stays chosen. An activity offered again starts ticked, as it would have
+     * from the beginning, unless it can never be printed.
+     */
+    teacherOptionChanged() {
+        const { choice, ids } = this.snapshot();
+        const offeredBefore = new Set(this.activities.map(({ id }) => id));
+        const hadSelection = this.selection !== null;
+
+        this.activities = this.offeredActivities();
+        const comingBack = this.activities
+            .filter((activity) => !offeredBefore.has(activity.id) && !activity.neverPrintable)
+            .map(({ id }) => id);
+
+        this.renderActivities(choice ?? this.initialChoice, hadSelection ? [...ids, ...comingBack] : null);
     }
 
     /**
@@ -256,6 +329,7 @@ export default class PrintOptionsPanel {
                 hint: this.labels.selectionHint,
                 selectAll: this.labels.selectAll,
                 titleOnly: this.labels.titleOnly,
+                teacherOnly: this.labels.teacherOnly,
             },
             this.ideviceName
         );
@@ -340,12 +414,16 @@ export default class PrintOptionsPanel {
     }
 
     /**
-     * Allow the document options, or not: they mean nothing to a preview that is not the document.
+     * Allow the document options, or not: links and folded blocks mean nothing to a preview that
+     * is not the document. Teacher-only content stays allowed, since it also decides which
+     * activities go on the worksheet.
      *
      * @param {boolean} enabled - true while the document is being previewed
      */
     setDocumentOptionsEnabled(enabled) {
-        for (const input of this.documentOptions()) input.disabled = !enabled;
+        for (const input of [this.linkUrlsInput, this.unfoldBlocksInput]) {
+            if (input) input.disabled = !enabled;
+        }
     }
 
     /**
@@ -404,6 +482,7 @@ export default class PrintOptionsPanel {
         this.disposers = [];
         if (this.activitiesEl) this.activitiesEl.textContent = '';
         this.selection = null;
+        this.projectActivities = [];
         this.activities = [];
         if (this.root) this.root.hidden = true;
     }
