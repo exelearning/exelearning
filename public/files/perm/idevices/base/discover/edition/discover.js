@@ -400,7 +400,7 @@ var $exeDevice = {
                <span class="Descubre-ETitleImage" id="descubreETitleImage-${i}">${_('Image')}</span>
                <div class="Descubre-EInputImage mb-3 gap-2" id="descubreEInputImage-${i}">
                    <label class="sr-av" for="descubreEURLImage-${i}">URL</label>
-                       <input type="text" class="exe-file-picker Descubre-EURLImage form-control me-0" id="descubreEURLImage-${i}" />
+                       <input type="text" class="exe-file-picker Descubre-EURLImage form-control me-0" id="descubreEURLImage-${i}" data-author-target="#descubreEAuthor-${i}" />
                    <a href="#" id="descubreEPlayImage-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage " /></a>
                    <a href="#" id="descubreShowAlt-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="Descubre-EButtonImage " /></a>
                </div>

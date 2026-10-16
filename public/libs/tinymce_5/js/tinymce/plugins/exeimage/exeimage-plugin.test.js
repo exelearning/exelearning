@@ -271,3 +271,290 @@ describe('ExeImage Plugin - TinyMCE Editor Direct Update', () => {
     expect(result).toBe(false);
   });
 });
+
+describe('ExeImage Plugin - centralized caption contract', () => {
+  // Mirrors the helpers added to mySubmit: the figure carries the asset id + the
+  // per-instance caption presentation as data-* so the live resolver / exporter can
+  // re-derive the caption from the centralized File Manager metadata.
+
+  // Mirror of exeAssetIdFromSrc().
+  function exeAssetIdFromSrc(src) {
+    const m = /^asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?:[/?#]|$)/i.exec(src || '');
+    return m ? m[1] : '';
+  }
+
+  // Mirror of exeFigureAttrs().
+  function exeFigureAttrs(figureClasses, figureStyle, assetId, heading, notes, hidden) {
+    const attrs = { class: figureClasses, style: (figureStyle || '').trim() };
+    if (assetId) attrs['data-asset-id'] = assetId;
+    if (heading) attrs['data-caption-heading'] = heading;
+    if (notes) attrs['data-caption-notes'] = notes;
+    if (hidden) attrs['data-caption-hidden'] = 'true';
+    return attrs;
+  }
+
+  it('extracts the asset id from an asset:// src (with or without extension)', () => {
+    expect(exeAssetIdFromSrc('asset://abc123.jpg')).toBe('abc123');
+    expect(exeAssetIdFromSrc('asset://abc123')).toBe('abc123');
+    expect(exeAssetIdFromSrc('asset://uuid-with-dashes.png')).toBe('uuid-with-dashes');
+  });
+
+  it('returns no id for non-asset srcs', () => {
+    expect(exeAssetIdFromSrc('https://example.com/x.jpg')).toBe('');
+    expect(exeAssetIdFromSrc('blob:http://localhost/abc')).toBe('');
+    expect(exeAssetIdFromSrc('')).toBe('');
+  });
+
+  it('stamps the asset id + per-instance caption data on the figure, omitting empties', () => {
+    const attrs = exeFigureAttrs('exe-figure position-center', 'width: 200px;', 'u1', 'Fig 1', 'A note', true);
+    expect(attrs['data-asset-id']).toBe('u1');
+    expect(attrs['data-caption-heading']).toBe('Fig 1');
+    expect(attrs['data-caption-notes']).toBe('A note');
+    expect(attrs['data-caption-hidden']).toBe('true');
+  });
+
+  it('omits empty per-instance attributes (clean markup when nothing is set)', () => {
+    const attrs = exeFigureAttrs('exe-figure', '', 'u1', '', '', false);
+    expect(attrs['data-asset-id']).toBe('u1');
+    expect('data-caption-heading' in attrs).toBe(false);
+    expect('data-caption-notes' in attrs).toBe(false);
+    expect('data-caption-hidden' in attrs).toBe(false);
+  });
+});
+
+describe('ExeImage Plugin - read-only attribution mirror (asset:// images)', () => {
+  // Mirror of exeAttributionMirror(): maps centralized File Manager metadata to the
+  // read-only ro_* fields shown (disabled) for asset:// images. MUST stay in lockstep
+  // with plugin.min.js.
+  function exeAttributionMirror(meta) {
+    meta = meta || {};
+    return {
+      ro_title: meta.title || '',
+      ro_author: meta.author || '',
+      ro_authorlink: meta.authorUrl || '',
+      ro_source: meta.sourceUrl || '',
+      ro_license: meta.license || '',
+    };
+  }
+
+  // Mirror of exeAssetIdFromSrc() (asset id from an asset:// src).
+  function exeAssetIdFromSrc(src) {
+    const m = /^asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?:[/?#]|$)/i.exec(src || '');
+    return m ? m[1] : '';
+  }
+
+  // Mirror of exeImageAssetId(): the figure's data-asset-id (stashed as image.assetId)
+  // wins over the display src, which TinyMCE rewrites for editing. MUST stay in lockstep.
+  function exeImageAssetId(image) {
+    if (!image) return '';
+    return image.assetId || exeAssetIdFromSrc(image.src);
+  }
+
+  // Mirror of makeDialogBody()'s tab-inclusion branching (tab names only). The dialog
+  // uses a tabpanel when there is an advanced/upload tab OR the image is asset-backed;
+  // asset-backed images append the read-only 'attribution' tab. Returns null when the
+  // dialog falls back to a plain (tab-less) panel.
+  function imageDialogTabNames({ isAsset, hasAdvTab, hasUpload }) {
+    if (!(hasAdvTab || hasUpload || isAsset)) return null;
+    const tabs = ['general'];
+    if (hasAdvTab) tabs.push('advanced');
+    if (hasUpload) tabs.push('upload');
+    if (isAsset) tabs.push('attribution');
+    return tabs;
+  }
+
+  it('maps centralized File Manager metadata to the disabled ro_* fields', () => {
+    const meta = {
+      title: 'Sunset',
+      author: 'Ada Lovelace',
+      authorUrl: 'https://example.org/ada',
+      sourceUrl: 'https://example.org/sunset',
+      license: 'Creative Commons BY-SA',
+    };
+    expect(exeAttributionMirror(meta)).toEqual({
+      ro_title: 'Sunset',
+      ro_author: 'Ada Lovelace',
+      ro_authorlink: 'https://example.org/ada',
+      ro_source: 'https://example.org/sunset',
+      ro_license: 'Creative Commons BY-SA',
+    });
+  });
+
+  it('yields empty strings for missing metadata or an external image', () => {
+    expect(exeAttributionMirror({})).toEqual({
+      ro_title: '',
+      ro_author: '',
+      ro_authorlink: '',
+      ro_source: '',
+      ro_license: '',
+    });
+    expect(exeAttributionMirror(null).ro_license).toBe('');
+    expect(exeAttributionMirror({ author: 'Only author' }).ro_title).toBe('');
+  });
+
+  it('resolves the asset id from the figure data-asset-id first, then the src', () => {
+    // On re-open the display src is a rewritten/blob URL — the figure id must still win.
+    expect(exeImageAssetId({ assetId: 'u1', src: 'blob:http://localhost/xyz' })).toBe('u1');
+    // Fresh insert: no figure id yet, fall back to the asset:// src.
+    expect(exeImageAssetId({ assetId: '', src: 'asset://u2.jpg' })).toBe('u2');
+    // External image: neither → no asset id.
+    expect(exeImageAssetId({ assetId: '', src: 'https://example.com/x.jpg' })).toBe('');
+    expect(exeImageAssetId(null)).toBe('');
+  });
+
+  it('appends the read-only attribution tab only for asset:// images', () => {
+    expect(imageDialogTabNames({ isAsset: true, hasAdvTab: true, hasUpload: false })).toEqual([
+      'general',
+      'advanced',
+      'attribution',
+    ]);
+    expect(imageDialogTabNames({ isAsset: false, hasAdvTab: true, hasUpload: false })).toEqual([
+      'general',
+      'advanced',
+    ]);
+  });
+
+  it('forces a tabpanel for an asset image even without advanced/upload tabs', () => {
+    expect(imageDialogTabNames({ isAsset: true, hasAdvTab: false, hasUpload: false })).toEqual([
+      'general',
+      'attribution',
+    ]);
+  });
+
+  it('keeps a plain (tab-less) panel for an external image with no advanced/upload tabs', () => {
+    expect(imageDialogTabNames({ isAsset: false, hasAdvTab: false, hasUpload: false })).toBeNull();
+  });
+});
+
+describe('ExeImage Plugin - non-editable auto-derived caption (PR #1868)', () => {
+  // Mirrors the caption-locking helpers added to the plugin. The exe-figure caption
+  // (header div + figcaption) is auto-derived from the centralized File Manager metadata,
+  // so it must be contenteditable="false" inside the editor (typing would be discarded on
+  // save) and the attribute must be stripped on serialize so the stored markup stays clean.
+
+  // Mirror of isExeFigureNode().
+  function isExeFigureNode(node) {
+    const className = node.attr('class');
+    return !!className && /\bexe-figure\b/.test(className);
+  }
+
+  // Mirror of isExeCaptionNode() — matches both `div.figcaption.header` and `figcaption.figcaption`.
+  function isExeCaptionNode(node) {
+    const className = node.attr('class');
+    return !!className && /\bfigcaption\b/.test(className);
+  }
+
+  // Minimal TinyMCE AST node mock: attr(name[, value]) get/set and getAll(tag).
+  function makeNode(tag, className, children = []) {
+    const attrs = className == null ? {} : { class: className };
+    return {
+      tag,
+      children,
+      attr(name, value) {
+        if (arguments.length > 1) {
+          if (value === null) delete attrs[name];
+          else attrs[name] = value;
+          return undefined;
+        }
+        return attrs[name] !== undefined ? attrs[name] : null;
+      },
+      getAll(t) {
+        return children.filter(c => c.tag === t);
+      },
+    };
+  }
+
+  // Mirror of toggleExeCaptionEditableState().
+  function toggleExeCaptionEditableState(inEditor) {
+    return function (nodes) {
+      let i = nodes.length;
+      const lockCaption = function (node) {
+        if (isExeCaptionNode(node)) {
+          node.attr('contenteditable', inEditor ? 'false' : null);
+        }
+      };
+      while (i--) {
+        const figure = nodes[i];
+        if (!isExeFigureNode(figure)) continue;
+        figure.getAll('figcaption').forEach(lockCaption);
+        figure.getAll('div').forEach(lockCaption);
+      }
+    };
+  }
+
+  // Mirror of exeLockCaptionEditable() (DOM path used right after figure creation).
+  function exeLockCaptionEditable(figureEl) {
+    if (!figureEl || typeof figureEl.querySelectorAll !== 'function') return;
+    figureEl.querySelectorAll('.figcaption.header, figcaption.figcaption').forEach(function (node) {
+      node.setAttribute('contenteditable', 'false');
+    });
+  }
+
+  it('recognizes exe-figure and caption nodes by class', () => {
+    expect(isExeFigureNode(makeNode('figure', 'exe-figure position-center'))).toBe(true);
+    expect(isExeFigureNode(makeNode('figure', 'image'))).toBe(false);
+    expect(isExeFigureNode(makeNode('figure', null))).toBe(false);
+    expect(isExeCaptionNode(makeNode('div', 'figcaption header'))).toBe(true);
+    expect(isExeCaptionNode(makeNode('figcaption', 'figcaption'))).toBe(true);
+    expect(isExeCaptionNode(makeNode('img', null))).toBe(false);
+  });
+
+  it('locks the caption nodes (header + figcaption) non-editable inside the editor', () => {
+    const header = makeNode('div', 'figcaption header');
+    const footer = makeNode('figcaption', 'figcaption');
+    const img = makeNode('img', null);
+    const figure = makeNode('figure', 'exe-figure', [header, img, footer]);
+
+    toggleExeCaptionEditableState(true)([figure]);
+
+    expect(header.attr('contenteditable')).toBe('false');
+    expect(footer.attr('contenteditable')).toBe('false');
+    expect(img.attr('contenteditable')).toBe(null); // image stays as-is
+  });
+
+  it('strips contenteditable from caption nodes on serialize', () => {
+    const header = makeNode('div', 'figcaption header');
+    const footer = makeNode('figcaption', 'figcaption');
+    const figure = makeNode('figure', 'exe-figure', [header, footer]);
+    toggleExeCaptionEditableState(true)([figure]);
+
+    toggleExeCaptionEditableState(false)([figure]);
+
+    expect(header.attr('contenteditable')).toBe(null);
+    expect(footer.attr('contenteditable')).toBe(null);
+  });
+
+  it('ignores non-exe figures (legacy upstream figure.image is untouched)', () => {
+    const footer = makeNode('figcaption', 'figcaption');
+    const legacyFigure = makeNode('figure', 'image', [footer]);
+
+    toggleExeCaptionEditableState(true)([legacyFigure]);
+
+    expect(footer.attr('contenteditable')).toBe(null);
+  });
+
+  it('locks the caption in the DOM right after figure creation', () => {
+    const calls = [];
+    const makeEl = () => ({ setAttribute: (k, v) => calls.push([k, v]) });
+    const header = makeEl();
+    const footer = makeEl();
+    const figureEl = {
+      querySelectorAll: sel => {
+        expect(sel).toBe('.figcaption.header, figcaption.figcaption');
+        return [header, footer];
+      },
+    };
+
+    exeLockCaptionEditable(figureEl);
+
+    expect(calls).toEqual([
+      ['contenteditable', 'false'],
+      ['contenteditable', 'false'],
+    ]);
+  });
+
+  it('is a no-op for missing or non-element figures', () => {
+    expect(() => exeLockCaptionEditable(null)).not.toThrow();
+    expect(() => exeLockCaptionEditable({})).not.toThrow();
+  });
+});

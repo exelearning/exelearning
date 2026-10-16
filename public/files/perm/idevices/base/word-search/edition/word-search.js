@@ -434,7 +434,7 @@ var $exeDevice = {
                                 <span class="SPE-ETitleImage" id="sopaETitleImage">${_('Image URL')}</span>
                                 <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="sopaEInputImage">
                                     <label class="sr-av" for="sopaEURLImage">${_('Image URL')}</label>
-                                    <input type="text" class="exe-file-picker SPE-EURLImage form-control me-0 w-100" id="sopaEURLImage" />
+                                    <input type="text" class="exe-file-picker SPE-EURLImage form-control me-0 w-100" id="sopaEURLImage" data-author-target="#sopaEAuthor" />
                                     <a href="#" id="sopaEPlayImage" class="SPE-ENavigationButton SPE-EPlayVideo" title="${_('Show')}">
                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SPE-EButtonImage" />
                                     </a>

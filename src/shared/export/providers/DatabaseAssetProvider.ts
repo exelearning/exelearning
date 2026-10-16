@@ -19,8 +19,9 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { Kysely } from 'kysely';
 import type { Database, Asset } from '../../../db/types';
-import type { AssetProvider, ExportAsset } from '../interfaces';
+import type { AssetProvider, AssetExportMetadata, ExportAsset } from '../interfaces';
 import { EXTENSION_TO_MIME } from '../constants';
+import { pickAssetExportMetadata } from '../asset-metadata';
 import {
     findAssetByClientId as findAssetByClientIdDefault,
     findAllAssetsForProject as findAllAssetsForProjectDefault,
@@ -247,6 +248,30 @@ export class DatabaseAssetProvider implements AssetProvider {
         }
 
         return assets;
+    }
+
+    /**
+     * Build the centralized metadata map (assetId → metadata) from the assets table.
+     * Keyed by the same id used for ExportAsset (client_id, falling back to numeric id),
+     * so the ELPX exporter can correlate it with the export path map.
+     */
+    async getExportMetadataMap(): Promise<Map<string, AssetExportMetadata>> {
+        const map = new Map<string, AssetExportMetadata>();
+        const dbAssets = await this.queries.findAllAssetsForProject(this.db, this.projectId);
+        for (const dbAsset of dbAssets) {
+            const picked = pickAssetExportMetadata({
+                description: dbAsset.description,
+                title: dbAsset.title,
+                license: dbAsset.license,
+                author: dbAsset.author,
+                authorUrl: dbAsset.author_url,
+                sourceUrl: dbAsset.source_url,
+            });
+            if (picked) {
+                map.set(dbAsset.client_id || String(dbAsset.id), picked);
+            }
+        }
+        return map;
     }
 
     /**

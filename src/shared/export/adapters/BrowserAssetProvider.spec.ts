@@ -30,6 +30,12 @@ interface MockAssetManagerInterface {
         filename?: string;
         folderPath?: string;
         mime?: string;
+        description?: string;
+        title?: string;
+        license?: string;
+        author?: string;
+        authorUrl?: string;
+        sourceUrl?: string;
     }>;
     getAssetMetadata?(assetId: string): {
         id: string;
@@ -46,7 +52,20 @@ interface MockAssetManagerInterface {
 class MockAssetManager implements MockAssetManagerInterface {
     private assets: Map<
         string,
-        { id: string; blob: Blob; mime: string; filename?: string; originalPath?: string; folderPath?: string }
+        {
+            id: string;
+            blob: Blob;
+            mime: string;
+            filename?: string;
+            originalPath?: string;
+            folderPath?: string;
+            description?: string;
+            title?: string;
+            license?: string;
+            author?: string;
+            authorUrl?: string;
+            sourceUrl?: string;
+        }
     > = new Map();
     private urlMap: Map<string, string> = new Map();
     public getProjectAssetsCalls = 0;
@@ -61,6 +80,12 @@ class MockAssetManager implements MockAssetManagerInterface {
             folderPath?: string;
             mime?: string;
             skipOriginalPath?: boolean;
+            description?: string;
+            title?: string;
+            license?: string;
+            author?: string;
+            authorUrl?: string;
+            sourceUrl?: string;
         } = {},
     ): void {
         const blob = createMockBlob(content);
@@ -74,6 +99,12 @@ class MockAssetManager implements MockAssetManagerInterface {
             originalPath: options.skipOriginalPath
                 ? undefined
                 : (options.originalPath ?? `${id}/${options.filename || 'file.bin'}`),
+            description: options.description,
+            title: options.title,
+            license: options.license,
+            author: options.author,
+            authorUrl: options.authorUrl,
+            sourceUrl: options.sourceUrl,
         });
     }
 
@@ -103,12 +134,24 @@ class MockAssetManager implements MockAssetManagerInterface {
         filename?: string;
         folderPath?: string;
         mime?: string;
+        description?: string;
+        title?: string;
+        license?: string;
+        author?: string;
+        authorUrl?: string;
+        sourceUrl?: string;
     }> {
         return Array.from(this.assets.values()).map(asset => ({
             id: asset.id,
             filename: asset.filename,
             folderPath: asset.folderPath || asset.originalPath?.split('/').slice(0, -1).join('/'),
             mime: asset.mime,
+            description: asset.description,
+            title: asset.title,
+            license: asset.license,
+            author: asset.author,
+            authorUrl: asset.authorUrl,
+            sourceUrl: asset.sourceUrl,
         }));
     }
 
@@ -789,6 +832,34 @@ describe('BrowserAssetProvider', () => {
             const result = await nullProvider.resolveAssetUrl('asset://test');
 
             expect(result).toBeNull();
+        });
+    });
+
+    describe('getExportMetadataMap', () => {
+        it('returns metadata keyed by id for assets that have any', async () => {
+            mockManager.addAsset('with-meta', 'x', {
+                filename: 'photo.jpg',
+                mime: 'image/jpeg',
+                description: 'A sunset',
+                author: 'Ada',
+                authorUrl: 'https://ada.example',
+            });
+            mockManager.addAsset('no-meta', 'y', { filename: 'plain.jpg', mime: 'image/jpeg' });
+
+            const map = await provider.getExportMetadataMap();
+
+            expect(map.get('with-meta')).toEqual({
+                description: 'A sunset',
+                author: 'Ada',
+                authorUrl: 'https://ada.example',
+            });
+            expect(map.has('no-meta')).toBe(false);
+        });
+
+        it('returns an empty map when the manager has no metadata accessor', async () => {
+            const emptyProvider = new BrowserAssetProvider(null);
+            const map = await emptyProvider.getExportMetadataMap();
+            expect(map.size).toBe(0);
         });
     });
 });

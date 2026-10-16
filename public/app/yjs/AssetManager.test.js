@@ -2210,6 +2210,494 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('centralized asset metadata', () => {
+    it('persists description/title/license/author/authorUrl/sourceUrl via setAssetMetadata', () => {
+      assetManager.setAssetMetadata('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        description: 'A sunset',
+        title: 'Sunset',
+        license: 'Creative Commons BY',
+        author: 'Ada',
+        authorUrl: 'https://ada.example',
+        sourceUrl: 'https://src.example/sunset.jpg',
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.description).toBe('A sunset');
+      expect(meta.title).toBe('Sunset');
+      expect(meta.license).toBe('Creative Commons BY');
+      expect(meta.author).toBe('Ada');
+      expect(meta.authorUrl).toBe('https://ada.example');
+      expect(meta.sourceUrl).toBe('https://src.example/sunset.jpg');
+    });
+
+    it('does not persist per-instance alt text (no longer centralized)', () => {
+      assetManager.setAssetMetadata('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        altText: 'a cat on a mat',
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect('altText' in meta).toBe(false);
+    });
+
+    it('omits empty metadata fields to keep entries minimal', () => {
+      assetManager.setAssetMetadata('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        description: '',
+        authorUrl: undefined,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect('description' in meta).toBe(false);
+      expect('authorUrl' in meta).toBe(false);
+    });
+
+    it('preserves metadata across a rename (setAssetMetadata whitelist)', async () => {
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'old.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        description: 'A sunset',
+        author: 'Ada',
+        authorUrl: 'https://ada.example',
+      });
+
+      await assetManager.renameAsset('a1', 'new.jpg');
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.filename).toBe('new.jpg');
+      expect(meta.description).toBe('A sunset');
+      expect(meta.author).toBe('Ada');
+      expect(meta.authorUrl).toBe('https://ada.example');
+    });
+
+    it('merges a patch via updateAssetMetadata and trims values', async () => {
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        description: 'old',
+      });
+
+      const ok = await assetManager.updateAssetMetadata('a1', {
+        description: '  new description  ',
+        author: 'Grace',
+      });
+
+      expect(ok).toBe(true);
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.description).toBe('new description');
+      expect(meta.author).toBe('Grace');
+      // Untouched fields are preserved
+      expect(meta.filename).toBe('photo.jpg');
+    });
+
+    it('returns false from updateAssetMetadata when the asset is missing', async () => {
+      const ok = await assetManager.updateAssetMetadata('missing', { description: 'x' });
+      expect(ok).toBe(false);
+    });
+
+    it('field-level merge: a single-field patch preserves other metadata fields', async () => {
+      // Simulates a remote collaborator having set author/title; a local debounced
+      // save of only `description` must not clobber those concurrently-set fields.
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        title: 'Remote title',
+        author: 'Remote author',
+        description: 'old',
+      });
+
+      await assetManager.updateAssetMetadata('a1', { description: 'mine' });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.description).toBe('mine');
+      expect(meta.title).toBe('Remote title');
+      expect(meta.author).toBe('Remote author');
+    });
+
+    it('updateAssetMetadata wraps the read-modify-write in a Yjs transaction', async () => {
+      const transactSpy = vi.fn((fn) => fn());
+      mockYjsBridge.getAssetsMap().doc.transact = transactSpy;
+      mockYjsBridge._assetsMap.set('a1', { filename: 'p.jpg', mime: 'image/jpeg', size: 1 });
+
+      await assetManager.updateAssetMetadata('a1', { title: 'T' });
+
+      expect(transactSpy).toHaveBeenCalled();
+      expect(mockYjsBridge._assetsMap.get('a1').title).toBe('T');
+    });
+
+    it('does not call the server when not in a collaborative session', async () => {
+      delete global.window.eXeLearning;
+      mockYjsBridge._assetsMap.set('a1', { filename: 'photo.jpg', mime: 'image/jpeg', size: 1 });
+
+      await assetManager.updateAssetMetadata('a1', { description: 'x' });
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('PATCHes the server when in a collaborative session', async () => {
+      global.window.eXeLearning = { config: { apiUrl: 'http://srv/api', token: 'tok' } };
+      global.fetch = mock(async () => ({ ok: true, json: async () => ({ success: true }) }));
+      mockYjsBridge._assetsMap.set('a1', { filename: 'photo.jpg', mime: 'image/jpeg', size: 1 });
+
+      await assetManager.updateAssetMetadata('a1', { description: 'x' });
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const [url, opts] = global.fetch.mock.calls[0];
+      expect(url).toBe('http://srv/api/projects/project-123/assets/by-client-id/a1/metadata');
+      expect(opts.method).toBe('PATCH');
+      expect(JSON.parse(opts.body)).toEqual({ description: 'x' });
+      delete global.window.eXeLearning;
+    });
+
+    it('putAsset forwards centralized metadata to Yjs', async () => {
+      await assetManager.putAsset({
+        id: 'a1',
+        blob: new Blob(['x']),
+        mime: 'image/jpeg',
+        size: 1,
+        filename: 'photo.jpg',
+        description: 'A sunset',
+        authorUrl: 'https://ada.example',
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.description).toBe('A sunset');
+      expect(meta.authorUrl).toBe('https://ada.example');
+    });
+  });
+
+  describe('asset metadata sidecar (ELPX import)', () => {
+    const encode = obj => new TextEncoder().encode(JSON.stringify(obj));
+
+    it('parses a content/asset-metadata.json sidecar', () => {
+      const zip = {
+        'content/asset-metadata.json': encode({
+          version: 1,
+          assets: { 'photo.jpg': { description: 'A sunset' } },
+        }),
+      };
+      const sidecar = assetManager._parseAssetMetadataSidecar(zip);
+      expect(sidecar['photo.jpg']).toEqual({ description: 'A sunset' });
+    });
+
+    it('returns an empty object when the sidecar is absent', () => {
+      expect(assetManager._parseAssetMetadataSidecar({})).toEqual({});
+    });
+
+    it('tolerates a malformed sidecar', () => {
+      const zip = { 'content/asset-metadata.json': new TextEncoder().encode('{ not json') };
+      expect(assetManager._parseAssetMetadataSidecar(zip)).toEqual({});
+    });
+
+    it('looks up metadata by the resources-relative path, ignoring legacy alt text', () => {
+      const sidecar = {
+        'photo.jpg': { description: 'A sunset', altText: 'legacy alt (ignored)', authorUrl: 'https://ada.example', extra: 'ignored' },
+      };
+      const result = assetManager._lookupAssetMetadataForPath(sidecar, 'content/resources/photo.jpg');
+      expect(result).toEqual({ description: 'A sunset', authorUrl: 'https://ada.example' });
+    });
+
+    it('returns empty object when no sidecar entry matches', () => {
+      expect(assetManager._lookupAssetMetadataForPath({}, 'content/resources/x.jpg')).toEqual({});
+      expect(assetManager._lookupAssetMetadataForPath(null, 'x.jpg')).toEqual({});
+    });
+  });
+
+  describe('asset reference scanning', () => {
+    // Build a mock Y.Doc: one page → one block → N components.
+    // Each component is { html, props } searched for asset:// references.
+    function setMockYDoc(components, ctx = {}) {
+      const compFields = { id: 'b1', blockName: 'Main content', pageName: 'Introduction', pageId: 'p1', ...ctx };
+      const compMaps = components.map((c, idx) => ({
+        get: k => {
+          switch (k) {
+            case 'htmlContent':
+              return c.html;
+            case 'jsonProperties':
+              return c.props;
+            case 'properties':
+              return c.properties;
+            case 'ideviceType':
+              return c.ideviceType;
+            case 'type':
+              return c.type;
+            case 'title':
+              return c.title;
+            case 'id':
+            case 'ideviceId':
+              return c.id || `comp-${idx}`;
+            default:
+              return undefined;
+          }
+        },
+      }));
+      const arr = items => ({ length: items.length, get: i => items[i] });
+      const componentsArr = arr(compMaps);
+      const blockMap = {
+        get: k =>
+          k === 'components'
+            ? componentsArr
+            : k === 'blockName'
+              ? compFields.blockName
+              : k === 'id'
+                ? compFields.id
+                : undefined,
+      };
+      const pageMap = {
+        get: k =>
+          k === 'blocks'
+            ? arr([blockMap])
+            : k === 'pageName'
+              ? compFields.pageName
+              : k === 'id'
+                ? compFields.pageId
+                : undefined,
+      };
+      const ydoc = { getArray: name => (name === 'navigation' ? arr([pageMap]) : null) };
+      global.window.eXeLearning = { app: { project: { _yjsBridge: { documentManager: { ydoc } } } } };
+    }
+
+    afterEach(() => {
+      delete global.window.eXeLearning;
+    });
+
+    it('countAssetReferences counts components referencing the asset', () => {
+      setMockYDoc([
+        { html: '<img src="asset://a1.jpg">' },
+        { html: '<p>no assets here</p>' },
+        { props: { gallery: [{ img: 'asset://a1.jpg' }] } },
+      ]);
+      expect(assetManager.countAssetReferences('a1')).toBe(2);
+      expect(assetManager.countAssetReferences('missing')).toBe(0);
+      expect(assetManager.countAssetReferences('')).toBe(0);
+    });
+
+    it('counts references in the legacy properties field', () => {
+      setMockYDoc([{ properties: { src: 'asset://a1.png' } }]);
+      expect(assetManager.countAssetReferences('a1')).toBe(1);
+    });
+
+    it('counts a component only once when referenced in both html and props', () => {
+      setMockYDoc([{ html: '<img src="asset://a1.jpg">', props: { img: 'asset://a1.jpg' } }]);
+      expect(assetManager.countAssetReferences('a1')).toBe(1);
+    });
+
+    it('getReferencedAssetIds collects all referenced ids (extension stripped)', () => {
+      setMockYDoc([
+        { html: '<img src="asset://a1.jpg"> <a href="asset://b2.pdf">x</a>' },
+        { props: { url: 'asset://c3' } },
+      ]);
+      const ids = assetManager.getReferencedAssetIds();
+      expect(ids.has('a1')).toBe(true);
+      expect(ids.has('b2')).toBe(true);
+      expect(ids.has('c3')).toBe(true);
+      expect(ids.has('zzz')).toBe(false);
+    });
+
+    it('returns safe defaults when no project Y.Doc is available', () => {
+      delete global.window.eXeLearning;
+      expect(assetManager.countAssetReferences('a1')).toBe(0);
+      expect(assetManager.getReferencedAssetIds().size).toBe(0);
+    });
+
+    it('getAllAssetReferenceCounts tallies every asset in a single pass', () => {
+      setMockYDoc([
+        { html: '<img src="asset://a1.jpg"> <img src="asset://b2.png">' },
+        { props: { img: 'asset://a1.jpg' } },
+        { html: '<p>nothing</p>' },
+      ]);
+      const counts = assetManager.getAllAssetReferenceCounts();
+      expect(counts.get('a1')).toBe(2);
+      expect(counts.get('b2')).toBe(1);
+      expect(counts.has('zzz')).toBe(false);
+    });
+
+    it('excludes resource-report snapshots from the reference scan (#1868)', () => {
+      // A default Resource Report iDevice (resourceMode:'all') snapshots an asset:// link
+      // for every listed asset. Those links are a generated report, not real usage, so the
+      // scan must count only the genuine reference (A) and ignore the report's A, B, C.
+      setMockYDoc([
+        { html: '<img src="asset://a1.jpg">', ideviceType: 'text' },
+        {
+          html: '<a href="asset://a1.jpg">A</a><a href="asset://b2.png">B</a><a href="asset://c3.pdf">C</a>',
+          ideviceType: 'resource-report',
+        },
+      ]);
+      expect([...assetManager.getReferencedAssetIds()]).toEqual(['a1']);
+      expect(assetManager.countAssetReferences('a1')).toBe(1);
+      expect(assetManager.countAssetReferences('b2')).toBe(0);
+      const counts = assetManager.getAllAssetReferenceCounts();
+      expect(counts.get('a1')).toBe(1);
+      expect(counts.has('b2')).toBe(false);
+      expect(counts.has('c3')).toBe(false);
+    });
+
+    it('getAssetUsageLocations returns page/block/iDevice context', () => {
+      setMockYDoc(
+        [
+          { html: '<img src="asset://a1.jpg">', ideviceType: 'image-gallery', id: 'comp-1' },
+          { html: '<p>no asset</p>', ideviceType: 'text', id: 'comp-2' },
+        ],
+        { pageName: 'Activity 1', blockName: 'Gallery block', pageId: 'pg-1' },
+      );
+      // Provide the installed-iDevices registry alongside the project (same window object).
+      global.window.eXeLearning.app.idevices = {
+        list: { installed: { 'image-gallery': { title: 'Image Gallery' } } },
+      };
+      const locations = assetManager.getAssetUsageLocations('a1');
+      expect(locations.length).toBe(1);
+      expect(locations[0]).toMatchObject({
+        pageTitle: 'Activity 1',
+        blockTitle: 'Gallery block',
+        ideviceType: 'image-gallery',
+        ideviceTitle: 'Image Gallery',
+        ideviceId: 'comp-1',
+        pageId: 'pg-1',
+      });
+    });
+
+    it('getAssetUsageLocations falls back to the type when not installed, and is empty when unused', () => {
+      setMockYDoc([{ html: '<img src="asset://a1.jpg">', ideviceType: 'custom-type', id: 'c1' }]);
+      const used = assetManager.getAssetUsageLocations('a1');
+      expect(used[0].ideviceTitle).toBe('custom-type');
+      expect(assetManager.getAssetUsageLocations('missing')).toEqual([]);
+      expect(assetManager.getAssetUsageLocations('')).toEqual([]);
+    });
+
+    describe('resource-report exclusion (self-reference)', () => {
+      // A Resource Report snapshots asset:// URLs for EVERY asset in its
+      // jsonProperties (resources[].assetUrl). It must never count as a reference,
+      // or one default report marks every asset as used.
+      const reportComponent = {
+        ideviceType: 'resource-report',
+        id: 'rr-1',
+        props: {
+          resources: [
+            { id: 'a1', assetUrl: 'asset://a1.jpg' },
+            { id: 'b2', assetUrl: 'asset://b2.png' },
+          ],
+        },
+      };
+
+      it('countAssetReferences ignores resource-report snapshots', () => {
+        setMockYDoc([reportComponent, { html: '<img src="asset://a1.jpg">', ideviceType: 'text' }]);
+        // a1 is genuinely used by the text iDevice; b2 only appears in the report.
+        expect(assetManager.countAssetReferences('a1')).toBe(1);
+        expect(assetManager.countAssetReferences('b2')).toBe(0);
+      });
+
+      it('getAllAssetReferenceCounts ignores resource-report snapshots', () => {
+        setMockYDoc([reportComponent, { html: '<img src="asset://a1.jpg">', ideviceType: 'text' }]);
+        const counts = assetManager.getAllAssetReferenceCounts();
+        expect(counts.get('a1')).toBe(1);
+        expect(counts.has('b2')).toBe(false);
+      });
+
+      it('getReferencedAssetIds ignores resource-report snapshots (fixes the "used" filter)', () => {
+        setMockYDoc([reportComponent, { html: '<img src="asset://a1.jpg">', ideviceType: 'text' }]);
+        const ids = assetManager.getReferencedAssetIds();
+        expect(ids.has('a1')).toBe(true);
+        expect(ids.has('b2')).toBe(false);
+      });
+
+      it('getAssetUsageLocations never lists the resource-report itself', () => {
+        setMockYDoc([reportComponent, { html: '<img src="asset://a1.jpg">', ideviceType: 'text', id: 't-1' }]);
+        const locations = assetManager.getAssetUsageLocations('a1');
+        expect(locations.length).toBe(1);
+        expect(locations[0].ideviceType).toBe('text');
+        expect(assetManager.getAssetUsageLocations('b2')).toEqual([]);
+      });
+
+      it('also excludes components using the legacy "type" key', () => {
+        setMockYDoc([
+          { type: 'resource-report', props: { resources: [{ assetUrl: 'asset://a1.jpg' }] } },
+        ]);
+        expect(assetManager.countAssetReferences('a1')).toBe(0);
+      });
+    });
+  });
+
+  describe('replaceAssetContent', () => {
+    beforeEach(() => {
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'old.png',
+        folderPath: 'images',
+        mime: 'image/png',
+        size: 10,
+        hash: 'oldhash',
+        uploaded: true,
+        createdAt: '2020-01-01T00:00:00Z',
+        description: 'A description',
+        title: 'Title',
+        license: 'Creative Commons BY',
+        author: 'Ada',
+        authorUrl: 'https://ada.example',
+        sourceUrl: 'https://src.example/old.png',
+      });
+      // Avoid real DOM/network side effects
+      assetManager.invalidateLocalBlob = mock(async () => {});
+      assetManager.updateDomImagesForAsset = mock(async () => 0);
+      assetManager._scheduleAssetAvailabilityAnnouncement = mock(() => {});
+      assetManager.calculateHash = mock(async () => 'newhash0000000000000000000000000000000000000000000000000000000000');
+    });
+
+    function fakeFile(name, type, bytes = [1, 2, 3, 4]) {
+      const blob = new Blob([new Uint8Array(bytes)], { type });
+      blob.name = name;
+      blob.arrayBuffer = async () => new Uint8Array(bytes).buffer;
+      return blob;
+    }
+
+    it('preserves id + metadata + createdAt while updating mime/size/filename', async () => {
+      const putSpy = spyOn(assetManager, 'putAsset').mockResolvedValue(undefined);
+
+      const result = await assetManager.replaceAssetContent('a1', fakeFile('new.jpg', 'image/jpeg', [9, 9, 9]));
+
+      expect(result.success).toBe(true);
+      expect(assetManager.invalidateLocalBlob).toHaveBeenCalledWith('a1', expect.anything());
+      const stored = putSpy.mock.calls[0][0];
+      expect(stored.id).toBe('a1');
+      expect(stored.mime).toBe('image/jpeg');
+      expect(stored.filename).toBe('new.jpg');
+      expect(stored.size).toBe(3);
+      expect(stored.hash).toBe('newhash0000000000000000000000000000000000000000000000000000000000');
+      expect(stored.uploaded).toBe(false);
+      // Preserved
+      expect(stored.createdAt).toBe('2020-01-01T00:00:00Z');
+      expect(stored.folderPath).toBe('images');
+      expect(stored.description).toBe('A description');
+      expect(stored.title).toBe('Title');
+      expect(stored.license).toBe('Creative Commons BY');
+      expect(stored.author).toBe('Ada');
+      expect(stored.authorUrl).toBe('https://ada.example');
+      expect(stored.sourceUrl).toBe('https://src.example/old.png');
+      expect(assetManager._scheduleAssetAvailabilityAnnouncement).toHaveBeenCalled();
+    });
+
+    it('keeps the original filename when keepFilename is set', async () => {
+      const putSpy = spyOn(assetManager, 'putAsset').mockResolvedValue(undefined);
+      await assetManager.replaceAssetContent('a1', fakeFile('new.jpg', 'image/jpeg'), { keepFilename: true });
+      expect(putSpy.mock.calls[0][0].filename).toBe('old.png');
+    });
+
+    it('returns not-found for a missing asset without storing anything', async () => {
+      const putSpy = spyOn(assetManager, 'putAsset').mockResolvedValue(undefined);
+      const result = await assetManager.replaceAssetContent('missing', fakeFile('x.jpg', 'image/jpeg'));
+      expect(result).toEqual({ success: false, error: 'not-found' });
+      expect(putSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getImageDimensions', () => {
     it('returns dimensions for image', async () => {
       // (In-memory storage - no db initialization needed)
