@@ -9,6 +9,7 @@ import { encryptDataGame } from '../utils/dataGameCipher';
 import type {
     AssetProvider,
     ExportAsset,
+    ExportBlock,
     ExportComponent,
     ExportDocument,
     ExportMetadata,
@@ -2499,6 +2500,30 @@ describe('PrintPreviewExporter and interactive activities', () => {
             expect(result.html?.match(/Ciudad conquistada/g)).toHaveLength(2);
         });
     }
+
+    it('leaves the activities of a teacher-only block out of the document, keeping its other content', async () => {
+        for (const mode of [undefined, 'omit', 'in-place', 'appendix'] as const) {
+            const pages = projectWithActivity().getNavigation();
+            pages[0].blocks.push({
+                id: 'teacher-block',
+                name: 'For the teacher',
+                order: 1,
+                properties: { teacherOnly: 'true' },
+                components: [
+                    { id: 'teacher-notes', type: 'text', order: 0, content: '<p>Teacher notes</p>', properties: {} },
+                    { id: 'teacher-guess', type: 'guess', order: 1, content: guessHtml(), properties: {} },
+                ],
+            } as ExportBlock);
+
+            const result = await new PrintPreviewExporter(createMockDocument(pages), resources).generatePreview({
+                activities: mode ? { mode } : undefined,
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('id="teacher-notes"');
+            expect(result.html).not.toContain('id="teacher-guess"');
+        }
+    });
 
     for (const mode of ['omit', 'in-place', 'appendix'] as const) {
         it(`prints two Text iDevices of a block whose ids begin alike in ${mode} mode`, async () => {

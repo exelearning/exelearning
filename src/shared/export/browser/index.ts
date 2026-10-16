@@ -51,7 +51,11 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 
 // Import utilities
 import { LibraryDetector } from '../utils/LibraryDetector';
-import { type InteractiveActivityEntry, listInteractiveActivities } from '../exporters/printActivityModes';
+import {
+    hasTeacherOnlyContent,
+    type InteractiveActivityEntry,
+    listInteractiveActivities,
+} from '../exporters/printActivityModes';
 import type { MoleculeRenderer, MoleculeView } from '../worksheet/moleculeCapture';
 import '../../../../public/app/common/LatexPreRenderer.js';
 
@@ -648,6 +652,18 @@ export function listProjectInteractiveActivities(documentManager: YjsDocumentMan
 }
 
 /**
+ * Whether a printed document would hold teacher-only content, which the print options then offer
+ * to print. Its activities do not count: they never print.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @returns true when there is some
+ */
+export function projectHasTeacherOnlyContent(documentManager: YjsDocumentManagerLike): boolean {
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    return hasTeacherOnlyContent(new YjsDocumentAdapter(documentManager as any).getNavigation());
+}
+
+/**
  * Generate print preview HTML from Yjs document
  * Creates a single-page HTML with all pages visible for printing
  *
@@ -938,6 +954,7 @@ if (typeof window !== 'undefined') {
         // Print preview functions
         generatePrintPreview,
         listProjectInteractiveActivities,
+        projectHasTeacherOnlyContent,
         createPrintPreviewExporter,
         // Worksheet (printable activities) functions
         generateWorksheet,

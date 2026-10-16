@@ -19,7 +19,7 @@
  * started. The desktop app instead hands a copy of the preview as it stands to its main process,
  * which prints it and says whether printing failed or was cancelled.
  */
-import PrintOptionsPanel, { PRINT_UNFOLD_BLOCKS_FIELD } from './printOptionsPanel.js';
+import PrintOptionsPanel, { PRINT_TEACHER_ONLY_FIELD, PRINT_UNFOLD_BLOCKS_FIELD } from './printOptionsPanel.js';
 import { printPreviewSnapshot } from './printPreviewSnapshot.js';
 
 /**
@@ -27,6 +27,9 @@ import { printPreviewSnapshot } from './printPreviewSnapshot.js';
  * as the preview shows it. Without it the print style sheet unfolds them (see base.css).
  */
 export const PRINT_AS_SHOWN_CLASS = 'exe-print-as-shown';
+
+/** The class on <html> that shows teacher-only content, as the teacher mode of an export sets it. */
+export const TEACHER_MODE_CLASS = 'mode-teacher';
 
 /** Preview modes this overlay can display. */
 export const PREVIEW_MODE_DOCUMENT = 'document';
@@ -104,6 +107,8 @@ export default class ModalPrintPreview {
         this.showLinkUrls = true;
         /** Print folded blocks unfolded; false prints them as the preview shows them. */
         this.unfoldBlocks = false;
+        /** Print the content kept for teachers, as teacher mode shows it. */
+        this.teacherOnly = false;
         this.requestId = 0;
         this.disposePreview = null;
         this.retainPreview = null;
@@ -288,9 +293,28 @@ export default class ModalPrintPreview {
             selectedActivities: this.selectedActivities,
             labels: this.getPanelLabels(),
             ideviceName: (type) => this.ideviceName(type),
+            teacherOnlyContent: this.hasTeacherOnlyContent(),
         });
 
         this.takePanelState(this.panel.getState());
+    }
+
+    /**
+     * Whether the project holds teacher-only content the document would print if asked to.
+     *
+     * @returns {boolean} false too when the project cannot be inspected: the option is then left out
+     */
+    hasTeacherOnlyContent() {
+        const check = window.SharedExporters?.projectHasTeacherOnlyContent;
+        const documentManager = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+        if (typeof check !== 'function' || !documentManager) return false;
+
+        try {
+            return Boolean(check(documentManager));
+        } catch (error) {
+            console.warn('[PrintPreview] Could not look for teacher-only content:', error);
+            return false;
+        }
     }
 
     /**
@@ -301,7 +325,8 @@ export default class ModalPrintPreview {
      * has none still shows the worksheet that says so.
      *
      * @param {{choice: string|null, selectedActivities: string[]|null, valid: boolean,
-     *     showLinkUrls: boolean, unfoldBlocks: boolean}} state - As the panel gives it
+     *     showLinkUrls: boolean, unfoldBlocks: boolean, teacherOnly: boolean}} state - As the panel
+     *     gives it
      */
     takePanelState(state) {
         if (this.panel.hasActivities()) {
@@ -310,6 +335,7 @@ export default class ModalPrintPreview {
         }
         this.showLinkUrls = state.showLinkUrls;
         this.unfoldBlocks = state.unfoldBlocks;
+        this.teacherOnly = Boolean(state.teacherOnly);
         // The document options act on the document preview; the worksheet has neither links to
         // show nor blocks to fold.
         this.panel.setDocumentOptionsEnabled(this.mode === PREVIEW_MODE_DOCUMENT);
@@ -334,6 +360,22 @@ export default class ModalPrintPreview {
     }
 
     /**
+     * Show the loaded preview's teacher-only content, or hide it, as teacher mode does in an export.
+     *
+     * Applied in place, as folding is, so that nothing the user folded or opened is lost.
+     */
+    applyTeacherMode() {
+        let root = null;
+        try {
+            root = this.iframe?.contentDocument?.documentElement ?? null;
+        } catch {
+            // A document from another origin cannot be reached; it prints as it was built.
+            return;
+        }
+        root?.classList.toggle(TEACHER_MODE_CLASS, this.teacherOnly);
+    }
+
+    /**
      * Take what the options panel says as the mode, the activity mode and the activities to print.
      *
      * Printing only the activities is a different preview, not a way of treating them in the
@@ -353,8 +395,8 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * An option changed: draw the preview again for it, unless it only says how folded blocks
-     * print, which the loaded preview takes in place.
+     * An option changed: draw the preview again for it, unless it only says how folded blocks or
+     * teacher-only content print, which the loaded preview takes in place.
      *
      * @param {{choice: string|null, selectedActivities: string[]|null, valid: boolean}} state
      * @param {string} [changed] - Id of the document option that changed, if one did
@@ -365,6 +407,10 @@ export default class ModalPrintPreview {
         this.takePanelState(state);
         if (changed === PRINT_UNFOLD_BLOCKS_FIELD) {
             this.applyFolding();
+            return;
+        }
+        if (changed === PRINT_TEACHER_ONLY_FIELD) {
+            this.applyTeacherMode();
             return;
         }
         this.applyTitle();
@@ -765,6 +811,7 @@ export default class ModalPrintPreview {
                 if (requestId === this.requestId) {
                     this.ready = true;
                     this.applyFolding();
+                    this.applyTeacherMode();
                     this.showLoading(false);
                 }
             };

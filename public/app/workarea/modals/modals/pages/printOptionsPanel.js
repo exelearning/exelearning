@@ -33,6 +33,9 @@ export const PRINT_LINK_URLS_FIELD = 'printOptLinkUrls';
 /** Id of the checkbox that prints folded blocks unfolded, rather than as the preview shows them. */
 export const PRINT_UNFOLD_BLOCKS_FIELD = 'printOptUnfoldBlocks';
 
+/** Id of the checkbox that prints the content kept for teachers, offered only when there is some. */
+export const PRINT_TEACHER_ONLY_FIELD = 'printOptTeacherOnly';
+
 export default class PrintOptionsPanel {
     /**
      * @param {HTMLElement} root - The panel element
@@ -49,6 +52,8 @@ export default class PrintOptionsPanel {
         this.activitiesEl = root?.querySelector('.print-options-activities') ?? null;
         this.linkUrlsInput = root?.querySelector(`#${PRINT_LINK_URLS_FIELD}`) ?? null;
         this.unfoldBlocksInput = root?.querySelector(`#${PRINT_UNFOLD_BLOCKS_FIELD}`) ?? null;
+        this.teacherOnlyInput = root?.querySelector(`#${PRINT_TEACHER_ONLY_FIELD}`) ?? null;
+        this.teacherOnlyRow = root?.querySelector('.print-options-teacher-only') ?? null;
         this.statusEl = root?.querySelector('.print-options-status') ?? null;
         this.closeButton = root?.querySelector('.print-options-close') ?? null;
         /** The notice's last sentence, one for a project with activities to choose and one without. */
@@ -85,7 +90,7 @@ export default class PrintOptionsPanel {
      * @returns {HTMLInputElement[]} The checkboxes, in the order they are shown
      */
     documentOptions() {
-        return [this.linkUrlsInput, this.unfoldBlocksInput].filter(Boolean);
+        return [this.linkUrlsInput, this.unfoldBlocksInput, this.teacherOnlyInput].filter(Boolean);
     }
 
     /**
@@ -142,6 +147,8 @@ export default class PrintOptionsPanel {
      * @param {object} config.labels - Translated strings: choicesHeading, selectionHeading,
      *     selectionHint, selectAll, titleOnly and noneSelected
      * @param {(type: string) => string} config.ideviceName - Translated name of an iDevice type
+     * @param {boolean} [config.teacherOnlyContent] - Whether the document holds teacher-only
+     *     content, which only then is offered to print
      */
     configure({
         activities = [],
@@ -150,7 +157,12 @@ export default class PrintOptionsPanel {
         selectedActivities = null,
         labels = {},
         ideviceName = () => '',
+        teacherOnlyContent = false,
     } = {}) {
+        if (this.teacherOnlyRow) this.teacherOnlyRow.hidden = !teacherOnlyContent;
+        // Not offered, it is not asked for either, nor carried over to a project that has some.
+        if (this.teacherOnlyInput && !teacherOnlyContent) this.teacherOnlyInput.checked = false;
+
         this.activities = Array.isArray(activities) ? activities : [];
         this.choices = choices;
         this.labels = labels;
@@ -287,15 +299,17 @@ export default class PrintOptionsPanel {
      * The options as the owner should apply them.
      *
      * @returns {{choice: string|null, selectedActivities: string[]|null, valid: boolean,
-     *     showLinkUrls: boolean, unfoldBlocks: boolean}} The chosen value; the ids to print, or
-     *     null for every one of them (which also covers the activities someone adds later);
-     *     whether the choice can be printed at all; whether to write the URL of each link; and
-     *     whether to print folded blocks unfolded rather than as the preview shows them
+     *     showLinkUrls: boolean, unfoldBlocks: boolean, teacherOnly: boolean}} The chosen value;
+     *     the ids to print, or null for every one of them (which also covers the activities
+     *     someone adds later); whether the choice can be printed at all; whether to write the URL
+     *     of each link; whether to print folded blocks unfolded rather than as the preview shows
+     *     them; and whether to print the content kept for teachers
      */
     getState() {
         const documentState = {
             showLinkUrls: this.linkUrlsInput ? this.linkUrlsInput.checked : true,
             unfoldBlocks: this.unfoldBlocksInput ? this.unfoldBlocksInput.checked : true,
+            teacherOnly: Boolean(this.teacherOnlyInput?.checked && !this.teacherOnlyRow?.hidden),
         };
         if (!this.hasActivities()) {
             return { choice: null, selectedActivities: null, valid: true, ...documentState };

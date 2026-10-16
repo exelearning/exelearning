@@ -30,6 +30,7 @@ import {
     applyActivityMode,
     convertedBy,
     droppedBy,
+    leaveOutTeacherOnlyActivities,
     PRINTABLE_ACTIVITY_TYPE,
     type ApplyActivityModeOptions,
     type DocumentActivityMode,
@@ -187,9 +188,10 @@ export class PrintPreviewExporter {
                 return { success: false, error: 'No pages to preview' };
             }
 
-            // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
+            // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map). The
+            // activities kept for teachers never print, even when teacher-only content does.
             let processedPages = await this.preprocessPages(
-                pages,
+                leaveOutTeacherOnlyActivities(pages),
                 assetResolver,
                 options.activities && droppedBy(options.activities.mode, options.activities),
             );

@@ -44,13 +44,22 @@ export function visibleWorksheetPages(pages: ExportPage[]): ExportPage[] {
     return pages.filter(page => check(page));
 }
 
+/** Whether a block should appear in an export at all. Blocks are visible unless explicitly hidden. */
+export function isBlockVisible(block: ExportBlock): boolean {
+    return readFlag(block.properties?.visibility, true);
+}
+
+/**
+ * Whether a block is reserved for teachers: its `teacherOnly` flag, or the `visibilityType` some
+ * blocks carry instead.
+ */
+export function isTeacherOnlyBlock(block: ExportBlock): boolean {
+    return readFlag(block.properties?.teacherOnly, false) || block.properties?.visibilityType === 'teacher';
+}
+
 /** A visible component in a hidden or teacher-only block is still excluded. */
 export function isStudentBlock(block: ExportBlock): boolean {
-    return (
-        readFlag(block.properties?.visibility, true) &&
-        !readFlag(block.properties?.teacherOnly, false) &&
-        block.properties?.visibilityType !== 'teacher'
-    );
+    return isBlockVisible(block) && !isTeacherOnlyBlock(block);
 }
 
 /**

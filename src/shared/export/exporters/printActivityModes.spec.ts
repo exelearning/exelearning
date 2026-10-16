@@ -5,6 +5,8 @@ import {
     applyActivityMode,
     convertedBy,
     droppedBy,
+    hasTeacherOnlyContent,
+    leaveOutTeacherOnlyActivities,
     listInteractiveActivities,
     PRINTABLE_ACTIVITY_TYPE,
     type ApplyActivityModeOptions,
@@ -867,5 +869,80 @@ describe('listInteractiveActivities', () => {
     it('lists nothing for a project with no activities', () => {
         expect(listInteractiveActivities([page([text()])])).toEqual([]);
         expect(listInteractiveActivities([])).toEqual([]);
+    });
+});
+
+/** One page whose single block carries the given properties and holds the given components. */
+const blockPage = (properties: Record<string, unknown>, components: ExportComponent[]) =>
+    page(components, { blocks: [{ id: 'b1', name: 'Bloque', order: 0, components, properties } as ExportBlock] });
+
+const teacherText = () => component({ id: 'notes', type: 'text', content: '<p>Notas</p>' });
+
+describe('leaveOutTeacherOnlyActivities', () => {
+    it('leaves out the activities of a teacher-only block, keeping its other content', () => {
+        const result = leaveOutTeacherOnlyActivities([
+            blockPage({ teacherOnly: 'true' }, [teacherText(), component()]),
+        ]);
+
+        expect(componentsOf(result).map(entry => entry.id)).toEqual(['notes']);
+    });
+
+    it('leaves out a teacher-only activity in an open block, and nothing else', () => {
+        const restricted = component({ id: 'c1', structureProperties: { teacherOnly: 'true' } });
+        const ordinary = component({ id: 'c2' });
+
+        const result = leaveOutTeacherOnlyActivities([page([text(), restricted, ordinary])]);
+
+        expect(componentsOf(result).map(entry => entry.id)).toEqual(['text-1', 'c2']);
+    });
+
+    it('takes away a block left with nothing, and keeps one that arrived empty', () => {
+        const emptied = blockPage({ visibilityType: 'teacher' }, [component()]);
+        const empty = blockPage({ teacherOnly: true }, []);
+
+        expect(leaveOutTeacherOnlyActivities([emptied])[0].blocks).toEqual([]);
+        expect(leaveOutTeacherOnlyActivities([empty])[0].blocks).toHaveLength(1);
+    });
+
+    it('returns the same block when it has nothing to leave out', () => {
+        const pages = [page([text(), component()])];
+
+        expect(leaveOutTeacherOnlyActivities(pages)[0].blocks[0]).toBe(pages[0].blocks[0]);
+    });
+});
+
+describe('hasTeacherOnlyContent', () => {
+    it('finds a teacher-only block, or a teacher-only component in an open one', () => {
+        expect(hasTeacherOnlyContent([blockPage({ teacherOnly: 'true' }, [teacherText()])])).toBe(true);
+        expect(
+            hasTeacherOnlyContent([
+                page([text(), component({ type: 'text', structureProperties: { teacherOnly: true } })]),
+            ]),
+        ).toBe(true);
+    });
+
+    it('finds none in a project open to students', () => {
+        expect(hasTeacherOnlyContent([page([text(), component()])])).toBe(false);
+        expect(hasTeacherOnlyContent([])).toBe(false);
+    });
+
+    it('does not count teacher-only activities, which never print', () => {
+        expect(hasTeacherOnlyContent([blockPage({ teacherOnly: 'true' }, [component()])])).toBe(false);
+        expect(hasTeacherOnlyContent([page([component({ structureProperties: { teacherOnly: 'true' } })])])).toBe(
+            false,
+        );
+    });
+
+    it('does not count what does not print anyway: hidden pages, blocks and components', () => {
+        const teacherBlock = (properties: Record<string, unknown>, components = [teacherText()]) =>
+            blockPage({ teacherOnly: 'true', ...properties }, components);
+
+        expect(hasTeacherOnlyContent([{ ...teacherBlock({}), properties: { visibility: 'false' } }])).toBe(false);
+        expect(hasTeacherOnlyContent([teacherBlock({ visibility: 'false' })])).toBe(false);
+        expect(
+            hasTeacherOnlyContent([
+                teacherBlock({}, [component({ type: 'text', structureProperties: { visibility: 'false' } })]),
+            ]),
+        ).toBe(false);
     });
 });

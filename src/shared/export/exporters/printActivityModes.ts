@@ -14,7 +14,14 @@
  */
 
 import type { ExportBlock, ExportComponent, ExportPage } from '../interfaces';
-import { isComponentVisible, isStudentBlock, isTeacherOnly, visibleWorksheetPages } from '../utils/visibility';
+import {
+    isBlockVisible,
+    isComponentVisible,
+    isStudentBlock,
+    isTeacherOnly,
+    isTeacherOnlyBlock,
+    visibleWorksheetPages,
+} from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
 import { isInteractiveActivity, isNeverPrintable } from '../worksheet/interactiveActivities';
 import { escapeText } from '../worksheet/sanitizeHtml';
@@ -270,6 +277,54 @@ function isActedOn(block: ExportBlock, component: ExportComponent): boolean {
         isComponentVisible(component) &&
         !isTeacherOnly(component) &&
         isInteractiveActivity(component.type)
+    );
+}
+
+/** Whether a component is an interactive activity kept for teachers, by its block or by itself. */
+function isTeacherOnlyActivity(block: ExportBlock, component: ExportComponent): boolean {
+    return isInteractiveActivity(component.type) && (isTeacherOnlyBlock(block) || isTeacherOnly(component));
+}
+
+/**
+ * Leave out of the printed document the interactive activities kept for teachers.
+ *
+ * Teacher-only content prints when the user asks for it, but its activities never do. Printing
+ * has no say over them, since the print options neither list nor convert what is restricted, so
+ * they would reach paper as the game the screen shows. A block they leave with nothing goes, as a
+ * block the modes empty does.
+ *
+ * @param pages - The project's pages
+ * @returns New pages, without those activities
+ */
+export function leaveOutTeacherOnlyActivities(pages: ExportPage[]): ExportPage[] {
+    return pages.map(page => ({
+        ...page,
+        blocks: (page.blocks || []).reduce<ExportBlock[]>((blocks, block) => {
+            const components = block.components || [];
+            const kept = components.filter(component => !isTeacherOnlyActivity(block, component));
+            if (kept.length === 0 && components.length > 0) return blocks;
+
+            blocks.push(kept.length === components.length ? block : { ...block, components: kept });
+            return blocks;
+        }, []),
+    }));
+}
+
+/**
+ * Whether the printed document would hold teacher-only content, which the print options can then
+ * offer to print: a teacher-only block, or a teacher-only component in an open one, on a page that
+ * prints. Its activities do not count, since they never print.
+ *
+ * @param pages - The project's pages
+ * @returns true when there is some
+ */
+export function hasTeacherOnlyContent(pages: ExportPage[]): boolean {
+    return visibleWorksheetPages(leaveOutTeacherOnlyActivities(pages)).some(page =>
+        (page.blocks || []).some(block => {
+            if (!isBlockVisible(block)) return false;
+            const shown = (block.components || []).filter(isComponentVisible);
+            return isTeacherOnlyBlock(block) ? shown.length > 0 : shown.some(isTeacherOnly);
+        }),
     );
 }
 

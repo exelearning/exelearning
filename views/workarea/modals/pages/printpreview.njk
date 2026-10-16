@@ -71,6 +71,11 @@
                         <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks">
                         <label class="form-check-label" for="printOptUnfoldBlocks">{{ 'Print the content of minimized boxes' | trans }}</label>
                     </div>
+                    {# Shown by the script only when the project has teacher-only content to print. #}
+                    <div class="form-check print-options-teacher-only" hidden>
+                        <input class="form-check-input" type="checkbox" id="printOptTeacherOnly">
+                        <label class="form-check-label" for="printOptTeacherOnly">{{ 'Print teacher-only content' | trans }}</label>
+                    </div>
                 </fieldset>
                 <div class="print-options-activities" hidden></div>
             </div>

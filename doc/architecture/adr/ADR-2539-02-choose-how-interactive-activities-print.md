@@ -121,9 +121,10 @@ off the worksheet, as if the author had not put it there. Print is disabled with
 the choice is to print none, or every activity is one that can never be printed.
 
 **The panel also holds the document options**, which apply with or without activities: *Show link
-URLs* (ticked) and *Print the content of minimized boxes* (clear; see "Folded is not hidden" below).
-With no interactive activity, these are all the panel offers, and nothing has to be changed before
-printing.
+URLs* (ticked), *Print the content of minimized boxes* (clear; see "Folded is not hidden" below)
+and, only when the project has teacher-only content, *Print teacher-only content* (clear; see
+"Teacher-only content prints when asked for" below). With no interactive activity, these are all
+the panel offers, and nothing has to be changed before printing.
 
 Every change draws the preview again after a short pause (250 ms), so ticking several activities in
 a row draws it once, and Print is disabled while the preview is being drawn.
@@ -257,6 +258,23 @@ and `teacher-only` sit on the `<article>`, which the existing rules take out of 
 iDevice carrying either class keeps its own rule inside a block that does open. Excluding
 `teacher-only` here would have been the easy mistake: in teacher mode that block is meant to
 print, folded or not.
+
+### Teacher-only content prints when asked for
+
+The preview has no teacher mode of its own, so teacher-only blocks and iDevices stayed off paper
+however much a teacher wanted, say, the notes or solutions they keep for themselves. *Print
+teacher-only content* puts `mode-teacher` on the preview's `<html>`, the class an export's teacher
+mode sets, and that content prints as teacher mode shows it. Like folding, it is applied in place,
+not by drawing the preview again. The option is offered only when a page that prints holds such
+content, and starts clear.
+
+**Its interactive activities never print.** The print options neither list nor convert what is
+restricted, so a teacher-only activity would reach paper as the game the screen shows, in every
+choice, including the one that prints no activities. The preview leaves them out of the document
+instead (`leaveOutTeacherOnlyActivities`), and a teacher-only block left with nothing goes with
+them. Treating them like the other activities once the option is ticked was considered and set
+aside: the list of activities would change with a document option, and teacher-only boxes hold
+notes far more often than games.
 
 Tabs and accordions are the same question and are **not** answered here. Their panels are hidden
 by `exe_effects.css` and only the open one prints, so an author's other panels are lost the same
