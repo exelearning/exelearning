@@ -252,6 +252,16 @@ preview shows folded blocks open and without their toggles, as they will print. 
 the class, so Ctrl+P on an exported resource always prints folded blocks open. The worksheet has no
 blocks to fold, and its panel offers no such option.
 
+**Feedback folds the same way.** The preview shows every iDevice's feedback open, since a printed
+handout has no button to reveal it. Printing as shown, the feedback's own button can fold it, and
+it then stays off paper; ticking the option prints every feedback open again, whatever its button
+did. Before, a user could fold a block but not the answers inside it, for two reasons: a rule with
+`!important` kept feedback open whatever the button did, and the button did nothing anyway. The
+preview linked the editor's template of `common_i18n.js`, whose `c_()` calls fail outside the
+editor, so `$exe_i18n` was never defined, nor any iDevice script that reads it as it loads, the
+Text iDevice's among them. The preview now carries the translated strings in the page, as an
+export carries them in its own file.
+
 **What the author hid stays hidden, and `teacher-only` is deliberately not excluded.** `novisible`
 and `teacher-only` sit on the `<article>`, which the existing rules take out of the layout with
 `!important` of their own, so nothing inside one is ever laid out whatever this rule says; an

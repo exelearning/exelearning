@@ -1341,6 +1341,114 @@ describe('PrintPreviewExporter', () => {
             // checking that the class exists is enough to ensure we didn't wipe the element
             expect(result.html).toContain('class="feedback js-feedback js-hidden"');
         });
+
+        it('keeps feedback open while printing everything, and lets its button fold it while printing as shown', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page with feedback',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Text Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    order: 0,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="feedback js-feedback js-hidden">Feedback</div>',
+                                },
+                            ],
+                        },
+                    ],
+                    properties: {},
+                },
+            ]);
+
+            const result = await new PrintPreviewExporter(doc, mockResourceProvider).generatePreview();
+
+            // Printing everything, no style the button writes can fold it.
+            expect(result.html).toMatch(
+                /html:not\(\.exe-print-as-shown\) \.feedback\.js-hidden \{\s*display: block !important;\s*\}/,
+            );
+            // Printing as shown, it starts open over `.js .js-hidden`, but yields to that style.
+            expect(result.html).toMatch(/html\.exe-print-as-shown \.feedback\.js-hidden \{\s*display: block;\s*\}/);
+            expect(result.html).not.toMatch(/(^|\n)\.feedback\.js-hidden \{/);
+        });
+    });
+
+    // The export scripts read $exe_i18n as they load. Linked to the editor's template, whose c_()
+    // calls fail outside the editor, it was never defined, and the Text iDevice never started: its
+    // feedback button did nothing.
+    describe('the translated strings the export scripts read', () => {
+        const TRANSLATED = '$exe_i18n = { "showFeedback": "Mostrar retroalimentación" };';
+        const pages = (): ExportPage[] => [
+            {
+                id: 'p1',
+                title: 'Page',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'b1',
+                        name: 'Block',
+                        order: 0,
+                        components: [{ id: 'c1', type: 'text', order: 0, content: '<p>Text</p>', properties: {} }],
+                    },
+                ],
+                properties: {},
+            },
+        ];
+
+        /** The preview, with the translated file the resources give for each language. */
+        async function preview(fetchI18nFile: ResourceProvider['fetchI18nFile'], language = 'es') {
+            const resources = { ...createMockResourceProvider(), fetchI18nFile };
+            const result = await new PrintPreviewExporter(
+                createMockDocument(pages(), { language }),
+                resources,
+            ).generatePreview();
+            expect(result.success).toBe(true);
+            return result.html ?? '';
+        }
+
+        it("go into the page in the project's language, instead of a link to the template", async () => {
+            const asked: string[] = [];
+            const html = await preview(async language => {
+                asked.push(language);
+                return TRANSLATED;
+            });
+
+            expect(asked).toEqual(['es']);
+            expect(html).toContain(`<script>${TRANSLATED}</script>`);
+            expect(html).not.toContain('common_i18n.js');
+        });
+
+        it('cannot close their script early', async () => {
+            const html = await preview(async () => '$exe_i18n = { "x": "</script><b>" };');
+
+            expect(html).toContain('$exe_i18n = { "x": "<\\/script><b>" };');
+        });
+
+        it('leave the link as it was when the resources have none, or fail to give them', async () => {
+            const warn = spyOn(console, 'warn').mockImplementation(() => {});
+
+            for (const fetchI18nFile of [
+                async () => '',
+                async () => {
+                    throw new Error('Offline');
+                },
+            ]) {
+                const html = await preview(fetchI18nFile);
+                expect(html).toContain('app/common/common_i18n.js');
+                expect(html).not.toContain(TRANSLATED);
+            }
+            expect(warn).toHaveBeenCalled();
+            warn.mockRestore();
+        });
     });
 
     describe('hiding unwanted print elements', () => {

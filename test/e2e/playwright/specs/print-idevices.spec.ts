@@ -3302,6 +3302,57 @@ test.describe('Print: teacher-only content', () => {
     });
 });
 
+test.describe('Print: feedback folds as the preview shows it', () => {
+    test('prints feedback open, lets its button fold it, and opens it all again with every box', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Feedback on paper');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Feedback');
+            const block = binding.createBlock(parent.id, 'With feedback');
+            binding.createComponent(parent.id, block, 'text', {
+                htmlContent:
+                    '<p>Question text</p><div class="iDevice_buttons feedback-button js-required">' +
+                    '<input type="button" class="feedbacktooglebutton" value="Show feedback"></div>' +
+                    '<div class="feedback js-feedback js-hidden" style="display: none;"><p>The answer</p></div>',
+            });
+        });
+
+        const panel = await openPrintPanel(page);
+        const { frame } = await waitForPreview(page);
+        const feedback = frame.locator('.feedback');
+        const option = panel.locator('#printOptUnfoldBlocks');
+
+        // Open on paper by default, as printing has always left it.
+        await page.emulateMedia({ media: 'print' });
+        await expect(feedback).toBeVisible();
+        await page.emulateMedia({ media: 'screen' });
+
+        // Printing as shown, its button folds it, on screen and on paper.
+        await frame.locator('.feedbacktooglebutton').click();
+        await expect(feedback).toBeHidden();
+        await page.emulateMedia({ media: 'print' });
+        await expect(feedback).toBeHidden();
+        await page.emulateMedia({ media: 'screen' });
+
+        // Printing every box open prints every feedback open too.
+        await option.check();
+        await page.emulateMedia({ media: 'print' });
+        await expect(feedback).toBeVisible();
+        await page.emulateMedia({ media: 'screen' });
+
+        // Back to printing as shown, the feedback the user folded stays folded.
+        await option.uncheck();
+        await page.emulateMedia({ media: 'print' });
+        await expect(feedback).toBeHidden();
+        await page.emulateMedia({ media: 'screen' });
+    });
+});
+
 test.describe('Print: when printing does not start', () => {
     /** Open the preview of a new project, ready to print. */
     async function openPreview(page: Page, createProject: (page: Page, title?: string) => Promise<string>) {

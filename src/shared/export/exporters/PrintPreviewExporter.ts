@@ -270,7 +270,9 @@ export class PrintPreviewExporter {
             // 1. Pre-render LaTeX/Mermaid (if hooks provided)
             html = await this.preRenderContent(html, meta, options);
 
-            // 2. Patch relative paths (libs/, theme/) to server absolute paths
+            // 2. Patch relative paths (libs/, theme/) to server absolute paths, once the translated
+            // strings the export scripts read are in the page itself
+            html = await this.inlineTranslatedStrings(html, meta.language || 'en');
             html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options, themeFiles);
 
             // 2b. Resolve any remaining content/resources or asset:// URLs to blob URLs.
@@ -630,9 +632,14 @@ figure img {
     .mapa-IDevice img.js-hidden { display: none !important; }
 }
 
-/* Force visibility for feedback elements even if JS tries to hide them */
-.feedback.js-hidden {
+/* Feedback prints open. Printing everything, it stays open whatever its button does. Printing the
+   page as the preview shows it, its button can fold it, as a block's toggle folds the block: the
+   rule then yields to the style the button writes, yet still outweighs \`.js .js-hidden\`. */
+html:not(.exe-print-as-shown) .feedback.js-hidden {
     display: block !important;
+}
+html.exe-print-as-shown .feedback.js-hidden {
+    display: block;
 }
 /* Formulas pre-rendered as SVG carry their MathML alongside, for screen readers. The exports hide
    it with this sheet, added to their own base.css; the preview links the editor's base.css, which
@@ -755,6 +762,36 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
         }
 
         return finalHtml;
+    }
+
+    /**
+     * Put the translated strings the export scripts read into the preview itself.
+     *
+     * An export ships `libs/common_i18n.js` translated into the project's language. Linked to the
+     * file beside the editor's sources instead, the preview loaded the template, whose `c_()` calls
+     * fail outside the editor: `$exe_i18n` was never defined, and neither was any iDevice script
+     * that reads it as it loads, such as the Text iDevice, whose feedback button then did nothing.
+     * Without the translated file, the link is left for the paths below, as before.
+     *
+     * @param html - The rendered page
+     * @param language - The project's language
+     * @returns The page, with the strings in a script of its own
+     */
+    private async inlineTranslatedStrings(html: string, language: string): Promise<string> {
+        const link = /<script\b[^>]*\bsrc="libs\/common_i18n\.js"[^>]*>\s*<\/script>/;
+        if (!link.test(html)) return html;
+
+        let strings = '';
+        try {
+            strings = await this.resources.fetchI18nFile(language);
+        } catch (error) {
+            console.warn('[PrintPreviewExporter] Could not fetch the translated strings:', error);
+        }
+        if (!strings) return html;
+
+        // A string closing the script would end it early.
+        const script = `<script>${strings.replace(/<\/(script)/gi, '<\\/$1')}</script>`;
+        return html.replace(link, () => script);
     }
 
     /**
