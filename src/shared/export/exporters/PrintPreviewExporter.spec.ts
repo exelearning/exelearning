@@ -1598,88 +1598,80 @@ describe('PrintPreviewExporter', () => {
         });
     });
 
-    describe('component deduplication', () => {
-        it('should remove consecutive duplicate components with shared ID prefix', async () => {
-            const doc = createMockDocument([
+    // Two components of one type, one after the other in a block, used to lose the second when
+    // their ids began with the same 14 characters, taken for pieces of one split Complete. Nothing
+    // splits an iDevice that way, and those characters only say when an id was made: the Manual of
+    // eXeLearning 3.0 holds the three Complete below in one block, one per mode, and two Text
+    // iDevices added to a block within hours of each other share them too.
+    describe('components of the same type in a block', () => {
+        /** A Text iDevice's markup, its feedback folded behind its button as the editor writes it. */
+        const textWithFeedback = (text: string, feedback: string) =>
+            `<p>${text}</p><div class="iDevice_buttons feedback-button js-required">` +
+            '<input type="button" class="feedbacktooglebutton" value="Show feedback"></div>' +
+            `<div class="feedback js-feedback js-hidden" style="display: none;"><p>${feedback}</p></div>`;
+
+        /** A project with one page holding one block of the given components. */
+        function blockOf(components: { id: string; type: string; content: string }[]): ExportDocument {
+            return createMockDocument([
                 {
                     id: 'p1',
-                    title: 'Page with duplicates',
+                    title: 'Alike',
                     parentId: null,
                     order: 0,
                     blocks: [
                         {
                             id: 'b1',
-                            name: 'Text Block',
+                            name: 'Block',
                             order: 0,
-                            components: [
-                                // Sequence of duplicates (Simulating the Complete iDevice split)
-                                // Shared prefix: 20251021091936 (14 chars)
-                                {
-                                    id: '20251021091936ZBADPV',
-                                    order: 0,
-                                    properties: {},
-                                    type: 'complete',
-                                    content: '<div>Component 1 (Keep)</div>',
-                                },
-                                {
-                                    id: '20251021091936KBGQGU',
-                                    order: 1,
-                                    properties: {},
-                                    type: 'complete',
-                                    content: '<div>Component 2 (Drop)</div>',
-                                },
-                                {
-                                    id: '20251021091936GSEMZX',
-                                    order: 2,
-                                    properties: {},
-                                    type: 'complete',
-                                    content: '<div>Component 3 (Drop)</div>',
-                                },
-                                // Another independent component (Different prefix)
-                                {
-                                    id: '20251021092000AAAAAA',
-                                    order: 3,
-                                    properties: {},
-                                    type: 'complete',
-                                    content: '<div>Component 4 (Keep - Different Prefix)</div>',
-                                },
-                                // Another sequence (Different prefix from first group)
-                                {
-                                    id: '20251021092000BBBBBB',
-                                    order: 4,
-                                    properties: {},
-                                    type: 'complete',
-                                    content: '<div>Component 5 (Drop - Duplicate of 4)</div>',
-                                },
-                                // Different Type (Should break chain even if prefix matches? Unlikely scenario but good control)
-                                {
-                                    id: '20251021092000CCCCCC',
-                                    order: 5,
-                                    properties: {},
-                                    type: 'text',
-                                    content: '<div>Component 6 (Keep - Different Type)</div>',
-                                },
-                            ],
+                            components: components.map((component, order) => ({ ...component, order, properties: {} })),
                         },
                     ],
                     properties: {},
                 },
             ]);
+        }
 
-            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
-            const result = await exp.generatePreview();
+        it('prints every one, legacy ids made in the same second included', async () => {
+            const doc = blockOf([
+                { id: '20251021091936ZBADPV', type: 'complete', content: '<div>Complete to write</div>' },
+                { id: '20251021091936KBGQGU', type: 'complete', content: '<div>Complete to drag</div>' },
+                { id: '20251021091936GSEMZX', type: 'complete', content: '<div>Complete to choose</div>' },
+                { id: '20251021091936QALZGN', type: 'udl-content', content: '<p>First UDL content</p>' },
+                { id: '20251021091936TCNYKR', type: 'udl-content', content: '<p>Second UDL content</p>' },
+            ]);
 
-            // 1. First Group
-            expect(result.html).toContain('Component 1 (Keep)');
-            expect(result.html).not.toContain('Component 2 (Drop)');
-            expect(result.html).not.toContain('Component 3 (Drop)');
+            const result = await new PrintPreviewExporter(doc, mockResourceProvider).generatePreview();
 
-            // 2. Second Group
-            expect(result.html).toContain('Component 4 (Keep - Different Prefix)');
-            expect(result.html).not.toContain('Component 5 (Drop - Duplicate of 4)');
+            expect(result.success).toBe(true);
+            for (const text of [
+                'Complete to write',
+                'Complete to drag',
+                'Complete to choose',
+                'First UDL content',
+                'Second UDL content',
+            ])
+                expect(result.html).toContain(text);
+        });
 
-            // 3. Different Type
-            expect(result.html).toContain('Component 6 (Keep - Different Type)');
+        it('prints two Text iDevices of a block with their feedback, ids as the editor makes them', async () => {
+            const doc = blockOf([
+                {
+                    id: 'idevice-1792142548773-k5l2boxls',
+                    type: 'text',
+                    content: textWithFeedback('First text', 'First feedback'),
+                },
+                {
+                    id: 'idevice-1792142582173-47ljbrp27',
+                    type: 'text',
+                    content: textWithFeedback('Second text', 'Second feedback'),
+                },
+            ]);
+
+            const result = await new PrintPreviewExporter(doc, mockResourceProvider).generatePreview();
+
+            expect(result.success).toBe(true);
+            for (const text of ['First text', 'First feedback', 'Second text', 'Second feedback'])
+                expect(result.html).toContain(text);
         });
     });
 
@@ -2505,6 +2497,26 @@ describe('PrintPreviewExporter and interactive activities', () => {
 
             expect(result.success).toBe(true);
             expect(result.html?.match(/Ciudad conquistada/g)).toHaveLength(2);
+        });
+    }
+
+    for (const mode of ['omit', 'in-place', 'appendix'] as const) {
+        it(`prints two Text iDevices of a block whose ids begin alike in ${mode} mode`, async () => {
+            const pages = projectWithActivity().getNavigation();
+            const [text, activity] = pages[0].blocks[0].components;
+            pages[0].blocks[0].components = [
+                { ...text, id: 'idevice-1792142548773-k5l2boxls', order: 0, content: '<p>First text</p>' },
+                { ...text, id: 'idevice-1792142582173-47ljbrp27', order: 1, content: '<p>Second text</p>' },
+                { ...activity, order: 2 },
+            ];
+
+            const result = await new PrintPreviewExporter(createMockDocument(pages), resources).generatePreview({
+                activities: { mode },
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('First text');
+            expect(result.html).toContain('Second text');
         });
     }
 

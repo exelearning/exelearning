@@ -19,7 +19,6 @@ import { PageRenderer } from '../renderers/PageRenderer';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { ThemeFileUrlResolver } from '../utils/ThemeFileUrlResolver';
 import { visibleWorksheetPages } from '../utils/visibility';
-import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
 import { renderMatchingLayoutScript } from '../worksheet/matchingLayout';
 import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
@@ -194,10 +193,6 @@ export class PrintPreviewExporter {
                 assetResolver,
                 options.activities && droppedBy(options.activities.mode, options.activities),
             );
-
-            // Runtime artifacts may share a legacy timestamp prefix. Printable activities each
-            // have their own stored data and selection id, so keep every one the dialog offers.
-            processedPages = this.deduplicateComponents(processedPages, options.activities !== undefined);
 
             // Anything that has to be drawn before it can be printed is drawn first: converting an
             // activity into an exercise is synchronous and has no browser to draw with.
@@ -1035,59 +1030,6 @@ $(function() {
             }
 
             return match;
-        });
-    }
-
-    /**
-     * Deduplicate consecutive components that share the same type and ID prefix (timestamp)
-     * This handles cases like 'Complete' iDevice where it splits into multiple components
-     * but we only want to show the first one in print.
-     */
-    private deduplicateComponents(pages: ExportPage[], preserveInteractiveActivities = false): ExportPage[] {
-        return pages.map(page => {
-            const blocks = page.blocks || [];
-            const newBlocks = blocks.map(block => {
-                const components = block.components || [];
-                const uniqueComponents: ExportComponent[] = [];
-                let lastComponent: ExportComponent | null = null;
-
-                for (const component of components) {
-                    let isDuplicate = false;
-
-                    if (
-                        lastComponent &&
-                        lastComponent.type === component.type &&
-                        !(preserveInteractiveActivities && isInteractiveActivity(component.type))
-                    ) {
-                        // Check ID prefix (first 14 chars are usually timestamp YYYYMMDDHHMMSS)
-                        // Example ID: 20251021091936ZBADPV
-                        const prefixLength = 14;
-                        if (
-                            lastComponent.id &&
-                            component.id &&
-                            lastComponent.id.substring(0, prefixLength) === component.id.substring(0, prefixLength)
-                        ) {
-                            isDuplicate = true;
-                        }
-                    }
-
-                    if (!isDuplicate) {
-                        uniqueComponents.push(component);
-                        lastComponent = component;
-                    }
-                }
-
-                return {
-                    ...block,
-                    components: uniqueComponents,
-                };
-            });
-
-            return {
-                ...page,
-                blocks: newBlocks,
-                // ExportPage is flat list, no children property
-            };
         });
     }
 

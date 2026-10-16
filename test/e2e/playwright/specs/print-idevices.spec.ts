@@ -3129,6 +3129,106 @@ test.describe('Print: a folded block opens on paper', () => {
     });
 });
 
+test.describe('Print: every iDevice of a block', () => {
+    /** What the block holds, as each line reads on paper. */
+    const PRINTED = [
+        'First text',
+        'First feedback',
+        'Second text',
+        'Second feedback',
+        'First UDL content',
+        'Second UDL content',
+    ];
+
+    /**
+     * Open the panel on a block holding two Text iDevices with their feedback and two UDL ones,
+     * with an activity in another block so that the panel offers the document's choices.
+     *
+     * Each pair's ids begin with the same 14 characters, as the editor makes them and as an
+     * imported project has them: printing used to take the second of each pair for a duplicate.
+     */
+    async function openBlockOfPairs(
+        page: Page,
+        createProject: (page: Page, title?: string) => Promise<string>,
+        minimized: boolean,
+    ) {
+        const uuid = await createProject(page, 'Two of a kind');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(minimized => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            // A Text iDevice's markup, its feedback folded behind its button as the editor writes it.
+            const text = (body: string, feedback: string) =>
+                `<p>${body}</p><div class="iDevice_buttons feedback-button js-required">` +
+                '<input type="button" class="feedbacktooglebutton" value="Show feedback"></div>' +
+                `<div class="feedback js-feedback js-hidden" style="display: none;"><p>${feedback}</p></div>`;
+            const parent = binding.createPage('Two of a kind');
+            const block = binding.createBlock(parent.id, 'Pairs');
+            const properties = binding.getBlockMap(parent.id, block).get('properties');
+            properties.set('cssClass', 'ep-pairs');
+            properties.set('minimized', String(minimized));
+            binding.createComponent(parent.id, block, 'text', {
+                id: 'idevice-1792142548773-k5l2boxls',
+                htmlContent: text('First text', 'First feedback'),
+            });
+            binding.createComponent(parent.id, block, 'text', {
+                id: 'idevice-1792142582173-47ljbrp27',
+                htmlContent: text('Second text', 'Second feedback'),
+            });
+            binding.createComponent(parent.id, block, 'udl-content', {
+                id: '20251021091936QALZGN',
+                htmlContent: '<p>First UDL content</p>',
+            });
+            binding.createComponent(parent.id, block, 'udl-content', {
+                id: '20251021091936TCNYKR',
+                htmlContent: '<p>Second UDL content</p>',
+            });
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Quiz'), 'adaptative-quiz', {
+                htmlContent: '',
+                jsonProperties: JSON.stringify({
+                    questionsGame: [{ question: 'A question', typeSelect: 0, options: ['Yes', 'No'] }],
+                }),
+            });
+        }, minimized);
+
+        return openPrintPanel(page);
+    }
+
+    test('prints both of each pair, feedback included, in every choice that prints the document', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        await openBlockOfPairs(page, createProject, false);
+
+        for (const mode of ['appendix', 'in-place', 'omit']) {
+            const { frame } = await choosePrintOption(page, mode);
+            const block = frame.locator('article.ep-pairs');
+            await page.emulateMedia({ media: 'print' });
+            for (const line of PRINTED) await expect(block.getByText(line)).toBeVisible();
+            await page.emulateMedia({ media: 'screen' });
+        }
+    });
+
+    test('prints a folded block of pairs closed as shown, and every one of them once unfolded', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const panel = await openBlockOfPairs(page, createProject, true);
+        const { frame } = await waitForPreview(page);
+        const block = frame.locator('article.ep-pairs');
+
+        // As shown: the author folded it, so its content stays off paper.
+        await page.emulateMedia({ media: 'print' });
+        await expect(block.locator('.box-content')).toBeHidden();
+
+        await page.emulateMedia({ media: 'screen' });
+        await panel.locator('#printOptUnfoldBlocks').check();
+        await page.emulateMedia({ media: 'print' });
+        for (const line of PRINTED) await expect(block.getByText(line)).toBeVisible();
+        await page.emulateMedia({ media: 'screen' });
+    });
+});
+
 test.describe('Print: when printing does not start', () => {
     /** Open the preview of a new project, ready to print. */
     async function openPreview(page: Page, createProject: (page: Page, title?: string) => Promise<string>) {
