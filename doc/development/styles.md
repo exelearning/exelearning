@@ -573,6 +573,74 @@ out with a rule of equal or higher specificity:
 
 ---
 
+## Printing
+
+**File → Print** shows the whole project as one page in a preview, and prints that page. Your
+style's `@media print` rules decide what reaches the paper, and three things are worth knowing when
+you write them.
+
+### Backgrounds do not print
+
+To save ink, browsers leave background colours and images off the page unless the reader turns on
+**Background graphics** (Chrome and Edge, under *More settings*) or **Print backgrounds** (Firefox).
+The desktop app's print dialog has no such option, and its **Save as PDF** leaves backgrounds off
+as well.
+
+Light text on a coloured band suffers most. The band goes, and Chromium darkens the text only as far
+as `#ababab`: light grey on white paper, barely legible. Give such text a dark colour in your print
+rules, as Educablue does for its block titles:
+
+```css
+@media print {
+    .exe-content .box-head .box-title {
+        color: #000000;
+    }
+}
+```
+
+Keep `print-color-adjust: exact` for an element that *is* its background, which would vanish
+without it. General icons are one, and `base.css` already keeps their colour on paper, so your style
+does not need to. Forced on bands and surfaces, it prints them on every page whatever the reader
+chose.
+
+### The preview is on screen
+
+The preview is not paginated, and your `@media print` rules only apply once the browser prepares to
+print: the reader decides what to print looking at your screen rules. A change only paper shows,
+such as Educablue's bold, ununderlined links, is a surprise there.
+
+eXeLearning brings its own print rules into the preview: folded blocks open (while *Show all hidden
+dropdown content* is ticked), no *Made with eXeLearning* link, external links in the text colour and
+underlined, long code lines wrapped. It also gives the page a 15 mm margin, the
+`@page { margin: 1.5cm; }` every base style prints with. Keep that margin and the preview breaks
+lines where the paper will.
+
+Some of those rules are `!important` and win over yours when printing from the preview. Images, for
+one, are given `max-width: 100%`, so a narrower limit of your own, like Educablue's 300 px, applies
+only when an exported page is printed straight from the browser.
+
+To see the paper itself, use the browser's own print preview, or **Save as PDF** in the desktop
+app.
+
+### Refer to your files with relative paths
+
+The preview loads your style from wherever it is kept: the base styles' folder,
+`/site-files/themes/` for one an administrator installed, or the project itself for one a user
+imported. A user style is not served from anywhere, so each of its files becomes a `blob:` URL and
+its stylesheets are rewritten to match. Relative `url()` and `@import` references follow,
+`#fragment`s included, and selectors on `src` or `href`, such as `img[src$="activity.png"]`, keep
+matching.
+
+Nothing else is rewritten. A root path (`/img/band.svg`), another site's URL or a path a script
+builds at run time does not reach the style's files:
+
+```css
+/* Correct: resolved against style.css wherever the style is kept */
+#siteNav a { background-image: url(img/example.svg); }
+```
+
+---
+
 ## JavaScript in Styles
 
 You can use jQuery (already included in exported content).  
@@ -593,6 +661,47 @@ Common functionality found in built-in eXe styles:
   // Themes can still trigger the (opt-in) toggle setup explicitly:
   $exeExport.teacherMode.init();
   ```
+
+### Knowing whether the page is being printed
+
+A script in a resource sometimes has to behave differently on paper: draw a chart statically
+rather than interactively, not start a timer, open a panel it would otherwise leave folded.
+There are two different questions, and `libs/exe_export.js` answers each separately.
+
+**"Is the browser paginating right now?"** — available in every exported resource:
+
+```js
+if ($exeExport.isPrinting()) { … }            // matchMedia('print'), guarded
+window.addEventListener('beforeprint', …);    // prepare
+window.addEventListener('afterprint', …);     // restore
+```
+
+**"Was this page built to be printed?"** — `$exeExport.printing` is `null` in an ordinary
+resource, and an object in the documents eXeLearning generates for paper:
+
+```js
+if ($exeExport.printing) { … }                              // any print document
+if ($exeExport.printing?.kind === 'worksheet') { … }        // only the activities
+if ($exeExport.printing?.activities === 'appendix') { … }   // exercises at the end
+```
+
+| Field | Values |
+|---|---|
+| `kind` | `'document'` the project with its prose · `'worksheet'` only the activities, rebuilt as exercises |
+| `activities` | `'omit'` · `'in-place'` · `'appendix'`, or `null` when the author was not asked. Only for `'document'` |
+
+The two are not interchangeable. A print preview sits **on screen** before anything is sent to
+the printer, so `isPrinting()` is `false` while `printing` is already set — and that is exactly
+the moment a script has to have decided what to draw. Conversely `printing` stays `null` in an
+ordinary resource even while the reader presses Ctrl+P.
+
+For CSS that cannot wait for a script, the same documents carry `class="exe-print-document"` and
+`data-exe-print="document|worksheet"` on `<html>`:
+
+```css
+html.exe-print-document .my-widget-controls { display: none; }
+html[data-exe-print="worksheet"] .my-widget { break-inside: avoid; }
+```
 
 ### Rewriting URLs: use `$exeExport.setUrlParam`
 
