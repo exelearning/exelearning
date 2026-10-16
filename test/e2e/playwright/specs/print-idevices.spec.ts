@@ -2255,7 +2255,9 @@ test.describe('Print: choosing what happens to the interactive activities', () =
             'All visible content will be printed. You can choose which activities to include and whether to show hidden content.',
             { useInnerText: true },
         );
-        await expect(panel.locator('label[for="printOptUnfoldBlocks"]')).toHaveText('Show all hidden dropdown content');
+        await expect(panel.locator('label[for="printOptUnfoldBlocks"]')).toHaveText(
+            'Print the content of minimized boxes',
+        );
         await expect(sections[1].locator('legend')).toHaveText('What would you like to print?');
         await expect(sections[1].locator('label')).toHaveText([
             'Content without activities',
@@ -2979,7 +2981,7 @@ test.describe('Print: a folded block opens on paper', () => {
 
         const content = (cssClass: string) => frame.locator(`article.${cssClass} .box-content`);
 
-        // With "Show all hidden dropdown content" ticked, the preview shows the folded block open, as it
+        // With "Print the content of minimized boxes" ticked, the preview shows the folded block open, as it
         // prints, with no toggle to fold it back.
         await panel.locator('#printOptUnfoldBlocks').check();
         await expect(content('ep-open')).toBeVisible();
@@ -2998,7 +3000,7 @@ test.describe('Print: a folded block opens on paper', () => {
         await expect(frame.locator('article.ep-teacher')).toBeHidden();
     });
 
-    test('prints the blocks as the preview shows them unless "Show all hidden dropdown content" is ticked', async ({
+    test('prints the blocks as the preview shows them unless "Print the content of minimized boxes" is ticked', async ({
         authenticatedPage: page,
         createProject,
     }) => {

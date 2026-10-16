@@ -121,7 +121,7 @@ off the worksheet, as if the author had not put it there. Print is disabled with
 the choice is to print none, or every activity is one that can never be printed.
 
 **The panel also holds the document options**, which apply with or without activities: *Show link
-URLs* (ticked) and *Show all hidden dropdown content* (clear; see "Folded is not hidden" below).
+URLs* (ticked) and *Print the content of minimized boxes* (clear; see "Folded is not hidden" below).
 With no interactive activity, these are all the panel offers, and nothing has to be changed before
 printing.
 
@@ -243,7 +243,7 @@ It takes `!important`, which the surrounding rules do not. The toggle collapses 
 style; the author's own fold is a class and would not need it.
 
 **In the preview, folding is the user's choice, and by default the page prints as it is shown.**
-*Show all hidden dropdown content* is clear by default, which puts `exe-print-as-shown` on the
+*Print the content of minimized boxes* is clear by default, which puts `exe-print-as-shown` on the
 preview's `<html>`: the rule, written as `html:not(.exe-print-as-shown) …`, stands down, the
 author's folds and the toggles stay, and the page prints as the preview shows it, so a user can fold
 what they do not want on paper and open what they do. Ticking the option takes the class away: the
@@ -290,7 +290,7 @@ for the piece under it, which a block does not need.
   teacher who wants it to say so has to tick it in the list.
 - With such an activity in the project, *Select all* starts half ticked, since those are cleared.
 - From the preview, a block folded with its toggle turned off prints with its title alone unless
-  *Show all hidden dropdown content* is ticked: there is nothing on it to open.
+  *Print the content of minimized boxes* is ticked: there is nothing on it to open.
 
 ### Neutral
 
@@ -333,8 +333,8 @@ for the piece under it, which a block does not need.
   the document and the worksheet's note, by default; printed with their titles, in place and in the
   appendix, once ticked.
 - E2E for folded blocks: the page printed as shown by default; a visible folded block printed open,
-  and the hidden ones left folded, once *Show all hidden dropdown content* is ticked; no such option
-  for the worksheet.
+  and the hidden ones left folded, once *Print the content of minimized boxes* is ticked; no such
+  option for the worksheet.
 - Manual pass over `test/fixtures/todos-los-idevices_dos_informes.elpx`, which contains both
   adapted and unadapted interactive activities.
 - Widening the definition is expected to move E2E numbers, and did: a fixture that held one

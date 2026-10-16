@@ -101,7 +101,7 @@ describe('PrintOptionsPanel', () => {
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks">
-                            <label class="form-check-label" for="printOptUnfoldBlocks">Show all hidden dropdown content</label>
+                            <label class="form-check-label" for="printOptUnfoldBlocks">Print the content of minimized boxes</label>
                         </div>
                     </fieldset>
                     <div class="print-options-activities" hidden></div>

@@ -454,7 +454,7 @@ describe('menu and modal HTML generation', () => {
         expect(preview).toContain('data-i18n="Print options"');
         expect(preview).toContain('data-i18n="Document"');
         expect(preview).toContain('data-i18n="Show link URLs"');
-        expect(preview).toContain('data-i18n="Show all hidden dropdown content"');
+        expect(preview).toContain('data-i18n="Print the content of minimized boxes"');
         // Each sentence of the note is translated on its own: the panel shows one of the two
         // endings, and a translation on the paragraph would replace all three.
         expect(preview).toContain('data-i18n="All visible content will be printed."');
