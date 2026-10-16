@@ -451,11 +451,18 @@ describe('menu and modal HTML generation', () => {
         expect(preview).toContain('class="print-options-activities"');
         expect(preview).toContain('id="printOptLinkUrls"');
         expect(preview).toContain('id="printOptUnfoldBlocks"');
-        expect(preview).toContain('id="printOptUnprintableTitles"');
         expect(preview).toContain('data-i18n="Print options"');
+        expect(preview).toContain('data-i18n="Document"');
         expect(preview).toContain('data-i18n="Show link URLs"');
-        expect(preview).toContain('data-i18n="Print all visible content"');
-        expect(preview).toContain('data-i18n="Show titles of non-printable activities"');
+        expect(preview).toContain('data-i18n="Show all hidden dropdown content"');
+        // Each sentence of the note is translated on its own: the panel shows one of the two
+        // endings, and a translation on the paragraph would replace all three.
+        expect(preview).toContain('data-i18n="All visible content will be printed."');
+        expect(preview).toContain(
+            'data-i18n="You can choose which activities to include and whether to show hidden content."',
+        );
+        expect(preview).toContain('data-i18n="You can choose whether to show hidden content."');
+        expect(preview).not.toMatch(/class="print-options-intro-text"[^>]*data-i18n/);
         expect(preview).toContain('class="print-preview-notice" role="alert" hidden');
         expect(preview).toContain(
             'data-i18n="Printing did not start. Printing may be disabled in this browser or on this device."',
