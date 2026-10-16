@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import PrintOptionsPanel, {
     PRINT_CHOICE_FIELD,
     PRINT_LINK_URLS_FIELD,
+    PRINT_TEACHER_ONLY_FIELD,
     PRINT_UNFOLD_BLOCKS_FIELD,
 } from './printOptionsPanel.js';
 import { PRINT_SELECTION_ALL, PRINT_SELECTION_FIELD } from './printActivitySelection.js';
@@ -60,6 +61,8 @@ describe('PrintOptionsPanel', () => {
     const activitiesEl = () => root.querySelector('.print-options-activities');
     const linkUrls = () => root.querySelector(`#${PRINT_LINK_URLS_FIELD}`);
     const unfoldBlocks = () => root.querySelector(`#${PRINT_UNFOLD_BLOCKS_FIELD}`);
+    const teacherOnly = () => root.querySelector(`#${PRINT_TEACHER_ONLY_FIELD}`);
+    const teacherOnlyRow = () => root.querySelector('.print-options-teacher-only');
     const listed = () => boxes().map((box) => box.value);
     const status = () => root.querySelector('.print-options-status').textContent;
 
@@ -102,6 +105,10 @@ describe('PrintOptionsPanel', () => {
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="printOptUnfoldBlocks">
                             <label class="form-check-label" for="printOptUnfoldBlocks">Print the content of minimized boxes</label>
+                        </div>
+                        <div class="form-check print-options-teacher-only" hidden>
+                            <input class="form-check-input" type="checkbox" id="printOptTeacherOnly">
+                            <label class="form-check-label" for="printOptTeacherOnly">Print teacher-only content</label>
                         </div>
                     </fieldset>
                     <div class="print-options-activities" hidden></div>
@@ -151,6 +158,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -337,6 +345,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -349,6 +358,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -361,6 +371,7 @@ describe('PrintOptionsPanel', () => {
                 valid: false,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -374,6 +385,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -387,6 +399,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -416,6 +429,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -428,6 +442,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -439,6 +454,7 @@ describe('PrintOptionsPanel', () => {
                 valid: false,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
 
             tick(selectAll(), true);
@@ -448,6 +464,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -492,6 +509,7 @@ describe('PrintOptionsPanel', () => {
                     valid: true,
                     showLinkUrls: true,
                     unfoldBlocks: true,
+                    teacherOnly: false,
                 },
                 PRINT_UNFOLD_BLOCKS_FIELD
             );
@@ -533,8 +551,8 @@ describe('PrintOptionsPanel', () => {
     describe('document options', () => {
         beforeEach(() => configure({ activities: [] }));
 
-        it('are both offered, in the order they are shown, with only the link URLs ticked', () => {
-            expect(panel.documentOptions()).toEqual([linkUrls(), unfoldBlocks()]);
+        it('are listed in the order they are shown, with only the link URLs ticked', () => {
+            expect(panel.documentOptions()).toEqual([linkUrls(), unfoldBlocks(), teacherOnly()]);
             expect(linkUrls().checked).toBe(true);
             expect(unfoldBlocks().checked).toBe(false);
         });
@@ -559,9 +577,70 @@ describe('PrintOptionsPanel', () => {
                     valid: true,
                     showLinkUrls: false,
                     unfoldBlocks: false,
+                    teacherOnly: false,
                 },
                 PRINT_LINK_URLS_FIELD
             );
+        });
+    });
+
+    describe('teacher-only content', () => {
+        it('is not offered to a project that has none', () => {
+            configure({ activities: [] });
+
+            expect(teacherOnlyRow().hidden).toBe(true);
+            expect(panel.getState().teacherOnly).toBe(false);
+        });
+
+        it('is offered, clear, to a project that has some, with or without activities', () => {
+            for (const activities of [[], ACTIVITIES]) {
+                configure({ activities, teacherOnlyContent: true });
+
+                expect(teacherOnlyRow().hidden).toBe(false);
+                expect(teacherOnly().checked).toBe(false);
+                expect(panel.getState().teacherOnly).toBe(false);
+            }
+        });
+
+        it('reports being ticked and cleared, saying which option changed', () => {
+            configure({ teacherOnlyContent: true });
+
+            tick(teacherOnly(), true);
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({ teacherOnly: true }),
+                PRINT_TEACHER_ONLY_FIELD
+            );
+
+            tick(teacherOnly(), false);
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({ teacherOnly: false }),
+                PRINT_TEACHER_ONLY_FIELD
+            );
+        });
+
+        it('is neither asked for while it is not offered, nor carried over to the next preview', () => {
+            configure({ teacherOnlyContent: true });
+            tick(teacherOnly(), true);
+
+            configure({ teacherOnlyContent: false });
+            expect(teacherOnly().checked).toBe(false);
+            teacherOnly().checked = true;
+            expect(panel.getState().teacherOnly).toBe(false);
+
+            configure({ teacherOnlyContent: true });
+            expect(teacherOnly().checked).toBe(false);
+            tick(teacherOnly(), true);
+            configure({ teacherOnlyContent: true });
+            expect(teacherOnly().checked).toBe(false);
+        });
+
+        it('is forbidden and allowed with the other document options', () => {
+            configure({ teacherOnlyContent: true });
+
+            panel.setDocumentOptionsEnabled(false);
+            expect(teacherOnly().disabled).toBe(true);
+            panel.setDocumentOptionsEnabled(true);
+            expect(teacherOnly().disabled).toBe(false);
         });
     });
 
@@ -605,6 +684,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: false,
+                teacherOnly: false,
             });
         });
 
@@ -662,7 +742,7 @@ describe('PrintOptionsPanel', () => {
         });
 
         it('leave the document options as they were', () => {
-            expect(panel.documentOptions()).toEqual([linkUrls(), unfoldBlocks()]);
+            expect(panel.documentOptions()).toEqual([linkUrls(), unfoldBlocks(), teacherOnly()]);
         });
     });
 
@@ -763,6 +843,7 @@ describe('PrintOptionsPanel', () => {
                 valid: true,
                 showLinkUrls: true,
                 unfoldBlocks: true,
+                teacherOnly: false,
             });
         });
 

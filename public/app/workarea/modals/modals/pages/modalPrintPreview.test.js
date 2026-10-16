@@ -9,6 +9,7 @@ import ModalPrintPreview, {
     PRINT_AS_SHOWN_CLASS,
     PRINT_START_TIMEOUT_MS,
     REGENERATE_DELAY_MS,
+    TEACHER_MODE_CLASS,
 } from './modalPrintPreview.js';
 
 describe('ModalPrintPreview', () => {
@@ -709,6 +710,8 @@ describe('ModalPrintPreview and its options panel', () => {
     const status = () => overlayElement.querySelector('.print-options-status').textContent;
     const linkUrls = () => overlayElement.querySelector('#printOptLinkUrls');
     const unfoldBlocks = () => overlayElement.querySelector('#printOptUnfoldBlocks');
+    const teacherOnly = () => overlayElement.querySelector('#printOptTeacherOnly');
+    const teacherOnlyRow = () => overlayElement.querySelector('.print-options-teacher-only');
     const busy = () => overlayElement.getAttribute('data-busy');
     const lastOptions = () => global.window.generatePrintPreview.mock.calls.at(-1)[2];
     const lastWorksheetOptions = () => global.window.generateWorksheet.mock.calls.at(-1)[1];
@@ -773,6 +776,9 @@ describe('ModalPrintPreview and its options panel', () => {
                     <fieldset class="print-options-document">
                         <input type="checkbox" id="printOptLinkUrls" checked>
                         <input type="checkbox" id="printOptUnfoldBlocks">
+                        <div class="print-options-teacher-only" hidden>
+                            <input type="checkbox" id="printOptTeacherOnly">
+                        </div>
                     </fieldset>
                     <div class="print-options-activities" hidden></div>
                 </div>
@@ -1174,6 +1180,88 @@ describe('ModalPrintPreview and its options panel', () => {
 
             expect(modal.unfoldBlocks).toBe(false);
             expect(page.classList.contains(PRINT_AS_SHOWN_CLASS)).toBe(true);
+        });
+    });
+
+    describe('teacher-only content', () => {
+        /** The exporter says whether the project has teacher-only content, as given. */
+        const withTeacherOnlyContent = (answer) => {
+            global.window.SharedExporters = {
+                projectHasTeacherOnlyContent:
+                    typeof answer === 'function' ? vi.fn(answer) : vi.fn(() => answer),
+            };
+            return global.window.SharedExporters.projectHasTeacherOnlyContent;
+        };
+
+        afterEach(() => {
+            delete global.window.SharedExporters;
+        });
+
+        it('offers to print it when the project has some, asking about its own document', async () => {
+            const check = withTeacherOnlyContent(true);
+
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+
+            expect(check).toHaveBeenCalledWith(global.eXeLearning.app.project._yjsBridge.documentManager);
+            expect(teacherOnlyRow().hidden).toBe(false);
+            expect(teacherOnly().checked).toBe(false);
+        });
+
+        it('offers nothing when the project has none, or cannot be asked', async () => {
+            withTeacherOnlyContent(false);
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            expect(teacherOnlyRow().hidden).toBe(true);
+            modal.close();
+
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            withTeacherOnlyContent(() => {
+                throw new Error('No document');
+            });
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            expect(teacherOnlyRow().hidden).toBe(true);
+            expect(warn).toHaveBeenCalled();
+            modal.close();
+
+            delete global.window.SharedExporters;
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            expect(teacherOnlyRow().hidden).toBe(true);
+        });
+
+        it('shows it once ticked, in place, without drawing the preview again', async () => {
+            withTeacherOnlyContent(true);
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            const page = loadedPage();
+            expect(page.classList.contains(TEACHER_MODE_CLASS)).toBe(false);
+            global.window.generatePrintPreview.mockClear();
+
+            tick(teacherOnly(), true);
+            expect(page.classList.contains(TEACHER_MODE_CLASS)).toBe(true);
+            await settle();
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+            // What prints for teachers is no business of the exporter either.
+            expect(modal.getPrintOptions()).toEqual({ showLinkUrls: true });
+
+            tick(teacherOnly(), false);
+            expect(page.classList.contains(TEACHER_MODE_CLASS)).toBe(false);
+        });
+
+        it('keeps the choice in a preview drawn again for another option', async () => {
+            withTeacherOnlyContent(true);
+            await showWithActivities();
+            loadedPage();
+            tick(teacherOnly(), true);
+
+            choose(ACTIVITY_MODE_OMIT);
+            await settle();
+
+            expect(loadedPage().classList.contains(TEACHER_MODE_CLASS)).toBe(true);
+        });
+
+        it('offers no choice for the worksheet, which holds no teacher-only content', async () => {
+            withTeacherOnlyContent(true);
+            await showWithActivities(PREVIEW_MODE_IDEVICES, null);
+
+            expect(teacherOnly().disabled).toBe(true);
         });
     });
 

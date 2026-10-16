@@ -3231,6 +3231,77 @@ test.describe('Print: every iDevice of a block', () => {
     });
 });
 
+test.describe('Print: teacher-only content', () => {
+    test('is offered when the project has some, prints once ticked, and never prints its activities', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Teacher notes');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const quiz = (question: string) => ({
+                htmlContent: '',
+                jsonProperties: JSON.stringify({
+                    questionsGame: [{ question, typeSelect: 0, options: ['Yes', 'No'] }],
+                }),
+            });
+            const parent = binding.createPage('For the class');
+            const lesson = binding.createBlock(parent.id, 'Lesson');
+            binding.createComponent(parent.id, lesson, 'text', { htmlContent: '<p>Lesson text</p>' });
+            binding.createComponent(parent.id, lesson, 'adaptative-quiz', quiz('A question'));
+            const notes = binding.createBlock(parent.id, 'Notes');
+            const properties = binding.getBlockMap(parent.id, notes).get('properties');
+            properties.set('cssClass', 'ep-teacher-notes');
+            properties.set('teacherOnly', 'true');
+            binding.createComponent(parent.id, notes, 'text', {
+                id: 'teacher-notes',
+                htmlContent: '<p>Teacher notes</p>',
+            });
+            binding.createComponent(parent.id, notes, 'adaptative-quiz', { id: 'teacher-quiz', ...quiz('Q') });
+        });
+
+        const panel = await openPrintPanel(page);
+        const option = panel.locator('#printOptTeacherOnly');
+        let { frame } = await waitForPreview(page);
+        const notes = () => frame.locator('#teacher-notes');
+
+        // Offered, and clear: content kept for teachers prints only when asked for.
+        await expect(option).toBeVisible();
+        await expect(option).not.toBeChecked();
+        await page.emulateMedia({ media: 'print' });
+        await expect(notes()).toBeHidden();
+        await page.emulateMedia({ media: 'screen' });
+
+        await option.check();
+        await page.emulateMedia({ media: 'print' });
+        await expect(notes()).toBeVisible();
+        await expect(notes()).toContainText('Teacher notes');
+        // Its activity is not in the document at all, whatever is chosen for the others.
+        await expect(frame.locator('#teacher-quiz')).toHaveCount(0);
+        await page.emulateMedia({ media: 'screen' });
+
+        ({ frame } = await choosePrintOption(page, 'in-place'));
+        await page.emulateMedia({ media: 'print' });
+        await expect(notes()).toBeVisible();
+        await expect(frame.locator('#teacher-quiz')).toHaveCount(0);
+        await page.emulateMedia({ media: 'screen' });
+    });
+
+    test('is not offered when the project has none', async ({ authenticatedPage: page, createProject }) => {
+        const uuid = await createProject(page, 'No teacher notes');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const panel = await openPrintPanel(page);
+        await waitForPreview(page);
+
+        await expect(panel.locator('#printOptUnfoldBlocks')).toBeVisible();
+        await expect(panel.locator('#printOptTeacherOnly')).toBeHidden();
+    });
+});
+
 test.describe('Print: when printing does not start', () => {
     /** Open the preview of a new project, ready to print. */
     async function openPreview(page: Page, createProject: (page: Page, title?: string) => Promise<string>) {

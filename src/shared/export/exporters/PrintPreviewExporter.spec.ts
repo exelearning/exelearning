@@ -2785,8 +2785,9 @@ describe('the molecules the document has to draw before it can convert them', ()
 
         expect(drawn).toHaveLength(1);
         expect(html).toContain(PICTURE);
-        // The restricted ones still carry their own payloads, with no picture written into them.
-        expect(html.match(/dmole-DataGame/g)).toHaveLength(2);
+        // The hidden one still carries its own payload, with no picture written into it. The one for
+        // teachers is not in the document at all: teacher-only activities never print.
+        expect(html.match(/dmole-DataGame/g)).toHaveLength(1);
     });
 
     it('converts what it can when nothing is there to draw', async () => {

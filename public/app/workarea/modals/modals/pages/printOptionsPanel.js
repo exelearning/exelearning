@@ -160,8 +160,8 @@ export default class PrintOptionsPanel {
         teacherOnlyContent = false,
     } = {}) {
         if (this.teacherOnlyRow) this.teacherOnlyRow.hidden = !teacherOnlyContent;
-        // Not offered, it is not asked for either, nor carried over to a project that has some.
-        if (this.teacherOnlyInput && !teacherOnlyContent) this.teacherOnlyInput.checked = false;
+        // It starts clear every time: content kept for teachers prints only when asked for anew.
+        if (this.teacherOnlyInput) this.teacherOnlyInput.checked = false;
 
         this.activities = Array.isArray(activities) ? activities : [];
         this.choices = choices;
