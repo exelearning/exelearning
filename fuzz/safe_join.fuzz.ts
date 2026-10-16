@@ -16,7 +16,7 @@ export function fuzz(data: Buffer): void {
         throw e;
     }
     const rel = path.relative(BASE, path.resolve(joined));
-    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
         throw new Error(`safeJoin escaped base: ${JSON.stringify(segments)} -> ${joined}`);
     }
 }
