@@ -869,6 +869,139 @@ describe('ProjectManager', () => {
             expect(mockApp.modals.loader.show).toHaveBeenCalled();
         });
 
+        describe('reopening the project of a platform activity', () => {
+            const packageHash = 'a'.repeat(64);
+
+            beforeEach(() => {
+                projectManager.yjsProjectId = 'activity-project';
+                vi.stubGlobal('location', {
+                    href: 'http://localhost:8080/workarea?project=activity-project&jwt_token=12345&fetchPlatformElp=1',
+                    search: '?project=activity-project&jwt_token=12345&fetchPlatformElp=1',
+                });
+                projectManager._yjsBridge.documentManager.saveToServer.mockResolvedValue({ success: true, bytes: 10 });
+            });
+
+            function platformResponds(openResponse) {
+                global.fetch.mockImplementation((url) =>
+                    Promise.resolve({
+                        ok: true,
+                        json: () =>
+                            Promise.resolve(
+                                url.includes('openPlatformElp') ? openResponse : { responseMessage: 'OK' },
+                            ),
+                    }),
+                );
+            }
+
+            function requestBody(endpoint) {
+                const call = global.fetch.mock.calls.find(([url]) => url.includes(endpoint));
+                return call ? JSON.parse(call[1].body) : undefined;
+            }
+
+            it('tells the server which project it opened for the activity', async () => {
+                platformResponds({ responseMessage: 'OK', unchanged: true });
+
+                await projectManager.checkAndImportElp();
+
+                expect(requestBody('openPlatformElp')).toEqual({
+                    jwt_token: '12345',
+                    projectUuid: 'activity-project',
+                });
+            });
+
+            it('keeps the project as it is when it already holds the platform package', async () => {
+                platformResponds({ responseMessage: 'OK', unchanged: true });
+
+                await projectManager.checkAndImportElp();
+
+                expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+                expect(projectManager._yjsBridge.documentManager.saveToServer).not.toHaveBeenCalled();
+                expect(requestBody('confirmPlatformElpImport')).toBeUndefined();
+                expect(mockApp.modals.loader.hide).toHaveBeenCalled();
+            });
+
+            it('confirms the imported package once the project is saved', async () => {
+                platformResponds({ responseMessage: 'OK', elpFile: btoa('pkg'), elpFileName: 'a.zip', packageHash });
+
+                await projectManager.checkAndImportElp();
+
+                expect(projectManager.importFromElpxViaYjs).toHaveBeenCalled();
+                expect(requestBody('confirmPlatformElpImport')).toEqual({
+                    jwt_token: '12345',
+                    projectUuid: 'activity-project',
+                    packageHash,
+                });
+            });
+
+            it('does not confirm a package that was not imported or not saved', async () => {
+                platformResponds({ responseMessage: 'OK', elpFile: btoa('pkg'), elpFileName: 'a.zip', packageHash });
+                projectManager.importFromElpxViaYjs.mockResolvedValueOnce({ cancelled: true });
+                await projectManager.checkAndImportElp();
+
+                projectManager._yjsBridge.documentManager.saveToServer.mockResolvedValueOnce({ success: false });
+                await projectManager.checkAndImportElp();
+
+                projectManager._yjsBridge.documentManager.saveToServer.mockRejectedValueOnce(new Error('offline'));
+                await projectManager.checkAndImportElp();
+
+                expect(requestBody('confirmPlatformElpImport')).toBeUndefined();
+            });
+
+            it('warns when the server refuses to record the imported package', async () => {
+                global.fetch.mockImplementation((url) =>
+                    Promise.resolve(
+                        url.includes('openPlatformElp')
+                            ? {
+                                  ok: true,
+                                  json: () =>
+                                      Promise.resolve({
+                                          responseMessage: 'OK',
+                                          elpFile: btoa('pkg'),
+                                          elpFileName: 'a.zip',
+                                          packageHash,
+                                      }),
+                              }
+                            : { ok: false, status: 403 },
+                    ),
+                );
+                const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+                await projectManager.checkAndImportElp();
+
+                expect(warn).toHaveBeenCalledWith(
+                    expect.stringContaining('Could not record the platform package'),
+                    expect.objectContaining({ message: expect.stringContaining('403') }),
+                );
+                warn.mockRestore();
+            });
+
+            it('keeps working when the confirmation cannot be sent', async () => {
+                global.fetch.mockImplementation((url) =>
+                    url.includes('openPlatformElp')
+                        ? Promise.resolve({
+                              ok: true,
+                              json: () =>
+                                  Promise.resolve({
+                                      responseMessage: 'OK',
+                                      elpFile: btoa('pkg'),
+                                      elpFileName: 'a.zip',
+                                      packageHash,
+                                  }),
+                          })
+                        : Promise.reject(new Error('network down')),
+                );
+                const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+                await expect(projectManager.checkAndImportElp()).resolves.toBeUndefined();
+
+                expect(warn).toHaveBeenCalledWith(
+                    expect.stringContaining('Could not record the platform package'),
+                    expect.any(Error),
+                );
+                warn.mockRestore();
+            });
+        });
+
         it('handles fetch platform ELP failure gracefully', async () => {
             vi.stubGlobal('location', { 
                 href: 'http://localhost:8080/?jwt_token=12345&fetchPlatformElp=1',
