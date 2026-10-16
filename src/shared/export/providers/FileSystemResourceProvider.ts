@@ -16,7 +16,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { ResourceProvider, LibraryPattern } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
-import { parseXlfTranslations } from '../generators/I18nGenerator';
+import { generateI18nScript, parseXlfTranslations } from '../generators/I18nGenerator';
 import { SCORM12_RUNTIME_SOURCE_PATHS } from '../utils/Scorm12Runtime';
 
 /**
@@ -413,6 +413,10 @@ export class FileSystemResourceProvider implements ResourceProvider {
      * Fetch the pre-built, pre-translated i18n JS file for the given language.
      * Reads from `public/app/common/i18n/common_i18n.{lang}.js` (generated at build time).
      * Falls back to English if the locale file is not available.
+     *
+     * A checkout that was never built has none of those files. The file is then built from the
+     * template and the XLF translations, as the build does, so that the export still defines
+     * `$exe_i18n`, which its scripts expect.
      * @param language - BCP-47 language code (e.g., 'es', 'eu')
      * @returns Resolved JS content ready to add to the export ZIP as libs/common_i18n.js
      */
@@ -428,7 +432,13 @@ export class FileSystemResourceProvider implements ResourceProvider {
             }
         }
 
-        console.warn('[FileSystemResourceProvider] common_i18n.{lang}.js not found for:', language);
+        const templatePath = path.join(this.publicDir, 'app', 'common', 'common_i18n.js');
+        if (await fs.pathExists(templatePath)) {
+            const template = await fs.readFile(templatePath, 'utf-8');
+            return generateI18nScript(template, await this.fetchI18nTranslations(language));
+        }
+
+        console.warn('[FileSystemResourceProvider] common_i18n.js not found for:', language);
         return '';
     }
 
