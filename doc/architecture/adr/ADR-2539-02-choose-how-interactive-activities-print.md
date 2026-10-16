@@ -15,8 +15,8 @@ related:
 supersedes: []
 superseded_by: []
 ai_assistance:
-  tool: Claude Code
-  model: claude-opus-5-5
+  tool: Claude Code; Codex
+  model: claude-opus-5-5; GPT-6
 ---
 
 # ADR-2539-02: Choose how interactive activities print, as part of the document
@@ -260,7 +260,15 @@ did. Before, a user could fold a block but not the answers inside it, for two re
 preview linked the editor's template of `common_i18n.js`, whose `c_()` calls fail outside the
 editor, so `$exe_i18n` was never defined, nor any iDevice script that reads it as it loads, the
 Text iDevice's among them. The preview now carries the translated strings in the page, as an
-export carries them in its own file.
+export carries them in its own file. If the compiled translations are unavailable, the shared
+i18n generator resolves the source template to English. If neither resource is available, preview
+generation warns in the console and continues with an empty translation dictionary. The available
+content remains printable, although labels or iDevices that require missing translations may be
+degraded. The preview does not load the unresolved template or block printing for this failure.
+
+JSON iDevices such as Case Study create their feedback after the initial HTML has been generated.
+The shared post-render hook opens each new feedback element once in a print document. Repeated
+initialization preserves user folds; ordinary exports and worksheets keep their existing behavior.
 
 **What the author hid stays hidden, and `teacher-only` is deliberately not excluded.** `novisible`
 and `teacher-only` sit on the `<article>`, which the existing rules take out of the layout with
@@ -287,6 +295,9 @@ appendix, or left out with the rest. Converting it rather than letting it print 
 shown as teacher mode shows it, it would reach paper as the game the screen shows. Since the list
 then changes with a document option, ticking it draws the preview again when the project has such
 activities, and only then. On the worksheet the option stays available, and puts them on it too.
+If these are the project's only activities, clearing the option temporarily removes the activity
+controls. The panel remembers the chosen mode independently of those controls and restores it when
+the option is ticked again. Opening a new preview resets that choice.
 
 A first version left these activities out whatever the option said, since teacher-only boxes hold
 notes far more often than games. The review asked for them to print with the rest of that content.

@@ -1303,6 +1303,31 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(loadedPage().classList.contains(TEACHER_MODE_CLASS)).toBe(true);
         });
 
+        it('returns to the worksheet after hiding and restoring the only activities, kept for teachers', async () => {
+            withTeacherOnlyContent(true);
+            const teacherActivity = { id: 't1', type: 'guess', pageTitle: 'Notes', blockTitle: '', teacherOnly: true };
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX, null, [teacherActivity]);
+            loadedPage();
+            tick(teacherOnly(), true);
+            await settle();
+            loadedPage();
+            choose(PREVIEW_MODE_IDEVICES);
+            await settle();
+            loadedPage();
+
+            tick(teacherOnly(), false);
+            await settle();
+            expect(lastOptions()).not.toHaveProperty('activities');
+            loadedPage();
+            global.window.generateWorksheet.mockClear();
+            tick(teacherOnly(), true);
+            await settle();
+
+            expect(modal.mode).toBe(PREVIEW_MODE_IDEVICES);
+            expect(global.window.generateWorksheet).toHaveBeenCalledTimes(1);
+            expect(lastWorksheetOptions().teacherOnly).toBe(true);
+        });
+
         it('stays offered for the worksheet, whose activities it decides too', async () => {
             withTeacherOnlyContent(true);
             await showWithActivities(PREVIEW_MODE_IDEVICES, null);

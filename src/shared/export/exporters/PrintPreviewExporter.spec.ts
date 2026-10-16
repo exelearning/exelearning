@@ -51,6 +51,9 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchBaseLibraries: async () => new Map(),
     fetchLibraryFiles: async (files: string[]) => {
         const result = new Map<string, Buffer>();
+        if (files.includes('common_i18n.js')) {
+            result.set('common_i18n.js', Buffer.from('$exe_i18n = { "showFeedback": c_("Show feedback") };'));
+        }
         if (files.includes('material-icons/material-icons.svg')) {
             result.set(
                 'material-icons/material-icons.svg',
@@ -1433,7 +1436,7 @@ describe('PrintPreviewExporter', () => {
             expect(html).toContain('$exe_i18n = { "x": "<\\/script><b>" };');
         });
 
-        it('leave the link as it was when the resources have none, or fail to give them', async () => {
+        it('resolve the source template when the translated file is empty or cannot be fetched', async () => {
             const warn = spyOn(console, 'warn').mockImplementation(() => {});
 
             for (const fetchI18nFile of [
@@ -1443,12 +1446,47 @@ describe('PrintPreviewExporter', () => {
                 },
             ]) {
                 const html = await preview(fetchI18nFile);
-                expect(html).toContain('app/common/common_i18n.js');
+                expect(html).toContain('<script>$exe_i18n = { "showFeedback": "Show feedback" };</script>');
+                expect(html).not.toContain('common_i18n.js');
+                expect(html).not.toContain('c_("');
                 expect(html).not.toContain(TRANSLATED);
             }
             expect(warn).toHaveBeenCalled();
             warn.mockRestore();
         });
+
+        for (const failure of ['missing', 'empty', 'rejected']) {
+            it(`keeps the content printable when translations are absent and the source template is ${failure}`, async () => {
+                const warn = spyOn(console, 'warn').mockImplementation(() => {});
+                try {
+                    const base = createMockResourceProvider();
+                    const resources = {
+                        ...base,
+                        fetchLibraryFiles: async (files: string[]) => {
+                            if (!files.includes('common_i18n.js')) return base.fetchLibraryFiles(files);
+                            if (failure === 'rejected') throw new Error('Offline');
+                            return failure === 'empty' ? new Map([['common_i18n.js', new Uint8Array()]]) : new Map();
+                        },
+                    };
+                    const result = await new PrintPreviewExporter(
+                        createMockDocument(pages()),
+                        resources,
+                    ).generatePreview();
+
+                    expect(result.success).toBe(true);
+                    expect(result.error).toBeUndefined();
+                    expect(result.html).toContain('<p>Text</p>');
+                    expect(result.html).toContain('<script>window.$exe_i18n = window.$exe_i18n || {};</script>');
+                    expect(result.html).not.toContain('common_i18n.js');
+                    expect(warn).toHaveBeenCalledWith(
+                        '[PrintPreviewExporter] Translation resources unavailable; continuing without shared translations.',
+                    );
+                    result.dispose?.();
+                } finally {
+                    warn.mockRestore();
+                }
+            });
+        }
     });
 
     describe('hiding unwanted print elements', () => {

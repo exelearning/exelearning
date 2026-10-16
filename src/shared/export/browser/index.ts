@@ -639,9 +639,8 @@ export async function exportAndDownload(
  * Printing asks the user what to do with them and which of them to print, and this is what it asks
  * about: with none, printing goes straight to the preview as it always did.
  *
- * Lists exactly what `applyActivityMode` would act on, so the dialog never offers an activity the
- * modes leave alone: hidden pages, restricted blocks and teacher-only or hidden components are all
- * left as the document prints them.
+ * Lists the activities `applyActivityMode` can act on, excluding hidden pages, blocks and components.
+ * Teacher-only activities are marked so the dialog offers them when teacher-only content is included.
  *
  * @param documentManager - YjsDocumentManager instance
  * @returns The activities, in document order
@@ -653,7 +652,7 @@ export function listProjectInteractiveActivities(documentManager: YjsDocumentMan
 
 /**
  * Whether a printed document would hold teacher-only content, which the print options then offer
- * to print. Its activities do not count: they never print.
+ * to print, including interactive activities that follow the selected printing mode.
  *
  * @param documentManager - YjsDocumentManager instance
  * @returns true when there is some

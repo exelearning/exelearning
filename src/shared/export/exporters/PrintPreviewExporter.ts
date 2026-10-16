@@ -16,6 +16,7 @@ import type {
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
+import { generateI18nScript } from '../generators/I18nGenerator';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { ThemeFileUrlResolver } from '../utils/ThemeFileUrlResolver';
 import { visibleWorksheetPages } from '../utils/visibility';
@@ -781,7 +782,9 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
      * file beside the editor's sources instead, the preview loaded the template, whose `c_()` calls
      * fail outside the editor: `$exe_i18n` was never defined, and neither was any iDevice script
      * that reads it as it loads, such as the Text iDevice, whose feedback button then did nothing.
-     * Without the translated file, the link is left for the paths below, as before.
+     * Without the translated file, resolve the source template to English using the same generator
+     * as the build. If neither resource is available, warn and keep the preview printable with an
+     * empty dictionary. Never load the unresolved template into the preview.
      *
      * @param html - The rendered page
      * @param language - The project's language
@@ -797,7 +800,21 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
         } catch (error) {
             console.warn('[PrintPreviewExporter] Could not fetch the translated strings:', error);
         }
-        if (!strings) return html;
+        if (!strings) {
+            try {
+                const files = await this.resources.fetchLibraryFiles(['common_i18n.js']);
+                const template = files.get('common_i18n.js');
+                if (template?.length) strings = generateI18nScript(new TextDecoder().decode(template), new Map());
+            } catch (error) {
+                console.warn('[PrintPreviewExporter] Could not fetch the translation template:', error);
+            }
+        }
+        if (!strings) {
+            console.warn(
+                '[PrintPreviewExporter] Translation resources unavailable; continuing without shared translations.',
+            );
+            strings = 'window.$exe_i18n = window.$exe_i18n || {};';
+        }
 
         // A string closing the script would end it early.
         const script = `<script>${strings.replace(/<\/(script)/gi, '<\\/$1')}</script>`;

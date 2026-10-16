@@ -3232,6 +3232,47 @@ test.describe('Print: every iDevice of a block', () => {
 });
 
 test.describe('Print: teacher-only content', () => {
+    test('restores activities only after hiding and showing the only activities, kept for teachers', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Only teacher activities');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Teacher activities');
+            const block = binding.createBlock(parent.id, 'Teacher quiz');
+            binding.getBlockMap(parent.id, block).get('properties').set('teacherOnly', 'true');
+            binding.createComponent(parent.id, block, 'adaptative-quiz', {
+                id: 'teacher-quiz',
+                htmlContent: '',
+                jsonProperties: JSON.stringify({
+                    questionsGame: [{ question: 'A teacher question', typeSelect: 0, options: ['Yes', 'No'] }],
+                }),
+            });
+        });
+
+        const panel = await openPrintPanel(page);
+        const option = panel.locator('#printOptTeacherOnly');
+        await waitForPreview(page);
+        await option.check();
+        let { frame } = await choosePrintOption(page, 'idevices');
+        await expect(frame.locator('.worksheet')).toBeVisible();
+        await expect(frame.locator('.worksheet')).toContainText('A teacher question');
+
+        await option.uncheck();
+        ({ frame } = await waitForPreview(page));
+        await expect(frame.locator('body.exe-single-page')).toBeVisible();
+        await expect(frame.locator('#teacher-quiz')).toHaveCount(0);
+        await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(0);
+        await option.check();
+        await expect(panel.locator('input[name="print-activity-mode"][value="idevices"]')).toBeChecked();
+        ({ frame } = await waitForPreview(page));
+        await expect(frame.locator('.worksheet')).toBeVisible();
+        await expect(frame.locator('.worksheet')).toContainText('A teacher question');
+    });
+
     test('is offered when the project has some, and prints once ticked, its activities as the others', async ({
         authenticatedPage: page,
         createProject,
@@ -3322,54 +3363,105 @@ test.describe('Print: teacher-only content', () => {
 });
 
 test.describe('Print: feedback folds as the preview shows it', () => {
-    test('prints feedback open, lets its button fold it, and opens it all again with every box', async ({
-        authenticatedPage: page,
-        createProject,
-    }) => {
-        const uuid = await createProject(page, 'Feedback on paper');
-        await gotoWorkarea(page, uuid);
-        await waitForAppReady(page);
-        await page.evaluate(() => {
-            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
-            const parent = binding.createPage('Feedback');
-            const block = binding.createBlock(parent.id, 'With feedback');
-            binding.createComponent(parent.id, block, 'text', {
-                htmlContent:
-                    '<p>Question text</p><div class="iDevice_buttons feedback-button js-required">' +
-                    '<input type="button" class="feedbacktooglebutton" value="Show feedback"></div>' +
-                    '<div class="feedback js-feedback js-hidden" style="display: none;"><p>The answer</p></div>',
+    for (const { type, missingTranslations, missingTemplate } of [
+        { type: 'text', missingTranslations: false, missingTemplate: false },
+        { type: 'casestudy', missingTranslations: false, missingTemplate: false },
+        { type: 'text', missingTranslations: true, missingTemplate: false },
+        { type: 'text', missingTranslations: true, missingTemplate: true },
+    ]) {
+        test(`prints ${type} feedback open and lets it fold, missing translations=${missingTranslations}, missing template=${missingTemplate}`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Feedback on paper');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const scriptErrors: string[] = [];
+            page.on('pageerror', error => scriptErrors.push(error.message));
+            const warnings: string[] = [];
+            page.on('console', message => {
+                if (message.type() === 'warning') warnings.push(message.text());
             });
+            let unavailableLocales = 0;
+            let unavailableTemplates = 0;
+            if (missingTranslations) {
+                // Simulate unavailable compiled locales, with or without a source template to fall back to.
+                await page.route('**/common_i18n.*.js*', route => {
+                    unavailableLocales++;
+                    return route.fulfill({ status: 503, body: 'Unavailable' });
+                });
+            }
+            if (missingTemplate) {
+                await page.route('**/common_i18n.js*', route => {
+                    unavailableTemplates++;
+                    return route.fulfill({ status: 503, body: 'Unavailable' });
+                });
+            }
+            await page.evaluate(type => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Feedback');
+                const block = binding.createBlock(parent.id, 'With feedback');
+                binding.createComponent(
+                    parent.id,
+                    block,
+                    type,
+                    type === 'text'
+                        ? {
+                              htmlContent:
+                                  '<p>Question text</p><div class="iDevice_buttons feedback-button js-required">' +
+                                  '<input type="button" class="feedbacktooglebutton" value="Show feedback"></div>' +
+                                  '<div class="feedback js-feedback js-hidden" style="display: none;"><p>The answer</p></div>',
+                          }
+                        : {
+                              htmlContent: '',
+                              jsonProperties: JSON.stringify({
+                                  history: '<p>A case to study</p>',
+                                  textInfoDurationInput: '',
+                                  textInfoParticipantsInput: '',
+                                  activities: [{ activity: '<p>Question text</p>', feedback: '<p>The answer</p>' }],
+                              }),
+                          },
+                );
+            }, type);
+
+            const panel = await openPrintPanel(page);
+            const { frame } = await waitForPreview(page);
+            const feedback = frame.locator('.feedback');
+            const option = panel.locator('#printOptUnfoldBlocks');
+
+            // Open on paper by default, as printing has always left it.
+            await page.emulateMedia({ media: 'print' });
+            await expect(feedback).toBeVisible();
+            await page.emulateMedia({ media: 'screen' });
+
+            // Printing as shown, its button folds it, on screen and on paper.
+            await frame.locator('.feedbacktooglebutton').click();
+            await expect(feedback).toBeHidden();
+            await page.emulateMedia({ media: 'print' });
+            await expect(feedback).toBeHidden();
+            await page.emulateMedia({ media: 'screen' });
+
+            // Printing every box open prints every feedback open too.
+            await option.check();
+            await page.emulateMedia({ media: 'print' });
+            await expect(feedback).toBeVisible();
+            await page.emulateMedia({ media: 'screen' });
+
+            // Back to printing as shown, the feedback the user folded stays folded.
+            await option.uncheck();
+            await page.emulateMedia({ media: 'print' });
+            await expect(feedback).toBeHidden();
+            await page.emulateMedia({ media: 'screen' });
+            expect(scriptErrors).toEqual([]);
+            if (missingTranslations) expect(unavailableLocales).toBeGreaterThan(0);
+            if (missingTemplate) {
+                expect(unavailableTemplates).toBeGreaterThan(0);
+                expect(warnings).toContain(
+                    '[PrintPreviewExporter] Translation resources unavailable; continuing without shared translations.',
+                );
+            }
         });
-
-        const panel = await openPrintPanel(page);
-        const { frame } = await waitForPreview(page);
-        const feedback = frame.locator('.feedback');
-        const option = panel.locator('#printOptUnfoldBlocks');
-
-        // Open on paper by default, as printing has always left it.
-        await page.emulateMedia({ media: 'print' });
-        await expect(feedback).toBeVisible();
-        await page.emulateMedia({ media: 'screen' });
-
-        // Printing as shown, its button folds it, on screen and on paper.
-        await frame.locator('.feedbacktooglebutton').click();
-        await expect(feedback).toBeHidden();
-        await page.emulateMedia({ media: 'print' });
-        await expect(feedback).toBeHidden();
-        await page.emulateMedia({ media: 'screen' });
-
-        // Printing every box open prints every feedback open too.
-        await option.check();
-        await page.emulateMedia({ media: 'print' });
-        await expect(feedback).toBeVisible();
-        await page.emulateMedia({ media: 'screen' });
-
-        // Back to printing as shown, the feedback the user folded stays folded.
-        await option.uncheck();
-        await page.emulateMedia({ media: 'print' });
-        await expect(feedback).toBeHidden();
-        await page.emulateMedia({ media: 'screen' });
-    });
+    }
 });
 
 test.describe('Print: when printing does not start', () => {

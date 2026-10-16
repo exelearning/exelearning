@@ -48,6 +48,9 @@ window.$exeExport = {
      */
     printing: null,
 
+    // Remember individual feedback elements without keeping removed iDevices alive.
+    openedPrintFeedback: new WeakSet(),
+
     /**
      * Whether the browser is laying this page out for paper at this moment.
      *
@@ -556,6 +559,15 @@ window.$exeExport = {
         if (typeof $exe !== 'undefined') {
             if (typeof $exe.setMultimediaGalleries === 'function') $exe.setMultimediaGalleries(ideviceNode);
             if (typeof $exe.setModalWindowContentSize === 'function') $exe.setModalWindowContentSize(ideviceNode);
+        }
+        // JSON iDevices can create feedback after the print exporter has opened the initial HTML.
+        // Open it once, then leave subsequent user folds alone, including on repeated initialization.
+        if (this.printing && this.printing.kind === 'document') {
+            ideviceNode.querySelectorAll('.feedback.js-hidden').forEach(feedback => {
+                if (this.openedPrintFeedback.has(feedback)) return;
+                this.openedPrintFeedback.add(feedback);
+                if (feedback.style.display === 'none') feedback.style.removeProperty('display');
+            });
         }
     },
 

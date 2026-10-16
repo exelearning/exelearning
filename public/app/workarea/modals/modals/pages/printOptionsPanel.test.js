@@ -708,6 +708,32 @@ describe('PrintOptionsPanel', () => {
                 expect(activitiesEl().hidden).toBe(false);
                 expect(radios()).not.toHaveLength(0);
             });
+
+            it.each(CHOICES.map(({ value }) => value))('remembers %s while all teacher activities are hidden', (choice) => {
+                configure({ activities: TEACHER, teacherOnlyContent: true, choice: 'appendix' });
+                tick(teacherOnly(), true);
+                choose(choice);
+
+                tick(teacherOnly(), false);
+                expect(panel.getState()).toEqual(expect.objectContaining({ choice: null, valid: true }));
+                expect(radios()).toHaveLength(0);
+                tick(teacherOnly(), true);
+
+                expect(checkedChoice()).toBe(choice);
+                expect(panel.getState().choice).toBe(choice);
+            });
+
+            it('resets the remembered choice for a new preview', () => {
+                configure({ activities: TEACHER, teacherOnlyContent: true });
+                tick(teacherOnly(), true);
+                choose('idevices');
+                tick(teacherOnly(), false);
+
+                configure({ activities: TEACHER, teacherOnlyContent: true, choice: 'appendix' });
+                tick(teacherOnly(), true);
+
+                expect(checkedChoice()).toBe('appendix');
+            });
         });
     });
 

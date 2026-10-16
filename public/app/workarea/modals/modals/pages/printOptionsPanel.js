@@ -64,7 +64,7 @@ export default class PrintOptionsPanel {
         /** The activities offered now, as `offeredActivities` gives them. */
         this.activities = [];
         this.choices = [];
-        this.initialChoice = null;
+        this.lastChoice = null;
         this.labels = {};
         this.ideviceName = () => '';
         this.selection = null;
@@ -204,7 +204,7 @@ export default class PrintOptionsPanel {
         this.projectActivities = Array.isArray(activities) ? activities : [];
         this.activities = this.offeredActivities();
         this.choices = choices;
-        this.initialChoice = choice;
+        this.lastChoice = choice;
         this.labels = labels;
         this.ideviceName = ideviceName;
         this.renderActivities(choice, selectedActivities);
@@ -248,6 +248,8 @@ export default class PrintOptionsPanel {
      */
     teacherOptionChanged() {
         const { choice, ids } = this.snapshot();
+        // All activities may disappear with the teacher option. Keep the choice outside the DOM.
+        if (choice !== null) this.lastChoice = choice;
         const offeredBefore = new Set(this.activities.map(({ id }) => id));
         const hadSelection = this.selection !== null;
 
@@ -256,7 +258,7 @@ export default class PrintOptionsPanel {
             .filter((activity) => !offeredBefore.has(activity.id) && !activity.neverPrintable)
             .map(({ id }) => id);
 
-        this.renderActivities(choice ?? this.initialChoice, hadSelection ? [...ids, ...comingBack] : null);
+        this.renderActivities(this.lastChoice, hadSelection ? [...ids, ...comingBack] : null);
     }
 
     /**
