@@ -1,3 +1,4 @@
+/* The "Select a file" buttons the file picker adds next to the image and audio fields. */
 #gameQEIdeviceForm input[type="button"] {
     margin-right: 0 !important;
 }
@@ -52,13 +53,10 @@
     position: absolute;
 }
 
-.ADVNE-TypeGame,
-.ADVNE-TypeOrder {
+.ADVNE-TypeGame {
     margin-left: .5em
 }
 
-#gameQEIdeviceForm .ADVNE-EInputVideo input.form-control,
-#gameQEIdeviceForm .ADVNE-EInputAudio input.form-control,
 #gameQEIdeviceForm .ADVNE-ESolutionWord input.form-control,
 #gameQEIdeviceForm .ADVNE-ECustomMessage input.form-control {
     min-width: 0;
@@ -70,18 +68,6 @@
     min-width: 3.2rem;
     text-align: center;
     padding: .15rem .25rem;
-}
-
-.ADVNE-EInputImage input[type=button] {
-    flex-shrink: 0;
-}
-
-.ADVNE-SolutionWordDiv {
-    align-items: center;
-    display: flex;
-    justify-content: center;
-    margin: .5em auto;
-    width: 100%;
 }
 
 .ADVNE-ESolutionWord {
@@ -100,17 +86,6 @@
     padding-right: .5em
 }
 
-.ADVNE-SolutionWordDiv input {
-    text-align: left;
-}
-
-.ADVNE-SolitionOptionsDiv {
-    width: 98%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
 .ADVNE-EOrders {
     margin-top: 0.5em;
     display: none;
@@ -118,14 +93,6 @@
 
 .ADVNE-EOrders>div {
     align-items: center;
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    ;
-}
-
-.ADVNE-EOrders>div {
-    align-items: left;
     display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
@@ -167,24 +134,6 @@
 
 #gameQEIdeviceForm .ADVNE-EMediaRow-options .form-check-label {
     white-space: nowrap;
-}
-
-#gameQEIdeviceForm .ADVNE-ETimesRow .ADVNE-EMediaRow-options {
-    gap: .5rem 1.1rem;
-}
-
-#gameQEIdeviceForm .ADVNE-ETimesRow>.ADVNE-EMediaRow-label,
-#gameQEIdeviceForm .ADVNE-ETimesRow>span.me-2 {
-    margin-right: 2rem !important;
-}
-
-#gameQEIdeviceForm .ADVNE-EPercentageRow .ADVNE-EMediaRow-options input[type=number] {
-    max-width: 7rem;
-}
-
-#gameQEIdeviceForm .ADVNE-EPercentageRow {
-    margin-top: .25rem;
-    align-items: center;
 }
 
 .ADVNE-EOrders label {
@@ -272,18 +221,7 @@
     width: 3em;
 }
 
-.ADVNE-DP,
-.ADVNE-EInputImage,
-.ADVNE-ScoreQuestionDiv,
-.ADVNE-ECoord,
-.ADVNE-ETitleImage,
-.ADVNE-ETitleVideo,
-.ADVNE-EInputVideo {
-    display: none;
-}
-
-label[for=gameQEScoreQuestion],
-input#gameQEScoreQuestion {
+.ADVNE-ECoord {
     display: none;
 }
 
@@ -300,66 +238,9 @@ input#gameQEScoreQuestion {
     width: 100%;
 }
 
-#gameQEIdeviceForm .exe-block-info img {
-    margin-left: .2em;
-    vertical-align: middle;
-}
-
-.exe-block-close {
-    position: absolute;
-    top: 6px;
-    right: 5px;
-}
-
-#gameQESCORMoptions {
-    margin-left: 1.5em;
-    visibility: hidden;
-}
-
-label[for=gameQEActivitySCORM] {
-    font-weight: bold;
-}
-
-#gameQESCORMinstructionsButton {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsButton ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsButton ul li {
-    list-style-image: none;
-    margin: 0 0 .5em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsAuto {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsAuto ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
 .ADVNE-TypeGameHelp {
     display: none;
     font-size: .95em
-}
-
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
 }
 
 .GameModeHelpLink {
@@ -369,8 +250,4 @@ label[for=gameQEActivitySCORM] {
     justify-content: center;
     height: 100%;
     vertical-align: middle;
-}
-
-.GameModeLabel {
-    margin-right: 1rem;
 }

@@ -2042,10 +2042,6 @@ var $exeDevice = {
         );
 
         $exeDevice.loadYoutubeApi();
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-        });
     },
 
     exportQuestions: function () {
