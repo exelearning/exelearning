@@ -6,106 +6,6 @@
 */
 var $exeIDevicesEdition = {
     iDevice: {
-        init: function () {
-
-            var errorMsg = "";
-
-            // Check if the object and the required methods are defined
-            if (typeof ($exeDevice) == 'undefined') errorMsg += "$exeDevice";
-            else if (typeof ($exeDevice.init) == 'undefined') errorMsg += "$exeDevice.init";
-            else if (typeof ($exeDevice.save) == 'undefined') errorMsg += "$exeDevice.save";
-
-            // Show a message if they are not defined
-            if (errorMsg != "") {
-                errorMsg = _("iDevice error") + ": " + errorMsg + " is not defined.";
-                eXe.app.alert(errorMsg);
-                return;
-            }
-
-            // Check if the submit image exists (it will unless renderEditButtons changes)
-            var myLink = $("#exe-submitButton a").eq(0);
-            if (myLink.length != 1) {
-                eXe.app.alert(_("Report an Issue") + ": $exeIDevicesEdition.iDevice.init (#exe-submitButton)");
-                return;
-            }
-
-            // Execute $exeDevice.save onclick (to validate)
-            var onclick = myLink.attr("onclick");
-            myLink[0].onclick = function () {
-                var html = $exeDevice.save();
-                if (html) {
-                    $("textarea.mceEditor, #node-content .idevice_node[mode=edition]").val(html);
-                    // Execute the IMG default behavior if everything is OK
-                    eval(onclick);
-                }
-            }
-
-            // Replace the _ function (see locale.js)
-            // Strip the leading "~" marker used to flag machine-translated
-            // placeholder entries. The marker stays in the XLF files for
-            // translator review but must never reach the iDevice editor UI.
-            var stripFuzzy = function (value) {
-                if (typeof value === "string" && value.charAt(0) === "~") {
-                    return value.substring(1);
-                }
-                return value;
-            };
-            _ = function (str) {
-                if (typeof ($exeDevice.i18n) != "undefined") {
-                    var lang = $("HTML").attr("lang");
-                    if (typeof ($exeDevice.i18n[lang]) != "undefined") {
-                        return stripFuzzy(top.translations[str] || $exeDevice.i18n[lang][str] || str);
-                    }
-                }
-                return stripFuzzy(top.translations[str] || str);
-            }
-
-            // Enable the iDevice
-            $exeDevice.init();
-
-            // Enable TinyMCE
-            if (tinymce.majorVersion == 4) $exeTinyMCE.init("multiple-visible", ".exe-html-editor");
-            else if (tinymce.majorVersion == 3) $exeTinyMCE.init("specific_textareas", "exe-html-editor");
-
-            // Enable the FIELDSETs Toggler
-            $(".exe-fieldset legend a").click(function () {
-                $(this).parent().parent().toggleClass("exe-fieldset-closed");
-                return false;
-            });
-
-            // Enable the iDevice instructions
-            $(".exe-info").each(function () {
-                var e = $(this);
-                e.html(
-                    '<div class="alert alert-info alert-dismissible fade show mb-3" role="alert">' +
-                    e.html() +
-                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="' +
-                    _("Hide") +
-                    '"></button></div>'
-                );
-            });
-
-            // Legacy dismissible messages (custom pre-Bootstrap markup still used by many iDevices)
-            $(".exe-block-dismissible .exe-block-close").click(function () {
-                $(this).parent().fadeOut();
-                return false;
-            });
-
-            // Enable color pickers (provisional solution)
-            // To review: 100 ms delay because the color picker won't work when combined with $exeTinyMCE.init
-            var lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
-            var initColorPicker = function () {
-                $exeIDevicesEdition.iDevice.colorPicker.init();
-            };
-            if (lifecycle) lifecycle.setTimeout(initColorPicker, 100);
-            else setTimeout(initColorPicker, 100);
-
-            // Enable file uploaders
-            $exeIDevicesEdition.iDevice.filePicker.init();
-
-            // Enable shared voice recorder controls in marked audio fields
-            $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
-        },
         /**
          * Lifecycle of the edition currently open, if any.
          *
@@ -125,6 +25,20 @@ var $exeIDevicesEdition = {
         },
         // Common
         common: {
+            /**
+             * Escape a value for HTML text or a quoted attribute value.
+             *
+             * @param {*} value
+             * @returns {string}
+             */
+            escapeHtml: function (value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            },
             getIdeviceDescription: function (text, url) {
                 if (typeof text != "string") return "";
 
@@ -138,56 +52,49 @@ var $exeIDevicesEdition = {
 
                 return `<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">${textHtml}${linkHtml}${closeBtnHtml}</p>`;
             },
-            // Get the "Content after" or the "Content before" fieldset
-            getTextFieldset: function (position) {
-                if (typeof (position) != "string" || (position != "after" && position != "before")) return "";
-                var tit = _('Content after');
-                var id = "After";
-                if (position == "before") {
-                    tit = _('Content before');
-                    id = "Before";
-                }
-                return "<fieldset class='exe-advanced exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>\
-                            <legend><a href='#'>"+ tit + " (" + _('Optional').toLowerCase() + ")</a></legend>\
-                                <div>\
-                                    <p>\
-                                        <label for='eXeIdeviceText"+ id + "' class='sr-av'>" + tit + ":</label>\
-                                            <textarea id='eXeIdeviceText"+ id + "' class='exe-html-editor'\></textarea>\
-                                    </p>\
-                                <div>\
-                        </fieldset>";
+            /**
+             * The "Content after" or "Content before" editor. The form tabs
+             * give it a pane and a title of its own, so it has no fieldset;
+             * the textarea keeps the id the iDevices load and save.
+             *
+             * @param {string} position "after" or "before".
+             * @returns {string}
+             */
+            getTextEditor: function (position) {
+                if (position !== 'after' && position !== 'before') return '';
+                const title = position === 'before' ? _('Content before') : _('Content after');
+                const id = position === 'before' ? 'eXeIdeviceTextBefore' : 'eXeIdeviceTextAfter';
+                return `<label for="${id}" class="visually-hidden">${title}</label>
+                        <textarea id="${id}" class="exe-html-editor"></textarea>`;
             }
         },
         // Gamification
         gamification: {
             common: {
-                getFieldsets: function () {
-                    return "";
-                },
-                getLanguageTab: function (fields) {
-                    var html = "";
-                    var field, label, txt;
-                    for (var i in fields) {
-                        field = fields[i]
-                        if (typeof field == "string") {
-                            label = field
-                            txt = field
-                        } else {
-                            if (field.length == 2) {
-                                label = field[0]
-                                txt = field[1]
-                            } else {
-                                label = field[0]
-                                txt = field[0]
-                            }
-                        }
-                        html += '<p class="ci18n"><label for="ci18n_' + i + '">' + label + '</label> <input type="text" class="form-control" name="ci18n_' + i + '" id="ci18n_' + i + '" value="' + txt + '" /></p>'
+                /**
+                 * The custom texts for the Texts tab, in two columns of
+                 * Bootstrap's grid. A field is either a string, used as both
+                 * label and default value, or [label, value]. Each input is
+                 * `ci18n_<key>`, the id setLanguageTabValues fills.
+                 *
+                 * @param {Object|Array} fields The iDevice's ci18n texts.
+                 * @returns {string}
+                 */
+                getLanguageContents: function (fields) {
+                    const escape = $exeIDevicesEdition.iDevice.common.escapeHtml;
+                    let html = '';
+                    for (const key in fields) {
+                        const field = fields[key];
+                        const label = typeof field === 'string' ? field : field[0];
+                        const text = typeof field === 'string' || field.length !== 2 ? label : field[1];
+                        const id = escape('ci18n_' + key);
+                        html += `<div class="col ci18n">
+                                <label for="${id}" class="form-label">${escape(label)}</label>
+                                <input type="text" class="form-control" name="${id}" id="${id}" value="${escape(text)}" />
+                            </div>`;
                     }
-                    return '\
-                            <div class="exe-form-tab" title="' + _('Custom texts') + '">\
-                                <p>' + _("Type your own texts or use the default ones:") + '</p>\
-                                ' + html + '\
-                            </div>'
+                    return `<p>${_('Type your own texts or use the default ones:')}</p>
+                        <div class="row row-cols-1 row-cols-md-2 g-3">${html}</div>`;
                 },
                 setLanguageTabValues: function (obj) {
                     if (typeof obj == "object") {
@@ -197,22 +104,18 @@ var $exeIDevicesEdition = {
                         }
                     }
                 },
-                // getGamificationTab() lived here and called getItineraryTab,
-                // getScormTab and getShareTab -- none of which exist, and none
-                // of which any iDevice called. Removed with the Grading tab
-                // refactor rather than left as a trap.
             },
             instructions: {
-                getFieldset: function (str) {
-                    return '<fieldset class="exe-fieldset exe-fieldset-closed">\
-                        <legend><a href="#">' + _("Instructions") + '</a></legend>\
-                        <div>\
-                            <p>\
-                                <label for="eXeGameInstructions" class="sr-av">' + _("Instructions") + ': </label>\
-                                <textarea id="eXeGameInstructions" class="exe-html-editor form-control exe-instructions-textarea" rows="4">' + str + ' </textarea>\
-                            </p>\
-                        </div>\
-                    </fieldset>';
+                /**
+                 * The instructions editor for the Instructions tab.
+                 *
+                 * @param {string} [str] Default instructions (HTML).
+                 * @returns {string}
+                 */
+                getEditor: function (str) {
+                    const text = $exeIDevicesEdition.iDevice.common.escapeHtml(typeof str === 'string' ? str : '');
+                    return `<label for="eXeGameInstructions" class="visually-hidden">${_('Instructions')}</label>
+                        <textarea id="eXeGameInstructions" class="exe-html-editor form-control exe-instructions-textarea" rows="4">${text}</textarea>`;
                 }
             },
             progressBar: {
@@ -520,12 +423,6 @@ var $exeIDevicesEdition = {
                         </div>
                     `;
                 },
-                getTab: function () {
-                    return `
-                        <div class="exe-form-tab" title="${_('Passwords')}">
-                            ${$exeIDevicesEdition.iDevice.gamification.itinerary.getContents()}
-                        </div>`;
-                },
 
                 getValues: function () {
                     var showClue = $('#eXeGameShowClue').is(':checked'),
@@ -593,6 +490,109 @@ var $exeIDevicesEdition = {
                     });
                 }
             },
+            /**
+             * Feedback: a message the learner sees on reaching a percentage of
+             * correct answers. Every game and interactive activity offers it,
+             * with the same controls and the same data the games already save:
+             * `feedBack` (on/off), `percentajeFB` (5-100) and the message.
+             * Where the message is stored in the exported HTML stays up to
+             * each iDevice.
+             */
+            feedback: {
+                getContents: function () {
+                    return `
+                        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                            <div class="toggle-item">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="eXeGameHasFeedBack" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label for="eXeGameHasFeedBack" class="toggle-label">${_('Feedback')}</label>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="number" id="eXeGamePercentajeFB" name="eXeGamePercentajeFB" class="form-control" value="100" min="5" max="100" step="5" disabled style="width: 9.5ch !important; max-width: 9.5ch !important;" />
+                                <label for="eXeGamePercentajeFB" class="mb-0">${_('% right to see the feedback')}</label>
+                            </div>
+                        </div>
+                        <div id="eXeGameFeedbackP" class="mb-3 d-none">
+                            <label for="eXeGameFeedBackEditor" class="visually-hidden">${_('Feedback')}</label>
+                            <textarea id="eXeGameFeedBackEditor" class="exe-html-editor"></textarea>
+                        </div>`;
+                },
+
+                /**
+                 * @param {*} value
+                 * @returns {number} A whole percentage between 5 and 100;
+                 * 100 when the value is not a number.
+                 */
+                normalizePercentage: function (value) {
+                    const percentage = parseInt(value, 10);
+                    if (isNaN(percentage)) return 100;
+                    return Math.max(5, Math.min(percentage, 100));
+                },
+
+                getEditor: function () {
+                    if (typeof tinymce === 'undefined' || typeof tinymce.get !== 'function') return null;
+                    return tinymce.get('eXeGameFeedBackEditor') || null;
+                },
+
+                /**
+                 * @param {Object} [data]
+                 * @param {boolean} [data.feedBack]
+                 * @param {number} [data.percentajeFB]
+                 * @param {string} [data.textFeedBack] The message (HTML). Left
+                 * untouched when omitted.
+                 */
+                setValues: function (data) {
+                    const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
+                    const values = data || {};
+                    const enabled = values.feedBack === true || values.feedBack === 'true';
+                    $('#eXeGameHasFeedBack').prop('checked', enabled);
+                    $('#eXeGamePercentajeFB')
+                        .val(feedback.normalizePercentage(values.percentajeFB))
+                        .prop('disabled', !enabled);
+                    $('#eXeGameFeedbackP').toggleClass('d-none', !enabled);
+                    if (typeof values.textFeedBack === 'string') {
+                        // Before TinyMCE starts, the textarea is what it will load.
+                        const editor = feedback.getEditor();
+                        if (editor) editor.setContent(values.textFeedBack);
+                        else $('#eXeGameFeedBackEditor').val(values.textFeedBack);
+                    }
+                },
+
+                /**
+                 * @returns {Object|false} { feedBack, percentajeFB, textFeedBack },
+                 * or false (after telling the author) when the feedback is on
+                 * but has no message.
+                 */
+                getValues: function () {
+                    const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
+                    const feedBack = $('#eXeGameHasFeedBack').is(':checked');
+                    const editor = feedback.getEditor();
+                    const textFeedBack = editor ? editor.getContent() : $('#eXeGameFeedBackEditor').val() || '';
+                    if (feedBack && textFeedBack.trim().length === 0) {
+                        eXe.app.alert(_('Message to display when passing the game'));
+                        return false;
+                    }
+                    return {
+                        feedBack: feedBack,
+                        percentajeFB: feedback.normalizePercentage($('#eXeGamePercentajeFB').val()),
+                        textFeedBack: textFeedBack,
+                    };
+                },
+
+                addEvents: function () {
+                    const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
+                    $('#eXeGameHasFeedBack').on('change', function () {
+                        const enabled = $(this).is(':checked');
+                        $('#eXeGameFeedbackP').toggleClass('d-none', !enabled);
+                        $('#eXeGamePercentajeFB').prop('disabled', !enabled);
+                    });
+                    $('#eXeGamePercentajeFB').on('focusout', function () {
+                        this.value = feedback.normalizePercentage(this.value);
+                    });
+                }
+            },
             scorm: {
                 init: function () {
                     $exeIDevicesEdition.iDevice.gamification.scorm.setValues(0, _("Save score"), false)
@@ -600,8 +600,8 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
-                 * The Grading tab: everything that decides whether a learner
-                 * passed, in one place.
+                 * The contents of the Grading tab: everything that decides
+                 * whether a learner passed, in one place.
                  *
                  * It used to be the SCORM tab, and the other two evaluative
                  * controls -- the pass score and the progress report -- sat
@@ -622,8 +622,9 @@ var $exeIDevicesEdition = {
                  * geogebra-activity, where the learner may keep dragging the
                  * construction forever -- there is no moment at which to report
                  * on its own, so offering the mode would offer nothing.
+                 * @returns {string}
                  */
-                getTab: function (path, options = {}) {
+                getContents: function (path, options = {}) {
                     const { hidebutton = false, onlybutton = false, hideautosave = false } = options;
                     const autoSaveClass = hideautosave ? 'd-none' : 'd-flex';
                     const help = $exeIDevicesEdition.iDevice.gamification.help;
@@ -636,7 +637,6 @@ var $exeIDevicesEdition = {
                         ? $exeIDevicesEdition.iDevice.gamification.progressBar.getContents(path)
                         : '';
                     return `
-                        <div class="exe-form-tab" title="${_('Grading')}">
                             <h3 class="exe-evaluation-section-title">${_('SCORM')}</h3>
                             <div class="d-flex align-items-center gap-1 mb-3 ml-1">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked />
@@ -693,8 +693,7 @@ var $exeIDevicesEdition = {
                                 _('For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.'),
                             ])}
                             ${progressReport ? `<h3 class="exe-evaluation-section-title">${_('Progress report')}</h3>${progressReport}` : ''}
-                            ${passScoreContents}
-                        </div>`;
+                            ${passScoreContents}`;
                 },
 
                 setValues: function (isScorm, textButtonScorm, repeatActivity = true, weighted = 100) {
@@ -786,13 +785,20 @@ var $exeIDevicesEdition = {
             },
 
             share: {
-                getTab: function (allowtext = false, type = 0, exportquestion = false) {
+                /**
+                 * The contents of the Import/Export tab.
+                 *
+                 * @param {boolean} [allowtext=false] Accept txt and xml files.
+                 * @param {number} [type=0] Unused; kept for the callers' order.
+                 * @param {boolean} [exportquestion=false] Offer the export button.
+                 * @returns {string}
+                 */
+                getContents: function (allowtext = false, type = 0, exportquestion = false) {
                     const txt = allowtext ? ', .txt, .xml' : '';
                     const formtxt = allowtext ? ', txt, xml' : '';
                     const displayEQ = exportquestion ? 'block' : 'none';
                     const msgimport = _('You can import questions compatible with this activity from txt or xml (Moodle) files.');
                     const tab = `
-                            <div class="exe-form-tab" title="${_('Import/Export')}">
                                 <p class="exe-block-info">${msgimport}</p>
                                 <div id="eXeGameExportImport">
                                     <div>
@@ -810,16 +816,21 @@ var $exeIDevicesEdition = {
                                     <p class ="d-flex align-items-center justify-content-start gap-1">
                                         <input type="button" class="btn btn-primary ms-2"  name="eXeGameExportQuestions" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
                                     </p>
-                                </div>
-                            </div>`;
+                                </div>`;
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 
-                getTabIA: function (type = 0, options = {}) {
+                /**
+                 * The contents of the AI tab.
+                 *
+                 * @param {number} [type=0] The game, for the prompt.
+                 * @param {Object} [options] Prompt options of the game.
+                 * @returns {string}
+                 */
+                getIAContents: function (type = 0, options = {}) {
                     const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
                     const promptText = $exeIDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
                     const tab = `
-                        <div class="exe-form-tab" title="${_('AI')}">
                             <p class="exe-block-info">${msgAddText}</p>
                             <p style="display:none"><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_('Add questions')}" /></p>
                             <div class="bg-white rounded w-100 position-relative" style="max-width: 1400px;" id="eXeEAddArea">
@@ -862,8 +873,7 @@ var $exeIDevicesEdition = {
                                    <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
                                    <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>
                                 </div>
-                            </div>
-                        </div>`;
+                            </div>`;
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 
@@ -1340,7 +1350,6 @@ var $exeIDevicesEdition = {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
                             eXe.app.alert(_('The questions have been added successfully'));
-                            //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
                     $iaButton.on('click', async function () {
@@ -1363,7 +1372,6 @@ var $exeIDevicesEdition = {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
                             eXe.app.alert(_('The questions have been added successfully'));
-                            //$('.exe-form-tabs li:first-child a').click();
                         }
                     });
                     $copyButton.on('click', function () {
@@ -2764,54 +2772,213 @@ var $exeIDevicesEdition = {
                 });
             },
         },
-        // Save the iDevice
-        save: function () {
-            // Check if the object and the required methods are defined
-            if (typeof ($exeDevice) != 'undefined' && typeof ($exeDevice.init) != 'undefined' && typeof ($exeDevice.save) == 'function') {
-                // Trigger the click event so the form is submitted
-                var html = $exeDevice.save();
-                if (html) {
-                    $("textarea.mceEditor, #node-content .idevice_node[mode=edition]").val(html);
-                }
-            }
-        },
         // iDevice tabs
         tabs: {
-            init: function (id) {
-                var tabs = $("#" + id + " .exe-form-tab");
-                var list = '';
-                var tabId;
-                var e;
-                var txt;
-                tabs.each(function (i) {
-                    var klass = "exe-form-active-tab";
-                    tabId = id + "Tab" + i;
-                    e = $(this);
-                    e.attr("id", tabId);
-                    txt = e.attr("title");
-                    e.attr("title", "");
-                    if (txt == '') txt = (i + 1);
-                    if (i > 0) {
-                        e.hide();
-                        klass = "";
-                    }
-                    list += '<li><a href="#' + tabId + '" class="' + klass + '">' + txt + '</a></li>';
-                });
-                if (list != "") {
-                    list = '<ul id="' + id + 'Tabs" class="exe-form-tabs exe-advanced">' + list + '</ul>';
-                    tabs.eq(0).before(list);
-                    var as = $("#" + id + "Tabs a");
-                    as.click(function () {
-                        as.attr("class", "");
-                        $(this).addClass("exe-form-active-tab");
-                        tabs.hide();
-                        $($(this).attr("href")).show();
-                        return false;
-                    });
-                }
+            /**
+             * The shared form tabs, in the order every iDevice shows them.
+             */
+            order: ['instructions', 'options', 'contents', 'passwords', 'feedback', 'after', 'grading', 'texts', 'importExport', 'ai'],
+
+            /**
+             * Whether a value is usable as an element id or as part of one.
+             *
+             * @param {*} value
+             * @returns {boolean}
+             */
+            isValidId: function (value) {
+                return typeof value === 'string' && /^[A-Za-z][\w-]*$/.test(value);
             },
-            restart: function () {
-                $("#activeIdevice .exe-form-tabs a").eq(0).trigger("click");
+
+            /**
+             * Title and contents of one of the shared tabs.
+             *
+             * @param {string} name A name in `order`.
+             * @param {*} value The value `config` gives that tab.
+             * @param {Object} config The whole `getHtml` configuration.
+             * @returns {{title: string, content: string}}
+             */
+            getDefinition: function (name, value, config) {
+                const iDevice = $exeIDevicesEdition.iDevice;
+                const gamification = iDevice.gamification;
+                const settings = value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {};
+                const html = typeof value === 'string' ? value : '';
+                switch (name) {
+                    case 'instructions':
+                        return { title: _('Instructions'), content: gamification.instructions.getEditor(html) };
+                    case 'options':
+                        return { title: _('Options'), content: html };
+                    case 'contents':
+                        if (typeof value === 'string') return { title: _('Content'), content: value };
+                        return { title: settings.title || _('Content'), content: settings.content || '' };
+                    case 'passwords':
+                        return { title: _('Passwords'), content: gamification.itinerary.getContents() };
+                    case 'feedback':
+                        return { title: _('Feedback'), content: gamification.feedback.getContents() };
+                    case 'after':
+                        return { title: _('Content after'), content: iDevice.common.getTextEditor('after') };
+                    case 'grading':
+                        return { title: _('Grading'), content: gamification.scorm.getContents(config.path, settings) };
+                    case 'texts':
+                        return { title: _('Custom texts'), content: gamification.common.getLanguageContents(value) };
+                    case 'importExport':
+                        return {
+                            title: _('Import/Export'),
+                            content: gamification.share.getContents(
+                                settings.allowText === true,
+                                settings.type || 0,
+                                settings.exportQuestions === true
+                            ),
+                        };
+                    case 'ai':
+                        return {
+                            title: _('AI'),
+                            content: gamification.share.getIAContents(settings.type || 0, settings.options || {}),
+                        };
+                }
+                return { title: name, content: '' };
+            },
+
+            /**
+             * The horizontal tabs at the top of an iDevice form, styled with
+             * Bootstrap's nav-tabs. Each key of `config` is a tab: it is shown
+             * when the key is present and not false, and its value is its
+             * contents. Tabs always come in the order of `tabs.order`, so
+             * every iDevice lays out its form the same way.
+             *
+             * Call `tabs.bind(id)` once the HTML is in the document.
+             *
+             * @param {string} id Prefix for the ids of the tabs and panels
+             * (`<id>-tab-<name>` and `<id>-panel-<name>`).
+             * @param {Object} config
+             * @param {string} [config.instructions] Default instructions
+             * (HTML); '' for none.
+             * @param {string} [config.options] The game options (HTML).
+             * @param {string|{title: string, content: string}} [config.contents]
+             * The questions, cards... (HTML). Pass an object to rename the
+             * tab, e.g. { title: _('Cards'), content }.
+             * @param {boolean} [config.passwords] Access code and message.
+             * @param {boolean} [config.feedback] See gamification.feedback.
+             * @param {boolean} [config.after] The "Content after" editor.
+             * @param {boolean|Object} [config.grading] Options of
+             * gamification.scorm.getContents.
+             * @param {Object|Array} [config.texts] The iDevice's custom texts.
+             * @param {boolean|Object} [config.importExport] { allowText, type,
+             * exportQuestions }, as gamification.share.getContents.
+             * @param {boolean|Object} [config.ai] { type, options }, as
+             * gamification.share.getIAContents.
+             * @param {Array<{name: string, title: string, content: string}>} [config.extra]
+             * Tabs of this iDevice only, after the shared ones.
+             * @param {string} [config.path] The iDevice's path, used by the
+             * Grading tab (omit it to leave the progress report out).
+             * @param {string} [config.active] Name of the tab shown first;
+             * the first tab by default.
+             * @returns {string} '' when the id is not valid or no tab is shown.
+             */
+            getHtml: function (id, config) {
+                const tabs = $exeIDevicesEdition.iDevice.tabs;
+                const escape = $exeIDevicesEdition.iDevice.common.escapeHtml;
+                if (!tabs.isValidId(id) || config === null || typeof config !== 'object') return '';
+
+                const list = [];
+                tabs.order.forEach(function (name) {
+                    const value = config[name];
+                    if (value === undefined || value === null || value === false) return;
+                    list.push(Object.assign({ name: name }, tabs.getDefinition(name, value, config)));
+                });
+                (Array.isArray(config.extra) ? config.extra : []).forEach(function (tab) {
+                    // The name ends up in the tab's ids, so it has to be valid and unique.
+                    if (!tab || !tabs.isValidId(tab.name)) return;
+                    if (list.some((item) => item.name === tab.name)) return;
+                    list.push({ name: tab.name, title: tab.title || tab.name, content: tab.content || '' });
+                });
+                if (list.length === 0) return '';
+
+                const active = list.some((tab) => tab.name === config.active) ? config.active : list[0].name;
+                let nav = '';
+                let panels = '';
+                list.forEach(function (tab) {
+                    const isActive = tab.name === active;
+                    const tabId = `${id}-tab-${tab.name}`;
+                    const panelId = `${id}-panel-${tab.name}`;
+                    nav += `
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link${isActive ? ' active' : ''}" id="${tabId}" data-exe-tab="${tab.name}" role="tab" aria-controls="${panelId}" aria-selected="${isActive}" tabindex="${isActive ? 0 : -1}">${escape(tab.title)}</button>
+                        </li>`;
+                    panels += `
+                        <div class="tab-pane${isActive ? ' active show' : ''}" id="${panelId}" role="tabpanel" aria-labelledby="${tabId}" tabindex="0">${tab.content}</div>`;
+                });
+                return `
+                    <ul class="nav nav-tabs" id="${id}-tabs" role="tablist">${nav}</ul>
+                    <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3" id="${id}-panels">${panels}</div>`;
+            },
+
+            /**
+             * Make the tabs of `getHtml` work: click, and the arrow, Home and
+             * End keys of the WAI-ARIA tabs pattern.
+             *
+             * Handled here rather than by Bootstrap's tab plugin: the plugin
+             * keeps an instance per button that nothing would dispose of when
+             * the editor closes. These handlers live on the form's own buttons,
+             * which the edition teardown unbinds.
+             *
+             * @param {string} id The id given to getHtml.
+             */
+            bind: function (id) {
+                const tabs = $exeIDevicesEdition.iDevice.tabs;
+                if (!tabs.isValidId(id)) return;
+                const $buttons = $(`#${id}-tabs [data-exe-tab]`);
+                $buttons
+                    .off('.exeTabs')
+                    .on('click.exeTabs', function () {
+                        tabs.show(id, this.getAttribute('data-exe-tab'));
+                    })
+                    .on('keydown.exeTabs', function (e) {
+                        const buttons = $buttons.toArray();
+                        const index = buttons.indexOf(this);
+                        let next;
+                        switch (e.key) {
+                            case 'ArrowRight':
+                                next = (index + 1) % buttons.length;
+                                break;
+                            case 'ArrowLeft':
+                                next = (index - 1 + buttons.length) % buttons.length;
+                                break;
+                            case 'Home':
+                                next = 0;
+                                break;
+                            case 'End':
+                                next = buttons.length - 1;
+                                break;
+                            default:
+                                return;
+                        }
+                        e.preventDefault();
+                        tabs.show(id, buttons[next].getAttribute('data-exe-tab'));
+                        buttons[next].focus();
+                    });
+            },
+
+            /**
+             * Show one of the tabs of `getHtml`, e.g. the one holding a field
+             * that failed validation.
+             *
+             * @param {string} id The id given to getHtml.
+             * @param {string} name The tab to show.
+             * @returns {boolean} false when there is no such tab.
+             */
+            show: function (id, name) {
+                if (!$exeIDevicesEdition.iDevice.tabs.isValidId(id)) return false;
+                const $buttons = $(`#${id}-tabs [data-exe-tab]`);
+                const target = $buttons.toArray().find((button) => button.getAttribute('data-exe-tab') === name);
+                if (!target) return false;
+                $buttons.each(function () {
+                    const isActive = this === target;
+                    $(this)
+                        .toggleClass('active', isActive)
+                        .attr({ 'aria-selected': String(isActive), tabindex: isActive ? '0' : '-1' });
+                    $(document.getElementById(this.getAttribute('aria-controls'))).toggleClass('active show', isActive);
+                });
+                return true;
             }
         }
     }
