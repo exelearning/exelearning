@@ -119,7 +119,8 @@ var $eXe3Dmol = {
     },
 
     loadGame: function () {
-        $eXe3Dmol.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXe3Dmol.options.length = $eXe3Dmol.activities.length;
         $eXe3Dmol.viewers = {};
         $eXe3Dmol.activities.each(function (i) {
             const dl = $('.dmole-DataGame', this);
@@ -133,7 +134,7 @@ var $eXe3Dmol = {
             mOption.main = 'dmolpMainContainer-' + i;
             mOption.idevice = 'dmole-IDevice';
 
-            $eXe3Dmol.options.push(mOption);
+            $eXe3Dmol.options[i] = mOption;
             const interfaceHtml = $eXe3Dmol.createInterface(i);
             dl.before(interfaceHtml).remove();
             $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);

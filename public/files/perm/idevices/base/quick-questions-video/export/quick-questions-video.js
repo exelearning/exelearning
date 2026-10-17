@@ -96,7 +96,8 @@ var $quickquestionsvideo = {
     },
 
     loadGame: function () {
-        $quickquestionsvideo.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $quickquestionsvideo.options.length = $quickquestionsvideo.activities.length;
 
         $quickquestionsvideo.activities.each(function (i) {
             const dl = $('.vquext-DataGame', this);
@@ -117,7 +118,7 @@ var $quickquestionsvideo = {
             mOption.main = 'vquextMainContainer-' + i;
             mOption.idevice = 'vquext-IDevice';
 
-            $quickquestionsvideo.options.push(mOption);
+            $quickquestionsvideo.options[i] = mOption;
 
             const vquext = $quickquestionsvideo.createInterfaceVideoQuExt(i);
             dl.before(vquext).remove();

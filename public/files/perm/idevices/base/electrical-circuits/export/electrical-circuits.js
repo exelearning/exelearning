@@ -108,7 +108,8 @@ var $eXeEC = {
     },
 
     loadGame: function () {
-        $eXeEC.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeEC.options.length = $eXeEC.activities.length;
         $eXeEC.activities.each(function (i) {
             const dl = $('.electrical-circuits-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -121,7 +122,7 @@ var $eXeEC = {
             mOption.main = 'elcpMainContainer-' + i;
             mOption.idevice = 'electrical-circuits-IDevice';
 
-            $eXeEC.options.push(mOption);
+            $eXeEC.options[i] = mOption;
             const interfaceHtml = $eXeEC.createInterface(i);
             dl.before(interfaceHtml).remove();
             $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);

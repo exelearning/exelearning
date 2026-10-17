@@ -100,7 +100,8 @@ var $eXeDesafio = {
     },
 
     loadGame: function () {
-        $eXeDesafio.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeDesafio.options.length = $eXeDesafio.activities.length;
 
         $eXeDesafio.activities.each(function (i) {
             const dl = $('.desafio-DataGame', this);
@@ -115,7 +116,7 @@ var $eXeDesafio = {
             mOption.idevice = 'desafio-IDevice';
             mOption.storageKey = $eXeDesafio.storageKeyOf(this);
 
-            $eXeDesafio.options.push(mOption);
+            $eXeDesafio.options[i] = mOption;
 
             const desafio = $eXeDesafio.createInterfaceChallenger(i);
 

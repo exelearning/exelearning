@@ -66,7 +66,8 @@ var $eXeListaCotejo = {
     },
 
     loadGame: function () {
-        $eXeListaCotejo.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeListaCotejo.options.length = $eXeListaCotejo.activities.length;
 
         $eXeListaCotejo.activities.each(function (i) {
             const dl = $('.listacotejo-DataGame', this);
@@ -95,7 +96,7 @@ var $eXeListaCotejo = {
 
             const mOption = $eXeListaCotejo.loadDataGame(dl, img, img1, img2);
             mOption.storageKey = $eXeListaCotejo.storageKeyOf(this);
-            $eXeListaCotejo.options.push(mOption);
+            $eXeListaCotejo.options[i] = mOption;
 
             const ctj = $eXeListaCotejo.createInterfaceListaCotejo(i);
             dl.before(ctj).remove();

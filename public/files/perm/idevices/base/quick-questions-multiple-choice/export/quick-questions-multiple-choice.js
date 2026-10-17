@@ -88,7 +88,8 @@ var $quickquestionsmultiplechoice = {
     },
 
     loadGame: function () {
-        $quickquestionsmultiplechoice.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $quickquestionsmultiplechoice.options.length = $quickquestionsmultiplechoice.activities.length;
         $quickquestionsmultiplechoice.activities.each(function (i) {
             const dl = $('.selecciona-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -108,7 +109,7 @@ var $quickquestionsmultiplechoice = {
             mOption.main = 'seleccionaMainContainer-' + i;
             mOption.idevice = 'selecciona-IDevice';
 
-            $quickquestionsmultiplechoice.options.push(mOption);
+            $quickquestionsmultiplechoice.options[i] = mOption;
             const selecciona =
                 $quickquestionsmultiplechoice.createInterfaceSelecciona(i);
             dl.before(selecciona).remove();
