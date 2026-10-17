@@ -3206,6 +3206,9 @@ var $exeIDevicesEdition = {
              * Create with AI links of the Questions tab, there by default:
              * { importQuestions, exportQuestions, type, options }, see
              * gamification.share.getTools; false to leave them out.
+             * @param {Object<string, string>} [config.info] The iDevice's own
+             * message for some shared tabs, by tab name, in place of the
+             * shared one (HTML): e.g. how its questions are written.
              * @param {Array<{name: string, title: string, info: string, content: string}>} [config.extra]
              * Tabs of this iDevice only, after the shared ones.
              * @param {string} [config.path] The iDevice's path, used by the
@@ -3219,11 +3222,14 @@ var $exeIDevicesEdition = {
                 const escape = $exeIDevicesEdition.iDevice.common.escapeHtml;
                 if (!tabs.isValidId(id) || config === null || typeof config !== 'object') return '';
 
+                const ownInfo = config.info !== null && typeof config.info === 'object' ? config.info : {};
                 const list = [];
                 tabs.order.forEach(function (name) {
                     const value = config[name];
                     if (value === undefined || value === null || value === false) return;
-                    list.push(Object.assign({ name: name }, tabs.getDefinition(name, value, config)));
+                    const definition = tabs.getDefinition(name, value, config);
+                    if (typeof ownInfo[name] === 'string') definition.info = ownInfo[name];
+                    list.push(Object.assign({ name: name }, definition));
                 });
                 (Array.isArray(config.extra) ? config.extra : []).forEach(function (tab) {
                     // The name ends up in the tab's ids, so it has to be valid and unique.

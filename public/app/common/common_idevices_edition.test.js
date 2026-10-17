@@ -897,6 +897,17 @@ describe('common_idevices_edition.js', () => {
         });
       });
 
+      it('lets the iDevice word the message of a shared tab, and keeps the rest', () => {
+        render({ options: '', contents: '', info: { contents: 'Write a <b>word</b> for each letter.', ai: 'x' } });
+
+        expect(panel('contents').querySelector('.alert-info p').innerHTML).toBe('Write a <b>word</b> for each letter.');
+        expect(panel('contents').querySelectorAll('.alert-info')).toHaveLength(1);
+        expect(panel('options').querySelector('.alert-info p').textContent).toContain('Choose how the activity works');
+
+        render({ contents: '', info: null });
+        expect(panel('contents').querySelector('.alert-info p').textContent).toContain('Add the questions');
+      });
+
       it('explains the passwords once, in the message of the tab', () => {
         render({ passwords: true });
 
