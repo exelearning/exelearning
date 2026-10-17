@@ -850,54 +850,290 @@ var $exeIDevicesEdition = {
 
             share: {
                 /**
-                 * The question import and export controls. Not a form tab: they
-                 * are to open in a window from the Questions tab.
-                 *
-                 * @param {boolean} [allowtext=false] Accept txt and xml files.
-                 * @param {number} [type=0] Unused; kept for the callers' order.
-                 * @param {boolean} [exportquestion=false] Offer the export button.
-                 * @returns {string}
+                 * The windows the Questions tab opens, in the order of its
+                 * links.
                  */
-                getContents: function (allowtext = false, type = 0, exportquestion = false) {
-                    const txt = allowtext ? ', .txt, .xml' : '';
-                    const formtxt = allowtext ? ', txt, xml' : '';
-                    const displayEQ = exportquestion ? 'block' : 'none';
-                    const msgimport = _('You can import questions compatible with this activity from txt or xml (Moodle) files.');
-                    const tab = `
-                                <p class="exe-block-info">${msgimport}</p>
-                                <div id="eXeGameExportImport">
-                                    <div>
-                                        <form method="POST">
-                                            <div class="exe-file-upload" data-exe-upload>
-                                                <label for="eXeGameImportGame" class="form-label mb-1">${_("Import")}: </label>
-                                                <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${txt}" class="exe-file-input d-none" />
-                                                <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_("Choose")}</button>
-                                                <span class="exe-file-name" data-exe-file-name>${_("No file selected")}</span>
-                                                <span class="exe-field-instructions d-block mt-1">${_("Supported formats")}:${formtxt}</span>
-                                            </div>
-                                        </form>
-                                    </div>
-                                    <p class="exe-block-info" style="display:${displayEQ}" >${_('You can export its questions in txt format to integrate them into other compatible activities.')}</p>
-                                    <p class ="d-flex align-items-center justify-content-start gap-1">
-                                        <input type="button" class="btn btn-primary ms-2"  name="eXeGameExportQuestions" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
-                                    </p>
-                                </div>`;
-                    return tab.replace(/[ \t]+/g, ' ').trim();
+                windows: ['import', 'export', 'ai'],
+
+                /**
+                 * @param {string} name A name in `windows`.
+                 * @returns {string} The id of its modal.
+                 */
+                getModalId: function (name) {
+                    return `eXeShareModal-${name}`;
                 },
 
                 /**
-                 * The controls to generate questions with AI. Not a form tab:
-                 * they are to open in a window from the Questions tab.
+                 * Text of the AI link and window. The catalog entry is shared
+                 * with EdiCuaTeX, and some of its translations open with a ✨;
+                 * here every link takes its icon from the icon font instead.
+                 *
+                 * @returns {string}
+                 */
+                getAILabel: function () {
+                    return _('Create with AI').replace(/^✨\s*/u, '');
+                },
+
+                /**
+                 * The question import control. The iDevice reads the chosen
+                 * file: it binds `change` on #eXeGameImportGame.
+                 *
+                 * @returns {string}
+                 */
+                getImportContents: function () {
+                    return `<div id="eXeGameExportImport">
+                            <form method="POST">
+                                <div class="exe-file-upload" data-exe-upload>
+                                    <label for="eXeGameImportGame" class="form-label mb-1">${_('Import')}: </label>
+                                    <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept=".txt, .xml" class="exe-file-input d-none" />
+                                    <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_('Choose')}</button>
+                                    <span class="exe-file-name" data-exe-file-name>${_('No file selected')}</span>
+                                    <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: txt, xml</span>
+                                </div>
+                            </form>
+                        </div>`;
+                },
+
+                /**
+                 * The question export button. The iDevice writes the file: it
+                 * binds `click` on #eXeGameExportQuestions.
+                 *
+                 * @returns {string}
+                 */
+                getExportContents: function () {
+                    return `<p class="m-0">
+                            <input type="button" class="btn btn-primary" name="eXeGameExportQuestions" id="eXeGameExportQuestions" value="${_('Export questions')}" />
+                        </p>`;
+                },
+
+                /**
+                 * The Import, Export and Create with AI links of the Questions
+                 * tab, and the windows they open: each one an informative
+                 * message and the controls of its process.
+                 *
+                 * @param {boolean|Object} [settings] The `share` setting of
+                 * tabs.getHtml.
+                 * @param {boolean} [settings.importQuestions=true] Offer Import.
+                 * @param {boolean} [settings.exportQuestions=true] Offer Export.
+                 * @param {number} [settings.type=0] The game, for the AI prompt.
+                 * @param {Object} [settings.options] Prompt options of the game.
+                 * @returns {{toolbar: string, modals: string}}
+                 */
+                getTools: function (settings) {
+                    const share = $exeIDevicesEdition.iDevice.gamification.share;
+                    const tabs = $exeIDevicesEdition.iDevice.tabs;
+                    const options = settings !== null && typeof settings === 'object' ? settings : {};
+                    const windows = [];
+                    if (options.importQuestions !== false) {
+                        windows.push({
+                            name: 'import',
+                            icon: 'upload',
+                            title: _('Import'),
+                            info: _('You can import questions compatible with this activity from txt or xml (Moodle) files.'),
+                            content: share.getImportContents(),
+                        });
+                    }
+                    if (options.exportQuestions !== false) {
+                        windows.push({
+                            name: 'export',
+                            icon: 'download',
+                            title: _('Export'),
+                            info: _('You can export its questions in txt format to integrate them into other compatible activities.'),
+                            content: share.getExportContents(),
+                        });
+                    }
+                    windows.push({
+                        name: 'ai',
+                        icon: 'auto_awesome',
+                        title: share.getAILabel(),
+                        info: `${_('You can easily generate multiple questions for the activity using AI.')} ${_('Send the prompt to an AI, paste the questions it returns in Questions and save them.')}`,
+                        content: share.getIAContents(options.type || 0, options.options || {}),
+                        dialog: 'modal-dialog-scrollable',
+                    });
+
+                    const links = windows
+                        .map(
+                            (win) => `
+                            <button type="button" class="btn btn-link btn-sm d-inline-flex align-items-center gap-1" data-exe-share="${win.name}" aria-haspopup="dialog" aria-controls="${share.getModalId(win.name)}">
+                                <span class="auto-icon" aria-hidden="true">${win.icon}</span>${win.title}
+                            </button>`
+                        )
+                        .join('');
+                    // No `fade`: the edition closing hides and disposes a
+                    // window at once, with no transition still to run. No
+                    // size either: the application gives all its centered
+                    // modals the same width.
+                    const modals = windows
+                        .map((win) => {
+                            const id = share.getModalId(win.name);
+                            return `
+                            <div class="modal exe-share-modal" id="${id}" tabindex="-1" aria-labelledby="${id}-title" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered ${win.dialog || ''}">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h2 class="modal-title fs-5 d-flex align-items-center gap-2" id="${id}-title">
+                                                <span class="auto-icon" aria-hidden="true">${win.icon}</span>${win.title}
+                                            </h2>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="${_('Close')}"></button>
+                                        </div>
+                                        <div class="modal-body">${tabs.getInfo(win.info)}${win.content}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        })
+                        .join('');
+                    return {
+                        toolbar: `<div class="d-flex justify-content-end flex-wrap gap-2 mb-2" role="toolbar" aria-label="${_('Questions')}">${links}</div>`,
+                        modals: modals,
+                    };
+                },
+
+                /**
+                 * Move the windows of getTools to <body> -- inside the iDevice's
+                 * box a modal can open under Bootstrap's backdrop -- and make
+                 * the links open them. The edition's lifecycle removes them
+                 * when it closes; a window left by an edition that had none is
+                 * removed here.
+                 */
+                mount: function () {
+                    const share = $exeIDevicesEdition.iDevice.gamification.share;
+                    const mounted = [];
+                    share.windows.forEach(function (name) {
+                        const copies = Array.from(document.querySelectorAll(`[id="${share.getModalId(name)}"]`));
+                        const fresh = copies.find((el) => el.parentElement !== document.body);
+                        if (!fresh) return;
+                        copies.filter((el) => el !== fresh).forEach((el) => share.removeModal(el));
+                        document.body.appendChild(fresh);
+                        mounted.push(fresh);
+                    });
+                    if (mounted.length === 0) return;
+
+                    mounted.forEach(function (el) {
+                        // Focus goes back to the link that opened the window,
+                        // unless the window only stepped aside (see yieldTo).
+                        el.addEventListener('hidden.bs.modal', function () {
+                            if ($(el).data('exeShareSuspended')) return;
+                            const trigger = $(el).data('exeShareTrigger');
+                            if (trigger && document.body.contains(trigger)) trigger.focus();
+                        });
+                    });
+                    $('[data-exe-share]')
+                        .off('click.exeShare')
+                        .on('click.exeShare', function () {
+                            share.open(this.getAttribute('data-exe-share'), this);
+                        });
+                    // Each process closes its window; the iDevice then reports
+                    // the result in its own messages.
+                    $('#eXeGameImportGame')
+                        .off('change.exeShare')
+                        .on('change.exeShare', function () {
+                            share.close('import');
+                        });
+                    $('#eXeGameExportQuestions')
+                        .off('click.exeShare')
+                        .on('click.exeShare', function () {
+                            share.close('export');
+                        });
+
+                    const lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
+                    if (share.onModalShow) document.removeEventListener('show.bs.modal', share.onModalShow);
+                    share.onModalShow = function (event) {
+                        share.yieldTo(event.target);
+                    };
+                    if (lifecycle) {
+                        lifecycle.addEventListener(document, 'show.bs.modal', share.onModalShow);
+                        lifecycle.own(function () {
+                            mounted.forEach((el) => share.removeModal(el));
+                        });
+                    } else {
+                        document.addEventListener('show.bs.modal', share.onModalShow);
+                    }
+                },
+
+                /**
+                 * Open a window of the Questions tab. Focus goes back to the
+                 * link that opened it when it closes.
+                 *
+                 * @param {string} name A name in `windows`.
+                 * @param {HTMLElement} [trigger] The link that opens it.
+                 * @returns {boolean} false when there is no such window or no
+                 * Bootstrap to open it with.
+                 */
+                open: function (name, trigger) {
+                    const el = document.getElementById($exeIDevicesEdition.iDevice.gamification.share.getModalId(name));
+                    const Modal = window.bootstrap && window.bootstrap.Modal;
+                    if (!el || !Modal) return false;
+                    $(el).data('exeShareTrigger', trigger || null);
+                    Modal.getOrCreateInstance(el).show();
+                    return true;
+                },
+
+                /**
+                 * Bootstrap shows one modal at a time. When the application
+                 * opens one of its own over an open window -- the alert about
+                 * the questions just pasted, say -- the window steps aside, so
+                 * that alert is not left behind it, and comes back once the
+                 * alert is closed.
+                 *
+                 * @param {HTMLElement} other The modal being shown.
+                 */
+                yieldTo: function (other) {
+                    const share = $exeIDevicesEdition.iDevice.gamification.share;
+                    const Modal = window.bootstrap && window.bootstrap.Modal;
+                    if (!Modal || !other || !other.classList || other.classList.contains('exe-share-modal')) return;
+                    share.windows.forEach(function (name) {
+                        const el = document.getElementById(share.getModalId(name));
+                        if (!el || !el.classList.contains('show')) return;
+                        $(el).data('exeShareSuspended', true);
+                        Modal.getOrCreateInstance(el).hide();
+                        other.addEventListener(
+                            'hidden.bs.modal',
+                            function () {
+                                $(el).data('exeShareSuspended', false);
+                                if (document.body.contains(el)) Modal.getOrCreateInstance(el).show();
+                            },
+                            { once: true }
+                        );
+                    });
+                },
+
+                /**
+                 * @param {string} name A name in `windows`.
+                 */
+                close: function (name) {
+                    const el = document.getElementById($exeIDevicesEdition.iDevice.gamification.share.getModalId(name));
+                    const Modal = window.bootstrap && window.bootstrap.Modal;
+                    const instance = el && Modal ? Modal.getInstance(el) : null;
+                    if (instance) instance.hide();
+                },
+
+                /**
+                 * Close a window, release its Bootstrap instance and remove it
+                 * with the handlers on its controls.
+                 *
+                 * @param {HTMLElement} el
+                 */
+                removeModal: function (el) {
+                    const Modal = window.bootstrap && window.bootstrap.Modal;
+                    const instance = Modal ? Modal.getInstance(el) : null;
+                    if (instance) {
+                        instance.hide();
+                        instance.dispose();
+                    }
+                    $(el).remove();
+                },
+
+                /**
+                 * The controls to generate questions with AI, for the Create
+                 * with AI window. Its message is the window's.
                  *
                  * @param {number} [type=0] The game, for the prompt.
                  * @param {Object} [options] Prompt options of the game.
                  * @returns {string}
                  */
                 getIAContents: function (type = 0, options = {}) {
-                    const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
                     const promptText = $exeIDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
                     const tab = `
-                            <p class="exe-block-info">${msgAddText}</p>
                             <p style="display:none"><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_('Add questions')}" /></p>
                             <div class="bg-white rounded w-100 position-relative" style="max-width: 1400px;" id="eXeEAddArea">
                                 <ul class="nav nav-tabs">
@@ -1415,6 +1651,8 @@ var $exeIDevicesEdition = {
                         if (questions.invalidLines.length > 0) {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
+                            // The window has done its job: the questions are in the form.
+                            $exeIDevicesEdition.iDevice.gamification.share.close('ai');
                             eXe.app.alert(_('The questions have been added successfully'));
                         }
                     });
@@ -1437,6 +1675,8 @@ var $exeIDevicesEdition = {
                         if (questions.invalidLines.length > 0) {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
+                            // The window has done its job: the questions are in the form.
+                            $exeIDevicesEdition.iDevice.gamification.share.close('ai');
                             eXe.app.alert(_('The questions have been added successfully'));
                         }
                     });
@@ -2962,6 +3202,10 @@ var $exeIDevicesEdition = {
              * @param {boolean|Object} [config.grading] Options of
              * gamification.scorm.getContents.
              * @param {Object|Array} [config.texts] The iDevice's custom texts.
+             * @param {boolean|Object} [config.share] The Import, Export and
+             * Create with AI links of the Questions tab, there by default:
+             * { importQuestions, exportQuestions, type, options }, see
+             * gamification.share.getTools; false to leave them out.
              * @param {Array<{name: string, title: string, info: string, content: string}>} [config.extra]
              * Tabs of this iDevice only, after the shared ones.
              * @param {string} [config.path] The iDevice's path, used by the
@@ -2999,38 +3243,50 @@ var $exeIDevicesEdition = {
                 let active = list[0].name;
                 if (shown(config.active)) active = config.active;
                 else if (shown('contents')) active = 'contents';
+                const tools =
+                    shown('contents') && config.share !== false
+                        ? $exeIDevicesEdition.iDevice.gamification.share.getTools(config.share)
+                        : { toolbar: '', modals: '' };
                 let nav = '';
                 let panels = '';
                 list.forEach(function (tab) {
                     const isActive = tab.name === active;
                     const tabId = `${id}-tab-${tab.name}`;
                     const panelId = `${id}-panel-${tab.name}`;
+                    // The links sit on the right, above the question form.
+                    const toolbar = tab.name === 'contents' ? tools.toolbar : '';
                     nav += `
                         <li class="nav-item" role="presentation">
                             <button type="button" class="nav-link${isActive ? ' active' : ''}" id="${tabId}" data-exe-tab="${tab.name}" role="tab" aria-controls="${panelId}" aria-selected="${isActive}" tabindex="${isActive ? 0 : -1}">${escape(tab.title)}</button>
                         </li>`;
                     panels += `
-                        <div class="tab-pane${isActive ? ' active show' : ''}" id="${panelId}" role="tabpanel" aria-labelledby="${tabId}" tabindex="0">${tabs.getInfo(tab.info)}${tab.content}</div>`;
+                        <div class="tab-pane${isActive ? ' active show' : ''}" id="${panelId}" role="tabpanel" aria-labelledby="${tabId}" tabindex="0">${tabs.getInfo(tab.info)}${toolbar}${tab.content}</div>`;
                 });
+                // The windows wait here, hidden, until bind moves them to <body>.
                 return `
                     <ul class="nav nav-tabs" id="${id}-tabs" role="tablist">${nav}</ul>
-                    <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3" id="${id}-panels">${panels}</div>`;
+                    <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3" id="${id}-panels">${panels}</div>${tools.modals}`;
             },
 
             /**
              * Make the tabs of `getHtml` work: click, and the arrow, Home and
-             * End keys of the WAI-ARIA tabs pattern.
+             * End keys of the WAI-ARIA tabs pattern. Also mounts the windows
+             * of the Questions tab (gamification.share.mount).
              *
              * Handled here rather than by Bootstrap's tab plugin: the plugin
              * keeps an instance per button that nothing would dispose of when
              * the editor closes. These handlers live on the form's own buttons,
              * which the edition teardown unbinds.
              *
+             * Call it before the iDevice binds its own handlers: those of
+             * Import, Export and AI look their controls up in the document.
+             *
              * @param {string} id The id given to getHtml.
              */
             bind: function (id) {
                 const tabs = $exeIDevicesEdition.iDevice.tabs;
                 if (!tabs.isValidId(id)) return;
+                $exeIDevicesEdition.iDevice.gamification.share.mount();
                 const $buttons = $(`#${id}-tabs [data-exe-tab]`);
                 $buttons
                     .off('.exeTabs')

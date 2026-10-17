@@ -839,8 +839,9 @@ describe('common_idevices_edition.js', () => {
 
         expect(tabNames()).not.toContain('importExport');
         expect(tabNames()).not.toContain('ai');
-        expect(document.getElementById('eXeGameImportGame')).toBeNull();
-        expect(document.getElementById('eXeEPromptArea')).toBeNull();
+        // Their controls live in windows, not in any panel.
+        expect(document.querySelector('#testForm-panels #eXeGameImportGame')).toBeNull();
+        expect(document.querySelector('#testForm-panels #eXeEPromptArea')).toBeNull();
       });
 
       it('hides a tab given false, null or undefined, but shows one given an empty string', () => {
@@ -1145,6 +1146,284 @@ describe('common_idevices_edition.js', () => {
       it('does nothing for an invalid id', () => {
         expect(() => tabs().bind('bad id')).not.toThrow();
       });
+    });
+  });
+
+  /**
+   * The Import, Export and Create with AI links of the Questions tab and the
+   * windows they open. Bootstrap's Modal is not loaded in the tests: a stand-in
+   * records what the code asks of it.
+   */
+  describe('Questions tab windows (gamification.share)', () => {
+    const share = () => globalThis.$exeIDevicesEdition.iDevice.gamification.share;
+    const tabs = () => globalThis.$exeIDevicesEdition.iDevice.tabs;
+    const render = (config) => {
+      document.body.innerHTML = `<div id="form">${tabs().getHtml('testForm', config)}</div>`;
+      tabs().bind('testForm');
+    };
+    const link = (name) => document.querySelector(`#testForm-panel-contents [data-exe-share="${name}"]`);
+    const links = () => [...document.querySelectorAll('#testForm-panel-contents [data-exe-share]')];
+    const label = (element) => element.textContent.replace(element.querySelector('.auto-icon').textContent, '').trim();
+    const modal = (name) => document.getElementById(`eXeShareModal-${name}`);
+    const fakeModal = () => {
+      const instances = new Map();
+      return {
+        getOrCreateInstance: vi.fn((el) => {
+          if (!instances.has(el)) {
+            instances.set(el, {
+              show: vi.fn(() => el.classList.add('show')),
+              hide: vi.fn(() => {
+                el.classList.remove('show');
+                el.dispatchEvent(new Event('hidden.bs.modal'));
+              }),
+              dispose: vi.fn(() => instances.delete(el)),
+            });
+          }
+          return instances.get(el);
+        }),
+        getInstance: vi.fn((el) => instances.get(el) || null),
+      };
+    };
+    let previousBootstrap;
+    let Modal;
+
+    beforeEach(() => {
+      previousBootstrap = window.bootstrap;
+      Modal = fakeModal();
+      window.bootstrap = { Modal };
+    });
+
+    afterEach(() => {
+      window.bootstrap = previousBootstrap;
+      document.body.innerHTML = '';
+    });
+
+    it('puts Import, Export and Create with AI on the right of the Questions tab, above its form', () => {
+      render({ contents: '<div id="questionForm"></div>' });
+
+      const panel = document.getElementById('testForm-panel-contents');
+      expect([...panel.children].map((child) => child.getAttribute('role') || child.id)).toEqual([
+        'note',
+        'toolbar',
+        'questionForm',
+      ]);
+      expect(panel.querySelector('[role="toolbar"]').classList.contains('justify-content-end')).toBe(true);
+      expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+      expect(links().map(label)).toEqual(['Import', 'Export', 'Create with AI']);
+      expect(links().map((element) => element.querySelector('.auto-icon').textContent)).toEqual([
+        'upload',
+        'download',
+        'auto_awesome',
+      ]);
+      links().forEach((element) => {
+        expect(element.getAttribute('type')).toBe('button');
+        expect(element.getAttribute('aria-haspopup')).toBe('dialog');
+        expect(element.getAttribute('aria-controls')).toBe(`eXeShareModal-${element.getAttribute('data-exe-share')}`);
+        expect(element.querySelector('.auto-icon').getAttribute('aria-hidden')).toBe('true');
+      });
+    });
+
+    it('leaves Import or Export out for an iDevice without them, and all of them with share: false', () => {
+      render({ contents: '', share: { exportQuestions: false } });
+      expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+      expect(modal('export')).toBeNull();
+
+      render({ contents: '', share: { importQuestions: false, exportQuestions: false } });
+      expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['ai']);
+      expect(modal('import')).toBeNull();
+
+      render({ contents: '', share: false });
+      expect(links()).toHaveLength(0);
+      expect(document.querySelector('.exe-share-modal')).toBeNull();
+    });
+
+    it('gives no links to a form without a Questions tab', () => {
+      render({ options: '' });
+
+      expect(document.querySelector('[data-exe-share]')).toBeNull();
+      expect(document.querySelector('.exe-share-modal')).toBeNull();
+    });
+
+    it('builds the AI prompt for the game and the options given', () => {
+      const build = vi.spyOn(share(), 'buildIAPromptText');
+      try {
+        render({ contents: '', share: { type: 10, options: { numLevels: 3 } } });
+
+        expect(build).toHaveBeenCalledWith(10, { numLevels: 3 });
+      } finally {
+        build.mockRestore();
+      }
+    });
+
+    it('opens every window with its title, a close button and a message saying what it does', () => {
+      render({ contents: '' });
+
+      const titles = { import: 'Import', export: 'Export', ai: 'Create with AI' };
+      share().windows.forEach((name) => {
+        const el = modal(name);
+        const title = el.querySelector('.modal-title');
+        expect(label(title)).toBe(titles[name]);
+        expect(el.getAttribute('aria-labelledby')).toBe(title.id);
+        expect(el.querySelector('.btn-close').getAttribute('data-bs-dismiss')).toBe('modal');
+        expect(el.classList.contains('fade')).toBe(false);
+        const info = el.querySelector('.modal-body').firstElementChild;
+        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.querySelector('.auto-icon').textContent).toBe('info');
+      });
+      expect(modal('import').querySelector('#eXeGameImportGame')).not.toBeNull();
+      expect(modal('export').querySelector('#eXeGameExportQuestions')).not.toBeNull();
+      expect(modal('ai').querySelector('#eXeEPromptArea')).not.toBeNull();
+      // The application gives all its centered modals one width; the AI
+      // window scrolls when the screen is short.
+      expect(modal('import').querySelector('.modal-dialog').className.trim()).toBe('modal-dialog modal-dialog-centered');
+      expect(modal('ai').querySelector('.modal-dialog').classList.contains('modal-dialog-scrollable')).toBe(true);
+    });
+
+    it('moves the windows to <body> when the tabs are bound', () => {
+      render({ contents: '' });
+
+      share().windows.forEach((name) => expect(modal(name).parentElement).toBe(document.body));
+      expect(document.querySelector('#form .exe-share-modal')).toBeNull();
+    });
+
+    it('replaces the windows an earlier form left in <body>', () => {
+      render({ contents: '' });
+      const earlier = modal('import');
+
+      document.getElementById('form').innerHTML = tabs().getHtml('testForm', { contents: '' });
+      tabs().bind('testForm');
+
+      expect(document.querySelectorAll('[id="eXeShareModal-import"]')).toHaveLength(1);
+      expect(modal('import')).not.toBe(earlier);
+      expect(earlier.isConnected).toBe(false);
+    });
+
+    it('opens the window of the link clicked, and gives the focus back to the link when it closes', () => {
+      render({ contents: '' });
+
+      link('export').click();
+      expect(Modal.getOrCreateInstance).toHaveBeenCalledWith(modal('export'));
+      expect(modal('export').classList.contains('show')).toBe(true);
+
+      share().close('export');
+      expect(modal('export').classList.contains('show')).toBe(false);
+      expect(document.activeElement).toBe(link('export'));
+    });
+
+    it('closes Import once a file is chosen, and Export once the button is pressed', () => {
+      render({ contents: '' });
+
+      link('import').click();
+      $('#eXeGameImportGame').trigger('change');
+      expect(modal('import').classList.contains('show')).toBe(false);
+
+      link('export').click();
+      $('#eXeGameExportQuestions').trigger('click');
+      expect(modal('export').classList.contains('show')).toBe(false);
+    });
+
+    it('opens nothing without the window or without Bootstrap, and closes a window never opened quietly', () => {
+      render({ contents: '' });
+
+      expect(share().open('missing')).toBe(false);
+      window.bootstrap = undefined;
+      expect(share().open('import')).toBe(false);
+      expect(() => share().close('import')).not.toThrow();
+      window.bootstrap = { Modal };
+      expect(() => share().close('import')).not.toThrow();
+      expect(() => share().close('missing')).not.toThrow();
+    });
+
+    it('removes the windows, with their Bootstrap instances, when the edition closes', () => {
+      const disposers = [];
+      const previousLifecycle = window.$exeEditionLifecycle;
+      window.$exeEditionLifecycle = {
+        isActive: () => true,
+        own: (dispose) => {
+          disposers.push(dispose);
+          return dispose;
+        },
+        addEventListener: (target, type, handler) => {
+          target.addEventListener(type, handler);
+          disposers.push(() => target.removeEventListener(type, handler));
+        },
+      };
+      try {
+        render({ contents: '' });
+        link('ai').click();
+        const instance = Modal.getInstance(modal('ai'));
+
+        disposers.forEach((dispose) => dispose());
+
+        expect(instance.hide).toHaveBeenCalled();
+        expect(instance.dispose).toHaveBeenCalled();
+        expect(document.querySelector('.exe-share-modal')).toBeNull();
+        // The listener for the application's modals went with them.
+        const yieldTo = vi.spyOn(share(), 'yieldTo');
+        try {
+          document.body.dispatchEvent(new Event('show.bs.modal', { bubbles: true }));
+          expect(yieldTo).not.toHaveBeenCalled();
+        } finally {
+          yieldTo.mockRestore();
+        }
+      } finally {
+        window.$exeEditionLifecycle = previousLifecycle;
+      }
+    });
+
+    it('steps aside for a modal of the application, and comes back once it is closed', () => {
+      render({ contents: '' });
+      const alertModal = document.createElement('div');
+      alertModal.className = 'modal';
+      document.body.appendChild(alertModal);
+      link('ai').click();
+      const focusLink = vi.spyOn(link('ai'), 'focus');
+
+      // An alert of the application, about the questions just pasted.
+      alertModal.dispatchEvent(new Event('show.bs.modal', { bubbles: true }));
+      expect(modal('ai').classList.contains('show')).toBe(false);
+      // Stepping aside does not send the focus back to the link.
+      expect(focusLink).not.toHaveBeenCalled();
+
+      alertModal.dispatchEvent(new Event('hidden.bs.modal'));
+      expect(modal('ai').classList.contains('show')).toBe(true);
+
+      // Its own windows do not make each other step aside.
+      modal('import').dispatchEvent(new Event('show.bs.modal', { bubbles: true }));
+      expect(modal('ai').classList.contains('show')).toBe(true);
+    });
+
+    it('listens for the application modals once, however many forms are mounted', () => {
+      const yieldTo = vi.spyOn(share(), 'yieldTo');
+      try {
+        render({ contents: '' });
+        document.getElementById('form').innerHTML = tabs().getHtml('testForm', { contents: '' });
+        tabs().bind('testForm');
+
+        document.body.dispatchEvent(new Event('show.bs.modal', { bubbles: true }));
+
+        expect(yieldTo).toHaveBeenCalledTimes(1);
+      } finally {
+        yieldTo.mockRestore();
+      }
+    });
+
+    it('steps aside for nothing without Bootstrap', () => {
+      render({ contents: '' });
+      window.bootstrap = undefined;
+
+      expect(() => share().yieldTo(document.body)).not.toThrow();
+    });
+
+    it('removes a window without Bootstrap too, and mounts nothing when there is nothing to mount', () => {
+      render({ contents: '' });
+      window.bootstrap = undefined;
+
+      share().removeModal(modal('import'));
+      expect(modal('import')).toBeNull();
+
+      document.body.innerHTML = '';
+      expect(() => share().mount()).not.toThrow();
     });
   });
 
@@ -2046,16 +2325,44 @@ describe('common_idevices_edition.js', () => {
   });
 
   describe('gamification.share', () => {
-    it('getContents returns the Import/Export controls without a tab around them', () => {
-      const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getContents(true, 0, true);
-      expect(result).not.toContain('exe-form-tab');
-      expect(result).toContain('eXeGameImportGame');
+    it('getImportContents keeps the ids the iDevices bind, and takes txt and xml files', () => {
+      document.body.innerHTML = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getImportContents();
+
+      expect(document.querySelector('#eXeGameExportImport #eXeGameImportGame').getAttribute('accept')).toBe('.txt, .xml');
+      expect(document.querySelector('#eXeGameExportImport .exe-field-instructions').textContent).toBe(
+        'Supported formats: txt, xml'
+      );
     });
 
-    it('getContents hides the native file input so only the btn-primary trigger is shown', () => {
-      const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getContents(true, 0, true);
+    it('getImportContents hides the native file input so only the btn-primary trigger is shown', () => {
+      const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getImportContents();
       expect(result).toMatch(/<input[^>]*id="eXeGameImportGame"[^>]*class="[^"]*\bd-none\b[^"]*"/);
       expect(result).toMatch(/<button[^>]*class="[^"]*\bbtn-primary\b[^"]*\bexe-file-btn\b[^"]*"[^>]*data-exe-file-trigger/);
+    });
+
+    it('getExportContents offers the export button the iDevices bind', () => {
+      document.body.innerHTML = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getExportContents();
+
+      expect(document.getElementById('eXeGameExportQuestions').value).toBe('Export questions');
+    });
+
+    it('getAILabel drops the ✨ some translations of "Create with AI" open with', () => {
+      const previous = globalThis._;
+      try {
+        globalThis._ = (text) => (text === 'Create with AI' ? '✨ Crear con IA' : text);
+        expect(globalThis.$exeIDevicesEdition.iDevice.gamification.share.getAILabel()).toBe('Crear con IA');
+
+        globalThis._ = (text) => text;
+        expect(globalThis.$exeIDevicesEdition.iDevice.gamification.share.getAILabel()).toBe('Create with AI');
+      } finally {
+        globalThis._ = previous;
+      }
+    });
+
+    it('getIAContents leaves its message to the window', () => {
+      const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getIAContents(0);
+      expect(result).not.toContain('exe-block-info');
+      expect(result).not.toContain('generate multiple questions');
     });
 
     it('getIAContents returns the AI controls without a tab around them', () => {
@@ -2444,6 +2751,26 @@ describe('common_idevices_edition.js', () => {
 
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
         expect(saveQuestionsMock).toHaveBeenCalled();
+      });
+
+      it('closes the Create with AI window once the questions are in, and only then', async () => {
+        const share = globalThis.$exeIDevicesEdition.iDevice.gamification.share;
+        const close = vi.spyOn(share, 'close');
+        try {
+          share.addEvents(0, vi.fn());
+
+          $('#eXeEQuestionsArea').val('not a question');
+          $('#eXeESaveButton').trigger('click');
+          await flushAsync();
+          expect(close).not.toHaveBeenCalled();
+
+          $('#eXeEQuestionsArea').val('Word1#Definition1');
+          $('#eXeESaveButton').trigger('click');
+          await flushAsync();
+          expect(close).toHaveBeenCalledWith('ai');
+        } finally {
+          close.mockRestore();
+        }
       });
 
       it('saveButton click shows invalid lines alert when some lines are invalid', async () => {

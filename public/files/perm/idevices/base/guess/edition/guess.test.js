@@ -760,6 +760,15 @@ describe('guess edition: shared form tabs and feedback', () => {
     expect(panel('texts').querySelector('#ci18n_msgReply').value).toBe('Reply');
   });
 
+  it('offers Import, Export and Create with AI on its Questions tab, in windows of their own', () => {
+    const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+
+    expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+    expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame')).not.toBeNull();
+    expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
+    expect(document.querySelector('body > #eXeShareModal-ai #eXeEPromptArea')).not.toBeNull();
+  });
+
   it('leaves the feedback to the shared block, without controls of its own', () => {
     expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
     expect(document.getElementById('adivinaEHasFeedBack')).toBeNull();
