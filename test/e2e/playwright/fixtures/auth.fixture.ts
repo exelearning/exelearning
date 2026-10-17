@@ -131,8 +131,20 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
             return;
         }
 
-        // Server mode: guest auth already loaded via worker storage state
-        await page.goto('/workarea');
+        // Server mode: guest auth already loaded via worker storage state.
+        // In online mode a bare /workarea redirects to /projects, so create a
+        // project first and open it directly. This gives every spec a fresh
+        // workarea, equivalent to the legacy auto-create-on-/workarea behaviour.
+        const createResponse = await page.request.post('/api/project/create-quick', {
+            data: { title: 'Test Project' },
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000,
+        });
+        expect(createResponse.ok()).toBeTruthy();
+        const { uuid: projectUuid } = await createResponse.json();
+        expect(projectUuid).toBeDefined();
+
+        await page.goto(`/workarea?project=${projectUuid}`);
 
         // Wait for workarea to load
         await page.waitForURL(/\/workarea/, { timeout: 30000 });
