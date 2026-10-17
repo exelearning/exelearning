@@ -279,6 +279,21 @@ describe('common_idevices_edition.js', () => {
         expect(html).toContain('/path/to/quextIEHelp.png');
       });
 
+      it('getContents suggests the project id as the report identifier, and nothing without a project', () => {
+        const previous = globalThis.eXeLearning;
+        try {
+          globalThis.eXeLearning = { app: { project: { odeId: 'project-123' } } };
+          mountHtml();
+          expect(document.getElementById('eXeProgressReportID').value).toBe('project-123');
+
+          globalThis.eXeLearning = undefined;
+          mountHtml();
+          expect(document.getElementById('eXeProgressReportID').value).toBe('');
+        } finally {
+          globalThis.eXeLearning = previous;
+        }
+      });
+
       it('setValues populates checkbox and input when evaluation is true', () => {
         mountHtml();
         progressBar().setValues({ evaluation: true, evaluationID: 'ABCDE' });
@@ -794,8 +809,6 @@ describe('common_idevices_edition.js', () => {
       after: true,
       grading: true,
       texts: {},
-      importExport: true,
-      ai: true,
     };
 
     describe('getHtml', () => {
@@ -817,10 +830,17 @@ describe('common_idevices_edition.js', () => {
           'after',
           'grading',
           'texts',
-          'importExport',
-          'ai',
         ]);
         expect(tabs().order).toEqual(tabNames());
+      });
+
+      it('has no tab for importing, exporting or generating questions', () => {
+        render({ ...allTabs, importExport: true, ai: true });
+
+        expect(tabNames()).not.toContain('importExport');
+        expect(tabNames()).not.toContain('ai');
+        expect(document.getElementById('eXeGameImportGame')).toBeNull();
+        expect(document.getElementById('eXeEPromptArea')).toBeNull();
       });
 
       it('hides a tab given false, null or undefined, but shows one given an empty string', () => {
@@ -835,14 +855,12 @@ describe('common_idevices_edition.js', () => {
         expect(buttons().map((tab) => tab.textContent.trim())).toEqual([
           'Instructions',
           'Options',
-          'Content',
+          'Questions',
           'Passwords',
           'Feedback',
-          'Content after',
+          'After',
           'Grading',
-          'Custom texts',
-          'Import/Export',
-          'AI',
+          'Texts',
         ]);
       });
 
@@ -854,8 +872,6 @@ describe('common_idevices_edition.js', () => {
           after: true,
           grading: true,
           texts: { msgPlay: 'Play' },
-          importExport: { allowText: true, exportQuestions: true },
-          ai: true,
         });
 
         expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe('Read this');
@@ -864,16 +880,27 @@ describe('common_idevices_edition.js', () => {
         expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
         expect(panel('grading').querySelector('input[name="eXeGameSCORM"]')).not.toBeNull();
         expect(panel('texts').querySelector('#ci18n_msgPlay').value).toBe('Play');
-        expect(panel('importExport').querySelector('#eXeGameImportGame').getAttribute('accept')).toContain('.txt');
-        expect(panel('importExport').querySelector('#eXeGameExportQuestions').style.display).toBe('block');
-        expect(panel('ai').querySelector('#eXeEPromptArea')).not.toBeNull();
       });
 
-      it('leaves text files and the export button out of Import/Export unless asked for', () => {
-        render({ importExport: true });
+      it('opens every panel with a message saying what is done there, after an icon', () => {
+        render(allTabs);
 
-        expect(panel('importExport').querySelector('#eXeGameImportGame').getAttribute('accept')).not.toContain('.txt');
-        expect(panel('importExport').querySelector('#eXeGameExportQuestions').style.display).toBe('none');
+        tabNames().forEach((name) => {
+          const info = panel(name).firstElementChild;
+          expect(info.className).toBe('alert alert-info d-flex align-items-start gap-2 mb-3');
+          expect(info.getAttribute('role')).toBe('note');
+          const icon = info.querySelector('.auto-icon');
+          expect(icon.textContent).toBe('info');
+          expect(icon.getAttribute('aria-hidden')).toBe('true');
+          expect(info.querySelector('p').textContent.trim().length).toBeGreaterThan(20);
+        });
+      });
+
+      it('explains the passwords once, in the message of the tab', () => {
+        render({ passwords: true });
+
+        expect(panel('passwords').firstElementChild.textContent).toContain('You might create a sequence of challenges');
+        expect(panel('passwords').querySelectorAll('.exe-block-info')).toHaveLength(0);
       });
 
       it("puts the iDevice's own HTML in the Options and Content tabs", () => {
@@ -883,18 +910,11 @@ describe('common_idevices_edition.js', () => {
         expect(panel('contents').querySelector('#myQuestions')).not.toBeNull();
       });
 
-      it('renames the Content tab when given a title', () => {
+      it('always titles the content tab Questions, and takes only HTML for it', () => {
         render({ contents: { title: 'Cards', content: '<p id="cards">x</p>' } });
 
-        expect(button('contents').textContent.trim()).toBe('Cards');
-        expect(panel('contents').querySelector('#cards')).not.toBeNull();
-      });
-
-      it('keeps the default Content title and an empty panel for an object without them', () => {
-        render({ contents: {} });
-
-        expect(button('contents').textContent.trim()).toBe('Content');
-        expect(panel('contents').innerHTML).toBe('');
+        expect(button('contents').textContent.trim()).toBe('Questions');
+        expect(panel('contents').querySelector('#cards')).toBeNull();
       });
 
       it('passes the grading options and the path on to the Grading tab', () => {
@@ -911,11 +931,22 @@ describe('common_idevices_edition.js', () => {
       });
 
       it('adds the tabs of the iDevice after the shared ones', () => {
-        render({ options: '', extra: [{ name: 'csv', title: 'CSV', content: '<p id="csv">x</p>' }] });
+        render({
+          options: '',
+          extra: [{ name: 'csv', title: 'CSV', info: 'Import a CSV file.', content: '<p id="csv">x</p>' }],
+        });
 
         expect(tabNames()).toEqual(['options', 'csv']);
         expect(button('csv').textContent.trim()).toBe('CSV');
+        expect(panel('csv').querySelector('.alert-info').textContent).toContain('Import a CSV file.');
         expect(panel('csv').querySelector('#csv')).not.toBeNull();
+      });
+
+      it('opens a tab of the iDevice without a message when it gives none', () => {
+        render({ extra: [{ name: 'csv', title: 'CSV', content: '<p id="csv">x</p>' }] });
+
+        expect(panel('csv').querySelector('.alert-info')).toBeNull();
+        expect(panel('csv').firstElementChild.id).toBe('csv');
       });
 
       it('skips extra tabs without a valid name or that repeat one, and titles the rest by name', () => {
@@ -930,32 +961,38 @@ describe('common_idevices_edition.js', () => {
       });
 
       it('escapes the titles', () => {
-        render({ contents: { title: '<img src="x">', content: '' } });
+        render({ extra: [{ name: 'own', title: '<img src="x">' }] });
 
-        expect(button('contents').querySelector('img')).toBeNull();
-        expect(button('contents').textContent.trim()).toBe('<img src="x">');
+        expect(button('own').querySelector('img')).toBeNull();
+        expect(button('own').textContent.trim()).toBe('<img src="x">');
       });
 
-      it('starts on the first tab', () => {
+      it('starts on Questions', () => {
         render({ options: '', contents: '', grading: true });
 
+        expect(activeNames()).toEqual(['contents']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+        expect(panel('contents').classList.contains('show')).toBe(true);
+        expect(panel('options').classList.contains('active')).toBe(false);
+        expect(button('contents').getAttribute('aria-selected')).toBe('true');
+        expect(button('contents').getAttribute('tabindex')).toBe('0');
+        expect(button('options').getAttribute('aria-selected')).toBe('false');
+        expect(button('options').getAttribute('tabindex')).toBe('-1');
+      });
+
+      it('starts on the first tab when there is no Questions tab', () => {
+        render({ options: '', grading: true });
+
         expect(activeNames()).toEqual(['options']);
-        expect(panel('options').classList.contains('active')).toBe(true);
-        expect(panel('options').classList.contains('show')).toBe(true);
-        expect(panel('contents').classList.contains('active')).toBe(false);
-        expect(button('options').getAttribute('aria-selected')).toBe('true');
-        expect(button('options').getAttribute('tabindex')).toBe('0');
-        expect(button('contents').getAttribute('aria-selected')).toBe('false');
-        expect(button('contents').getAttribute('tabindex')).toBe('-1');
       });
 
       it('starts on the tab named by active, unless that tab is not shown', () => {
-        render({ options: '', contents: '', active: 'contents' });
-        expect(activeNames()).toEqual(['contents']);
-        expect(panel('contents').classList.contains('active')).toBe(true);
+        render({ options: '', contents: '', active: 'options' });
+        expect(activeNames()).toEqual(['options']);
+        expect(panel('options').classList.contains('active')).toBe(true);
 
         render({ options: '', contents: '', active: 'grading' });
-        expect(activeNames()).toEqual(['options']);
+        expect(activeNames()).toEqual(['contents']);
       });
 
       it('links each tab and its panel for assistive technology', () => {
@@ -1026,18 +1063,18 @@ describe('common_idevices_edition.js', () => {
         expect(tabs().show('testForm', 'grading')).toBe(false);
         expect(tabs().show('otherForm', 'options')).toBe(false);
         expect(tabs().show('bad id', 'options')).toBe(false);
-        expect(activeNames()).toEqual(['options']);
+        expect(activeNames()).toEqual(['contents']);
       });
 
       it('only switches the tabs of its own form', () => {
         document.body.innerHTML =
           tabs().getHtml('formA', { options: '', contents: '' }) + tabs().getHtml('formB', { options: '', contents: '' });
 
-        tabs().show('formA', 'contents');
+        tabs().show('formA', 'options');
 
-        expect(activeNames('formA')).toEqual(['contents']);
-        expect(activeNames('formB')).toEqual(['options']);
-        expect(panel('options', 'formB').classList.contains('active')).toBe(true);
+        expect(activeNames('formA')).toEqual(['options']);
+        expect(activeNames('formB')).toEqual(['contents']);
+        expect(panel('contents', 'formB').classList.contains('active')).toBe(true);
       });
     });
 
@@ -1087,7 +1124,7 @@ describe('common_idevices_edition.js', () => {
         render({ options: '', contents: '' });
 
         expect(press('options', 'Enter').defaultPrevented).toBe(false);
-        expect(activeNames()).toEqual(['options']);
+        expect(activeNames()).toEqual(['contents']);
       });
 
       it('binds each handler once, however many times it is called', () => {
@@ -1143,16 +1180,17 @@ describe('common_idevices_edition.js', () => {
         expect(document.getElementById('ci18n_msgQuote').value).toBe('He said "hi" & left');
       });
 
-      it('lays the fields out in two columns of the Bootstrap grid, after the introduction', () => {
+      it('lays the fields out in two columns of the Bootstrap grid, and nothing else', () => {
         render({ msgPlay: 'Play' });
 
         const row = document.querySelector('.row');
         expect([...row.classList]).toEqual(['row', 'row-cols-1', 'row-cols-md-2', 'g-3']);
         expect(row.querySelector('.col.ci18n #ci18n_msgPlay')).not.toBeNull();
-        expect(document.body.firstElementChild.textContent).toBe('Type your own texts or use the default ones:');
+        // The introduction is the message of the Texts tab.
+        expect(document.body.children).toHaveLength(1);
       });
 
-      it('renders only the introduction when there are no fields', () => {
+      it('renders an empty grid when there are no fields', () => {
         render(undefined);
 
         expect(document.querySelectorAll('.ci18n')).toHaveLength(0);
@@ -1435,7 +1473,7 @@ describe('common_idevices_edition.js', () => {
       });
 
       it('writes the message into TinyMCE once it has started', () => {
-        const editor = { setContent: vi.fn(), getContent: vi.fn() };
+        const editor = { initialized: true, setContent: vi.fn(), getContent: vi.fn() };
         withEditor(editor, () => {
           mount();
 
@@ -1456,7 +1494,7 @@ describe('common_idevices_edition.js', () => {
       });
 
       it('reads the message from TinyMCE once it has started', () => {
-        const editor = { setContent: vi.fn(), getContent: vi.fn(() => '<p>From the editor</p>') };
+        const editor = { initialized: true, setContent: vi.fn(), getContent: vi.fn(() => '<p>From the editor</p>') };
         withEditor(editor, () => {
           mount();
           checkbox().checked = true;
@@ -1486,6 +1524,119 @@ describe('common_idevices_edition.js', () => {
         percentage().value = '300';
 
         expect(feedback().getValues().percentajeFB).toBe(100);
+      });
+    });
+
+    describe('getText and setText', () => {
+      it('read and write the textarea before TinyMCE starts', () => {
+        mount();
+
+        feedback().setText('<p>Bravo</p>');
+
+        expect(textarea().value).toBe('<p>Bravo</p>');
+        expect(feedback().getText()).toBe('<p>Bravo</p>');
+      });
+
+      it('read and write the editor once TinyMCE has started', () => {
+        const editor = { initialized: true, setContent: vi.fn(), getContent: vi.fn(() => '<p>From the editor</p>') };
+        withEditor(editor, () => {
+          mount();
+
+          feedback().setText('<p>New</p>');
+
+          expect(editor.setContent).toHaveBeenCalledWith('<p>New</p>');
+          expect(textarea().value).toBe('');
+          expect(feedback().getText()).toBe('<p>From the editor</p>');
+        });
+      });
+
+      it('write the textarea while TinyMCE is still starting, which it loads when ready', () => {
+        // The iDevice loads its saved data while the shared editors are still
+        // starting: content given to the editor then would be lost.
+        const editor = { initialized: false, setContent: vi.fn(), getContent: vi.fn(() => '') };
+        withEditor(editor, () => {
+          mount();
+
+          feedback().setText('<p>Saved message</p>');
+
+          expect(editor.setContent).not.toHaveBeenCalled();
+          expect(textarea().value).toBe('<p>Saved message</p>');
+          expect(feedback().getText()).toBe('<p>Saved message</p>');
+        });
+      });
+
+      it('give an empty message when there is no editor at all', () => {
+        document.body.innerHTML = '';
+
+        expect(feedback().getText()).toBe('');
+      });
+    });
+
+    describe('setRequired', () => {
+      it('locks the switch on and shows the editor while the feedback is compulsory', () => {
+        mount();
+
+        feedback().setRequired(true);
+
+        expect(feedback().isRequired()).toBe(true);
+        expect(checkbox().checked).toBe(true);
+        expect(checkbox().disabled).toBe(true);
+        expect(percentage().disabled).toBe(false);
+        expect(editorBlock().classList.contains('d-none')).toBe(false);
+      });
+
+      it("gives the author's own choice back when the feedback is optional again", () => {
+        mount();
+
+        feedback().setRequired(true);
+        feedback().setRequired(false);
+        expect(feedback().isRequired()).toBe(false);
+        expect(checkbox().checked).toBe(false);
+        expect(checkbox().disabled).toBe(false);
+        expect(editorBlock().classList.contains('d-none')).toBe(true);
+
+        feedback().setValues({ feedBack: true });
+        feedback().setRequired(true);
+        feedback().setRequired(false);
+        expect(checkbox().checked).toBe(true);
+        expect(editorBlock().classList.contains('d-none')).toBe(false);
+      });
+
+      it('changes nothing when asked for the state it is already in', () => {
+        mount();
+        feedback().setValues({ feedBack: true });
+
+        feedback().setRequired(false);
+        expect(checkbox().checked).toBe(true);
+
+        feedback().setRequired(true);
+        feedback().setRequired(true);
+        feedback().setRequired(false);
+        expect(checkbox().checked).toBe(true);
+      });
+
+      it("keeps the switch on while compulsory and takes loaded data as the author's choice", () => {
+        mount();
+        feedback().setRequired(true);
+
+        feedback().setValues({ feedBack: false, percentajeFB: 40, textFeedBack: 'x' });
+        expect(checkbox().checked).toBe(true);
+        expect(percentage().disabled).toBe(false);
+        expect(percentage().value).toBe('40');
+
+        feedback().setRequired(false);
+        expect(checkbox().checked).toBe(false);
+      });
+
+      it("asks for the message while compulsory, and saves the author's choice", () => {
+        mount();
+        feedback().setRequired(true);
+
+        expect(feedback().getValues()).toBe(false);
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+
+        feedback().setValues({ textFeedBack: 'Well done' });
+        expect(feedback().getValues()).toEqual({ feedBack: false, percentajeFB: 100, textFeedBack: 'Well done' });
       });
     });
 

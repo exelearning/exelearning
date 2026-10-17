@@ -1401,7 +1401,7 @@ global.$exeDevices = {
   },
 };
 
-const createEditionMock = () => ({
+global.$exeDevicesEdition = {
   iDevice: {
     // Wires the form's tab strip. Every iDevice with more than one tab calls
     // it from createForm, so a stub has to exist for those forms to render.
@@ -1420,12 +1420,17 @@ const createEditionMock = () => ({
       observers: mockGamificationObservers,
     },
   },
-});
+};
 
-global.$exeDevicesEdition = createEditionMock();
-// Refactored iDevices use $exeIDevicesEdition (common_idevices_edition.js)
-// instead. It starts as the same mock; let it diverge as that object changes.
-global.$exeIDevicesEdition = createEditionMock();
+// Refactored iDevices use $exeIDevicesEdition (common_idevices_edition.js).
+// Their tests get the real object, not a mock: it only renders and wires the
+// shared form blocks, and a mock of it would drift as the refactor changes it.
+// eslint-disable-next-line no-eval
+(0, eval)(
+  `${readFileSync(join(__vitest_setup_dirname, 'app/common/common_idevices_edition.js'), 'utf-8')}
+//# sourceURL=common_idevices_edition.js`
+);
+global.$exeIDevicesEdition = globalThis.$exeIDevicesEdition;
 
 if (typeof window !== 'undefined') {
   window.$exeDevices = global.$exeDevices;

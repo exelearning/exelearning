@@ -93,8 +93,7 @@ var $exeIDevicesEdition = {
                                 <input type="text" class="form-control" name="${id}" id="${id}" value="${escape(text)}" />
                             </div>`;
                     }
-                    return `<p>${_('Type your own texts or use the default ones:')}</p>
-                        <div class="row row-cols-1 row-cols-md-2 g-3">${html}</div>`;
+                    return `<div class="row row-cols-1 row-cols-md-2 g-3">${html}</div>`;
                 },
                 setLanguageTabValues: function (obj) {
                     if (typeof obj == "object") {
@@ -131,7 +130,7 @@ var $exeIDevicesEdition = {
                                     </div>
                                     <div class="d-flex align-items-center flex-nowrap gap-2">
                                         <label for="eXeProgressReportID" class="mb-0">${_('Identifier')}:</label>
-                                        <input type="text" class="form-control form-control-sm" id="eXeProgressReportID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                                        <input type="text" class="form-control form-control-sm" id="eXeProgressReportID" disabled value="${window.eXeLearning?.app?.project?.odeId || ''}"/>
                                         <a href="#eXeProgressReportHelp" id="eXeProgressReportHelpLnk" title="${_('Help')}">
                                             <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" style="width:18px;height:18px;min-width:18px;min-height:18px;max-width:18px;max-height:18px"/>
                                         </a>
@@ -375,7 +374,6 @@ var $exeIDevicesEdition = {
             itinerary: {
                 getContents: function () {
                     return `
-                        <p class="exe-block-info">${_("You might create a sequence of challenges where players won't be able to access a new game or challenge until they obtain a key from previous activity. For this purpose, you might set up an access code as well as a message that will be displayed to players when they reach a fixed percentage of correct answers, which they can use as a password for a new challenge or a following activity.")}</p>
                         <div class="toggle-item mb-3" data-target="eXeGameShowCodeAccessOptions">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="eXeGameShowCodeAccess" />
@@ -531,9 +529,78 @@ var $exeIDevicesEdition = {
                     return Math.max(5, Math.min(percentage, 100));
                 },
 
+                /**
+                 * @returns {Object|null} The message's TinyMCE editor, once it
+                 * has finished starting. An editor still starting is left out:
+                 * it loads its textarea when it is ready, so content given to
+                 * it before then would be lost.
+                 */
                 getEditor: function () {
                     if (typeof tinymce === 'undefined' || typeof tinymce.get !== 'function') return null;
-                    return tinymce.get('eXeGameFeedBackEditor') || null;
+                    const editor = tinymce.get('eXeGameFeedBackEditor');
+                    return editor && editor.initialized ? editor : null;
+                },
+
+                /**
+                 * @returns {string} The message (HTML), from TinyMCE once it
+                 * has started and from its textarea before.
+                 */
+                getText: function () {
+                    const editor = $exeIDevicesEdition.iDevice.gamification.feedback.getEditor();
+                    return editor ? editor.getContent() : $('#eXeGameFeedBackEditor').val() || '';
+                },
+
+                /**
+                 * @param {string} html The message. Before TinyMCE starts, the
+                 * textarea is what it will load.
+                 */
+                setText: function (html) {
+                    const editor = $exeIDevicesEdition.iDevice.gamification.feedback.getEditor();
+                    if (editor) editor.setContent(html);
+                    else $('#eXeGameFeedBackEditor').val(html);
+                },
+
+                /**
+                 * Show the editor and enable the percentage while the switch
+                 * is on.
+                 */
+                refresh: function () {
+                    const enabled = $('#eXeGameHasFeedBack').is(':checked');
+                    $('#eXeGameFeedbackP').toggleClass('d-none', !enabled);
+                    $('#eXeGamePercentajeFB').prop('disabled', !enabled);
+                },
+
+                /**
+                 * @returns {boolean} Whether the iDevice made the feedback
+                 * compulsory with setRequired.
+                 */
+                isRequired: function () {
+                    return $('#eXeGameHasFeedBack').data('required') === true;
+                },
+
+                /**
+                 * Make the feedback compulsory, or optional again. Some game
+                 * modes are nothing but the feedback -- "No score": answer
+                 * right to get the information -- so while one is chosen the
+                 * switch stays on and locked, and the message has to be
+                 * written. The author's own choice is kept, and comes back
+                 * when the feedback is optional again.
+                 *
+                 * @param {boolean} required
+                 */
+                setRequired: function (required) {
+                    const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
+                    const $switch = $('#eXeGameHasFeedBack');
+                    if (required === feedback.isRequired()) return;
+                    if (required) {
+                        $switch.data('authorChoice', $switch.is(':checked'));
+                        $switch.data('required', true).prop({ checked: true, disabled: true });
+                    } else {
+                        $switch
+                            .data('required', false)
+                            .prop({ checked: $switch.data('authorChoice') === true, disabled: false });
+                    }
+                    feedback.refresh();
                 },
 
                 /**
@@ -547,30 +614,29 @@ var $exeIDevicesEdition = {
                     const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
                     const values = data || {};
                     const enabled = values.feedBack === true || values.feedBack === 'true';
-                    $('#eXeGameHasFeedBack').prop('checked', enabled);
-                    $('#eXeGamePercentajeFB')
-                        .val(feedback.normalizePercentage(values.percentajeFB))
-                        .prop('disabled', !enabled);
-                    $('#eXeGameFeedbackP').toggleClass('d-none', !enabled);
-                    if (typeof values.textFeedBack === 'string') {
-                        // Before TinyMCE starts, the textarea is what it will load.
-                        const editor = feedback.getEditor();
-                        if (editor) editor.setContent(values.textFeedBack);
-                        else $('#eXeGameFeedBackEditor').val(values.textFeedBack);
-                    }
+                    const $switch = $('#eXeGameHasFeedBack');
+                    // While compulsory the switch stays on: the value is the
+                    // author's choice, for when it is optional again.
+                    if (feedback.isRequired()) $switch.data('authorChoice', enabled);
+                    else $switch.prop('checked', enabled);
+                    $('#eXeGamePercentajeFB').val(feedback.normalizePercentage(values.percentajeFB));
+                    feedback.refresh();
+                    if (typeof values.textFeedBack === 'string') feedback.setText(values.textFeedBack);
                 },
 
                 /**
                  * @returns {Object|false} { feedBack, percentajeFB, textFeedBack },
                  * or false (after telling the author) when the feedback is on
-                 * but has no message.
+                 * or compulsory but has no message. While compulsory, feedBack
+                 * is the author's own choice.
                  */
                 getValues: function () {
                     const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
-                    const feedBack = $('#eXeGameHasFeedBack').is(':checked');
-                    const editor = feedback.getEditor();
-                    const textFeedBack = editor ? editor.getContent() : $('#eXeGameFeedBackEditor').val() || '';
-                    if (feedBack && textFeedBack.trim().length === 0) {
+                    const $switch = $('#eXeGameHasFeedBack');
+                    const required = feedback.isRequired();
+                    const feedBack = required ? $switch.data('authorChoice') === true : $switch.is(':checked');
+                    const textFeedBack = feedback.getText();
+                    if ((feedBack || required) && textFeedBack.trim().length === 0) {
                         eXe.app.alert(_('Message to display when passing the game'));
                         return false;
                     }
@@ -584,9 +650,7 @@ var $exeIDevicesEdition = {
                 addEvents: function () {
                     const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
                     $('#eXeGameHasFeedBack').on('change', function () {
-                        const enabled = $(this).is(':checked');
-                        $('#eXeGameFeedbackP').toggleClass('d-none', !enabled);
-                        $('#eXeGamePercentajeFB').prop('disabled', !enabled);
+                        feedback.refresh();
                     });
                     $('#eXeGamePercentajeFB').on('focusout', function () {
                         this.value = feedback.normalizePercentage(this.value);
@@ -786,7 +850,8 @@ var $exeIDevicesEdition = {
 
             share: {
                 /**
-                 * The contents of the Import/Export tab.
+                 * The question import and export controls. Not a form tab: they
+                 * are to open in a window from the Questions tab.
                  *
                  * @param {boolean} [allowtext=false] Accept txt and xml files.
                  * @param {number} [type=0] Unused; kept for the callers' order.
@@ -821,7 +886,8 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
-                 * The contents of the AI tab.
+                 * The controls to generate questions with AI. Not a form tab:
+                 * they are to open in a window from the Questions tab.
                  *
                  * @param {number} [type=0] The game, for the prompt.
                  * @param {Object} [options] Prompt options of the game.
@@ -2777,7 +2843,23 @@ var $exeIDevicesEdition = {
             /**
              * The shared form tabs, in the order every iDevice shows them.
              */
-            order: ['instructions', 'options', 'contents', 'passwords', 'feedback', 'after', 'grading', 'texts', 'importExport', 'ai'],
+            order: ['instructions', 'options', 'contents', 'passwords', 'feedback', 'after', 'grading', 'texts'],
+
+            /**
+             * The informative message that opens a tab: what is done there,
+             * broadly. Same alert as the iDevice description, with an icon
+             * from the application's icon font.
+             *
+             * @param {string} text The message (HTML).
+             * @returns {string} '' when there is no text.
+             */
+            getInfo: function (text) {
+                if (!text) return '';
+                return `<div class="alert alert-info d-flex align-items-start gap-2 mb-3" role="note">
+                        <span class="auto-icon fs-5 lh-1" aria-hidden="true">info</span>
+                        <p class="m-0">${text}</p>
+                    </div>`;
+            },
 
             /**
              * Whether a value is usable as an element id or as part of one.
@@ -2790,12 +2872,13 @@ var $exeIDevicesEdition = {
             },
 
             /**
-             * Title and contents of one of the shared tabs.
+             * Title, informative message and contents of one of the shared
+             * tabs.
              *
              * @param {string} name A name in `order`.
              * @param {*} value The value `config` gives that tab.
              * @param {Object} config The whole `getHtml` configuration.
-             * @returns {{title: string, content: string}}
+             * @returns {{title: string, info: string, content: string}}
              */
             getDefinition: function (name, value, config) {
                 const iDevice = $exeIDevicesEdition.iDevice;
@@ -2804,46 +2887,64 @@ var $exeIDevicesEdition = {
                 const html = typeof value === 'string' ? value : '';
                 switch (name) {
                     case 'instructions':
-                        return { title: _('Instructions'), content: gamification.instructions.getEditor(html) };
-                    case 'options':
-                        return { title: _('Options'), content: html };
-                    case 'contents':
-                        if (typeof value === 'string') return { title: _('Content'), content: value };
-                        return { title: settings.title || _('Content'), content: settings.content || '' };
-                    case 'passwords':
-                        return { title: _('Passwords'), content: gamification.itinerary.getContents() };
-                    case 'feedback':
-                        return { title: _('Feedback'), content: gamification.feedback.getContents() };
-                    case 'after':
-                        return { title: _('Content after'), content: iDevice.common.getTextEditor('after') };
-                    case 'grading':
-                        return { title: _('Grading'), content: gamification.scorm.getContents(config.path, settings) };
-                    case 'texts':
-                        return { title: _('Custom texts'), content: gamification.common.getLanguageContents(value) };
-                    case 'importExport':
                         return {
-                            title: _('Import/Export'),
-                            content: gamification.share.getContents(
-                                settings.allowText === true,
-                                settings.type || 0,
-                                settings.exportQuestions === true
-                            ),
+                            title: _('Instructions'),
+                            info: _('Write the instructions the learners will read before they start the activity.'),
+                            content: gamification.instructions.getEditor(html),
                         };
-                    case 'ai':
+                    case 'options':
                         return {
-                            title: _('AI'),
-                            content: gamification.share.getIAContents(settings.type || 0, settings.options || {}),
+                            title: _('Options'),
+                            info: _('Choose how the activity works: its score, its time, its lives and the rest of its settings.'),
+                            content: html,
+                        };
+                    case 'contents':
+                        return {
+                            title: _('Questions'),
+                            info: _('Add the questions of the activity and edit them one by one.'),
+                            content: html,
+                        };
+                    case 'passwords':
+                        return {
+                            title: _('Passwords'),
+                            info: _("You might create a sequence of challenges where players won't be able to access a new game or challenge until they obtain a key from previous activity. For this purpose, you might set up an access code as well as a message that will be displayed to players when they reach a fixed percentage of correct answers, which they can use as a password for a new challenge or a following activity."),
+                            content: gamification.itinerary.getContents(),
+                        };
+                    case 'feedback':
+                        return {
+                            title: _('Feedback'),
+                            info: _('Show the learners a message when they reach a percentage of correct answers.'),
+                            content: gamification.feedback.getContents(),
+                        };
+                    case 'after':
+                        return {
+                            title: _('After'),
+                            info: _('Add the content that will be shown after the activity.'),
+                            content: iDevice.common.getTextEditor('after'),
+                        };
+                    case 'grading':
+                        return {
+                            title: _('Grading'),
+                            info: _('Decide whether the score is saved in the LMS, how much the activity counts and the minimum mark to pass it.'),
+                            content: gamification.scorm.getContents(config.path, settings),
+                        };
+                    case 'texts':
+                        return {
+                            title: _('Texts'),
+                            info: _('Type your own texts or use the default ones:'),
+                            content: gamification.common.getLanguageContents(value),
                         };
                 }
-                return { title: name, content: '' };
+                return { title: name, info: '', content: '' };
             },
 
             /**
              * The horizontal tabs at the top of an iDevice form, styled with
              * Bootstrap's nav-tabs. Each key of `config` is a tab: it is shown
              * when the key is present and not false, and its value is its
-             * contents. Tabs always come in the order of `tabs.order`, so
-             * every iDevice lays out its form the same way.
+             * contents. Tabs always come in the order of `tabs.order` and
+             * keep their titles, so every iDevice lays out its form the same
+             * way; each panel opens with a message saying what is done there.
              *
              * Call `tabs.bind(id)` once the HTML is in the document.
              *
@@ -2853,25 +2954,20 @@ var $exeIDevicesEdition = {
              * @param {string} [config.instructions] Default instructions
              * (HTML); '' for none.
              * @param {string} [config.options] The game options (HTML).
-             * @param {string|{title: string, content: string}} [config.contents]
-             * The questions, cards... (HTML). Pass an object to rename the
-             * tab, e.g. { title: _('Cards'), content }.
+             * @param {string} [config.contents] The questions, cards,
+             * words... of the activity (HTML), in the Questions tab.
              * @param {boolean} [config.passwords] Access code and message.
              * @param {boolean} [config.feedback] See gamification.feedback.
              * @param {boolean} [config.after] The "Content after" editor.
              * @param {boolean|Object} [config.grading] Options of
              * gamification.scorm.getContents.
              * @param {Object|Array} [config.texts] The iDevice's custom texts.
-             * @param {boolean|Object} [config.importExport] { allowText, type,
-             * exportQuestions }, as gamification.share.getContents.
-             * @param {boolean|Object} [config.ai] { type, options }, as
-             * gamification.share.getIAContents.
-             * @param {Array<{name: string, title: string, content: string}>} [config.extra]
+             * @param {Array<{name: string, title: string, info: string, content: string}>} [config.extra]
              * Tabs of this iDevice only, after the shared ones.
              * @param {string} [config.path] The iDevice's path, used by the
              * Grading tab (omit it to leave the progress report out).
              * @param {string} [config.active] Name of the tab shown first;
-             * the first tab by default.
+             * by default Questions, or the first tab when there is none.
              * @returns {string} '' when the id is not valid or no tab is shown.
              */
             getHtml: function (id, config) {
@@ -2889,11 +2985,20 @@ var $exeIDevicesEdition = {
                     // The name ends up in the tab's ids, so it has to be valid and unique.
                     if (!tab || !tabs.isValidId(tab.name)) return;
                     if (list.some((item) => item.name === tab.name)) return;
-                    list.push({ name: tab.name, title: tab.title || tab.name, content: tab.content || '' });
+                    list.push({
+                        name: tab.name,
+                        title: tab.title || tab.name,
+                        info: tab.info || '',
+                        content: tab.content || '',
+                    });
                 });
                 if (list.length === 0) return '';
 
-                const active = list.some((tab) => tab.name === config.active) ? config.active : list[0].name;
+                // The questions are what an author spends the editing on.
+                const shown = (name) => list.some((tab) => tab.name === name);
+                let active = list[0].name;
+                if (shown(config.active)) active = config.active;
+                else if (shown('contents')) active = 'contents';
                 let nav = '';
                 let panels = '';
                 list.forEach(function (tab) {
@@ -2905,7 +3010,7 @@ var $exeIDevicesEdition = {
                             <button type="button" class="nav-link${isActive ? ' active' : ''}" id="${tabId}" data-exe-tab="${tab.name}" role="tab" aria-controls="${panelId}" aria-selected="${isActive}" tabindex="${isActive ? 0 : -1}">${escape(tab.title)}</button>
                         </li>`;
                     panels += `
-                        <div class="tab-pane${isActive ? ' active show' : ''}" id="${panelId}" role="tabpanel" aria-labelledby="${tabId}" tabindex="0">${tab.content}</div>`;
+                        <div class="tab-pane${isActive ? ' active show' : ''}" id="${panelId}" role="tabpanel" aria-labelledby="${tabId}" tabindex="0">${tabs.getInfo(tab.info)}${tab.content}</div>`;
                 });
                 return `
                     <ul class="nav nav-tabs" id="${id}-tabs" role="tablist">${nav}</ul>
