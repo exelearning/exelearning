@@ -31,6 +31,8 @@ const realEnvironment = {
     jQuery: global.jQuery,
     document: global.document,
     translate: global._,
+    edition: global.$exeIDevicesEdition,
+    tinymce: global.tinymce,
 };
 
 /**
@@ -150,20 +152,6 @@ function loadIdevice(code) {
             }
           },
         },
-      },
-    },
-  };
-
-  // Mock $exeDevicesEdition
-  global.$exeDevicesEdition = {
-    iDevice: {
-      gamification: {
-        common: {
-          getLanguageTab: () => '',
-        },
-      },
-      tabs: {
-        init: () => {},
       },
     },
   };
@@ -558,7 +546,7 @@ describe('az-quiz-game iDevice', () => {
         // so rendering them again would show each control twice.
         expect(source).not.toContain('passScore.getContents(');
         expect(source).not.toContain('progressBar.getContents(');
-        expect(source).toContain('gamification.scorm.getTab(');
+        expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
     });
 
     it('restores the control when the iDevice is reopened', () => {
@@ -602,7 +590,9 @@ describe('az-quiz-game edition lifecycle', () => {
                 },
             },
         };
-        global.$exeDevicesEdition = {
+        // The shared blocks have their own tests: here they are stand-ins, and
+        // afterEach puts the real object back.
+        global.$exeIDevicesEdition = {
             iDevice: {
                 gamification: {
                     progressBar: { addEvents: vi.fn() },
@@ -610,9 +600,7 @@ describe('az-quiz-game edition lifecycle', () => {
                     itinerary: { addEvents: vi.fn() },
                     share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
                     helpers: { stopSound: vi.fn(), playSound: vi.fn() },
-                    common: { getLanguageTab: () => '' },
                 },
-                tabs: { init: () => {} },
             },
         };
 
@@ -658,6 +646,7 @@ describe('az-quiz-game edition lifecycle', () => {
         // into the next one.
         $exeDevice.$lifecycle.destroy();
         $.fx.off = savedAnimationsOff;
+        global.$exeIDevicesEdition = realEnvironment.edition;
         document.body.innerHTML = '';
     });
 
@@ -666,6 +655,14 @@ describe('az-quiz-game edition lifecycle', () => {
             $('.toggle-item').trigger('click');
 
             expect($('#tglInput').is(':checked')).toBe(true);
+        });
+
+        it('leaves a locked switch alone', () => {
+            $('#tglInput').prop('disabled', true);
+
+            $('.toggle-item').trigger('click');
+
+            expect($('#tglInput').is(':checked')).toBe(false);
         });
 
         it('stops toggling once the edition is closed', () => {
@@ -894,7 +891,7 @@ describe('az-quiz-game minimum score text', () => {
         global.$exeDevices = {
             iDevice: { gamification: { helpers: { encrypt: json => json } } },
         };
-        global.tinymce = { editors: [{}, { getContent: () => '' }] };
+        global.tinymce = { get: () => ({ getContent: () => '' }) };
         global.$exeDevice = undefined;
         $exeDevice = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
         $exeDevice.refreshTranslations();
@@ -903,7 +900,7 @@ describe('az-quiz-game minimum score text', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
-        delete global.tinymce;
+        global.tinymce = realEnvironment.tinymce;
         document.body.innerHTML = '';
     });
 
@@ -921,5 +918,161 @@ describe('az-quiz-game minimum score text', () => {
         renderCustomTexts({ msgPassScore: 'Nota mínima para superar la actividad: %s' });
 
         expect(saveAndReadMsgs().msgPassScore).toBe('Nota mínima para superar la actividad: %s');
+    });
+});
+
+/**
+ * The edition on $exeIDevicesEdition: the form in the shared tabs, opened for
+ * real with the shared object the setup loads.
+ */
+describe('az-quiz-game edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/az-quiz-game/edition/';
+    const panel = (name) => document.getElementById(`roscoIdeviceForm-panel-${name}`);
+    const tabNames = () =>
+        [...document.querySelectorAll('#roscoIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const fakeEditors = (contents) =>
+        vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+            id in contents
+                ? {
+                      initialized: true,
+                      getContent: () => contents[id],
+                      setContent: (html) => {
+                          contents[id] = html;
+                      },
+                  }
+                : null
+        );
+    let device;
+    let previousDevices;
+
+    beforeEach(() => {
+        global.$ = realEnvironment.$;
+        global.jQuery = realEnvironment.jQuery;
+        global.document = realEnvironment.document;
+        global._ = realEnvironment.translate;
+        global.$exeIDevicesEdition = realEnvironment.edition;
+        global.tinymce = realEnvironment.tinymce;
+        previousDevices = global.$exeDevices;
+        // Export-side helpers (common.js) that loading and saving go through.
+        global.$exeDevices = {
+            iDevice: {
+                gamification: {
+                    media: { extractURLGD: (url) => url },
+                    helpers: {
+                        supportedBrowser: () => true,
+                        isJsonString: (text) => {
+                            try {
+                                return JSON.parse(text);
+                            } catch {
+                                return false;
+                            }
+                        },
+                        decrypt: (text) => text,
+                        encrypt: (text) => text,
+                    },
+                },
+            },
+        };
+        document.body.innerHTML = '<div id="azBody"></div>';
+        global.$exeDevice = undefined;
+        device = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
+        device.init(document.getElementById('azBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        vi.restoreAllMocks();
+        global.$exeDevices = previousDevices;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, with no feedback, and opens on its words', () => {
+        // No feedback: the A-Z quiz neither saves nor plays one yet.
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Observe the letters, identify and fill in the missing words.'
+        );
+        expect(panel('options').querySelector('#roscoOptions #roscoShowMinimize')).not.toBeNull();
+        expect(panel('contents').querySelectorAll('#roscoDataWord .roscoFileWordEdition')).toHaveLength(
+            device.letters.length
+        );
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgReady').value).toBe('Ready?');
+    });
+
+    it('explains how its words are written in the message of the Questions tab', () => {
+        const info = panel('contents').querySelectorAll('.alert-info');
+
+        expect(info).toHaveLength(1);
+        expect(info[0].textContent).toContain('Provide a word and its definition');
+        expect(info[0].querySelector(`img[src="${PATH}roscoIcoStart.png"]`)).not.toBeNull();
+        expect(document.querySelector('.exe-idevice-info')).toBeNull();
+    });
+
+    it('offers Import, Export and Create with AI, with the prompt of the A-Z quiz', () => {
+        const build = vi.spyOn(global.$exeIDevicesEdition.iDevice.gamification.share, 'buildIAPromptText');
+        device.createForm();
+
+        const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+        expect(build).toHaveBeenCalledWith(1, {});
+    });
+
+    it('keeps its broad rules out of the shared tabs', () => {
+        const css = readFileSync(join(__dirname, 'az-quiz-game.css'), 'utf-8');
+
+        expect(css).not.toMatch(/#roscoIdeviceForm\s+label\s*[,{]/);
+        expect(css).not.toMatch(/#roscoIdeviceForm\s+div\s*>/);
+        expect(css).toContain('#roscoOptions div>input.form-control');
+        expect(css).not.toContain('exe-form-tab');
+    });
+
+    it('reads its editors by id, whatever their order', () => {
+        const editors = { eXeIdeviceTextAfter: '<p>After</p>', eXeGameInstructions: '<p>Instructions</p>' };
+        fakeEditors(editors);
+        $('.roscoWordEdition').first().val('Abeja');
+        $('.roscoDefinitionEdition').first().val('Insecto que hace miel');
+
+        const data = device.validateData();
+
+        expect(data.instructions).toBe('<p>Instructions</p>');
+        expect(unescape(data.textAfter)).toBe('<p>After</p>');
+        expect(device.save()).toContain('<div class="rosco-extra-content"><p>After</p></div>');
+    });
+
+    it('imports a game into its editors by id', () => {
+        const editors = { eXeIdeviceTextAfter: '', eXeGameInstructions: '' };
+        fakeEditors(editors);
+        const game = {
+            typeGame: 'Rosco',
+            instructions: '<p>Imported instructions</p>',
+            textAfter: escape('<p>Imported after</p>'),
+            letters: device.letters,
+            wordsGame: [],
+            itinerary: {
+                showClue: false,
+                clueGame: '',
+                percentageClue: 40,
+                showCodeAccess: false,
+                codeAccess: '',
+                messageCodeAccess: '',
+            },
+            isScorm: 0,
+            textButtonScorm: 'Save score',
+        };
+
+        device.importGame(JSON.stringify(game), 'application/json');
+
+        expect(editors.eXeGameInstructions).toBe('<p>Imported instructions</p>');
+        expect(editors.eXeIdeviceTextAfter).toBe('<p>Imported after</p>');
     });
 });

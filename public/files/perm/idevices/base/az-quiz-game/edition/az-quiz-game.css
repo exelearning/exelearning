@@ -1,4 +1,6 @@
-#roscoIdeviceForm label {
+/* The broad rules stay inside the iDevice's own options and words: the shared tabs look the same in every iDevice. */
+#roscoOptions label,
+#roscoDataWord label {
     display: inline;
 }
 
@@ -27,21 +29,9 @@
     margin: 0;
 }
 
-#roscoIdeviceForm #roscoClue {
-    width: 35%;
-    min-width: 100px;
-    margin-right: 5px;
-}
-
 #roscoIdeviceForm #roscoDuration {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
-}
-
-#roscoIdeviceForm #roscoCodeAccess {
-    width: 20%;
-    min-width: 100px;
-    margin-right: 5px;
 }
 
 #roscoIdeviceForm .roscoFileWordEdition {
@@ -57,35 +47,11 @@
     margin: 10px auto;
 }
 
-#roscoIdeviceForm .roscoWordMutimedia {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-#roscoIdeviceForm .roscoReport {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-}
-
 #roscoIdeviceForm .roscoLinkStart,
 #roscoIdeviceForm .roscoLinkClose,
 #roscoIdeviceForm .roscoPlayAudio,
 #roscoIdeviceForm .roscoLinkSelectImage,
 #roscoIdeviceForm .roscoStartEdition,
-#roscoIdeviceForm .roscoSelectImageEdition,
-#roscoIdeviceForm .roscoCloseImage,
-#roscoIdeviceForm .roscoPlayAudio {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    margin: 0 3px;
-}
-
-#roscoIdeviceForm .roscoLinkClose,
-#roscoIdeviceForm .roscoLinkSelectImage,
 #roscoIdeviceForm .roscoSelectImageEdition,
 #roscoIdeviceForm .roscoCloseImage {
     width: 32px;
@@ -113,13 +79,6 @@
     padding: 0;
 }
 
-#roscoIdeviceForm .roscoHomeImagenEdition {
-    width: 100%;
-    position: absolute;
-    left: 0;
-    top: 0
-}
-
 #roscoIdeviceForm .roscoWordEdition {
     width: 100% !important;
     margin: 0 3px;
@@ -128,10 +87,6 @@
 #roscoIdeviceForm .roscoDefinitionEdition {
     width: 100% !important;
     margin: 0 3px;
-}
-
-#roscoIdeviceForm #roscoMessageCodeAccess {
-    width: 30%;
 }
 
 #roscoIdeviceForm .roscoImageEdition {
@@ -204,13 +159,15 @@
     min-width: 0;
 }
 
-#roscoIdeviceForm div>label {
+#roscoOptions div>label,
+#roscoDataWord div>label {
     display: inline-block;
     margin: 0 !important;
     vertical-align: middle;
 }
 
-#roscoIdeviceForm div>input.form-control {
+#roscoOptions div>input.form-control,
+#roscoDataWord div>input.form-control {
     display: inline-block;
     width: auto;
     vertical-align: middle;
@@ -218,14 +175,6 @@
 
 #roscoIdeviceForm .roscoImageBarEdition {
     display: none
-}
-
-#roscoIdeviceForm .roscoAuthorEdition {
-    margin: 0 3px;
-}
-
-#roscoIdeviceForm .roscoAlt {
-    margin: 0 3px;
 }
 
 #roscoIdeviceForm .roscoURLImageEdition,
@@ -287,168 +236,19 @@
     margin: 0 0 0 .35rem;
 }
 
-#roscoIdeviceForm fieldset.exe-fieldset-closed>div>div,
-#roscoIdeviceForm fieldset.exe-fieldset>div>div {
+#roscoOptions>div,
+#roscoDataWord>div {
     margin-bottom: .75rem;
 }
 
-#roscoIdeviceForm fieldset.exe-fieldset-closed>div>div:last-child,
-#roscoIdeviceForm fieldset.exe-fieldset>div>div:last-child {
+#roscoOptions>div:last-child,
+#roscoDataWord>div:last-child {
     margin-bottom: 0;
 }
 
 #roscoIdeviceForm .roscoYImageEdition,
 #roscoIdeviceForm .roscoXImageEdition {
     display: none;
-}
-
-#roscoIdeviceForm .exe-block-info img {
-    vertical-align: middle;
-    margin-left: .2em
-}
-
-.exe-block-close {
-    position: absolute;
-    top: 6px;
-    right: 5px;
-}
-
-#roscoIdeviceFormTab3 p:first-child {
-    margin-top: 0;
-}
-
-#roscoIdeviceFormTab3 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
-}
-
-#roscoIdeviceFormTab3>* {
-    flex: 0 0 48%;
-}
-
-#roscoIdeviceFormTab3> :first-child {
-    flex: 0 0 100%;
-}
-
-@media screen and (max-width:720px) {
-    #roscoIdeviceFormTab3>* {
-        flex: 0 0 100%;
-    }
-}
-
-#roscoIdeviceForm #roscoIdeviceFormTab3 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #0BA1A1;
-    font-weight: 500;
-}
-
-#roscoIdeviceForm #roscoIdeviceFormTab3 input {
-    width: 100%;
-}
-
-.exe-form-tabs {
-    margin: 0 0 1.5em 0;
-    padding: 0;
-    list-style: none
-}
-
-#main .exe-form-tabs li {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    list-style-image: none;
-    display: inline
-}
-
-.exe-form-tabs li:first-child a {
-    border-top-left-radius: 4px;
-    border-bottom-left-radius: 4px
-}
-
-.exe-form-tabs li:last-child a {
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px
-}
-
-.exe-form-tabs a {
-    display: inline-block;
-    padding: .5em 1em;
-    border: 1px solid #CCC;
-    background: #F9F9F9;
-    color: #666
-}
-
-.exe-form-tabs li:not(:last-child) a {
-    border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-    color: #000;
-    background: #FFF;
-    font-weight: 500
-}
-
-#roscoSCORMoptions {
-    visibility: hidden;
-    margin-left: 1.5em
-}
-
-label[for=roscoActivitySCORM] {
-    font-weight: bold
-}
-
-#roscoSCORMinstructionsButton {
-    display: none;
-    color: #777;
-    margin: 10px 0 0 25px
-}
-
-#roscoSCORMinstructionsButton ul {
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-    list-style: none
-}
-
-#roscoSCORMinstructionsButton ul li {
-    margin: 0 0 .5em 0;
-    padding: 0;
-    list-style-image: none
-}
-
-#roscoSCORMinstructionsAuto {
-    display: none;
-    color: #777;
-    margin: 10px 0 0 25px
-}
-
-#roscoSCORMinstructionsAuto ul {
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-    list-style: none
-}
-
-#roscoSCORMinstructionsAuto ul li {
-    margin: 0 0 .5em 0;
-    padding: 0;
-    list-style-image: none
-}
-
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
-}
-
-.GameModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
-
-.GameModeLabel {
-    font-weight: normal
 }
 
 /* Show solution row (extracted time input) */
@@ -488,14 +288,6 @@ label[for=roscoActivitySCORM] {
     margin: 0 0 .5rem 0;
 }
 
-.roscoMetaData .roscoMetaItem label {
-    min-width: auto;
-}
-
-.roscoMetaData .roscoMetaItem input {
-    min-width: 0;
-}
-
 .roscoMetaData .roscoMetaItem {
     flex: 0 0 50%;
     max-width: 50%;
@@ -504,6 +296,7 @@ label[for=roscoActivitySCORM] {
 }
 
 .roscoMetaData .roscoMetaItem label {
+    min-width: auto;
     margin-bottom: 0;
     margin-right: .5rem;
     white-space: nowrap;
