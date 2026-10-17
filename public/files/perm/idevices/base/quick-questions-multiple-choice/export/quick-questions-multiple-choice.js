@@ -16,7 +16,7 @@ var $quickquestionsmultiplechoice = {
     widthImage: 0,
     heightImage: 0,
     hasVideo: false,
-    options: {},
+    options: [],
     videos: [],
     video: {
         player: '',

@@ -25,7 +25,7 @@ var $eXeCompleta = {
         yellow: '#f5efd6',
     },
     image: '',
-    options: {},
+    options: [],
     msgs: '',
     hasSCORMbutton: false,
     isInExe: false,

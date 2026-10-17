@@ -30,7 +30,7 @@ var $eXeIdentifica = {
         yellow: '#fcf4d3',
         correct: '#dcffdc',
     },
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
     initialScore: '',

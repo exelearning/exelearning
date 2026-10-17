@@ -27,7 +27,7 @@ var $eXeDesafio = {
     image: '',
     widthImage: 0,
     heightImage: 0,
-    options: {},
+    options: [],
     msgs: '',
     fontSize: '1em',
     isInExe: false,

@@ -33,7 +33,7 @@ var $quickquestionsvideo = {
     image: '',
     widthImage: 0,
     heightImage: 0,
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
     msgs: '',

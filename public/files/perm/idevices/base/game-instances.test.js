@@ -36,4 +36,15 @@ describe('game runtimes keep options aligned with their activities', () => {
             expect(body).not.toMatch(/\.options\.push\(/);
         }
     );
+
+    it.each(
+        runtimes
+            .filter(({ code }) => /\.options\.length\s*=/.test(loadGameBody(code)))
+            .map(({ file, code }) => [file.slice(baseDir.length + 1), code])
+    )(
+        '%s starts with an options array (setting .length on {} keeps it an object)',
+        (_file, code) => {
+            expect(code).toMatch(/\n {4}options: \[\],/);
+        }
+    );
 });

@@ -34,7 +34,7 @@ var $quickquestions = {
     image: '',
     widthImage: 0,
     heightImage: 0,
-    options: {},
+    options: [],
     videos: [],
     video: {
         player: '',

@@ -13,7 +13,7 @@ var $eXeEC = {
     idevicePath: '',
     borderColors: $exeDevices.iDevice.gamification.colors.borderColors,
     colors: $exeDevices.iDevice.gamification.colors.backColor,
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
     initialScore: '',
