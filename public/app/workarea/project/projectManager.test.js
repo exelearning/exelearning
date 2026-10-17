@@ -1857,6 +1857,20 @@ describe('ProjectManager', () => {
             expect(projectManager.setInstallationTypeAttribute).toHaveBeenCalled();
         });
 
+        it('hands a pending static import file to the app', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+            mockApp.capabilities = { storage: { remote: false } };
+            mockApp.openStaticFile = vi.fn().mockResolvedValue();
+            const file = new File(['x'], 'course.elpx');
+            window.__pendingImportFile = file;
+
+            await projectManager.load();
+
+            expect(mockApp.openStaticFile).toHaveBeenCalledWith(file);
+            expect(window.__pendingImportFile).toBeNull();
+        });
+
         it('loads content translations after Yjs initialization', async () => {
             projectManager._yjsEnabled = false;
             projectManager.offlineInstallation = true;
