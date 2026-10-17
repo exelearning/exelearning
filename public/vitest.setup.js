@@ -1401,7 +1401,7 @@ global.$exeDevices = {
   },
 };
 
-global.$exeDevicesEdition = {
+const createEditionMock = () => ({
   iDevice: {
     // Wires the form's tab strip. Every iDevice with more than one tab calls
     // it from createForm, so a stub has to exist for those forms to render.
@@ -1420,11 +1420,17 @@ global.$exeDevicesEdition = {
       observers: mockGamificationObservers,
     },
   },
-};
+});
+
+global.$exeDevicesEdition = createEditionMock();
+// Refactored iDevices use $exeIDevicesEdition (common_idevices_edition.js)
+// instead. It starts as the same mock; let it diverge as that object changes.
+global.$exeIDevicesEdition = createEditionMock();
 
 if (typeof window !== 'undefined') {
   window.$exeDevices = global.$exeDevices;
   window.$exeDevicesEdition = global.$exeDevicesEdition;
+  window.$exeIDevicesEdition = global.$exeIDevicesEdition;
 }
 
 // ============================================================================

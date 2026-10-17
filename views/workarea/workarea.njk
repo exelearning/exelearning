@@ -32,6 +32,8 @@
     {# common_i18n.js is NOT loaded statically — it is generated dynamically by Locale.refreshI18nGlobals()
        after the content language is known (project metadata loaded from Yjs). #}
     <script class="exe" src="{{ '/app/common/common_edition.js' | asset }}" defer></script>
+    {# Edition helpers for the refactored iDevices; the rest still use common_edition.js #}
+    <script class="exe" src="{{ '/app/common/common_idevices_edition.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/common.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/exe_effects/exe_effects.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/exe_games/exe_games.js' | asset }}" defer></script>

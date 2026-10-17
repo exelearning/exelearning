@@ -40,6 +40,7 @@ export const MINIFY_FILES = [
     'app/common/app_date_conversion.js',
     'app/common/asset_url_resolver.js',
     'app/common/common_edition.js',
+    'app/common/common_idevices_edition.js',
     'app/common/connectionMonitor.js',
     'app/common/LatexPreRenderer.js',
     'app/common/MermaidPreRenderer.js',

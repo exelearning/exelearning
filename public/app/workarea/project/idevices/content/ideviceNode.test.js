@@ -3204,10 +3204,65 @@ describe('IdeviceNode', () => {
             delete global.$exeDevicesEdition;
         });
 
+        it('stops the audio of the refactored iDevices ($exeIDevicesEdition)', async () => {
+            const previousEdition = global.$exeIDevicesEdition;
+            const mockStopSound = vi.fn();
+            global.$exeIDevicesEdition = {
+                iDevice: {
+                    gamification: {
+                        helpers: {
+                            stopSound: mockStopSound,
+                        },
+                    },
+                },
+            };
+
+            try {
+                await idevice.save(false);
+
+                expect(mockStopSound).toHaveBeenCalledTimes(1);
+            } finally {
+                global.$exeIDevicesEdition = previousEdition;
+            }
+        });
+
+        it('stops the audio of both edition objects when both are loaded', async () => {
+            const previousLegacy = global.$exeDevicesEdition;
+            const previousEdition = global.$exeIDevicesEdition;
+            const legacyStopSound = vi.fn();
+            const editionStopSound = vi.fn();
+            global.$exeDevicesEdition = { iDevice: { gamification: { helpers: { stopSound: legacyStopSound } } } };
+            global.$exeIDevicesEdition = { iDevice: { gamification: { helpers: { stopSound: editionStopSound } } } };
+
+            try {
+                await idevice.save(false);
+
+                expect(legacyStopSound).toHaveBeenCalledTimes(1);
+                expect(editionStopSound).toHaveBeenCalledTimes(1);
+            } finally {
+                global.$exeDevicesEdition = previousLegacy;
+                global.$exeIDevicesEdition = previousEdition;
+            }
+        });
+
         it('does not throw when $exeDevicesEdition is undefined', async () => {
             delete global.$exeDevicesEdition;
 
             await expect(idevice.save(false)).resolves.not.toThrow();
+        });
+
+        it('does not throw when neither edition object is defined', async () => {
+            const previousLegacy = global.$exeDevicesEdition;
+            const previousEdition = global.$exeIDevicesEdition;
+            delete global.$exeDevicesEdition;
+            delete global.$exeIDevicesEdition;
+
+            try {
+                await expect(idevice.save(false)).resolves.not.toThrow();
+            } finally {
+                global.$exeDevicesEdition = previousLegacy;
+                global.$exeIDevicesEdition = previousEdition;
+            }
         });
 
         it('does not throw when stopSound is not available in edition helpers', async () => {

@@ -3090,9 +3090,11 @@ export default class IdeviceNode {
      */
     async save(loadPage) {
         clearInterval(this.checkDeviceLoadInterval);
-        // Stop any playing audio when exiting edition mode
-        if (typeof $exeDevicesEdition !== 'undefined' && $exeDevicesEdition.iDevice?.gamification?.helpers?.stopSound) {
-            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        // Stop any playing audio when exiting edition mode. Refactored iDevices
+        // use $exeIDevicesEdition, the rest $exeDevicesEdition, and each object
+        // keeps its own player, so both are stopped.
+        for (const edition of [globalThis.$exeDevicesEdition, globalThis.$exeIDevicesEdition]) {
+            edition?.iDevice?.gamification?.helpers?.stopSound?.();
         }
         // Save data of idevice in database
         let saveOk = await this.saveIdeviceProcess();

@@ -332,6 +332,8 @@
          Loading the template file here would cause "ReferenceError: c_ is not defined" because c_()
          is defined by the Locale constructor which runs after app.bundle.js loads. -->
     <script src="./app/common/common_edition.js?v={{BUILD_VERSION}}"></script>
+    <!-- Edition helpers for the refactored iDevices; the rest still use common_edition.js -->
+    <script src="./app/common/common_idevices_edition.js?v={{BUILD_VERSION}}"></script>
     <script src="./app/common/common.js?v={{BUILD_VERSION}}"></script>
     <script src="./app/common/exe_effects/exe_effects.js?v={{BUILD_VERSION}}"></script>
     <script src="./app/common/exe_games/exe_games.js?v={{BUILD_VERSION}}"></script>

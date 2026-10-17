@@ -2972,9 +2972,10 @@ describe('common_edition.js', () => {
       const { source } = callers.find((caller) => caller.name === name);
       // The iDevices do not agree on a name for the result -- most call it
       // `progressBar`, interactive-video calls it `progressBarValues` -- so the
-      // guard is looked up by whatever each one assigned it to.
+      // guard is looked up by whatever each one assigned it to. Refactored
+      // iDevices call $exeIDevicesEdition, the rest still $exeDevicesEdition.
       const assignment = source.match(
-        /(\w+)\s*=\s*\$exeDevicesEdition\.iDevice\.gamification\.progressBar\.getValues\(\)/
+        /(\w+)\s*=\s*\$exeI?DevicesEdition\.iDevice\.gamification\.progressBar\.getValues\(\)/
       );
       expect(assignment).not.toBeNull();
       expect(source).toMatch(new RegExp(`if\\s*\\(!${assignment[1]}\\)\\s*return false;`));
