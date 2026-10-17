@@ -52,7 +52,8 @@ var $eXeFlipCards = {
     },
 
     loadGame: function () {
-        $eXeFlipCards.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeFlipCards.options.length = $eXeFlipCards.activities.length;
         $eXeFlipCards.activities.each(function (i) {
             const dl = $('.flipcards-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -68,7 +69,7 @@ var $eXeFlipCards = {
                 mOption.imgCard = $imageBack.attr('href') || '';
             }
 
-            $eXeFlipCards.options.push(mOption);
+            $eXeFlipCards.options[i] = mOption;
 
             if (mOption.type == 3) {
                 mOption.cardsGame = $eXeFlipCards.createCardsData(

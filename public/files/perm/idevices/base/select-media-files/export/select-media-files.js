@@ -76,7 +76,8 @@ var $eXeSeleccionaMedias = {
     },
 
     loadGame: function () {
-        $eXeSeleccionaMedias.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeSeleccionaMedias.options.length = $eXeSeleccionaMedias.activities.length;
 
         $eXeSeleccionaMedias.activities.each(function (i) {
             const dl = $('.seleccionamedias-DataGame', this);
@@ -88,7 +89,7 @@ var $eXeSeleccionaMedias = {
             mOption.main = 'slcmpMainContainer-' + i;
             mOption.idevice = 'seleccionamedias-IDevice';
 
-            $eXeSeleccionaMedias.options.push(mOption);
+            $eXeSeleccionaMedias.options[i] = mOption;
 
             const slcmp = $eXeSeleccionaMedias.createInterfaceSelecciona(i);
 
@@ -1087,6 +1088,8 @@ var $eXeSeleccionaMedias = {
         const $grid = $('#slcmpMainContainer-' + instance).find(
             '.SLCMP-Multimedia'
         );
+        // Without the plugin (mansory-jq.js) the cards keep their normal flow.
+        if (typeof $grid.masonry !== 'function') return;
         $grid.masonry({
             itemSelector: '.SLCMP-GridItem',
             columnWidth: '.SLCMP-GridItem',
@@ -1096,8 +1099,11 @@ var $eXeSeleccionaMedias = {
         $grid.masonry('layout');
     },
 
-    destroyMasonry: function () {
-        const $grid = $('.SLCMP-Multimedia');
+    destroyMasonry: function (instance) {
+        const $grid = $('#slcmpMainContainer-' + instance).find(
+            '.SLCMP-Multimedia'
+        );
+        if (!$grid.data('masonry')) return;
         $grid.masonry('destroy');
     },
 
