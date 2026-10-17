@@ -182,7 +182,6 @@ var $exeDevice = {
             'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -194,16 +193,8 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-            <div id="gameQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                    _('Create activities where, given a definition, students complete the word by filling in the missing letters.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/adivina.html',
-                )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
                         <div id="adivinaEOptions">
                             <div class="toggle-item mb-3" data-target="adivinaEShowMinimize">
                                 <span class="toggle-control">
@@ -282,20 +273,6 @@ var $exeDevice = {
 
                             </div>
                             <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-                                <div class="toggle-item toggle-related m-0" data-target="adivinaEHasFeedBack">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="adivinaEHasFeedBack" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="adivinaEHasFeedBack">${_('Feedback')}.</label>
-                                </div>
-                                <input type="number" name="adivinaEPercentajeFB" id="adivinaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
-                                <label for="adivinaEPercentajeFB">${_('% right to see the feedback')}</label>
-                            </div>
-                            <div id="adivinaEFeedbackP" class="ADVNE-EFeedbackP mb-3">
-                                <textarea id="adivinaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
                                 <label for="adivinaEPercentajeQuestions" class="toggle-label">%${_('Questions')}:</label>
                                 <input type="number" name="adivinaEPercentajeQuestions" id="adivinaEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
                                 <span id="adivinaENumeroPercentaje" >1/1</span>
@@ -324,14 +301,10 @@ var $exeDevice = {
                                     <option value="4">5m</option>
                                     <option value="5">10m</option>
                                 </select>
-                                <button id="adivinaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
+                                <button id="adivinaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Words/Phrases')}</a></legend>
+                        </div>`,
+            words = `
                         <div class="ADVNE-EPanel" id="adivinaEPanel">
                             <div class="ADVNE-EOptionsMedia">
                                 <div class="ADVNE-EOptionsGame">
@@ -542,21 +515,30 @@ var $exeDevice = {
                                     <span class="ADVNE-ENumQuestions" id="adivinaENumQuestions">0</span>
                                 </div>
                             </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
+                        </div>`,
+            html = `
+            <div id="gameQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create activities where, given a definition, students complete the word by filling in the missing letters.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/adivina.html',
+                )}
+                ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Observe the letters, identify and fill in the missing words.'),
+                    options: options,
+                    contents: words,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                })}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('gameQEIdeviceForm');
+        edition.gamification.scorm.init();
         tinymce.init({
             selector: '#adivinaEText',
             height: 220,
@@ -609,7 +591,7 @@ var $exeDevice = {
         this.initQuestions();
 
         const root = document.getElementById('gameQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         this.loadPreviousValues();
         this.addEvents();
@@ -688,10 +670,10 @@ var $exeDevice = {
             tinyMCE.get('adivinaEText').setContent(unescape(p.eText));
         }
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         if (p.type != 2 && p.audio.trim().length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#adivinaEURLAudio').val(p.audio);
@@ -1161,9 +1143,11 @@ var $exeDevice = {
 
             const textFeedBack = $('.adivina-feedback-game', wrapper);
             if (textFeedBack.length === 1)
-                $('#adivinaEFeedBackEditor').val(textFeedBack.html());
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html()
+                );
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
 
@@ -1215,7 +1199,8 @@ var $exeDevice = {
             divContent = '';
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('adivinaEFeedBackEditor').getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
         if (dataGame.instructions !== '') {
             divContent = `<div class="adivina-instructions gameQP-instructions">${dataGame.instructions}</div>`;
         }
@@ -1314,7 +1299,7 @@ var $exeDevice = {
         p.audio = $('#adivinaEURLAudio').val();
         p.msgHit = $('#adivinaEMessageOK').val();
         p.msgError = $('#adivinaEMessageKO').val();
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type === 2) {
@@ -1408,7 +1393,6 @@ var $exeDevice = {
     validateData: function () {
         const clear = $exeDevice.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('adivinaEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#adivinaEShowMinimize').is(':checked'),
             optionsRamdon = $('#adivinaEOptionsRamdon').is(':checked'),
@@ -1422,10 +1406,8 @@ var $exeDevice = {
             timeQuestion = $exeDevice.timeQuestion,
             percentageShow = 30,
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#adivinaECaseSensitive').is(':checked'),
-            feedBack = $('#adivinaEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#adivinaEPercentajeFB').val())),
             gameMode = parseInt($('input[name=qxtgamemode]:checked').val()),
             customMessages = $('#adivinaECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
@@ -1433,9 +1415,9 @@ var $exeDevice = {
             ),
             activateTranslate = $('#adivinaETranslate').is(':checked'),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#adivinaEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
@@ -1447,10 +1429,10 @@ var $exeDevice = {
             return false;
         }
 
-        if ((gameMode == 2 || feedBack) && textFeedBack.trim().length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
+        // Asks for the message itself when it is on, or compulsory ("No score").
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
 
         let wordsGame = $exeDevice.wordsGame;
         if (wordsGame.length == 0) {
@@ -1501,7 +1483,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             typeGame: 'Adivina',
             instructions: instructions,
@@ -1519,12 +1501,12 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted || 100,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
             caseSensitive: caseSensitive,
             gameMode: gameMode,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: 2,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
@@ -1627,7 +1609,8 @@ var $exeDevice = {
             function (e) {
                 if ($(e.target).is('input.toggle-input, label[for]')) return;
                 const $input = $(this).find('input.toggle-input').first();
-                if ($input.length) {
+                // A locked switch (the feedback in "No score") stays as it is.
+                if ($input.length && !$input.prop('disabled')) {
                     const newVal = !$input.prop('checked');
                     $input.prop('checked', newVal).trigger('change');
                 }
@@ -1733,7 +1716,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#adivinaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1988,25 +1971,14 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
-        });
-
-        $('#adivinaEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#adivinaEFeedbackP').slideDown();
-            } else {
-                $('#adivinaEFeedbackP').slideUp();
-            }
-            $('#adivinaEPercentajeFB').prop('disabled', !marcado);
         });
 
         $('#gameQEIdeviceForm').on('click', 'input.ADVNE-TypeGame', (e) => {
             const gm = parseInt($(e.target).val(), 10);
-            const fb = $('#adivinaEHasFeedBack').is(':checked');
             const ul = $('#adivinaEUseLives').is(':checked');
-            $exeDevice.updateGameMode(gm, fb, ul);
+            $exeDevice.updateGameMode(gm, ul);
         });
 
         $('#adivinaEGameModeHelpLnk').click((e) => {
@@ -2057,12 +2029,14 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
+
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertWords
         );
@@ -2081,7 +2055,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('Guess')}.txt`,
             'gameQEIdeviceForm'
@@ -2105,22 +2079,13 @@ var $exeDevice = {
         }
     },
 
-    updateGameMode: function (gamemode, feedback, useLives) {
+    updateGameMode: function (gamemode, useLives) {
         $('#adivinaEUseLives, #adivinaENumberLives').prop('disabled', true);
         gamemode = parseInt(gamemode, 10);
-        $('#adivinaEPercentajeFB').prop(
-            'disabled',
-            !feedback && gamemode !== 2
+        // "No score" is nothing but the feedback: answer right to get it.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setRequired(
+            gamemode === 2
         );
-        $('#adivinaEHasFeedBack')
-            .prop('disabled', gamemode === 2)
-            .prop('checked', feedback);
-
-        if (gamemode === 2 || feedback) {
-            $('#adivinaEFeedbackP').slideDown();
-        } else if (gamemode !== 2 && !feedback) {
-            $('#adivinaEFeedbackP').slideUp();
-        }
 
         if (gamemode === 0) {
             $('#adivinaEUseLives').prop('disabled', false);
@@ -2318,7 +2283,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         const defaultValues = {
@@ -2396,8 +2361,10 @@ var $exeDevice = {
             .val(game.timeShowSolution)
             .prop('disabled', !game.showSolution);
         $('#adivinaECaseSensitive').prop('checked', game.caseSensitive);
-        $('#adivinaEHasFeedBack').prop('checked', game.feedBack);
-        $('#adivinaEPercentajeFB').val(game.percentajeFB);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $('#adivinaEGlobalTimes').val(game.globalTime);
         $(
             `input.ADVNE-TypeGame[name='qxtgamemode'][value='${game.gameMode}']`
@@ -2410,23 +2377,23 @@ var $exeDevice = {
         $('#adivinaECustomMessages').prop('checked', game.customMessages);
         $('#adivinaETranslate').prop('checked', game.activateTranslate);
         $('#adivinaEPercentajeQuestions').val(game.percentajeQuestions);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
 
-        $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
+        $exeDevice.updateGameMode(game.gameMode, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
 
         const version = typeof game.version !== 'undefined' ? game.version : 0;
@@ -2463,13 +2430,6 @@ var $exeDevice = {
         }
 
         $exeDevice.wordsGame = game.wordsGame;
-
-        if (game.feedBack || game.gameMode === 2) {
-            $('#adivinaEFeedbackP').show();
-        } else {
-            $('#adivinaEFeedbackP').hide();
-        }
-        $('#adivinaEPercentajeFB').prop('disabled', !game.feedBack);
         $exeDevice.updateQuestionsNumber();
     },
 
@@ -2522,13 +2482,9 @@ var $exeDevice = {
             } else {
                 $('#eXeIdeviceTextAfter').val(unescape(tAfter));
             }
-            if (tinyMCE.get('adivinaEFeedBackEditor')) {
-                tinyMCE
-                    .get('adivinaEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            } else {
-                $('#adivinaEFeedBackEditor').val(unescape(textFeedBack));
-            }
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                unescape(textFeedBack)
+            );
         } else {
             eXe.app.alert($exeDevice.msgs.msgESelectFile);
             return;
@@ -2538,7 +2494,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importText: function (content) {
@@ -2675,7 +2630,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importAdivina: function (game) {

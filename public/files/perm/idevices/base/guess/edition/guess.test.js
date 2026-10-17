@@ -292,12 +292,12 @@ describe('guess iDevice', () => {
     let scriptTag;
 
     beforeEach(() => {
-      previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+      previousItinerary = $exeIDevicesEdition.iDevice.gamification.itinerary;
       // addEvents wires the whole editor. The itinerary component lives outside
       // this iDevice's source, so it is stubbed rather than exercised here.
-      $exeDevicesEdition.iDevice.gamification.itinerary = {
+      $exeIDevicesEdition.iDevice.gamification.itinerary = {
         addEvents: () => {},
-        getTab: () => '',
+        getContents: () => '',
         init: () => {},
         setValues: () => {},
       };
@@ -324,7 +324,7 @@ describe('guess iDevice', () => {
       if ($exeDevice && $exeDevice.$lifecycle) {
         $exeDevice.$lifecycle.destroy();
       }
-      $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      $exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
       global.YT = originalYT;
       window.onYouTubeIframeAPIReady = originalReady;
       scriptTag.remove();
@@ -365,7 +365,7 @@ describe('guess iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -402,6 +402,7 @@ describe('guess edition: lifecycle teardown (#2293)', () => {
     let originalYT;
     let originalReady;
     let scriptTag;
+    let previousItinerary;
 
     function fakeYouTubeApi() {
         players = [];
@@ -446,8 +447,9 @@ describe('guess edition: lifecycle teardown (#2293)', () => {
             getURLVideoMediaTeca: vi.fn(() => false),
             extractURLGD: vi.fn(url => url),
         };
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
-            getTab: vi.fn(() => ''),
+        previousItinerary = global.$exeIDevicesEdition.iDevice.gamification.itinerary;
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = {
+            getContents: vi.fn(() => ''),
             addEvents: vi.fn(),
             getValues: vi.fn(() => ({})),
             setValues: vi.fn(),
@@ -462,6 +464,7 @@ describe('guess edition: lifecycle teardown (#2293)', () => {
         global.YT = originalYT;
         window.onYouTubeIframeAPIReady = originalReady;
         scriptTag.remove();
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
         vi.useRealTimers();
@@ -661,5 +664,195 @@ describe('guess minimum score text', () => {
     device.refreshTranslations();
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+  });
+});
+
+/**
+ * guess is the first iDevice on $exeIDevicesEdition: its form is laid out in
+ * the shared tabs and its feedback is the shared block. These tests open the
+ * real form, with the real shared object the setup loads.
+ */
+describe('guess edition: shared form tabs and feedback', () => {
+  const PATH = '/files/perm/idevices/base/guess/edition/';
+  const edition = () => global.$exeIDevicesEdition.iDevice;
+  const feedback = () => edition().gamification.feedback;
+  const tabNames = () =>
+    [...document.querySelectorAll('#gameQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+      tab.getAttribute('data-exe-tab')
+    );
+  const panel = (name) => document.getElementById(`gameQEIdeviceForm-panel-${name}`);
+  const game = (overrides = {}) => ({
+    typeGame: 'Adivina',
+    itinerary: {
+      showClue: false,
+      clueGame: '',
+      percentageClue: 40,
+      showCodeAccess: false,
+      codeAccess: '',
+      messageCodeAccess: '',
+    },
+    wordsGame: [],
+    gameMode: 1,
+    feedBack: false,
+    percentajeFB: 100,
+    isScorm: 0,
+    textButtonScorm: 'Save score',
+    ...overrides,
+  });
+  // Export-side helpers (common.js) that loading and saving go through; the
+  // setup's $exeDevices mock leaves them out. Stored data is plain JSON here.
+  const exportHelpers = {
+    isJsonString: (text) => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return false;
+      }
+    },
+    decrypt: (text) => text,
+    encrypt: (text) => text,
+  };
+  let device;
+  let tinymceInit;
+
+  beforeEach(() => {
+    global.$exeDevice = undefined;
+    Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+    // createForm starts its own editor for the question text.
+    tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation(() => Promise.resolve([]));
+    document.body.innerHTML = '<div id="guessBody"></div>';
+    device = global.loadIdevice(join(__dirname, 'guess.js'));
+    device.init(document.getElementById('guessBody'), {}, PATH);
+  });
+
+  afterEach(() => {
+    device.$lifecycle?.destroy();
+    tinymceInit.mockRestore();
+    Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+    global.$exeDevice = undefined;
+    document.body.innerHTML = '';
+  });
+
+  it('lays the form out in the shared tabs, and opens on its questions', () => {
+    expect(tabNames()).toEqual([
+      'instructions',
+      'options',
+      'contents',
+      'passwords',
+      'feedback',
+      'after',
+      'grading',
+      'texts',
+    ]);
+    expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+    expect(panel('contents').classList.contains('active')).toBe(true);
+  });
+
+  it('puts each part of the form in its tab', () => {
+    expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+      'Observe the letters, identify and fill in the missing words.'
+    );
+    expect(panel('options').querySelector('#adivinaEOptions')).not.toBeNull();
+    expect(panel('contents').querySelector('#adivinaEPanel')).not.toBeNull();
+    expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+    expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+    expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+    expect(panel('texts').querySelector('#ci18n_msgReply').value).toBe('Reply');
+  });
+
+  it('leaves the feedback to the shared block, without controls of its own', () => {
+    expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+    expect(document.getElementById('adivinaEHasFeedBack')).toBeNull();
+    expect(document.getElementById('adivinaEPercentajeFB')).toBeNull();
+    expect(document.getElementById('adivinaEFeedBackEditor')).toBeNull();
+  });
+
+  it('switches tabs when one is clicked', () => {
+    document.getElementById('gameQEIdeviceForm-tab-options').click();
+
+    expect(panel('options').classList.contains('active')).toBe(true);
+    expect(panel('contents').classList.contains('active')).toBe(false);
+  });
+
+  it('makes the feedback compulsory in "No score" mode only', () => {
+    device.updateGameMode(2, false);
+    expect(feedback().isRequired()).toBe(true);
+    expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(true);
+
+    device.updateGameMode(0, true);
+    expect(feedback().isRequired()).toBe(false);
+    expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(false);
+    expect(document.getElementById('adivinaEUseLives').disabled).toBe(false);
+  });
+
+  it('restores the feedback and its mode with the game', () => {
+    device.updateFieldGame(game({ gameMode: 2, feedBack: false, percentajeFB: 60 }));
+
+    expect(feedback().isRequired()).toBe(true);
+    expect(document.getElementById('eXeGamePercentajeFB').value).toBe('60');
+
+    device.updateFieldGame(game({ gameMode: 1, feedBack: true, percentajeFB: 80 }));
+
+    expect(feedback().isRequired()).toBe(false);
+    expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+    expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+  });
+
+  it('loads the saved message into the shared editor', () => {
+    device.idevicePreviousData = `
+      <div class="adivina-IDevice">
+        <div class="adivina-version js-hidden">2</div>
+        <div class="adivina-feedback-game"><p>Well done</p></div>
+        <div class="adivina-DataGame js-hidden">${JSON.stringify(game({ feedBack: true }))}</div>
+      </div>`;
+    vi.spyOn(device, 'showQuestion').mockImplementation(() => {});
+
+    device.loadPreviousValues();
+
+    expect(feedback().getText()).toBe('<p>Well done</p>');
+    expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+  });
+
+  describe('saving', () => {
+    let editors;
+    let tinymceGet;
+
+    beforeEach(() => {
+      editors = {
+        eXeGameInstructions: '<p>Instructions</p>',
+        eXeIdeviceTextAfter: '',
+        eXeGameFeedBackEditor: '',
+      };
+      tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+        id in editors ? { initialized: true, getContent: () => editors[id], setContent: (html) => (editors[id] = html) } : null
+      );
+      device.wordsGame = [{ ...device.getCuestionDefault(), word: 'casa', definition: 'home' }];
+    });
+
+    afterEach(() => {
+      tinymceGet.mockRestore();
+    });
+
+    it('saves the feedback values the export reads', () => {
+      device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true, percentajeFB: 70 }));
+      editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+      // The question being edited is checked against its media controls,
+      // which is not what this test is about.
+      vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+      const data = device.validateData();
+
+      expect(data.feedBack).toBe(true);
+      expect(data.percentajeFB).toBe(70);
+      expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+      expect(device.save()).toContain('<div class="adivina-feedback-game"><p>Bravo</p></div>');
+    });
+
+    it('asks for the message in "No score" mode', () => {
+      device.updateFieldGame(game({ wordsGame: device.wordsGame, gameMode: 2 }));
+
+      expect(device.validateData()).toBe(false);
+      expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+    });
   });
 });
