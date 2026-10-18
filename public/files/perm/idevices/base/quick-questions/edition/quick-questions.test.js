@@ -600,6 +600,18 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
     expect(feedback().isRequired()).toBe(true);
   });
 
+  it('does not toggle an option when its open explanation is clicked', () => {
+    // The explanation opens inside the row, so a click on its text reaches
+    // the row's own handler too.
+    for (const row of document.querySelector('#quextEOptions').children) {
+      const controls = [...row.querySelectorAll('input, select')];
+      const checked = controls.map((control) => control.checked);
+      row.querySelector('.exe-idevice-help').click();
+      row.querySelector('.help-content').click();
+      expect(controls.map((control) => control.checked)).toEqual(checked);
+    }
+  });
+
   it('escapes translated help text in the explanation', () => {
     const text = 'Use "Accept" <once> & keep the learner\'s answer.';
     const container = document.createElement('div');
