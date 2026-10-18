@@ -136,7 +136,11 @@ describe('scrambled-list iDevice export', () => {
   });
 
   describe('updateConfig', () => {
-    it('targets the scrambled-list iDevice body for report icons', () => {
+    // The progress report puts its icon, and the anchor it links to, in
+    // $('#' + main).closest('.' + idevice). `idevice` used to name a class only
+    // the editor gives the iDevice body, so in an exported package closest()
+    // found nothing and the learner never saw their score.
+    it('places the report icon inside the exported activity', () => {
       const previousIsInExe = eXe.app.isInExe;
       eXe.app.isInExe = vi.fn(() => false);
 
@@ -148,18 +152,24 @@ describe('scrambled-list iDevice export', () => {
       `;
 
       try {
-        const result = $scrambledlist.updateConfig(
-          {
-            id: 'scrambled-1',
-            attemptsNumber: 1,
-            pendingAttempts: 1,
-            msgs: $scrambledlist.getMessages(),
-          },
-          'scrambled-1',
-        );
+        const data = {
+          id: 'scrambled-1',
+          options: ['a', 'b'],
+          attemptsNumber: 1,
+          pendingAttempts: 1,
+          msgs: $scrambledlist.getMessages(),
+        };
+        const template = readFileSync(join(__dirname, 'scrambled-list.html'), 'utf-8');
+        $('#scrambled-1').html($scrambledlist.renderView(data, 0, template, 'scrambled-1'));
 
-        expect(result.idevice).toBe('scrambled-listIdevice');
+        const result = $scrambledlist.updateConfig(data, 'scrambled-1');
+        const $container = $('#' + result.main).closest('.' + result.idevice);
+
         expect(result.main).toBe('slscrambled-1');
+        expect($container).toHaveLength(1);
+        // Inside the activity, not on the node: in the editor the node also
+        // holds the iDevice's action buttons.
+        expect($container.attr('id')).toBe(result.main);
       } finally {
         eXe.app.isInExe = previousIsInExe;
       }
@@ -603,6 +613,11 @@ describe('scrambled-list iDevice export', () => {
         hasLatex: () => false,
         updateLatex: () => {},
       };
+      global.$exeDevices.iDevice.gamification.report = Object.assign(
+        {},
+        global.$exeDevices.iDevice.gamification.report,
+        { showPassScoreNotice: () => null }
+      );
 
       $scrambledlist.renderBehaviour({ isScorm: 2 }, 0, 'sl-1');
 
@@ -946,6 +961,32 @@ describe('scrambled-list iDevice export', () => {
         eXe.app.isInExe = previousIsInExe;
       }
     });
+
+    // The export runtime renders an activity that has no saved HTML without
+    // passing an id (exe_export.renderWithTemplate). The list used to come out
+    // as #slundefined, so nothing that looks for the activity by its id --
+    // the report icon among them -- could find it.
+    it('ids the list after the stored iDevice when the runtime passes no id', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+      document.body.innerHTML = `
+        <article><header><h1 class="box-title">SL</h1></header>
+          <div id="sl-2" class="idevice_node scrambled-list" data-idevice-path="/idevices/scrambled-list/"></div>
+        </article>`;
+
+      try {
+        const data = { ideviceId: 'sl-2', options: ['a', 'b'], msgs: $scrambledlist.getMessages() };
+        const realTemplate = readFileSync(join(__dirname, 'scrambled-list.html'), 'utf-8');
+        $('#sl-2').html($scrambledlist.renderView(data, 0, realTemplate));
+
+        const { main } = $scrambledlist.updateConfig(data);
+        expect(main).toBe('slsl-2');
+        expect($('#' + main)).toHaveLength(1);
+        expect($('#' + main + ' .game-evaluation-ids').attr('data-id')).toBe('sl-2');
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+      }
+    });
   });
 
   // Issue #2263: getMessages() was Spanish, and it is what content without a
@@ -969,5 +1010,165 @@ describe('scrambled-list iDevice export', () => {
       );
       expect(nonEnglish).toEqual([]);
     });
+  });
+
+  /**
+   * The activity used to have no notion of passing: ordering every item right
+   * was the only success it recognised. Eight of ten was reported to the
+   * learner as "wrong" while the progress report printed beside it said passed.
+   */
+  describe('the verdict follows the pass mark', () => {
+    const options = (passScoreMode, passScoreCustom) => ({
+      passScoreMode,
+      passScoreCustom,
+      showSolutions: true,
+      isScorm: 0,
+      msgs: { msgTestFailed: 'Not passed' },
+    });
+
+    describe('hasPassed', () => {
+      it('scores eight of ten as an 8', () => {
+        expect($scrambledlist.getScore(8, 10)).toBe(8);
+      });
+
+      it('passes eight of ten on the project mark of 5', () => {
+        expect($scrambledlist.hasPassed(8, 10, options('global'))).toBe(true);
+      });
+
+      it('fails the same attempt when the author set the mark at 9', () => {
+        expect($scrambledlist.hasPassed(8, 10, options('custom', 9))).toBe(false);
+      });
+
+      it('survives an empty list without dividing by zero', () => {
+        expect($scrambledlist.getScore(0, 0)).toBe(0);
+      });
+    });
+
+    describe('showResultFeedback', () => {
+      let feedback;
+      let activity;
+      let rightAnswers;
+
+      beforeEach(() => {
+        document.body.innerHTML = `
+          <div id="activity">
+            <span class="exe-sortableList-rightText">Well done</span>
+            <span class="exe-sortableList-wrongText">Not quite</span>
+          </div>
+          <div id="feedback"></div>
+          <div id="solution"><li>a</li><li>b</li></div>`;
+        activity = $('#activity');
+        feedback = $('#feedback');
+        rightAnswers = $('#solution');
+      });
+
+      const show = (passed, isPerfect, data) =>
+        $scrambledlist.showResultFeedback(
+          activity,
+          feedback,
+          passed,
+          rightAnswers,
+          data,
+          8,
+          10,
+          isPerfect
+        );
+
+      it('congratulates a learner who passed without ordering everything right', () => {
+        show(true, false, options('global'));
+        expect(feedback.attr('class')).toBe('feedback feedback-right');
+        expect(feedback.html()).toContain('Well done');
+      });
+
+      it('still shows them which items were out of place', () => {
+        show(true, false, options('global'));
+        expect(feedback.html()).toContain('<li>a</li>');
+      });
+
+      it('leaves a perfect attempt with the bare congratulation', () => {
+        show(true, true, options('global'));
+        expect(feedback.html()).not.toContain('<li>a</li>');
+      });
+
+      it('marks an attempt below the mark as wrong, with the solution', () => {
+        show(false, false, options('custom', 9));
+        expect(feedback.attr('class')).toBe('feedback feedback-wrong');
+        expect(feedback.html()).toContain('Not quite');
+        expect(feedback.html()).toContain('<li>a</li>');
+      });
+
+      it('withholds the solution when the author turned it off', () => {
+        const data = { ...options('custom', 9), showSolutions: false };
+        show(false, false, data);
+        expect(feedback.html()).toContain('Not passed');
+        expect(feedback.html()).not.toContain('<li>a</li>');
+      });
+    });
+  });
+});
+
+describe('scrambled-list minimum score notice', () => {
+  let $scrambledlist;
+  let originalSortable;
+  let originalReport;
+  let originalMath;
+
+  const data = {
+    options: ['First', 'Second', 'Third'],
+    instructions: '<p>Put them in order</p>',
+    buttonText: 'Check',
+    rightText: 'Right',
+    wrongText: 'Wrong',
+    afterElement: '',
+    // The progress report alone, so no SCORM session is involved.
+    isScorm: 0,
+    evaluation: true,
+    evaluationID: 'report-1',
+    passScoreMode: 'custom',
+    passScoreCustom: 7,
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    global.$scrambledlist = undefined;
+    $scrambledlist = loadExportIdevice(readFileSync(join(__dirname, 'scrambled-list.js'), 'utf-8'));
+    const gamification = global.$exeDevices.iDevice.gamification;
+    originalSortable = $.fn.sortable;
+    originalReport = gamification.report;
+    originalMath = gamification.math;
+    // jQuery UI is not loaded here; enableList() only needs the call to chain.
+    $.fn.sortable = function () {
+      return this;
+    };
+    gamification.math = { hasLatex: () => false, updateLatex: () => {} };
+    gamification.report = Object.assign({}, originalReport, {
+      showPassScoreNotice: vi.fn(() => null),
+      updateEvaluationIcon: () => {},
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    $.fn.sortable = originalSortable;
+    global.$exeDevices.iDevice.gamification.report = originalReport;
+    global.$exeDevices.iDevice.gamification.math = originalMath;
+    document.body.innerHTML = '';
+  });
+
+  // enableList() builds the playable list in front of the original one, so the
+  // element right after the instructions is the list the learner sorts.
+  it('asks for it right below the instructions, above the playable list', () => {
+    const template = readFileSync(join(__dirname, 'scrambled-list.html'), 'utf-8');
+    document.body.innerHTML = $scrambledlist.renderView(data, 0, template, 'list9');
+
+    $scrambledlist.renderBehaviour(data, 0, 'list9');
+
+    const showPassScoreNotice = global.$exeDevices.iDevice.gamification.report.showPassScoreNotice;
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    const [options, before] = showPassScoreNotice.mock.calls[0];
+    expect(options).toMatchObject({ main: 'sllist9', passScoreCustom: 7 });
+    expect(before[0].classList.contains('exe-sortableList-options')).toBe(true);
+    expect(before.prev().hasClass('exe-sortableList-instructions')).toBe(true);
   });
 });

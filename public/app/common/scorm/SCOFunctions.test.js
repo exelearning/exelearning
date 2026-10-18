@@ -117,6 +117,79 @@ describe('SCOFunctions.js', () => {
     });
   });
 
+  describe('SCORM 2004 status decided by the activities', () => {
+    const passed = { completion: 'completed', success: 'passed', scored: true };
+    const pending = { completion: 'incomplete', success: 'unknown', scored: true };
+    let previousDevices;
+    let activities;
+
+    beforeEach(() => {
+      previousDevices = window.$exeDevices;
+      globalThis.pipwerks.SCORM.version = '2004';
+      vi.spyOn(globalThis.pipwerks.SCORM, 'get').mockReturnValue('stored activities');
+      activities = {
+        _successThresholdsByNumber: { 1: 0 },
+        parseSuspendData: vi.fn(() => ({ 1: { score: 0, state: 2 } })),
+        getLegacyVerdict: vi.fn(() => passed),
+        setLegacyStatus: vi.fn(),
+      };
+      window.$exeDevices = { iDevice: { gamification: { scorm: activities } } };
+    });
+
+    afterEach(() => {
+      window.$exeDevices = previousDevices;
+    });
+
+    it('restores its verdict at entry instead of resetting it to unknown', () => {
+      globalThis.loadPage();
+      expect(activities.parseSuspendData).toHaveBeenCalledWith('stored activities');
+      expect(activities.setLegacyStatus).toHaveBeenCalledWith(passed);
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
+    });
+
+    // The exported page calls unloadPage() with no argument, before
+    // exe_export.js can pass isSCORM: the generic rule would complete it.
+    it.each([[undefined], [true]])('keeps pending work pending at exit, with isSCORM %s', isSCORM => {
+      activities.getLegacyVerdict.mockReturnValue(pending);
+      globalThis.unloadPage(isSCORM);
+      expect(activities.setLegacyStatus).toHaveBeenCalledWith(pending);
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalledOnce();
+    });
+
+    it('preserves the LMS verdict until custom activity minimums are registered', () => {
+      activities._successThresholdsByNumber = {};
+      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('completed');
+      globalThis.loadPage();
+      expect(activities.getLegacyVerdict).not.toHaveBeenCalled();
+      expect(activities.setLegacyStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
+    });
+
+    it('leaves pages with no activities to the existing completion rule', () => {
+      activities._successThresholdsByNumber = {};
+      activities.getLegacyVerdict.mockReturnValue(null);
+      globalThis.unloadPage();
+      expect(activities.setLegacyStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('completed');
+    });
+
+    it('leaves SCORM 1.2 and pages without common.js to the existing rule', () => {
+      globalThis.pipwerks.SCORM.version = '1.2';
+      globalThis.unloadPage(true);
+      expect(activities.getLegacyVerdict).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('incomplete');
+
+      vi.clearAllMocks();
+      setExitPageStatus(false);
+      globalThis.pipwerks.SCORM.version = '2004';
+      window.$exeDevices = undefined;
+      globalThis.unloadPage(true);
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('incomplete');
+    });
+  });
+
   describe('startTimer', () => {
     it('sets startDate to current time', () => {
       const beforeTime = new Date().getTime();

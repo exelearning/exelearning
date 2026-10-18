@@ -1,94 +1,27 @@
 ---
 name: backend-route
-description: Adding or modifying Elysia API route handlers in src/routes/. Every change must ship with colocated `*.spec.ts` tests covering success and error paths, keep patch coverage ≥ 90% on changed lines, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
+description: "Add or change Elysia route handlers, validation, authentication or authorization in src/routes/."
 ---
 
-# Skill: Backend Route
+# Elysia route handlers
 
-> Parent: [AGENTS.md](../../../AGENTS.md) | Related: [backend-service](../backend-service/SKILL.md), [api-v1](../api-v1/SKILL.md)
+Read the affected route, its colocated `.spec.ts`, its aggregator and `src/index.ts`. Match the existing
+prefix, dependency injection, validation and error-response contracts. Use `backend-service` for shared
+business logic and `api-v1` for external endpoints.
 
-## When to Use
+- Register a new route in its actual aggregator; do not add a second prefix or assume every route is
+  mounted directly in `src/index.ts`.
+- Reuse existing service/query injection and access checks. Do not introduce a new service layer solely
+  to fit a generic Elysia example, or bypass an existing service with duplicated business rules.
+- Validate untrusted bodies, query parameters, IDs, uploads and paths at the boundary. Authentication
+  and project ownership/collaboration are separate checks; preserve the operation's actual permission.
+- Destructive owner-only operations must reject non-owners without changing resources. Test allowed
+  collaborator operations separately rather than banning collaborators from every endpoint.
+- Test handlers through the existing Elysia app's `app.handle(new Request(...))` harness without opening
+  a listening server. Reuse the route's real login/token setup; a made-up cookie or placeholder JWT is
+  not an authenticated test.
+- Cover valid input, invalid input, missing/invalid authentication, insufficient permissions, and relevant
+  service failures. Assert response contracts and unchanged state after denied mutations.
 
-Adding or modifying Elysia API route handlers in `src/routes/`.
-
-## Key Files
-
-- `src/routes/*.ts` — route definitions (Elysia plugins with `{ prefix }`)
-- `src/routes/*.spec.ts` — colocated tests
-- `src/index.ts` — route registration (import + `.use()`)
-- `src/routes/types/` — shared route type definitions
-
-## Pattern
-
-```typescript
-// src/routes/my-feature.ts
-import { Elysia } from 'elysia';
-
-export const myFeatureRoutes = new Elysia({ prefix: '/api/my-feature' })
-    .get('/', () => ({ message: 'Hello' }))
-    .post('/', ({ body }) => ({ received: body }));
-
-// Register in src/index.ts
-app.use(myFeatureRoutes);
-```
-
-### Test Pattern — `app.handle()`
-
-Test routes by creating a real Elysia instance and calling `app.handle()` directly — no HTTP server needed:
-
-```typescript
-import { describe, it, expect } from 'bun:test';
-
-const app = new Elysia().use(myFeatureRoutes);
-
-it('returns 200 for valid request', async () => {
-    const res = await app.handle(new Request('http://localhost/api/my-feature'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe('Hello');
-});
-
-it('returns 401 without auth', async () => {
-    const res = await app.handle(new Request('http://localhost/api/my-feature/protected'));
-    expect(res.status).toBe(401);
-});
-```
-
-For authenticated routes, create JWT tokens programmatically and pass them as cookies or headers.
-
-### Authorization Pattern
-
-Always check ownership before destructive operations:
-
-```typescript
-if (project.owner_id !== currentUser.id) {
-    set.status = 403;
-    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can delete this project' };
-}
-```
-
-Test both success **and** rejection paths. After a rejected delete, verify the resource still exists.
-
-## Commands
-
-```bash
-bun test src/routes/my-feature.spec.ts       # Run route tests
-make fix                                      # Lint
-```
-
-## Gotchas
-
-- **Must register in `src/index.ts`** with `.use()` — easy to forget, route silently won't work.
-- **Must have `{ prefix: '/api/...' }`** in the Elysia constructor — without it, routes mount at root.
-- **Test both authed and unauthed paths** — every protected route needs a 401 test and a 403 test (wrong user).
-- **DI for database queries** — routes should call service functions, not query the DB directly. Service functions take `db` as a parameter.
-- **Verify state after failed operations** — for delete/reject flows, assert that the resource still exists after a 403 response. _Example: PR #1541._
-
-## Done When
-
-- [ ] Route file with Elysia plugin pattern and `{ prefix }`
-- [ ] Registered in `src/index.ts` via `.use()`
-- [ ] `.spec.ts` colocated and passing at 90%+ coverage
-- [ ] Tests cover success, 401 (no auth), and 403 (wrong user) paths
-- [ ] Database queries use DI pattern (take `db` parameter)
-- [ ] `make fix` passes clean
+Run `bun test src/routes/<affected>.spec.ts`, then [verify-change](../verify-change/SKILL.md).
+Keep colocated coverage and registration checks; do not add `mock.module()` to bypass dependencies.

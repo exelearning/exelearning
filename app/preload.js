@@ -52,6 +52,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeCurrentWindow: () => ipcRenderer.invoke('app:closeCurrentWindow'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
   getMemoryUsage: () => ipcRenderer.invoke('app:getMemoryUsage'),
+  getSpellCheckerSettings: () => ipcRenderer.invoke('app:getSpellCheckerSettings'),
+  setSpellCheckerLanguages: (languages) => ipcRenderer.invoke('app:setSpellCheckerLanguages', languages),
   notifyRendererReadyForOpenFile: () => ipcRenderer.send('app:renderer-ready-for-open-file'),
   onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (_e, data) => cb && cb(data)),
   onDownloadDone: (cb) => ipcRenderer.on('download-done', (_e, data) => cb && cb(data)),

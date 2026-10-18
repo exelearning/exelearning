@@ -453,4 +453,72 @@ describe('select-media-files iDevice export', () => {
             expect($('.SLCMP-Card').hasClass('SLCMP-Select')).toBe(true);
         });
     });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. The clock used to find that game by id and run it, counting
+    // down on its display and ending it when its own time ran out.
+    describe('the clock of a timed game', () => {
+        const instance = 0;
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `<div id="slcmpMainContainer-${instance}"></div>`;
+            dmedia.options = [
+                { gameStarted: false, time: 1, attempts: 0, numberQuestions: 1, phrasesGame: [{ definition: '' }] },
+            ];
+            for (const method of ['uptateTime', 'gameOver', 'activateHover', 'saveScormScore']) {
+                vi.spyOn(dmedia, method).mockImplementation(() => {});
+            }
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+        });
+
+        it('counts down on its own game', () => {
+            dmedia.startGame(instance);
+
+            vi.advanceTimersByTime(3000);
+
+            expect(dmedia.uptateTime).toHaveBeenLastCalledWith(57, instance);
+        });
+
+        it('ends its own game when the time runs out', () => {
+            dmedia.startGame(instance);
+
+            vi.advanceTimersByTime(60000);
+
+            expect(dmedia.gameOver).toHaveBeenCalledWith(2, instance);
+        });
+
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            dmedia.startGame(instance);
+            vi.advanceTimersByTime(1000);
+
+            // The author moves to another page, whose first game is numbered the same.
+            document.body.innerHTML = `<div id="slcmpMainContainer-${instance}"></div>`;
+            dmedia.options[instance] = { gameStarted: true, counter: 240, time: 4 };
+            dmedia.uptateTime.mockClear();
+            vi.advanceTimersByTime(120000);
+
+            expect(dmedia.uptateTime).not.toHaveBeenCalled();
+            expect(dmedia.gameOver).not.toHaveBeenCalled();
+            expect(dmedia.options[instance].counter).toBe(240);
+        });
+    });
+});
+
+describe('select-media-files minimum score notice', () => {
+    it('asks for the notice right after its interface replaces the stored data', () => {
+        const source = readFileSync(join(__dirname, 'select-media-files.js'), 'utf-8');
+        const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+        // The main container comes with the interface, so from that line on the
+        // notice can go right before it, below the instructions.
+        expect(loadGame).toMatch(
+            /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+        );
+    });
 });

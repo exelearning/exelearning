@@ -56,4 +56,19 @@ describe('common_i18n.js', () => {
     // In production the content translation for the project language is applied.
     expect(globalThis.$exe_i18n.exeGames.az).toBe('abcdefghijklmnopqrstuvwxyz');
   });
+
+  // showPassScoreNotice() in common.js reads $exe_i18n.passScoreNotice for an
+  // iDevice saved before it had a text of its own. Inside exeGames it was never
+  // found, and such an iDevice showed no notice at all.
+  it('carries the default minimum score notice where showPassScoreNotice() reads it', () => {
+    expect(globalThis.$exe_i18n.passScoreNotice).toBe('Minimum score needed to pass this activity: %s');
+    expect(globalThis.$exe_i18n.exeGames).not.toHaveProperty('passScoreNotice');
+  });
+
+  // showPagePassScore() in common.js reads these for the label beside a
+  // SCORM page's score.
+  it('carries the texts of the page minimum score label', () => {
+    expect(globalThis.$exe_i18n.pagePassScore).toBe('Minimum score to pass: %s');
+    expect(globalThis.$exe_i18n.pagePassEveryActivity).toBe('Each activity must reach its minimum score');
+  });
 });

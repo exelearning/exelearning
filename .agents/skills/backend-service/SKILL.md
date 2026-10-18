@@ -1,94 +1,27 @@
 ---
 name: backend-service
-description: Adding or modifying business logic services in src/services/ with dependency injection. Every change must ship with colocated `*.spec.ts` tests, keep patch coverage ≥ 90% on changed lines, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
+description: "Change eXeLearning service logic, injected collaborators, file operations or service cleanup."
 ---
 
-# Skill: Backend Service
+# Backend services
 
-> Parent: [AGENTS.md](../../../AGENTS.md) | Related: [backend-route](../backend-route/SKILL.md), [database-migration](../database-migration/SKILL.md)
+Read the service, callers and colocated specs under `src/services/`, along with affected query functions
+under `src/db/queries/` and error types in `src/exceptions/`.
 
-## When to Use
+- Reuse the existing injection contract: some services expose configure/reset functions, others accept
+  dependencies or a database argument. Do not introduce a global singleton, factory or interface solely
+  for a test. Pass the caller's transaction through related operations.
+- Tests use `bun:test` and injected behavior, not new `mock.module()` calls. Restore configured dependencies,
+  environment changes, timers and caches after each test. Use a real isolated DB when testing DB behavior;
+  a stub is appropriate only when the database is fully replaced by injected collaborators.
+- Keep the existing error type, translation and response mapping. Test success and failure at the shared
+  implementation so every caller receives the same fix.
+- For files, use `src/services/file-helper.ts` and `asset-storage`. Validate user-derived paths, create
+  directories when writing, and close handles/stop processes before deletion on Windows.
+- Preserve an existing cache's invalidation, expiry and ownership; add a new cache only for a measured
+  problem. Test invalidation as well as hits, not only reduced dependency call counts.
+- If server and static builds consume the same configuration, reuse the shared implementation. Avoid
+  extracting a new abstraction when an existing helper already covers the behavior.
 
-Adding or modifying business logic services in `src/services/`.
-
-## Key Files
-
-- `src/services/*.ts` — service implementations
-- `src/services/*.spec.ts` — colocated tests
-- `src/services/file-helper.ts` — file path resolution (`getFilesDir`, `getProjectAssetsDir`, etc.)
-- `src/exceptions/` — custom error types (`HttpException`, `TranslatableException`)
-- `src/db/queries/*.ts` — database query functions (consumed by services)
-
-## DI Pattern (Required)
-
-```typescript
-// Service file
-interface MyServiceDeps {
-    queries: { findById: typeof findById };
-}
-const defaultDeps: MyServiceDeps = { queries: { findById } };
-let deps = defaultDeps;
-
-export function configure(newDeps: Partial<MyServiceDeps>): void {
-    deps = { ...defaultDeps, ...newDeps };
-}
-export function resetDependencies(): void { deps = defaultDeps; }
-```
-
-### Test Pattern
-
-```typescript
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-
-afterEach(() => {
-    resetDependencies();
-    // Also clean up any side effects (caches, singletons)
-});
-
-it('returns data when found', async () => {
-    configure({ queries: { findById: async () => ({ id: 1, name: 'test' }) } });
-    const result = await myService.findById({} as any, 1);
-    expect(result).toEqual({ id: 1, name: 'test' });
-});
-```
-
-Use `{} as any` for the `db` parameter when behavior is fully injected via DI — no real DB needed.
-
-### Caching Pattern
-
-When adding caching, include TTL and an `invalidate` export for tests:
-
-```typescript
-interface CacheEntry { value: boolean; expiresAt: number; }
-let cache: CacheEntry | null = null;
-const CACHE_TTL_MS = 5000;
-
-export function invalidateCache(): void { cache = null; }
-```
-
-Test that the cache works by asserting call counts on the injected dependency.
-
-## Commands
-
-```bash
-bun test src/services/my-service.spec.ts     # Run service tests
-make fix                                      # Lint
-```
-
-## Gotchas
-
-- **`mock.module()` is forbidden** — causes test pollution in Bun. Always use the DI pattern above.
-- **`isPathSafe()` for all user-derived paths** — path traversal is a critical security vulnerability.
-- **Lazy directory creation** — never create directories eagerly. Create on-demand when writing files.
-- **Cleanup ordering on shutdown** — kill processes before deleting their files. On Windows, open file handles cause EBUSY errors. _Example: PR #1578._
-- **Dual source of truth** — if server and static builder need the same config, extract a shared function. Do not copy-paste. _Example: PR #1564._
-- **Extract complex inline logic** — when fixing a calculation bug, extract it into a named pure function with edge-case handling, then test it directly. _Example: PR #1546._
-
-## Done When
-
-- [ ] Service exports `configure()` and `resetDependencies()`
-- [ ] `.spec.ts` colocated and passing at 90%+ coverage
-- [ ] `afterEach` calls `resetDependencies()` plus any cache invalidation
-- [ ] No `mock.module()` usage
-- [ ] File paths validated with `isPathSafe()`
-- [ ] `make fix` passes clean
+Run `bun test src/services/<affected>.spec.ts`, then [verify-change](../verify-change/SKILL.md).
+Check caller behavior, failed-operation cleanup and the affected executable-line coverage.
