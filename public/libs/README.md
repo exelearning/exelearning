@@ -159,7 +159,7 @@
     *   Copyright: Mozilla Foundation
     *   License: Apache-2.0
 *   Package: pele
-    *   Copyright: kepano (Steph Ango)
+    *   Copyright: kepano
     *   License: MIT
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
