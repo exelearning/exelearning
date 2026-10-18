@@ -1609,6 +1609,10 @@ test.describe('Text iDevice', () => {
 
     test.describe('Image Persistence', () => {
         test('should persist image after save and reload', async ({ authenticatedPage, createProject }) => {
+            // Upload, the media dialog and the reload do not fit in the 45s
+            // default. When that clock runs out, Playwright closes the page
+            // during reload and the failure looks like a dead browser.
+            test.setTimeout(120000);
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
