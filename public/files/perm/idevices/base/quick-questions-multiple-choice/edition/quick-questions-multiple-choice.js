@@ -667,7 +667,7 @@ var $exeDevice = {
             $('#seleccionaEVIURL').val($('#seleccionaEVideoIntro').val());
             $('#seleccionaEVIDiv').show();
             $('#seleccionaEVINo').hide();
-            $('#seleccionaENumQuestionDiv').hide();
+            $('#seleccionaEVIClose').trigger('focus');
         } else {
             $('#seleccionaEVINo').show();
             $('#seleccionaEVI').hide();
@@ -1266,6 +1266,27 @@ var $exeDevice = {
     createForm: function () {
         const edition = $exeIDevicesEdition.iDevice,
             path = $exeDevice.idevicePath,
+            videoIntro = `
+                            <div class="SLCNE-EVIDiv" id="seleccionaEVIDiv">
+                                <div class="SLCNE-EVIV">
+                                    <div class="SLCNE-EMVI">
+                                        <div class="SLCNE-EVI" id="seleccionaEVI"></div>
+                                        <video class="SLCNE-EVI" id="seleccionaEVILocal" preload="auto" controls></video>
+                                        <img class="SLCNE-ENoVI" src="${path}quextIENoVideo.png" id="seleccionaEVINo" alt="" />
+                                    </div>
+                                </div>
+                                <div class="SLCNE-EVIOptions d-flex align-items-center flex-wrap gap-2">
+                                    <label for="seleccionaEVIURL" class="mb-0">${_('URL')}:</label>
+                                    <input id="seleccionaEVIURL" type="text" class="form-control me-0" />
+                                    <a href="#" id="seleccionaEVIPlayI" class="SLCNE-ENavigationButton " title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play the introduction video')}" class="SLCNE-ENavigationButton intro" /></a>
+                                    <label for="seleccionaEVIStart" class="mb-0">${_('Start')}:</label>
+                                    <input id="seleccionaEVIStart" type="text" value="00:00:00" readonly class="form-control me-0" style="width: 13ch !important; text-align: center;" />
+                                    <label for="seleccionaEVIEnd" class="mb-0">${_('End')}:</label>
+                                    <input id="seleccionaEVIEnd" type="text" value="00:00:00" readonly class="form-control me-0"  style="width: 13ch !important; text-align: center;" />
+                                    <button class="SLCNE-EVideoTime btn btn-primary" id="seleccionaEVITime" type="button">00:00:00</button>
+                                </div>
+                                <input type="button" class="SLCNE-EVIClose btn btn-primary mt-2" id="seleccionaEVIClose" value="${_('Close')}" />
+                            </div>`,
             options = `
                         <div id="seleccionaEOptions">
                             <div class="toggle-item mb-3" data-target="seleccionaEShowMinimize">
@@ -1684,26 +1705,6 @@ var $exeDevice = {
                                 <a href="#" id="seleccionaECut" class="SLCNE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="SLCNE-ENavigationButton" /></a>
                                 <a href="#" id="seleccionaEPaste" class="SLCNE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="SLCNE-ENavigationButton" /></a>
                             </div>
-                            <div class="SLCNE-EVIDiv" id="seleccionaEVIDiv">
-                                <div class="SLCNE-EVIV">
-                                    <div class="SLCNE-EMVI">
-                                        <div class="SLCNE-EVI" id="seleccionaEVI"></div>
-                                        <video class="SLCNE-EVI" id="seleccionaEVILocal" preload="auto" controls></video>
-                                        <img class="SLCNE-ENoVI" src="${path}quextIENoVideo.png" id="seleccionaEVINo" alt="" />
-                                    </div>
-                                </div>
-                                <div class="SLCNE-EVIOptions d-flex align-items-center flex-wrap gap-2">
-                                    <label for="seleccionaEVIURL" class="mb-0">${_('URL')}:</label>
-                                    <input id="seleccionaEVIURL" type="text" class="form-control me-0" />
-                                    <a href="#" id="seleccionaEVIPlayI" class="SLCNE-ENavigationButton " title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play the introduction video')}" class="SLCNE-ENavigationButton intro" /></a>
-                                    <label for="seleccionaEVIStart" class="mb-0">${_('Start')}:</label>
-                                    <input id="seleccionaEVIStart" type="text" value="00:00:00" readonly class="form-control me-0" style="width: 13ch !important; text-align: center;" />
-                                    <label for="seleccionaEVIEnd" class="mb-0">${_('End')}:</label>
-                                    <input id="seleccionaEVIEnd" type="text" value="00:00:00" readonly class="form-control me-0"  style="width: 13ch !important; text-align: center;" />
-                                    <button class="SLCNE-EVideoTime btn btn-primary" id="seleccionaEVITime" type="button">00:00:00</button>
-                                </div>
-                                <input type="button" class="SLCNE-EVIClose btn btn-primary mt-2" id="seleccionaEVIClose" value="${_('Close')}" />
-                            </div>
                             <div class="SLCNE-ENumQuestionDiv" id="seleccionaENumQuestionDiv">
                                 <div class="SLCNE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="SLCNE-ENumQuestions" id="seleccionaENumQuestions">0</span>
                             </div>
@@ -1717,7 +1718,7 @@ var $exeDevice = {
                 ${edition.tabs.getHtml('quickMultipleQEIdeviceForm', {
                     path: path,
                     instructions: c_('Choose the right answers and click on the Check button.'),
-                    options: options,
+                    options: options + videoIntro,
                     contents: questions,
                     passwords: true,
                     feedback: true,
@@ -3002,8 +3003,8 @@ var $exeDevice = {
             e.preventDefault();
             $('#seleccionaEVideoIntro').val($('#seleccionaEVIURL').val());
             $('#seleccionaEVIDiv').hide();
-            $('#seleccionaENumQuestionDiv').show();
             $exeDevice?.stopVideoIntro();
+            $('#seleccionaEVideoIntroPlay').trigger('focus');
         });
 
         $('#seleccionaECursor').on('click', () => {

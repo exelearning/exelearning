@@ -327,10 +327,15 @@
     width: 3em;
 }
 
+#quickMultipleQEIdeviceForm-panel-options {
+    position: relative;
+}
+
 .SLCNE-EVIDiv {
     background-color: #f9f9f9;
     display: none;
-    height: 100%;
+    min-height: 100%;
+    padding: 3rem 1rem 1rem;
     left: 0;
     position: absolute;
     top: 0;
@@ -343,10 +348,10 @@
 }
 
 .SLCNE-EMVI {
-    height: 315px;
-    margin: 70px auto;
+    aspect-ratio: 16 / 9;
+    margin: 1rem auto;
     position: relative;
-    width: 560px;
+    width: min(560px, 100%);
 }
 
 .SLCNE-EVI,
@@ -362,9 +367,7 @@
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    height: 50px;
     justify-content: center;
-    position: absolute;
     width: 100%;
 }
 

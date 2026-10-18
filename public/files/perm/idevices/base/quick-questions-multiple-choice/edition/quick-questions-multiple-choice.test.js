@@ -647,12 +647,15 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
     };
     let device;
     let tinymceInit;
+    let tinymceGet;
+    let editorReady;
     let previousApp;
     let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning.app;
+        editorReady = undefined;
         tooltips = new Map();
         global.eXeLearning.app = {
             ...previousApp,
@@ -666,13 +669,33 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
         };
         vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
-        tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation(() => Promise.resolve([]));
+        let text = '';
+        const editor = {
+            initialized: true,
+            getContent: () => text,
+            setContent: (html) => (text = html),
+            hide: vi.fn(),
+            show: vi.fn(),
+            on: (event, callback) => {
+                if (event === 'init') editorReady = callback;
+            },
+        };
+        tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) => id === 'seleccionaEText' ? editor : null);
+        tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation((config) => {
+            config.setup(editor);
+            return Promise.resolve([editor]);
+        });
         document.body.innerHTML = '<div id="seleccionaBody"></div>';
         const filename = join(__dirname, 'quick-questions-multiple-choice.js');
         runInThisContext(readFileSync(filename, 'utf8'), { filename });
         device = global.$exeDevice;
         global.attachEditionLifecycle(device);
+        vi.spyOn(device, 'loadYoutubeApi').mockImplementation(() => {});
+        vi.spyOn(device, 'enableForm');
+        vi.spyOn(device, 'loadPreviousValues');
+        vi.spyOn(device, 'addEvents');
         device.init(document.getElementById('seleccionaBody'), {}, PATH);
+        editorReady();
     });
 
     afterEach(() => {
@@ -680,12 +703,16 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
         global.eXeLearning.app = previousApp;
         vi.unstubAllGlobals();
         tinymceInit.mockRestore();
+        tinymceGet.mockRestore();
         Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
 
     it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(device.enableForm).toHaveBeenCalledOnce();
+        expect(device.loadPreviousValues).toHaveBeenCalledOnce();
+        expect(device.addEvents).toHaveBeenCalledOnce();
         expect(tabNames()).toEqual([
             'instructions',
             'options',
@@ -705,6 +732,8 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
             'Choose the right answers and click on the Check button.'
         );
         expect(panel('options').querySelector('#seleccionaEOptions')).not.toBeNull();
+        expect(panel('options').querySelector('#seleccionaEVIDiv #seleccionaEVILocal')).not.toBeNull();
+        expect(panel('contents').querySelector('#seleccionaEVIDiv')).toBeNull();
         expect(panel('contents').querySelector('#seleccionaEPanel')).not.toBeNull();
         expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
         expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
@@ -750,6 +779,19 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
             for (const label of labels) expect(text).toContain(`${label}:`);
             expect(text.split('\n\n')).toHaveLength(labels.length);
         }
+    });
+
+    it('handles option changes after TinyMCE initializes without toggling them from help', () => {
+        const checkbox = document.getElementById('seleccionaEShowMinimize');
+        const row = checkbox.closest('.toggle-item');
+        row.click();
+        expect(checkbox.checked).toBe(true);
+        row.querySelector('.exe-idevice-help').click();
+        expect(checkbox.checked).toBe(true);
+        row.click();
+        expect(checkbox.checked).toBe(false);
+        document.querySelector('input[name="slcgamemode"][value="2"]').click();
+        expect(feedback().isRequired()).toBe(true);
     });
 
     it('escapes translated help text in the explanation', () => {
