@@ -319,6 +319,9 @@ class YjsDocumentManager {
     if (window.ProjectTabTracker) {
       this._tabTracker = new window.ProjectTabTracker(this.projectId, () => {
         this._cleanupOnLastTabClose();
+      }, {
+        // Lets a tab that is still open clear a flag a sibling set on unload.
+        cleanupFlagKey: `exe-needs-cleanup-${this.projectId}`,
       });
       this._tabTracker.start();
       Logger.log(`[YjsDocumentManager] Tab tracker started for project ${this.projectId}`);

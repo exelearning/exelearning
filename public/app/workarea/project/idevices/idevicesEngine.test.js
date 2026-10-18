@@ -4618,6 +4618,18 @@ describe('IdevicesEngine', () => {
             };
         });
 
+        it('enters edit mode on mousedown and keeps the click from focusing away', () => {
+            vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
+                titleNode: 'New page',
+                editableInPage: false,
+            });
+            engine.initPageTitleInlineRename();
+            const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+            titleEl.dispatchEvent(event);
+            expect(event.defaultPrevented).toBe(true);
+            expect(titleEl.getAttribute('contenteditable')).toBe('true');
+        });
+
         it('adds a pencil edit button and enters edit mode on a single click', () => {
             vi.spyOn(engine, 'getPageTitleProperties').mockReturnValue({
                 titleNode: 'New page',

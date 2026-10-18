@@ -86,10 +86,6 @@ export function startInlineTitleEdit(element, options = {}) {
         }
     };
 
-    function onBlur() {
-        finishEditing(true);
-    }
-
     function onKeydown(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -98,6 +94,27 @@ export function startInlineTitleEdit(element, options = {}) {
             e.preventDefault();
             finishEditing(false);
         }
+    }
+
+    // Firefox fires a trusted blur immediately after the click that opened the
+    // editor, which would leave edit mode before the user types. Ignore that
+    // blur and put the caret back. A blur after this turn is the user leaving
+    // the field. Synthetic blurs (unit tests) commit at once.
+    let blurArmed = false;
+    let refocusing = false;
+    setTimeout(() => {
+        blurArmed = true;
+    }, 0);
+
+    function onBlur(event) {
+        if (event?.isTrusted && !blurArmed) {
+            if (refocusing || finished) return;
+            refocusing = true;
+            element.focus();
+            refocusing = false;
+            return;
+        }
+        finishEditing(true);
     }
 
     element.addEventListener('blur', onBlur);

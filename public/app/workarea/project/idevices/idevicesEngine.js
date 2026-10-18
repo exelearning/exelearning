@@ -2140,9 +2140,16 @@ export default class IdevicesEngine {
         wrapper.appendChild(editButton);
         this.pageTitleEditButton = editButton;
 
-        // A single click on the title or the pencil enters edit mode.
-        const startEdit = () => this.startPageTitleInlineEdit(titleElement);
+        // mousedown (not only click) so Firefox does not move focus away before
+        // the editor is armed. preventDefault keeps that mousedown from focusing
+        // the button or the page body, which was cancelling the edit at once.
+        const startEdit = (event) => {
+            if (event?.type === 'mousedown') event.preventDefault();
+            this.startPageTitleInlineEdit(titleElement);
+        };
+        titleElement.addEventListener('mousedown', startEdit);
         titleElement.addEventListener('click', startEdit);
+        editButton.addEventListener('mousedown', startEdit);
         editButton.addEventListener('click', startEdit);
 
         if (eXeLearning?.app?.common?.initTooltips) {

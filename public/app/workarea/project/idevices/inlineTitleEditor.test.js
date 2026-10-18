@@ -86,6 +86,29 @@ describe('inlineTitleEditor', () => {
             expect(element.hasAttribute('aria-label')).toBe(false);
         });
 
+        it('ignores the trusted blur Firefox fires while the editor is opening', () => {
+            vi.useFakeTimers();
+            try {
+                start();
+                element.textContent = 'Should stay';
+                const openingBlur = new Event('blur');
+                Object.defineProperty(openingBlur, 'isTrusted', { value: true });
+                element.dispatchEvent(openingBlur);
+                expect(onCommit).not.toHaveBeenCalled();
+                expect(onCancel).not.toHaveBeenCalled();
+                expect(element.getAttribute('contenteditable')).toBe('true');
+
+                vi.advanceTimersByTime(1);
+                element.textContent = 'Blurred title';
+                const laterBlur = new Event('blur');
+                Object.defineProperty(laterBlur, 'isTrusted', { value: true });
+                element.dispatchEvent(laterBlur);
+                expect(onCommit).toHaveBeenCalledWith('Blurred title');
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
         it('commits a changed value on blur', () => {
             start();
             element.textContent = 'Blurred title';

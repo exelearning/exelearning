@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { reloadPage, gotoWorkarea, editIdevice, selectFirstPage } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -137,36 +137,16 @@ test.describe('Three Sixty Viewer iDevice', () => {
         await page.waitForTimeout(500);
 
         await reloadPage(page);
+        await selectFirstPage(page);
 
-        const pageNode = page
-            .locator('.nav-element-text')
-            .filter({ hasText: /New page|Nueva página/i })
-            .first();
-        if ((await pageNode.count()) > 0) {
-            await pageNode.click({ force: true, timeout: 5000 });
-            await page.waitForTimeout(500);
-        }
-
-        // Wait for the idevice wrapper to be present after reload
-        await page
-            .waitForFunction(
-                () => !!document.querySelector('#node-content .idevice_node.three-sixty-viewer'),
-                undefined,
-                { timeout: 15000 },
-            )
-            .catch(() => {});
-
-        // Enter edit mode and verify persisted values
-        const editBtn = page.locator('#node-content .idevice_node.three-sixty-viewer .btn-edit-idevice').first();
-        if (await editBtn.isVisible().catch(() => false)) {
-            await editBtn.click();
-        } else {
-            await page
-                .locator('#node-content .idevice_node.three-sixty-viewer .idevice_body')
-                .first()
-                .dblclick({ timeout: 5000 })
-                .catch(() => {});
-        }
+        // Firefox keeps the edit button disabled for a moment after reload.
+        // A click on that disabled button does nothing, and the form never
+        // appears. editIdevice waits until the button is enabled.
+        const node = page.locator('#node-content .idevice_node.three-sixty-viewer').first();
+        await node.waitFor({ state: 'visible', timeout: 15000 });
+        const ideviceId = await node.getAttribute('id');
+        expect(ideviceId).toBeTruthy();
+        await editIdevice(page, ideviceId as string);
 
         await page.locator('#threeSixtyAlt').waitFor({ state: 'visible', timeout: 10000 });
         await expect(page.locator('#threeSixtyAlt')).toHaveValue(TEST_DATA.alt);

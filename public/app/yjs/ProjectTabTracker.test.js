@@ -647,4 +647,102 @@ describe('ProjectTabTracker', () => {
       expect(tracker._isRefresh()).toBe(true);
     });
   });
+
+  describe('cleanup flag while another tab is still open', () => {
+    const flagKey = 'exe-needs-cleanup-project-123';
+
+    function visibleTracker(callback = () => {}) {
+      return new ProjectTabTracker('project-123', callback, { cleanupFlagKey: flagKey });
+    }
+
+    it('clears a cleanup flag written by a sibling tab', () => {
+      const tracker = visibleTracker();
+      tracker.start();
+      mockLocalStorage.setItem(flagKey, 'true');
+
+      tracker._handleStorage({ key: flagKey, newValue: 'true' });
+
+      expect(mockLocalStorage.getItem(flagKey)).toBeNull();
+      const tabs = JSON.parse(mockLocalStorage.getItem('exe-tabs-project-123'));
+      expect(tabs[tracker.tabId]).toBeDefined();
+
+      tracker.stop();
+    });
+
+    it('revokes a last-tab cleanup when the page is still visible', () => {
+      vi.useFakeTimers();
+      const callback = vi.fn(() => {
+        mockLocalStorage.setItem(flagKey, 'true');
+      });
+      const tracker = visibleTracker(callback);
+      tracker.start();
+
+      global.performance = {
+        navigation: { type: 0 },
+        getEntriesByType: () => [{ type: 'navigate' }],
+      };
+      tracker._handleBeforeUnload();
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(mockLocalStorage.getItem(flagKey)).toBe('true');
+
+      vi.advanceTimersByTime(1);
+
+      expect(mockLocalStorage.getItem(flagKey)).toBeNull();
+      const tabs = JSON.parse(mockLocalStorage.getItem('exe-tabs-project-123'));
+      expect(tabs[tracker.tabId]).toBeDefined();
+
+      tracker.stop();
+    });
+
+    it('keeps the cleanup flag when the document is actually hidden', () => {
+      vi.useFakeTimers();
+      const previous = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+      try {
+        const callback = vi.fn(() => {
+          mockLocalStorage.setItem(flagKey, 'true');
+        });
+        const tracker = visibleTracker(callback);
+        tracker.start();
+        global.performance = {
+          navigation: { type: 0 },
+          getEntriesByType: () => [{ type: 'navigate' }],
+        };
+
+        tracker._handleBeforeUnload();
+        vi.advanceTimersByTime(1);
+
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(mockLocalStorage.getItem(flagKey)).toBe('true');
+        tracker.stop();
+      } finally {
+        if (previous) {
+          Object.defineProperty(document, 'visibilityState', previous);
+        } else {
+          delete document.visibilityState;
+        }
+      }
+    });
+
+    it('does not revoke an explicit forceCleanup', () => {
+      vi.useFakeTimers();
+      const callback = vi.fn(() => {
+        mockLocalStorage.setItem(flagKey, 'true');
+      });
+      const tracker = visibleTracker(callback);
+      tracker.start();
+
+      tracker.forceCleanup();
+      vi.advanceTimersByTime(1);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(mockLocalStorage.getItem(flagKey)).toBe('true');
+
+      tracker.stop();
+    });
+  });
 });
