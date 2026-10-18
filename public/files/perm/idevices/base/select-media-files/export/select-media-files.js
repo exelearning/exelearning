@@ -93,6 +93,7 @@ var $eXeSeleccionaMedias = {
             const slcmp = $eXeSeleccionaMedias.createInterfaceSelecciona(i);
 
             dl.before(slcmp).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#slcmpGameMinimize-' + i).show();
             $('#slcmpGameContainer-' + i).show();
@@ -1207,14 +1208,22 @@ var $eXeSeleccionaMedias = {
         }
         clearInterval(mOptions.counterClock);
         if (mOptions.time > 0) {
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#slcmpMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'slcmpMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (mOptions.gameStarted) {
@@ -1233,6 +1242,7 @@ var $eXeSeleccionaMedias = {
                 }
                 $eXeSeleccionaMedias.uptateTime(mOptions.counter, instance);
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeSeleccionaMedias.uptateTime(mOptions.time * 60, instance);
         }
 
@@ -1524,10 +1534,13 @@ var $eXeSeleccionaMedias = {
         $slcmpMessage.show();
         if (end) {
             $slcmpMessage.hide();
-            color = 1;
-            if (mOptions.score >= 6) {
-                color = 2;
-            }
+            // Through `colors`, like every other message. This used to assign
+            // the index itself and hand `color: 1` to CSS, which is not a
+            // colour, so the verdict never reached the screen at all.
+            color =
+                colors[
+                    mOptions.score >= $exe.passScore.resolve(mOptions) ? 2 : 1
+                ];
             $('#slcmpMesasgeEnd-' + instance).html(message);
             $('#slcmpMesasgeEnd-' + instance).css({
                 color: color,

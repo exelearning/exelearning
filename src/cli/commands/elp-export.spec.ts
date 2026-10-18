@@ -440,4 +440,80 @@ describe('elp:export command', () => {
             expect(result.message).toContain('content.xml');
         });
     });
+
+    describe('execute - assets in content/resources subfolders', () => {
+        // eXe 3 stores each iDevice's files in content/resources/<iDeviceId>/.
+        const FOLDER_DIR = '/tmp/elp-export-folder-assets-test';
+        const FOLDER_ELP_PATH = path.join(FOLDER_DIR, 'folder-assets.elpx');
+        const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+        beforeAll(async () => {
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page1</odePageId>
+        <odeBlockId>block1</odeBlockId>
+        <blockName>Block</blockName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page1</odePageId>
+            <odeBlockId>block1</odeBlockId>
+            <odeIdeviceId>20260121165359522NHK</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p><img src="{{context_path}}/content/resources/20260121165359522NHK/card.png" alt="a"><img src="{{context_path}}/content/resources/flat.png" alt="b"></p>]]></htmlView>
+            <odeComponentsOrder>0</odeComponentsOrder>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+            const zipData = zipSync({
+                'content.xml': strToU8(contentXml),
+                'content/resources/20260121165359522NHK/card.png': PNG,
+                'content/resources/flat.png': PNG,
+            });
+            await fs.mkdir(FOLDER_DIR, { recursive: true });
+            await fs.writeFile(FOLDER_ELP_PATH, Buffer.from(zipData));
+        });
+
+        afterAll(async () => {
+            await fs.rm(FOLDER_DIR, { recursive: true, force: true });
+        });
+
+        const exportZip = async (format: string, name: string) => {
+            const outputPath = path.join(FOLDER_DIR, name);
+            const result = await execute([FOLDER_ELP_PATH, outputPath, format], {});
+            expect(result.success).toBe(true);
+            return unzipSync(new Uint8Array(await fs.readFile(outputPath)));
+        };
+
+        it('points html5 pages at the files it writes', async () => {
+            const zip = await exportZip('html5', 'web.zip');
+            const html = new TextDecoder().decode(zip['index.html']);
+
+            expect(zip['content/resources/20260121165359522NHK/card.png']).toBeDefined();
+            expect(html).toContain('src="content/resources/20260121165359522NHK/card.png"');
+            expect(html).toContain('src="content/resources/flat.png"');
+            expect(html).not.toContain('content/resources/resources/');
+        });
+
+        it('keeps the subfolder path in a re-exported content.xml', async () => {
+            const zip = await exportZip('elpx', 'project.elpx');
+            const xml = new TextDecoder().decode(zip['content.xml']);
+
+            expect(zip['content/resources/20260121165359522NHK/card.png']).toBeDefined();
+            expect(xml).toContain('{{context_path}}/content/resources/20260121165359522NHK/card.png');
+            expect(xml).not.toContain('content/resources/resources/');
+        });
+    });
 });

@@ -1,88 +1,34 @@
 ---
 name: idevice
-description: Creating or modifying interactive devices in public/files/perm/idevices/base/. Every change must ship with colocated Vitest `*.test.js` coverage for edition and export logic, keep patch coverage ≥ 90% on changed lines, include a Playwright spec exercising the iDevice in the workarea and preview, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
+description: "Create or modify an eXeLearning iDevice, including edition/export data, legacy compatibility, assets, TypeScript bundles and teardown."
 ---
 
-# Skill: iDevice
+# iDevice development
 
-> Parent: [AGENTS.md](../../../AGENTS.md) | Related: [frontend-module](../frontend-module/SKILL.md), [exporter](../exporter/SKILL.md)
+Read the target under `public/files/perm/idevices/base/`, its `config.xml`, edition/export scripts,
+colocated tests, and `public/app/workarea/idevices/`. Use the nearest comparable iDevice, not a generic
+scaffold. `checklist`, `rubric` and `geogebra-activity` show legacy patterns; `slide/src/` shows a bundled
+TypeScript editor already in main (`scripts/build-slide-editor.ts`). Do not assume other branches' migrations landed.
 
-## When to Use
+## Trace the complete lifecycle
 
-Creating or modifying interactive devices (iDevices) in `public/files/perm/idevices/base/`.
+- Follow config discovery → edition initialization → validation/save → persisted HTML/data → reload →
+  preview/export initialization → teardown. Preserve the actual `$exeDevice`/runtime globals and hooks.
+  Methods vary (`loadPreviousValues`, `updateFieldGame`, etc.); there is no universal `loadData()` contract.
+- The test must round-trip every changed field, including empty/default values and a real legacy fixture.
+  If stored data uses escaped/encrypted JSON or versioned attributes, keep its existing encoding contract;
+  do not prescribe `escape()` for a new format or decode historical data twice.
+- Preserve IDs, config metadata, icon references, edition/export resource names and library registration.
+  Prevent repeated `.exe-text` wrappers on re-import through the existing normalization path.
+- Test exported behavior independently of the workarea's globals and DOM. Multiple instances on one page
+  need isolated IDs/state; preview and the exported ZIP must include all required resources.
+- Dispose listeners, timers, media/canvas resources and object URLs through `this.$lifecycle` (below);
+  TinyMCE editors in the form are disposed centrally. Check switching devices and leaving edition; do not
+  overwrite another device's global or discard unsaved work during a remote Yjs refresh.
+- Use `_()` for editor controls and `c_()` for learning content, preserving the project's content locale.
+  Retain keyboard controls, labels, focus and feedback in edition and exported activities.
 
-## Key Files
-
-- `public/files/perm/idevices/base/<name>/` — iDevice root directory
-- `public/files/perm/idevices/base/<name>/config.xml` — metadata (title, css-class, category, icon)
-- `public/files/perm/idevices/base/<name>/edition/` — editor UI (JS + CSS)
-- `public/files/perm/idevices/base/<name>/export/` — export rendering (JS + CSS)
-- `public/files/perm/idevices/base/<name>/*-icon.svg` — icon asset
-- `public/app/workarea/idevices/idevicesList.js` — iDevice registry
-- `public/app/workarea/idevices/idevicesManager.js` — iDevice lifecycle management
-
-**Reference iDevices** (well-tested, good to study): `checklist`, `rubric`, `geogebra-activity`
-
-## Structure
-
-```
-public/files/perm/idevices/base/<name>/
-├── config.xml              # Metadata: title, css-class, category, icon
-├── <name>-icon.svg         # Icon
-├── edition/
-│   ├── <name>.js           # Editor JS
-│   ├── <name>.test.js      # Editor tests
-│   └── <name>.css          # Editor styles (optional)
-└── export/
-    ├── <name>.js           # Export rendering JS
-    ├── <name>.test.js      # Export tests
-    └── <name>.css          # Export styles (optional)
-```
-
-## Testing — Round-Trip Is Mandatory
-
-Every iDevice **must** have a round-trip test: save data → load data → verify all fields are preserved. This is the #1 source of iDevice bugs — fields silently disappear when `loadData()` doesn't restore what `save()` stored. _Example: PR #1581._
-
-### Edition Test Pattern
-
-```javascript
-import { describe, it, expect, beforeEach } from 'vitest';
-
-describe('my-idevice edition', () => {
-    let idevice;
-    beforeEach(async () => {
-        document.body.innerHTML = '<div id="idevice-container"></div>';
-        idevice = await global.loadIdevice('public/files/perm/idevices/base/my-idevice/edition/my-idevice.js');
-    });
-
-    it('round-trip: save then load preserves all fields', () => {
-        // Set up editor state
-        idevice.init(container, { title: 'Test', content: '<p>Hello</p>' });
-        // Save
-        const saved = idevice.save();
-        // Load into fresh instance
-        idevice.init(container, {});
-        idevice.loadData(saved);
-        // Verify ALL fields
-        expect(idevice.getTitle()).toBe('Test');
-        expect(idevice.getContent()).toContain('Hello');
-    });
-});
-```
-
-### Export Test Pattern
-
-```javascript
-function loadExportIdevice(code) {
-    const modifiedCode = code
-        .replace(/var\s+\$myidevice\s*=/, 'global.$myidevice =')
-        .replace(/\$\(function\s*\(\)\s*\{\s*\}\);?\s*$/g, '');
-    (0, eval)(modifiedCode);
-    return global.$myidevice;
-}
-```
-
-## Edition Lifecycle — Owning What You Create
+## Edition lifecycle: own what you create
 
 An editor is opened and closed many times in one session. Anything the edition creates that can
 outlive its form — a timer, a handler on `document`, a player, a pending read — must be owned by
@@ -156,31 +102,15 @@ and at most once:
 destroyEdition: function () { /* ... */ },
 ```
 
-## Commands
+**Gotcha:** a raw `setInterval`, a `document` handler or a player left running after close keeps firing,
+and can drive the next iDevice the user opens. Register them through `this.$lifecycle`. _Issues #2271, #2293._
 
-```bash
-npx vitest run public/files/perm/idevices/base/<name>/edition/<name>.test.js
-npx vitest run public/files/perm/idevices/base/<name>/export/<name>.test.js
-make fix
-```
+## TypeScript/bundled devices
 
-## Gotchas
+Edit the source under the device's `src/` and run its registered build (slide: `bun run bundle:slide-editor`).
+Review source, tests and generated output together. Do not hand-edit the generated editor bundle or
+force legacy devices into a TypeScript scaffold as part of an unrelated fix.
 
-- **Round-trip data loss** — the #1 iDevice bug. If `save()` stores a field, `loadData()` must restore it. Always test `load(save(data)) === data` for every field. _Example: PR #1581._
-- **Legacy metadata formats** — old iDevices may store data in fewer fields than current format. Tests must verify both old and new formats work.
-- **Extra wrapper divs on re-import** — `IdeviceRenderer` wraps text in `<div class="exe-text">`. If your iDevice stores this HTML and re-imports it, wrappers accumulate. Normalize on import. _Example: PR #1559._
-- **Missing `config.xml`** or wrong `<css-class>` — must match folder name convention.
-- **Both `edition/` and `export/` are required** — missing either causes silent failures.
-- **Icon naming** — must follow `<name>-icon.svg` pattern.
-- **Use `escape()` for metadata persistence** — some iDevices use `escape()` for special characters in saved data. Be consistent with the existing pattern.
-- **Resources that outlive the editor** — a raw `setInterval`, a `document` handler or a player left running after close keeps firing, and can drive the next iDevice the user opens. Register them through `this.$lifecycle` (see above). _Issues #2271, #2293._
-
-## Done When
-
-- [ ] `config.xml` with correct title, css-class, category, icon
-- [ ] `edition/<name>.js` with `.test.js` including round-trip test
-- [ ] `export/<name>.js` with `.test.js`
-- [ ] Icon SVG present (`<name>-icon.svg`)
-- [ ] Legacy format compatibility tested if modifying an existing iDevice
-- [ ] Tests pass via `npx vitest run`
-- [ ] `make fix` passes clean
+Run the target's existing Vitest `.test.js` files, including source-import tests for TypeScript components.
+Add/update an E2E flow that creates, edits, saves, reloads and previews the device; use exporter tests for
+ZIP/resource changes and the collaboration fixture for remote-edit interactions. Finish with `verify-change`.

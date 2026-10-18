@@ -124,6 +124,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('True or false'),
             msgFeedback: c_('Feedback'),
             msgSuggestion: c_('Suggestion'),
@@ -398,9 +399,6 @@ var $exeDevice = {
                                 <input type="number" class="form-control" name="tofEPercentageQuestions" id="tofEPercentageQuestions" value="100" min="1" max="100" />
                                 <span id="tofENumeroPercentaje">1/1</span>
                             </div>
-                            <div class="Games-Reportdiv d-none flex-wrap align-items-center gap-2 mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
-                            </div>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -451,7 +449,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}          
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 6, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(6)}
             </div>
@@ -464,8 +462,29 @@ var $exeDevice = {
 
     enable() {
         $exeDevice.loadPreviousValues();
+        $exeDevice.toggleProgressReport($('#tofEIsTest').is(':checked'));
         $exeDevice.addEvents();
         $exeDevice.showQuestion(0);
+    },
+
+    /**
+     * Offer the progress report only in quiz mode.
+     *
+     * Outside it the activity is a self-check: every answer is marked as it is
+     * given, there is no final score, `gameStarted` never rises and the shared
+     * gamification layer refuses every report. The control used to sit in a
+     * container this iDevice showed and hid with the mode; moving it to the
+     * Grading tab left it permanently on screen, so the author could switch it
+     * on, save, and have validateData drop it without a word.
+     *
+     * Hidden rather than merely ignored, and validateData still reads it only
+     * in quiz mode: a box ticked before the mode was turned off is stale, and
+     * saving it would promise a report that can never be written.
+     *
+     * @param {boolean} show Whether quiz mode is on.
+     */
+    toggleProgressReport(show) {
+        $('.exe-progress-report-wrapper').toggleClass('d-none', !show);
     },
 
     showEditor($activeEditor, $link) {
@@ -570,6 +589,8 @@ var $exeDevice = {
             });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         if (
             window.File &&
             window.FileReader &&
@@ -598,14 +619,13 @@ var $exeDevice = {
 
         $('#tofEIsTest').on('click', function () {
             const $timeDiv = $('#tofETimeDiv');
-            const $reportDiv = $('.Games-Reportdiv');
             const $attemptsDiv = $('#tofEAttemptsNumberDiv');
 
             const show = $timeDiv.hasClass('d-none');
 
             $timeDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
-            $reportDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
             $attemptsDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
+            $exeDevice.toggleProgressReport(show);
         });
 
         $('#tofEPercentageQuestions')
@@ -870,6 +890,10 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#tofETime').val(game.time);
         $('#tofEAttemptsNumber').val(game.attemptsNumber ?? 1);
         $('#tofEQuestionsRandom').prop('checked', game.questionsRandom);
@@ -878,14 +902,15 @@ var $exeDevice = {
         $('#tofEIsTest').prop('checked', game.isTest || false);
 
         if (game.isTest) {
-            $('#tofETimeDiv, #tofEAttemptsNumberDiv, .Games-Reportdiv')
+            $('#tofETimeDiv, #tofEAttemptsNumberDiv')
                 .removeClass('d-none')
                 .addClass('d-flex');
         } else {
-            $('#tofETimeDiv, #tofEAttemptsNumberDiv, .Games-Reportdiv')
+            $('#tofETimeDiv, #tofEAttemptsNumberDiv')
                 .removeClass('d-flex')
                 .addClass('d-none');
         }
+        $exeDevice.toggleProgressReport(!!game.isTest);
 
         $exeDevice.updateQuestionsNumber();
         game.weighted =
@@ -1015,6 +1040,10 @@ var $exeDevice = {
             evaluation = progressBar.evaluation;
             evaluationID = progressBar.evaluationID;
         }
+        // Read outside the isTest branch: the pass mark applies to every mode,
+        // not only to the one that publishes a progress report.
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
         for (let i = 0; i < questionsGame.length; i++) {
             const mQuestion = questionsGame[i];
 
@@ -1069,6 +1098,8 @@ var $exeDevice = {
             weighted: scorm.weighted || 100,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             showSlider: showSlider,
             ideviceId: id,
         };

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" style="height: 100%; margin: 0; padding: 0;">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+
+    <!-- Using existing eXeLearning styles just for the loading screen -->
+    <link rel="stylesheet" href="{{ basePath }}/style/workarea/main.css">
+
+    <style>
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #viewer-iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+            display: none;
+        }
+        #loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #555;
+            background: #f8f9fa;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+        <p id="loader-text">{{ 'Loading preview...' | trans }}</p>
+    </div>
+
+    <!--
+        The published content is served from the server at
+        /view/<id>/_/index.html and rendered inside this sandboxed iframe.
+
+        The sandbox intentionally omits `allow-same-origin`, so the content runs
+        in an OPAQUE ORIGIN: it cannot reach the authenticated session, cookies,
+        IndexedDB, the API or this parent window — not even in fullscreen. The
+        same isolation is enforced at the response level via a `Content-Security-
+        Policy: sandbox …` header, so it holds even if the content URL is opened
+        directly. The sandbox tokens come from a single source of truth shared
+        with that header (see src/shared/security/publicViewSandbox.ts).
+    -->
+    <iframe id="viewer-iframe"
+            src="{{ basePath }}/view/{{ publicViewId }}/_/index.html"
+            sandbox="{{ sandboxTokens }}"
+            referrerpolicy="no-referrer"
+            allowfullscreen></iframe>
+
+    <script>
+        (function () {
+            var iframe = document.getElementById('viewer-iframe');
+            var loader = document.getElementById('loader');
+            iframe.addEventListener('load', function () {
+                loader.style.display = 'none';
+                iframe.style.display = 'block';
+            });
+        })();
+    </script>
+</body>
+</html>
