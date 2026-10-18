@@ -41,6 +41,7 @@ import {
     YjsDocumentAdapter as YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper as ServerYjsDocumentWrapperDefault,
     ServerLatexPreRenderer as ServerLatexPreRendererDefault,
+    MermaidPreRenderer,
     type ExportResult,
     type ExportDocument,
     type ResourceProvider,
@@ -54,6 +55,7 @@ import {
     FileSystemAssetHandler as FileSystemAssetHandlerDefault,
 } from '../shared/import';
 import * as Y from 'yjs';
+import { render as renderMermaid } from 'pele';
 
 // Yjs persistence for server-side Yjs documents
 import { reconstructDocument as reconstructDocumentDefault } from '../websocket/yjs-persistence';
@@ -583,9 +585,10 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     return { success: false, error: `Unsupported export format: ${exportType}` };
             }
 
-            // Attach server-side LaTeX pre-render hooks so exports/previews render formulas
-            // even when addMathJax is disabled.
+            // Attach server-side LaTeX and Mermaid pre-render hooks so exports/previews render
+            // formulas (even when addMathJax is disabled) and diagrams.
             const latexRenderer = new ServerLatexPreRendererDefault();
+            const mermaidRenderer = new MermaidPreRenderer(renderMermaid);
             const exportOptionsWithHooks = {
                 // Stamp the SCORM 1.2 runtime with the release doing the exporting, so a
                 // package can always name the runtime it carries. A caller-supplied value wins.
@@ -593,6 +596,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 ...options,
                 preRenderLatex: async (html: string) => latexRenderer.preRender(html),
                 preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+                preRenderMermaid: async (html: string) => mermaidRenderer.preRender(html),
             };
 
             // Run export

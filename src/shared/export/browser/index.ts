@@ -36,6 +36,8 @@ import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
 import { PageElpxExporter } from '../exporters/PageElpxExporter';
+import { MermaidPreRenderer, type MermaidRenderFunction } from '../prerender/MermaidPreRenderer';
+import type { MermaidPreRenderResult } from '../interfaces';
 
 // Import renderers
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
@@ -251,9 +253,13 @@ interface LatexPreRendererHooks {
  * Mermaid pre-renderer hooks interface
  */
 interface MermaidPreRendererHooks {
-    preRenderMermaid: (
-        html: string,
-    ) => Promise<{ html: string; hasMermaid: boolean; mermaidRendered: boolean; count: number }>;
+    preRenderMermaid: (html: string) => Promise<MermaidPreRenderResult>;
+}
+
+/** Globals set by common.js ($exe.mermaid) and by Pele's browser build (window.pele). */
+interface PeleWindow {
+    pele?: { render: MermaidRenderFunction };
+    $exe?: { mermaid?: { load?: () => Promise<unknown> } };
 }
 
 interface LatexDebugEntry {
@@ -486,35 +492,33 @@ async function getLatexPreRendererHooks(): Promise<LatexPreRendererHooks | undef
 }
 
 /**
- * Get Mermaid pre-renderer hooks if available in browser context
+ * Get the Mermaid pre-renderer hook for browser exports and previews.
  *
- * Note: Only requires MermaidPreRenderer to be loaded (not mermaid library).
- * MermaidPreRenderer.preRender() will dynamically load mermaid if needed.
- *
- * @returns Object with preRenderMermaid, or undefined
+ * Pele is loaded on demand through the editor runtime ($exe.mermaid.load in common.js),
+ * so it stays out of this bundle. A diagram that cannot be rendered, including when Pele
+ * fails to load, stays as source and is reported in the result's `failures`.
  */
 function getMermaidPreRendererHooks(): MermaidPreRendererHooks | undefined {
     if (typeof window === 'undefined') return undefined;
+    const win = window as unknown as PeleWindow;
 
-    const windowMermaidPreRenderer = (
-        window as unknown as {
-            MermaidPreRenderer?: {
-                preRender: (
-                    html: string,
-                ) => Promise<{ html: string; hasMermaid: boolean; mermaidRendered: boolean; count: number }>;
-            };
-        }
-    ).MermaidPreRenderer;
+    const renderer = new MermaidPreRenderer((source, options) => {
+        if (!win.pele) throw new Error('The Pele diagram renderer could not be loaded');
+        return win.pele.render(source, options);
+    });
 
-    // Only require MermaidPreRenderer to be loaded.
-    // The preRender function will load mermaid library dynamically if needed.
-    if (windowMermaidPreRenderer) {
-        return {
-            preRenderMermaid: windowMermaidPreRenderer.preRender.bind(windowMermaidPreRenderer),
-        };
-    }
-
-    return undefined;
+    return {
+        preRenderMermaid: async (html: string) => {
+            if (!win.pele && html.includes('mermaid')) {
+                await win.$exe?.mermaid?.load?.().catch(() => undefined);
+            }
+            const result = await renderer.preRender(html);
+            if (result.failures?.length) {
+                console.warn('[SharedExporters] Mermaid diagrams left as source:', result.failures);
+            }
+            return result;
+        },
+    };
 }
 
 /**
@@ -878,6 +882,7 @@ if (typeof window !== 'undefined') {
         LomMetadataGenerator,
         // Utilities
         LibraryDetector,
+        getMermaidPreRendererHooks,
     };
 
     // Also expose PrintPreviewExporter at window level for direct access

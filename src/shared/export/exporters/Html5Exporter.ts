@@ -227,7 +227,6 @@ export class Html5Exporter extends BaseExporter {
             // Pages are added to ZIP immediately to avoid storing all HTML in memory
             // Manifest script tags are injected inline (they reference the file, not its content)
             let latexWasRendered = false;
-            let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -255,13 +254,11 @@ export class Html5Exporter extends BaseExporter {
                 }
 
                 // Pre-render Mermaid diagrams to static SVG if hook is provided
-                // This eliminates the need for the ~2.7MB Mermaid library in exports
                 if (options?.preRenderMermaid) {
                     try {
                         const result = await options.preRenderMermaid(html);
                         if (result.mermaidRendered) {
                             html = result.html;
-                            mermaidWasRendered = true;
                             console.log(
                                 `[Html5Exporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
                             );
@@ -294,21 +291,18 @@ export class Html5Exporter extends BaseExporter {
             // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
             this.addEditableContentXml(pages, meta, addFile, options);
 
-            // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
+            // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             const contentCssFiles = await this.resources.fetchContentCss();
             let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
-            if (latexWasRendered || mermaidWasRendered) {
+            // Append pre-rendered CSS if LaTeX was rendered (Mermaid styles are in base.css)
+            if (latexWasRendered) {
                 const decoder = new TextDecoder();
                 let baseCssText = decoder.decode(baseCss);
                 if (latexWasRendered) {
                     baseCssText += '\n' + this.getPreRenderedLatexCss();
-                }
-                if (mermaidWasRendered) {
-                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
                 }
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);
@@ -599,16 +593,6 @@ export class Html5Exporter extends BaseExporter {
     }
 
     /**
-     * Get CSS for pre-rendered Mermaid diagrams (static SVG)
-     * This CSS is needed when Mermaid is pre-rendered instead of using the library at runtime
-     */
-    protected getPreRenderedMermaidCss(): string {
-        return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
-.exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
-.exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
-    }
-
-    /**
      * Add the re-editable ODE `content.xml` to the package, unless
      * `shipsEditableSource` says this export omits it.
      *
@@ -694,7 +678,6 @@ export class Html5Exporter extends BaseExporter {
             // We buffer page HTML because ELPX download scripts need libraries to be loaded first
             const pageEntries: Array<{ filename: string; html: string; page: ExportPage; index: number }> = [];
             let latexWasRendered = false;
-            let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -727,7 +710,6 @@ export class Html5Exporter extends BaseExporter {
                         const result = await options.preRenderMermaid(html);
                         if (result.mermaidRendered) {
                             html = result.html;
-                            mermaidWasRendered = true;
                         }
                     } catch {
                         // Continue without pre-rendering
@@ -750,18 +732,15 @@ export class Html5Exporter extends BaseExporter {
             // Registered via addFile, so it is automatically listed in the ELPX manifest below.
             this.addEditableContentXml(pages, meta, addFile, options);
 
-            // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
+            // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             const contentCssFiles = await this.resources.fetchContentCss();
             let baseCss = contentCssFiles.get('content/css/base.css');
             if (baseCss) {
-                if (latexWasRendered || mermaidWasRendered) {
+                if (latexWasRendered) {
                     const decoder = new TextDecoder();
                     let baseCssText = decoder.decode(baseCss);
                     if (latexWasRendered) {
                         baseCssText += '\n' + this.getPreRenderedLatexCss();
-                    }
-                    if (mermaidWasRendered) {
-                        baseCssText += '\n' + this.getPreRenderedMermaidCss();
                     }
                     const encoder = new TextEncoder();
                     baseCss = encoder.encode(baseCssText);

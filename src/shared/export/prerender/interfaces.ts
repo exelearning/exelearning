@@ -2,7 +2,7 @@
  * Server-side Pre-renderer Interfaces
  *
  * These interfaces define the contract for pre-rendering LaTeX and Mermaid
- * content on the server side (CLI export) without requiring a browser.
+ * content without requiring a browser.
  */
 
 import type { LatexPreRenderResult, MermaidPreRenderResult } from '../interfaces';
@@ -35,14 +35,9 @@ export interface ServerLatexPreRendererInterface {
 }
 
 /**
- * Server Mermaid pre-renderer interface
+ * Mermaid pre-renderer interface (browser and server)
  */
-export interface ServerMermaidPreRendererInterface {
-    /**
-     * Initialize Mermaid library (must be called before preRender)
-     */
-    initialize(): Promise<void>;
-
+export interface MermaidPreRendererInterface {
     /**
      * Pre-render Mermaid diagrams in HTML to static SVG
      * @param html - HTML content with Mermaid diagrams

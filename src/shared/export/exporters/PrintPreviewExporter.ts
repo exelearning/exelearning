@@ -43,8 +43,7 @@ export interface PrintPreviewOptions {
      */
     preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
     /**
-     * Optional hook to pre-render Mermaid diagrams to static SVG.
-     * When provided and successful, Mermaid library (~2.7MB) will NOT be included.
+     * Optional hook to pre-render Mermaid diagrams to static SVG with Pele.
      */
     preRenderMermaid?: (html: string) => Promise<MermaidPreRenderResult>;
     /**

@@ -62,7 +62,7 @@ whoever hands a teacher a crafted project file.
 - **Less:** admin-only features. Admins are trusted operators, so a report against them needs to show something an
   admin could not already do.
 - **Out of scope:**
-  - vendored third-party code: `public/libs/`, and in `public/app/common/` only `mermaid/`, `edicuatex/`,
+  - vendored third-party code: `public/libs/`, and in `public/app/common/` only `pele/` (generated), `edicuatex/`,
     `exe_math/`, `mindmaps/`, `fix_webm_duration/` and the `*.min.js` files; the rest of `public/app/common/` is
     first-party and in scope;
   - minified third-party libraries under `public/files/perm/idevices/`;

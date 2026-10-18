@@ -313,6 +313,40 @@ pre.mermaid {
     min-width: 200px;
 }
 
+/* Mermaid diagrams rendered with Pele (https://pele.run/theming).
+   The values reproduce Mermaid's "default" theme with its classic look; the font
+   stack is written into each SVG by the renderer. Chart series keep Pele's palette,
+   which is designed for the white labels drawn on it. */
+.exe-mermaid-rendered {
+    display: block;
+    text-align: center;
+    margin: 1.5em 0;
+}
+
+.exe-mermaid-rendered svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.pele {
+    --pele-bg: #fff;
+    --pele-fg: #333;
+    --pele-muted: #666;
+    --pele-line: #333;
+    --pele-surface: #ececff;
+    --pele-surface-alt: #ffffde;
+    --pele-border: #9370db;
+    --pele-accent: #8a90dd;
+    --pele-critical: #f00;
+    --pele-radius: 0;
+}
+
+.exe-mermaid-error {
+    color: #a94442;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+}
+
 /* Blocks */
 .exe-block-warning {
     background: #FCF8E3;

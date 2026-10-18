@@ -2,7 +2,7 @@
  * Minify first-party editor JavaScript inside the static distribution.
  *
  * Scope is deliberately narrow:
- *  - only our own code (never vendored trees like exe_math/mermaid/mindmaps/
+ *  - only our own code (never vendored trees like exe_math/pele/mindmaps/
  *    edicuatex/exe_tooltips/exe_media, and never app/common/scorm, whose two
  *    vendored pipwerks files carry a byte-identity contract);
  *  - only editor-side files that are NOT copied into exported packages
@@ -42,7 +42,6 @@ export const MINIFY_FILES = [
     'app/common/common_edition.js',
     'app/common/connectionMonitor.js',
     'app/common/LatexPreRenderer.js',
-    'app/common/MermaidPreRenderer.js',
     'app/common/mime-sniff.js',
 ];
 

@@ -188,7 +188,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
             'exe_highlighter',
             'exe_slidesjs',
             'exe_math', // MathJax library
-            'mermaid', // Mermaid diagram library
         ]);
 
         // Build lookup for directory patterns

@@ -131,9 +131,6 @@
 *   Package: jose
     *   Copyright: Filip Skokan
     *   License: MIT
-*   Package: jsdom
-    *   Copyright: Elijah Insua, Domenic Denicola, Sebastian Mayr
-    *   License: MIT
 *   Package: kill-port
     *   Copyright: Tiaan du Plessis
     *   License: MIT
@@ -149,9 +146,6 @@
 *   Package: mathjax
     *   Copyright: MathJax Consortium
     *   License: Apache-2.0
-*   Package: mermaid
-    *   Copyright: Knut Sveidqvist
-    *   License: MIT
 *   Package: mime-types
     *   Copyright: Douglas Christopher Wilson, Jeremiah Senkpiel, Jonathan Ong
     *   License: MIT
@@ -164,6 +158,9 @@
 *   Package: pdfjs-dist
     *   Copyright: Mozilla Foundation
     *   License: Apache-2.0
+*   Package: pele
+    *   Copyright: kepano (Steph Ango)
+    *   License: MIT
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT

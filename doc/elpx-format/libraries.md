@@ -109,7 +109,7 @@ const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPag
 
 **Notes:**
 
-- **Mermaid** (`mermaid.min.js`) is **never** bundled. Mermaid diagrams are always pre-rendered to static SVG before export (`Html5Exporter.ts:182–196`), eliminating the ~2.7 MB runtime library. The comment at `constants.ts:254` confirms: "Mermaid diagrams are always pre-rendered to static SVG … so the ~2.7MB mermaid.min.js library is never needed."
+- **Mermaid** diagrams never need a runtime library. They are pre-rendered to static SVG with [Pele](https://pele.run) before export (`src/shared/export/prerender/MermaidPreRenderer.ts`), in the browser and on the server/CLI alike. Their colours come from the `.pele` CSS variables in `content/css/base.css`.
 - **MathJax** (`exe_math/`) is skipped when LaTeX has been pre-rendered to SVG+MathML by the browser hook, unless `meta.addMathJax` is explicitly `true` (`Html5Exporter.ts:288`).
 - `exe_atools` contains the accessibility toolbar (font switcher, contrast modes, reading ruler). It is only included when the project's "Add Accessibility Toolbar" option is enabled.
 

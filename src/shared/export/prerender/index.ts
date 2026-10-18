@@ -1,17 +1,17 @@
 /**
- * Server-side Pre-renderers for CLI Export
+ * Pre-renderers for exports
  *
  * These pre-renderers convert LaTeX and Mermaid content to static SVG
- * during CLI export, eliminating the need to bundle heavy client-side
- * libraries (MathJax ~1MB, Mermaid ~2.7MB) in the exported content.
+ * during export, so exported content does not need MathJax or a diagram
+ * renderer at runtime.
  *
  * Usage:
  * ```typescript
- * import { ServerLatexPreRenderer, ServerMermaidPreRenderer } from './prerender';
+ * import { render } from 'pele';
+ * import { ServerLatexPreRenderer, MermaidPreRenderer } from './prerender';
  *
  * const latexRenderer = new ServerLatexPreRenderer();
- * const mermaidRenderer = new ServerMermaidPreRenderer();
- * await mermaidRenderer.initialize();
+ * const mermaidRenderer = new MermaidPreRenderer(render);
  *
  * const result = await exporter.export({
  *   preRenderLatex: (html) => latexRenderer.preRender(html),
@@ -22,10 +22,11 @@
  */
 
 export { ServerLatexPreRenderer } from './ServerLatexPreRenderer';
-export { ServerMermaidPreRenderer } from './ServerMermaidPreRenderer';
+export { MermaidPreRenderer, MERMAID_FONT_FAMILY } from './MermaidPreRenderer';
+export type { MermaidRenderFunction } from './MermaidPreRenderer';
 export type {
     ServerLatexPreRendererInterface,
-    ServerMermaidPreRendererInterface,
+    MermaidPreRendererInterface,
     LatexPreRenderResult,
     MermaidPreRenderResult,
 } from './interfaces';

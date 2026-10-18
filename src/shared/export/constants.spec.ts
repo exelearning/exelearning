@@ -153,8 +153,7 @@ describe('Constants', () => {
         });
 
         it('should NOT include mermaid pattern (always pre-rendered to SVG)', () => {
-            // Mermaid diagrams are always pre-rendered to static SVG before export
-            // The ~2.7MB mermaid.min.js library is never needed in exports
+            // Mermaid diagrams are always pre-rendered to static SVG with Pele before export
             const patternNames = LIBRARY_PATTERNS.map(p => p.name);
             expect(patternNames).not.toContain('mermaid');
         });

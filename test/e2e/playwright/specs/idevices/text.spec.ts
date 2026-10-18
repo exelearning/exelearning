@@ -760,7 +760,7 @@ test.describe('Text iDevice', () => {
             expect(contentHtml).toContain('Works!');
         });
 
-        test('should pre-render mermaid to SVG in preview (no mermaid.min.js library)', async ({
+        test('should render mermaid with Pele in the editor and pre-render it in the preview', async ({
             authenticatedPage,
             createProject,
         }) => {
@@ -814,8 +814,9 @@ test.describe('Text iDevice', () => {
             const dialog = page.locator('.tox-dialog');
             await expect(dialog).toBeVisible({ timeout: 10000 });
 
-            const mermaidCode = `graph TD
-    A[Pre-render Test] --> B[SVG Output]`;
+            // The diagram from #2490: its first label must wrap instead of being cut off
+            const mermaidCode = `flowchart TD
+  A[El alumnado entrega el trabajo a través de la plataforma del centro] --> B[Pre-render Test]`;
 
             const textarea = dialog.locator('textarea');
             await textarea.fill(mermaidCode);
@@ -851,6 +852,10 @@ test.describe('Text iDevice', () => {
                 { timeout: 25000 },
             );
 
+            // The saved iDevice view renders the diagram with Pele
+            const editorSvg = block.locator('pre.mermaid[data-processed="true"] svg.pele');
+            await expect(editorSvg).toBeVisible({ timeout: 15000 });
+
             // Save project
             await workarea.save();
             await page.waitForTimeout(500);
@@ -864,58 +869,38 @@ test.describe('Text iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
-            // Verify pre-rendering: check for exe-mermaid-rendered class and NO mermaid.min.js script
+            // The preview carries a pre-rendered SVG and loads no diagram renderer
             const preRenderResult = await page
                 .waitForFunction(
                     () => {
                         const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                        if (!previewIframe?.contentDocument) return null;
-                        const doc = previewIframe.contentDocument;
-
-                        const activeArticle = doc.querySelector('article');
-                        if (!activeArticle) return null;
-
-                        // Check for pre-rendered mermaid element
-                        const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
-                        const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
-
-                        // Check if mermaid library is loaded (it should NOT be when pre-rendered)
-                        const mermaidScripts = doc.querySelectorAll('script[src*="mermaid.min.js"]');
-                        const hasMermaidLibrary = mermaidScripts.length > 0;
-
-                        // Check if mermaid global is defined (another way to check if library loaded)
-                        const previewWindow = previewIframe.contentWindow as any;
-                        const hasMermaidGlobal = typeof previewWindow?.mermaid !== 'undefined';
-
-                        // Return when SVG is present (either pre-rendered or runtime)
-                        if (preRenderedSvg || doc.querySelector('svg[id^="mermaid-"]')) {
-                            return {
-                                isPreRendered: !!preRendered,
-                                hasSvg: true,
-                                hasDataMermaid: preRendered?.getAttribute('data-mermaid')?.includes('Pre-render Test'),
-                                hasMermaidLibrary,
-                                hasMermaidGlobal,
-                            };
-                        }
-                        return null;
+                        const doc = previewIframe?.contentDocument;
+                        const svg = doc?.querySelector('article .exe-mermaid-rendered svg.pele');
+                        if (!doc || !svg) return null;
+                        const node = svg.querySelector('.pele-node[data-id="A"]') as SVGGElement;
+                        const shape = node.querySelector('rect') as SVGRectElement;
+                        const text = node.querySelector('text') as SVGTextElement;
+                        return {
+                            dataMermaid: svg.parentElement?.getAttribute('data-mermaid') || '',
+                            hasPreTag: !!doc.querySelector('article pre.mermaid'),
+                            rendererScripts: doc.querySelectorAll('script[src*="mermaid"], script[src*="pele"]').length,
+                            hasPeleGlobal: typeof (previewIframe.contentWindow as any)?.pele !== 'undefined',
+                            labelLines: text.querySelectorAll('tspan').length,
+                            labelWidth: text.getBBox().width,
+                            shapeWidth: shape.getBBox().width,
+                        };
                     },
                     undefined,
                     { timeout: 15000 },
                 )
                 .then(handle => handle.jsonValue());
 
-            // Diagram should render as SVG
-            expect(preRenderResult.hasSvg).toBe(true);
-
-            // When pre-rendering is successful:
-            // - Should have exe-mermaid-rendered class
-            // - Should preserve original code in data-mermaid
-            if (preRenderResult.isPreRendered) {
-                expect(preRenderResult.hasDataMermaid).toBe(true);
-                // Note: The library may still be included in the export even when pre-rendered.
-                // The key verification is that the diagram was successfully converted to SVG.
-                // Library exclusion optimization may vary by export type.
-            }
+            expect(preRenderResult.dataMermaid).toContain('Pre-render Test');
+            expect(preRenderResult.hasPreTag).toBe(false);
+            expect(preRenderResult.rendererScripts).toBe(0);
+            expect(preRenderResult.hasPeleGlobal).toBe(false);
+            expect(preRenderResult.labelLines).toBeGreaterThan(1);
+            expect(preRenderResult.labelWidth).toBeLessThanOrEqual(preRenderResult.shapeWidth);
         });
 
         test('should preserve unrelated inline styles when updating max-size', async ({

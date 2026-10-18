@@ -335,7 +335,18 @@ describe('buildHtml5PreviewExport (real exporter)', () => {
             page.set('pageId', 'page-1');
             page.set('pageName', 'Welcome page');
             page.set('children', new Y.Array());
-            page.set('blocks', new Y.Array());
+            const component = new Y.Map();
+            component.set('id', 'component-1');
+            component.set('type', 'text');
+            component.set('htmlContent', '<pre class="mermaid">flowchart LR\n    A --&gt; B</pre>');
+            const components = new Y.Array();
+            components.push([component]);
+            const block = new Y.Map();
+            block.set('id', 'block-1');
+            block.set('components', components);
+            const blocks = new Y.Array();
+            blocks.push([block]);
+            page.set('blocks', blocks);
             ydoc.getArray('navigation').push([page]);
             const metadata = ydoc.getMap('metadata');
             metadata.set('title', 'Public view export');
@@ -357,5 +368,16 @@ describe('buildHtml5PreviewExport (real exporter)', () => {
         expect(result.success).toBe(true);
         const files = unzipSync(result.data!);
         expect(strFromU8(files['index.html'])).toContain('Welcome page');
+    });
+
+    it('pre-renders Mermaid diagrams to SVG', async () => {
+        const project = (await db.selectFrom('projects').selectAll().where('id', '=', projectId).executeTakeFirst())!;
+
+        const result = await buildHtml5PreviewExport(project);
+
+        const html = strFromU8(unzipSync(result.data!)['index.html']);
+        expect(html).toContain('<div class="exe-mermaid-rendered" data-mermaid="flowchart LR');
+        expect(html).toContain('<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-flowchart"');
+        expect(html).not.toContain('<pre class="mermaid">');
     });
 });

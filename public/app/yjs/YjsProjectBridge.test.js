@@ -5297,6 +5297,25 @@ describe('YjsProjectBridge', () => {
       expect(mockLink.click).toHaveBeenCalled();
     });
 
+    it('passes the Mermaid pre-render hook to the ELPX exporter', async () => {
+      const preRenderMermaid = mock(() => Promise.resolve({ html: '', count: 0 }));
+      const mockExporter = {
+        export: mock(() => Promise.resolve({ success: true, data: new ArrayBuffer(8), filename: 'test.elpx' })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+        getMermaidPreRendererHooks: mock(() => ({ preRenderMermaid })),
+      };
+      global.URL.createObjectURL = mock(() => 'blob:test');
+      global.URL.revokeObjectURL = mock(() => {});
+      global.document.createElement = mock(() => ({ href: '', download: '', click: mock(() => {}) }));
+      global.document.body = { appendChild: mock(() => {}), removeChild: mock(() => {}) };
+
+      await bridge.exportToElpx();
+
+      expect(mockExporter.export).toHaveBeenCalledWith({ preRenderMermaid });
+    });
+
     it('throws on export failure', async () => {
       global.window.SharedExporters = {
         createExporter: mock(() => ({
