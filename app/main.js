@@ -14,6 +14,10 @@ const {
     windowHasUnsavedChanges,
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
+const {
+    createSpellCheckerController,
+    registerSpellCheckerIpc,
+} = require('./spell-checker-settings');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -285,8 +289,9 @@ function writeSettings(obj) {
     try {
         fs.mkdirSync(path.dirname(SETTINGS_FILE()), { recursive: true });
         fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(obj, null, 2), 'utf8');
+        return true;
     } catch (_e) {
-        // Best-effort; ignore
+        return false;
     }
 }
 
@@ -1370,6 +1375,16 @@ app.on('new-window-for-tab', () => {
 });
 
 app.whenReady().then(() => {
+    const spellCheckerController = createSpellCheckerController({
+        electronSession: session.defaultSession,
+        platform: process.platform,
+        systemLocale: app.getSystemLocale(),
+        readSettings,
+        writeSettings,
+        onError: error => console.warn('[SpellChecker] Settings operation failed:', error),
+    });
+    registerSpellCheckerIpc(ipcMain, spellCheckerController);
+    spellCheckerController.applyPersisted();
     // A fresh process has no file "currently associated" with the window
     // yet — clear the on-disk slot so a leftover filename from a previous
     // run does not shadow the title-derived suggestedName on first Save.
