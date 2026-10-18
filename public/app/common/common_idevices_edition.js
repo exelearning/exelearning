@@ -39,6 +39,72 @@ var $exeIDevicesEdition = {
                     .replace(/"/g, '&quot;')
                     .replace(/'/g, '&#39;');
             },
+            helpTooltipId: 0,
+            /**
+             * Inline information button: a short hover label and a persistent
+             * explanation on click, using the editor's help window styling.
+             * Pass localized text, e.g. getHelpTooltip(_('Explain this option.')).
+             * tabs.bind initializes it automatically; forms without shared tabs
+             * call initHelpTooltips after inserting their HTML.
+             *
+             * @param {string} text Localized explanation, rendered as plain text.
+             * @returns {string}
+             */
+            getHelpTooltip: function (text) {
+                const common = $exeIDevicesEdition.iDevice.common;
+                const description = common.escapeHtml(text);
+                const label = common.escapeHtml(_('Information'));
+                const id = `exe-idevice-help-${++common.helpTooltipId}`;
+                return `<span class="exe-form-help exe-idevice-help-container">
+                            <button type="button" class="exe-app-tooltip exe-idevice-help" title="${label}" aria-label="${label}" aria-expanded="false" aria-controls="${id}">
+                                <span class="info-icon-solid-green" aria-hidden="true"></span>
+                            </button>
+                            <span id="${id}" class="help-content help-hidden" role="note">${description}</span>
+                        </span>`;
+            },
+            /**
+             * Initialize help once and release it when its edition closes.
+             * Returns a disposer for callers without an active edition lifecycle.
+             */
+            initHelpTooltips: function (element) {
+                const buttons = Array.from(element?.querySelectorAll('.exe-idevice-help') || []);
+                if (!buttons.length) return;
+                const pending = buttons.filter((button) => !bootstrap.Tooltip.getInstance(button));
+                eXeLearning.app.common.initTooltips(element);
+                const lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
+                const disposers = pending.map((button) => {
+                    const tooltip = bootstrap.Tooltip.getInstance(button);
+                    const content = document.getElementById(button.getAttribute('aria-controls'));
+                    const hide = function () {
+                        content.classList.add('help-hidden');
+                        button.setAttribute('aria-expanded', 'false');
+                    };
+                    // Capture also sees clicks whose own handlers stop propagation.
+                    const outsideClick = function (event) {
+                        if (!button.contains(event.target)) hide();
+                    };
+                    document.addEventListener('click', outsideClick, true);
+                    $(button).on('click.exeHelpTooltip', function (event) {
+                        event.stopPropagation();
+                        tooltip.hide();
+                        content.classList.remove('help-hidden');
+                        button.setAttribute('aria-expanded', 'true');
+                    }).on('keydown.exeHelpTooltip', function (event) {
+                        if (event.key === 'Escape') {
+                            tooltip.hide();
+                            hide();
+                        }
+                    });
+                    const dispose = function () {
+                        hide();
+                        $(button).off('.exeHelpTooltip');
+                        document.removeEventListener('click', outsideClick, true);
+                        tooltip.dispose();
+                    };
+                    return lifecycle ? lifecycle.own(dispose) : dispose;
+                });
+                return () => disposers.forEach((dispose) => dispose());
+            },
             getIdeviceDescription: function (text, url) {
                 if (typeof text != "string") return "";
 
@@ -3292,6 +3358,7 @@ var $exeIDevicesEdition = {
             bind: function (id) {
                 const tabs = $exeIDevicesEdition.iDevice.tabs;
                 if (!tabs.isValidId(id)) return;
+                $exeIDevicesEdition.iDevice.common.initHelpTooltips(document.getElementById(`${id}-panels`));
                 $exeIDevicesEdition.iDevice.gamification.share.mount();
                 const $buttons = $(`#${id}-tabs [data-exe-tab]`);
                 $buttons

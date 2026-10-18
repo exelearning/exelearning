@@ -1,4 +1,49 @@
 /* iDevices */
+.exe-idevice-help-container {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 1.25rem;
+    vertical-align: middle;
+    white-space: normal;
+
+    .help-content {
+        top: calc(100% + .3rem);
+        left: 0;
+        right: auto;
+        z-index: 1080;
+        max-width: 90vw;
+        white-space: pre-line;
+        user-select: text;
+        cursor: auto;
+    }
+}
+
+button.exe-idevice-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: help;
+    vertical-align: middle;
+
+    > span {
+        width: 1rem;
+        height: 1rem;
+        background-size: contain;
+        background-repeat: no-repeat;
+    }
+
+    &:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+    }
+}
+
 article.box {
     &.idevice-element-in-content {
         min-height: 172px;

@@ -364,7 +364,7 @@
     position: relative;
 }
 
-.modal .help-content, .form-properties .help-content {
+.modal .help-content, .form-properties .help-content, .exe-idevice-help-container .help-content {
     position: absolute;
     background-color: hsla(0, 0%, 15%, 1);
     color: var(--white);
@@ -382,7 +382,7 @@
     color: var(--remove);
 }
 
-.modal .help-hidden, .form-properties .help-hidden {
+.modal .help-hidden, .form-properties .help-hidden, .exe-idevice-help-container .help-hidden {
     display: none;
 }
 

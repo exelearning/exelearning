@@ -95,6 +95,117 @@ describe('common_idevices_edition.js', () => {
   });
 
   describe('common', () => {
+    describe('help tooltips', () => {
+      const common = () => globalThis.$exeIDevicesEdition.iDevice.common;
+      let previousCommon;
+      let previousLifecycle;
+      let lifecycle;
+      let instances;
+
+      beforeEach(() => {
+        previousCommon = eXeLearning.app.common;
+        previousLifecycle = window.$exeEditionLifecycle;
+        lifecycle = global.attachEditionLifecycle({ name: 'help-tooltip-test' });
+        instances = new Map();
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => instances.get(button) } });
+        eXeLearning.app.common = {
+          initTooltips: vi.fn((scope) => {
+            scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+              if (!instances.has(button)) instances.set(button, { hide: vi.fn(), dispose: vi.fn() });
+            });
+          }),
+        };
+      });
+
+      afterEach(() => {
+        lifecycle.destroy();
+        window.$exeEditionLifecycle = previousLifecycle;
+        eXeLearning.app.common = previousCommon;
+        vi.unstubAllGlobals();
+      });
+
+      it('renders a keyboard-accessible information button with escaped plain text', () => {
+        const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+        document.body.innerHTML = common().getHelpTooltip(text);
+        const button = document.querySelector('button');
+        expect(button.type).toBe('button');
+        expect(button.title).toBe('Information');
+        expect(button.getAttribute('aria-label')).toBe('Information');
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+        expect(document.getElementById(button.getAttribute('aria-controls')).textContent).toBe(text);
+        expect(button.querySelector('span.info-icon-solid-green').getAttribute('aria-hidden')).toBe('true');
+        expect(document.querySelector('once')).toBeNull();
+      });
+
+      it('initializes only the requested form and disposes each tooltip once after repeated binding', () => {
+        document.body.innerHTML = `<div id="first">${common().getHelpTooltip('First option')}</div>
+          <div id="second">${common().getHelpTooltip('Second option')}</div>`;
+        const form = document.getElementById('first');
+        common().initHelpTooltips(form);
+        common().initHelpTooltips(form);
+        expect(instances.size).toBe(1);
+        expect(instances.has(form.querySelector('button'))).toBe(true);
+        lifecycle.destroy();
+        expect([...instances.values()][0].dispose).toHaveBeenCalledTimes(1);
+      });
+
+      it('keeps help clicks from activating the surrounding option and dismisses with Escape', () => {
+        document.body.innerHTML = `<div id="option">${common().getHelpTooltip('Explain the option')}</div>`;
+        const row = document.getElementById('option');
+        const toggle = vi.fn();
+        row.addEventListener('click', toggle);
+        common().initHelpTooltips(row);
+        const button = row.querySelector('button');
+        button.click();
+        expect(toggle).not.toHaveBeenCalled();
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+        const tooltip = instances.get(button);
+        expect(tooltip.hide).toHaveBeenCalledOnce();
+        button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(tooltip.hide).toHaveBeenCalledOnce();
+        button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        expect(tooltip.hide).toHaveBeenCalledTimes(2);
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+        expect(document.querySelector('.help-content').classList.contains('help-hidden')).toBe(true);
+      });
+
+      it('keeps the explanation open until another icon or any other point is clicked', () => {
+        document.body.innerHTML = common().getHelpTooltip('First option') + common().getHelpTooltip('Second option');
+        common().initHelpTooltips(document.body);
+        const [first, second] = document.querySelectorAll('button');
+        const [firstNote, secondNote] = document.querySelectorAll('.help-content');
+        first.querySelector('span').click();
+        first.dispatchEvent(new MouseEvent('mouseleave'));
+        expect(firstNote.classList.contains('help-hidden')).toBe(false);
+        first.click();
+        expect(firstNote.classList.contains('help-hidden')).toBe(false);
+        second.click();
+        expect(firstNote.classList.contains('help-hidden')).toBe(true);
+        expect(secondNote.classList.contains('help-hidden')).toBe(false);
+        // A click inside the explanation also counts as clicking elsewhere.
+        secondNote.addEventListener('click', (event) => event.stopPropagation());
+        secondNote.click();
+        expect(secondNote.classList.contains('help-hidden')).toBe(true);
+      });
+
+      it('supports forms without an active edition lifecycle', () => {
+        window.$exeEditionLifecycle = null;
+        document.body.innerHTML = common().getHelpTooltip('Explain the option');
+        const dispose = common().initHelpTooltips(document.body);
+        expect(instances.size).toBe(1);
+        dispose();
+        expect([...instances.values()][0].dispose).toHaveBeenCalledOnce();
+        document.querySelector('button').click();
+        expect(document.querySelector('button').getAttribute('aria-expanded')).toBe('false');
+      });
+
+      it('leaves missing forms and forms without help alone', () => {
+        common().initHelpTooltips(null);
+        common().initHelpTooltips(document.body);
+        expect(eXeLearning.app.common.initTooltips).not.toHaveBeenCalled();
+      });
+    });
+
     describe('escapeHtml', () => {
       const escapeHtml = (value) => globalThis.$exeIDevicesEdition.iDevice.common.escapeHtml(value);
 
