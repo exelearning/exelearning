@@ -1,4 +1,4 @@
-import { test as base, expect, Browser, Page, TestInfo } from '@playwright/test';
+import { test as base, expect, Browser, BrowserContext, BrowserContextOptions, Page, TestInfo } from '@playwright/test';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
@@ -45,52 +45,186 @@ export interface AuthFixtures {
     guestSession: Page;
     /** Helper to create a new project and return its UUID */
     createProject: (page: Page, title?: string) => Promise<string>;
+    /**
+     * Context and its first page, opened together. Tests keep using `page` and
+     * `context`; this exists so a Firefox retry still hands both fixtures the
+     * same live context.
+     */
+    openedBrowser: OpenedBrowser;
 }
 
 interface AuthWorkerFixtures {
     /** Worker-scoped storage state path with authenticated guest session (dynamic mode only) */
     guestStorageStatePath: string | null;
     /**
-     * Browser for this worker. Firefox is relaunched after a fixed number of
-     * contexts: a process that has been opening pages for a whole shard stops
-     * answering newPage, and the test timeout then closes it.
+     * Browser Playwright launched for this worker. A replacement, when one is
+     * needed, is started from that browser's own type.
      */
-    suiteBrowser: () => Promise<Browser>;
+    workerBrowser: WorkerBrowserSlot;
 }
 
-/** Contexts opened on one Firefox process before it is replaced. */
-const FIREFOX_CONTEXTS_PER_BROWSER = 20;
+interface WorkerBrowserSlot {
+    current: () => Browser;
+    replace: () => Promise<Browser>;
+}
+
+interface OpenedBrowser {
+    context: BrowserContext;
+    page: Page;
+}
+
+/**
+ * A healthy Firefox newPage returns in well under a second. One that is still
+ * pending after this has stopped answering: the test timeout used to sit here
+ * until it closed the browser, and the retry then passed.
+ */
+const FIREFOX_NEW_PAGE_BUDGET_MS = 12_000;
+const FIREFOX_CONTEXT_CLOSE_BUDGET_MS = 5_000;
+
+class NewPageStalled extends Error {
+    constructor() {
+        super('newPage stalled');
+        this.name = 'NewPageStalled';
+    }
+}
+
+function contextSettings(
+    testInfo: TestInfo,
+    contextOptions: BrowserContextOptions,
+    guestStorageStatePath: string | null,
+): BrowserContextOptions {
+    const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
+    return {
+        ...contextOptions,
+        baseURL,
+        storageState: isStaticProject(testInfo) ? contextOptions.storageState : (guestStorageStatePath ?? undefined),
+    };
+}
+
+/** newPage, or NewPageStalled when Firefox does not answer within the budget. */
+function pageWithin(context: BrowserContext, budgetMs: number): Promise<Page> {
+    const pending = context.newPage();
+    pending.catch(() => {});
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    return new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new NewPageStalled()), budgetMs);
+        pending.then(
+            page => {
+                if (timer) clearTimeout(timer);
+                resolve(page);
+            },
+            error => {
+                if (timer) clearTimeout(timer);
+                reject(error);
+            },
+        );
+    });
+}
+
+/** True when close finished. A wedged Firefox can ignore close; the caller then stops using that process. */
+async function closeWithin(context: BrowserContext, budgetMs: number): Promise<boolean> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const closed = context.close().then(
+        () => true,
+        () => true,
+    );
+    try {
+        return await Promise.race([
+            closed,
+            new Promise<false>(resolve => {
+                timer = setTimeout(() => resolve(false), budgetMs);
+            }),
+        ]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
+
+/**
+ * Open a Firefox page. If newPage does not return, close that context and try
+ * once more on the same browser: that close is what lets the runner's retry pass.
+ * If the process still does not answer, launch another one of the same browser
+ * type. Desktop Firefox sets defaultBrowserType and leaves browserName empty, so
+ * the launch goes through the browser Playwright already started.
+ */
+async function openFirefoxPage(
+    slot: WorkerBrowserSlot,
+    settings: BrowserContextOptions,
+    testInfo: TestInfo,
+): Promise<{ context: BrowserContext; page: Page; recoveredMs: number }> {
+    const started = Date.now();
+    const originalTimeout = testInfo.timeout;
+    // The stall is on the test clock. Extend it while recovering so a second
+    // newPage is not cut off, then put back only the time this recovery used.
+    let extended = false;
+    const noteStall = () => {
+        if (extended) return;
+        extended = true;
+        testInfo.setTimeout(originalTimeout + 60_000);
+    };
+    const finish = (page: Page, live: BrowserContext) => {
+        const recoveredMs = Date.now() - started;
+        if (extended) testInfo.setTimeout(originalTimeout + recoveredMs);
+        return { context: live, page, recoveredMs: extended ? recoveredMs : 0 };
+    };
+
+    let context = await slot.current().newContext(settings);
+    try {
+        try {
+            const page = await pageWithin(context, FIREFOX_NEW_PAGE_BUDGET_MS);
+            return finish(page, context);
+        } catch (error) {
+            if (!(error instanceof NewPageStalled)) throw error;
+            noteStall();
+        }
+
+        const closed = await closeWithin(context, FIREFOX_CONTEXT_CLOSE_BUDGET_MS);
+        console.warn(`[e2e] Firefox newPage stalled; opening a new context (${testInfo.title})`);
+        if (closed) {
+            context = await slot.current().newContext(settings);
+            try {
+                const page = await pageWithin(context, FIREFOX_NEW_PAGE_BUDGET_MS);
+                return finish(page, context);
+            } catch (error) {
+                if (!(error instanceof NewPageStalled)) throw error;
+                await closeWithin(context, FIREFOX_CONTEXT_CLOSE_BUDGET_MS);
+            }
+        }
+
+        console.warn(`[e2e] Firefox newPage stalled again; relaunching Firefox (${testInfo.title})`);
+        context = await (await slot.replace()).newContext(settings);
+        const page = await pageWithin(context, FIREFOX_NEW_PAGE_BUDGET_MS);
+        return finish(page, context);
+    } catch (error) {
+        await context.close().catch(() => {});
+        throw error;
+    }
+}
 
 export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
     /**
-     * One browser per worker. launch() with no arguments picks up the launch
-     * options Playwright already installed for the worker. Firefox is replaced
-     * after FIREFOX_CONTEXTS_PER_BROWSER contexts so newPage is not sent to a
-     * process that has stopped answering. timeout 0 matches Playwright's own
-     * browser fixture: launching is not part of the test clock.
+     * The runner's browser, plus a same-type replacement when Firefox stops answering.
+     * timeout 0 matches Playwright's browser fixture: the process is not on the test clock.
+     * Launch uses browser.browserType so a Firefox worker does not ask for Chromium.
      */
-    suiteBrowser: [
-        async ({ playwright }, use, workerInfo) => {
-            const browserName = workerInfo.project.use.browserName ?? 'chromium';
-            const browserType = playwright[browserName];
-            if (!browserType) {
-                throw new Error(`No browser type for ${browserName}`);
-            }
-            let current = await browserType.launch();
-            let opened = 0;
-            const recycle = workerInfo.project.name === 'firefox';
+    workerBrowser: [
+        async ({ browser }, use) => {
+            let current = browser;
+            let owned: Browser | null = null;
             try {
-                await use(async () => {
-                    if (recycle && opened >= FIREFOX_CONTEXTS_PER_BROWSER) {
-                        await current.close().catch(() => {});
-                        current = await browserType.launch();
-                        opened = 0;
-                    }
-                    opened += 1;
-                    return current;
+                await use({
+                    current: () => current,
+                    replace: async () => {
+                        const next = await browser.browserType.launch();
+                        const previous = owned;
+                        owned = next;
+                        current = next;
+                        if (previous) await previous.close().catch(() => {});
+                        return next;
+                    },
                 });
             } finally {
-                await current?.close().catch(() => {});
+                if (owned) await owned.close().catch(() => {});
             }
         },
         { scope: 'worker', timeout: 0 },
@@ -101,7 +235,7 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
      * This avoids repeating /login/guest for every single test.
      */
     guestStorageStatePath: [
-        async ({ suiteBrowser }, use, workerInfo) => {
+        async ({ browser }, use, workerInfo) => {
             if (workerInfo.project.name.includes('static')) {
                 await use(null);
                 return;
@@ -116,7 +250,7 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
                 `pw-guest-state-${process.pid}-${workerInfo.parallelIndex}-${safeProjectName}.json`,
             );
 
-            const authContext = await (await suiteBrowser()).newContext({ baseURL });
+            const authContext = await browser.newContext({ baseURL });
             const authPage = await authContext.newPage();
             const loginResponse = await authPage.request.post('/login/guest', {
                 form: { guest_login_nonce: '' },
@@ -138,26 +272,40 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
     ],
 
     /**
+     * One context and its first page. Firefox retries a newPage that does not
+     * return, then gives both fixtures that live pair. The time spent recovering
+     * is added back onto the test timeout so the body keeps its 45s.
+     */
+    openedBrowser: async ({ workerBrowser, contextOptions, guestStorageStatePath }, use, testInfo) => {
+        const settings = contextSettings(testInfo, contextOptions, guestStorageStatePath);
+        let context: BrowserContext | undefined;
+        try {
+            if (testInfo.project.name === 'firefox') {
+                const firefox = await openFirefoxPage(workerBrowser, settings, testInfo);
+                context = firefox.context;
+                await use({ context, page: firefox.page });
+                return;
+            }
+            context = await workerBrowser.current().newContext(settings);
+            await use({ context, page: await context.newPage() });
+        } finally {
+            await context?.close().catch(() => {});
+        }
+    },
+
+    /**
      * Override context so all tests in dynamic mode start already authenticated.
      * Keeps normal per-test isolation while skipping repeated login calls.
-     * Own clock so a Firefox relaunch does not consume the 45s test timeout.
-     * newPage still runs on the test clock.
+     * Closed by openedBrowser, which owns the context a Firefox retry may replace.
      */
-    context: [
-        async ({ suiteBrowser, contextOptions, guestStorageStatePath }, use, testInfo) => {
-            const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
-            const context = await (await suiteBrowser()).newContext({
-                ...contextOptions,
-                baseURL,
-                storageState: isStaticProject(testInfo)
-                    ? contextOptions.storageState
-                    : (guestStorageStatePath ?? undefined),
-            });
-            await use(context);
-            await context.close();
-        },
-        { timeout: 30_000 },
-    ],
+    context: async ({ openedBrowser }, use) => {
+        await use(openedBrowser.context);
+    },
+
+    /** The page opened with `context`, including a Firefox retry of a stalled newPage. */
+    page: async ({ openedBrowser }, use) => {
+        await use(openedBrowser.page);
+    },
 
     /**
      * Provides a page with guest login already performed
