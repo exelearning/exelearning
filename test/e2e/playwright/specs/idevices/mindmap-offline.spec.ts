@@ -46,9 +46,8 @@ test.describe('Mind map editor offline contract', () => {
         await frame.locator('#text-color').fill('#336699');
         await frame.locator('.mind-elixir-toolbar.rb span').last().click();
         await frame.locator('#export').click();
+        await frame.locator('#export-mermaid').click();
         await frame.locator('#save').click();
-        await frame.locator('#crop input[name="aspectRatio"][value="1"]').check();
-        await frame.locator('#crop-and-finish').click();
         await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0);
 
         expect(foreign, `editor requested remote resources:\n${foreign.join('\n')}`).toEqual([]);

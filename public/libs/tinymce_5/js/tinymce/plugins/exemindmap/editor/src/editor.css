@@ -117,67 +117,15 @@ label.color input {
     min-height: 0;
 }
 
-/* Crop and save */
-#crop {
-    position: fixed;
-    inset: 0;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-}
-
-#crop[hidden] {
-    display: none;
-}
-
-.crop-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
-    border-bottom: 1px solid #d0d7de;
-    background: #f6f8fa;
-}
-
-.crop-actions .ratios {
-    display: flex;
-    gap: 8px;
-    margin: 0 0 0 auto;
-    padding: 0;
-    border: 0;
-}
-
-.crop-actions legend {
-    float: left;
-    margin-right: 6px;
-}
-
-.crop-area {
-    flex: 1;
-    min-height: 0;
-}
-
-.crop-area img {
-    display: block;
-    max-width: 100%;
-}
-
-#print-area {
-    display: none;
-}
-
 @media print {
-    body > * {
+    #toolbar,
+    #message,
+    .mind-elixir-toolbar,
+    .context-menu {
         display: none !important;
     }
 
-    #print-area {
-        display: block !important;
-    }
-
-    #print-area img {
-        max-width: 100%;
+    #map {
+        height: 100vh;
     }
 }

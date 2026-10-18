@@ -98,12 +98,14 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         await expect(topic(frame, 'Ríos')).toHaveCount(0);
         expect(findNode((await editorData(frame2)).nodeData, SPECIAL)?.expanded).toBe(false);
 
-        // 11-12. Save; the image is replaced
+        // 11-12. Save; the image is replaced by Mermaid code, drawn as SVG
         await saveMindmap(page, frame, 'Mapa rico editado');
         await saveIdevice(page, block);
         const afterSave = await storedMaps(page);
         expect(afterSave[0].format).toBe('mind-elixir');
-        expect(afterSave[0].img).not.toBe(before[0].img);
+        expect(afterSave[0].img).toBe('');
+        expect(afterSave[0].mermaid).toBe(true);
+        await expect(page.locator('#node-content .exe-mind-map').first().locator('.mermaid svg')).toBeVisible();
         expect(afterSave.slice(1).map(m => m.format)).toEqual(['legacy', 'legacy']);
 
         const expectEdited = (data: (typeof afterSave)[0]['data']) => {
@@ -129,10 +131,7 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         await selectFirstPage(page);
         const reloaded = await storedMaps(page);
         expectEdited(reloaded[0].data);
-        await expect(page.locator('#node-content .exe-mind-map img').first()).toHaveAttribute(
-            'alt',
-            'Mapa rico editado',
-        );
+        await expect(page.locator('#node-content .exe-mind-map figcaption').first()).toHaveText('Mapa rico editado');
 
         // 15-17. Reopen the same map; the changes are there and it can be edited again
         block = await editTextIdevice(page, 0);

@@ -2,21 +2,19 @@
  * Mind map editor for the exemindmap TinyMCE plugin, built on Mind Elixir.
  *
  * It runs in the plugin's editor iframe. The plugin passes the HTML of the map's
- * `.exe-mindmap-code` paragraph in `top.mindmapEditor.data`. Saving renders the map to a PNG,
- * optionally cropped, and fills the plugin dialog: the image, the escaped Mind Elixir JSON
- * and the image size. Legacy mindmaps documents are converted on open (see storedMindmap.ts);
+ * `.exe-mindmap-code` paragraph in `top.mindmapEditor.data`. Saving fills the plugin dialog
+ * with the escaped Mind Elixir JSON, which keeps the map editable, and the map as Mermaid
+ * `mindmap` source, which the content shows: eXeLearning renders it to SVG like any other
+ * Mermaid diagram. Legacy mindmaps documents are converted on open (see storedMindmap.ts);
  * nothing is replaced until the author saves.
  *
- * Built into mindmap-editor.bundle.js by scripts/build-mindmap-editor.ts. The PNG is drawn
- * with modern-screenshot, which Mind Elixir points to in place of its deprecated exportPng.
+ * Built into mindmap-editor.bundle.js by scripts/build-mindmap-editor.ts.
  */
 
 import MindElixir from 'mind-elixir';
 import type { MindElixirData, MindElixirInstance, NodeObj, Topic } from 'mind-elixir';
 import 'mind-elixir/style.css';
-import { domToCanvas } from 'modern-screenshot';
-import Cropper from 'cropperjs';
-import 'cropperjs/dist/cropper.css';
+import { mindElixirToMermaid } from '@ateeducacion/mind-elixir-export-mermaid';
 import './editor.css';
 import {
     MindmapFormatError,
@@ -57,7 +55,6 @@ const FONT_MAX = 72;
 
 let mind: MindElixirInstance;
 let previousMeta: Record<string, unknown> | undefined;
-let cropper: Cropper | null = null;
 
 function el<K extends keyof HTMLElementTagNameMap>(
     tag: K,
@@ -268,11 +265,12 @@ function buildToolbar(): HTMLElement {
             _('Tools'),
             button('import', _('Import'), () => fileInput.click()),
             button('export', _('Export'), exportJson),
-            button('print', _('Print'), printMap),
+            button('export-mermaid', _('Export as Mermaid'), exportMermaid),
+            button('print', _('Print'), () => window.print()),
             fileInput,
         ),
         el('span', { class: 'spacer' }),
-        button('save', _('Save'), startSave),
+        button('save', _('Save'), save),
     );
     controls.save.classList.add('primary');
     return bar;
@@ -282,143 +280,48 @@ function buildToolbar(): HTMLElement {
 // Export, print and save
 // ---------------------------------------------------------------------------
 
-function exportJson(): void {
-    const json = JSON.stringify(JSON.parse(decodeHtmlEntities(serializeStoredCode(mind.getData(), previousMeta))), null, 2);
-    const link = el('a', {
-        href: URL.createObjectURL(new Blob([json], { type: 'application/json' })),
-        download: `${(mind.nodeData.topic || 'mindmap').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80)}.json`,
-    });
+function fileName(extension: string): string {
+    return `${(mind.nodeData.topic || 'mindmap').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80)}.${extension}`;
+}
+
+function download(content: string, type: string, name: string): void {
+    const link = el('a', { href: URL.createObjectURL(new Blob([content], { type })), download: name });
     document.body.append(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(link.href), 0);
 }
 
-/** Margin kept around the map when the empty canvas around it is trimmed. */
-const IMAGE_MARGIN = 20;
-
-/** Crops the white area around the drawing, like the legacy editor's tight PNG. */
-export function trimCanvas(canvas: HTMLCanvasElement, margin = IMAGE_MARGIN): HTMLCanvasElement {
-    const { width, height } = canvas;
-    const context = canvas.getContext('2d');
-    if (!context || !width || !height) return canvas;
-    const pixels = context.getImageData(0, 0, width, height).data;
-    let top = height;
-    let left = width;
-    let right = -1;
-    let bottom = -1;
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const i = (y * width + x) * 4;
-            if (pixels[i] < 250 || pixels[i + 1] < 250 || pixels[i + 2] < 250) {
-                if (x < left) left = x;
-                if (x > right) right = x;
-                if (y < top) top = y;
-                if (y > bottom) bottom = y;
-            }
-        }
-    }
-    if (right < 0) return canvas;
-    left = Math.max(0, left - margin);
-    top = Math.max(0, top - margin);
-    const w = Math.min(width, right + margin + 1) - left;
-    const h = Math.min(height, bottom + margin + 1) - top;
-    const trimmed = document.createElement('canvas');
-    trimmed.width = w;
-    trimmed.height = h;
-    trimmed.getContext('2d')?.drawImage(canvas, left, top, w, h, 0, 0, w, h);
-    return trimmed;
+function exportJson(): void {
+    const json = JSON.stringify(JSON.parse(decodeHtmlEntities(serializeStoredCode(mind.getData(), previousMeta))), null, 2);
+    download(json, 'application/json', fileName('json'));
 }
 
-/** Renders the whole map at 100% to a canvas, whatever the current zoom. */
-async function renderMap(): Promise<HTMLCanvasElement> {
-    const scale = mind.scaleVal;
-    mind.scale(1);
-    try {
-        return trimCanvas(await domToCanvas(mind.nodes, { backgroundColor: '#ffffff', scale: 1 }));
-    } finally {
-        mind.scale(scale);
-    }
+/** The whole map as a Mermaid file, folded branches included. */
+function exportMermaid(): void {
+    download(mindElixirToMermaid(mind.getData(), { markdown: true }), 'text/vnd.mermaid', fileName('mmd'));
 }
 
-async function printMap(): Promise<void> {
-    const canvas = await renderMap();
-    const area = document.getElementById('print-area') as HTMLElement;
-    area.replaceChildren(el('img', { src: canvas.toDataURL('image/png'), alt: mind.nodeData.topic }));
-    window.print();
+/**
+ * The map as the content shows it: Mermaid source with bold, italic and line breaks
+ * (markdown strings), leaving out folded branches as the editor does.
+ */
+export function contentDiagram(data: MindElixirData): string {
+    return mindElixirToMermaid(data, { markdown: true, omitCollapsed: true });
 }
 
-async function startSave(): Promise<void> {
-    const canvas = await renderMap();
-    const view = document.getElementById('crop') as HTMLElement;
-    const image = el('img', { id: 'crop-image', alt: '', src: canvas.toDataURL('image/png') });
-    (view.querySelector('.crop-area') as HTMLElement).replaceChildren(image);
-    view.hidden = false;
-    document.body.classList.add('cropping');
-    (view.querySelector('input[value="NaN"]') as HTMLInputElement).checked = true;
-    cropper?.destroy();
-    cropper = new Cropper(image, { aspectRatio: Number.NaN, viewMode: 1, autoCropArea: 1 });
-}
-
-function closeCrop(): void {
-    cropper?.destroy();
-    cropper = null;
-    (document.getElementById('crop') as HTMLElement).hidden = true;
-    document.body.classList.remove('cropping');
-}
-
-/** Hands the image and the map to the plugin dialog and closes the editor. */
-function finishSave(png: string): void {
-    const image = new Image();
-    image.onload = () => {
-        const current = host();
-        current?.pluginDialog?.setData({
-            mindmapImgToSave: png,
-            mindmapCode: serializeStoredCode(mind.getData(), previousMeta),
-            originalWidth: String(image.width),
-            originalHeight: String(image.height),
-            dimensions: { width: String(image.width), height: String(image.height) },
-        });
-        const instructions = window.parent.document.getElementById('mindmapImgInstructions');
-        if (instructions) instructions.textContent = _('Saved changes!');
-        if (current) current.closeConfirmed = true;
-        current?.tinymce?.windowManager.close();
-    };
-    image.src = png;
-}
-
-function buildCropView(): HTMLElement {
-    const view = el('section', { id: 'crop', hidden: '', 'aria-label': _('Crop and save') });
-    const ratios = el('fieldset', { class: 'ratios' });
-    ratios.append(el('legend', {}, _('Aspect ratio')));
-    for (const [label, value] of [
-        ['16:9', String(16 / 9)],
-        ['4:3', String(4 / 3)],
-        ['1:1', '1'],
-        ['2:3', String(2 / 3)],
-        [_('Free'), 'NaN'],
-    ]) {
-        const input = el('input', { type: 'radio', name: 'aspectRatio', value });
-        input.addEventListener('change', () => cropper?.setAspectRatio(Number(value)));
-        const label_ = el('label');
-        label_.append(input, ` ${label}`);
-        ratios.append(label_);
-    }
-    const actions = el('div', { class: 'crop-actions' });
-    actions.append(
-        button('crop-and-finish', _('Crop and save'), () => {
-            const canvas = cropper?.getCroppedCanvas({ maxWidth: 4096, maxHeight: 4096 });
-            if (canvas) finishSave(canvas.toDataURL('image/png'));
-        }),
-        button('do-not-crop-and-finish', _('Save without cropping'), () => {
-            finishSave((document.getElementById('crop-image') as HTMLImageElement).src);
-        }),
-        button('reset-cropper-canvas', _('Reset'), () => cropper?.reset()),
-        button('hide-cropper', _('Cancel'), closeCrop),
-        ratios,
-    );
-    view.append(actions, el('div', { class: 'crop-area' }));
-    return view;
+/** Hands the map to the plugin dialog and closes the editor. */
+function save(): void {
+    const current = host();
+    const data = mind.getData();
+    current?.pluginDialog?.setData({
+        mindmapDiagram: contentDiagram(data),
+        mindmapCode: serializeStoredCode(data, previousMeta),
+    });
+    const instructions = window.parent.document.getElementById('mindmapImgInstructions');
+    if (instructions) instructions.textContent = _('Saved changes!');
+    if (current) current.closeConfirmed = true;
+    current?.tinymce?.windowManager.close();
 }
 
 // ---------------------------------------------------------------------------
@@ -448,8 +351,6 @@ export function start(): MindElixirInstance {
         buildToolbar(),
         el('div', { id: 'message', role: 'status', hidden: '' }),
         el('div', { id: 'map' }),
-        buildCropView(),
-        el('div', { id: 'print-area' }),
     );
 
     mind = new MindElixir({
@@ -471,10 +372,7 @@ export function start(): MindElixirInstance {
     mind.bus.addListener('operation', refreshControls);
     refreshControls();
 
-    window.addEventListener('pagehide', () => {
-        cropper?.destroy();
-        mind.destroy();
-    });
+    window.addEventListener('pagehide', () => mind.destroy());
     return mind;
 }
 

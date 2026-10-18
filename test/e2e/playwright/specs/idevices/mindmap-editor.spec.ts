@@ -13,6 +13,7 @@ import {
     saveIdevice,
     saveMindmap,
     setTextContent,
+    storedDiagrams,
     storedMaps,
     tinymceFrame,
     topic,
@@ -43,7 +44,7 @@ async function addChild(page: Page, frame: ReturnType<Page['frameLocator']>, par
 }
 
 test.describe('Mind map editor (Mind Elixir)', () => {
-    test('creates a map, styles it and saves it as an image with its source', async ({
+    test('creates a map, styles it and saves it as Mermaid code with its source', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -98,6 +99,17 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await expect(frame.locator('#remove')).toBeDisabled();
 
         await saveMindmap(page, frame, 'Fotosíntesis');
+        // The map is Mermaid code; the folded and styled details stay in the source only
+        const [diagram] = await storedDiagrams(page);
+        expect(diagram).toBe(
+            [
+                'mindmap',
+                '  n0(("`Fotosíntesis`"))',
+                '    n1("`***Luz***`")',
+                '      n2("`Clorofila`")',
+                '    n3("`Agua & CO₂ #lt;H2O#gt;`")',
+            ].join('\n'),
+        );
         await saveIdevice(page, block);
 
         const [saved] = await storedMaps(page);
@@ -108,41 +120,54 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         // The stored source is escaped, so its captions are never parsed as markup
         const html = await page.locator('#node-content .exe-mind-map').first().innerHTML();
         expect(html).toContain('&lt;H2O&gt;');
-        const img = page.locator('#node-content .exe-mind-map img').first();
-        await expect(img).toHaveAttribute('alt', 'Fotosíntesis');
-        expect(await img.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(100);
+        // Drawn as SVG by Mermaid, with every topic as text
+        const svg = page.locator('#node-content .exe-mind-map .mermaid svg').first();
+        await expect(svg).toBeVisible({ timeout: 15000 });
+        for (const caption of ['Fotosíntesis', 'Luz', 'Clorofila', 'Agua & CO₂ <H2O>']) {
+            await expect(svg).toContainText(caption);
+        }
+        await expect(page.locator('#node-content .exe-mind-map img')).toHaveCount(0);
         await expect(page.locator('#node-content .exe-mind-map figcaption')).toContainText('Fotosíntesis');
         expect(errors).toEqual([]);
     });
 
-    test('crops the image with a fixed aspect ratio', async ({ authenticatedPage: page, createProject }) => {
-        const block = await newProjectWithTextIdevice(page, createProject, 'Mind map crop');
+    test('exports the map as Mermaid and hides the caption on request', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const block = await newProjectWithTextIdevice(page, createProject, 'Mind map Mermaid');
         const { frame } = await openMindmapEditor(page);
-        await addChild(page, frame, 'Central Idea', 'Una idea con un texto bastante largo');
+        await renameTopic(page, frame, 'Central Idea', 'Raíz "1" # *a*');
+        await addChild(page, frame, 'Raíz "1" # *a*', 'Hija');
+
+        const downloadPromise = page.waitForEvent('download');
+        await frame.locator('#export-mermaid').click();
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toMatch(/\.mmd$/);
+        expect(fs.readFileSync(await download.path(), 'utf8')).toBe(
+            ['mindmap', '  n0(("`Raíz #quot;1#quot; #35; #42;a#42;`"))', '    n1("`Hija`")'].join('\n'),
+        );
+
         await frame.locator('#save').click();
-        await expect(frame.locator('#crop .cropper-container')).toBeVisible();
-        await frame.locator('#crop input[name="aspectRatio"][value="1"]').check();
-        await frame.locator('#crop-and-finish').click();
         await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0);
-        const width = await page
-            .locator('.tox-dialog .tox-form__group input')
-            .evaluateAll(inputs => (inputs as HTMLInputElement[]).map(i => i.value));
-        const numbers = width.filter(v => /^\d+$/.test(v)).map(Number);
-        // Width and height of a 1:1 crop
-        expect(numbers.length).toBeGreaterThanOrEqual(2);
-        expect(numbers[numbers.length - 2]).toBe(numbers[numbers.length - 1]);
-        await page
-            .locator('.tox-dialog .tox-form__group', { hasText: /Descriptive title/i })
+        const dialog = page.locator('.tox-dialog');
+        await dialog
+            .locator('.tox-form__group', { hasText: /Descriptive title/i })
             .locator('input')
-            .fill('Recortado');
-        await page
+            .fill('Sin título');
+        await dialog.locator('.tox-checkbox', { hasText: /Show the title/i }).click();
+        await dialog
             .locator('.tox-dialog__footer button')
             .filter({ hasText: /^(Save|Guardar)$/ })
             .click();
         await saveIdevice(page, block);
-        const img = page.locator('#node-content .exe-mind-map img').first();
-        const size = await img.evaluate((i: HTMLImageElement) => [i.naturalWidth, i.naturalHeight]);
-        expect(size[0]).toBe(size[1]);
+
+        const svg = page.locator('#node-content .exe-mind-map .mermaid svg').first();
+        await expect(svg).toContainText('Raíz "1" # *a*', { timeout: 15000 });
+        // The title is not shown, but still names the figure
+        const caption = page.locator('#node-content .exe-mind-map figcaption');
+        await expect(caption).toHaveClass(/sr-av/);
+        await expect(caption).toHaveText('Sin título');
     });
 
     test('imports a legacy mindmaps JSON file and exports the map as JSON', async ({
