@@ -220,11 +220,6 @@ async function exportScorm12(page: import('@playwright/test').Page) {
 }
 
 test.describe('SCORM 1.2 exported SCO runtime', () => {
-    // Opening the page counts against the test clock. test.setTimeout()
-    // inside the body runs after that, so Firefox was closed at 45s while
-    // newPage was still running. These tests already budget 180s.
-    test.describe.configure({ timeout: 180000 });
-
     test('runs against a strict parent SCORM 1.2 API across the page lifecycle', async ({
         authenticatedPage,
         createProject,

@@ -97,19 +97,38 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
     /**
      * Override context so all tests in dynamic mode start already authenticated.
      * Keeps normal per-test isolation while skipping repeated login calls.
+     *
+     * Own clock, separate from the 45s test timeout. Fixture setup otherwise
+     * shares that clock, and test.setTimeout() inside the test runs too late
+     * to cover it (Playwright fixture timeout).
      */
-    context: async ({ browser, contextOptions, guestStorageStatePath }, use, testInfo) => {
-        const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
-        const context = await browser.newContext({
-            ...contextOptions,
-            baseURL,
-            storageState: isStaticProject(testInfo)
-                ? contextOptions.storageState
-                : (guestStorageStatePath ?? undefined),
-        });
-        await use(context);
-        await context.close();
-    },
+    context: [
+        async ({ browser, contextOptions, guestStorageStatePath }, use, testInfo) => {
+            const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
+            const context = await browser.newContext({
+                ...contextOptions,
+                baseURL,
+                storageState: isStaticProject(testInfo)
+                    ? contextOptions.storageState
+                    : (guestStorageStatePath ?? undefined),
+            });
+            await use(context);
+            await context.close();
+        },
+        { timeout: 60_000 },
+    ],
+
+    /**
+     * The built-in page fixture calls context.newPage() on the test clock.
+     * A wrapper around { page } would only time the wrapper: newPage has to
+     * run in the fixture that owns the timeout. Same 60s budget as context.
+     */
+    page: [
+        async ({ context }, use) => {
+            await use(await context.newPage());
+        },
+        { timeout: 60_000 },
+    ],
 
     /**
      * Provides a page with guest login already performed
@@ -117,42 +136,50 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
      *
      * In static mode: no login needed, navigates directly to root
      * In server mode: performs guest login and navigates to workarea
+     *
+     * The navigation waits below are capped at 30s each. They need their own
+     * fixture clock so they do not consume the test timeout before the body
+     * starts.
      */
-    authenticatedPage: async ({ page }, use, testInfo) => {
-        if (isStaticProject(testInfo)) {
-            // Static mode: no login, navigate to root (index.html)
-            await page.goto('/');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, undefined, {
-                timeout: 30000,
-            });
+    authenticatedPage: [
+        async ({ page }, use, testInfo) => {
+            if (isStaticProject(testInfo)) {
+                // Static mode: no login, navigate to root (index.html)
+                await page.goto('/');
+                await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, undefined, {
+                    timeout: 30000,
+                });
+                await waitForLoadingScreenHidden(page);
+
+                await use(page);
+                return;
+            }
+
+            // Server mode: guest auth already loaded via worker storage state
+            await page.goto('/workarea');
+
+            // Wait for workarea to load
+            await page.waitForURL(/\/workarea/, { timeout: 30000 });
+
+            // Wait for the app to initialize
+            await page.waitForFunction(
+                () => {
+                    return (
+                        typeof (window as any).eXeLearning !== 'undefined' &&
+                        (window as any).eXeLearning.app !== undefined
+                    );
+                },
+                undefined,
+                { timeout: 30000 },
+            );
+
+            // Wait for loading screen to be completely hidden
             await waitForLoadingScreenHidden(page);
 
             await use(page);
-            return;
-        }
-
-        // Server mode: guest auth already loaded via worker storage state
-        await page.goto('/workarea');
-
-        // Wait for workarea to load
-        await page.waitForURL(/\/workarea/, { timeout: 30000 });
-
-        // Wait for the app to initialize
-        await page.waitForFunction(
-            () => {
-                return (
-                    typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined
-                );
-            },
-            undefined,
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to be completely hidden
-        await waitForLoadingScreenHidden(page);
-
-        await use(page);
-    },
+        },
+        { timeout: 60_000 },
+    ],
 
     /**
      * Provides a page with guest session established via API
