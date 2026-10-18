@@ -205,7 +205,8 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
     /**
      * The runner's browser, plus a same-type replacement when Firefox stops answering.
      * timeout 0 matches Playwright's browser fixture: the process is not on the test clock.
-     * Launch uses browser.browserType so a Firefox worker does not ask for Chromium.
+     * Launch uses browser.browserType() so a Firefox worker does not ask for Chromium.
+     * browserType is a method; reading it as a property throws and fails the attempt.
      */
     workerBrowser: [
         async ({ browser }, use) => {
@@ -215,7 +216,7 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
                 await use({
                     current: () => current,
                     replace: async () => {
-                        const next = await browser.browserType.launch();
+                        const next = await browser.browserType().launch();
                         const previous = owned;
                         owned = next;
                         current = next;
