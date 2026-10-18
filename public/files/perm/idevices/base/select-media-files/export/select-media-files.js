@@ -1006,7 +1006,12 @@ var $eXeSeleccionaMedias = {
             mutations.forEach(function (mutation) {
                 if (mutation.target.classList.contains('iDevice_inner')) {
                     const $grid = $(mutation.target).find('.SLCMP-Multimedia');
-                    if ($grid.is(':visible') && $grid.data('masonry')) {
+                    if (
+                        $grid.is(':visible') &&
+                        $grid.data('masonry') &&
+                        $.fn &&
+                        typeof $.fn.masonry === 'function'
+                    ) {
                         $grid.masonry('layout');
                     }
                 }
@@ -1084,9 +1089,13 @@ var $eXeSeleccionaMedias = {
     },
 
     initializeMasonry: function (instance) {
+        // mansory-jq.js is a separate script. The game can lay out before it
+        // has defined $.fn.masonry, and the call then throws.
+        if (!$.fn || typeof $.fn.masonry !== 'function') return;
         const $grid = $('#slcmpMainContainer-' + instance).find(
             '.SLCMP-Multimedia'
         );
+        if (!$grid.length) return;
         $grid.masonry({
             itemSelector: '.SLCMP-GridItem',
             columnWidth: '.SLCMP-GridItem',
@@ -1097,7 +1106,9 @@ var $eXeSeleccionaMedias = {
     },
 
     destroyMasonry: function () {
+        if (!$.fn || typeof $.fn.masonry !== 'function') return;
         const $grid = $('.SLCMP-Multimedia');
+        if (!$grid.length || !$grid.data('masonry')) return;
         $grid.masonry('destroy');
     },
 

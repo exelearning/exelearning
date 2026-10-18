@@ -151,6 +151,20 @@ async function readBlockOrderFromDom(page: Page): Promise<string[]> {
     }, BLOCK_SELECTOR);
 }
 
+/** The down-arrow handler exits without writing when the next sibling is not a box. */
+async function waitForNextBox(page: Page, blockId: string): Promise<void> {
+    await page.waitForFunction(
+        id => {
+            const button = document.getElementById(`moveDown${id}`);
+            const box = button?.closest('.box');
+            const next = box?.nextElementSibling;
+            return !!next && next.classList.contains('box');
+        },
+        blockId,
+        { timeout: 15000 },
+    );
+}
+
 async function clickMoveDown(page: Page, blockId: string): Promise<void> {
     const btn = page.locator(`#moveDown${blockId}`).first();
     await btn.waitFor({ state: 'attached', timeout: 5000 });
@@ -377,6 +391,7 @@ test.describe('Block reorder stability — issue #1665', () => {
         const moveDownA = page.locator(`#moveDown${blockAId}`).first();
         await moveDownA.waitFor({ state: 'visible', timeout: 15000 });
         await expect(moveDownA).toBeEnabled({ timeout: 15000 });
+        await waitForNextBox(page, blockAId);
         await clickMoveDown(page, blockAId);
         // The handler asks the server whether the block is free, then writes
         // Yjs. Wait for that order, with the same budget as closing the editor.
@@ -402,6 +417,7 @@ test.describe('Block reorder stability — issue #1665', () => {
         // actually it's at index 0, so moving it down should swap back).
         const moveDownB = page.locator(`#moveDown${blockBId}`).first();
         await expect(moveDownB).toBeEnabled({ timeout: 15000 });
+        await waitForNextBox(page, blockBId);
         await clickMoveDown(page, blockBId);
         await page.waitForFunction(
             ({ targetPageId, expectedFirst }) => {

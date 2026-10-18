@@ -127,7 +127,10 @@ jobs:
       # bundles are not rebuilt: test-e2e-firefox/static carry bundle/build-static
       # prerequisites that would negate the shared build.
       - name: E2E Tests (${{ matrix.browser }} ${{ matrix.shard }}/4)
-        run: bun x playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 --reporter=blob
+        # Firefox at 100% (4 workers on a 4-core runner) wedges newPage until the
+        # test timeout closes the browser. Two workers stays on the machine.
+        # The value is a workflow constant, not event input.
+        run: bun x playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 --reporter=blob ${{ matrix.browser == 'firefox' && '--workers=2' || '' }}
 
       # Give each shard's blob a unique name so cross-project shards (e.g.
       # chromium-1 and firefox-1, both report-1.zip) don't collide when merged.

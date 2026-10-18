@@ -510,6 +510,26 @@ describe('select-media-files iDevice export', () => {
     });
 });
 
+describe('select-media-files masonry', () => {
+    it('does nothing when the masonry plugin has not loaded', () => {
+        global.$exeDevices = { iDevice: { gamification: { media: { playSound() {}, stopSound() {} } } } };
+        const device = loadExport();
+        document.body.innerHTML = `
+            <div id="slcmpMainContainer-0"><div class="SLCMP-Multimedia"></div></div>
+        `;
+        const jquery = global.$ || global.jQuery;
+        const original = jquery.fn.masonry;
+        delete jquery.fn.masonry;
+
+        expect(() => device.initializeMasonry(0)).not.toThrow();
+        expect(() => device.destroyMasonry()).not.toThrow();
+
+        if (original) jquery.fn.masonry = original;
+        delete global.$exeDevices;
+        delete global.$eXeSeleccionaMedias;
+    });
+});
+
 describe('select-media-files minimum score notice', () => {
     it('asks for the notice right after its interface replaces the stored data', () => {
         const source = readFileSync(join(__dirname, 'select-media-files.js'), 'utf-8');

@@ -130,10 +130,11 @@ export default defineConfig({
     // or fewer behave exactly as before, larger ones simply stop over-committing.
     //
     // Deliberately NOT a timeout increase: the pages were dead, so no amount of waiting
-    // would have helped — it would only have hidden the failure for longer.
-    //
-    // CI is untouched. `ubuntu-latest` has 4 cores, so '100%' there already resolves to 4,
-    // which is why this never reproduced in CI and only bit developer machines.
+    // would have helped — it would only have hidden the failure for longer. A Firefox
+    // `context.newPage()` on ubuntu-latest stayed pending until a 180s test timeout
+    // closed the browser (run 39160048282). That runner has 4 cores, so '100%' is 4
+    // editors at once. The Firefox job in `.github/workflows/e2e.yml` passes
+    // `--workers=2`. Chromium and static stay at 100%.
     workers: process.env.CI ? '100%' : Math.min(4, Math.max(1, Math.floor(os.cpus().length * 0.8))),
 
     /* Reporter to use */
