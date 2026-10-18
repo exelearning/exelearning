@@ -777,4 +777,71 @@ describe('crossword iDevice export', () => {
       expect($('#ccgmCodeAccessE-0').val()).toBe('');
     });
   });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and checking it when its own time ran out.
+  describe('the clock of a timed game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="ccgmMainContainer-${instance}"></div>`;
+      $eXeCrucigrama.options = [{ gameStarted: false, time: 1, msgs: { msgSelectWord: '' } }];
+      for (const method of ['updateTime', 'verifyCrossword', 'saveScormScore']) {
+        vi.spyOn($eXeCrucigrama, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeCrucigrama.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeCrucigrama.updateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('checks its own game when the time runs out', () => {
+      $eXeCrucigrama.startGame(instance);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeCrucigrama.verifyCrossword).toHaveBeenCalledWith(instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeCrucigrama.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="ccgmMainContainer-${instance}"></div>`;
+      $eXeCrucigrama.options[instance] = { gameStarted: true, counter: 240 };
+      $eXeCrucigrama.updateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeCrucigrama.updateTime).not.toHaveBeenCalled();
+      expect($eXeCrucigrama.verifyCrossword).not.toHaveBeenCalled();
+      expect($eXeCrucigrama.options[instance].counter).toBe(240);
+    });
+  });
+});
+
+describe('crossword minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'crossword.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
+  });
 });
