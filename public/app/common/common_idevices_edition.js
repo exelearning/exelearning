@@ -75,9 +75,26 @@ var $exeIDevicesEdition = {
                 const disposers = pending.map((button) => {
                     const tooltip = bootstrap.Tooltip.getInstance(button);
                     const content = document.getElementById(button.getAttribute('aria-controls'));
+                    const fitContent = function () {
+                        const panel = button.closest('.tab-pane') || element;
+                        let right = Math.min(
+                            document.documentElement.clientWidth || window.innerWidth,
+                            panel.getBoundingClientRect().right,
+                        );
+                        // A scrollable editor can clip the panel before its own edge.
+                        for (let parent = panel.parentElement; parent; parent = parent.parentElement) {
+                            if (/auto|scroll|hidden|clip/.test(getComputedStyle(parent).overflowX)) {
+                                right = Math.min(right, parent.getBoundingClientRect().right);
+                            }
+                        }
+                        const left = button.parentElement.getBoundingClientRect().left;
+                        content.style.maxWidth = `${Math.max(0, right - left - 8)}px`;
+                    };
                     const hide = function () {
                         content.classList.add('help-hidden');
                         button.setAttribute('aria-expanded', 'false');
+                        window.removeEventListener('resize', fitContent);
+                        document.removeEventListener('scroll', fitContent, true);
                     };
                     // Capture also sees clicks whose own handlers stop propagation.
                     const outsideClick = function (event) {
@@ -89,6 +106,9 @@ var $exeIDevicesEdition = {
                         tooltip.hide();
                         content.classList.remove('help-hidden');
                         button.setAttribute('aria-expanded', 'true');
+                        fitContent();
+                        window.addEventListener('resize', fitContent);
+                        document.addEventListener('scroll', fitContent, true);
                     }).on('keydown.exeHelpTooltip', function (event) {
                         if (event.key === 'Escape') {
                             tooltip.hide();

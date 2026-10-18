@@ -199,6 +199,51 @@ describe('common_idevices_edition.js', () => {
         expect(document.querySelector('button').getAttribute('aria-expanded')).toBe('false');
       });
 
+      it('fits help to its panel and clipping ancestors, and refits only while open', () => {
+        document.body.innerHTML = `<div id="scroller" style="overflow-x: auto"><div class="tab-pane">
+          ${common().getHelpTooltip('Explain the option')}</div></div>`;
+        const panel = document.querySelector('.tab-pane');
+        const button = panel.querySelector('button');
+        const content = panel.querySelector('.help-content');
+        const panelRect = vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ right: 900 });
+        vi.spyOn(document.getElementById('scroller'), 'getBoundingClientRect').mockReturnValue({ right: 875 });
+        const anchorRect = vi.spyOn(button.parentElement, 'getBoundingClientRect').mockReturnValue({ left: 730 });
+        common().initHelpTooltips(panel);
+        button.click();
+        expect(content.style.maxWidth).toBe('137px');
+
+        panelRect.mockReturnValue({ right: 820 });
+        window.dispatchEvent(new Event('resize'));
+        expect(content.style.maxWidth).toBe('82px');
+        anchorRect.mockReturnValue({ left: 700 });
+        document.getElementById('scroller').dispatchEvent(new Event('scroll'));
+        expect(content.style.maxWidth).toBe('112px');
+
+        button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        panelRect.mockClear();
+        window.dispatchEvent(new Event('resize'));
+        document.dispatchEvent(new Event('scroll'));
+        expect(panelRect).not.toHaveBeenCalled();
+
+        button.click();
+        lifecycle.destroy();
+        panelRect.mockClear();
+        window.dispatchEvent(new Event('resize'));
+        document.dispatchEvent(new Event('scroll'));
+        expect(panelRect).not.toHaveBeenCalled();
+      });
+
+      it('also bounds help by the viewport in forms without tabs', () => {
+        document.body.innerHTML = `<div id="form">${common().getHelpTooltip('Explain the option')}</div>`;
+        const form = document.getElementById('form');
+        const button = form.querySelector('button');
+        vi.spyOn(form, 'getBoundingClientRect').mockReturnValue({ right: window.innerWidth + 200 });
+        vi.spyOn(button.parentElement, 'getBoundingClientRect').mockReturnValue({ left: window.innerWidth - 120 });
+        common().initHelpTooltips(form);
+        button.click();
+        expect(form.querySelector('.help-content').style.maxWidth).toBe('112px');
+      });
+
       it('leaves missing forms and forms without help alone', () => {
         common().initHelpTooltips(null);
         common().initHelpTooltips(document.body);
