@@ -86,6 +86,7 @@ var $trueorfalse = {
 
         $('#tofPMultimedia-' + ldata.id).empty();
         $('#tofPMultimedia-' + ldata.id).append(questionsHtml);
+        $trueorfalse.showPassScoreNotice(ldata);
 
         if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
@@ -107,6 +108,21 @@ var $trueorfalse = {
         $trueorfalse.addEvents(ldata);
 
         $trueorfalse.updateLatexInView(ldata.id);
+    },
+
+    /**
+     * Ask for the notice of the minimum score, in quiz mode only.
+     *
+     * Outside quiz mode nothing judges the mark: no SCORM score can be saved
+     * (see updateConfig) and the editor offers the progress report only in
+     * quiz mode, so a notice there would announce a mark nothing applies.
+     *
+     * @param {Object} data - iDevice options, with its main container on the page
+     * @returns {jQuery|null} The notice, or null when none is shown.
+     */
+    showPassScoreNotice: function (data) {
+        if (!data.isTest) return null;
+        return $exeDevices.iDevice.gamification.report.showPassScoreNotice(data);
     },
 
     /**
@@ -167,7 +183,13 @@ var $trueorfalse = {
             : $('.idevice_node.trueorfalse').eq(0).attr('data-idevice-path');
         data.id = ideviceId ?? data.ideviceId;
         data.main = 'tofPMainContainer-' + data.id;
-        data.idevice = 'idevice_node';
+        // The container the progress report icon and its anchor go into, found
+        // with closest() from `main`: the activity's own wrapper, which exists in
+        // the editor, the preview and an exported package alike. addEvents used
+        // to overwrite it with 'trueorfalseIdevice', a class only the editor adds
+        // to the iDevice body, so outside the editor the learner never saw their
+        // result.
+        data.idevice = 'exe-trueorfalse-container';
         data.title = 'Verdadero o falso';
 
         const $idevice = $('#' + data.id);
@@ -718,7 +740,6 @@ var $trueorfalse = {
         mOptions.active = 0;
         mOptions.scorep = 0;
         mOptions.main = `tofPMainContainer-${instance}`;
-        mOptions.idevice = 'trueorfalseIdevice';
 
         // The shared addButtonScoreNew emits the save button for isScorm 2
         // alone, already visible and carrying the author's caption, so there is
@@ -931,7 +952,7 @@ var $trueorfalse = {
 
         const message =
             mOptions.msgs.msgYouScore + ': ' + mOptions.scorep.toFixed(2);
-        const type = mOptions.scorep < 5 ? 1 : 2;
+        const type = mOptions.scorep < $exe.passScore.resolve(mOptions) ? 1 : 2;
 
         $trueorfalse.showMessage(type, message, instance);
         $trueorfalse.saveEvaluation(mOptions);

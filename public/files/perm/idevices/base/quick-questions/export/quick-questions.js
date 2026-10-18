@@ -95,6 +95,7 @@ var $quickquestions = {
 
             const quext = $quickquestions.createInterfaceQuExt(i);
             dl.before(quext).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#quextGameMinimize-' + i).hide();
             $('#quextGameContainer-' + i).hide();
 
@@ -537,6 +538,27 @@ var $quickquestions = {
         }
     },
 
+    /**
+     * Whether a clock's game is still on the page, and the page is not being
+     * edited.
+     *
+     * A clock holds the element its game had when it started, not the
+     * element's id. The editor never reloads the document between pages and
+     * ids are numbered by position, so the next page's first game takes the
+     * same ones: a clock that looked its game up by id each second found that
+     * game and ran it.
+     *
+     * @param {Element|null} container - The game's element when the clock started
+     * @returns {boolean}
+     */
+    isClockLive: function (container) {
+        const $content = $('#node-content');
+        return (
+            !!container?.isConnected &&
+            !($content.length && $content.attr('mode') === 'edition')
+        );
+    },
+
     startVideoIntro: function (id, start, end, instance, type) {
         const mOptions = $quickquestions.options[instance],
             mstart = start < 1 ? 0.1 : start;
@@ -553,19 +575,18 @@ var $quickquestions = {
                 }
             }
             clearInterval(mOptions.timeUpdateIntervalIntro);
-            mOptions.timeUpdateIntervalIntro = setInterval(() => {
-                let $node = $('#quextMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.timeUpdateIntervalIntro);
+            const container = document.getElementById(
+                'quextMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$quickquestions.isClockLive(container)) {
+                    clearInterval(clock);
                     return;
                 }
 
                 $quickquestions.updateTimerDisplayLocalIntro(instance);
             }, 1000);
+            mOptions.timeUpdateIntervalIntro = clock;
             $('#quextVideoIntroLocal-' + instance).show();
             return;
         }
@@ -597,19 +618,18 @@ var $quickquestions = {
                 }
             }
             clearInterval(mOptions.timeUpdateInterval);
-            mOptions.timeUpdateInterval = setInterval(() => {
-                let $node = $('#quextMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.timeUpdateInterval);
+            const container = document.getElementById(
+                'quextMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                if (!$quickquestions.isClockLive(container)) {
+                    clearInterval(clock);
                     return;
                 }
 
                 $quickquestions.updateTimerDisplayLocal(instance);
             }, 1000);
+            mOptions.timeUpdateInterval = clock;
             return;
         }
 
@@ -1139,17 +1159,15 @@ var $quickquestions = {
 
         $('#quextPNumber-' + instance).text(mOptions.numberQuestions);
 
-        mOptions.counterClock = setInterval(() => {
+        const container = document.getElementById(
+            'quextMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            if (!$quickquestions.isClockLive(container)) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#quextMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $quickquestions.uptateTime(mOptions.counter, instance);
                 $quickquestions.updateSoundVideo(instance);
@@ -1167,6 +1185,7 @@ var $quickquestions = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $quickquestions.uptateTime(0, instance);
         $('#quextGamerOver-' + instance).hide();

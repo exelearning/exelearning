@@ -164,6 +164,31 @@ describe('periodic-table iDevice export', () => {
             vi.clearAllTimers();
             vi.useRealTimers();
         });
+
+        // The editor never reloads the document between pages, and a game's
+        // ids are numbered by position: the next page's first game takes the
+        // ids this one had. The clock used to find that game by id and run it,
+        // counting down on its display and ending it when its own time ran out.
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            vi.useFakeTimers();
+            setupTimedGame();
+            const gameOver = vi.spyOn($periodicTable, 'gameOver').mockImplementation(() => {});
+            $periodicTable.startGame(0);
+            vi.advanceTimersByTime(1000);
+
+            // The author moves to another page, whose first game is numbered the same.
+            document.body.innerHTML = '<div id="ptMainContainer-0"></div>';
+            $periodicTable.options[0] = { gameStarted: true, counter: 240, time: 4 };
+            $periodicTable.updateTime.mockClear();
+            vi.advanceTimersByTime(120000);
+
+            expect($periodicTable.updateTime).not.toHaveBeenCalled();
+            expect(gameOver).not.toHaveBeenCalled();
+            expect($periodicTable.options[0].counter).toBe(240);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
     });
 
     describe('reporting before the reveal on a phone', () => {
@@ -437,5 +462,18 @@ describe('periodic-table iDevice export', () => {
         );
 
         expect(source).not.toContain('$periodicTable.checkAnswers');
+    });
+});
+
+describe('periodic-table minimum score notice', () => {
+    it('asks for the notice right after its interface replaces the stored data', () => {
+        const source = readFileSync(join(__dirname, 'periodic-table.js'), 'utf-8');
+        const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+        // The main container comes with the interface, so from that line on the
+        // notice can go right before it, below the instructions.
+        expect(loadGame).toMatch(
+            /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+        );
     });
 });

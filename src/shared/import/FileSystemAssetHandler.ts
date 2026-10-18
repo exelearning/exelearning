@@ -289,16 +289,20 @@ export class FileSystemAssetHandler implements AssetHandler {
 
             // Determine the folder path (directory structure to preserve)
             // e.g., for content/resources/20251009090601DKVACR/01.jpg -> content/resources/20251009090601DKVACR
-            const folderPath = path.dirname(assetInfo.relativePath);
-            const fullFolderPath = assetInfo.assetDir === 'content' ? path.join('content', folderPath) : folderPath;
+            // ZIP entry names are always POSIX, so use path.posix: on Windows path.join
+            // would yield backslashes and the ID regex below would strip nothing.
+            const folderPath = path.posix.dirname(assetInfo.relativePath);
+            const fullFolderPath =
+                assetInfo.assetDir === 'content' ? path.posix.join('content', folderPath) : folderPath;
 
-            // Use filename-based ID (not UUID) to match FileSystemAssetProvider expectations
-            // For root-level assets, id is just the filename
-            // For nested assets, id includes the folder path
-            const assetId =
-                fullFolderPath && fullFolderPath !== '.'
-                    ? `${fullFolderPath.replace(/^(content\/)?/, '')}/${filename}`
-                    : filename;
+            // Use the same path-based ID FileSystemAssetProvider gives this file,
+            // relative to content/resources/ (e.g. 20251009090601DKVACR/01.jpg).
+            // The exporter looks asset:// references up by that ID and prefixes
+            // content/resources/ itself, so keeping "resources/" here would
+            // export the reference as content/resources/resources/... — a path
+            // no file is written to.
+            const idFolder = fullFolderPath === '.' ? '' : fullFolderPath.replace(/^content\/(resources(\/|$))?/, '');
+            const assetId = idFolder ? `${idFolder}/${filename}` : filename;
 
             // Store the asset with the full folder structure
             await this.storeAsset(assetId, content, {

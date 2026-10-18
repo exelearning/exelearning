@@ -1,7 +1,7 @@
 /**
  * Tests for App Settings Service
  */
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, afterEach } from 'bun:test';
 import {
     parseBoolean,
     parseNumber,
@@ -11,6 +11,7 @@ import {
     getSettingNumber,
     parseAuthMethods,
     getAuthMethods,
+    isPublicViewFeatureEnabled,
 } from './app-settings';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
@@ -254,6 +255,36 @@ describe('App Settings Service', () => {
 
             const result = await getAuthMethods(mockDb, 'password,guest');
             expect(result).toEqual(['password', 'guest']);
+        });
+    });
+    describe('isPublicViewFeatureEnabled', () => {
+        const originalEnv = process.env.PUBLIC_VIEW_ENABLED;
+
+        afterEach(() => {
+            if (originalEnv === undefined) delete process.env.PUBLIC_VIEW_ENABLED;
+            else process.env.PUBLIC_VIEW_ENABLED = originalEnv;
+        });
+
+        it('should be disabled by default', async () => {
+            delete process.env.PUBLIC_VIEW_ENABLED;
+
+            expect(await isPublicViewFeatureEnabled(createMockSettingsDb({}))).toBe(false);
+        });
+
+        it('should use the environment value as the default', async () => {
+            process.env.PUBLIC_VIEW_ENABLED = 'true';
+
+            expect(await isPublicViewFeatureEnabled(createMockSettingsDb({}))).toBe(true);
+        });
+
+        it('should let the admin setting override the environment value', async () => {
+            process.env.PUBLIC_VIEW_ENABLED = 'true';
+            expect(await isPublicViewFeatureEnabled(createMockSettingsDb({ PUBLIC_VIEW_ENABLED: 'false' }))).toBe(
+                false,
+            );
+
+            process.env.PUBLIC_VIEW_ENABLED = 'false';
+            expect(await isPublicViewFeatureEnabled(createMockSettingsDb({ PUBLIC_VIEW_ENABLED: 'true' }))).toBe(true);
         });
     });
 });
