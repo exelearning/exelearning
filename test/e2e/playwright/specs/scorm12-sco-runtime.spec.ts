@@ -220,14 +220,11 @@ async function exportScorm12(page: import('@playwright/test').Page) {
 }
 
 test.describe('SCORM 1.2 exported SCO runtime', () => {
-    // Includes fixture setup. test.setTimeout() inside the body runs after
-    // `page` is created, so a slow Firefox newPage was killed at the default
-    // 45s and reported as "browser has been closed" while setting up the page.
-    test.describe.configure({ timeout: 180000 });
     test('runs against a strict parent SCORM 1.2 API across the page lifecycle', async ({
         authenticatedPage,
         createProject,
     }) => {
+        test.setTimeout(180000);
         const page = authenticatedPage;
         const uuid = await createProject(page, 'SCORM 1.2 SCO runtime');
 
@@ -373,6 +370,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         authenticatedPage,
         createProject,
     }) => {
+        test.setTimeout(180000);
         const page = authenticatedPage;
         const uuid = await createProject(page, 'SCORM 1.2 registry runtime');
 
@@ -496,6 +494,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         authenticatedPage,
         createProject,
     }) => {
+        test.setTimeout(180000);
         const page = authenticatedPage;
         const uuid = await createProject(page, 'SCORM 1.2 every activity at its own mark');
 
@@ -585,6 +584,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
     });
 
     test('drives real exported iDevices through the common.js bridge', async ({ authenticatedPage, createProject }) => {
+        test.setTimeout(180000);
         const page = authenticatedPage;
         const uuid = await createProject(page, 'SCORM 1.2 common.js bridge');
 
@@ -801,6 +801,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         authenticatedPage: page,
         createProject,
     }, testInfo) => {
+        test.setTimeout(180000);
         const uuid = await createProject(page, 'Relate stored SCORM mark');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -889,6 +890,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         authenticatedPage: page,
         createProject,
     }, testInfo) => {
+        test.setTimeout(180000);
         // The project keeps the default 5 and the rubric demands 8. The page
         // used to be judged by the project's mark alone, so a 7.5 passed in the
         // LMS while the rubric told the learner they had failed.
@@ -1002,6 +1004,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         authenticatedPage: page,
         createProject,
     }, testInfo) => {
+        test.setTimeout(180000);
         // Game iDevices open the session from initGame() before they register
         // (common.js), so on a second visit the entry policy meets an empty
         // registry and must recognise the stored verdict from cmi.suspend_data
@@ -1101,6 +1104,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
     });
 
     test('does not zero a restored score when the quiz registers before loadPage', async ({ browser }) => {
+        test.setTimeout(60000);
         const page = await browser.newPage();
         const zip = unzipSync(buildResumeRaceScorm12Package());
 
