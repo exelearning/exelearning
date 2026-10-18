@@ -202,6 +202,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="adivinaEShowMinimize">${_('Show minimized.')}</label>
+                                ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="adivinaEOptionsRamdon">
                                 <span class="toggle-control">
@@ -209,6 +210,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="adivinaEOptionsRamdon">${_('Random questions')}</label>
+                                ${edition.common.getHelpTooltip(_('Present the questions in a different random order each time the game starts.'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="adivinaECustomMessages">
                                 <span class="toggle-control">
@@ -216,6 +218,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="adivinaECustomMessages">${_('Custom messages')}.</label>
+                                ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
                             </div>
                             <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
                                 <div class="toggle-item toggle-related m-0" data-target="adivinaEShowSolution">
@@ -227,6 +230,10 @@ var $exeDevice = {
                                 </div>
                                 <label for="adivinaETimeShowSolution">${_('Show solution time (seconds)')}</label>
                                 <input type="number" name="adivinaETimeShowSolution" id="adivinaETimeShowSolution" value="3" min="1" max="9" class="form-control" />
+                                ${edition.common.getHelpTooltip([
+                                    `${_('Show solutions')}: ${_('Show the complete word or phrase after answering a question or when the time runs out.')}`,
+                                    `${_('Show solution time (seconds)')}: ${_('Set how many seconds the solution remains visible before moving to the next question.')}`,
+                                ].join('\n\n'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="adivinaECaseSensitive">
                                 <span class="toggle-control">
@@ -234,6 +241,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="adivinaECaseSensitive">${_('Case sensitive')}</label>
+                                ${edition.common.getHelpTooltip(_('Require uppercase and lowercase letters to match the answer exactly.'))}
                             </div>
                             <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                 <span>${_('Score')}: </span>
@@ -249,16 +257,11 @@ var $exeDevice = {
                                     <input class="form-check-input ADVNE-TypeGame" id="adivinaETypeReto" type="radio" name="qxtgamemode" value="2" />
                                     <label class="form-check-label" for="adivinaETypeReto">${_('No score')}</label>
                                 </div>
-                                <a href="#adivinaEGameModeHelp" id="adivinaEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                </a> 
-                            </div>
-                            <div id="adivinaEGameModeHelp" class="exe-block-info ADVNE-TypeGameHelp pt-3">
-                                <ul>
-                                    <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                    <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
-                                    <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
-                                </ul>
+                                ${edition.common.getHelpTooltip([
+                                    `${_('From 0 to 10')}: ${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}`,
+                                    `${_('Points and lives')}: ${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}`,
+                                    `${_('No score')}: ${_('No score and no lives. You have to answer right to get some information (a feedback).')}`,
+                                ].join('\n\n'))}
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item toggle-related m-0" data-target="adivinaEUseLives">
@@ -270,12 +273,17 @@ var $exeDevice = {
                                 </div>
                                 <label for="adivinaENumberLives"> ${_('Number of lives')}:</label>
                                 <input type="number" name="adivinaENumberLives" id="adivinaENumberLives" value="3" min="1" max="5" class="form-control" />
+                                ${edition.common.getHelpTooltip([
+                                    `${_('Use lives')}: ${_('Limit attempts in Points and lives mode. An incorrect answer or a timeout costs one life; the game ends when no lives remain.')}`,
+                                    `${_('Number of lives')}: ${_('Set the number of lives available at the start of the game, from 1 to 5.')}`,
+                                ].join('\n\n'))}
 
                             </div>
                             <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
                                 <label for="adivinaEPercentajeQuestions" class="toggle-label">%${_('Questions')}:</label>
                                 <input type="number" name="adivinaEPercentajeQuestions" id="adivinaEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
                                 <span id="adivinaENumeroPercentaje" >1/1</span>
+                                ${edition.common.getHelpTooltip(_('Choose the percentage of questions included in each game. The counter shows how many questions will be used.'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="adivinaModeBoard">
                                 <span class="toggle-control">
@@ -283,6 +291,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="adivinaModeBoard">${_('Digital whiteboard mode')}</label>
+                                ${edition.common.getHelpTooltip(_('Show buttons to mark an answer as correct or incorrect, or move on, when playing together on a digital whiteboard.'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="adivinaETranslate" style="display:none">
                                 <span class="toggle-control">
@@ -290,6 +299,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="adivinaETranslate">${_('Activate translator')}.</label>
+                                ${edition.common.getHelpTooltip(_('Enable the translation tool in the game.'))}
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3">
                                 <label for="adivinaEGlobalTimes">${_('Time per question')}:</label>
@@ -302,6 +312,7 @@ var $exeDevice = {
                                     <option value="5">10m</option>
                                 </select>
                                 <button id="adivinaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
+                                ${edition.common.getHelpTooltip(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Questions tab.'))}
                             </div>
                         </div>`,
             words = `
@@ -1979,11 +1990,6 @@ var $exeDevice = {
             const gm = parseInt($(e.target).val(), 10);
             const ul = $('#adivinaEUseLives').is(':checked');
             $exeDevice.updateGameMode(gm, ul);
-        });
-
-        $('#adivinaEGameModeHelpLnk').click((e) => {
-            e.preventDefault();
-            $('#adivinaEGameModeHelp').toggle();
         });
 
         $('#adivinaECustomMessages').on('change', function () {

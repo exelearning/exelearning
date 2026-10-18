@@ -238,16 +238,16 @@
     width: 100%;
 }
 
-.ADVNE-TypeGameHelp {
-    display: none;
-    font-size: .95em
+#adivinaEOptions > div,
+#adivinaEOptions .toggle-item,
+#adivinaEOptions .form-check-inline {
+    flex-wrap: nowrap;
 }
 
-.GameModeHelpLink {
-    margin: 0 4px 0 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    vertical-align: middle;
+#adivinaEOptions > div > .exe-idevice-help-container {
+    margin-left: .25rem;
+}
+
+#adivinaEOptions .form-check-inline {
+    white-space: nowrap;
 }

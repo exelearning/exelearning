@@ -13,6 +13,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'node:vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -714,19 +715,40 @@ describe('guess edition: shared form tabs and feedback', () => {
   };
   let device;
   let tinymceInit;
+  let previousApp;
+  let tooltips;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
+    previousApp = global.eXeLearning.app;
+    tooltips = new Map();
+    global.eXeLearning.app = {
+      ...previousApp,
+      common: {
+        initTooltips: vi.fn((scope) => {
+          scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+          });
+        }),
+      },
+    };
+    vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
     Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
     // createForm starts its own editor for the question text.
     tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation(() => Promise.resolve([]));
     document.body.innerHTML = '<div id="guessBody"></div>';
-    device = global.loadIdevice(join(__dirname, 'guess.js'));
+    // Keep the source filename so coverage includes the real form and its help text.
+    const filename = join(__dirname, 'guess.js');
+    runInThisContext(readFileSync(filename, 'utf8'), { filename });
+    device = global.$exeDevice;
+    global.attachEditionLifecycle(device);
     device.init(document.getElementById('guessBody'), {}, PATH);
   });
 
   afterEach(() => {
     device.$lifecycle?.destroy();
+    global.eXeLearning.app = previousApp;
+    vi.unstubAllGlobals();
     tinymceInit.mockRestore();
     Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
     global.$exeDevice = undefined;
@@ -758,6 +780,63 @@ describe('guess edition: shared form tabs and feedback', () => {
     expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
     expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
     expect(panel('texts').querySelector('#ci18n_msgReply').value).toBe('Reply');
+  });
+
+  it('provides one accessible information button at the end of each options row', () => {
+    const options = panel('options');
+    const rows = [...options.querySelector('#adivinaEOptions').children];
+    expect(rows).toHaveLength(11);
+    for (const row of rows) {
+      const buttons = row.querySelectorAll('.exe-idevice-help');
+      expect(buttons).toHaveLength(1);
+      const help = buttons[0];
+      expect(row.lastElementChild.contains(help)).toBe(true);
+      expect(help.tagName).toBe('BUTTON');
+      expect(help.type).toBe('button');
+      expect(help.getAttribute('aria-label')).toBe(help.title);
+      expect(help.title).toBe('Information');
+      expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+      expect(help.querySelector('[aria-hidden="true"].info-icon-solid-green')).not.toBeNull();
+      const controls = [...row.querySelectorAll('input, select')];
+      const checked = controls.map((control) => control.checked);
+      help.click();
+      expect(controls.map((control) => control.checked)).toEqual(checked);
+    }
+    expect(global.eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+      document.getElementById('gameQEIdeviceForm-panels')
+    );
+  });
+
+  it('explains every control in each combined options row', () => {
+    const groups = [
+      ['adivinaEShowSolution', 'Show solutions', 'Show solution time (seconds)'],
+      ['adivinaETypeActivity', 'From 0 to 10', 'Points and lives', 'No score'],
+      ['adivinaEUseLives', 'Use lives', 'Number of lives'],
+    ];
+    for (const [id, ...labels] of groups) {
+      const row = [...document.querySelector('#adivinaEOptions').children].find((item) => item.querySelector(`#${id}`));
+      const text = row.querySelector('.help-content').textContent;
+      for (const label of labels) expect(text).toContain(`${label}:`);
+      expect(text.split('\n\n')).toHaveLength(labels.length);
+    }
+  });
+
+  it('escapes translated help text in the explanation', () => {
+    const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+    const container = document.createElement('div');
+    container.innerHTML = edition().common.getHelpTooltip(text);
+    const button = container.querySelector('button');
+    expect(button.title).toBe('Information');
+    expect(container.querySelector('.help-content').textContent).toBe(text);
+    expect(container.querySelector('once')).toBeNull();
+  });
+
+  it('disposes all option tooltips when the edition closes', () => {
+    expect(tooltips.size).toBe(11);
+    device.$lifecycle.destroy();
+    for (const tooltip of tooltips.values()) {
+      expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+    }
   });
 
   it('offers Import, Export and Create with AI on its Questions tab, in windows of their own', () => {
