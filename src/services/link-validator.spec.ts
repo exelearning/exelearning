@@ -617,6 +617,149 @@ describe('Link Validator Service', () => {
         });
     });
 
+    describe('transient failures (#2502)', () => {
+        const link = (id: string, url: string): ExtractedLink => ({
+            id,
+            url,
+            count: 1,
+            pageName: '',
+            blockName: '',
+            ideviceType: '',
+            order: '',
+        });
+        const statusFetch = (status: number) =>
+            (async () => mockResponse({ status, ok: status < 400 })) as unknown as typeof fetch;
+        const opts = { filesDir: '/tmp', lookupFn: publicLookup, hostDelayMs: 0, retryDelayMs: 0 };
+
+        it('reports server errors and rate limiting as unavailable, not broken', async () => {
+            for (const status of [500, 502, 503, 504, 429]) {
+                const result = await validateLinkWithResult(link('1', 'https://example.com/a'), {
+                    ...opts,
+                    fetchImpl: statusFetch(status),
+                });
+                expect(result).toMatchObject({ status: 'unavailable', error: String(status) });
+            }
+        });
+
+        it('reports a timeout as unavailable, not broken', async () => {
+            const fetchImpl = (async () => {
+                throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+            }) as unknown as typeof fetch;
+            const result = await validateLinkWithResult(link('1', 'https://example.com/a'), { ...opts, fetchImpl });
+            expect(result).toMatchObject({ status: 'unavailable', error: 'Timeout' });
+        });
+
+        it('still reports a missing resource as broken', async () => {
+            const result = await validateLinkWithResult(link('1', 'https://example.com/a'), {
+                ...opts,
+                fetchImpl: statusFetch(404),
+            });
+            expect(result).toMatchObject({ status: 'broken', error: '404' });
+        });
+
+        it('requests one URL at a time per host and checks repeated URLs once', async () => {
+            const inFlight = new Map<string, number>();
+            let maxPerHost = 0;
+            let calls = 0;
+            const fetchImpl = (async (url: string) => {
+                calls++;
+                const host = new URL(url).host;
+                inFlight.set(host, (inFlight.get(host) ?? 0) + 1);
+                maxPerHost = Math.max(maxPerHost, inFlight.get(host) ?? 0);
+                await new Promise(r => setTimeout(r, 5));
+                inFlight.set(host, (inFlight.get(host) ?? 0) - 1);
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+            const links = [
+                ...Array.from({ length: 6 }, (_, i) => link(`px${i}`, `https://pxhere.com/photo/${i}`)),
+                link('dup', 'https://pxhere.com/photo/0'),
+                link('other', 'https://example.org/'),
+            ];
+
+            const results = [];
+            for await (const result of validateLinksStream(links, { ...opts, fetchImpl })) {
+                results.push(result);
+            }
+
+            expect(results).toHaveLength(8);
+            expect(results.every(r => r.status === 'valid')).toBe(true);
+            expect(maxPerHost).toBe(1);
+            expect(calls).toBe(7);
+        });
+
+        it('retries an unavailable link once before reporting it', async () => {
+            const statuses = [503, 200];
+            const fetchImpl = (async () => {
+                const status = statuses.shift() ?? 200;
+                return mockResponse({ status, ok: status < 400 });
+            }) as unknown as typeof fetch;
+
+            const results = [];
+            for await (const result of validateLinksStream([link('1', 'https://example.com/a')], {
+                ...opts,
+                fetchImpl,
+            })) {
+                results.push(result);
+            }
+
+            expect(results).toEqual([{ id: '1', url: 'https://example.com/a', status: 'valid', error: null }]);
+        });
+
+        it('stops requesting a host that still times out after the retry', async () => {
+            const calls = new Map<string, number>();
+            const fetchImpl = (async (url: string) => {
+                const host = new URL(url).host;
+                calls.set(host, (calls.get(host) ?? 0) + 1);
+                if (host === 'down.example') throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+            const links = [
+                ...Array.from({ length: 4 }, (_, i) => link(`down${i}`, `https://down.example/${i}`)),
+                link('up', 'https://example.org/'),
+            ];
+
+            const results = [];
+            for await (const result of validateLinksStream(links, { ...opts, fetchImpl })) {
+                results.push(result);
+            }
+
+            expect(calls.get('down.example')).toBe(2);
+            expect(results.filter(r => r.id.startsWith('down'))).toHaveLength(4);
+            for (const result of results.filter(r => r.id.startsWith('down'))) {
+                expect(result).toMatchObject({ status: 'unavailable', error: 'Timeout' });
+            }
+            expect(results.find(r => r.id === 'up')?.status).toBe('valid');
+        });
+
+        it('stops requesting and retrying once the consumer cancels', async () => {
+            const calls = new Map<string, number>();
+            const fetchImpl = (async (url: string) => {
+                const host = new URL(url).host;
+                calls.set(host, (calls.get(host) ?? 0) + 1);
+                const status = host === 'busy.example' ? 503 : 200;
+                return mockResponse({ status, ok: status < 400 });
+            }) as unknown as typeof fetch;
+            const links = [
+                ...Array.from({ length: 3 }, (_, i) => link(`fast${i}`, `https://fast.example/${i}`)),
+                link('busy', 'https://busy.example/'),
+            ];
+
+            for await (const result of validateLinksStream(links, {
+                ...opts,
+                fetchImpl,
+                hostDelayMs: 20,
+                retryDelayMs: 20,
+            })) {
+                expect(result.id).toBe('fast0');
+                break;
+            }
+            await new Promise(r => setTimeout(r, 150));
+
+            expect(calls.get('fast.example')).toBe(1);
+            expect(calls.get('busy.example')).toBe(1);
+        });
+    });
+
     describe('classifyHttpStatus', () => {
         it('should treat 2xx and 3xx as valid', () => {
             expect(classifyHttpStatus(200)).toBeNull();

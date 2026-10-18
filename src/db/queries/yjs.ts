@@ -200,6 +200,32 @@ export async function getLatestVersion(db: Kysely<Database>, projectId: number):
     return result?.maxVersion != null ? String(result.maxVersion) : '0';
 }
 
+/**
+ * Effective persisted document version for a project.
+ *
+ * Returns the greater of the snapshot version and the latest incremental update
+ * version. Every persistence path — full-state replace ({@link saveFullState}),
+ * incremental update ({@link saveIncrementalUpdate}) and snapshot upsert
+ * ({@link upsertSnapshot}) — writes a monotonic `Date.now()` version, so this
+ * value strictly increases on every edit. It stays correct after compaction,
+ * when older updates are folded into the snapshot and removed.
+ *
+ * Used as a cache key for derived artifacts (e.g. the public read-only export),
+ * which must invalidate whenever the document content changes — note that Yjs
+ * persistence does NOT bump `projects.updated_at`, so that column cannot be used
+ * for this purpose.
+ */
+export async function getDocumentVersion(db: Kysely<Database>, projectId: number): Promise<string> {
+    const [snapshot, latestUpdate] = await Promise.all([
+        findSnapshotByProjectId(db, projectId),
+        getLatestVersion(db, projectId),
+    ]);
+
+    const snapshotVersionNum = parseInt(snapshot?.snapshot_version ?? '0', 10) || 0;
+    const updateVersionNum = parseInt(latestUpdate, 10) || 0;
+    return String(Math.max(snapshotVersionNum, updateVersionNum));
+}
+
 export async function countUpdates(db: Kysely<Database>, projectId: number): Promise<number> {
     const result = await db
         .selectFrom('yjs_updates')

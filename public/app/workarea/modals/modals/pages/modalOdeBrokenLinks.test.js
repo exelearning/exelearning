@@ -233,6 +233,12 @@ describe('ModalOdeBrokenLinks', () => {
             expect(html).toContain('Not checked automatically: open the link to review it');
         });
 
+        it('should not show an unavailable server in red (#2502)', () => {
+            const html = modal.getStatusHtml('unavailable', 'Timeout');
+            expect(html).toContain('text-info-emphasis');
+            expect(html).not.toContain('text-danger');
+        });
+
         it('should fall back to a generic title when no reason is given', () => {
             const html = modal.getStatusHtml('unknown', null);
             expect(html).toContain('Requires manual review');
@@ -249,6 +255,7 @@ describe('ModalOdeBrokenLinks', () => {
             expect(modal.getStatusLabel('valid')).toBe('Valid');
             expect(modal.getStatusLabel('broken')).toBe('Broken');
             expect(modal.getStatusLabel('unknown')).toBe('Requires manual review');
+            expect(modal.getStatusLabel('unavailable')).toBe('Server unavailable');
             expect(modal.getStatusLabel('pending')).toBe('');
         });
     });
@@ -289,6 +296,19 @@ describe('ModalOdeBrokenLinks', () => {
         it('should explain that a check mark only means the server responded (soft-404s)', () => {
             const html = modal.createLegendHtml();
             expect(html).toContain('some sites answer 200');
+        });
+
+        it('should explain an unavailable server where links are checked (#2502)', () => {
+            const html = modal.createLegendHtml();
+            expect(html).toContain('Server unavailable');
+            expect(html).toContain('the link may still work');
+        });
+
+        it('should not mention an unavailable server where no link can be checked', () => {
+            modal.linkManager = { isBrowserLimited: () => true };
+            const html = modal.createLegendHtml();
+            expect(html).not.toContain('Server unavailable');
+            expect(html).toContain('Requires manual review');
         });
     });
 
@@ -408,6 +428,14 @@ describe('ModalOdeBrokenLinks', () => {
             expect(text.classList.contains('text-success')).toBe(false);
         });
 
+        it('should report unavailable links without calling them broken (#2502)', () => {
+            modal.updateProgress({ total: 10, validated: 10, broken: 0, unavailable: 3, unknown: 0 });
+            const text = modal.progressContainer.querySelector('.progress-text');
+            expect(text.textContent).toContain('No broken links');
+            expect(text.textContent).toContain('3 unavailable');
+            expect(text.classList.contains('text-info-emphasis')).toBe(true);
+        });
+
         it('should keep the danger colour when there are broken and reviewable links', () => {
             modal.updateProgress({ total: 10, validated: 10, broken: 2, unknown: 3 });
             const text = modal.progressContainer.querySelector('.progress-text');
@@ -452,6 +480,28 @@ describe('ModalOdeBrokenLinks', () => {
             expect(row.dataset.status).toBe('unknown');
             expect(row.querySelector('.link-error').textContent).toBe(
                 'Not checked automatically: open the link to review it',
+            );
+        });
+
+        it('should paint an unavailable server blue and explain it (#2502)', () => {
+            modal.updateLinkRow('test-id', 'unavailable', 'Timeout');
+            const row = modal.rowElements.get('test-id');
+            expect(row.classList.contains('table-info')).toBe(true);
+            expect(row.classList.contains('table-danger')).toBe(false);
+            expect(row.dataset.status).toBe('unavailable');
+            expect(row.querySelector('.link-error').textContent).toBe(
+                'Timeout: the server took too long to respond, try again later',
+            );
+        });
+
+        it('should explain rate limiting and server errors (#2502)', () => {
+            modal.updateLinkRow('test-id', 'unavailable', '429');
+            expect(modal.rowElements.get('test-id').querySelector('.link-error').textContent).toBe(
+                '429: too many requests to this site, try again later',
+            );
+            modal.updateLinkRow('test-id', 'unavailable', '502');
+            expect(modal.rowElements.get('test-id').querySelector('.link-error').textContent).toBe(
+                '502: server error, try again later',
             );
         });
 

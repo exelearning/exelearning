@@ -429,6 +429,21 @@ button.close span {
     border-top: 1px solid #e6e7ed;
 }
 
+// Section headings for the evaluative controls. They separate three blocks that
+// answer the same question -- what counts as passing -- so they read as labels
+// for the block below, not as headings competing with the tab's own title.
+//
+// Not scoped to .exe-form-tab: geogebra-activity renders the pass score outside
+// one, and an unstyled h3 there would jump to browser-default heading size.
+.exe-evaluation-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 1.5rem 0 .75rem;
+    padding-bottom: .25rem;
+    border-bottom: 1px solid #e6e7ed;
+    color: var(--dark-exe-color);
+}
+
 #node-content
 .idevice_node[mode="edition"]
 .idevice_body
