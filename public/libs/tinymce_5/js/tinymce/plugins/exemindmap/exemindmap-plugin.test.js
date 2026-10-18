@@ -184,6 +184,7 @@ describe('exemindmap plugin - Path Handling', () => {
             expect(globalThis.eXeMediaPluginDialog.mode).toBe('new');
             // New maps are saved as an image unless the author chooses otherwise
             expect(renderFormat(plugin)).toBe('png');
+            expect(document.querySelector('.exe-mindmap-format legend').textContent).toBe('Embed as');
         });
 
         /** What the editor fills in when it saves, plus `values`. */
