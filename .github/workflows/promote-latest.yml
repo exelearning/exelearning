@@ -18,7 +18,7 @@ on:
 jobs:
   promote:
     if: github.repository == 'exelearning/exelearning'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write

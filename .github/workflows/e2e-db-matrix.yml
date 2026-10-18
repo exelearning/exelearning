@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   test-e2e:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
@@ -47,7 +47,7 @@ jobs:
           # so the specs (and everything they import from src/) run under this
           # Node. jsdom >= 30 pulls undici 8, which needs Node >= 22.19 for
           # worker_threads.markAsUncloneable. 22 also matches the Node the
-          # ubuntu-24.04 image ships, which every other workflow already uses.
+          # ubuntu-latest image ships, which every other workflow already uses.
           node-version: '22'
 
       - name: Setup Bun
