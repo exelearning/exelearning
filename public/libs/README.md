@@ -32,9 +32,6 @@
 *   Package: @elysiajs/swagger
     *   Copyright: saltyAom
     *   License: MIT
-*   Package: @erseco/mind-elixir-export-mermaid
-    *   Copyright: Ernesto Serrano
-    *   License: MIT
 *   Package: @material-symbols/svg-400
     *   Copyright: Google LLC
     *   License: Apache-2.0

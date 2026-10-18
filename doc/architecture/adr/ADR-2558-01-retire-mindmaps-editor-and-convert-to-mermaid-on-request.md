@@ -87,8 +87,8 @@ and behave differently.
 
 ### Option C: remove the editor, convert to Mermaid only when asked (#2558)
 
-Pros: no dedicated editor; 2 shipped files (6,969 bytes) plus a 3,880-byte converter in the
-existing importers bundle; one zero-dependency npm package; reuses Mermaid/Pele; legacy maps
+Pros: no dedicated editor; 2 shipped files (6,969 bytes) plus a 2,359-byte converter in the
+existing importers bundle; no new dependencies; reuses Mermaid/Pele; legacy maps
 stay byte-identical until the author converts them.
 Cons: no graphical mind map authoring; converted maps look different; Mermaid text is less
 approachable for non-technical authors; colours, fonts, positions and folding are not
@@ -121,14 +121,16 @@ Proposed: option C.
 - After conversion, Mermaid source is the only editable representation. The archived JSON is
   never read again.
 - `src/shared/import/legacyMindmap.ts` reads the JSON, undoing only the two known save defects,
-  rejects anything else, and converts through `@erseco/mind-elixir-export-mermaid`'s label
-  escaping, which handles Mermaid directives, entities and markdown delimiters.
+  rejects anything else, and writes Mermaid with label escaping (Mermaid directives, entities
+  and markdown delimiters) taken from `mindElixirToMermaid()` in
+  `@erseco/mind-elixir-export-mermaid` (MIT, same author), inlined instead of added as a
+  dependency because only that small part is used.
 
 ## Consequences
 
 ### Positive
 
-- −35 shipped files and −563,820 bytes raw (−166,799 gzip) on top of #2556; no private jQuery,
+- −35 shipped files and −565,341 bytes raw (−167,456 gzip) on top of #2556; no private jQuery,
   jQuery UI, Cropper or FileSaver.
 - Unconverted maps display with no script in every format, online and offline.
 - New and converted diagrams share one pipeline (Mermaid source → Pele SVG).
@@ -141,7 +143,8 @@ Proposed: option C.
 
 ### Neutral
 
-- One new dependency, `@erseco/mind-elixir-export-mermaid` (MIT, no dependencies). B uses it too.
+- No new dependencies. The inlined escaping produces output identical to the library's (B uses
+  the library itself), so a fix there should be mirrored here.
 - Old translation strings drop out at the next catalogue extraction.
 
 ## Risks
@@ -167,4 +170,4 @@ Proposed: option C.
 - #2447, #2556, #2557, #2558
 - [#2482 comment on Sirena](https://github.com/exelearning/exelearning/pull/2482#issuecomment-6186453552)
 - [Mermaid mindmap syntax](https://mermaid.js.org/syntax/mindmap.html)
-- [`@erseco/mind-elixir-export-mermaid`](https://github.com/erseco/mind-elixir-export-mermaid)
+- [`@erseco/mind-elixir-export-mermaid`](https://github.com/erseco/mind-elixir-export-mermaid), source of the inlined label escaping

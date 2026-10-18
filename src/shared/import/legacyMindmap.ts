@@ -17,8 +17,6 @@
  * the original map untouched.
  */
 
-import { mindElixirToMermaid } from '@erseco/mind-elixir-export-mermaid';
-
 import { decodeEntities } from '../export/prerender/MermaidPreRenderer';
 
 /** Limits that keep a damaged or hostile document from hanging the editor. */
@@ -55,7 +53,7 @@ export interface LegacyMindmapDocument {
     autosave?: boolean;
 }
 
-/** The node shape `mindElixirToMermaid` reads. */
+/** A node reduced to what Mermaid can show. */
 interface TopicNode {
     topic: string;
     children: TopicNode[];
@@ -120,6 +118,55 @@ function toTopicTree(root: LegacyMindmapNode): { tree: TopicNode; count: number 
     return { tree, count };
 }
 
+// The Mermaid output below is based on mindElixirToMermaid() from
+// https://github.com/erseco/mind-elixir-export-mermaid (MIT, Ernesto Serrano), reduced to
+// what this converter uses: markdown labels, a circle root and rounded nodes.
+
+/**
+ * Mermaid entity codes for the characters Mermaid would otherwise read as syntax, markup,
+ * entities or formatting (Pele formats `*` and `_` even outside markdown strings). Mermaid
+ * also strips `%%{...}%%` directives anywhere in the source before parsing, so `%` is encoded
+ * too. `#` comes first, so the codes added afterwards are not encoded again.
+ */
+const ENTITIES: ReadonlyArray<readonly [RegExp, string]> = [
+    [/#/g, '#35;'],
+    [/%/g, '#37;'],
+    [/"/g, '#quot;'],
+    [/</g, '#lt;'],
+    [/>/g, '#gt;'],
+    [/'/g, '#39;'],
+    [/`/g, '#96;'],
+    [/\*/g, '#42;'],
+    [/_/g, '#95;'],
+];
+
+/** A caption as a Mermaid markdown string, which keeps its line breaks. */
+function mermaidLabel(text: string): string {
+    let label = text.replace(/\r\n?/g, '\n').replace(/\t/g, ' ');
+    for (const [pattern, code] of ENTITIES) label = label.replace(pattern, code);
+    label = label
+        .split('\n')
+        .map(line => line.trim())
+        .join('\n')
+        .trim();
+    // An empty quoted label is a syntax error
+    return `"\`${label || ' '}\`"`;
+}
+
+/** Writes the tree as Mermaid `mindmap` code, iteratively so depth cannot overflow the stack. */
+function toMermaid(root: TopicNode): string {
+    const lines = ['mindmap'];
+    let count = 0;
+    const stack: Array<{ node: TopicNode; depth: number }> = [{ node: root, depth: 0 }];
+    while (stack.length > 0) {
+        const { node, depth } = stack.pop() as { node: TopicNode; depth: number };
+        const [open, close] = depth === 0 ? ['((', '))'] : ['(', ')'];
+        lines.push(`${'  '.repeat(depth + 1)}n${count++}${open}${mermaidLabel(node.topic)}${close}`);
+        for (let i = node.children.length - 1; i >= 0; i--) stack.push({ node: node.children[i], depth: depth + 1 });
+    }
+    return lines.join('\n');
+}
+
 /**
  * Converts a legacy mindmaps document to Mermaid `mindmap` code.
  *
@@ -131,8 +178,7 @@ function toTopicTree(root: LegacyMindmapNode): { tree: TopicNode; count: number 
  */
 export function legacyMindmapToMermaid(doc: LegacyMindmapDocument): string {
     if (!isLegacyDocument(doc)) throw new LegacyMindmapError('This is not a mind map document.');
-    // Markdown strings keep line breaks; their labels are escaped by the library
-    return mindElixirToMermaid(toTopicTree(doc.mindmap.root).tree, { markdown: true });
+    return toMermaid(toTopicTree(doc.mindmap.root).tree);
 }
 
 /**
@@ -143,5 +189,5 @@ export function legacyMindmapToMermaid(doc: LegacyMindmapDocument): string {
 export function convertLegacyMindmapCode(innerHtml: string): { source: string; nodes: number } {
     const doc = parseLegacyMindmapCode(innerHtml);
     const { tree, count } = toTopicTree(doc.mindmap.root);
-    return { source: mindElixirToMermaid(tree, { markdown: true }), nodes: count };
+    return { source: toMermaid(tree), nodes: count };
 }
