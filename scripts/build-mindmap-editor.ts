@@ -1,8 +1,8 @@
 /**
  * Build script for the mind map editor of the exemindmap TinyMCE plugin.
  *
- * Bundles editor/src/editor.ts with Mind Elixir, modern-screenshot and
- * @erseco/mind-elixir-export-mermaid (all pinned in package.json) into a
+ * Bundles editor/src/editor.ts with Mind Elixir and @erseco/mind-elixir-export-svg
+ * (both pinned in package.json) into a
  * self-contained IIFE and one stylesheet, so the editor iframe loads two local files and
  * nothing from the network:
  *

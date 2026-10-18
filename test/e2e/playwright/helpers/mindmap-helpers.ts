@@ -129,17 +129,11 @@ export async function cancelMindmap(page: Page): Promise<void> {
     await expect(page.locator('.tox-dialog')).toHaveCount(0);
 }
 
-/** Saves from the editor, gives the map a title, picks its format and closes the plugin dialog. */
-export async function saveMindmap(
-    page: Page,
-    frame: FrameLocator,
-    title: string,
-    format: 'png' | 'svg' = 'png',
-): Promise<void> {
+/** Saves from the editor, gives the map a title and closes the plugin dialog. */
+export async function saveMindmap(page: Page, frame: FrameLocator, title: string): Promise<void> {
     await frame.locator('#save').click();
     await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0, { timeout: 15000 });
     const dialog = page.locator('.tox-dialog');
-    await dialog.locator(`input[name="mindmapFormat"][value="${format}"]`).check();
     const titleInput = dialog
         .locator('.tox-form__group', { hasText: /Descriptive title|Título descriptivo/i })
         .locator('input');
@@ -159,30 +153,24 @@ export async function saveIdevice(page: Page, block: Locator): Promise<void> {
 
 /**
  * The stored map of each `.exe-mind-map` in the page's iDevice views, as the editor reads it,
- * with its image (legacy maps) or whether it is Mermaid code (maps saved by Mind Elixir).
+ * with its image's URL and, when the image is an SVG (maps saved by Mind Elixir), its source.
  */
 export async function storedMaps(
     page: Page,
-): Promise<Array<{ format: string; data: MindElixirData; img: string; mermaid: boolean }>> {
+): Promise<Array<{ format: string; data: MindElixirData; img: string; svg: string }>> {
     const raw = await page.evaluate(() =>
-        Array.from(document.querySelectorAll('#node-content .exe-mind-map')).map(map => ({
-            code: map.querySelector('.exe-mindmap-code')?.innerHTML ?? '',
-            img: map.querySelector('img')?.getAttribute('src') ?? '',
-            mermaid: map.querySelector('.mermaid') !== null,
-        })),
+        Promise.all(
+            Array.from(document.querySelectorAll('#node-content .exe-mind-map')).map(async map => {
+                const img = map.querySelector('img')?.getAttribute('src') ?? '';
+                const response = img ? await fetch(img).catch(() => null) : null;
+                const svg = response?.headers.get('content-type')?.includes('svg') ? await response.text() : '';
+                return { code: map.querySelector('.exe-mindmap-code')?.innerHTML ?? '', img, svg };
+            }),
+        ),
     );
-    return raw.map(({ code, img, mermaid }) => {
+    return raw.map(({ code, img, svg }) => {
         const { format, data } = readStoredCode(code);
-        return { format, data, img, mermaid };
-    });
-}
-
-/** The Mermaid code of each map in the Text iDevice's main field, as TinyMCE stores it. */
-export async function storedDiagrams(page: Page): Promise<string[]> {
-    return page.evaluate(() => {
-        const html = (window as any).tinymce.get('textTextarea').getContent();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        return Array.from(doc.querySelectorAll('.exe-mind-map pre.mermaid')).map(pre => pre.textContent ?? '');
+        return { format, data, img, svg };
     });
 }
 

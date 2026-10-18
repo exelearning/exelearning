@@ -3,20 +3,17 @@
  *
  * It runs in the plugin's editor iframe. The plugin passes the HTML of the map's
  * `.exe-mindmap-code` paragraph in `top.mindmapEditor.data`. Saving fills the plugin dialog
- * with the escaped Mind Elixir JSON, which keeps the map editable, and two views of the map,
- * of which the author picks one in the dialog: a PNG, and Mermaid `mindmap` source, which
- * eXeLearning renders to SVG like any other Mermaid diagram. Legacy mindmaps documents are
- * converted on open (see storedMindmap.ts); nothing is replaced until the author saves.
+ * with the escaped Mind Elixir JSON, which keeps the map editable, and an SVG of the map made
+ * by @erseco/mind-elixir-export-svg from that JSON. Legacy mindmaps documents are converted
+ * on open (see storedMindmap.ts); nothing is replaced until the author saves.
  *
- * Built into mindmap-editor.bundle.js by scripts/build-mindmap-editor.ts. The PNG is drawn
- * with modern-screenshot, which Mind Elixir points to in place of its deprecated exportPng.
+ * Built into mindmap-editor.bundle.js by scripts/build-mindmap-editor.ts.
  */
 
 import MindElixir from 'mind-elixir';
 import type { MindElixirData, MindElixirInstance, NodeObj, Topic } from 'mind-elixir';
 import 'mind-elixir/style.css';
-import { domToCanvas } from 'modern-screenshot';
-import { mindElixirToMermaid } from '@erseco/mind-elixir-export-mermaid';
+import { DEFAULT_FONT_FAMILY, renderSvg, toDataUrl } from '@erseco/mind-elixir-export-svg';
 import './editor.css';
 import {
     MindmapFormatError,
@@ -267,7 +264,6 @@ function buildToolbar(): HTMLElement {
             _('Tools'),
             button('import', _('Import'), () => fileInput.click()),
             button('export', _('Export'), exportJson),
-            button('export-mermaid', _('Export as Mermaid'), exportMermaid),
             button('print', _('Print'), () => window.print()),
             fileInput,
         ),
@@ -299,76 +295,14 @@ function exportJson(): void {
     download(json, 'application/json', fileName('json'));
 }
 
-/** The whole map as a Mermaid file, folded branches included. */
-function exportMermaid(): void {
-    download(mindElixirToMermaid(mind.getData(), { markdown: true }), 'text/vnd.mermaid', fileName('mmd'));
-}
-
-/**
- * The map as the content shows it: Mermaid source with bold, italic and line breaks
- * (markdown strings), leaving out folded branches as the editor does.
- */
-export function contentDiagram(data: MindElixirData): string {
-    return mindElixirToMermaid(data, { markdown: true, omitCollapsed: true });
-}
-
-/** Margin kept around the map when the empty canvas around it is trimmed. */
-const IMAGE_MARGIN = 20;
-
-/** Crops the white area around the drawing, like the legacy editor's tight PNG. */
-export function trimCanvas(canvas: HTMLCanvasElement, margin = IMAGE_MARGIN): HTMLCanvasElement {
-    const { width, height } = canvas;
-    const context = canvas.getContext('2d');
-    if (!context || !width || !height) return canvas;
-    const pixels = context.getImageData(0, 0, width, height).data;
-    let top = height;
-    let left = width;
-    let right = -1;
-    let bottom = -1;
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const i = (y * width + x) * 4;
-            if (pixels[i] < 250 || pixels[i + 1] < 250 || pixels[i + 2] < 250) {
-                if (x < left) left = x;
-                if (x > right) right = x;
-                if (y < top) top = y;
-                if (y > bottom) bottom = y;
-            }
-        }
-    }
-    if (right < 0) return canvas;
-    left = Math.max(0, left - margin);
-    top = Math.max(0, top - margin);
-    const w = Math.min(width, right + margin + 1) - left;
-    const h = Math.min(height, bottom + margin + 1) - top;
-    const trimmed = document.createElement('canvas');
-    trimmed.width = w;
-    trimmed.height = h;
-    trimmed.getContext('2d')?.drawImage(canvas, left, top, w, h, 0, 0, w, h);
-    return trimmed;
-}
-
-/** Renders the whole map at 100% to a canvas, whatever the current zoom, with nothing selected. */
-async function renderMap(): Promise<HTMLCanvasElement> {
-    const scale = mind.scaleVal;
-    mind.clearSelection();
-    mind.scale(1);
-    try {
-        return trimCanvas(await domToCanvas(mind.nodes, { backgroundColor: '#ffffff', scale: 1 }));
-    } finally {
-        mind.scale(scale);
-    }
-}
-
 /** Hands the map to the plugin dialog and closes the editor. */
 async function save(): Promise<void> {
     const current = host();
     const data = mind.getData();
-    const canvas = await renderMap();
+    const { svg, width, height } = await renderSvg(data, { title: data.nodeData.topic });
     current?.pluginDialog?.setData({
-        mindmapDiagram: contentDiagram(data),
-        mindmapImgToSave: canvas.toDataURL('image/png'),
-        mindmapImgSize: `${canvas.width}x${canvas.height}`,
+        mindmapImgToSave: toDataUrl(svg),
+        mindmapImgSize: `${Math.round(width)}x${Math.round(height)}`,
         mindmapCode: serializeStoredCode(data, previousMeta),
     });
     const instructions = window.parent.document.getElementById('mindmapImgInstructions');
@@ -415,6 +349,8 @@ export function start(): MindElixirInstance {
         contextMenu: { locale: contextMenuLocale(), focus: true, link: false },
         newTopicName: _('New idea'),
     });
+    // The font the SVG is laid out for, so the map looks the same in the editor and the content
+    mind.container.style.fontFamily = DEFAULT_FONT_FAMILY;
     mind.init(initialMap());
     mind.toCenter();
     // The running instance, for debugging and for the end-to-end tests

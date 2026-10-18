@@ -46,7 +46,6 @@ test.describe('Mind map editor offline contract', () => {
         await frame.locator('#text-color').fill('#336699');
         await frame.locator('.mind-elixir-toolbar.rb span').last().click();
         await frame.locator('#export').click();
-        await frame.locator('#export-mermaid').click();
         await frame.locator('#save').click();
         await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0);
 
