@@ -232,12 +232,6 @@
 *   Files: public/app/common/fix\_webm\_duration/\*
     *   Copyright: 2018 Yury Sitnikov
     *   License: MIT
-*   Files: /public/app/common/mindmaps/\*
-    *   Copyright: David Richard
-    *   License: AGPL V3
-    *   Note: [mindmaps](https://www.mindmaps.app/) is included in eXeLearning
-        with the developer's consent. For a different use of mindmaps, read
-        its LICENSE file or contact its author.
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
@@ -359,18 +353,6 @@
 *   Files: /public/libs/tinymce\_5/\*
     *   Copyright: Tiny Technologies Inc.
     *   License: LGPL-2.1
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor (cropper.js, jquery-cropper.js and CSS)
-    *   Copyright: Chen Fengyuan
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/FileSaver.min.js
-    *   Copyright: Eli Grey
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
-    *   Copyright: John Resig
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
-    *   Copyright: John Resig
-    *   License: MIT
 *   Files: /public/style/workarea/fonts/\Catamaran*
     *   Copyright: The Catamaran Authors. Designed by Pria Ravichandran
     *   License: SIL Open Font License version 1.1
