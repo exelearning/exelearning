@@ -11,6 +11,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -184,11 +185,11 @@ describe('crossword iDevice', () => {
           <input id="eXeGameImportGame" type="file">
         </div>
       `;
-      originalItinerary = global.$exeDevicesEdition.iDevice.gamification.itinerary;
-      global.$exeDevicesEdition.iDevice.gamification.itinerary = { addEvents: vi.fn() };
+      originalItinerary = global.$exeIDevicesEdition.iDevice.gamification.itinerary;
+      global.$exeIDevicesEdition.iDevice.gamification.itinerary = { addEvents: vi.fn() };
       originalMedia = global.$exeDevices.iDevice.gamification.media;
       global.$exeDevices.iDevice.gamification.media = { extractURLGD: url => url };
-      global.$exeDevicesEdition.iDevice.gamification.helpers.stopSound = vi.fn();
+      global.$exeIDevicesEdition.iDevice.gamification.helpers.stopSound = vi.fn();
       $exeDevice.addEvents();
     });
 
@@ -196,7 +197,7 @@ describe('crossword iDevice', () => {
       // Close the edition the test opened, so its document handlers cannot
       // leak into the next one — exactly what the workarea does on teardown.
       $exeDevice.$lifecycle.destroy();
-      global.$exeDevicesEdition.iDevice.gamification.itinerary = originalItinerary;
+      global.$exeIDevicesEdition.iDevice.gamification.itinerary = originalItinerary;
       global.$exeDevices.iDevice.gamification.media = originalMedia;
       document.body.innerHTML = '';
     });
@@ -358,7 +359,7 @@ describe('default image edition/export dedup', () => {
           // so rendering them again would show each control twice.
           expect(source).not.toContain('passScore.getContents(');
           expect(source).not.toContain('progressBar.getContents(');
-          expect(source).toContain('gamification.scorm.getTab(');
+          expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
       });
 
       it('restores the control when the iDevice is reopened', () => {
@@ -389,5 +390,257 @@ describe('crossword minimum score text', () => {
     device.refreshTranslations();
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+  });
+});
+
+describe('crossword edition: shared form tabs and feedback', () => {
+  const PATH = '/files/perm/idevices/base/crossword/edition/';
+  const edition = () => global.$exeIDevicesEdition.iDevice;
+  const feedback = () => edition().gamification.feedback;
+  const tabNames = () =>
+    [...document.querySelectorAll('#ccgmQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+      tab.getAttribute('data-exe-tab')
+    );
+  const panel = (name) => document.getElementById(`ccgmQEIdeviceForm-panel-${name}`);
+  const game = (overrides = {}) => ({
+    typeGame: 'Crucigrama',
+    itinerary: {
+      showClue: false,
+      clueGame: '',
+      percentageClue: 40,
+      showCodeAccess: false,
+      codeAccess: '',
+      messageCodeAccess: '',
+    },
+    wordsGame: [
+      { word: 'CASA', definition: 'Hogar', url: '', audio: '', x: 0, y: 0, author: '', alt: '' },
+      { word: 'ARBOL', definition: 'Planta con tronco', url: '', audio: '', x: 0, y: 0, author: '', alt: '' },
+    ],
+    feedBack: false,
+    percentajeFB: 100,
+    isScorm: 0,
+    textButtonScorm: 'Save score',
+    ...overrides,
+  });
+  const exportHelpers = {
+    isJsonString: (text) => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return false;
+      }
+    },
+    decrypt: (text) => text,
+    encrypt: (text) => text,
+  };
+  let device;
+  let previousApp;
+  let originalMedia;
+  let tooltips;
+
+  beforeEach(() => {
+    global.$exeDevice = undefined;
+    previousApp = global.eXeLearning.app;
+    tooltips = new Map();
+    global.eXeLearning.app = {
+      ...previousApp,
+      common: {
+        initTooltips: vi.fn((scope) => {
+          scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+          });
+        }),
+      },
+    };
+    vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+    Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+    originalMedia = global.$exeDevices.iDevice.gamification.media;
+    global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
+    document.body.innerHTML = '<div id="crosswordBody"></div>';
+    const filename = join(__dirname, 'crossword.js');
+    runInThisContext(readFileSync(filename, 'utf8'), { filename });
+    device = global.$exeDevice;
+    global.attachEditionLifecycle(device);
+    device.init(document.getElementById('crosswordBody'), {}, PATH);
+  });
+
+  afterEach(() => {
+    device.$lifecycle?.destroy();
+    global.eXeLearning.app = previousApp;
+    vi.unstubAllGlobals();
+    Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+    global.$exeDevices.iDevice.gamification.media = originalMedia;
+    global.$exeDevice = undefined;
+    document.body.innerHTML = '';
+  });
+
+  it('lays the form out in the shared tabs, and opens on its questions', () => {
+    expect(tabNames()).toEqual([
+      'instructions',
+      'options',
+      'contents',
+      'passwords',
+      'feedback',
+      'after',
+      'grading',
+      'texts',
+    ]);
+    expect(document.getElementById('ccgmQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+    expect(panel('contents').classList.contains('active')).toBe(true);
+  });
+
+  it('puts each part of the form in its tab', () => {
+    expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+      'Complete the following crossword puzzle.'
+    );
+    expect(panel('options').querySelector('#ccgmEOptions')).not.toBeNull();
+    expect(panel('contents').querySelector('#ccgmEPanel')).not.toBeNull();
+    expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+    expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+    expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+    expect(panel('texts').querySelector('#ci18n_msgReply').value).toBe('Reply');
+  });
+
+  it('provides one accessible information button at the end of each options row', () => {
+    const options = panel('options');
+    const helpButtons = [...options.querySelectorAll('#ccgmEOptions .exe-idevice-help')];
+    expect(helpButtons).toHaveLength(8);
+    for (const help of helpButtons) {
+      const row = help.closest('.d-flex');
+      expect(row).not.toBeNull();
+      expect(row.lastElementChild.contains(help)).toBe(true);
+      expect(help.tagName).toBe('BUTTON');
+      expect(help.type).toBe('button');
+      expect(help.getAttribute('aria-label')).toBe(help.title);
+      expect(help.title).toBe('Information');
+      expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+      expect(help.querySelector('[aria-hidden="true"].info-icon-solid-green')).not.toBeNull();
+      const controls = [...row.querySelectorAll('input, select')];
+      const checked = controls.map((control) => control.checked);
+      help.click();
+      expect(controls.map((control) => control.checked)).toEqual(checked);
+    }
+    expect(global.eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+      document.getElementById('ccgmQEIdeviceForm-panels')
+    );
+  });
+
+  it('escapes translated help text in the explanation', () => {
+    const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+    const container = document.createElement('div');
+    container.innerHTML = edition().common.getHelpTooltip(text);
+    const button = container.querySelector('button');
+    expect(button.title).toBe('Information');
+    expect(container.querySelector('.help-content').textContent).toBe(text);
+    expect(container.querySelector('once')).toBeNull();
+  });
+
+  it('disposes all option tooltips when the edition closes', () => {
+    expect(tooltips.size).toBe(8);
+    device.$lifecycle.destroy();
+    for (const tooltip of tooltips.values()) {
+      expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('offers Import, Export and Create with AI on its Questions tab, in windows of their own', () => {
+    const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+
+    expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+    expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame')).not.toBeNull();
+    expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
+    expect(document.querySelector('body > #eXeShareModal-ai #eXeEPromptArea')).not.toBeNull();
+  });
+
+  it('leaves the feedback to the shared block, without controls of its own', () => {
+    expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+    expect(document.getElementById('ccgmEHasFeedBack')).toBeNull();
+    expect(document.getElementById('ccgmEPercentajeFB')).toBeNull();
+    expect(document.getElementById('ccgmEFeedBackEditor')).toBeNull();
+  });
+
+  it('switches tabs when one is clicked', () => {
+    document.getElementById('ccgmQEIdeviceForm-tab-options').click();
+
+    expect(panel('options').classList.contains('active')).toBe(true);
+    expect(panel('contents').classList.contains('active')).toBe(false);
+  });
+
+  it('makes the feedback compulsory in "No score" mode only', () => {
+    device.updateGameMode(2);
+    expect(feedback().isRequired()).toBe(true);
+    expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(true);
+
+    device.updateGameMode(0);
+    expect(feedback().isRequired()).toBe(false);
+    expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(false);
+  });
+
+  it('restores the feedback with the game', () => {
+    device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
+
+    expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+    expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+  });
+
+  it('loads the saved message into the shared editor', () => {
+    device.idevicePreviousData = `
+      <div class="crucigrama-IDevice">
+        <div class="crucigrama-version js-hidden">2</div>
+        <div class="crucigrama-feedback-game"><p>Well done</p></div>
+        <div class="crucigrama-DataGame js-hidden">${JSON.stringify(game({ feedBack: true }))}</div>
+      </div>`;
+    vi.spyOn(device, 'showQuestion').mockImplementation(() => {});
+
+    device.loadPreviousValues();
+
+    expect(feedback().getText()).toBe('<p>Well done</p>');
+    expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+  });
+
+  describe('saving', () => {
+    let editors;
+    let tinymceGet;
+
+    beforeEach(() => {
+      editors = {
+        eXeGameInstructions: '<p>Instructions</p>',
+        eXeIdeviceTextAfter: '',
+        eXeGameFeedBackEditor: '',
+      };
+      tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+        id in editors ? { initialized: true, getContent: () => editors[id], setContent: (html) => (editors[id] = html) } : null
+      );
+      device.wordsGame = [
+        { ...device.getCuestionDefault(), word: 'CASA', definition: 'Hogar' },
+        { ...device.getCuestionDefault(), word: 'ARBOL', definition: 'Planta con tronco' },
+      ];
+    });
+
+    afterEach(() => {
+      tinymceGet.mockRestore();
+    });
+
+    it('saves the feedback values the export reads', () => {
+      device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true, percentajeFB: 70 }));
+      editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+      vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+      const data = device.validateData();
+
+      expect(data.feedBack).toBe(true);
+      expect(data.percentajeFB).toBe(70);
+      expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+      expect(device.save()).toContain('<div class="crucigrama-feedback-game"><p>Bravo</p></div>');
+    });
+
+    it('requires feedback message if feedback is enabled and text is empty', () => {
+      device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true }));
+      editors.eXeGameFeedBackEditor = '';
+      vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+      expect(device.validateData()).toBe(false);
+      expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+    });
   });
 });

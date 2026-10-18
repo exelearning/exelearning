@@ -10,7 +10,6 @@
 }
 
 #ccgmQEIdeviceForm #ccgmEDifficulty,
-#ccgmQEIdeviceForm #ccgmEPercentajeFB,
 #ccgmQEIdeviceForm #ccgmEPercentajeQuestions {
 	width: 9.5ch !important;
 	max-width: 9.5ch !important;
@@ -288,7 +287,6 @@
 
 /* Ocutar elementos */
 .CCGM-ECoord,
-.CCGM-EFeedbackP,
 .CCGM-EAuthorAlt {
 	display: none;
 }
@@ -310,132 +308,11 @@ input#ccgmQEScoreQuestion {
 	width: 100%;
 }
 
-#ccgmQEIdeviceFormTab3 p:first-child {
-	margin-top: 0;
+#ccgmEOptions > div,
+#ccgmEOptions .toggle-item {
+	flex-wrap: nowrap;
 }
 
-#ccgmQEIdeviceFormTab3 {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 2%;
-}
-
-#ccgmQEIdeviceFormTab3>* {
-	flex: 0 0 48%;
-}
-
-#ccgmQEIdeviceFormTab3> :first-child {
-	flex: 0 0 100%;
-}
-
-@media screen and (max-width:720px) {
-	#ccgmQEIdeviceFormTab3>* {
-		flex: 0 0 100%;
-	}
-}
-
-#ccgmQEIdeviceForm #ccgmQEIdeviceFormTab3 label {
-	display: block;
-	margin-bottom: .2em;
-	color: #0BA1A1;
-	font-weight: 500;
-}
-
-#ccgmQEIdeviceForm #ccgmQEIdeviceFormTab3 input {
-	width: 100%;
-}
-
-.exe-form-tabs {
-	list-style: none;
-	margin: 0 0 1.5em 0;
-	padding: 0;
-}
-
-#main .exe-form-tabs li {
-	display: inline;
-	list-style: none;
-	list-style-image: none;
-	margin: 0;
-	padding: 0;
-}
-
-.exe-form-tabs li:first-child a {
-	border-bottom-left-radius: 4px;
-	border-top-left-radius: 4px;
-}
-
-.exe-form-tabs li:last-child a {
-	border-bottom-right-radius: 4px;
-	border-top-right-radius: 4px;
-}
-
-.exe-form-tabs a {
-	background: #F9F9F9;
-	border: 1px solid #CCC;
-	color: #666;
-	display: inline-block;
-	padding: .5em 1em;
-}
-
-.exe-form-tabs li:not(:last-child) a {
-	border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-	background: #FFF;
-	color: #000;
-	font-weight: 500;
-}
-
-#ccgmQESCORMoptions {
-	margin-left: 1.5em;
-	visibility: hidden;
-}
-
-label[for=ccgmQEActivitySCORM] {
-	font-weight: bold;
-}
-
-#ccgmQESCORMinstructionsButton {
-	color: #777;
-	display: none;
-	margin: 10px 0 0 25px;
-}
-
-#ccgmQESCORMinstructionsButton ul {
-	list-style: none;
-	margin: 1.5em 0 .7em 0;
-	padding: 0;
-}
-
-#ccgmQESCORMinstructionsButton ul li {
-	list-style-image: none;
-	margin: 0 0 .5em 0;
-	padding: 0;
-}
-
-#ccgmQESCORMinstructionsAuto {
-	color: #777;
-	display: none;
-	margin: 10px 0 0 25px;
-}
-
-#ccgmQESCORMinstructionsAuto ul {
-	list-style: none;
-	margin: 1.5em 0 .7em 0;
-	padding: 0;
-}
-
-/* Ayuda */
-.GameModeHelpLink {
-	margin: 0 2px;
-	vertical-align: middle;
-}
-
-.GameModeLabel {
-	font-weight: normal
-}
-
-.CGM-TypeGameHelp {
-	display: none;
+#ccgmEOptions > div > .exe-idevice-help-container {
+	margin-left: .25rem;
 }
