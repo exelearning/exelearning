@@ -357,6 +357,27 @@ test('should sync changes between users', async ({ browser }) => {
 });
 ```
 
+## Fuzzing
+
+`fuzz/` holds the [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) targets built by [OSS-Fuzz](https://github.com/google/oss-fuzz). Each target feeds arbitrary bytes to code that accepts untrusted input:
+
+- `legacy_xml_parser` parses `content.xml` from an uploaded legacy `.elp`.
+- `safe_join` checks that `safeJoin` either throws `UnsafePathError` or returns a path inside its base directory.
+
+A rejected parse or `UnsafePathError` is expected. `TypeError`, `RangeError`, a hang, or running out of memory is a bug.
+
+CI bundles the targets with the same script OSS-Fuzz uses, so a moved or renamed import fails on the pull request:
+
+```bash
+sh fuzz/build.sh
+```
+
+Jazzer.js is not a project dependency. To run a target locally after the bundle step:
+
+```bash
+npx @jazzer.js/core fuzz/dist/legacy_xml_parser.fuzz.js
+```
+
 ## Continuous Integration
 
 All tests run in GitHub Actions on every pull request:
@@ -365,6 +386,7 @@ All tests run in GitHub Actions on every pull request:
 2. **Integration tests** - Must pass
 3. **Frontend tests** - Must pass
 4. **E2E tests** - Must pass (with retry on flaky tests)
+5. **Fuzz targets** - `sh fuzz/build.sh` must succeed
 
 Failing tests block merges to keep the project stable.
 
@@ -430,6 +452,9 @@ make test-coverage
 
 # Single file
 DB_PATH=:memory: bun test src/path/to/file.spec.ts
+
+# Bundle the OSS-Fuzz targets (does not run them)
+sh fuzz/build.sh
 ```
 
 ---
