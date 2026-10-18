@@ -1,0 +1,183 @@
+/* Mind map editor (exemindmap plugin) */
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #1f2328;
+    background: #fff;
+}
+
+#toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #d0d7de;
+    background: #f6f8fa;
+}
+
+#toolbar .group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+#toolbar .spacer {
+    flex: 1;
+}
+
+button {
+    font: inherit;
+    padding: 3px 8px;
+    border: 1px solid #c4ccd4;
+    border-radius: 4px;
+    background: #fff;
+    color: inherit;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+    background: #eef1f4;
+}
+
+button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+button[aria-pressed="true"] {
+    background: #dbe9ff;
+    border-color: #6c9ce0;
+}
+
+button.primary {
+    background: #00897b;
+    border-color: #00796b;
+    color: #fff;
+    font-weight: 600;
+}
+
+button.primary:hover:not(:disabled) {
+    background: #00796b;
+}
+
+#bold {
+    font-weight: 700;
+}
+
+#italic {
+    font-style: italic;
+}
+
+#underline {
+    text-decoration: underline;
+}
+
+#strike {
+    text-decoration: line-through;
+}
+
+label.color {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 4px;
+}
+
+label.color input {
+    width: 28px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #c4ccd4;
+    border-radius: 4px;
+    background: none;
+}
+
+#message {
+    padding: 6px 10px;
+    background: #fff8c5;
+    border-bottom: 1px solid #d4a72c;
+}
+
+#message.error {
+    background: #ffebe9;
+    border-color: #cf222e;
+}
+
+#map {
+    flex: 1;
+    min-height: 0;
+}
+
+/* Crop and save */
+#crop {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+
+#crop[hidden] {
+    display: none;
+}
+
+.crop-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #d0d7de;
+    background: #f6f8fa;
+}
+
+.crop-actions .ratios {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 0 auto;
+    padding: 0;
+    border: 0;
+}
+
+.crop-actions legend {
+    float: left;
+    margin-right: 6px;
+}
+
+.crop-area {
+    flex: 1;
+    min-height: 0;
+}
+
+.crop-area img {
+    display: block;
+    max-width: 100%;
+}
+
+#print-area {
+    display: none;
+}
+
+@media print {
+    body > * {
+        display: none !important;
+    }
+
+    #print-area {
+        display: block !important;
+    }
+
+    #print-area img {
+        max-width: 100%;
+    }
+}

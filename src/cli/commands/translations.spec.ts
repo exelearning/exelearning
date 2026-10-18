@@ -447,6 +447,20 @@ describe('Translations Command', () => {
             expect(content).toContain('libs.custom.label');
         });
 
+        it('should extract from TypeScript sources in public/libs/, not from their bundle', async () => {
+            const editorDir = path.join(testDir, 'public', 'libs', 'tinymce_5', 'plugins', 'exemindmap', 'editor');
+            await fs.ensureDir(path.join(editorDir, 'src'));
+            await fs.writeFile(path.join(editorDir, 'src', 'editor.ts'), `button('add', _('Add child'));`);
+            await fs.writeFile(path.join(editorDir, 'mindmap-editor.bundle.js'), `x(_('bundle.only.key'));`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Add child');
+            expect(content).not.toContain('bundle.only.key');
+        });
+
         it('should extract from public/files/perm/idevices/ directory', async () => {
             const idevicesDir = path.join(testDir, 'public', 'files', 'perm', 'idevices', 'digcompedu');
             await fs.ensureDir(idevicesDir);

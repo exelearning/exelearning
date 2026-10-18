@@ -352,10 +352,10 @@ test.describe('Text iDevice', () => {
             // Static mode: ./libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html
             const mindmapFrame = page.frameLocator('iframe[src*="exemindmap"]');
 
-            // Verify key UI elements are visible inside the iframe (NOT blank)
-            // The mindmap editor should have toolbar and canvas elements
+            // Verify key UI elements are visible inside the iframe (NOT blank):
+            // the editor toolbar and Mind Elixir's root node
             await expect(mindmapFrame.locator('#toolbar')).toBeVisible({ timeout: 15000 });
-            await expect(mindmapFrame.locator('canvas').first()).toBeVisible({ timeout: 5000 });
+            await expect(mindmapFrame.locator('me-root me-tpc')).toBeVisible({ timeout: 5000 });
 
             // Close both dialogs
             // First close the editor dialog (the nested one)

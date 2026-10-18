@@ -1,9 +1,10 @@
 /**
  * Unit tests for exemindmap TinyMCE plugin path handling
  *
- * Tests the path computation logic for:
+ * Tests:
  * - Editor URL selection (static vs online mode)
- * - Dynamic base tag computation in editor/index.html
+ * - The shipped plugin reading and storing maps
+ * - The editor page only loading its local bundle
  */
 
 describe('exemindmap plugin - Path Handling', () => {
@@ -69,89 +70,146 @@ describe('exemindmap plugin - Path Handling', () => {
         });
     });
 
-    describe('Dynamic base tag computation (editor/index.html)', () => {
-        // Extract the logic from editor/index.html lines 8-27
-        function computeBasePath(pathname) {
-            let path = pathname;
-            // Extract the path up to and including the /editor/ directory
-            let editorIndex = path.lastIndexOf('/editor/');
-            if (editorIndex === -1) {
-                // Fallback: if path ends with /editor (no trailing slash), add it
-                editorIndex = path.lastIndexOf('/editor');
-                if (editorIndex !== -1 && path.length === editorIndex + 7) {
-                    path = path + '/';
-                }
-            }
-            if (editorIndex !== -1) {
-                return path.substring(0, editorIndex + 8); // Include '/editor/'
-            }
-            return null;
+    describe('the shipped plugin', () => {
+        // Runs the real plugin.min.js against a stub editor
+        const fs = require('node:fs');
+        const path = require('node:path');
+        const PLUGIN_SRC = fs.readFileSync(path.join(__dirname, 'plugin.min.js'), 'utf8');
+
+        let editorBody;
+        let originalTop;
+
+        function loadPlugin() {
+            const opened = [];
+            const inserted = [];
+            const registry = {};
+            editorBody = document.createElement('div');
+            const editor = {
+                ui: {
+                    registry: {
+                        addIcon: () => {},
+                        addToggleButton: (name, spec) => (registry.button = spec),
+                    },
+                },
+                on: () => {},
+                off: () => {},
+                dom: { loadCSS: () => {} },
+                getDoc: () => document,
+                selection: { getNode: () => registry.selected || editorBody },
+                execCommand: (cmd, ui, content) => inserted.push(content),
+                windowManager: {
+                    open: (spec) => {
+                        opened.push(spec);
+                        return { setData: () => {} };
+                    },
+                    openUrl: () => {},
+                    close: () => {},
+                    alert: (message) => inserted.push(`alert:${message}`),
+                },
+            };
+            const tinymce = {
+                PluginManager: { add: (name, factory) => (tinymce.factory = factory) },
+                dom: { DomQuery: global.jQuery },
+                DOM: { setAttrib: () => {}, setStyle: () => {}, create: () => document.createElement('div') },
+                activeEditor: { name: 'another editor' },
+            };
+            new Function('tinymce', '_', PLUGIN_SRC)(tinymce, (s) => s);
+            tinymce.factory(editor, '/libs/tinymce_5/js/tinymce/plugins/exemindmap');
+            return { editor, opened, inserted, registry };
         }
 
-        it('should compute base path for root installation', () => {
-            const result = computeBasePath('/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html');
-            expect(result).toBe('/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/');
+        beforeEach(() => {
+            originalTop = globalThis.top.mindmapEditor;
         });
 
-        it('should compute base path with BASE_PATH prefix (/web/exe)', () => {
-            const result = computeBasePath('/web/exe/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html');
-            expect(result).toBe('/web/exe/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/');
+        afterEach(() => {
+            globalThis.top.mindmapEditor = originalTop;
+            delete globalThis.eXeMediaPluginDialog;
+            delete globalThis.win;
         });
 
-        it('should compute base path with deep BASE_PATH prefix', () => {
-            const result = computeBasePath('/deep/nested/path/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html');
-            expect(result).toBe('/deep/nested/path/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/');
+        it('opens an existing map from any element selected inside it', () => {
+            const plugin = loadPlugin();
+            editorBody.innerHTML =
+                '<div class="exe-mind-map"><figure><img src="map.png" width="300" height="200" alt="Seres vivos">' +
+                '<figcaption><span class="title"><em>Seres vivos</em></span></figcaption></figure>' +
+                '<p class="exe-mindmap-code">{"nodeData":{"id":"r","topic":"a &amp; &lt;b&gt;"}}</p></div>';
+            plugin.registry.selected = editorBody.querySelector('img');
+            plugin.registry.button.onAction();
+
+            expect(globalThis.eXeMediaPluginDialog.mode).toBe('edit');
+            expect(globalThis.top.mindmapEditor.data).toBe('{"nodeData":{"id":"r","topic":"a &amp; &lt;b&gt;"}}');
+            expect(plugin.opened[0].initialData).toMatchObject({
+                mindmapImgToSave: 'map.png',
+                mindmapTitle: 'Seres vivos',
+                dimensions: { width: '300', height: '200' },
+            });
         });
 
-        it('should handle path ending with /editor (no trailing slash)', () => {
-            const result = computeBasePath('/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor');
-            expect(result).toBe('/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/');
+        it('hands the editor iframe the editor that opened it, not tinymce.activeEditor', () => {
+            const plugin = loadPlugin();
+            plugin.registry.button.onAction();
+            // A Text iDevice has more than one TinyMCE, so activeEditor can be another one
+            expect(globalThis.top.mindmapEditor.tinymce).toBe(plugin.editor);
+            expect(globalThis.top.mindmapEditor.pluginDialog).toBeDefined();
+            expect(globalThis.eXeMediaPluginDialog.mode).toBe('new');
         });
 
-        it('should handle path ending with /editor/ (with trailing slash)', () => {
-            const result = computeBasePath('/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/');
-            expect(result).toBe('/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/');
+        it('stores the escaped source the editor returns unchanged', () => {
+            const plugin = loadPlugin();
+            plugin.registry.button.onAction();
+            const code = '{"nodeData":{"id":"r","topic":"&lt;clima&gt; &amp; \\"x\\""}}';
+            plugin.opened[0].onSubmit({
+                getData: () => ({
+                    mindmapImgToSave: 'data:image/png;base64,AAAA',
+                    mindmapCode: code,
+                    mindmapTitle: 'Clima',
+                    mindmapCaption: true,
+                    linkToFullSizeImage: false,
+                    dimensions: { width: '120', height: '80' },
+                }),
+            });
+            expect(plugin.inserted[0]).toContain(`<p class="exe-mindmap-code">${code}</p>`);
+            expect(plugin.inserted[0]).toContain('width="120" height="80" alt="Clima"');
+        });
+    });
+
+    describe('editor/index.html', () => {
+        it('loads only the built editor files next to it', () => {
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const html = fs.readFileSync(path.join(__dirname, 'editor/index.html'), 'utf8');
+            // No static URL, and the files it adds are relative, so the page works under any
+            // BASE_PATH, in static mode and in Electron
+            expect(html).not.toMatch(/(?:src|href)="/);
+            const refs = [...html.matchAll(/\.(?:src|href) = '([^']+)'/g)].map((m) => m[1]);
+            expect(refs.sort()).toEqual(['mindmap-editor.bundle.css', 'mindmap-editor.bundle.js']);
         });
 
-        it('should return null for paths without /editor/', () => {
-            const result = computeBasePath('/libs/tinymce_5/js/tinymce/plugins/exemindmap/');
-            expect(result).toBeNull();
-        });
-
-        it('should return null for unrelated paths', () => {
-            const result = computeBasePath('/some/other/path/index.html');
-            expect(result).toBeNull();
-        });
-
-        it('should handle API endpoint path (online mode)', () => {
-            const result = computeBasePath('/api/exemindmap-editor/index.html');
-            expect(result).toBeNull(); // No /editor/ in API path
-        });
-
-        it('should compute base path for API endpoint with editor in path', () => {
-            // This tests the actual API route structure if it were to include /editor/
-            const result = computeBasePath('/api/exemindmap-editor/editor/index.html');
-            expect(result).toBe('/api/exemindmap-editor/editor/');
-        });
-
-        it('should handle multiple /editor/ occurrences (use last one)', () => {
-            const result = computeBasePath('/editor/something/editor/index.html');
-            expect(result).toBe('/editor/something/editor/');
-        });
-
-        it('should handle version prefix in path', () => {
-            const result = computeBasePath('/v3.0/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html');
-            expect(result).toBe('/v3.0/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/');
-        });
-
-        it('should handle empty path', () => {
-            const result = computeBasePath('');
-            expect(result).toBeNull();
-        });
-
-        it('should handle root path', () => {
-            const result = computeBasePath('/');
-            expect(result).toBeNull();
-        });
+        // Static servers with clean URLs redirect .../editor/index.html to .../editor
+        for (const [pathname, base] of [
+            ['/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor', '/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/'],
+            ['/wp/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index', '/wp/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/'],
+            ['/api/exemindmap-editor/index.html', null],
+            ['/api/exemindmap-editor/', null],
+        ]) {
+            it(`resolves its files from the editor folder when served as ${pathname}`, () => {
+                const fs = require('node:fs');
+                const path = require('node:path');
+                const html = fs.readFileSync(path.join(__dirname, 'editor/index.html'), 'utf8');
+                const script = /<script>([\s\S]*?)<\/script>/.exec(html)[1];
+                const head = document.createElement('head');
+                new Function('location', 'document', script)({ pathname }, {
+                    createElement: (tag) => document.createElement(tag),
+                    head,
+                });
+                const added = head.querySelector('base');
+                expect(added ? added.getAttribute('href') : null).toBe(base);
+                // The <base> comes first, so it applies to the editor files
+                expect(Array.from(head.children).map((e) => e.tagName)).toEqual(
+                    base ? ['BASE', 'LINK', 'SCRIPT'] : ['LINK', 'SCRIPT'],
+                );
+            });
+        }
     });
 });

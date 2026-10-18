@@ -65,6 +65,7 @@ jobs:
             public/bundles/**
             public/style/workarea/main.css
             public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js
+            public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/mindmap-editor.bundle.*
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7

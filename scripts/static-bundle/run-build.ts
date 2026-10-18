@@ -129,8 +129,10 @@ export async function buildStaticBundle() {
     copyDirRecursive(path.join(projectRoot, 'public/app'), path.join(outputDir, 'app'), ['test', 'spec']);
     console.log('  Copied app/');
 
-    // Copy libs folder
-    copyDirRecursive(path.join(projectRoot, 'public/libs'), path.join(outputDir, 'libs'));
+    // Copy libs folder, without the mind map editor's TS source (only its built bundle is loaded)
+    copyDirRecursive(path.join(projectRoot, 'public/libs'), path.join(outputDir, 'libs'), [
+        'tinymce_5/js/tinymce/plugins/exemindmap/editor/src',
+    ]);
 
     console.log('  Copied libs/');
 
