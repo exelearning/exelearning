@@ -499,16 +499,32 @@ describe('Discover Edition Functions', () => {
         it('downloads question text with the discover filename and container', () => {
             const realExeDevice = global.loadIdevice(join(__dirname, 'discover.js'));
             const downloadBlob = vi.fn(() => true);
+            const prevShare = global.$exeIDevicesEdition?.iDevice?.gamification?.share;
+            const prevLegacyShare = global.$exeDevicesEdition?.iDevice?.gamification?.share;
 
-            global.$exeDevicesEdition.iDevice.gamification.share = { downloadBlob };
-            vi.spyOn(realExeDevice, 'validateData').mockReturnValue({
-                wordsGame: [{ word: 'Card', definition: 'Pair' }],
-            });
+            try {
+                if (global.$exeIDevicesEdition?.iDevice?.gamification) {
+                    global.$exeIDevicesEdition.iDevice.gamification.share = { ...prevShare, downloadBlob };
+                }
+                if (global.$exeDevicesEdition?.iDevice?.gamification) {
+                    global.$exeDevicesEdition.iDevice.gamification.share = { ...prevLegacyShare, downloadBlob };
+                }
+                vi.spyOn(realExeDevice, 'validateData').mockReturnValue({
+                    wordsGame: [{ word: 'Card', definition: 'Pair' }],
+                });
 
-            expect(realExeDevice.exportQuestions()).toBe(true);
-            expect(downloadBlob).toHaveBeenCalledTimes(1);
-            expect(downloadBlob.mock.calls[0][1]).toBe('words-descubre.txt');
-            expect(downloadBlob.mock.calls[0][2]).toBe('descubreQEIdeviceForm');
+                expect(realExeDevice.exportQuestions()).toBe(true);
+                expect(downloadBlob).toHaveBeenCalledTimes(1);
+                expect(downloadBlob.mock.calls[0][1]).toBe('words-descubre.txt');
+                expect(downloadBlob.mock.calls[0][2]).toBe('descubreQEIdeviceForm');
+            } finally {
+                if (global.$exeIDevicesEdition?.iDevice?.gamification && prevShare) {
+                    global.$exeIDevicesEdition.iDevice.gamification.share = prevShare;
+                }
+                if (global.$exeDevicesEdition?.iDevice?.gamification && prevLegacyShare) {
+                    global.$exeDevicesEdition.iDevice.gamification.share = prevLegacyShare;
+                }
+            }
         });
     });
 
@@ -533,7 +549,7 @@ describe('Discover Edition Functions', () => {
           // so rendering them again would show each control twice.
           expect(source).not.toContain('passScore.getContents(');
           expect(source).not.toContain('progressBar.getContents(');
-          expect(source).toContain('gamification.scorm.getTab(');
+          expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading:\s*true/);
       });
 
       it('restores the control when the iDevice is reopened', () => {
@@ -569,17 +585,26 @@ describe('Discover Edition Functions', () => {
                 $: global.$,
                 jQuery: global.jQuery,
                 gamification: global.$exeDevicesEdition.iDevice.gamification,
+                iGamification: global.$exeIDevicesEdition?.iDevice?.gamification,
                 media: global.$exeDevices.iDevice.gamification.media,
             };
             global.$ = jq;
             global.jQuery = jq;
-            global.$exeDevicesEdition.iDevice.gamification = {
+            const gamificationMock = {
                 ...savedGlobals.gamification,
                 progressBar: { addEvents: vi.fn() },
                 itinerary: { addEvents: vi.fn() },
+                feedback: { addEvents: vi.fn(), setValues: vi.fn() },
                 share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
                 helpers: { stopSound: vi.fn(), playSound: vi.fn() },
             };
+            global.$exeDevicesEdition.iDevice.gamification = gamificationMock;
+            if (global.$exeIDevicesEdition?.iDevice) {
+                global.$exeIDevicesEdition.iDevice.gamification = {
+                    ...savedGlobals.iGamification,
+                    ...gamificationMock,
+                };
+            }
             global.$exeDevices.iDevice.gamification.media = {
                 extractURLGD: url => url,
             };
@@ -606,6 +631,9 @@ describe('Discover Edition Functions', () => {
             global.$ = savedGlobals.$;
             global.jQuery = savedGlobals.jQuery;
             global.$exeDevicesEdition.iDevice.gamification = savedGlobals.gamification;
+            if (global.$exeIDevicesEdition?.iDevice && savedGlobals.iGamification) {
+                global.$exeIDevicesEdition.iDevice.gamification = savedGlobals.iGamification;
+            }
             global.$exeDevices.iDevice.gamification.media = savedGlobals.media;
         });
 
@@ -742,5 +770,266 @@ describe('discover minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('discover edition: shared form tabs, options tooltips, and feedback', () => {
+    const PATH = 'files/perm/idevices/base/discover/edition/';
+    const jq = window.jQuery;
+    let savedGlobals;
+    let device;
+    let previousApp;
+    let tooltips;
+
+    function panel(tab) {
+        return document.getElementById(`descubreQEIdeviceForm-panel-${tab}`);
+    }
+
+    function tabNames() {
+        return [...document.querySelectorAll('#descubreQEIdeviceForm-tabs [data-exe-tab]')].map(
+            (tab) => tab.getAttribute('data-exe-tab')
+        );
+    }
+
+    beforeEach(() => {
+        savedGlobals = {
+            $: global.$,
+            jQuery: global.jQuery,
+            exeDevices: global.$exeDevices,
+        };
+        global.$ = jq;
+        global.jQuery = jq;
+        global.$exeDevices = {
+            ...global.$exeDevices,
+            iDevice: {
+                ...global.$exeDevices?.iDevice,
+                gamification: {
+                    ...global.$exeDevices?.iDevice?.gamification,
+                    helpers: {
+                        ...global.$exeDevices?.iDevice?.gamification?.helpers,
+                        encrypt: (t) => t,
+                        decrypt: (t) => t,
+                        isJsonString: (t) => {
+                            try {
+                                return JSON.parse(t);
+                            } catch {
+                                return false;
+                            }
+                        },
+                    },
+                    media: {
+                        extractURLGD: (url) => url,
+                    },
+                },
+            },
+        };
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+
+        device = global.loadIdevice(join(__dirname, 'discover.js'));
+        document.body.innerHTML = '<div id="discoverBody"></div>';
+        device.init(document.getElementById('discoverBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        document.body.innerHTML = '';
+        global.$ = savedGlobals.$;
+        global.jQuery = savedGlobals.jQuery;
+        global.$exeDevices = savedGlobals.exeDevices;
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+    });
+
+    it('organises the edition form into shared WAI-ARIA tabs', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+        expect(panel('options').querySelector('#descubreEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('.Descubre-EPanel')).not.toBeNull();
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('provides accessible help tooltips for option rows', () => {
+        const optionHelps = [...panel('options').querySelectorAll('#descubreEOptions .exe-idevice-help')];
+        expect(optionHelps.length).toBe(11);
+
+        for (const help of optionHelps) {
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.title).toBe('Information');
+            const targetId = help.getAttribute('aria-controls');
+            expect(targetId).toBeTruthy();
+            expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
+        }
+    });
+
+    it('does not toggle switches when clicking help icons inside toggle-items', () => {
+        const minimizeInput = document.getElementById('descubreEShowMinimize');
+        const minimizeHelp = minimizeInput.closest('div').querySelector('.exe-idevice-help');
+        expect(minimizeHelp).not.toBeNull();
+        expect(minimizeInput.checked).toBe(false);
+        minimizeHelp.click();
+        expect(minimizeInput.checked).toBe(false);
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBeGreaterThanOrEqual(11);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('descubreQEIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('instructions').classList.contains('active')).toBe(false);
+    });
+
+    it('restores form values and updates gamification modules on updateFieldGame', () => {
+        device.updateFieldGame({
+            showMinimize: true,
+            customMessages: true,
+            showCards: true,
+            percentajeQuestions: 80,
+            timeShowSolution: 10,
+            gameMode: 0,
+            gameLevels: 1,
+            time: 60,
+            attempts: 5,
+            itinerary: {},
+            evaluation: true,
+            evaluationID: 'eval-1',
+            passScoreMode: 1,
+            passScoreCustom: 6,
+            isScorm: 1,
+            textButtonScorm: 'Send',
+            repeatActivity: true,
+            weighted: false,
+            feedBack: true,
+            percentajeFB: 75,
+            imgCard: '',
+            wordsGame: [],
+        });
+
+        expect(document.getElementById('descubreEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('descubreECustomMessages').checked).toBe(true);
+        expect(document.getElementById('descubreEShowCards').checked).toBe(true);
+        expect(document.getElementById('descubreEPercentajeQuestions').value).toBe('80');
+        expect(document.getElementById('descubreETimeShowSolution').value).toBe('10');
+        expect(document.getElementById('descubreETime').value).toBe('60');
+        expect(document.getElementById('descubreEAttempts').value).toBe('5');
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('75');
+    });
+
+    describe('saving and validation', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Discover pairs or cards</p>',
+                eXeIdeviceTextAfter: '<p>Extra discover info</p>',
+                eXeGameFeedBackEditor: '<p>Feedback message</p>',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves form data with feedback and extra content', () => {
+            device.updateFieldGame({
+                showMinimize: true,
+                caseSensitive: true,
+                customMessages: false,
+                showCards: true,
+                percentajeQuestions: 100,
+                timeShowSolution: 5,
+                gameMode: 0,
+                gameLevels: 0,
+                time: 0,
+                attempts: 0,
+                itinerary: {},
+                evaluation: false,
+                evaluationID: '',
+                passScoreMode: 0,
+                passScoreCustom: 5,
+                isScorm: 0,
+                textButtonScorm: '',
+                repeatActivity: false,
+                weighted: false,
+                feedBack: true,
+                percentajeFB: 80,
+                imgCard: '',
+                wordsGame: [
+                    {
+                        data: [
+                            { type: 0, url: 'img1.png', audio: '', x: 0, y: 0, author: '', alt: '', eText: 'One', color: '#000', backcolor: '#fff' },
+                            { type: 0, url: 'img2.png', audio: '', x: 0, y: 0, author: '', alt: '', eText: 'Two', color: '#000', backcolor: '#fff' },
+                            { type: 0, url: '', audio: '', x: 0, y: 0, author: '', alt: '', eText: '', color: '#000', backcolor: '#fff' },
+                            { type: 0, url: '', audio: '', x: 0, y: 0, author: '', alt: '', eText: '', color: '#000', backcolor: '#fff' },
+                        ],
+                        msgError: '',
+                        msgHit: '',
+                    },
+                ],
+            });
+            device.showQuestion(0);
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Feedback message</p>');
+            const data = device.validateData();
+
+            expect(data.showMinimize).toBe(true);
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(80);
+            expect(unescape(data.textFeedBack)).toBe('<p>Feedback message</p>');
+            expect(unescape(data.textAfter)).toBe('<p>Extra discover info</p>');
+
+            const savedHtml = device.save();
+            expect(savedHtml).toContain('descubre-feedback-game');
+            expect(savedHtml).toContain('descubre-extra-content');
+        });
     });
 });

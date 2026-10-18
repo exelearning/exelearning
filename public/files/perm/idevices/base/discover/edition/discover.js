@@ -163,197 +163,228 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const path = this.idevicePath,
-            html = `
+        const edition = $exeIDevicesEdition.iDevice;
+        const path = this.idevicePath;
+
+        const optionsHtml = `
+            <div id="descubreEOptions">
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="descubreEShowMinimize" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="descubreEShowMinimize">${_('Show minimized.')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Start with the game collapsed. Learners can expand it when they are ready to play.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <span class="me-2">${_('Type')}:</span>
+                    <div class="form-check form-check-inline m-0">                               
+                        <input class="Descubre-GameMode form-check-input" checked id="descubreGame2" type="radio" name="qtxgamemode" value="0" />
+                        <label for="descubreGame2" class="form-check-label me-2">${_('Pairs')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameMode form-check-input" id="descubreGame3" type="radio" name="qtxgamemode" value="1" />
+                        <label for="descubreGame3" class="form-check-label me-2">${_('Trios')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameMode form-check-input" id="descubreGame4" type="radio" name="qtxgamemode" value="2" />
+                        <label for="descubreGame4" class="form-check-label">${_('Quartets')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Select how many matching cards players need to find for each item: pairs (2), trios (3), or quartets (4).')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <span class="me-2">${_('Difficulty levels')}:</span>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameLevel form-check-input" checked id="descubreL1" type="radio" name="qtxgamelevels" value="1" />
+                        <label for="descubreL1" class="form-check-label me-2">1</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameLevel form-check-input" id="descubreL2" type="radio" name="qtxgamelevels" value="2" />
+                        <label for="descubreL2" class="form-check-label me-2">2</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameLevel form-check-input" id="descubreL3" type="radio" name="qtxgamelevels" value="3" />
+                        <label for="descubreL3" class="form-check-label">3</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Choose the difficulty level. Higher levels require more questions to be configured.')
+                    )}
+                </div>
+                <div class="mb-2 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="descubreEShowCards" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="descubreEShowCards">${_('Visible cards')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Show the cards face up for a few seconds when the game starts.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
+                    <input type="number" name="descubreETimeShowSolution" id="descubreETimeShowSolution" value="3" min="1" max="999" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Number of seconds the cards remain face up before flipping face down.')
+                    )}
+                </div>
+                <div class="mb-2 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="descubreECustomMessages" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="descubreECustomMessages">${_('Custom messages')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Display personalized congratulations messages when discovering cards.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreETime" class="mb-0">${_('Time (minutes)')}:</label>
+                    <input type="number" name="descubreETime" id="descubreETime" value="0" min="0" max="120" step="1" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Maximum time allowed to complete the game. 0 for unlimited time.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreEAttempts" class="mb-0">${_('Number of attempts')}:</label>
+                    <input type="number" name="descubreEAttempts" id="descubreEAttempts" value="0" min="0" max="100" step="1" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Maximum number of attempts allowed. 0 for unlimited attempts.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="true">
+                        <span class="toggle-control">
+                            <input type="checkbox" checked id="descubreEShowSolution" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="descubreEShowSolution">${_('Show solutions')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Allow learners to see the solution cards when they run out of attempts.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreEPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
+                    <input type="number" name="descubreEPercentajeQuestions" id="descubreEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                    <span id="descubreENumeroPercentaje">1/1</span>
+                    ${edition.common.getHelpTooltip(
+                        _('Percentage of available questions included in each game session.')
+                    )}
+                </div>
+                <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreEAuthor" class="mb-0">${_('Authorship')}:</label>
+                    <input id="descubreEAuthor" type="text" class="form-control" />
+                </div>
+                <div id="descubreEBackDiv">
+                    <p class="Descubre-EInputImageBack gap-2">
+                        <label for="descubreEURLImgCard" class="mb-0">${_('Image back')}: </label>
+                        <input type="text" class="exe-file-picker Descubre-EURLImage form-control me-0" id="descubreEURLImgCard"/>
+                        <a href="#" id="descubreEPlayCard" class="Descubre-ENavigationButton" title="${_('Show')}">
+                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage " />
+                        </a>
+                        ${edition.common.getHelpTooltip(
+                            _('Choose a custom image for the card backs.')
+                        )}
+                    </p>
+                    <p id="descubreEbackground" class="Descubre-Back">
+                        <img class="Descubre-EImageBack" src="" id="descubreECard" alt="${_('Image')}" style="display:none" />
+                        <img class="Descubre-EImageBack" src="${path}dcbHome.png" id="descubreENoCard" alt="${_('No image')}" />
+                    </p>
+                </div>   
+            </div>
+        `;
+
+        const questionsHtml = `
+            <div class="Descubre-EPanel" id="descubreEPanel-0">
+                <div class="Descubre-Pareja">
+                    ${$exeDevice.createCards(this.NUMMAXCARD)}
+                </div>
+                <div class="Descubre-EContents">
+                    <div class="Descubre-EOrders Descubre-Hide" id="descubreEOrder">
+                        <div class="Descubre-ECustomMessage">
+                            <span class="sr-av">${_('Success')}</span>
+                            <span class="Descubre-EHit"></span>
+                            <label for="descubreEMessageOK">${_('Message')}:</label>
+                            <input type="text" id="descubreEMessageOK" />
+                        </div>
+                    </div>
+                    <div class="Descubre-ENavigationButtons gap-2">
+                        <a href="#" id="descubreEAdd" class="Descubre-ENavigationButton" title="${_('Add question')}">
+                            <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="Descubre-EButtonImage b-add" />
+                        </a>
+                        <a href="#" id="descubreEFirst" class="Descubre-ENavigationButton" title="${_('First question')}">
+                            <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="Descubre-EButtonImage b-first" />
+                        </a>
+                        <a href="#" id="descubreEPrevious" class="Descubre-ENavigationButton" title="${_('Previous question')}">
+                            <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="Descubre-EButtonImage b-prev" />
+                        </a>
+                        <span class="sr-av">${_('Question number:')}</span>
+                        <span class="Descubre-NumberQuestion" id="descubreENumberQuestion">1</span>
+                        <a href="#" id="descubreENext" class="Descubre-ENavigationButton" title="${_('Next question')}">
+                            <img src="${path}quextIENext.png" alt="${_('Next question')}" class="Descubre-EButtonImage b-next" />
+                        </a>
+                        <a href="#" id="descubreELast" class="Descubre-ENavigationButton" title="${_('Last question')}">
+                            <img src="${path}quextIELast.png" alt="${_('Last question')}" class="Descubre-EButtonImage b-last" />
+                        </a>
+                        <a href="#" id="descubreEDelete" class="Descubre-ENavigationButton" title="${_('Delete question')}">
+                            <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="Descubre-EButtonImage b-delete" />
+                        </a>
+                        <a href="#" id="descubreECopy" class="Descubre-ENavigationButton" title="${_('Copy question')}">
+                            <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="Descubre-EButtonImage b-copy" />
+                        </a>
+                        <a href="#" id="descubreEPaste" class="Descubre-ENavigationButton" title="${_('Paste question')}">
+                            <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="Descubre-EButtonImage b-paste" />
+                        </a>
+                    </div>
+                </div>
+                <div class="Descubre-ENumQuestionDiv" id="descubreENumQuestionDiv">
+                    <div class="Descubre-ENumQ"><span class="sr-av">${_('Question')}</span></div>
+                    <span class="Descubre-ENumQuestions" id="descubreENumQuestions">0</span>
+                </div>
+            </div>
+        `;
+
+        const tabsHtml = edition.tabs.getHtml('descubreQEIdeviceForm', {
+            path,
+            instructions: c_('Birds of a feather flock together.'),
+            options: optionsHtml,
+            contents: questionsHtml,
+            feedback: true,
+            after: true,
+            grading: true,
+            texts: this.ci18n,
+            share: {
+                importQuestions: true,
+                exportQuestions: true,
+                type: 0,
+            },
+            info: {
+                contents: _('Add pairs, trios or quartets of cards with images, texts and/or sounds.'),
+            },
+        });
+
+        const html = `
             <div id="descubreQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create interactive activities in which players will have to discover pairs, trios or card quartets with images, texts and/or sounds.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/descubre.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Birds of a feather flock together.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEShowMinimize">${_('Show minimized.')}</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="me-2">${_('Type')}:</span>
-                                <div class="form-check form-check-inline m-0">                               
-                                    <input class="Descubre-GameMode form-check-input" checked id="descubreGame2" type="radio" name="qtxgamemode" value="0" />
-                                    <label for="descubreGame2" class="form-check-label me-2">${_('Pairs')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameMode form-check-input" id="descubreGame3" type="radio" name="qtxgamemode" value="1" />
-                                    <label for="descubreGame3" class="form-check-label me-2">${_('Trios')}</label>
-                                 </div>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameMode form-check-input" id="descubreGame4" type="radio" name="qtxgamemode" value="2" />
-                                    <label for="descubreGame4" class="form-check-label">${_('Quartets')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="me-2">${_('Difficulty levels')}:</span>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameLevel form-check-input" checked id="descubreL1" type="radio" name="qtxgamelevels" value="1" />1
-                                    <label for="descubreL1" class="form-check-label me-2"></label>
-                                </div>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameLevel form-check-input" id="descubreL2" type="radio" name="qtxgamelevels" value="2" />
-                                    <label for="descubreL2" class="form-check-label me-2">2</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameLevel form-check-input" id="descubreL3" type="radio" name="qtxgamelevels" value="3" />
-                                    <label for="descubreL3" class="form-check-label">3</label>
-                                </div>
-                            </div>
-                            <div class="mb-2">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreEShowCards" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEShowCards">${_('Visible cards')}.</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
-                                <input type="number" name="descubreETimeShowSolution" id="descubreETimeShowSolution" value="3" min="1" max="999" class="form-control" style="width:6ch" />
-                            </div>
-                            <div class="mb-2">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreECustomMessages" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreECustomMessages">${_('Custom messages')}.</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreETime" class="mb-0">${_('Time (minutes)')}:</label>
-                                <input type="number" name="descubreETime" id="descubreETime" value="0" min="0" max="120" step="1" class="form-control" style="width:6ch" />
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreEAttempts" class="mb-0">${_('Number of attempts')}:</label>
-                                <input type="number" name="descubreEAttempts" id="descubreEAttempts" value="0" min="0" max="100" step="1" class="form-control" style="width:6ch" />
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" checked id="descubreEShowSolution" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEShowSolution">${_('Show solutions')}.</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreEHasFeedBack" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEHasFeedBack">${_('Feedback')}.</label>
-                                </span>
-                                <label for="descubreEPercentajeFB" class="ms-2 mb-0"><input type="number" name="descubreEPercentajeFB" id="descubreEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" /></label>
-                            </div>
-                            <div id="descubreEFeedbackP" class="Descubre-EFeedbackP">
-                                <textarea id="descubreEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreEPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
-                                <input type="number" name="descubreEPercentajeQuestions" id="descubreEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
-                                <span id="descubreENumeroPercentaje">1/1</span>
-                            </div>
-                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreEAuthor" class="mb-0">${_('Authorship')}:</label>
-                                <input id="descubreEAuthor" type="text" class="form-control" />
-                            </div>
-                            <div id="descubreEBackDiv">
-                                <p class="Descubre-EInputImageBack gap-2">
-                                    <label for="descubreEURLImgCard">${_('Image back')}: </label>
-                                    <input type="text" class="exe-file-picker Descubre-EURLImage form-control me-0" id="descubreEURLImgCard"/>
-                                    <a href="#" id="descubreEPlayCard" class="Descubre-ENavigationButton" title="${_('Show')}">
-                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage " />
-                                    </a>
-                                </p>
-                                <p id="descubreEbackground" class="Descubre-Back">
-                                    <img class="Descubre-EImageBack" src="" id="descubreECard" alt="${_('Image')}" style="display:none" />
-                                    <img class="Descubre-EImageBack" src="${path}dcbHome.png" id="descubreENoCard" alt="${_('No image')}" />
-                                </p>
-                            </div>   
-                           <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Pairs')}</a></legend>
-                        <div class="Descubre-EPanel" id="descubreEPanel-0">
-                            <div class="Descubre-Pareja">
-                                ${$exeDevice.createCards(this.NUMMAXCARD)}
-                            </div>
-                            <div class="Descubre-EContents">
-                                <div class="Descubre-EOrders Descubre-Hide" id="descubreEOrder">
-                                    <div class="Descubre-ECustomMessage">
-                                        <span class="sr-av">${_('Success')}</span>
-                                        <span class="Descubre-EHit"></span>
-                                        <label for="descubreEMessageOK">${_('Message')}:</label>
-                                        <input type="text" id="descubreEMessageOK" />
-                                    </div>
-                                </div>
-                                <div class="Descubre-ENavigationButtons gap-2">
-                                    <a href="#" id="descubreEAdd" class="Descubre-ENavigationButton" title="${_('Add question')}">
-                                        <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="Descubre-EButtonImage b-add" />
-                                    </a>
-                                    <a href="#" id="descubreEFirst" class="Descubre-ENavigationButton" title="${_('First question')}">
-                                        <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="Descubre-EButtonImage b-first" />
-                                    </a>
-                                    <a href="#" id="descubreEPrevious" class="Descubre-ENavigationButton" title="${_('Previous question')}">
-                                        <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="Descubre-EButtonImage b-prev" />
-                                    </a>
-                                    <span class="sr-av">${_('Question number:')}</span>
-                                    <span class="Descubre-NumberQuestion" id="descubreENumberQuestion">1</span>
-                                    <a href="#" id="descubreENext" class="Descubre-ENavigationButton" title="${_('Next question')}">
-                                        <img src="${path}quextIENext.png" alt="${_('Next question')}" class="Descubre-EButtonImage b-next" />
-                                    </a>
-                                    <a href="#" id="descubreELast" class="Descubre-ENavigationButton" title="${_('Last question')}">
-                                        <img src="${path}quextIELast.png" alt="${_('Last question')}" class="Descubre-EButtonImage b-last" />
-                                    </a>
-                                    <a href="#" id="descubreEDelete" class="Descubre-ENavigationButton" title="${_('Delete question')}">
-                                        <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="Descubre-EButtonImage b-delete" />
-                                    </a>
-                                    <a href="#" id="descubreECopy" class="Descubre-ENavigationButton" title="${_('Copy question')}">
-                                        <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="Descubre-EButtonImage b-copy" />
-                                    </a>
-                                    <a href="#" id="descubreEPaste" class="Descubre-ENavigationButton" title="${_('Paste question')}">
-                                        <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="Descubre-EButtonImage b-paste" />
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="Descubre-ENumQuestionDiv" id="descubreENumQuestionDiv">
-                                <div class="Descubre-ENumQ"><span class="sr-av">${_('Question')}</span></div>
-                                <span class="Descubre-ENumQuestions" id="descubreENumQuestions">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
+                ${tabsHtml}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('descubreQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('descubreQEIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -434,7 +465,7 @@ var $exeDevice = {
         $exeDevice.initQuestions();
 
         const root = document.getElementById('descubreQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -785,8 +816,8 @@ var $exeDevice = {
 
             const textFeedBack = $('.descubre-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#descubreEFeedBackEditor').val(textFeedBack.html());
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(textFeedBack.html());
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showQuestion(0);
@@ -826,9 +857,7 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE
-            .get('descubreEFeedBackEditor')
-            .getContent();
+        const textFeedBack = $exeIDevicesEdition.iDevice.gamification.feedback.getText();
         if (dataGame.instructions != '')
             divContent =
                 '<div class="descubre-instructions">' +
@@ -855,7 +884,7 @@ var $exeDevice = {
         html += linksAudios;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = tinyMCE.get('eXeIdeviceTextAfter')?.getContent() || $('#eXeIdeviceTextAfter').val() || '';
         if (textAfter != '') {
             html +=
                 '<div class="descubre-extra-content">' + textAfter + '</div>';
@@ -968,7 +997,7 @@ var $exeDevice = {
         q.msgHit = $('#descubreEMessageOK').val();
         q.msgError = $('#descubreEMessageKO').val();
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let num_cards = 2;
         if (gameMode == 1) {
@@ -1012,15 +1041,12 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('descubreEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            instructions = tinyMCE.get('eXeGameInstructions')?.getContent() || $('#eXeGameInstructions').val() || '',
+            textAfter = tinyMCE.get('eXeIdeviceTextAfter')?.getContent() || $('#eXeIdeviceTextAfter').val() || '',
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#descubreECaseSensitive').is(':checked'),
-            feedBack = $('#descubreEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#descubreEPercentajeFB').val())),
             customMessages = $('#descubreECustomMessages').is(':checked'),
             showCards = $('#descubreEShowCards').is(':checked'),
             percentajeQuestions = parseInt(
@@ -1037,13 +1063,16 @@ var $exeDevice = {
             gameLevels = parseInt($('input[name=qtxgamelevels]:checked').val()),
             wordsGame = $exeDevice.wordsGame,
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return;
         if (!progressBar) return false;
+
+        const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
 
         if (wordsGame.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
@@ -1087,7 +1116,7 @@ var $exeDevice = {
             return false;
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             typeGame: 'Descubre',
@@ -1101,11 +1130,11 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
             caseSensitive: caseSensitive,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
             timeShowSolution: timeShowSolution,
@@ -1345,16 +1374,6 @@ var $exeDevice = {
         } else {
             $('#eXeGameExportImport').hide();
         }
-
-        $('#descubreEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#descubreEFeedbackP').slideDown();
-            } else {
-                $('#descubreEFeedbackP').slideUp();
-            }
-            $('#descubreEPercentajeFB').prop('disabled', !marcado);
-        });
 
         $('#descubreECustomMessages').on('change', function () {
             const messages = $(this).is(':checked');
@@ -1600,8 +1619,9 @@ var $exeDevice = {
             $('#descubreEAuthorAlt-3').slideToggle();
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
 
         $('#descubreEURLImgCard').on('change', () =>
             $exeDevice.loadImageCard()
@@ -1612,12 +1632,12 @@ var $exeDevice = {
             $exeDevice.loadImageCard();
         });
 
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertCards
         );
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
         //eX3 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
@@ -1838,7 +1858,7 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },
@@ -1852,13 +1872,9 @@ var $exeDevice = {
     },
 
     updateGameMode: function (feedback) {
-        $('#descubreEHasFeedBack').prop('checked', feedback);
-        if (feedback) {
-            $('#descubreEFeedbackP').slideDown();
-        }
-        if (!feedback) {
-            $('#descubreEFeedbackP').slideUp();
-        }
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: feedback,
+        });
     },
 
     clearQuestion: function () {
@@ -1878,7 +1894,7 @@ var $exeDevice = {
             $exeDevice.showImage('', 0, 0, _('No image'), i);
             $exeDevice.updateTextOverlay(i);
         }
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     addQuestion: function () {
@@ -1996,7 +2012,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.percentajeFB =
@@ -2032,8 +2048,6 @@ var $exeDevice = {
 
         $('#descubreEShowMinimize').prop('checked', game.showMinimize);
         $('#descubreECaseSensitive').prop('checked', game.caseSensitive);
-        $('#descubreEHasFeedBack').prop('checked', game.feedBack);
-        $('#descubreEPercentajeFB').val(game.percentajeFB);
         $('#descubreECustomMessages').prop('checked', game.customMessages);
         $('#descubreEShowCards').prop('checked', game.showCards);
         $('#descubreEPercentajeQuestions').val(game.percentajeQuestions);
@@ -2058,20 +2072,24 @@ var $exeDevice = {
             $('#descubreEDatosCarta-2').show();
             $('#descubreEDatosCarta-3').show();
         }
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $('#descubreEURLImgCard').val(game.imgCard);
 
         $exeDevice.showImageCard(game.imgCard);
@@ -2080,10 +2098,7 @@ var $exeDevice = {
 
         $exeDevice.wordsGame = game.wordsGame;
 
-        $exeDevice.updateGameMode(game.feedBack);
-
         $('#descubreENumQuestions').text($exeDevice.wordsGame.length);
-        $('#descubreEPercentajeFB').prop('disabled', !game.feedBack);
 
         $exeDevice.updateQuestionsNumber();
     },
@@ -2096,7 +2111,7 @@ var $exeDevice = {
         const newBlob = new Blob([JSON.stringify(dataGame)], {
             type: 'text/plain',
         });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             _('Activity') + '-Descubre.json',
             'descubreQEIdeviceForm'
@@ -2110,7 +2125,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('words')}-descubre.txt`,
             'descubreQEIdeviceForm'
