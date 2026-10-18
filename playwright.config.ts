@@ -51,6 +51,7 @@ const dynamicServerEnv = {
     API_JWT_SECRET: 'e2e-test-jwt-secret-not-for-production-use',
     APP_SECRET: 'e2e-test-app-secret-not-for-production-use',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
+    PUBLIC_VIEW_ENABLED: 'true', // Enable public read-only links for E2E tests
 };
 
 // Dynamic server config (used by chromium/firefox projects)

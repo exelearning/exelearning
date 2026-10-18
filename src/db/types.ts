@@ -71,6 +71,8 @@ interface ProjectsTable {
     owner_id: number;
     status: string; // 'active' | 'inactive' | 'archived'
     visibility: string; // 'public' | 'private'
+    public_view_id: string | null; // Opaque id for public viewer URLs (distinct from uuid)
+    public_view_enabled: number; // 0/1 flag: public read-only viewer link enabled (independent of visibility)
     language: string | null;
     author: string | null;
     license: string | null;

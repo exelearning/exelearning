@@ -100,6 +100,7 @@ var $eXeMapa = {
 
             const mapa = $eXeMapa.createInterfaceMapa(i);
             dl.before(mapa).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $eXeMapa.initElements(i);
 
@@ -3853,7 +3854,8 @@ var $eXeMapa = {
         } else if (mOptions.evaluationG == 6) {
             if (mOptions.numLevel == 0) {
                 if (
-                    (p.type !== 9 || p.score >= 5) &&
+                    (p.type !== 9 ||
+                        p.score >= $exe.passScore.resolve(mOptions)) &&
                     mOptions.activeMap.active == mOptions.activeGame
                 ) {
                     mOptions.activeGame++;
@@ -4469,7 +4471,8 @@ var $eXeMapa = {
     gameTPOver: function (instance) {
         const mOptions = $eXeMapa.options[instance],
             p = mOptions.activeMap.pts[mOptions.activeMap.active],
-            color = p.score >= 5 ? 2 : 1,
+            passed = p.score >= $exe.passScore.resolve(mOptions),
+            color = passed ? 2 : 1,
             lm = mOptions.msgs.msgSuccessfulActivity.replace(
                 '%s',
                 p.score.toFixed(2)
@@ -4478,7 +4481,7 @@ var $eXeMapa = {
                 '%s',
                 p.score.toFixed(2)
             ),
-            message = p.score >= 5 ? lm : rm;
+            message = passed ? lm : rm;
         $('#mapaBottonContainer1-' + instance).css({
             'justify-content': 'space-between',
         });
@@ -5205,18 +5208,26 @@ var $eXeMapa = {
                 }
             }
             clearInterval(mOptions.timeUpdateInterval);
-            mOptions.timeUpdateInterval = setInterval(function () {
-                let $node = $('#mapaMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this map's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first map takes the same ones: a
+            // clock that looked its map up by id each second found that map and
+            // went on driving its video, pausing it at this one's end point.
+            const container = document.getElementById(
+                'mapaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.timeUpdateInterval);
+                    clearInterval(clock);
                     return;
                 }
                 $eXeMapa.updateTimerDisplayLocal(instance);
             }, 1000);
+            mOptions.timeUpdateInterval = clock;
             $('#mapaVideoLocal-' + instance).show();
             return;
         }
