@@ -126,7 +126,16 @@ describe('exemindmap plugin - Path Handling', () => {
             globalThis.top.mindmapEditor = originalTop;
             delete globalThis.eXeMediaPluginDialog;
             delete globalThis.win;
+            document.body.innerHTML = '';
         });
+
+        /** The format radio buttons, rendered as TinyMCE would, with one of them chosen. */
+        function renderFormat(plugin, value) {
+            const panel = plugin.opened[0].body.items.find((item) => item.type === 'htmlpanel');
+            document.body.innerHTML = `<div class="tox-dialog">${panel.html}</div>`;
+            if (value) document.querySelector(`input[value="${value}"]`).checked = true;
+            return document.querySelector('input[name="mindmapFormat"]:checked').value;
+        }
 
         it('opens a legacy image map from any element selected inside it', () => {
             const plugin = loadPlugin();
@@ -140,12 +149,15 @@ describe('exemindmap plugin - Path Handling', () => {
             expect(globalThis.top.mindmapEditor.data).toBe('{"nodeData":{"id":"r","topic":"a &amp; &lt;b&gt;"}}');
             expect(plugin.opened[0].initialData).toMatchObject({
                 mindmapDiagram: '',
+                mindmapImgToSave: 'map.png',
+                mindmapImgSize: '300x200',
                 mindmapTitle: 'Seres vivos',
                 mindmapCaption: false,
             });
+            expect(renderFormat(plugin)).toBe('png');
         });
 
-        it('opens a Mermaid map and keeps a hidden caption hidden', () => {
+        it('opens a Mermaid map with its code, format and hidden caption', () => {
             const plugin = loadPlugin();
             editorBody.innerHTML =
                 '<div class="exe-mind-map"><figure><pre class="mermaid">mindmap\n  n0(("x"))</pre>' +
@@ -155,7 +167,12 @@ describe('exemindmap plugin - Path Handling', () => {
             plugin.registry.button.onAction();
 
             expect(globalThis.eXeMediaPluginDialog.mode).toBe('edit');
-            expect(plugin.opened[0].initialData).toMatchObject({ mindmapTitle: 'Ciencias', mindmapCaption: false });
+            expect(plugin.opened[0].initialData).toMatchObject({
+                mindmapDiagram: 'mindmap\n  n0(("x"))',
+                mindmapTitle: 'Ciencias',
+                mindmapCaption: false,
+            });
+            expect(renderFormat(plugin)).toBe('svg');
         });
 
         it('hands the editor iframe the editor that opened it, not tinymce.activeEditor', () => {
@@ -165,12 +182,17 @@ describe('exemindmap plugin - Path Handling', () => {
             expect(globalThis.top.mindmapEditor.tinymce).toBe(plugin.editor);
             expect(globalThis.top.mindmapEditor.pluginDialog).toBeDefined();
             expect(globalThis.eXeMediaPluginDialog.mode).toBe('new');
+            // New maps are saved as an image unless the author chooses otherwise
+            expect(renderFormat(plugin)).toBe('png');
         });
 
+        /** What the editor fills in when it saves, plus `values`. */
         function submit(plugin, values) {
             plugin.opened[0].onSubmit({
                 getData: () => ({
                     mindmapDiagram: 'mindmap\n  n0(("#lt;clima#gt; & x"))',
+                    mindmapImgToSave: 'data:image/png;base64,AAAA',
+                    mindmapImgSize: '120x80',
                     mindmapCode: '{"nodeData":{"id":"r","topic":"x"}}',
                     mindmapTitle: 'Clima',
                     mindmapCaption: true,
@@ -180,28 +202,59 @@ describe('exemindmap plugin - Path Handling', () => {
             return plugin.inserted[0];
         }
 
-        it('stores the Mermaid code escaped and the editor source unchanged', () => {
+        it('stores the image and the editor source unchanged', () => {
             const plugin = loadPlugin();
             plugin.registry.button.onAction();
             const code = '{"nodeData":{"id":"r","topic":"&lt;clima&gt; &amp; \\"x\\""}}';
             const html = submit(plugin, { mindmapCode: code });
             expect(html).toContain(`<p class="exe-mindmap-code">${code}</p>`);
+            expect(html).toContain('style="width: 120px;"');
+            expect(html).toContain('<img src="data:image/png;base64,AAAA" width="120" height="80" alt="Clima">');
+            expect(html).toContain('<figcaption class="figcaption"><span class="title"><em>Clima</em></span></figcaption>');
+            expect(html).not.toContain('mermaid');
+        });
+
+        it('leaves the caption out of an image when it is off; the alt names it', () => {
+            const plugin = loadPlugin();
+            plugin.registry.button.onAction();
+            const html = submit(plugin, { mindmapTitle: '&lt;b&gt; & "q"', mindmapCaption: false, mindmapImgSize: '' });
+            expect(html).toContain('width="600" height="400" alt="&lt;b&gt; &amp; &quot;q&quot;"');
+            expect(html).not.toContain('figcaption');
+        });
+
+        it('stores the Mermaid code escaped when SVG is chosen', () => {
+            const plugin = loadPlugin();
+            plugin.registry.button.onAction();
+            renderFormat(plugin, 'svg');
+            const html = submit(plugin);
             expect(html).toContain('<pre class="mermaid">mindmap\n  n0((&quot;#lt;clima#gt; &amp; x&quot;))</pre>');
             expect(html).toContain('<figcaption class="figcaption"><span class="title"><em>Clima</em></span></figcaption>');
             expect(html).not.toContain('<img');
+            expect(html).not.toContain('style=');
         });
 
-        it('keeps the title for screen readers when the caption is off, escaped', () => {
+        it('keeps the title of an SVG map for screen readers when the caption is off', () => {
             const plugin = loadPlugin();
             plugin.registry.button.onAction();
+            renderFormat(plugin, 'svg');
             const html = submit(plugin, { mindmapTitle: '&lt;b&gt; & "q"', mindmapCaption: false });
             expect(html).toContain('<figcaption class="figcaption sr-av"><span class="title"><em>&lt;b&gt; &amp; &quot;q&quot;</em>');
         });
 
-        it('refuses to save without a map or a title', () => {
+        it('refuses to save without a map, the chosen view or a title', () => {
             const plugin = loadPlugin();
             plugin.registry.button.onAction();
-            expect(submit(plugin, { mindmapDiagram: '' })).toBe('alert:Please create a mind map.');
+            expect(submit(plugin, { mindmapCode: '' })).toBe('alert:Please create a mind map.');
+            plugin.inserted.length = 0;
+            expect(submit(plugin, { mindmapImgToSave: '' })).toBe(
+                'alert:Open the mind map editor and save the map to change its format.',
+            );
+            plugin.inserted.length = 0;
+            // A legacy image map has no Mermaid code until the editor saves it
+            renderFormat(plugin, 'svg');
+            expect(submit(plugin, { mindmapDiagram: '' })).toBe(
+                'alert:Open the mind map editor and save the map to change its format.',
+            );
             plugin.inserted.length = 0;
             expect(submit(plugin, { mindmapTitle: ' ' })).toBe('alert:Please provide a title.');
         });

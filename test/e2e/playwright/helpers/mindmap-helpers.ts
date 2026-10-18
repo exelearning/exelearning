@@ -129,11 +129,17 @@ export async function cancelMindmap(page: Page): Promise<void> {
     await expect(page.locator('.tox-dialog')).toHaveCount(0);
 }
 
-/** Saves from the editor, gives the map a title and closes the plugin dialog. */
-export async function saveMindmap(page: Page, frame: FrameLocator, title: string): Promise<void> {
+/** Saves from the editor, gives the map a title, picks its format and closes the plugin dialog. */
+export async function saveMindmap(
+    page: Page,
+    frame: FrameLocator,
+    title: string,
+    format: 'png' | 'svg' = 'png',
+): Promise<void> {
     await frame.locator('#save').click();
     await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0, { timeout: 15000 });
     const dialog = page.locator('.tox-dialog');
+    await dialog.locator(`input[name="mindmapFormat"][value="${format}"]`).check();
     const titleInput = dialog
         .locator('.tox-form__group', { hasText: /Descriptive title|Título descriptivo/i })
         .locator('input');

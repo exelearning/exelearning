@@ -99,7 +99,7 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         expect(findNode((await editorData(frame2)).nodeData, SPECIAL)?.expanded).toBe(false);
 
         // 11-12. Save; the image is replaced by Mermaid code, drawn as SVG
-        await saveMindmap(page, frame, 'Mapa rico editado');
+        await saveMindmap(page, frame, 'Mapa rico editado', 'svg');
         await saveIdevice(page, block);
         const afterSave = await storedMaps(page);
         expect(afterSave[0].format).toBe('mind-elixir');
@@ -133,16 +133,20 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         expectEdited(reloaded[0].data);
         await expect(page.locator('#node-content .exe-mind-map figcaption').first()).toHaveText('Mapa rico editado');
 
-        // 15-17. Reopen the same map; the changes are there and it can be edited again
+        // 15-17. Reopen the same map; the changes are there and it can be edited again, now as an image
         block = await editTextIdevice(page, 0);
         ({ frame, frame2 } = await openMindmapEditor(page, 0));
         await expect(frame.locator('#message')).toBeHidden();
         await expect(topic(frame, 'Planeta Tierra')).toBeVisible();
         await expect(topic(frame, 'Clima')).toBeVisible();
         await renameTopic(page, frame, 'Clima', 'Clima y tiempo');
-        await saveMindmap(page, frame, 'Mapa rico editado dos veces');
+        await saveMindmap(page, frame, 'Mapa rico editado dos veces', 'png');
         await saveIdevice(page, block);
-        expect(findNode((await storedMaps(page))[0].data.nodeData, 'Clima y tiempo')).toBeTruthy();
+        const asImage = (await storedMaps(page))[0];
+        expect(findNode(asImage.data.nodeData, 'Clima y tiempo')).toBeTruthy();
+        expect(asImage.mermaid).toBe(false);
+        expect(asImage.img).not.toBe('');
+        expect(asImage.img).not.toBe(before[0].img);
         await saveProject(page);
 
         // 18. Export the project

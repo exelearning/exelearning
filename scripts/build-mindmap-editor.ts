@@ -1,9 +1,10 @@
 /**
  * Build script for the mind map editor of the exemindmap TinyMCE plugin.
  *
- * Bundles editor/src/editor.ts with Mind Elixir and @ateeducacion/mind-elixir-export-mermaid (both
- * pinned in package.json) into a self-contained IIFE and one stylesheet, so the editor iframe loads
- * two local files and nothing from the network:
+ * Bundles editor/src/editor.ts with Mind Elixir, modern-screenshot and
+ * @ateeducacion/mind-elixir-export-mermaid (all pinned in package.json) into a
+ * self-contained IIFE and one stylesheet, so the editor iframe loads two local files and
+ * nothing from the network:
  *
  *   editor/mindmap-editor.bundle.js
  *   editor/mindmap-editor.bundle.css

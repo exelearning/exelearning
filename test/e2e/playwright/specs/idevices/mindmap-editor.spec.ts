@@ -98,7 +98,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await topic(frame, 'Fotosíntesis').click();
         await expect(frame.locator('#remove')).toBeDisabled();
 
-        await saveMindmap(page, frame, 'Fotosíntesis');
+        await saveMindmap(page, frame, 'Fotosíntesis', 'svg');
         // The map is Mermaid code; the folded and styled details stay in the source only
         const [diagram] = await storedDiagrams(page);
         expect(diagram).toBe(
@@ -156,6 +156,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
             .locator('input')
             .fill('Sin título');
         await dialog.locator('.tox-checkbox', { hasText: /Show the title/i }).click();
+        await dialog.locator('input[name="mindmapFormat"][value="svg"]').check();
         await dialog
             .locator('.tox-dialog__footer button')
             .filter({ hasText: /^(Save|Guardar)$/ })
@@ -168,6 +169,35 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         const caption = page.locator('#node-content .exe-mind-map figcaption');
         await expect(caption).toHaveClass(/sr-av/);
         await expect(caption).toHaveText('Sin título');
+    });
+
+    test('saves a new map as an image by default', async ({ authenticatedPage: page, createProject }) => {
+        const block = await newProjectWithTextIdevice(page, createProject, 'Mind map PNG');
+        const { frame } = await openMindmapEditor(page);
+        await renameTopic(page, frame, 'Central Idea', 'Imagen');
+        await addChild(page, frame, 'Imagen', 'Una idea');
+        await frame.locator('#save').click();
+        await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0, { timeout: 15000 });
+        const dialog = page.locator('.tox-dialog');
+        await expect(dialog.locator('input[name="mindmapFormat"][value="png"]')).toBeChecked();
+        await dialog
+            .locator('.tox-form__group', { hasText: /Descriptive title/i })
+            .locator('input')
+            .fill('Imagen');
+        await dialog
+            .locator('.tox-dialog__footer button')
+            .filter({ hasText: /^(Save|Guardar)$/ })
+            .click();
+        await expect(dialog).toHaveCount(0);
+        await saveIdevice(page, block);
+
+        const [saved] = await storedMaps(page);
+        expect(saved.mermaid).toBe(false);
+        expect(findNode(saved.data.nodeData, 'Una idea')).toBeTruthy();
+        const img = page.locator('#node-content .exe-mind-map img').first();
+        await expect(img).toHaveAttribute('alt', 'Imagen');
+        expect(await img.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(100);
+        await expect(page.locator('#node-content .exe-mind-map figcaption')).toContainText('Imagen');
     });
 
     test('imports a legacy mindmaps JSON file and exports the map as JSON', async ({
@@ -278,7 +308,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await page.keyboard.press('ControlOrMeta+End');
         ({ frame } = await openMindmapEditor(page));
         await renameTopic(page, frame, 'Central Idea', 'Segundo');
-        await saveMindmap(page, frame, 'Segundo');
+        await saveMindmap(page, frame, 'Segundo', 'svg');
 
         ({ frame } = await openMindmapEditor(page, 0));
         await expect(topic(frame, 'Primero')).toHaveCount(1);
@@ -286,7 +316,11 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await saveMindmap(page, frame, 'Primero editado');
         await saveIdevice(page, block);
 
+        // One map of each format in the same iDevice
         const maps = await storedMaps(page);
-        expect(maps.map(m => m.data.nodeData.topic).sort()).toEqual(['Primero editado', 'Segundo']);
+        expect(maps.map(m => [m.data.nodeData.topic, m.mermaid]).sort()).toEqual([
+            ['Primero editado', false],
+            ['Segundo', true],
+        ]);
     });
 });
