@@ -132,7 +132,7 @@ export default defineConfig({
     // Deliberately NOT a timeout increase: the pages were dead, so no amount of waiting
     // would have helped — it would only have hidden the failure for longer.
     //
-    // CI is untouched. `ubuntu-latest` has 4 cores, so '100%' there already resolves to 4,
+    // CI is untouched. `ubuntu-24.04` has 4 cores, so '100%' there already resolves to 4,
     // which is why this never reproduced in CI and only bit developer machines.
     workers: process.env.CI ? '100%' : Math.min(4, Math.max(1, Math.floor(os.cpus().length * 0.8))),
 

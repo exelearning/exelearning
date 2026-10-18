@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pages: write
@@ -418,7 +418,7 @@ jobs:
     # publish-chocolatey consumes in parallel); it does not depend on the
     # Pages/APT/RPM build, so all three publishing jobs run concurrently.
     if: github.event_name == 'release' && github.event.action == 'released' && github.repository == 'exelearning/exelearning'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
     steps:

@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15, windows-latest]
+        os: [ubuntu-24.04, macos-15, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -69,7 +69,7 @@ jobs:
       #                 { "target": "snap", "arch": ["x64"] }
       # # Install Snapcraft only in Ubuntu
       # - name: Install Snapcraft
-      #   if: matrix.os == 'ubuntu-latest'
+      #   if: matrix.os == 'ubuntu-24.04'
       #   run: |
       #     sudo snap install snapcraft --classic
 
@@ -184,7 +184,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15, windows-latest]
+        os: [ubuntu-24.04, macos-15, windows-latest]
     steps:
       # Needed by the boot assertion below, which lives in scripts/.
       - name: Checkout code
@@ -203,7 +203,7 @@ jobs:
 
       # ---------- Ubuntu test ----------
       - name: Test install on Linux (.deb only)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           set -euo pipefail
 
@@ -565,7 +565,7 @@ jobs:
         run: |
           set -euo pipefail
           case "${{ matrix.os }}" in
-            ubuntu-latest)  log=ubuntu-app.log ;;
+            ubuntu-24.04)  log=ubuntu-app.log ;;
             macos-15)       log=mac-app.log ;;
             windows-latest) log=windows-app.log ;;
             *) echo "::error::Unknown runner '${{ matrix.os }}'"; exit 1 ;;
@@ -589,7 +589,7 @@ jobs:
 
   collect-artifacts:
     needs: test-install
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Download all per-OS artifacts
         uses: actions/download-artifact@v8

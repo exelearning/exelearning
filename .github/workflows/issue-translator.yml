@@ -10,7 +10,7 @@ permissions:
 jobs:
   translate:
     if: github.event.label.name == 'non-english'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Translate and post comment
