@@ -60,7 +60,7 @@ var $exeDevice = {
         $exeDevice.initQuestions();
 
         const root = document.getElementById('quickMultipleQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -1005,7 +1005,10 @@ var $exeDevice = {
                 }
             }
         } else if (p.type === 3) {
-            tinyMCE.get('seleccionaEText').setContent(unescape(p.eText));
+            const textEditor = tinyMCE.get('seleccionaEText');
+            if (textEditor) {
+                textEditor.setContent(unescape(p.eText));
+            }
         }
 
         $('.SLCNE-EAnwersOptions').each(function (j) {
@@ -1013,9 +1016,9 @@ var $exeDevice = {
         });
 
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         if (p.type !== 2 && p.audio.trim().length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#seleccionaEURLAudio').val(p.audio);
@@ -1145,7 +1148,10 @@ var $exeDevice = {
         $('#seleccionaECheckImageVideo').prop('checked', true);
         $("input.SLCNE-ESolution[name='slcsolution']").prop('checked', false);
         $('#selecionaESolutionSelect').text('');
-        tinyMCE.get('seleccionaEText').setContent('');
+        const textEditor = tinyMCE.get('seleccionaEText');
+        if (textEditor) {
+            textEditor.setContent('');
+        }
         $('#seleccionaEQuestion').val('');
         $('#seleccionaESolutionWord').val('');
         $('#seleccionaEDefinitionWord').val('');
@@ -1168,8 +1174,9 @@ var $exeDevice = {
         $('#seleccionaEInputOptionsVideo').hide();
         $('#seleccionaInputOptionsImage').hide();
 
-        if (tinyMCE.get('seleccionaEText')) {
-            tinyMCE.get('seleccionaEText').hide();
+        const textEditor = tinyMCE.get('seleccionaEText');
+        if (textEditor && typeof textEditor.hide === 'function') {
+            textEditor.hide();
         }
 
         $('#seleccionaEText').hide();
@@ -1217,8 +1224,9 @@ var $exeDevice = {
                 break;
             case 3:
                 $('#seleccionaEText').show();
-                if (tinyMCE.get('seleccionaEText')) {
-                    tinyMCE.get('seleccionaEText').show();
+                const textEditor = tinyMCE.get('seleccionaEText');
+                if (textEditor && typeof textEditor.show === 'function') {
+                    textEditor.show();
                 }
                 break;
             default:
@@ -1256,17 +1264,9 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const path = $exeDevice.idevicePath,
-            html = `
-            <div id="quickMultipleQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                    _('Create activities with multiple choice questions or questions in which you have to put the answers in the right order.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/selecciona.html',
-                )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answers and click on the Check button.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
+        const edition = $exeIDevicesEdition.iDevice,
+            path = $exeDevice.idevicePath,
+            options = `
                         <div id="seleccionaEOptions">
                             <div class="toggle-item mb-3" data-target="seleccionaEShowMinimize">
                                 <span class="toggle-control">
@@ -1274,6 +1274,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaEShowMinimize">${_('Show minimized.')} </label>
+                                ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaEOrderLinear">
                                 <span>${_('Questions order')}:</span>
@@ -1291,18 +1292,11 @@ var $exeDevice = {
                                         <label class="form-check-label" for="seleccionaEOrderThree">${_('Tree')}</label>
                                     </div>
                                 </span>
-                                <div class="GameModeLabel d-inline-flex align-items-center gap-2">
-                                    <a href="#seleccionaEOrderHelp" id="seleccionaEOrderHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                    </a>
-                                </div>
-                            </div>
-                            <div id="seleccionaEOrderHelp" class="exe-block-info SLCNE-TypeGameHelp pt-3">
-                                <ul>
-                                    <li><strong>${_('Default')}: </strong>${_('Order defined by the author.')}</li>
-                                    <li><strong>${_('Random')}: </strong>${_('Different order each time you run the game.')}</li>
-                                    <li><strong>${_('Tree')}: </strong>${_('The questions will change depending on the answers.')}</li>
-                                </ul>
+                                ${edition.common.getHelpTooltip([
+                                    `${_('Default')}: ${_('Order defined by the author.')}`,
+                                    `${_('Random')}: ${_('Different order each time you run the game.')}`,
+                                    `${_('Tree')}: ${_('The questions will change depending on the answers.')}`,
+                                ].join('\n\n'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="seleccionaECustomMessages">
                                 <span class="toggle-control">
@@ -1310,6 +1304,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaECustomMessages">${_('Custom messages')}.</label>
+                                ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="seleccionaEAnswersRamdon">
                                 <span class="toggle-control">
@@ -1317,6 +1312,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaEAnswersRamdon">${_('Random options')}</label>
+                                ${edition.common.getHelpTooltip(_('Display the answer options in a different random order each time.'))}
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item toggle-related" data-target="seleccionaEShowSolution">
@@ -1330,6 +1326,10 @@ var $exeDevice = {
                                     <input type="number" name="seleccionaETimeShowSolution" id="seleccionaETimeShowSolution" value="3" min="1" max="9" class="form-control" />
                                     <label for="seleccionaETimeShowSolution">${_('Show solution time (seconds)')}</label>
                                 </div>
+                                ${edition.common.getHelpTooltip([
+                                    `${_('Show solutions')}: ${_('Show the correct answer after checking an option or when the time runs out.')}`,
+                                    `${_('Show solution time (seconds)')}: ${_('Set how many seconds the solution remains visible before moving to the next question.')}`,
+                                ].join('\n\n'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="seleccionaEAudioFeedBack">
                                 <span class="toggle-control">
@@ -1337,6 +1337,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaEAudioFeedBack">${_('Play audio when displaying the solution')}.</label>
+                                ${edition.common.getHelpTooltip(_('Play the audio associated with the question when the solution is displayed.'))}
                             </div>
                             <div class="toggle-item  mb-3" data-target="seleccionaECustomScore">
                                 <span class="toggle-control">
@@ -1344,6 +1345,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaECustomScore">${_('Custom score')}.</label>
+                                ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Questions tab.'))}
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaETypeActivity">
                                 <span> ${_('Score')}:</span> 
@@ -1361,18 +1363,11 @@ var $exeDevice = {
                                         <label class="form-check-label" for="seleccionaETypeReto">${_('No score')}</label>
                                     </div>
                                 </span> 
-                                <span class="GameModeLabel">
-                                    <a href="#seleccionaEGameModeHelp" id="seleccionaEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                    </a>
-                                </span>
-                            </div>
-                            <div id="seleccionaEGameModeHelp" class="exe-block-info SLCNE-TypeGameHelp pt-3">
-                                <ul>
-                                    <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                    <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
-                                    <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
-                                </ul>
+                                ${edition.common.getHelpTooltip([
+                                    `${_('From 0 to 10')}: ${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}`,
+                                    `${_('Points and lives')}: ${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}`,
+                                    `${_('No score')}: ${_('No score and no lives. You have to answer right to get some information (a feedback).')}`,
+                                ].join('\n\n'))}
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item toggle-related" data-target="seleccionaEUseLives">
@@ -1386,22 +1381,10 @@ var $exeDevice = {
                                     <input type="number" name="seleccionaENumberLives" id="seleccionaENumberLives" value="3" min="1" max="5" class="form-control" />
                                     <label for="seleccionaENumberLives">${_('Number of lives')}:</label>
                                 </div>
-                            </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item toggle-related" data-target="seleccionaEHasFeedBack">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="seleccionaEHasFeedBack" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="seleccionaEHasFeedBack">${_('Feedback')}.</label>
-                                </div>
-                                <div class="mb-0 d-flex align-items-center gap-2">
-                                    <input type="number" name="seleccionaEPercentajeFB" id="seleccionaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
-                                    <label for="seleccionaEPercentajeFB">${_('% right to see the feedback')}</label>
-                                </div>
-                            </div>
-                            <div id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP mb-3">
-                                <textarea id="seleccionaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                                ${edition.common.getHelpTooltip([
+                                    `${_('Use lives')}: ${_('Limit attempts in Points and lives mode. An incorrect answer or a timeout costs one life; the game ends when no lives remain.')}`,
+                                    `${_('Number of lives')}: ${_('Set the number of lives available at the start of the game, from 1 to 5.')}`,
+                                ].join('\n\n'))}
                             </div>
                             <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                 <label for="seleccionaEVideoIntro" class="mb-0">${_('Video Intro')}:</label>
@@ -1409,6 +1392,7 @@ var $exeDevice = {
                                 <a href="#" class="SLCNE-ButtonLink" id="seleccionaEVideoIntroPlay" title="${_('Play the introduction video')}">
                                     <img src="${path}quextIEPlay.png" alt="${_('Play')}" class="SLCNE-ENavigationButton" />
                                 </a>
+                                ${edition.common.getHelpTooltip(_('Enter a YouTube URL to show an introductory video before starting the activity.'))}
                             </div>
                             <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
                                 <div class="toggle-item toggle-related m-0" data-target="seleccionaEPercentajeQuestions">
@@ -1420,6 +1404,7 @@ var $exeDevice = {
                                 </div>
                                 <input type="number" name="seleccionaEPercentajeQuestionsValue" id="seleccionaEPercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" />
                                 <span id="seleccionaENumeroPercentaje" class="ms-2">1/1</span>
+                                ${edition.common.getHelpTooltip(_('Choose the percentage of questions included in each game. The counter shows how many questions will be used.'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="seleccionaModeBoard">
                                 <span class="toggle-control">
@@ -1427,6 +1412,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaModeBoard">${_('Digital whiteboard mode')}</label>
+                                ${edition.common.getHelpTooltip(_('Adapt the interface layout for interactive whiteboard use.'))}
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3">
                                 <label for="seleccionaEGlobalTimes">${_('Time per question')}:</label>
@@ -1439,13 +1425,10 @@ var $exeDevice = {
                                     <option value="5">10m</option>
                                 </select>
                                 <button id="seleccionaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
+                                ${edition.common.getHelpTooltip(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Questions tab.'))}
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Questions')}</a></legend>
+                        </div>`,
+            questions = `
                         <div class="SLCNE-EPanel" id="seleccionaEPanel">
                             <div class="SLCNE-EOptionsMedia d-flex flex-nowrap align-items-center gap-2 mb-3">
                                 <div class="SLCNE-EOptionsGame">
@@ -1724,21 +1707,34 @@ var $exeDevice = {
                             <div class="SLCNE-ENumQuestionDiv" id="seleccionaENumQuestionDiv">
                                 <div class="SLCNE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="SLCNE-ENumQuestions" id="seleccionaENumQuestions">0</span>
                             </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 3, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(3)}
-
+                        </div>`,
+            html = `
+            <div id="quickMultipleQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create activities with multiple choice questions or questions in which you have to put the answers in the right order.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/selecciona.html',
+                )}
+                ${edition.tabs.getHtml('quickMultipleQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Choose the right answers and click on the Check button.'),
+                    options: options,
+                    contents: questions,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        exportQuestions: true,
+                        type: 3,
+                    },
+                })}
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('quickMultipleQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('quickMultipleQEIdeviceForm');
+        edition.gamification.scorm.init();
 
         tinymce.init({
             selector: '#seleccionaEText',
@@ -1881,34 +1877,28 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter.html());
 
             const textFeedBack = $('.selecciona-feedback-game', wrapper);
-            if (textFeedBack.length === 1)
-                $('#seleccionaEFeedBackEditor').val(textFeedBack.html());
+            if (textFeedBack.length === 1) {
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html()
+                );
+            }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
         }
     },
 
-    updateGameMode: function (gamemode, feedback, useLives) {
+    updateGameMode: function (gamemode, useLives) {
         $('#seleccionaEUseLives, #seleccionaENumberLives').prop(
             'disabled',
             true
         );
-        $('#seleccionaEPercentajeFB').prop(
-            'disabled',
-            !feedback && gamemode !== 2
+        gamemode = parseInt(gamemode, 10);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setRequired(
+            gamemode === 2
         );
-        $('#seleccionaEHasFeedBack')
-            .prop('disabled', gamemode === 2)
-            .prop('checked', feedback);
-
-        if (gamemode === 2 || feedback) {
-            $('#seleccionaEFeedbackP').slideDown();
-        } else {
-            $('#seleccionaEFeedbackP').slideUp();
-        }
 
         if (gamemode === 0) {
             $('#seleccionaEUseLives').prop('disabled', false);
@@ -1917,7 +1907,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.answersRamdon = game.answersRamdon || false;
@@ -1991,8 +1981,10 @@ var $exeDevice = {
         $('#seleccionaEScoreQuestionDiv')
             .addClass('d-none')
             .removeClass('d-flex');
-        $('#seleccionaEHasFeedBack').prop('checked', game.feedBack);
-        $('#seleccionaEPercentajeFB').val(game.percentajeFB);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $(
             `input.SLCNE-TypeGame[name='slcgamemode'][value="${game.gameMode}"]`
         ).prop('checked', true);
@@ -2007,17 +1999,17 @@ var $exeDevice = {
             game.gameMode == 0 && game.useLives
         );
         $('#seleccionaEPercentajeQuestionsValue').val(game.percentajeQuestions);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
         $('#seleccionaEGlobalTimes').val(game.globalTime);
 
-        $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
+        $exeDevice.updateGameMode(game.gameMode, game.useLives);
         $exeDevice.showSelectOrder(
             game.order,
             game.customMessages,
@@ -2054,13 +2046,7 @@ var $exeDevice = {
                     ? ''
                     : game.selectsGame[i].solutionQuestion;
         }
-        if (game.feedBack || game.gameMode == 2) {
-            $('#seleccionaEFeedbackP').show();
-        } else {
-            $('#seleccionaEFeedbackP').hide();
-        }
-        $('#seleccionaEPercentajeFB').prop('disabled', !game.feedBack);
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -2099,7 +2085,7 @@ var $exeDevice = {
             return false;
         }
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         $exeDevice.stopVideoIntro();
 
@@ -2123,9 +2109,8 @@ var $exeDevice = {
             divContent = `<div class="selecciona-instructions SLCNP-instructions">${instructions}</div>`;
         }
 
-        const textFeedBack = tinyMCE
-            .get('seleccionaEFeedBackEditor')
-            .getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
         const linksImages = $exeDevice.createlinksImage(dataGame.selectsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.selectsGame);
 
@@ -2196,7 +2181,7 @@ var $exeDevice = {
         p.msgHit = $('#seleccionaEMessageOK').val();
         p.msgError = $('#seleccionaEMessageKO').val();
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type == 2) {
@@ -2245,7 +2230,8 @@ var $exeDevice = {
                 : 0;
         p.tSilentVideo = parseInt(stVideo);
 
-        p.eText = tinyMCE.get('seleccionaEText').getContent() || '';
+        const textEditor = tinyMCE.get('seleccionaEText');
+        p.eText = textEditor ? textEditor.getContent() || '' : '';
         p.quextion = $('#seleccionaEQuestion').val().trim();
         p.options = [];
         p.solution = $('#selecionaESolutionSelect').text().trim();
@@ -2376,7 +2362,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.selectsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('test')}.txt`,
             'quickMultipleQEIdeviceForm'
@@ -2405,15 +2391,16 @@ var $exeDevice = {
     },
 
     validateData: function () {
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
+
         const clear = $exeDevice.removeTags,
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
             textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
-            textFeedBack = escape(
-                tinyMCE.get('seleccionaEFeedBackEditor').getContent()
-            ),
             showMinimize = $('#seleccionaEShowMinimize').is(':checked'),
             modeBoard = $('#seleccionaModeBoard').is(':checked'),
             optionsRamdon = false,
@@ -2432,11 +2419,9 @@ var $exeDevice = {
                 $('#seleccionaEVIStart').val()
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#seleccionaECustomScore').is(':checked'),
             customMessages = $('#seleccionaECustomMessages').is(':checked'),
-            feedBack = $('#seleccionaEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#seleccionaEPercentajeFB').val())),
             gameMode = parseInt($('input[name=slcgamemode]:checked').val()),
             order = parseInt($('input[name=slcgameorder]:checked').val()),
             audioFeedBach = $('#seleccionaEAudioFeedBack').is(':checked'),
@@ -2444,19 +2429,14 @@ var $exeDevice = {
                 clear($('#seleccionaEPercentajeQuestionsValue').val())
             ),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#seleccionaEGlobalTimes').val(), 10);
 
         if (!itinerary) return false;
         if (!progressBar) return false;
-
-        if ((gameMode == 2 || feedBack) && textFeedBack.trim().length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
         if (showSolution && timeShowSolution.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
             return false;
@@ -2522,7 +2502,7 @@ var $exeDevice = {
             }
         });
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             asignatura: '',
             author: '',
@@ -2549,10 +2529,10 @@ var $exeDevice = {
             title: '',
             customScore: customScore,
             textAfter: textAfter,
-            textFeedBack: textFeedBack,
+            textFeedBack: escape(feedback.textFeedBack),
             gameMode: gameMode,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             order: order,
             customMessages: customMessages,
             version: 3.1,
@@ -3035,7 +3015,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#seleccionaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -3046,14 +3026,8 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
-        });
-
-        $('#seleccionaEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#seleccionaEFeedbackP').slideToggle(marcado);
-            $('#seleccionaEPercentajeFB').prop('disabled', !marcado);
         });
 
         $quickMultipleQEIdeviceForm.on(
@@ -3061,9 +3035,8 @@ var $exeDevice = {
             'input.SLCNE-TypeGame',
             function () {
                 const gm = parseInt($(this).val(), 10),
-                    fb = $('#seleccionaEHasFeedBack').is(':checked'),
                     ul = $seleccionaEUseLives.is(':checked');
-                $exeDevice?.updateGameMode(gm, fb, ul);
+                $exeDevice?.updateGameMode(gm, ul);
             }
         );
 
@@ -3082,16 +3055,6 @@ var $exeDevice = {
                 ),
                 customS = $('#seleccionaECustomScore').is(':checked');
             $exeDevice?.showSelectOrder(type, messages, customS);
-        });
-
-        $('#seleccionaEGameModeHelpLnk').on('click', function () {
-            $('#seleccionaEGameModeHelp').toggle();
-            return false;
-        });
-
-        $('#seleccionaEOrderHelpLnk').on('click', function () {
-            $('#seleccionaEOrderHelp').toggle();
-            return false;
         });
 
         $seleccionaEPercentajeQuestions
@@ -3132,21 +3095,17 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
+
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             3,
             $exeDevice.insertQuestions
         );
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').on('click', function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     showSelectOrder: function (type, messages, custonmScore) {
@@ -3300,9 +3259,9 @@ var $exeDevice = {
                 .get('eXeGameInstructions')
                 .setContent(unescape(instructions));
             tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            tinyMCE
-                .get('seleccionaEFeedBackEditor')
-                .setContent(unescape(textFeedBack));
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                unescape(textFeedBack)
+            );
         } else if (game.typeGame === 'Oca') {
             $exeDevice.selectsGame = $exeDevice.importSelecciona(game);
         } else if (game.typeGame === 'QuExt') {
