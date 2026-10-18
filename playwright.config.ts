@@ -43,6 +43,7 @@ const dynamicServerEnv = {
     ADMIN_EMAIL: 'admin@exelearning.test',
     ADMIN_PASSWORD: 'AdminPass123!',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
+    PUBLIC_VIEW_ENABLED: 'true', // Enable public read-only links for E2E tests
 };
 
 // Dynamic server config (used by chromium/firefox projects)

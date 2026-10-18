@@ -316,4 +316,42 @@ describe('identify iDevice export', () => {
       expect($eXeIdentifica.sendScore).toHaveBeenCalledWith(true, 0);
     });
   });
+
+  /**
+   * The end-of-attempt colour was a fixed 1, the fail colour, so a perfect ten
+   * closed the activity in red while the progress report beside it said the
+   * learner had passed. There was no literal threshold to scan for, which is
+   * why only a behavioural test protects this.
+   */
+  describe('the end-of-attempt colour follows the pass mark', () => {
+    const attempt = (score, passScoreMode, passScoreCustom) => {
+      $eXeIdentifica.options[0] = { score, passScoreMode, passScoreCustom };
+      return $eXeIdentifica.getVerdictColor(0);
+    };
+
+    it('no longer paints a perfect ten in the fail colour', () => {
+      expect(attempt(10, 'global')).toBe(2);
+    });
+
+    it('passes a 6 on the project mark of 5', () => {
+      expect(attempt(6, 'global')).toBe(2);
+    });
+
+    it('fails the same 6 when the author set the mark at 8', () => {
+      expect(attempt(6, 'custom', 8)).toBe(1);
+    });
+  });
+});
+
+describe('identify minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'identify.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
+  });
 });

@@ -155,6 +155,7 @@ describe('padlock iDevice export', () => {
         <div id="candadoPTime-0"></div>`;
       $padlock.options[0] = {
         id: 0,
+        storageKey: 'dataCandado-idevice-0',
         isScorm: 1,
         candadoTime: 5,
         candadoReboot: false,
@@ -369,7 +370,7 @@ describe('padlock iDevice export', () => {
 
         $padlock.addEvents(0);
 
-        expect(global.localStorage.removeItem).toHaveBeenCalledWith('dataCandado-0');
+        expect(global.localStorage.removeItem).toHaveBeenCalledWith('dataCandado-idevice-0');
         expect($padlock.options[0].candadoSolved).toBe(false);
         expect($padlock.options[0].counter).toBe(5 * 60);
       });
@@ -496,6 +497,192 @@ describe('padlock iDevice export', () => {
       expect(reported).toEqual([
         { auto: true, scorerp: expected, gameOver: true },
       ]);
+    });
+  });
+
+  // The editor never reloads the document between pages, and a padlock's ids
+  // are numbered by position: the next page's first padlock takes the ids this
+  // one had. The clock used to find that padlock by id and run it, counting
+  // down on its display and opening it when its own time ran out.
+  describe('the clock of a timed padlock', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="candadoMainContainer-${instance}"></div>`;
+      $padlock.options = [{ candadoTime: 1, counter: 60, candadoSolved: false }];
+      for (const method of ['uptateTime', 'showFeedback']) {
+        vi.spyOn($padlock, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own padlock', () => {
+      $padlock.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($padlock.uptateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('opens its own padlock when the time runs out', () => {
+      $padlock.startGame(instance);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($padlock.showFeedback).toHaveBeenCalledWith(instance);
+    });
+
+    it("leaves the next page's padlock alone, though it takes the same ids", () => {
+      $padlock.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first padlock is numbered the same.
+      document.body.innerHTML = `<div id="candadoMainContainer-${instance}"></div>`;
+      $padlock.options[instance] = { candadoTime: 4, counter: 240, candadoSolved: false };
+      $padlock.uptateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($padlock.uptateTime).not.toHaveBeenCalled();
+      expect($padlock.showFeedback).not.toHaveBeenCalled();
+      expect($padlock.options[instance].counter).toBe(240);
+    });
+  });
+
+  // A duplicated padlock carries the same id, and one saved without an id fell
+  // back to its position on the page, which the first padlock of every page
+  // shares. Kept under either, two padlocks shared one entry.
+  describe('where a padlock keeps its state', () => {
+    let previousLocalStorage;
+    let previousHelpers;
+    let store;
+
+    beforeEach(() => {
+      previousLocalStorage = global.localStorage;
+      previousHelpers = global.$exeDevices.iDevice.gamification.helpers;
+      store = {};
+      global.localStorage = {
+        getItem: key => (key in store ? store[key] : null),
+        setItem: (key, value) => {
+          store[key] = String(value);
+        },
+        removeItem: key => {
+          delete store[key];
+        },
+      };
+      global.$exeDevices.iDevice.gamification.helpers = {
+        ...previousHelpers,
+        isJsonString: value => (typeof value === 'string' ? JSON.parse(value) : false),
+      };
+    });
+
+    afterEach(() => {
+      global.localStorage = previousLocalStorage;
+      global.$exeDevices.iDevice.gamification.helpers = previousHelpers;
+      document.body.innerHTML = '';
+    });
+
+    it("names the entry after the padlock's own component", () => {
+      document.body.innerHTML =
+        '<div class="idevice_node padlock" id="idevice-abc"><div class="candado-IDevice"></div></div>';
+
+      expect($padlock.storageKeyOf(document.querySelector('.candado-IDevice'))).toBe('dataCandado-idevice-abc');
+    });
+
+    it('gives no key to a padlock outside any component', () => {
+      document.body.innerHTML = '<div class="candado-IDevice"></div>';
+
+      expect($padlock.storageKeyOf(document.querySelector('.candado-IDevice'))).toBe('');
+    });
+
+    it('keeps its state under its own component, not under the id its data carries', () => {
+      $padlock.options = [{ id: 0, storageKey: 'dataCandado-idevice-copy-a', counter: 60, candadoTime: 1 }];
+
+      $padlock.saveCandadoData(0);
+
+      expect(store['dataCandado-idevice-copy-a']).toBeDefined();
+      expect(store['dataCandado-0']).toBeUndefined();
+      expect($padlock.getCandadoData(0)).toMatchObject({ counter: 60, candadoTime: 1 });
+    });
+
+    it("does not read another padlock's state", () => {
+      store['dataCandado-idevice-copy-b'] = JSON.stringify({ counter: 5 });
+      $padlock.options = [{ id: 0, storageKey: 'dataCandado-idevice-copy-a' }];
+
+      expect($padlock.getCandadoData(0)).toBeFalsy();
+    });
+
+    it('keeps and reads nothing when it belongs to no component', () => {
+      $padlock.options = [{ id: 0, storageKey: '', counter: 60, candadoTime: 1 }];
+
+      $padlock.saveCandadoData(0);
+
+      expect(Object.keys(store)).toEqual([]);
+      expect($padlock.getCandadoData(0)).toBe(false);
+    });
+  });
+
+  describe('keeping every padlock as the page goes', () => {
+    let previousLocalStorage;
+    let store;
+
+    // Two started padlocks and one never opened, as a page with three holds them.
+    const threePadlocks = () => [
+      { storageKey: 'dataCandado-idevice-a', candadoStarted: true, counter: 30, candadoTime: 1 },
+      { storageKey: 'dataCandado-idevice-b', candadoStarted: true, counter: 50, candadoTime: 1 },
+      { storageKey: 'dataCandado-idevice-c', candadoStarted: false, counter: 60, candadoTime: 1 },
+    ];
+
+    beforeEach(() => {
+      previousLocalStorage = global.localStorage;
+      store = {};
+      global.localStorage = {
+        getItem: key => (key in store ? store[key] : null),
+        setItem: (key, value) => {
+          store[key] = String(value);
+        },
+        removeItem: key => {
+          delete store[key];
+        },
+      };
+      $padlock.activities = $();
+    });
+
+    afterEach(() => {
+      $(window).off('pagehide.eXeCandado');
+      global.localStorage = previousLocalStorage;
+      vi.restoreAllMocks();
+    });
+
+    it('keeps every started padlock, not only the last one set up', () => {
+      $padlock.loadGame();
+      $padlock.options = threePadlocks();
+      // What each padlock's addEvents does first.
+      $padlock.removeEvents(0);
+      $padlock.removeEvents(1);
+      $padlock.removeEvents(2);
+
+      window.dispatchEvent(new Event('pagehide'));
+
+      expect(JSON.parse(store['dataCandado-idevice-a'])).toMatchObject({ counter: 30 });
+      expect(JSON.parse(store['dataCandado-idevice-b'])).toMatchObject({ counter: 50 });
+      expect(store['dataCandado-idevice-c']).toBeUndefined();
+    });
+
+    it('keeps each padlock once, however many times the page is loaded', () => {
+      $padlock.loadGame();
+      $padlock.loadGame();
+      $padlock.options = threePadlocks();
+      const save = vi.spyOn($padlock, 'saveCandadoData');
+
+      window.dispatchEvent(new Event('pagehide'));
+
+      expect(save.mock.calls).toEqual([[0], [1]]);
     });
   });
 });
