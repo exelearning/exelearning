@@ -984,6 +984,27 @@ var $exeDevice = {
     createForm: function () {
         let path = $exeDevice.idevicePath,
             edition = $exeIDevicesEdition.iDevice,
+            videoIntro = `
+                            <div class="QXTE-EVIDiv" id="quextEVIDiv">
+                                <div class="QXTE-EVIV">
+                                    <div class="QXTE-EMVI">
+                                        <div class="QXTE-EVI" id="quextEVI"></div>
+                                        <video class="QXTE-EVI" id="quextEVILocal" preload="auto" controls></video>
+                                        <img class="QXTE-ENoVI" src="${path}quextIENoVideo.png" id="quextEVINo" alt="" />
+                                    </div>
+                                </div>
+                                <div class="QXTE-EVIOptions d-flex align-items-center mb-3 flex-wrap gap-2">
+                                    <label for="quextEVIURL" class="mb-0">${_('URL')}:</label>
+                                    <input id="quextEVIURL"  class="form-control me-0"  type="text" />
+                                    <a href="#" id="quextEVIPlayI" class="QXTE-ENavigationButton me-1" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="QXTE-ENavigationButton intro" /></a>
+                                    <label for="quextEVIStart" class="mb-0">${_('Start')}:</label>
+                                    <input id="quextEVIStart"  class="form-control" type="text" value="00:00:00" readonly style="width: 13ch !important; text-align: center;" />
+                                    <label for="quextEVIEnd" class="mb-0">${_('End')}:</label>
+                                    <input id="quextEVIEnd"  class="form-control" type="text" value="00:00:00" readonly style="width: 13ch !important; text-align: center;" />
+                                    <button class="btn btn-primary" id="quextEVITime" type="button">00:00:00</button>
+                                </div>
+                                <input type="button" class="QXTE-EVIClose" id="quextEVIClose" value="${_('Close')}" />
+                            </div>`,
             options = `
                 <div id="quextEOptions">
                     <div class="toggle-item mb-3" data-target="quextEShowMinimize">
@@ -1325,26 +1346,6 @@ var $exeDevice = {
                                 <a href="#" id="quextECut" class="QXTE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="QXTE-ENavigationButton" /></a>
                                 <a href="#" id="quextEPaste" class="QXTE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="QXTE-ENavigationButton" /></a>
                             </div>
-                            <div class="QXTE-EVIDiv" id="quextEVIDiv">
-                                <div class="QXTE-EVIV">
-                                    <div class="QXTE-EMVI">
-                                        <div class="QXTE-EVI" id="quextEVI"></div>
-                                        <video class="QXTE-EVI" id="quextEVILocal" preload="auto" controls></video>
-                                        <img class="QXTE-ENoVI" src="${path}quextIENoVideo.png" id="quextEVINo" alt="" />
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center mb-3  flex-nowrap gap-2">
-                                    <label for="quextEVIURL" class="mb-0">${_('URL')}:</label>
-                                    <input id="quextEVIURL"  class="form-control me-0"  type="text" />
-                                    <a href="#" id="quextEVIPlayI" class="QXTE-ENavigationButton me-1" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="QXTE-ENavigationButton intro" /></a>
-                                    <label for="quextEVIStart" class="mb-0">${_('Start')}:</label>
-                                    <input id="quextEVIStart"  class="form-control" type="text" value="00:00:00" readonly style="width: 13ch !important; text-align: center;" />
-                                    <label for="quextEVIEnd" class="mb-0">${_('End')}:</label>
-                                    <input id="quextEVIEnd"  class="form-control" type="text" value="00:00:00" readonly style="width: 13ch !important; text-align: center;" />
-                                    <button class="btn btn-primary" id="quextEVITime" type="button">00:00:00</button>
-                                </div>
-                                <input type="button" class="QXTE-EVIClose" id="quextEVIClose" value="${_('Close')}" />
-                            </div>
                             <div class="QXTE-ENumQuestionDiv" id="quextENumQuestionDiv">
                                 <div class="QXTE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
                                 <span class="QXTE-ENumQuestions" id="quextENumQuestions">0</span>
@@ -1359,7 +1360,7 @@ var $exeDevice = {
                 ${edition.tabs.getHtml('gameQEIdeviceForm', {
                     path: path,
                     instructions: c_('Choose the right answer'),
-                    options: options,
+                    options: options + videoIntro,
                     contents: questions,
                     passwords: true,
                     feedback: true,
@@ -2640,8 +2641,8 @@ var $exeDevice = {
             e.preventDefault();
             $('#quextEVideoIntro').val($('#quextEVIURL').val());
             $('#quextEVIDiv').hide();
-            $('#quextENumQuestionDiv').show();
             $exeDevice.stopVideoIntro();
+            $('#quextEVideoIntroPlay').trigger('focus');
         });
 
         $('#quextECursor').on('click', () => {
@@ -2763,7 +2764,7 @@ var $exeDevice = {
             $('#quextEVIURL').val($('#quextEVideoIntro').val());
             $('#quextEVIDiv').show();
             $('#quextEVINo').hide();
-            $('#quextENumQuestionDiv').hide();
+            $('#quextEVIClose').trigger('focus');
         } else {
             $('#quextEVINo').show();
             $('#quextEVI').hide();

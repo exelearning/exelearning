@@ -245,10 +245,15 @@
 }
 
 /* Video introdución */
+#gameQEIdeviceForm-panel-options {
+    position: relative;
+}
+
 .QXTE-EVIDiv {
     background-color: #f9f9f9;
     display: none;
-    height: 100%;
+    min-height: 100%;
+    padding: 3rem 1rem 1rem;
     left: 0;
     position: absolute;
     top: 0;
@@ -262,10 +267,16 @@
 }
 
 .QXTE-EMVI {
-    height: 315px;
-    margin: 70px auto;
+    aspect-ratio: 16 / 9;
+    margin: 1rem auto;
     position: relative;
-    width: 560px;
+    width: min(560px, 100%);
+}
+
+.QXTE-EVIOptions #quextEVIURL {
+    flex: 1 1 12rem;
+    width: auto;
+    min-width: 0;
 }
 
 .QXTE-EVI,
