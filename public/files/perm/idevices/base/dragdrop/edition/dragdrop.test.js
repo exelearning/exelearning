@@ -18,10 +18,14 @@ describe('dragdrop iDevice export helpers', () => {
     beforeEach(() => {
         global.$exeDevice = undefined;
         $exeDevice = global.loadIdevice(join(__dirname, 'dragdrop.js'));
-        downloadBlob = vi.fn(() => true);
-        const prevShare = global.$exeIDevicesEdition?.iDevice?.gamification?.share || {};
-        global.$exeIDevicesEdition.iDevice.gamification.share = { ...prevShare, downloadBlob };
-        global.$exeDevicesEdition.iDevice.gamification.share = { ...prevShare, downloadBlob };
+        // The setup's edition object is the real one: spy on it and restore it.
+        downloadBlob = vi
+            .spyOn(global.$exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+            .mockReturnValue(true);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('exports question text with the dragdrop filename and container', () => {
@@ -111,12 +115,16 @@ function buildEditionForm() {
 
 describe('dragdrop edition: $exeDevice guards (#2271)', () => {
     let $exeDevice;
+    let previousItinerary;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         buildEditionForm();
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
-            getTab: vi.fn(() => ''),
+        // The itinerary block has its own tests; here it is a stand-in, and
+        // afterEach puts the real one back.
+        previousItinerary = global.$exeIDevicesEdition.iDevice.gamification.itinerary;
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = {
+            getContents: vi.fn(() => ''),
             addEvents: vi.fn(),
             getValues: vi.fn(() => ({})),
             setValues: vi.fn(),
@@ -130,6 +138,7 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
         // Close the edition as the workarea does, so handlers this test bound
         // on shared targets such as `document` cannot reach the next one.
         $exeDevice.$lifecycle.destroy();
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });

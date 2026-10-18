@@ -1311,11 +1311,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        const share =
-            $exeIDevicesEdition?.iDevice?.gamification?.share?.downloadBlob
-                ? $exeIDevicesEdition.iDevice.gamification.share
-                : ($exeDevicesEdition?.iDevice?.gamification?.share || $exeIDevicesEdition.iDevice.gamification.share);
-        return share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('words')}-dragdrop.txt`,
             'dragdropQIdeviceForm'
@@ -1337,11 +1333,7 @@ var $exeDevice = {
         if (!dataGame) return false;
 
         const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        const share =
-            $exeIDevicesEdition?.iDevice?.gamification?.share?.downloadBlob
-                ? $exeIDevicesEdition.iDevice.gamification.share
-                : ($exeDevicesEdition?.iDevice?.gamification?.share || $exeIDevicesEdition.iDevice.gamification.share);
-        return share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('Activity')}-DragDrop.json`,
             'dragdropQIdeviceForm'
