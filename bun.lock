@@ -40,7 +40,7 @@
         "yjs": "^13.6.33",
       },
       "devDependencies": {
-        "@ateeducacion/mind-elixir-export-mermaid": "0.1.1",
+        "@ateeducacion/mind-elixir-export-mermaid": "0.1.2",
         "@biomejs/biome": "^2.5.14",
         "@codecov/bundle-analyzer": "^2.0.1",
         "@electron/notarize": "^3.1.1",
@@ -91,7 +91,7 @@
 
     "@asamuzakjp/dom-selector": ["@asamuzakjp/dom-selector@8.3.2", "", { "dependencies": { "bidi-js": "^1.0.3", "css-tree": "^3.2.1", "is-potential-custom-element-name": "^1.0.1", "lru-cache": "^11.5.2" } }, "sha512-93Z1N+BQNXysodoicpOIyNh2drHfz/CTf9nnT0FEx72GJcIiwgydD7tGAr78j41LsYn3hlRn+LdGPuBLn1Bl8Q=="],
 
-    "@ateeducacion/mind-elixir-export-mermaid": ["@ateeducacion/mind-elixir-export-mermaid@0.1.1", "", {}, "sha512-PsJCEBkXCGWok+7C2HRqkNHd75r2Pz49hjGnZB3acyypZNqd70AL03A358kTTmFhm+zMtmdyS6g+AAvCFhkFLg=="],
+    "@ateeducacion/mind-elixir-export-mermaid": ["@ateeducacion/mind-elixir-export-mermaid@0.1.2", "", {}, "sha512-SJhZmDYV84B2eXL7IhDXO/uoBR7om44VSVV5R8B29iA8SftWwFaYMgas/wMQSuVSxJq82QvB35/lCW/fOYOGIQ=="],
 
     "@babel/helper-string-parser": ["@babel/helper-string-parser@7.29.7", "", {}, "sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw=="],
 
