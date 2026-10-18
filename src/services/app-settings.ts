@@ -71,3 +71,13 @@ export async function getAuthMethods(db: Kysely<Database>, fallback: string): Pr
     const value = await getSettingString(db, 'APP_AUTH_METHODS', fallback);
     return parseAuthMethods(value);
 }
+
+/**
+ * Whether the public read-only viewer (`/view/:publicViewId`) is available on
+ * this installation. Disabled by default: many deployments already publish
+ * content through their own media library. `PUBLIC_VIEW_ENABLED` in the
+ * environment sets the default, and the `/admin` setting overrides it.
+ */
+export async function isPublicViewFeatureEnabled(db: Kysely<Database>): Promise<boolean> {
+    return getSettingBoolean(db, 'PUBLIC_VIEW_ENABLED', parseBoolean(process.env.PUBLIC_VIEW_ENABLED, false));
+}

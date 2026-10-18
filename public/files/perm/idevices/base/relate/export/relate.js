@@ -53,6 +53,7 @@ var $eXeRelaciona = {
             const rlc = $eXeRelaciona.createInterfaceCards(i);
 
             dl.before(rlc).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#rlcGameMinimize-' + i).hide();
             $('#rlcGameContainer-' + i).hide();
             $('#rlcCubierta-' + i).hide();

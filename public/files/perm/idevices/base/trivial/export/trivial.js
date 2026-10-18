@@ -162,6 +162,7 @@ var $eXeTrivial = {
 
             const trivial = $eXeTrivial.createInterfaceTrivial(i);
             dl.before(trivial).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#trivialGameMinimize-' + i).hide();
             $('#trivialGameContainer-' + i)
