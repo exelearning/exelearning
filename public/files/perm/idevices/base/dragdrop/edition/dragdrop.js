@@ -130,203 +130,208 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const path = $exeDevice.idevicePath,
-            html = `
+        const edition = $exeIDevicesEdition.iDevice;
+        const path = this.idevicePath;
+
+        const optionsHtml = `
+            <div id="dragdropEOptions">
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <span>${_('Source')}:</span>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="DAD-Drags form-check-input" checked id="dadEDragMedia" type="radio" name="flctypedrag" value="0"/>
+                        <label for="dadEDragMedia" class="form-check-label">${_('Media')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="DAD-Drags form-check-input" id="dadEDragDefintion" type="radio" name="flctypedrag" value="1"/>
+                        <label for="dadEDragDefintion" class="form-check-label">${_('Text')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Select whether players drag media (images or audio) onto text or text onto media.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <span>${_('Level')}:</span>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="DAD-Type form-check-input" id="dadETypeShow" type="radio" name="flctype" value="0"/>
+                        <label for="dadETypeShow" class="form-check-label">${_('Essential')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="DAD-Type form-check-input" checked id="dadETypeNavigation" type="radio" name="flctype" value="1"/>
+                        <label for="dadETypeNavigation" class="form-check-label">${_('Medium')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                       <input class="DAD-Type form-check-input" id="dadETypeIdentify" type="radio" name="flctype" value="2"/>
+                       <label for="dadETypeIdentify" class="form-check-label">${_('Advanced')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Select the difficulty level. In Advanced level, learners must complete the activity within a time limit.')
+                    )}
+                </div>
+                <div style="display:none" class="mb-3">
+                    <span class="toggle-item" role="switch" aria-checked="true">
+                        <span class="toggle-control">
+                            <input type="checkbox" checked id="dadEShowSolution" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="dadEShowSolution">${_('Show solutions')}.</label>
+                    </span>
+                    <label for="dadETimeShowSolution" class="ms-2 mb-0">${_('Show solution time (seconds)')}:
+                        <input type="number" name="dadETimeShowSolution" id="dadETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:5ch" />
+                    </label>
+                </div>
+                <div id="dadETimeDiv" class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="dadETime" class="mb-0">${_('Time (minutes)')}:</label>
+                    <input type="number" name="dadETime" id="dadETime" value="3" min="0" max="59" class="form-control" style="width:5ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Maximum time allowed to complete the game. 0 for unlimited time.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="dadEShowMinimize" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="dadEShowMinimize">${_('Show minimized.')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Start with the game collapsed. Learners can expand it when they are ready to play.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="dadEPercentajeCards" class="mb-0">%${_('Activities')}:</label>
+                    <input type="number" name="dadEPercentajeCards" id="dadEPercentajeCards" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                    <span id="dadENumeroPercentaje">1/1</span>
+                    ${edition.common.getHelpTooltip(
+                        _('Percentage of available activities included in each game session.')
+                    )}
+                </div>
+                <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="dadEAuthory" class="mb-0">${_('Authorship')}:</label>
+                    <input id="dadEAuthory" type="text" class="form-control" />
+                </div>
+                <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
+                </div>
+            </div>
+        `;
+
+        const activitiesHtml = `
+            <div class="DAD-EPanel" id="dadEPanel">                            
+                <div id="dadEDragDiv">
+                        <div class="DAD-DEOptionsMedia">
+                            <div class="DAD-DEOptionsGame">
+                                <span id="dadETitleWord">${_('Text')}</span>
+                                <div class="DAD-DEInputImage mb-3 gap-2" id="dadEWordDiv">
+                                    <label class="sr-av" for="dadEDefinition">${_('Text')}: </label>
+                                    <input type="text" id="dadEDefinition" maxlength="30" class="form-control"/>
+                                </div>
+                                <span class="DAD-DETitleImage" id="dadETitleImage">${_('Image URL')}</span>
+                                <div class="DAD-DEInputImage mb-3 gap-2" id="dadEInputImage">
+                                    <label class="sr-av" for="dadEURLImage">${_('Image URL')}</label>
+                                    <input type="text" class="exe-file-picker form-control me-0" id="dadEURLImage"/>
+                                    <a href="#" id="dadEPlayImage" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Show')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="DAD-DEButtonImage " />
+                                    </a>
+                                    <a href="#" id="dadEShowMore" class="DAD-ENavigationButton DAD-EShowMore" title="${_('More')}">
+                                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="DAD-EButtonImage " />
+                                    </a>
+                                </div>
+                                <div class="DAD-DEAuthorAlt mb-3" id="dadEAuthorAlt">
+                                    <div class="DAD-DEInputAuthor">
+                                        <label>${_('Authorship')}</label><input id="dadEAuthor" type="text" class="DAD-EAuthor form-control" />
+                                    </div>
+                                    <div class="DAD-DEInputAlt">
+                                        <label>${_('Alt')}</label><input id="dadEAlt" type="text" class="DAD-EAlt form-control" />
+                                    </div>
+                                </div>
+                                <span id="dadETitleAudio">${_('Audio')}</span>
+                                <div class="DAD-DEInputAudio gap-2" id="dadEInputAudio" data-voice-recorder data-voice-input="#dadEURLAudio">
+                                    <label class="sr-av" for="dadEURLAudio">${_('URL')}</label>
+                                    <input type="text" class="exe-file-picker form-control me-0" id="dadEURLAudio"/>
+                                    <a href="#" id="dadEPlayAudio" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Play audio')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="DAD-EButtonImage " />
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="DAD-DEMultiMediaOption">
+                                <div class="DAD-DEMultimedia" id="dadEMultimedia">
+                                    <img class="DAD-DEMedia" src="${path}quextIEImage.png" id="dadEImage" alt="${_('Image')}" />
+                                    <img class="DAD-DEMedia" src="${path}quextIEImage.png" id="dadENoImage" alt="${_('No image')}" />
+                                </div>
+                            </div>
+                        </div>
+                </div>                           
+                <div class="DAD-ENavigationButtons gap-2">
+                    <a href="#" id="dadEAddC" class="DAD-ENavigationButton" title="${_('Add question')}">
+                        <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="DAD-EButtonImage" />
+                    </a>
+                   
+                    <a href="#" id="dadEFirstC" class="DAD-ENavigationButton" title="${_('First question')}">
+                        <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadEPreviousC" class="DAD-ENavigationButton" title="${_('Previous question')}">
+                        <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <label class="sr-av" for="dadENumberCard">${_('Question number:')}:</label>
+                    <input type="text" class="DAD-NumberCard form-control" id="dadENumberCard" value="1"/>
+                    <a href="#" id="dadENextC" class="DAD-ENavigationButton" title="${_('Next question')}">
+                        <img src="${path}quextIENext.png" alt="${_('Next question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadELastC" class="DAD-ENavigationButton" title="${_('Last question')}">
+                        <img src="${path}quextIELast.png" alt="${_('Last question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadEDeleteC" class="DAD-ENavigationButton" title="${_('Delete question')}">
+                        <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadECopyC" class="DAD-ENavigationButton" title="${_('Copy question')}">
+                        <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadECutC" class="DAD-ENavigationButton" title="${_('Cut question')}">
+                        <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadEPasteC" class="DAD-ENavigationButton" title="${_('Paste question')}">
+                        <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="DAD-EButtonImage" />
+                    </a>
+                </div>
+                <div class="DAD-ENumCardDiv" id="dadENumCardsDiv">
+                    <div class="DAD-ENumCardsIcon"><span class="sr-av">${_('activities')}:</span></div> 
+                    <span class="DAD-ENumCards" id="dadENumCards">0</span>
+                </div>
+            </div>
+        `;
+
+        const tabsHtml = edition.tabs.getHtml('dragdropQIdeviceForm', {
+            path,
+            instructions: c_('Drag each item onto the one it matches with'),
+            options: optionsHtml,
+            contents: activitiesHtml,
+            passwords: true,
+            after: true,
+            grading: true,
+            texts: this.ci18n,
+            share: {
+                importQuestions: true,
+                exportQuestions: true,
+                type: 0,
+            },
+            info: {
+                contents: _('Add the text, images and audio for each draggable item and edit them one by one.'),
+            },
+        });
+
+        const html = `
             <div id="dragdropQIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice versa).'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/arrastra.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each item onto the one it matches with'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span>${_('Source')}:</span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" checked id="dadEDragMedia" type="radio" name="flctypedrag" value="0"/>
-                                    <label for="dadEDragMedia" class="form-check-label">${_('Media')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" id="dadEDragDefintion" type="radio" name="flctypedrag" value="1"/>
-                                    <label for="dadEDragDefintion" class="form-check-label">${_('Text')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span>${_('Level')}:</span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="DAD-Type form-check-input"  id="dadETypeShow" type="radio" name="flctype" value="0"/>
-                                    <label for="dadETypeShow" class="form-check-label">${_('Essential')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="DAD-Type form-check-input" checked id="dadETypeNavigation" type="radio" name="flctype" value="1"/>
-                                    <label for="dadETypeNavigation" class="form-check-label">${_('Medium')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                   <input class="DAD-Type form-check-input" id="dadETypeIdentify" type="radio" name="flctype" value="2"/>
-                                   <label for="dadETypeIdentify" class="form-check-label">${_('Advanced')}</label>
-                                </div>
-                            </div>
-                            <div style="display:none" class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" checked id="dadEShowSolution" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="dadEShowSolution">${_('Show solutions')}.</label>
-                                </span>
-                                <label for="dadETimeShowSolution" class="ms-2 mb-0">${_('Show solution time (seconds)')}:
-                                    <input type="number" name="dadETimeShowSolution" id="dadETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:5ch" />
-                                </label>
-                            </div>
-                            <div id="dadETimeDiv" class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="dadETime" class="mb-0">${_('Time (minutes)')}:</label>
-                                <input type="number" name="dadETime" id="dadETime" value="3" min="0" max="59" class="form-control" style="width:5ch" />
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="dadEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="dadEShowMinimize">${_('Show minimized.')}</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="dadEPercentajeCards" class="mb-0">%${_('Activities')}:</label>
-                                <input type="number" name="dadEPercentajeCards" id="dadEPercentajeCards" value="100" min="1" max="100" class="form-control" style="width:6ch" />
-                                <span id="dadENumeroPercentaje">1/1</span>
-                            </div>
-                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="dadEAuthory" class="mb-0">${_('Authorship')}:</label>
-                                <input id="dadEAuthory" type="text" class="form-control" />
-                            </div>
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Activities')}</a></legend>
-                        <div class="DAD-EPanel" id="dadEPanel">                            
-                            <div id="dadEDragDiv">
-                                    <div class="DAD-DEOptionsMedia">
-                                        <div class="DAD-DEOptionsGame">
-                                            <span id="dadETitleWord">${_('Text')}</span>
-                                            <div class="DAD-DEInputImage mb-3 gap-2" id="dadEWordDiv">
-                                                <label class="sr-av" for="dadEDefinition">${_('Text')}: </label>
-                                                <input type="text" id="dadEDefinition" maxlength="30" class="form-control"/>
-                                            </div>
-                                            <span class="DAD-DETitleImage" id="dadETitleImage">${_('Image URL')}</span>
-                                            <div class="DAD-DEInputImage mb-3 gap-2" id="dadEInputImage">
-                                                <label class="sr-av" for="dadEURLImage">${_('Image URL')}</label>
-                                                <input type="text" class="exe-file-picker form-control me-0" id="dadEURLImage"/>
-                                                <a href="#" id="dadEPlayImage" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Show')}">
-                                                    <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="DAD-DEButtonImage " />
-                                                </a>
-                                                <a href="#" id="dadEShowMore" class="DAD-ENavigationButton DAD-EShowMore" title="${_('More')}">
-                                                    <img src="${path}quextEIMore.png" alt="${_('More')}" class="DAD-EButtonImage " />
-                                                </a>
-                                            </div>
-                                            <div class="DAD-DEAuthorAlt mb-3" id="dadEAuthorAlt">
-                                                <div class="DAD-DEInputAuthor">
-                                                    <label>${_('Authorship')}</label><input id="dadEAuthor" type="text" class="DAD-EAuthor form-control" />
-                                                </div>
-                                                <div class="DAD-DEInputAlt">
-                                                    <label>${_('Alt')}</label><input id="dadEAlt" type="text" class="DAD-EAlt form-control" />
-                                                </div>
-                                            </div>
-                                            <span id="dadETitleAudio">${_('Audio')}</span>
-                                            <div class="DAD-DEInputAudio gap-2" id="dadEInputAudio" data-voice-recorder data-voice-input="#dadEURLAudio">
-                                                <label class="sr-av" for="dadEURLAudio">${_('URL')}</label>
-                                                <input type="text" class="exe-file-picker form-control me-0" id="dadEURLAudio"/>
-                                                <a href="#" id="dadEPlayAudio" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Play audio')}">
-                                                    <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="DAD-EButtonImage " />
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div class="DAD-DEMultiMediaOption">
-                                            <div class="DAD-DEMultimedia" id="dadEMultimedia">
-                                                <img class="DAD-DEMedia" src="${path}quextIEImage.png" id="dadEImage" alt="${_('Image')}" />
-                                                <img class="DAD-DEMedia" src="${path}quextIEImage.png" id="dadENoImage" alt="${_('No image')}" />
-                                            </div>
-                                        </div>
-                                    </div>
-                            </div>                           
-                            <div class="DAD-ENavigationButtons gap-2">
-                                <a href="#" id="dadEAddC" class="DAD-ENavigationButton" title="${_('Add question')}">
-                                    <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="DAD-EButtonImage" />
-                                </a>
-                               
-                                <a href="#" id="dadEFirstC" class="DAD-ENavigationButton" title="${_('First question')}">
-                                    <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadEPreviousC" class="DAD-ENavigationButton" title="${_('Previous question')}">
-                                    <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <label class="sr-av" for="dadENumberCard">${_('Question number:')}:</label>
-                                <input type="text" class="DAD-NumberCard form-control" id="dadENumberCard" value="1"/>
-                                <a href="#" id="dadENextC" class="DAD-ENavigationButton" title="${_('Next question')}">
-                                    <img src="${path}quextIENext.png" alt="${_('Next question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadELastC" class="DAD-ENavigationButton" title="${_('Last question')}">
-                                    <img src="${path}quextIELast.png" alt="${_('Last question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadEDeleteC" class="DAD-ENavigationButton" title="${_('Delete question')}">
-                                    <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadECopyC" class="DAD-ENavigationButton" title="${_('Copy question')}">
-                                    <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadECutC" class="DAD-ENavigationButton" title="${_('Cut question')}">
-                                    <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadEPasteC" class="DAD-ENavigationButton" title="${_('Paste question')}">
-                                    <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="DAD-EButtonImage" />
-                                </a>
-                            </div>
-                            <div class="DAD-ENumCardDiv" id="dadENumCardsDiv">
-                                <div class="DAD-ENumCardsIcon"><span class="sr-av">${_('activities')}:</span></div> 
-                                <span class="DAD-ENumCards" id="dadENumCards">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevice.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${tabsHtml}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('dragdropQIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('dragdropQIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
-    },
-
-    getTextFieldset: function (position) {
-        if (
-            typeof position !== 'string' ||
-            (position !== 'after' && position !== 'before')
-        )
-            return '';
-        let tit = _('Content after'),
-            id = 'After';
-        if (position === 'before') {
-            tit = _('Content before');
-            id = 'Before';
-        }
-        return `<fieldset class="exe-fieldset exe-feedback-fieldset exe-fieldset-closed">
-                    <legend>
-                        <a href="#">${tit} (${_('Optional').toLowerCase()})</a>
-                    </legend>
-                    <div>
-                        <p>
-                            <label for="eXeIdeviceText${id}" class="sr-av">${tit}:</label>
-                            <textarea id="eXeIdeviceText${id}" class="exe-html-editor"></textarea>
-                        </p>
-                    </div>
-                </fieldset>`;
     },
 
     clearCard: function () {
@@ -396,7 +401,7 @@ var $exeDevice = {
         } else if ($exeDevice.typeEdit == 1) {
             $('#dadEPasteC').hide();
             $exeDevice.typeEdit = -1;
-            $exeDevices.iDevice.gamification.helpers.arrayMove(
+            ($exeDevices?.iDevice?.gamification?.helpers || $exeIDevicesEdition?.iDevice?.gamification?.helpers).arrayMove(
                 $exeDevice.cardsGame,
                 $exeDevice.numberCutCuestion,
                 $exeDevice.active
@@ -444,7 +449,7 @@ var $exeDevice = {
         let num = Math.max(0, Math.min(i, $exeDevice.cardsGame.length - 1)),
             p = $exeDevice.cardsGame[num];
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $('#dadEURLImage').val(p.url);
         $('#dadEAuthor').val(p.author);
         $('#dadEAlt').val(p.alt);
@@ -454,7 +459,7 @@ var $exeDevice = {
         $('#dadENumCards').text($exeDevice.cardsGame.length);
 
         if (p.audio.length > 3) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio);
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio);
         }
         $exeDevice.showImage(p.url);
     },
@@ -497,8 +502,8 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initCards();
 
-        const root = document.getElementById('dragDropIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        const root = document.getElementById('dragdropQIdeviceForm') || document;
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -626,9 +631,11 @@ var $exeDevice = {
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>').html(originalHTML);
             let json = $('.dragdrop-DataGame', wrapper).text();
-            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
-            const dataGame =
-                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+            const helpers = $exeDevices?.iDevice?.gamification?.helpers || $exeIDevicesEdition?.iDevice?.gamification?.helpers;
+            if (helpers?.sanitizeJSONString) {
+                json = helpers.sanitizeJSONString(json);
+            }
+            const dataGame = helpers?.isJsonString ? helpers.isJsonString(json) : JSON.parse(json),
                 cards = dataGame.cardsGame,
                 $imagesLink = $('.dragdrop-LinkImages', wrapper),
                 $audiosLink = $('.dragdrop-LinkAudios', wrapper),
@@ -693,7 +700,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showCard(0);
@@ -735,7 +742,10 @@ var $exeDevice = {
         let html = '<div class="dragdrop-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `${divContent}<div class="dragdrop-DataGame js-hidden">${json}</div>${linksMedias}`;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter =
+            tinyMCE?.get('eXeIdeviceTextAfter')?.getContent() ||
+            $('#eXeIdeviceTextAfter').val() ||
+            '';
         if (textAfter) {
             html += `<div class="dragdrop-extra-content">${textAfter}</div>`;
         }
@@ -799,27 +809,33 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            instructions =
+                tinyMCE?.get('eXeGameInstructions')?.getContent() ||
+                $('#eXeGameInstructions').val() ||
+                '',
+            textAfter =
+                tinyMCE?.get('eXeIdeviceTextAfter')?.getContent() ||
+                $('#eXeIdeviceTextAfter').val() ||
+                '',
             showMinimize = $('#dadEShowMinimize').is(':checked'),
             showSolution = $('#dadEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
                 clear($('#dadETimeShowSolution').val())
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#dadEPercentajeCards').val())),
             author = $('#dadEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             typeDrag = parseInt($('input[name=flctypedrag]:checked').val()),
             mode = 1,
             time = parseInt($('#dadETime').val()),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -903,7 +919,12 @@ var $exeDevice = {
 
     playSound: function (selectedFile) {
         const lifecycle = this.$lifecycle;
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const media =
+            ($exeIDevicesEdition.iDevice && $exeIDevicesEdition.iDevice.gamification.media) ||
+            ($exeDevices.iDevice && $exeDevices.iDevice.gamification.media);
+        const selectFile = media
+            ? media.extractURLGD(selectedFile)
+            : selectedFile;
         $exeDevice.playerAudio = new Audio(selectFile);
         // The element is never inserted in the form, so closing the editor
         // would otherwise leave it playing and downloading.
@@ -1131,8 +1152,8 @@ var $exeDevice = {
                 .toggleClass('d-none', $(this).val() !== '2')
                 .toggleClass('d-flex', $(this).val() === '2');
         });
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
@@ -1188,7 +1209,11 @@ var $exeDevice = {
                 });
             }
         });
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
+            0,
+            $exeDevice.addCards
+        );
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {
@@ -1221,14 +1246,14 @@ var $exeDevice = {
         }
 
         if (url.length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
         }
     },
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.evaluation =
@@ -1255,11 +1280,11 @@ var $exeDevice = {
             true
         );
         $('#dadETimeDiv').removeClass('d-flex').addClass('d-none');
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -1269,7 +1294,7 @@ var $exeDevice = {
         $exeDevice.cardsGame = game.cardsGame;
         $('#dadENumCards').text($exeDevice.cardsGame.length);
         $('#dadEDragDiv').show();
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1286,7 +1311,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        const share =
+            $exeIDevicesEdition?.iDevice?.gamification?.share?.downloadBlob
+                ? $exeIDevicesEdition.iDevice.gamification.share
+                : ($exeDevicesEdition?.iDevice?.gamification?.share || $exeIDevicesEdition.iDevice.gamification.share);
+        return share.downloadBlob(
             newBlob,
             `${_('words')}-dragdrop.txt`,
             'dragdropQIdeviceForm'
@@ -1308,7 +1337,11 @@ var $exeDevice = {
         if (!dataGame) return false;
 
         const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        const share =
+            $exeIDevicesEdition?.iDevice?.gamification?.share?.downloadBlob
+                ? $exeIDevicesEdition.iDevice.gamification.share
+                : ($exeDevicesEdition?.iDevice?.gamification?.share || $exeIDevicesEdition.iDevice.gamification.share);
+        return share.downloadBlob(
             newBlob,
             `${_('Activity')}-DragDrop.json`,
             'dragdropQIdeviceForm'
@@ -1337,8 +1370,8 @@ var $exeDevice = {
     },
 
     importGame(content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
+        const helpers = $exeDevices?.iDevice?.gamification?.helpers || $exeIDevicesEdition?.iDevice?.gamification?.helpers;
+        const game = helpers?.isJsonString ? helpers.isJsonString(content) : null;
 
         let cards = [];
         if (content && content.includes('\u0000')) {
@@ -1410,10 +1443,10 @@ var $exeDevice = {
             ),
             tAfter = unescape(game.textAfter || '');
 
-        tinyMCE.get('eXeGameInstructions')
+        tinyMCE?.get('eXeGameInstructions')
             ? tinyMCE.get('eXeGameInstructions').setContent(instructions)
             : $('#eXeGameInstructions').val(instructions);
-        tinyMCE.get('eXeIdeviceTextAfter')
+        tinyMCE?.get('eXeIdeviceTextAfter')
             ? tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter)
             : $('#eXeIdeviceTextAfter').val(tAfter);
         this.postImportProcessing();
