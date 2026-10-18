@@ -23,6 +23,7 @@ function loadIdevice(code) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  global.attachEditionLifecycle?.(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -110,10 +111,10 @@ describe('complete iDevice', () => {
     let previousItinerary;
 
     beforeEach(() => {
-      previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+      previousItinerary = $exeIDevicesEdition.iDevice.gamification.itinerary;
       // addEvents wires the whole editor. The itinerary component lives outside
       // this iDevice's source, so it is stubbed rather than exercised here.
-      $exeDevicesEdition.iDevice.gamification.itinerary = {
+      $exeIDevicesEdition.iDevice.gamification.itinerary = {
         addEvents: () => {},
         getTab: () => '',
         init: () => {},
@@ -129,7 +130,7 @@ describe('complete iDevice', () => {
     });
 
     afterEach(() => {
-      $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      $exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
       document.body.innerHTML = '';
     });
 
@@ -203,7 +204,7 @@ describe('default image edition/export dedup', () => {
           // so rendering them again would show each control twice.
           expect(source).not.toContain('passScore.getContents(');
           expect(source).not.toContain('progressBar.getContents(');
-          expect(source).toContain('gamification.scorm.getTab(');
+          expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading:\s*true/);
       });
 
       it('restores the control when the iDevice is reopened', () => {
@@ -236,3 +237,259 @@ describe('complete minimum score text', () => {
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });
+
+describe('complete edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/complete/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const tabNames = () =>
+        [...document.querySelectorAll('#completeQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`completeQEIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        typeGame: 'Completa',
+        instructions: '<p>Instructions</p>',
+        textText: 'eXeLearning is a @@free@@ and open source editor to create @@educational@@ resources.',
+        showMinimize: false,
+        time: 0,
+        type: 0,
+        wordsErrors: '',
+        attempsNumber: 2,
+        showSolution: false,
+        estrictCheck: false,
+        percentajeError: 20,
+        caseSensitive: false,
+        wordsSize: false,
+        wordsLimit: false,
+        hasBack: false,
+        urlBack: '',
+        authorBackImage: '',
+        fontColor: '#000000',
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        feedBack: false,
+        percentajeFB: 100,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+    };
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        global.$exeDevices = {
+            iDevice: {
+                gamification: {
+                    helpers: exportHelpers,
+                    media: {
+                        extractURLGD: (url) => url,
+                    },
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+
+        const filePath = join(__dirname, 'complete.js');
+        const code = readFileSync(filePath, 'utf-8');
+        device = loadIdevice(code);
+
+        document.body.innerHTML = '<div id="completeBody"></div>';
+        device.init(document.getElementById('completeBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        document.body.innerHTML = '';
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+    });
+
+    it('organises the edition form into shared WAI-ARIA tabs', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+        expect(panel('options').querySelector('#cmptEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#cmptEPanel')).not.toBeNull();
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgReply')).not.toBeNull();
+    });
+
+    it('provides accessible help tooltips for option rows', () => {
+        const optionHelps = [...panel('options').querySelectorAll('#cmptEOptions .exe-idevice-help')];
+        expect(optionHelps.length).toBe(11);
+
+        for (const help of optionHelps) {
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.title).toBe('Information');
+            const targetId = help.getAttribute('aria-controls');
+            expect(targetId).toBeTruthy();
+            expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
+        }
+    });
+
+    it('does not toggle switches when clicking help icons inside toggle-items', () => {
+        const minimizeInput = document.getElementById('cmptEShowMinimize');
+        const minimizeHelp = minimizeInput.closest('div').querySelector('.exe-idevice-help');
+        expect(minimizeHelp).not.toBeNull();
+        expect(minimizeInput.checked).toBe(false);
+        minimizeHelp.click();
+        expect(minimizeInput.checked).toBe(false);
+
+        const solutionInput = document.getElementById('cmptEShowSolution');
+        const solutionHelp = solutionInput.closest('div').querySelector('.exe-idevice-help');
+        expect(solutionHelp).not.toBeNull();
+        expect(solutionInput.checked).toBe(false);
+        solutionHelp.click();
+        expect(solutionInput.checked).toBe(false);
+    });
+
+    it('escapes translated help text in the explanation', () => {
+        const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+        const container = document.createElement('div');
+        container.innerHTML = edition().common.getHelpTooltip(text);
+        const button = container.querySelector('button');
+        expect(button.title).toBe('Information');
+        expect(container.querySelector('.help-content').textContent).toBe(text);
+        expect(container.querySelector('once')).toBeNull();
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBeGreaterThanOrEqual(11);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('completeQEIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('instructions').classList.contains('active')).toBe(false);
+    });
+
+    it('restores form values and updates gamification modules on updateFieldGame', () => {
+        device.updateFieldGame(
+            game({
+                showMinimize: true,
+                showSolution: true,
+                wordsSize: true,
+                time: 15,
+                attempsNumber: 4,
+                feedBack: true,
+                percentajeFB: 80,
+            })
+        );
+
+        expect(document.getElementById('cmptEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('cmptEShowSolution').checked).toBe(true);
+        expect(document.getElementById('cmptEWordsSize').checked).toBe(true);
+        expect(document.getElementById('cmptETime').value).toBe('15');
+        expect(document.getElementById('cmptAttemptsNumber').value).toBe('4');
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+    });
+
+    describe('saving and validation', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '<p>Extra info</p>',
+                eXeGameFeedBackEditor: '<p>Feedback message</p>',
+                cmptEText: 'eXeLearning is @@free@@ software.',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves form data with feedback and extra content', () => {
+            device.updateFieldGame(
+                game({
+                    showMinimize: true,
+                    feedBack: true,
+                    percentajeFB: 75,
+                })
+            );
+            edition().gamification.feedback.setText('<p>Feedback message</p>');
+            const data = device.validateData();
+
+            expect(data.showMinimize).toBe(true);
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(75);
+            expect(unescape(data.textFeedBack)).toBe('<p>Feedback message</p>');
+            expect(unescape(data.textAfter)).toBe('<p>Extra info</p>');
+            expect(unescape(data.textText)).toBe('eXeLearning is @@free@@ software.');
+
+            const savedHtml = device.save();
+            expect(savedHtml).toContain('completa-feedback-game');
+            expect(savedHtml).toContain('completa-extra-content');
+            expect(savedHtml).toContain('completa-text-game');
+        });
+    });
+});
+

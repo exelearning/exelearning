@@ -133,167 +133,194 @@ var $exeDevice = {
     },
 
     createForm: function () {
+        const edition = $exeIDevicesEdition.iDevice;
+        const optionsHtml = `
+            <div id="cmptEOptions">
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span>${_('Type')}:</span>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="CMPT-Type form-check-input" checked="checked" id="cmpttype0" type="radio" name="cmpttype" value="0" />
+                        <label class="form-check-label" for="cmpttype0">${_('Complete')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="CMPT-Type form-check-input" id="cmpttype1" type="radio" name="cmpttype" value="1" />
+                        <label class="form-check-label" for="cmpttype1">${_('Drag and drop')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="CMPT-Type form-check-input" id="cmpttype2" type="radio" name="cmpttype" value="2" />
+                        <label class="form-check-label" for="cmpttype2">${_('Select')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Choose whether learners type missing words, drag them from a word bank, or choose them in dropdowns.')
+                    )}
+                </div>
+                <div id="cmptEWordsLimitDiv" class="CMPT-EWordsNo mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="cmptEWordsLimit" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label for="cmptEWordsLimit" class="toggle-label">${_('Limit the words in each dropdown box. Write the possible options, starting with the correct one, separated by |')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Limit dropdown options to specific alternatives separated by | in the text.')
+                    )}
+                </div>
+                <div id="cmptEWordsErrorsDiv" class="CMPT-EWordsNo mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <label for="cmptEWordsErrors" class="mb-0">${_('Wrong words')}: </label>
+                    <input type="text" id="cmptEWordsErrors" class="form-control" style="max-width:300px" />
+                    ${edition.common.getHelpTooltip(
+                        _('Extra incorrect words to add to the word bank or choices.')
+                    )}
+                </div>
+                <div id="cmptAttemptsNumberDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <label for="cmptAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label> 
+                    <input type="number" name="cmptAttemptsNumber" id="cmptAttemptsNumber" value="1" min="1" max="9" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Number of attempts allowed to complete the activity.')
+                    )}
+                </div>
+                <div id="cmptETimeDiv" class="d-flex mb-3 align-items-center gap-2 flex-nowrap">
+                    <label for="cmptETime" class="mb-0">${_('Time (minutes)')}:</label> 
+                    <input type="number" name="cmptETime" id="cmptETime" value="0" min="0" max="59" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Maximum time allowed to complete the game. 0 for unlimited time.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="cmptEShowSolution" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label for="cmptEShowSolution" class="toggle-label">${_('Show solutions')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Allow learners to see the answers when they run out of attempts.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="cmptEEstrictCheck" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label for="cmptEEstrictCheck" class="toggle-label">${_('Allow errors in typed words')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Percentage of spelling errors permitted when typing words.')
+                    )}
+                    <span id="cmptEPercentajeErrorsDiv" class="CMPT-Hide align-items-center gap-2 flex-nowrap">
+                        <label for="cmptEPercentajeError" class="mb-0">${_('Incorrect letters allowed (%)')}:</label>
+                        <input type="number" name="cmptEPercentajeError" id="cmptEPercentajeError" value="20" min="0" max="100" step="5" class="form-control" style="width:8ch" />
+                    </span>
+                </div>
+                <div id="cmptECaseSensitiveDiv" class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="cmptECaseSensitive" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label for="cmptECaseSensitive" class="toggle-label">${_('Case sensitive')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Require typed answers to match uppercase and lowercase characters.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="cmptEWordsSize" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label for="cmptEWordsSize" class="toggle-label">${_('Field width proportional to the words length')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Adjust the text box size to match the length of the missing word.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="cmptEShowMinimize" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label for="cmptEShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('The activity will show collapsed on startup until the user clicks to start.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="cmptBack0" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="cmptBack0">${_('Background')}:</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Custom background image for the activity area.')
+                    )}
+                    <div class="d-flex align-items-center gap-2 flex-nowrap d-none" id="cmptbackground1">
+                        <label for="cmptEURLBack" class="mb-0">${_('URL')}: </label>
+                        <input type="text" class="exe-file-picker CMPT-EURLImage form-control me-0" id="cmptEURLBack"/>
+                        <a href="#" id="cmptEPlayBack" class="CMPT-ENavigationButton CMPTEPlayVideo" title="${_('Show')}">
+                            <img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CMPT-EButtonImage " />
+                        </a>
+                    </div>
+                </div>
+                <div id="cmptbackground" class="CMPT-Back mb-3">
+                    <img class="CMPT-EMedia1" src="" id="cmptEImageBack" alt="${_('Image')}" />
+                    <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath.replace(/\/edition\/?$/, '/export/')}cmptbackground.webp" id="cmptEImageNoBack" alt="${_('No image')}" />
+                </div>
+                <div id="cmptFontColorDiv" class="CMPT-FontColor d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="cmptEFontColor" class="mb-0">${_('Font color')}: </label>
+                    <input type="color" id="cmptEFontColor" class="form-control form-control-color" value="#000000"/>
+                </div>
+                <div id="cmptAuthorBackDiv" class="CMPT-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="cmptAuthorBack" class="mb-0">${_('Authorship')}: </label>
+                    <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
+                </div>
+                <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
+                </div>
+            </div>
+        `;
+        const textPanelHtml = `
+            <div class="CMPT-EPanel" id="cmptEPanel">
+                <p>
+                    <label for="cmptEText" class="sr-av">${_('Text')}:</label>
+                    <textarea id="cmptEText" class="exe-html-editor">${c_("eXeLearning is a **free** and open source editor to create **educational** resources in an **simple and easy** way. It's available for different **operating** systems.").replace(/\*\*/g, '@@')}</textarea>
+                </p>
+            </div>
+        `;
+        const tabsHtml = edition.tabs.getHtml('completeQEIdeviceForm', {
+            path: $exeDevice.idevicePath,
+            instructions: c_('Read the text and complete the missing words.'),
+            options: optionsHtml,
+            contents: textPanelHtml,
+            feedback: true,
+            after: true,
+            grading: true,
+            texts: this.ci18n,
+            share: false,
+            info: {
+                contents: _('Enter the text. Use @@ or ** around the words that learners should complete (e.g. **word**).'),
+            },
+        });
         const html = `
             <div id="completeQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/completa.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Read the text and complete the missing words.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="mb-3 d-flex align-items-center gap-2">
-                                <span>${_('Type')}:</span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="CMPT-Type form-check-input" checked="checked" id="cmpttype0" type="radio" name="cmpttype" value="0" />
-                                    <label class="form-check-label" for="cmpttype0">${_('Complete')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="CMPT-Type form-check-input" id="cmpttype1" type="radio" name="cmpttype" value="1" />
-                                    <label class="form-check-label" for="cmpttype1">${_('Drag and drop')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="CMPT-Type form-check-input" id="cmpttype2" type="radio" name="cmpttype" value="2" />
-                                    <label class="form-check-label" for="cmpttype2">${_('Select')}</label>
-                                </div>
-                            </div>
-                            <div id="cmptEWordsLimitDiv" class="CMPT-EWordsNo mb-3">
-                                <span class="toggle-item">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptEWordsLimit" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptEWordsLimit" class="toggle-label">${_('Limit the words in each dropdown box. Write the possible options, starting with the correct one, separated by |')}</label>
-                                </span>
-                            </div>
-                            <div id="cmptEWordsErrorsDiv" class="CMPT-EWordsNo mb-3 align-items-center gap-2 flex-nowrap">
-                                <label for="cmptEWordsErrors">${_('Wrong words')}: </label><input type="text" id="cmptEWordsErrors" class="form-control">
-                            </div>
-                            <div id="cmptAttemptsNumberDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                                <label for="cmptAttemptsNumber">${_('Number of attempts')}:</label> 
-                                <input type="number" name="cmptAttemptsNumber" id="cmptAttemptsNumber" value="1" min="1" max="9" class="form-control" />
-                            </div>
-                            <div id="cmptETimeDiv" class="d-flex mb-3 align-items-center gap-2 flex-nowrap">
-                                <label for="cmptETime">${_('Time (minutes)')}:</label> 
-                                <input type="number" name="cmptETime" id="cmptETime" value="0" min="0" max="59" class="form-control" />
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptEShowSolution" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptEShowSolution" class="toggle-label">${_('Show solutions')}.</label>
-                                </span>
-                            </div>
-                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                                <span class="toggle-item ">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptEEstrictCheck" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptEEstrictCheck" class="toggle-label">${_('Allow errors in typed words')}.</label>
-                                </span>
-                                <span id="cmptEPercentajeErrorsDiv" class="CMPT-Hide  align-items-center gap-2 flex-nowrap">
-                                    <label for="cmptEPercentajeError">${_('Incorrect letters allowed (%)')}:</label><input type="number" name="cmptEPercentajeError" id="cmptEPercentajeError" value="20" min="0" max="100" step="5" class="form-control" />
-                                </span>
-                            </div>
-                            <div id="cmptECaseSensitiveDiv" class="mb-3">
-                                <span class="toggle-item">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptECaseSensitive" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptECaseSensitive" class="toggle-label">${_('Case sensitive')}.</label>
-                                </span>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item mb-3">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptEWordsSize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptEWordsSize" class="toggle-label">${_('Field width proportional to the words length')}.</label>
-                                </span>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptEShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
-                                </span>
-                            </div>
-                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                                <span class="toggle-item">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptEHasFeedBack" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptEHasFeedBack" class="toggle-label">${_('Feedback')}.</label>
-                                </span>
-                                <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <input type="number" name="cmptEPercentajeFB" id="cmptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" /><label for="cmptEPercentajeFB">${_('% right to see the feedback')}.</label>
-                                </span>
-                            </div>
-                            <div id="cmptEFeedbackP" class="CMPT-EFeedbackP mb-3">
-                                <textarea id="cmptEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptBack0" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="cmptBack0">${_('Background')}:</label>
-                                </span>                            
-                                <div class="d-flex align-items-center gap-2 flex-nowrap d-none" id="cmptbackground1">
-                                    <label for="cmptEURLBack" class="mb-0">${_('URL')}: </label>
-                                    <input type="text" class="exe-file-picker CMPT-EURLImage form-control me-0" id="cmptEURLBack"/>
-                                    <a href="#" id="cmptEPlayBack" class="CMPT-ENavigationButton CMPTEPlayVideo" title="${_('Show')}">
-                                        <img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CMPT-EButtonImage " />
-                                    </a>
-                                </div>
-                             </div>
-                            <div id="cmptbackground" class="CMPT-Back mb-3">
-                                <img class="CMPT-EMedia1" src="" id="cmptEImageBack" alt="${_('Image')}" />
-                                <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath.replace(/\/edition\/?$/, '/export/')}cmptbackground.webp" id="cmptEImageNoBack" alt="${_('No image')}" />
-                            </div>
-                            <div id="cmptFontColorDiv" class="CMPT-FontColor d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="cmptEFontColor" class="mb-0">${_('Font color')}: </label>
-                                <input type="color" id="cmptEFontColor" class="form-control form-control-color" value="#000000"/>
-                            </div>
-                            <div id="cmptAuthorBackDiv" class="CMPT-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="cmptAuthorBack" class="mb-0">${_('Authorship')}: </label>
-                                <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
-                            </div>
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Text')}</a></legend>
-                        <div class="CMPT-EPanel" id="cmptEPanel">
-                            <p>
-                                <label for="cmptEText" class="sr-av">${_('Text')}:</label>
-                                <textarea id="cmptEText" class="exe-html-editor">${c_("eXeLearning is a **free** and open source editor to create **educational** resources in an **simple and easy** way. It's available for different **operating** systems.").replace(/\*\*/g, '@@')}</textarea>
-                            </p>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${tabsHtml}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('completeQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('completeQEIdeviceForm');
+        edition.gamification.scorm.init();
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -328,9 +355,9 @@ var $exeDevice = {
             if (textAfter.length === 1)
                 $('#eXeIdeviceTextAfter').val(textAfter.html());
             if (textFeedBack.length === 1)
-                $('#cmptEFeedBackEditor').val(textFeedBack.html());
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(textFeedBack.html());
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
         }
@@ -356,15 +383,14 @@ var $exeDevice = {
             typeof game.fontColor !== 'undefined' ? game.fontColor : '';
         $exeDevice.id = $exeDevice.getIdeviceID();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
 
         $('#cmptEShowMinimize').prop('checked', game.showMinimize);
         $('#cmptEShowSolution').prop('checked', game.showSolution);
         $('#cmptECaseSensitive').prop('checked', game.caseSensitive);
-        $('#cmptEHasFeedBack').prop('checked', game.feedBack);
-        $('#cmptEPercentajeFB').val(game.percentajeFB);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues(game);
         $('#cmptEPercentajeError').val(game.percentajeError);
         $('#cmptAttemptsNumber').val(game.attempsNumber);
         $('#cmptEEstrictCheck').prop('checked', game.estrictCheck);
@@ -376,11 +402,11 @@ var $exeDevice = {
             'checked',
             true
         );
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -389,21 +415,14 @@ var $exeDevice = {
         $('#cmptAuthorBack').val(game.authorBackImage);
         $('#cmptEFontColor').val(game.fontColor || '#000000');
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
 
-        if (game.feedBack) {
-            $('#cmptEFeedbackP').show();
-        } else {
-            $('#cmptEFeedbackP').hide();
-        }
-
         $('#cmptEWordsLimitDiv').hide();
-        $('#cmptEPercentajeFB').prop('disabled', !game.feedBack);
         $('#cmptEWordsErrorsDiv').hide();
 
         if (game.type === 2) {
@@ -445,26 +464,20 @@ var $exeDevice = {
                 tAfter = game.textAfter || '',
                 textFeedBack = game.textFeedBack || '',
                 textText = game.textText || '';
-            if (tinyMCE.get('cmptEText')) {
+            if (typeof tinyMCE !== 'undefined' && tinyMCE.get('cmptEText')) {
                 tinyMCE.get('cmptEText').setContent(unescape(textText));
             } else {
                 $('#cmptEText').val(unescape(textText));
             }
-            if (tinyMCE.get('eXeGameInstructions')) {
+            if (typeof tinyMCE !== 'undefined' && tinyMCE.get('eXeGameInstructions')) {
                 tinyMCE
                     .get('eXeGameInstructions')
                     .setContent(unescape(instructions));
             } else {
                 $('#eXeGameInstructions').val(unescape(instructions));
             }
-            if (tinyMCE.get('cmptEFeedBackEditor')) {
-                tinyMCE
-                    .get('cmptEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            } else {
-                $('#cmptEFeedBackEditor').val(unescape(textFeedBack));
-            }
-            if (tinyMCE.get('eXeIdeviceTextAfter')) {
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(unescape(textFeedBack));
+            if (typeof tinyMCE !== 'undefined' && tinyMCE.get('eXeIdeviceTextAfter')) {
                 tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
             } else {
                 $('#eXeIdeviceTextAfter').val(unescape(tAfter));
@@ -473,7 +486,6 @@ var $exeDevice = {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         }
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     escapeHtml: function (string) {
@@ -485,17 +497,24 @@ var $exeDevice = {
             .replace(/'/g, '&#39;');
     },
 
+    getEditorContent: function (id) {
+        const editor = typeof tinyMCE !== 'undefined' ? tinyMCE.get(id) : null;
+        if (editor && editor.initialized) return editor.getContent();
+        const el = document.getElementById(id);
+        return el ? el.value : '';
+    },
+
     save: function () {
         const dataGame = $exeDevice.validateData();
 
         if (!dataGame) return false;
 
         const fields = this.ci18n,
-            i18n = fields;
+            i18n = Object.assign({}, fields);
 
         for (const i in fields) {
             const fVal = $('#ci18n_' + i).val();
-            if (fVal !== '') i18n[i] = fVal;
+            if (fVal && fVal !== '') i18n[i] = fVal;
         }
 
         dataGame.msgs = i18n;
@@ -504,7 +523,8 @@ var $exeDevice = {
             divContent = '';
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('cmptEFeedBackEditor').getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
         if (dataGame.instructions !== '') {
             divContent = `<div class="completa-instructions">${dataGame.instructions}</div>`;
         }
@@ -522,14 +542,14 @@ var $exeDevice = {
         html += divContent;
         html += `<div class="completa-DataGame js-hidden">${json}</div>`;
 
-        const textText = tinyMCE.get('cmptEText').getContent();
+        const textText = $exeDevice.getEditorContent('cmptEText');
         if (textText !== '') {
             html += `<div class="completa-text-game js-hidden">${textText}</div>`;
         }
 
         html += img;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = $exeDevice.getEditorContent('eXeIdeviceTextAfter');
         if (textAfter !== '') {
             html += `<div class="completa-extra-content">${textAfter}</div>`;
         }
@@ -549,10 +569,13 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textText = tinyMCE.get('cmptEText').getContent(),
-            textFeedBack = tinyMCE.get('cmptEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const instructions = $exeDevice.getEditorContent('eXeGameInstructions'),
+            textText = $exeDevice.getEditorContent('cmptEText'),
+            feedback =
+                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
+            textFeedBack =
+                $exeIDevicesEdition.iDevice.gamification.feedback.getText(),
+            textAfter = $exeDevice.getEditorContent('eXeIdeviceTextAfter'),
             showMinimize = $('#cmptEShowMinimize').is(':checked'),
             showSolution = $('#cmptEShowSolution').is(':checked'),
             caseSensitive = $('#cmptECaseSensitive').is(':checked'),
@@ -560,18 +583,18 @@ var $exeDevice = {
             wordsSize = $('#cmptEWordsSize').is(':checked'),
             time = parseInt($('#cmptETime').val(), 10),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#cmptEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt($('#cmptEPercentajeFB').val(), 10),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            feedBack = feedback.feedBack,
+            percentajeFB = feedback.percentajeFB,
             percentajeError = parseInt($('#cmptEPercentajeError').val(), 10),
             type = parseInt($('input[name=cmpttype]:checked').val(), 10),
             wordsErrors = $('#cmptEWordsErrors').val(),
             wordsLimit = $('#cmptEWordsLimit').is(':checked'),
             attempsNumber = parseInt($('#cmptAttemptsNumber').val(), 10),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             hasBack = $('#cmptBack0').is(':checked'),
             urlBack = $('#cmptEURLBack').val().trim(),
             authorBackImage = $('#cmptAuthorBack').val(),
@@ -596,7 +619,7 @@ var $exeDevice = {
             return false;
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             typeGame: 'Completa',
             instructions: instructions,
@@ -637,22 +660,17 @@ var $exeDevice = {
     addEvents: function () {
         const $form = $('#completeQEIdeviceForm');
 
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+
         // Toggle genérico: sincroniza aria-checked y muestra/oculta el target si existe
         $form.on('change', '.toggle-input', function () {
             const checked = $(this).is(':checked');
             $(this).attr('aria-checked', checked);
             const target = $(this).data('target');
             if (target) $(target).toggle(checked);
-        });
-
-        $('#cmptEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#cmptEFeedbackP').show();
-            } else {
-                $('#cmptEFeedbackP').hide();
-            }
-            $('#cmptEPercentajeFB').prop('disabled', !marcado);
         });
 
         $('#completeQEIdeviceForm').on('click', 'input.CMPT-Type', function () {
@@ -722,9 +740,6 @@ var $exeDevice = {
                 this.value = val;
             });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
-
         $('#cmptBack0').on('change', function () {
             if ($(this).is(':checked')) {
                 $(
@@ -769,8 +784,6 @@ var $exeDevice = {
             }
             $exeDevice.showImageBack(hasBack, selectedFile);
         });
-
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         $form.find('.toggle-input').each(function () {
             const checked = $(this).is(':checked');
