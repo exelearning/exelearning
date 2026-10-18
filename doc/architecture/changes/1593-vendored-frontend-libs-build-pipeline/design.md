@@ -169,7 +169,7 @@ follows (details in ADR-1593-01):
 | `image-gallery/export/simple-lightbox.min.css` | Upstream CSS plus a local `/* SDWEB */` block. | Kept tracked with the JS above. |
 | `public/libs/simplelightbox/dist/*` | Upstream 2.10.1, not loaded by anything. | Deleted; `simplelightbox` dropped from `package.json`. |
 | `html2canvas.js` ×3 | Same version (1.4.1) but a Prettier-reformatted non-minified build; two copies added `/* eslint-disable */`. No functional change. | Replaced by npm's `html2canvas.min.js`. |
-| `libs/abcjs/abcjs-audio.css` | Upstream 6.0.4 file, reformatted, plus an eXe block of presentation rules. | Kept tracked; the upstream part was aligned with abcjs 6.7.0. `abcjs-basic-min.js` is generated. |
+| `libs/abcjs/abcjs-audio.css` | Upstream 6.0.4 file, reformatted, plus an eXe block of presentation rules. | Kept tracked; the upstream part was aligned with abcjs 6.7.1 (stylesheet unchanged from 6.7.0). `abcjs-basic-min.js` is generated. |
 | Bootstrap, jQuery UI, interact.js, DOMPurify, pdf.js, mermaid, abcjs JS | Version bumps; no local markers. | Generated from npm. |
 
 ### Yjs shim generator — `scripts/build-yjs-shims.js` (see ADR-1593-02)

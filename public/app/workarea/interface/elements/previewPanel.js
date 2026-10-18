@@ -457,7 +457,7 @@ export default class PreviewPanelManager {
                             'try{' +
                             'var m=await import("' + bp + 'libs/pdfjs/pdf.min.js");' +
                             'm.GlobalWorkerOptions.workerSrc="' + bp + 'libs/pdfjs/pdf.worker.min.js";' +
-                            'var pdf=await m.getDocument("' + pdfBlobUrl + '").promise;' +
+                            'var pdf=await m.getDocument({ url: "' + pdfBlobUrl + '" }).promise;' +
                             'document.getElementById("loading").style.display="none";' +
                             'var tb=document.getElementById("tb");tb.style.display="flex";' +
                             'document.getElementById("pc").textContent=pdf.numPages;' +
@@ -980,7 +980,7 @@ export default class PreviewPanelManager {
         loading.style.cssText = 'color:#ccc;font-family:system-ui;text-align:center;padding:1rem';
         pages.appendChild(loading);
         el.parentNode.replaceChild(container, el);
-        pdfjsLib.getDocument(src).promise.then(function(pdf) {
+        pdfjsLib.getDocument({ url: src }).promise.then(function(pdf) {
             loading.remove();
             tb.style.display = 'flex';
             tb.querySelector('.epc').textContent = pdf.numPages;
