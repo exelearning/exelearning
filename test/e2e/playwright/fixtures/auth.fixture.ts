@@ -1,4 +1,4 @@
-import { test as base, expect, Page, TestInfo } from '@playwright/test';
+import { test as base, expect, Browser, Page, TestInfo } from '@playwright/test';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
@@ -50,15 +50,58 @@ export interface AuthFixtures {
 interface AuthWorkerFixtures {
     /** Worker-scoped storage state path with authenticated guest session (dynamic mode only) */
     guestStorageStatePath: string | null;
+    /**
+     * Browser for this worker. Firefox is relaunched after a fixed number of
+     * contexts: a process that has been opening pages for a whole shard stops
+     * answering newPage, and the test timeout then closes it.
+     */
+    suiteBrowser: () => Promise<Browser>;
 }
 
+/** Contexts opened on one Firefox process before it is replaced. */
+const FIREFOX_CONTEXTS_PER_BROWSER = 20;
+
 export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
+    /**
+     * One browser per worker. launch() with no arguments picks up the launch
+     * options Playwright already installed for the worker. Firefox is replaced
+     * after FIREFOX_CONTEXTS_PER_BROWSER contexts so newPage is not sent to a
+     * process that has stopped answering. timeout 0 matches Playwright's own
+     * browser fixture: launching is not part of the test clock.
+     */
+    suiteBrowser: [
+        async ({ playwright }, use, workerInfo) => {
+            const browserName = workerInfo.project.use.browserName ?? 'chromium';
+            const browserType = playwright[browserName];
+            if (!browserType) {
+                throw new Error(`No browser type for ${browserName}`);
+            }
+            let current = await browserType.launch();
+            let opened = 0;
+            const recycle = workerInfo.project.name === 'firefox';
+            try {
+                await use(async () => {
+                    if (recycle && opened >= FIREFOX_CONTEXTS_PER_BROWSER) {
+                        await current.close().catch(() => {});
+                        current = await browserType.launch();
+                        opened = 0;
+                    }
+                    opened += 1;
+                    return current;
+                });
+            } finally {
+                await current?.close().catch(() => {});
+            }
+        },
+        { scope: 'worker', timeout: 0 },
+    ],
+
     /**
      * Build guest-authenticated storage state once per worker.
      * This avoids repeating /login/guest for every single test.
      */
     guestStorageStatePath: [
-        async ({ browser }, use, workerInfo) => {
+        async ({ suiteBrowser }, use, workerInfo) => {
             if (workerInfo.project.name.includes('static')) {
                 await use(null);
                 return;
@@ -73,7 +116,7 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
                 `pw-guest-state-${process.pid}-${workerInfo.parallelIndex}-${safeProjectName}.json`,
             );
 
-            const authContext = await browser.newContext({ baseURL });
+            const authContext = await (await suiteBrowser()).newContext({ baseURL });
             const authPage = await authContext.newPage();
             const loginResponse = await authPage.request.post('/login/guest', {
                 form: { guest_login_nonce: '' },
@@ -97,19 +140,24 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
     /**
      * Override context so all tests in dynamic mode start already authenticated.
      * Keeps normal per-test isolation while skipping repeated login calls.
+     * Own clock so a Firefox relaunch does not consume the 45s test timeout.
+     * newPage still runs on the test clock.
      */
-    context: async ({ browser, contextOptions, guestStorageStatePath }, use, testInfo) => {
-        const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
-        const context = await browser.newContext({
-            ...contextOptions,
-            baseURL,
-            storageState: isStaticProject(testInfo)
-                ? contextOptions.storageState
-                : (guestStorageStatePath ?? undefined),
-        });
-        await use(context);
-        await context.close();
-    },
+    context: [
+        async ({ suiteBrowser, contextOptions, guestStorageStatePath }, use, testInfo) => {
+            const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
+            const context = await (await suiteBrowser()).newContext({
+                ...contextOptions,
+                baseURL,
+                storageState: isStaticProject(testInfo)
+                    ? contextOptions.storageState
+                    : (guestStorageStatePath ?? undefined),
+            });
+            await use(context);
+            await context.close();
+        },
+        { timeout: 30_000 },
+    ],
 
     /**
      * Provides a page with guest login already performed

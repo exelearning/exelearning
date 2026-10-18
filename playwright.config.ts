@@ -134,7 +134,9 @@ export default defineConfig({
     // `context.newPage()` on ubuntu-latest stayed pending until a 180s test timeout
     // closed the browser (run 39160048282). That runner has 4 cores, so '100%' is 4
     // editors at once. The Firefox job in `.github/workflows/e2e.yml` passes
-    // `--workers=2`. Chromium and static stay at 100%.
+    // `--workers=2`. Chromium and static stay at 100%. The auth fixture also
+    // relaunches Firefox after 20 contexts: the hang survives a longer timeout
+    // and a second worker, and it happens inside newPage, before the test body.
     workers: process.env.CI ? '100%' : Math.min(4, Math.max(1, Math.floor(os.cpus().length * 0.8))),
 
     /* Reporter to use */
