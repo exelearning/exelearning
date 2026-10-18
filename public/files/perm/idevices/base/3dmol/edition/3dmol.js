@@ -421,7 +421,7 @@ var $exeDevice = {
             $(this).val(p.options[j] || '');
         });
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $(
             "input.DMOLE-Number[name='slcnumber'][value='" +
@@ -1287,300 +1287,303 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="dmoleOptions">
+                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3" id="dmoleActivityMode">
+                        <span>${_('Mode')}:</span>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input" type="radio" name="slcactivitymode" id="dmoleModeTest" value="test" checked />
+                            <label class="form-check-label" for="dmoleModeTest">${_('Test')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input" type="radio" name="slcactivitymode" id="dmoleModeShow" value="show" />
+                            <label class="form-check-label" for="dmoleModeShow">${_('Presentation')}</label>
+                        </div>
+                        ${edition.common.getHelpTooltip(_('Choose whether learners take a quiz on the 3D model or view it as an interactive presentation.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item" role="switch" aria-checked="false" data-target="dmoleShowMinimize">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="dmoleShowMinimize" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="dmoleShowMinimize">${_('Show minimized.')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Start with the activity collapsed. Learners can expand it when they are ready.'))}
+                    </div>  
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="dmoleAnswersRamdonDiv">
+                        <span class="toggle-item" role="switch" aria-checked="false" data-target="dmoleAnswersRamdon">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="dmoleAnswersRamdon" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="dmoleAnswersRamdon">${_('Random options')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Shuffle the answer choices each time the activity is loaded.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="dmoleQuestionsRandomDiv">
+                        <span class="toggle-item" role="switch" aria-checked="false">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="dmoleQuestionsRandom" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="dmoleQuestionsRandom">${_('Random questions')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Shuffle questions so they appear in random order for each learner.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="dmoleShowSolutionDiv">
+                        <span class="toggle-item toggle-related" role="switch" aria-checked="true" data-target="dmoleShowSolution">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="dmoleShowSolution" checked />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="dmoleShowSolution">${_('Show solutions')}.</label>
+                        </span>
+                        <div class="mb-0 d-flex align-items-center gap-2 flex-nowrap">
+                            <input type="number" name="dmoleTimeShowSolution" id="dmoleTimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:6ch" />
+                            <label for="dmoleTimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}</label>
+                        </div>
+                        ${edition.common.getHelpTooltip([
+                            `${_('Show solutions')}: ${_('Display the correct answer when an incorrect answer is chosen.')}`,
+                            `${_('Show solution time (seconds)')}: ${_('Number of seconds the solution remains visible before moving to the next question.')}`,
+                        ].join('\n\n'))}
+                    </div>                            
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="dmoleInputPercentajeQuestions">
+                        <label for="dmolePercentajeQuestionsValue" class="mb-0">%${_('Questions')}:</label>
+                        <input type="number" name="dmolePercentajeQuestionsValue" id="dmolePercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                        <span id="dmoleNumeroPercentaje" class="ms-2">1/1</span>
+                        ${edition.common.getHelpTooltip(_('Percentage of questions presented in each game session. The counter shows the actual number of questions that will be included.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-target="dmoleModeBoard" id="dmoleModeBoardDiv">
+                        <span class="toggle-item" role="switch" aria-checked="false">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="dmoleModeBoard" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="dmoleModeBoard">${_('Digital whiteboard mode')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Adapt the interface controls for touchscreens and digital whiteboards.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="dmoleGlobalTimeDiv">
+                        <label for="dmoleGlobalTimes" class="mb-0">${_('Time per question')}:</label>
+                        <select id="dmoleGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                            <option value="0" selected>15s</option>
+                            <option value="1">30s</option>
+                            <option value="2">1m</option>
+                            <option value="3">3m</option>
+                            <option value="4">5m</option>
+                            <option value="5">10m</option>
+                        </select>
+                        <button id="dmoleGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
+                        ${edition.common.getHelpTooltip(_('Set a default time limit for all questions. Click Accept to apply it to all existing questions.'))}
+                    </div>
+                </div>`,
+            questions = `
+                <div class="DMOLE-EPanel" id="dmolePanel">
+                    <div class="DMOLE-EOptionsMedia d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <div class="DMOLE-EOptionsGame">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="dmoleTypeDiv">
+                                <span>${_('Type')}:</span>
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-TypeSelect form-check-input" checked id="dmoleTypeChoose" type="radio" name="slctypeselect" value="0"/>
+                                        <label class="form-check-label" for="dmoleTypeChoose">${_('Select')}</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-TypeSelect form-check-input" id="dmoleTypeOrders" type="radio" name="slctypeselect" value="1"/>
+                                        <label class="form-check-label" for="dmoleTypeOrders">${_('Order')}</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-TypeSelect form-check-input" id="dmoleTypeWord" type="radio" name="slctypeselect" value="2"/>
+                                        <label class="form-check-label" for="dmoleTypeWord">${_('Word')}</label>
+                                    </div>
+                                </span>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="dmoleInputNumbers">
+                                <span>${_('Options Number')}:</span>
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Number form-check-input" id="numQ2" type="radio" name="slcnumber" value="2" />
+                                        <label class="form-check-label" for="numQ2">2</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Number form-check-input" id="numQ3" type="radio" name="slcnumber" value="3" />
+                                        <label class="form-check-label" for="numQ3">3</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Number form-check-input" id="numQ4" type="radio" name="slcnumber" value="4" checked="checked" />
+                                        <label class="form-check-label" for="numQ4">4</label>
+                                    </div>
+                                 </span>
+                            </div>
+                            <div id="dmolePercentageSpan" class="d-none flex-wrap align-items-center gap-2 mb-3">
+                                <span >${_('Percentage of letters to show (%)')}:</span>
+                                <span class="DMOLE-EPercentage" id="dmolePercentage">
+                                    <input type="number" class="form-control form-control-sm"  name="dmolePercentageShow" id="dmolePercentageShow" value="35" min="0" max="100" step="5" />
+                                </span>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="dmoleTimeDiv">
+                                <span>${_('Time per question')}:</span>
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Times form-check-input" checked="checked" id="q15s" type="radio" name="slctime" value="0" />
+                                        <label class="form-check-label" for="q15s">15s</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Times form-check-input" id="q30s" type="radio" name="slctime" value="1" />
+                                        <label class="form-check-label" for="q30s">30s</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Times form-check-input" id="q1m" type="radio" name="slctime" value="2" />
+                                        <label class="form-check-label" for="q1m">1m</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Times form-check-input" id="q3m" type="radio" name="slctime" value="3" />
+                                        <label class="form-check-label" for="q3m">3m</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Times form-check-input" id="q5m" type="radio" name="slctime" value="4" />
+                                        <label class="form-check-label" for="q5m">5m</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="DMOLE-Times form-check-input" id="q10m" type="radio" name="slctime" value="5" />
+                                        <label class="form-check-label" for="q10m">10m</label>
+                                    </div>
+                                </span>
+                            </div>
+                            <div id="dmoleScoreQuestionDiv" class="DMOLE-ScoreQuestionDiv align-items-center gap-2 mb-3 d-none">
+                                <label for="dmoleScoreQuestion">${_('Score')}:</label>
+                                <input type="number" name="dmoleScoreQuestion" id="dmoleScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control"/>
+                            </div>                                    
+                        </div>
+                        <div class="DMOLE-EMultiMediaOption ">
+                            <div class="DMOLE-EMultimedia" id="dmoleMultimedia">
+                                <div id="dmoleModelPreview" class="DMOLE-EModelPreview" tabindex="0" role="img" aria-label="${_('3D model preview')}"></div>
+                                <span id="dmoleModelDesc" class="sr-av"></span>
+                                <img class="DMOLE-EMedia" src="${path}quextI3DBack.png" id="dmoleNoModel" alt="${_('No 3D model')}" />
+                            </div>
+                            <div class="DMOLE-ModelStyleControl" id="dmoleModelStyleControl">
+                                <label for="dmoleModelStyle" class="DMOLE-ModelStyleLabel">${_('Molecule style')}:</label>
+                                <div class="DMOLE-ModelStyleInputGroup">
+                                    <select id="dmoleModelStyle" class="DMOLE-ModelStyleSelect form-select form-select-sm">
+                                        ${$exeDevice.createModelStyleOptions($exeDevice.msgs, $exeDevice.modelStyle)}
+                                    </select>
+                                    <button type="button" id="dmoleModelSizeDown" class="DMOLE-ModelSizeBtn" title="${_('Smaller')}">-</button>
+                                    <button type="button" id="dmoleModelSizeUp" class="DMOLE-ModelSizeBtn" title="${_('Bigger')}">+</button>
+                                    <button type="button" id="dmoleModelResetCamera" class="d-none DMOLE-ModelSizeBtn" title="${_('Reset camera view')}">↺</button>
+                                    <button type="button" id="dmoleModelSaveView" class="DMOLE-ModelSizeBtn" title="${_('Save initial view')}">◎</button>
+                                    <button type="button" id="dmoleModelToggleBg" class="DMOLE-ModelSizeBtn DMOLE-ToggleBgBtn" title="${_('Light background')} — ${_('Click to switch to dark')}" aria-pressed="false">☀</button>
+                                    <button type="button" id="dmoleShowAtomLegend" class="DMOLE-ModelSizeBtn DMOLE-ToggleBgBtn" title="${_('Atom legend hidden')} — ${_('Click to show')}" aria-pressed="false">⚛</button>
+                                    <button type="button" id="dmoleModelDownloadPng" class="DMOLE-ModelSizeBtn" title="${_('Download image')}">⬇</button>
+                                </div>
+                            </div>
+                            <div id="dmoleModelFileGroup">
+                                <span id="dmoleTitleModel">${_('3D model file')}:</span>
+                                <div class="DMOLE-EModelInput d-flex flex-nowrap align-items-start gap-2 mb-3">
+                                    <input type="text" id="dmoleModelFile" class="DMOLE-EModelFileInput file-picker exe-file-picker form-control me-0" data-filemanager-accept="molecule" />
+                                    <a href="#" id="dmolePreviewModel" class="DMOLE-ENavigationButton" title="${_('Preview model')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Preview')}" class="DMOLE-ENavigationButton" />
+                                    </a>
+                                    <button type="button" id="dmoleResetCamera" class="DMOLE-EResetCamera btn btn-outline-secondary btn-sm" title="${_('Reset camera view')}">↺<span class="sr-av"> ${_('Reset camera view')}</span></button>
+                                </div>
+                                <div class="DMOLE-EAuthorAlt d-flex align-items-center flex-nowrap gap-2 mb-3" id="dmoleAuthorAlt">
+                                    <div class="w-50" id="dmoleInputAuthor">
+                                        <label for="dmoleModelAuthor" class="form-label mb-1">${_('Authorship')}</label>
+                                        <input id="dmoleModelAuthor" type="text" class="form-control w-100" />
+                                    </div>
+                                    <div class="w-50" id="dmoleInputAlt">
+                                        <label for="dmoleModelAlt" class="form-label mb-1">${_('Alternative text')}</label>
+                                        <input id="dmoleModelAlt" type="text" class="form-control w-100" />
+                                    </div>
+                                </div>
+                                <div id="dmoleModelFileName" class="small text-muted mb-2"></div>
+                                <p id="dmoleModelSizeWarning" class="d-none small text-warning mb-1"></p>
+                                <textarea id="dmoleModelData" class="d-none"></textarea>
+                                <input type="hidden" id="dmoleModelFormat" value="" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="DMOLE-EContents" id="dmoleContents">
+                        <div id="dmoleSolitionOptions" class="DMOLE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="dmoleSolutionSelect">A</span></span></div>
+                        <div class="DMOLE-EQuestionDiv" id="dmoleQuestionDiv">
+                            <label class="sr-av" for="dmoleQuestion">${_('Question')}:</label>
+                            <input type="text" class="DMOLE-EQuestion form-control" id="dmoleQuestion" value="${c_('What is the central atom in the model?')}">
+                        </div>
+                        <div class="DMOLE-EQuestionDiv d-none" id="dmoleDescriptionDiv">
+                            <label for="dmoleDescription">${_('Description')}:</label>
+                            <input type="text" class="DMOLE-EQuestion form-control" id="dmoleDescription" value="">
+                        </div>
+                        <div class="DMOLE-EAnswers" id="dmoleAnswers">
+                            <div class="DMOLE-EOptionDiv gap-2">
+                                <label class="sr-av" for="dmoleSolution0">${_('Solution')} A:</label>
+                                <input type="checkbox" class="DMOLE-ESolution form-check-input me-0" name="slcsolution" id="dmoleSolution0" value="A" checked />
+                                <label for="dmoleOption0">A</label>
+                                <input type="text" class="DMOLE-EOption0 DMOLE-EAnwersOptions form-control" id="dmoleOption0" value="${c_('Carbon')}">
+                            </div>
+                            <div class="DMOLE-EOptionDiv gap-2">
+                                <label class="sr-av" for="dmoleSolution1">${_('Solution')} B:</label>
+                                <input type="checkbox" class="DMOLE-ESolution form-check-input me-0" name="slcsolution" id="dmoleSolution1" value="B" />
+                                <label for="dmoleOption1">B</label>
+                                <input type="text" class="DMOLE-EOption1 DMOLE-EAnwersOptions form-control" id="dmoleOption1" value="${c_('Oxygen')}">
+                            </div>
+                            <div class="DMOLE-EOptionDiv gap-2">
+                                <label class="sr-av" for="dmoleSolution2">${_('Solution')} C:</label>
+                                <input type="checkbox" class="DMOLE-ESolution form-check-input me-0" name="slcsolution" id="dmoleSolution2" value="C" />
+                                <label for="dmoleOption2">C</label>
+                                <input type="text" class="DMOLE-EOption2 DMOLE-EAnwersOptions form-control" id="dmoleOption2" value="${c_('Hydrogen')}">
+                            </div>
+                            <div class="DMOLE-EOptionDiv gap-2">
+                                <label class="sr-av" for="dmoleSolution3">${_('Solution')} D:</label>
+                                <input type="checkbox" class="DMOLE-ESolution form-check-input me-0" name="slcsolution" id="dmoleSolution3" value="D" />
+                                <label for="dmoleOption3">D</label>
+                                <input type="text" class="DMOLE-EOption3 DMOLE-EAnwersOptions form-control" id="dmoleOption3" value="${c_('Nitrogen')}">
+                            </div>
+                        </div>
+                        <div class="DMOLE-EWordDiv DMOLE-DP" id="dmoleWordDiv">
+                            <div class="DMOLE-ESolutionWord"><label for="dmoleSolutionWord">${_('Word/Phrase')}:</label><input type="text" id="dmoleSolutionWord" class="form-control"/></div>
+                            <div class="DMOLE-ESolutionWord"><label for="dmoleDefinitionWord">${_('Definition')}:</label><input type="text" id="dmoleDefinitionWord" class="form-control"/></div>
+                        </div>
+                    </div>                           
+                    <div class="DMOLE-ENavigationButtons gap-2">
+                        <a href="#" id="dmoleAdd" class="DMOLE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="DMOLE-ENavigationButton" /></a>
+                        <a href="#" id="dmoleFirst" class="DMOLE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="DMOLE-ENavigationButton" /></a>
+                        <a href="#" id="dmolePrevious" class="DMOLE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="DMOLE-ENavigationButton" /></a>
+                        <label class="sr-av" for="dmoleNumberQuestion">${_('Question number:')}</label><input type="text" class="DMOLE-NumberQuestion form-control" id="dmoleNumberQuestion" value="1"/>
+                        <a href="#" id="dmoleNext" class="DMOLE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="DMOLE-ENavigationButton" /></a>
+                        <a href="#" id="dmoleLast" class="DMOLE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="DMOLE-ENavigationButton" /></a>
+                        <a href="#" id="dmoleDelete" class="DMOLE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="DMOLE-ENavigationButton" /></a>
+                        <a href="#" id="dmoleCopy" class="DMOLE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="DMOLE-ENavigationButton" /></a>
+                        <a href="#" id="dmoleCut" class="DMOLE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="DMOLE-ENavigationButton" /></a>
+                        <a href="#" id="dmolePaste" class="DMOLE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="DMOLE-ENavigationButton" /></a>
+                    </div>
+                    <div class="DMOLE-ENumQuestionDiv" id="dmoleNumQuestionDiv">
+                        <div class="DMOLE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="DMOLE-ENumQuestions" id="dmoleNumQuestions">0</span>
+                    </div>
+                </div>`,
             html = `
-            <div id="dMoleIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create quiz activities based on interactive 3D models.')}
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the 3D model and answer the questions.') + ' ' + c_('You can rotate the 3D model by clicking on it and dragging.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div id="dmoleOptions">
-                            <div class="d-flex align-items-center gap-3 mb-3" id="dmoleActivityMode">
-                                <span>${_('Mode')}:</span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" type="radio" name="slcactivitymode" id="dmoleModeTest" value="test" checked />
-                                    <label class="form-check-label" for="dmoleModeTest">${_('Test')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" type="radio" name="slcactivitymode" id="dmoleModeShow" value="show" />
-                                    <label class="form-check-label" for="dmoleModeShow">${_('Presentation')}</label>
-                                </div>
-                            </div>
-                            <div class="toggle-item mb-3" data-target="dmoleShowMinimize">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="dmoleShowMinimize" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="dmoleShowMinimize">${_('Show minimized.')} </label>
-                            </div>  
-   
-                            <div class="toggle-item mb-3" data-target="dmoleAnswersRamdon" id="dmoleAnswersRamdonDiv">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="dmoleAnswersRamdon" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="dmoleAnswersRamdon">${_('Random options')}</label>
-                            </div>
-                            <div class="toggle-item mb-3" id="dmoleQuestionsRandomDiv">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="dmoleQuestionsRandom" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="dmoleQuestionsRandom">${_('Random questions')}</label>
-                            </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3" id="dmoleShowSolutionDiv">
-                                <div class="toggle-item toggle-related" data-target="dmoleShowSolution">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="dmoleShowSolution" checked />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="dmoleShowSolution">${_('Show solutions')}.</label>
-                                </div>
-                                <div class="mb-0 d-flex align-items-center gap-2">
-                                    <input type="number" name="dmoleTimeShowSolution" id="dmoleTimeShowSolution" value="3" min="1" max="9" class="form-control" />
-                                    <label for="dmoleTimeShowSolution">${_('Show solution time (seconds)')}</label>
-                                </div>
-                            </div>                            
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item toggle-related" data-target="dmoleHasFeedBack">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="dmoleHasFeedBack" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="dmoleHasFeedBack">${_('Feedback')}.</label>
-                                </div>
-                                <div class="mb-0 d-flex align-items-center gap-2">
-                                    <input type="number" name="dmolePercentajeFB" id="dmolePercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
-                                    <label for="dmolePercentajeFB">${_('&percnt; right to see the feedback')}</label>
-                                </div>
-                            </div>
-                            <div id="dmoleFeedbackP" class="DMOLE-EFeedbackP mb-3">
-                                <textarea id="dmoleFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2" id="dmoleInputPercentajeQuestions">
-                                <label for="dmolePercentajeQuestionsValue">%${_('Questions')}:</label>
-                                <input type="number" name="dmolePercentajeQuestionsValue" id="dmolePercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" />
-                                <span id="dmoleNumeroPercentaje" class="ms-2">1/1</span>
-                            </div>
-                            <div class="toggle-item mb-3" data-target="dmoleModeBoard" id="dmoleModeBoardDiv">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="dmoleModeBoard" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="dmoleModeBoard">${_('Digital whiteboard mode')}</label>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 mb-3" id="dmoleGlobalTimeDiv">
-                                <label for="dmoleGlobalTimes">${_('Time per question')}:</label>
-                                <select id="dmoleGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
-                                    <option value="0" selected>15s</option>
-                                    <option value="1">30s</option>
-                                    <option value="2">1m</option>
-                                    <option value="3">3m</option>
-                                    <option value="4">5m</option>
-                                    <option value="5">10m</option>
-                                </select>
-                                <button id="dmoleGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Questions')}</a></legend>
-                        <div class="DMOLE-EPanel" id="dmolePanel">
-                            <div class="DMOLE-EOptionsMedia d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                <div class="DMOLE-EOptionsGame">
-                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="dmoleTypeDiv">
-                                        <span>${_('Type')}:</span>
-                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-TypeSelect form-check-input" checked id="dmoleTypeChoose" type="radio" name="slctypeselect" value="0"/>
-                                                <label class="form-check-label" for="dmoleTypeChoose">${_('Select')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-TypeSelect form-check-input" id="dmoleTypeOrders" type="radio" name="slctypeselect" value="1"/>
-                                                <label class="form-check-label" for="dmoleTypeOrders">${_('Order')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-TypeSelect form-check-input" id="dmoleTypeWord" type="radio" name="slctypeselect" value="2"/>
-                                                <label class="form-check-label" for="dmoleTypeWord">${_('Word')}</label>
-                                            </div>
-                                        </span>
-                                    </div>
-                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="dmoleInputNumbers">
-                                        <span>${_('Options Number')}:</span>
-                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Number form-check-input" id="numQ2" type="radio" name="slcnumber" value="2" />
-                                                <label class="form-check-label" for="numQ2">2</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Number form-check-input" id="numQ3" type="radio" name="slcnumber" value="3" />
-                                                <label class="form-check-label" for="numQ3">3</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Number form-check-input" id="numQ4" type="radio" name="slcnumber" value="4" checked="checked" />
-                                                <label class="form-check-label" for="numQ4">4</label>
-                                            </div>
-                                         </span>
-                                    </div>
-                                    <div id="dmolePercentageSpan" class="d-none flex-wrap align-items-center gap-2 mb-3">
-                                        <span >${_('Percentage of letters to show (%)')}:</span>
-                                        <span class="DMOLE-EPercentage" id="dmolePercentage">
-                                            <input type="number" class="form-control form-control-sm"  name="dmolePercentageShow" id="dmolePercentageShow" value="35" min="0" max="100" step="5" />
-                                        </span>
-                                    </div>
-                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="dmoleTimeDiv">
-                                        <span>${_('Time per question')}:</span>
-                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Times form-check-input" checked="checked" id="q15s" type="radio" name="slctime" value="0" />
-                                                <label class="form-check-label" for="q15s">15s</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Times form-check-input" id="q30s" type="radio" name="slctime" value="1" />
-                                                <label class="form-check-label" for="q30s">30s</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Times form-check-input" id="q1m" type="radio" name="slctime" value="2" />
-                                                <label class="form-check-label" for="q1m">1m</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Times form-check-input" id="q3m" type="radio" name="slctime" value="3" />
-                                                <label class="form-check-label" for="q3m">3m</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Times form-check-input" id="q5m" type="radio" name="slctime" value="4" />
-                                                <label class="form-check-label" for="q5m">5m</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="DMOLE-Times form-check-input" id="q10m" type="radio" name="slctime" value="5" />
-                                                <label class="form-check-label" for="q10m">10m</label>
-                                            </div>
-                                        </span>
-                                    </div>
-                                    <div id="dmoleScoreQuestionDiv" class="DMOLE-ScoreQuestionDiv align-items-center gap-2 mb-3 d-none">
-                                        <label for="dmoleScoreQuestion">${_('Score')}:</label>
-                                        <input type="number" name="dmoleScoreQuestion" id="dmoleScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control"/>
-                                    </div>                                    
-                                </div>
-                                <div class="DMOLE-EMultiMediaOption ">
-                                    <div class="DMOLE-EMultimedia" id="dmoleMultimedia">
-                                        <div id="dmoleModelPreview" class="DMOLE-EModelPreview" tabindex="0" role="img" aria-label="${_('3D model preview')}"></div>
-                                        <span id="dmoleModelDesc" class="sr-av"></span>
-                                        <img class="DMOLE-EMedia" src="${path}quextI3DBack.png" id="dmoleNoModel" alt="${_('No 3D model')}" />
-                                    </div>
-                                    <div class="DMOLE-ModelStyleControl" id="dmoleModelStyleControl">
-                                        <label for="dmoleModelStyle" class="DMOLE-ModelStyleLabel">${_('Molecule style')}:</label>
-                                        <div class="DMOLE-ModelStyleInputGroup">
-                                            <select id="dmoleModelStyle" class="DMOLE-ModelStyleSelect form-select form-select-sm">
-                                                ${$exeDevice.createModelStyleOptions($exeDevice.msgs, $exeDevice.modelStyle)}
-                                            </select>
-                                            <button type="button" id="dmoleModelSizeDown" class="DMOLE-ModelSizeBtn" title="${_('Smaller')}">-</button>
-                                            <button type="button" id="dmoleModelSizeUp" class="DMOLE-ModelSizeBtn" title="${_('Bigger')}">+</button>
-                                            <button type="button" id="dmoleModelResetCamera" class="d-none DMOLE-ModelSizeBtn" title="${_('Reset camera view')}">↺</button>
-                                            <button type="button" id="dmoleModelSaveView" class="DMOLE-ModelSizeBtn" title="${_('Save initial view')}">◎</button>
-                                            <button type="button" id="dmoleModelToggleBg" class="DMOLE-ModelSizeBtn DMOLE-ToggleBgBtn" title="${_('Light background')} — ${_('Click to switch to dark')}" aria-pressed="false">☀</button>
-                                            <button type="button" id="dmoleShowAtomLegend" class="DMOLE-ModelSizeBtn DMOLE-ToggleBgBtn" title="${_('Atom legend hidden')} — ${_('Click to show')}" aria-pressed="false">⚛</button>
-                                            <button type="button" id="dmoleModelDownloadPng" class="DMOLE-ModelSizeBtn" title="${_('Download image')}">⬇</button>
-                                        </div>
-                                    </div>
-                                    <div id="dmoleModelFileGroup">
-                                        <span id="dmoleTitleModel">${_('3D model file')}:</span>
-                                        <div class="DMOLE-EModelInput d-flex flex-nowrap align-items-start gap-2 mb-3">
-                                            <input type="text" id="dmoleModelFile" class="DMOLE-EModelFileInput file-picker exe-file-picker form-control me-0" data-filemanager-accept="molecule" />
-                                            <a href="#" id="dmolePreviewModel" class="DMOLE-ENavigationButton" title="${_('Preview model')}">
-                                                <img src="${path}quextIEPlay.png" alt="${_('Preview')}" class="DMOLE-ENavigationButton" />
-                                            </a>
-                                            <button type="button" id="dmoleResetCamera" class="DMOLE-EResetCamera btn btn-outline-secondary btn-sm" title="${_('Reset camera view')}">↺<span class="sr-av"> ${_('Reset camera view')}</span></button>
-                                        </div>
-                                        <div class="DMOLE-EAuthorAlt d-flex align-items-center flex-nowrap gap-2 mb-3" id="dmoleAuthorAlt">
-                                            <div class="w-50" id="dmoleInputAuthor">
-                                                <label for="dmoleModelAuthor" class="form-label mb-1">${_('Authorship')}</label>
-                                                <input id="dmoleModelAuthor" type="text" class="form-control w-100" />
-                                            </div>
-                                            <div class="w-50" id="dmoleInputAlt">
-                                                <label for="dmoleModelAlt" class="form-label mb-1">${_('Alternative text')}</label>
-                                                <input id="dmoleModelAlt" type="text" class="form-control w-100" />
-                                            </div>
-                                        </div>
-                                        <div id="dmoleModelFileName" class="small text-muted mb-2"></div>
-                                        <p id="dmoleModelSizeWarning" class="d-none small text-warning mb-1"></p>
-                                        <textarea id="dmoleModelData" class="d-none"></textarea>
-                                        <input type="hidden" id="dmoleModelFormat" value="" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="DMOLE-EContents" id="dmoleContents">
-                                <div id="dmoleSolitionOptions" class="DMOLE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="dmoleSolutionSelect">A</span></span></div>
-                                <div class="DMOLE-EQuestionDiv" id="dmoleQuestionDiv">
-                                    <label class="sr-av" for="dmoleQuestion">${_('Question')}:</label>
-                                    <input type="text" class="DMOLE-EQuestion form-control" id="dmoleQuestion" value="${c_('What is the central atom in the model?')}">
-                                </div>
-                                <div class="DMOLE-EQuestionDiv d-none" id="dmoleDescriptionDiv">
-                                    <label for="dmoleDescription">${_('Description')}:</label>
-                                    <input type="text" class="DMOLE-EQuestion form-control" id="dmoleDescription" value="">
-                                </div>
-                                <div class="DMOLE-EAnswers" id="dmoleAnswers">
-                                    <div class="DMOLE-EOptionDiv gap-2">
-                                        <label class="sr-av" for="dmoleSolution0">${_('Solution')} A:</label>
-                                        <input type="checkbox" class="DMOLE-ESolution form-check-input me-0" name="slcsolution" id="dmoleSolution0" value="A" checked />
-                                        <label for="dmoleOption0">A</label>
-                                        <input type="text" class="DMOLE-EOption0 DMOLE-EAnwersOptions form-control" id="dmoleOption0" value="${c_('Carbon')}">
-                                    </div>
-                                    <div class="DMOLE-EOptionDiv gap-2">
-                                        <label class="sr-av" for="dmoleSolution1">${_('Solution')} B:</label>
-                                        <input type="checkbox" class="DMOLE-ESolution form-check-input me-0" name="slcsolution" id="dmoleSolution1" value="B" />
-                                        <label for="dmoleOption1">B</label>
-                                        <input type="text" class="DMOLE-EOption1 DMOLE-EAnwersOptions form-control" id="dmoleOption1" value="${c_('Oxygen')}">
-                                    </div>
-                                    <div class="DMOLE-EOptionDiv gap-2">
-                                        <label class="sr-av" for="dmoleSolution2">${_('Solution')} C:</label>
-                                        <input type="checkbox" class="DMOLE-ESolution form-check-input me-0" name="slcsolution" id="dmoleSolution2" value="C" />
-                                        <label for="dmoleOption2">C</label>
-                                        <input type="text" class="DMOLE-EOption2 DMOLE-EAnwersOptions form-control" id="dmoleOption2" value="${c_('Hydrogen')}">
-                                    </div>
-                                    <div class="DMOLE-EOptionDiv gap-2">
-                                        <label class="sr-av" for="dmoleSolution3">${_('Solution')} D:</label>
-                                        <input type="checkbox" class="DMOLE-ESolution form-check-input me-0" name="slcsolution" id="dmoleSolution3" value="D" />
-                                        <label for="dmoleOption3">D</label>
-                                        <input type="text" class="DMOLE-EOption3 DMOLE-EAnwersOptions form-control" id="dmoleOption3" value="${c_('Nitrogen')}">
-                                    </div>
-                                </div>
-                                <div class="DMOLE-EWordDiv DMOLE-DP" id="dmoleWordDiv">
-                                    <div class="DMOLE-ESolutionWord"><label for="dmoleSolutionWord">${_('Word/Phrase')}:</label><input type="text" id="dmoleSolutionWord" class="form-control"/></div>
-                                    <div class="DMOLE-ESolutionWord"><label for="dmoleDefinitionWord">${_('Definition')}:</label><input type="text" id="dmoleDefinitionWord" class="form-control"/></div>
-                                </div>
-                            </div>                           
-                            <div class="DMOLE-ENavigationButtons gap-2">
-                                <a href="#" id="dmoleAdd" class="DMOLE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="DMOLE-ENavigationButton" /></a>
-                                <a href="#" id="dmoleFirst" class="DMOLE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="DMOLE-ENavigationButton" /></a>
-                                <a href="#" id="dmolePrevious" class="DMOLE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="DMOLE-ENavigationButton" /></a>
-                                <label class="sr-av" for="dmoleNumberQuestion">${_('Question number:')}</label><input type="text" class="DMOLE-NumberQuestion form-control" id="dmoleNumberQuestion" value="1"/>
-                                <a href="#" id="dmoleNext" class="DMOLE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="DMOLE-ENavigationButton" /></a>
-                                <a href="#" id="dmoleLast" class="DMOLE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="DMOLE-ENavigationButton" /></a>
-                                <a href="#" id="dmoleDelete" class="DMOLE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="DMOLE-ENavigationButton" /></a>
-                                <a href="#" id="dmoleCopy" class="DMOLE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="DMOLE-ENavigationButton" /></a>
-                                <a href="#" id="dmoleCut" class="DMOLE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="DMOLE-ENavigationButton" /></a>
-                                <a href="#" id="dmolePaste" class="DMOLE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="DMOLE-ENavigationButton" /></a>
-                            </div>
-                            <div class="DMOLE-ENumQuestionDiv" id="dmoleNumQuestionDiv">
-                                <div class="DMOLE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="DMOLE-ENumQuestions" id="dmoleNumQuestions">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-
-            </div>`;
+                <div id="dMoleIdeviceForm">
+                    ${edition.tabs.getHtml('dMoleIdeviceForm', {
+                        path: path,
+                        instructions: c_('Observe the 3D model and answer the questions.') + ' ' + c_('You can rotate the 3D model by clicking on it and dragging.'),
+                        options: options,
+                        contents: questions,
+                        passwords: true,
+                        feedback: true,
+                        after: true,
+                        grading: true,
+                        texts: this.ci18n,
+                        share: {
+                            importQuestions: false,
+                            exportQuestions: false,
+                            type: 2,
+                        },
+                    })}
+                </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('dMoleIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('dMoleIdeviceForm');
+        edition.gamification.scorm.init();
 
         // Nothing awaits createForm(), so a failure must be reported here
         // rather than surface as an unhandled rejection.
@@ -1716,16 +1719,22 @@ var $exeDevice = {
                 if (textAfter) {
                     $exeDevice.setEditorContent('eXeIdeviceTextAfter', unescape(textAfter));
                 }
-                const textFeedBack = dataGame.textFeedBack || '';
-                if (textFeedBack) {
-                    $exeDevice.setEditorContent('dmoleFeedBackEditor', unescape(textFeedBack));
+                const textFeedBackDiv = $('.dmole-feedback-game', wrapper);
+                if (textFeedBackDiv.length === 1) {
+                    $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                        textFeedBackDiv.html() || ''
+                    );
+                } else if (dataGame.textFeedBack) {
+                    $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                        unescape(dataGame.textFeedBack)
+                    );
                 }
             }
         }
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.answersRamdon = game.answersRamdon || false;
@@ -1767,15 +1776,17 @@ var $exeDevice = {
         $('#dmoleScoreQuestionDiv')
             .addClass('d-none')
             .removeClass('d-flex');
-        $('#dmoleHasFeedBack').prop('checked', game.feedBack);
-        $('#dmolePercentajeFB').val(game.percentajeFB);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $('#dmolePercentajeQuestionsValue').val(game.percentajeQuestions);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
         $('#dmoleGlobalTimes').val(game.globalTime);
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -1835,13 +1846,7 @@ var $exeDevice = {
                 : !!game.disableCamera;
             game.selectsGame[i].showAtomLegend = !!game.selectsGame[i].showAtomLegend;
         }
-        if (game.feedBack) {
-            $('#dmoleFeedbackP').show();
-        } else {
-            $('#dmoleFeedbackP').hide();
-        }
-        $('#dmolePercentajeFB').prop('disabled', !game.feedBack);
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1871,7 +1876,7 @@ var $exeDevice = {
             return false;
         }
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         const fields = this.ci18n;
         const i18n = { ...fields };
@@ -1893,7 +1898,8 @@ var $exeDevice = {
             divContent = `<div class="dmole-instructions SLCNP-instructions">${instructions}</div>`;
         }
 
-        const textFeedBack = $exeDevice.getEditorContent('dmoleFeedBackEditor');
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
    
         const ideviceID = $exeDevice.getIdeviceID();
 
@@ -1950,7 +1956,7 @@ var $exeDevice = {
             p.modelFormat = $exeDevice.getModelFormatByName(p.modelName);
         }
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         p.quextion = $('#dmoleQuestion').val().trim();
         p.options = [];
@@ -2020,9 +2026,8 @@ var $exeDevice = {
                 $exeDevice.getEditorContent('eXeGameInstructions')
             ),
             textAfter = escape($exeDevice.getEditorContent('eXeIdeviceTextAfter')),
-            textFeedBack = escape(
-                $exeDevice.getEditorContent('dmoleFeedBackEditor')
-            ),
+            feedback =
+                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
             showMinimize = $('#dmoleShowMinimize').is(':checked'),
             modeBoard = $('#dmoleModeBoard').is(':checked'),
             answersRamdon = $('#dmoleAnswersRamdon').is(':checked'),
@@ -2033,21 +2038,20 @@ var $exeDevice = {
                 clear($('#dmoleTimeShowSolution').val())
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#dmoleHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#dmolePercentajeFB').val())),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeQuestions = parseInt(
                 clear($('#dmolePercentajeQuestionsValue').val())
             ),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             evaluation = progressBar.evaluation,
             evaluationID = progressBar.evaluationID,
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#dmoleGlobalTimes').val(), 10);
 
+        if (!feedback) return false;
         if (!itinerary) return false;
         // getValues() warns and returns false on a report identifier that is
         // too short. Without this the form carried on and saved the activity
@@ -2058,10 +2062,6 @@ var $exeDevice = {
         if (!progressBar) return false;
 
         if (activityMode === 'test') {
-            if (feedBack && textFeedBack.trim().length == 0) {
-                eXe.app.alert($exeDevice.msgs.msgProvideFB);
-                return false;
-            }
             if (showSolution && timeShowSolution.length == 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
                 return false;
@@ -2110,7 +2110,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             asignatura: '',
             author: '',
@@ -2133,10 +2133,10 @@ var $exeDevice = {
             title: '',
             customScore: false,
             textAfter: textAfter,
-            textFeedBack: textFeedBack,
+            textFeedBack: escape(feedback.textFeedBack),
             gameMode: 1,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: 3.1,
             percentajeQuestions: percentajeQuestions,
             modeBoard: modeBoard,
@@ -2248,7 +2248,8 @@ var $exeDevice = {
                     return;
                 if (
                     $(e.target).is('#eXeProgressReportID') ||
-                    $(e.target).closest('#eXeProgressReportHelpLnk').length
+                    $(e.target).closest('#eXeProgressReportHelpLnk').length ||
+                    $(e.target).closest('.exe-idevice-help-container').length
                 )
                     return;
                 const $input = $(this).find('input.toggle-input').first();
@@ -2547,12 +2548,6 @@ var $exeDevice = {
             $exeDevice.clickSolution(marcado, value);
         });
 
-        $('#dmoleHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#dmoleFeedbackP').slideToggle(marcado);
-            $('#dmolePercentajeFB').prop('disabled', !marcado);
-        });
-
         $dmolePercentajeQuestions
             .on('keyup', function () {
                 let v = this.value.replace(/\D/g, '').substring(0, 3);
@@ -2590,16 +2585,11 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(2);
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').on('click', function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(2);
     },
 
     clickSolution: function (checked, value) {

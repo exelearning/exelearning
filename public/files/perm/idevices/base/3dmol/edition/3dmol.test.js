@@ -41,11 +41,11 @@ describe('3dmol iDevice edition', () => {
         let previousLearning;
 
         beforeEach(() => {
-            previousGamification = global.$exeDevicesEdition.iDevice.gamification;
+            previousGamification = global.$exeIDevicesEdition.iDevice.gamification;
             previousLearning = global.eXeLearning;
             const { progressBar, itinerary } =
-                require('../../../../../../app/common/common_edition.js').iDevice.gamification;
-            global.$exeDevicesEdition.iDevice.gamification = { ...previousGamification, progressBar, itinerary };
+                global.$exeIDevicesEdition.iDevice.gamification;
+            global.$exeIDevicesEdition.iDevice.gamification = { ...previousGamification, progressBar, itinerary };
             global.eXeLearning = { app: { project: { odeId: 'report-id' } } };
             document.body.innerHTML = `<div id="dMoleIdeviceForm">${progressBar.getContents('/idevice/')}</div>`;
             dmol.addEvents();
@@ -54,7 +54,7 @@ describe('3dmol iDevice edition', () => {
         afterEach(() => {
             $(document).off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk');
             document.body.innerHTML = '';
-            global.$exeDevicesEdition.iDevice.gamification = previousGamification;
+            global.$exeIDevicesEdition.iDevice.gamification = previousGamification;
             global.eXeLearning = previousLearning;
         });
 
@@ -319,10 +319,6 @@ describe('3dmol iDevice edition', () => {
         }
 
         beforeEach(() => {
-            // validateQuestion calls the shared edition helper to stop audio.
-            global.$exeDevicesEdition = {
-                iDevice: { gamification: { helpers: { stopSound: () => {} } } },
-            };
             dmol.msgs = {};
             dmol.active = 0;
             dmol.selectsGame = [{}];
@@ -367,7 +363,7 @@ describe('3dmol iDevice edition', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -752,24 +748,9 @@ describe('3dmol iDevice edition', () => {
                 dmol.enableForm = vi.fn(() => Promise.reject(failure));
                 const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
                 dmol.ideviceBody = document.createElement('div');
-                const stub = () => '';
-                const original = global.$exeDevicesEdition;
-                global.$exeDevicesEdition = {
-                    iDevice: {
-                        common: { getTextFieldset: stub },
-                        tabs: { init: stub },
-                        gamification: {
-                            common: { getLanguageTab: stub },
-                            instructions: { getFieldset: stub },
-                            itinerary: { getTab: stub },
-                            scorm: { getTab: stub, init: stub },
-                        },
-                    },
-                };
                 const originalApp = global.eXeLearning;
                 global.eXeLearning = { ...originalApp, app: { ...originalApp?.app, project: { odeId: 'ode' } } };
                 onTestFinished(() => {
-                    global.$exeDevicesEdition = original;
                     global.eXeLearning = originalApp;
                 });
 
@@ -787,5 +768,287 @@ describe('3dmol minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('3dmol edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/3dmol/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const feedback = () => edition().gamification.feedback;
+    const tabNames = () =>
+        [...document.querySelectorAll('#dMoleIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`dMoleIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        typeGame: '3dmol',
+        activityMode: 'test',
+        showMinimize: false,
+        answersRamdon: false,
+        questionsRandom: false,
+        showSolution: false,
+        timeShowSolution: 3,
+        percentajeQuestions: 100,
+        modeBoard: false,
+        globalTime: 0,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        selectsGame: [
+            {
+                type: 0,
+                time: 0,
+                numberOptions: 4,
+                typeSelect: 0,
+                customScore: 1,
+                modelData: 'SAMPLE_DATA',
+                modelFormat: 'sdf',
+                modelName: 'sample.sdf',
+                modelPath: 'sample.sdf',
+                quextion: 'What is this?',
+                options: ['A', 'B', 'C', 'D'],
+                solution: 'A',
+                solutionQuestion: '',
+                percentageShow: 35,
+                description: 'Description',
+                modelStyle: 'stick',
+                bgDark: false,
+                cameraView: null,
+                disableCamera: false,
+                showAtomLegend: false,
+                author: '',
+                alt: '',
+            },
+        ],
+        feedBack: false,
+        percentajeFB: 100,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+    };
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+        document.body.innerHTML = '<div id="dmolBody"></div>';
+        device = loadIdevice();
+        device.defaultModelDataCache = {
+            modelData: 'SAMPLE_DATA',
+            modelFormat: 'sdf',
+            modelName: 'sample.sdf',
+            modelPath: 'sample.sdf',
+        };
+        device.renderModelPreview = vi.fn();
+        device.init(document.getElementById('dmolBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+        expect(document.getElementById('dMoleIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toContain('Observe the 3D model');
+        expect(panel('options').querySelector('#dmoleOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#dmolePanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgScore').value).toBe('Score');
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+        const options = panel('options');
+        const helpButtons = [...options.querySelectorAll('#dmoleOptions .exe-idevice-help')];
+        expect(helpButtons).toHaveLength(8);
+        for (const help of helpButtons) {
+            const row = help.closest('.d-flex');
+            expect(row).not.toBeNull();
+            expect(row.lastElementChild.contains(help)).toBe(true);
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(help.title).toBe('Information');
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(15);
+            expect(help.querySelector('[aria-hidden="true"].info-icon-solid-green')).not.toBeNull();
+            const controls = [...row.querySelectorAll('input, select')];
+            const checked = controls.map((control) => control.checked);
+            help.click();
+            expect(controls.map((control) => control.checked)).toEqual(checked);
+        }
+        expect(global.eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+            document.getElementById('dMoleIdeviceForm-panels')
+        );
+    });
+
+    it('escapes translated help text in the explanation', () => {
+        const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+        const container = document.createElement('div');
+        container.innerHTML = edition().common.getHelpTooltip(text);
+        const button = container.querySelector('button');
+        expect(button.title).toBe('Information');
+        expect(container.querySelector('.help-content').textContent).toBe(text);
+        expect(container.querySelector('once')).toBeNull();
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(8);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('leaves the feedback to the shared block, without controls of its own', () => {
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(document.getElementById('dmoleHasFeedBack')).toBeNull();
+        expect(document.getElementById('dmolePercentajeFB')).toBeNull();
+        expect(document.getElementById('dmoleFeedbackP')).toBeNull();
+        expect(document.getElementById('dmoleFeedBackEditor')).toBeNull();
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('dMoleIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('contents').classList.contains('active')).toBe(false);
+    });
+
+    it('restores the feedback with the game', () => {
+        device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
+
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+    });
+
+    it('loads the saved message into the shared editor', () => {
+        device.idevicePreviousData = `
+            <div class="dmole-IDevice">
+                <div class="dmole-version js-hidden">3.1</div>
+                <div class="dmole-feedback-game"><p>Well done</p></div>
+                <div class="dmole-DataGame js-hidden">${JSON.stringify(game({ feedBack: true }))}</div>
+            </div>`;
+        vi.spyOn(device, 'showQuestion').mockImplementation(() => {});
+
+        device.loadPreviousValues();
+
+        expect(feedback().getText()).toBe('<p>Well done</p>');
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '',
+                eXeGameFeedBackEditor: '',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+            device.selectsGame = [
+                {
+                    ...device.getCuestionDefault(),
+                    modelData: 'MODEL_DATA',
+                    modelFormat: 'sdf',
+                    quextion: 'Question 1',
+                    options: ['A', 'B', 'C', 'D'],
+                    solution: 'A',
+                },
+            ];
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves the feedback values the export reads', () => {
+            device.updateFieldGame(game({ selectsGame: device.selectsGame, feedBack: true, percentajeFB: 70 }));
+            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+            vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+            const data = device.validateData();
+
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(70);
+            expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+            expect(device.save()).toContain('<div class="dmole-feedback-game"><p>Bravo</p></div>');
+        });
+
+        it('requires feedback message if feedback is enabled and text is empty', () => {
+            device.updateFieldGame(game({ selectsGame: device.selectsGame, feedBack: true }));
+            editors.eXeGameFeedBackEditor = '';
+            vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+            expect(device.validateData()).toBe(false);
+            expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+        });
     });
 });
