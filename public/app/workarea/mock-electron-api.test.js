@@ -39,6 +39,15 @@ describe('mock-electron-api.js', () => {
             ok: true,
             dir: '/fake/export/dir',
         });
+        await expect(window.electronAPI.getSpellCheckerSettings()).resolves.toEqual({
+            supported: true,
+            availableLanguages: ['en-US', 'es'],
+            selectedLanguages: [],
+            systemDefault: true,
+        });
+        await expect(window.electronAPI.setSpellCheckerLanguages(['es'])).resolves.toEqual(
+            expect.objectContaining({ selectedLanguages: ['es'] })
+        );
     });
 
     it('returns deterministic readFile payloads', async () => {
