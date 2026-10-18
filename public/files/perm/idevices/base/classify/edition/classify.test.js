@@ -469,7 +469,7 @@ describe('classify iDevice', () => {
           // so rendering them again would show each control twice.
           expect(source).not.toContain('passScore.getContents(');
           expect(source).not.toContain('progressBar.getContents(');
-          expect(source).toContain('gamification.scorm.getTab(');
+          expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
       });
 
       it('restores the control when the iDevice is reopened', () => {
@@ -497,8 +497,8 @@ describe('classify iDevice', () => {
     let savedMedia;
 
     beforeEach(() => {
-      savedGamification = global.$exeDevicesEdition.iDevice.gamification;
-      global.$exeDevicesEdition.iDevice.gamification = {
+      savedGamification = global.$exeIDevicesEdition.iDevice.gamification;
+      global.$exeIDevicesEdition.iDevice.gamification = {
         ...savedGamification,
         progressBar: { addEvents: vi.fn() },
         itinerary: { addEvents: vi.fn() },
@@ -524,7 +524,7 @@ describe('classify iDevice', () => {
       // leak into the next one.
       $exeDevice.$lifecycle.destroy();
       document.body.innerHTML = '';
-      global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+      global.$exeIDevicesEdition.iDevice.gamification = savedGamification;
       global.$exeDevices.iDevice.gamification.media = savedMedia;
     });
 
@@ -616,4 +616,275 @@ describe('classify minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('classify edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/classify/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const tabNames = () =>
+        [...document.querySelectorAll('#clasificaQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`clasificaQEIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        typeGame: 'Clasifica',
+        author: 'Test Author',
+        instructions: '<p>Instructions</p>',
+        showMinimize: false,
+        time: 0,
+        gameLevel: 2,
+        numberGroups: 2,
+        groups: ['Group 1', 'Group 2'],
+        customMessages: false,
+        percentajeQuestions: 100,
+        wordsGame: [
+            {
+                type: 1,
+                group: 0,
+                eText: 'Card 1',
+                url: '',
+                audio: '',
+                x: 0,
+                y: 0,
+                color: '#000000',
+                backcolor: '#ffffff',
+                author: '',
+                alt: '',
+                msgHit: '',
+                msgError: '',
+            },
+        ],
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        feedBack: false,
+        percentajeFB: 100,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        imgCard: '',
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+    };
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        global.$exeDevices = {
+            iDevice: {
+                gamification: {
+                    helpers: exportHelpers,
+                    media: {
+                        extractURLGD: (url) => url,
+                    },
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+
+        const filePath = join(__dirname, 'classify.js');
+        const code = readFileSync(filePath, 'utf-8');
+        device = loadIdevice(code);
+
+        document.body.innerHTML = '<div id="classifyBody"></div>';
+        device.init(document.getElementById('classifyBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        document.body.innerHTML = '';
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+    });
+
+    it('organises the edition form into shared WAI-ARIA tabs', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+        expect(panel('options').querySelector('#clasificaEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('.CQE-EPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('mounts import, export and AI modal triggers in contents toolbar', () => {
+        const toolbar = panel('contents').querySelector('[role="toolbar"]');
+        expect(toolbar).not.toBeNull();
+        const links = [...toolbar.querySelectorAll('[data-exe-share]')];
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+    });
+
+    it('provides accessible help tooltips for option rows', () => {
+        const optionHelps = [...panel('options').querySelectorAll('#clasificaEOptions .exe-idevice-help')];
+        expect(optionHelps.length).toBe(7);
+
+        for (const help of optionHelps) {
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.title).toBe('Information');
+            const targetId = help.getAttribute('aria-controls');
+            expect(targetId).toBeTruthy();
+            expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
+        }
+    });
+
+    it('does not toggle switches when clicking help icons inside toggle-items', () => {
+        const customMsgHelp = document.querySelector('#clasificaECustomMessagesDiv .exe-idevice-help');
+        const customMsgInput = document.getElementById('clasificaECustomMessages');
+        expect(customMsgHelp).not.toBeNull();
+        expect(customMsgInput.checked).toBe(false);
+        customMsgHelp.click();
+        expect(customMsgInput.checked).toBe(false);
+
+        const minimizeHelp = document.getElementById('clasificaEShowMinimize').closest('div').querySelector('.exe-idevice-help');
+        const minimizeInput = document.getElementById('clasificaEShowMinimize');
+        expect(minimizeHelp).not.toBeNull();
+        expect(minimizeInput.checked).toBe(false);
+        minimizeHelp.click();
+        expect(minimizeInput.checked).toBe(false);
+    });
+
+    it('escapes translated help text in the explanation', () => {
+        const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+        const container = document.createElement('div');
+        container.innerHTML = edition().common.getHelpTooltip(text);
+        const button = container.querySelector('button');
+        expect(button.title).toBe('Information');
+        expect(container.querySelector('.help-content').textContent).toBe(text);
+        expect(container.querySelector('once')).toBeNull();
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBeGreaterThanOrEqual(7);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('clasificaQEIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('instructions').classList.contains('active')).toBe(false);
+    });
+
+    it('restores form values and updates gamification modules on updateFieldGame', () => {
+        device.updateFieldGame(
+            game({
+                showMinimize: true,
+                customMessages: true,
+                numberGroups: 4,
+                groups: ['G1', 'G2', 'G3', 'G4'],
+                gameLevel: 1,
+                feedBack: true,
+                percentajeFB: 75,
+            })
+        );
+
+        expect(document.getElementById('clasificaEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('clasificaECustomMessages').checked).toBe(true);
+        expect(document.getElementById('clasificaENumGroups').value).toBe('4');
+        expect(document.getElementById('clasificaL2').checked).toBe(true);
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('75');
+    });
+
+    describe('saving and validation', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '<p>Extra info</p>',
+                eXeGameFeedBackEditor: '<p>Feedback message</p>',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves form data with feedback and extra content', () => {
+            device.updateFieldGame(
+                game({
+                    showMinimize: true,
+                    feedBack: true,
+                    percentajeFB: 80,
+                })
+            );
+            device.showQuestion(0);
+            edition().gamification.feedback.setText('<p>Feedback message</p>');
+            const data = device.validateData();
+
+            expect(data.showMinimize).toBe(true);
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(80);
+            expect(unescape(data.textFeedBack)).toBe('<p>Feedback message</p>');
+            expect(unescape(data.textAfter)).toBe('<p>Extra info</p>');
+
+            const savedHtml = device.save();
+            expect(savedHtml).toContain('clasifica-feedback-game');
+            expect(savedHtml).toContain('clasifica-extra-content');
+        });
+    });
 });
