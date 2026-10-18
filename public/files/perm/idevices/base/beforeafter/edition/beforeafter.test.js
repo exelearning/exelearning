@@ -2,7 +2,7 @@
  * Unit tests for the beforeafter iDevice (edition).
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -32,7 +32,7 @@ describe('beforeafter iDevice edition', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -63,5 +63,214 @@ describe('beforeafter minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('beforeafter edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/beforeafter/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const tabNames = () =>
+        [...document.querySelectorAll('#beforeAfterQIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`beforeAfterQIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        typeGame: 'BeforeAfter',
+        author: 'Author Name',
+        showMinimize: false,
+        cardsGame: [
+            {
+                url: 'img1.png',
+                urlBk: 'img2.png',
+                author: 'A1',
+                authorBk: 'A2',
+                alt: 'Alt 1',
+                altBk: 'Alt 2',
+                eText: 'Before title',
+                eTextBk: 'After title',
+                description: 'Card description',
+                position: 50,
+                vertical: false,
+            },
+        ],
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        evaluation: false,
+        evaluationID: '',
+        passScoreMode: 'global',
+        passScoreCustom: 5,
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+    };
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+        document.body.innerHTML = '<div id="bfafBody"></div>';
+        device = loadIdevice(join(__dirname, 'beforeafter.js'));
+        device.init(document.getElementById('bfafBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions (contents)', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'after',
+            'grading',
+            'texts',
+        ]);
+        expect(document.getElementById('beforeAfterQIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toContain('Slide to reveal');
+        expect(panel('options').querySelector('#bfafEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#bfafEPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgYouScore').value).toBe('Your score');
+    });
+
+    it('provides accessible help tooltips for options and card controls', () => {
+        const optionHelp = panel('options').querySelector('#bfafEOptions .exe-idevice-help');
+        expect(optionHelp).not.toBeNull();
+        expect(optionHelp.tagName).toBe('BUTTON');
+        expect(optionHelp.type).toBe('button');
+        expect(optionHelp.title).toBe('Information');
+
+        const cardHelpButtons = [...panel('contents').querySelectorAll('#bfafEPanel .exe-idevice-help')];
+        expect(cardHelpButtons.length).toBeGreaterThanOrEqual(2);
+        for (const help of [optionHelp, ...cardHelpButtons]) {
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(10);
+            const row = help.closest('.d-flex');
+            expect(row).not.toBeNull();
+            const controls = [...row.querySelectorAll('input')];
+            const checked = controls.map((c) => c.checked);
+            help.click();
+            expect(controls.map((c) => c.checked)).toEqual(checked);
+        }
+    });
+
+    it('escapes translated help text in the explanation', () => {
+        const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+        const container = document.createElement('div');
+        container.innerHTML = edition().common.getHelpTooltip(text);
+        const button = container.querySelector('button');
+        expect(button.title).toBe('Information');
+        expect(container.querySelector('.help-content').textContent).toBe(text);
+        expect(container.querySelector('once')).toBeNull();
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBeGreaterThanOrEqual(3);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('beforeAfterQIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('contents').classList.contains('active')).toBe(false);
+    });
+
+    it('restores showMinimize and author when updating field game', () => {
+        device.updateFieldGame(game({ showMinimize: true, author: 'New Author' }));
+
+        expect(document.getElementById('bfafEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('bfafEAuthory').value).toBe('New Author');
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '<p>Extra info</p>',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves the form values including showMinimize', () => {
+            device.updateFieldGame(game({ showMinimize: true }));
+            device.showCard(0);
+            const data = device.validateData();
+
+            expect(data.showMinimize).toBe(true);
+            expect(data.author).toBe('Author Name');
+            expect(data.instructions).toBe('<p>Instructions</p>');
+            expect(unescape(data.textAfter)).toBe('<p>Extra info</p>');
+            expect(device.save()).toContain('<div class="beforeafter-extra-content"><p>Extra info</p></div>');
+        });
     });
 });

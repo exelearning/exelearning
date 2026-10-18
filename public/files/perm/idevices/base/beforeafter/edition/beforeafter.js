@@ -119,206 +119,184 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="bfafEOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item" role="switch" aria-checked="false" data-target="bfafEShowMinimize">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="bfafEShowMinimize" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="bfafEShowMinimize">${_('Show minimized.')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Start with the activity collapsed. Learners can expand it when they are ready.'))}
+                    </div>
+                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="bfafEAuthory">${_('Authorship')}: </label>
+                        <input id="bfafEAuthory" type="text" class="form-control" />
+                    </div>
+                </div>
+            `,
+            cardsHtml = `
+                <div class="BFAFE-EPanel" id="bfafEPanel">
+                    <div id="bfafEArrowsDiv">
+                        <div class="BFAFE-Description d-flex align-items-center gap-2 mb-3">
+                            <label for="bfafEDescription">${_('Description')}:</label>
+                            <input id="bfafEDescription" type="text" class="form-control" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="bfafEVertical" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="bfafEVertical">${_('Vertical orientation')}.</label>
+                            </span>
+                            ${edition.common.getHelpTooltip(_('Compare images vertically instead of horizontally.'))}
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <label for="bfafEPosition">${_('Position')}:</label>
+                            <input type="number" name="bfafEPosition" id="bfafEPosition" value="50" min="0" max="100" step="2" class="form-control" />
+                            ${edition.common.getHelpTooltip(_('Initial position of the comparison divider in percentage (0 to 100).'))}
+                        </div>
+                        <div class="BFAFE-EPhrase mb-2" id="bfafEPhrase">
+                            <div class="BFAFE-EDatosCarta BFAFE-EBack" id="bfafEDatosCartaBack">
+                                <div class="BFAFE-ETitleImage mb-3 mt-2">${_('Before')}</div>
+                                <div class="BFAFE-EMultimedia">
+                                    <div class="BFAFE-ECard">
+                                        <img class="BFAFE-EHideBFAFE-EImage" id="bfafEImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                        <img class="BFAFE-EHideBFAFE-NoImage" id="bfafENoImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                    </div>
+                                </div>
+                                <span id="bfafETitleImageBack">${_('Image')}</span>
+                                <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImageBack">
+                                    <label for="bfafEURLImageBack" class="sr-av">URL</label>
+                                    <input type="text" id="bfafEURLImageBack" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
+                                    <a href="#" id="bfafEPlayImageBack" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
+                                    </a>
+                                    <a href="#" id="bfafEShowMoreBack" class="BFAFE-ENavigationButton BFAFE-EShowMore" title="${_('More')}">
+                                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="BFAFE-EButtonImage " />
+                                    </a>
+                                </div>
+                                <div class="BFAFE-EAuthorAlt" id="bfafEAuthorAltBack">
+                                    <div class="BFAFE-EInputAuthor">
+                                        <label for="bfafEAuthorBack">${_('Authorship')}</label>
+                                        <input id="bfafEAuthorBack" type="text" class="BFAFE-EAuthor form-control" />
+                                    </div>
+                                    <div class="BFAFE-EInputAlt">
+                                        <label for="bfafEAltBack">${_('Alternative text')}</label>
+                                        <input id="bfafEAltBack" type="text" class="BFAFE-EAlt form-control" />
+                                    </div>
+                                </div>
+                                <span class="BFAFE-ETitleText" id="bfafETitleTextBack">${_('Title')}</span>
+                                <div class="BFAFE-EInputText" id="bfafEInputTextBack">
+                                    <label class="sr-av">${_('Title')}</label>
+                                    <input type="text" id="bfafETextBack" class="BFAFE-EText form-control" />
+                                </div>
+                            </div>
+                            <div class="BFAFE-EDatosCarta BFAFE-EFront" id="bfafEDatosCarta">
+                                <div class="BFAFE-ETitleImage mb-3 mt-2">${_('After')}</div>
+                                <div class="BFAFE-EMultimedia">
+                                    <div class="BFAFE-ECard">
+                                        <img class="BFAFE-EHideBFAFE-EImage" id="bfafEImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                        <img class="BFAFE-EHideBFAFE-NoImage" id="bfafENoImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                    </div>
+                                </div>
+                                <span id="bfafETitleImage">${_('Image')}</span>
+                                <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImage">
+                                    <label for="bfafEURLImage" class="sr-av">URL</label>
+                                    <input type="text" id="bfafEURLImage" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
+                                    <a href="#" id="bfafEPlayImage" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
+                                    </a>
+                                    <a href="#" id="bfafEShowMore" class="BFAFE-ENavigationButton BFAFE-EShowMore" title="${_('More')}">
+                                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="BFAFE-EButtonImage " />
+                                    </a>
+                                </div>
+                                <div class="BFAFE-EAuthorAlt" id="bfafEAuthorAlt">
+                                    <div class="BFAFE-EInputAuthor">
+                                        <label for="bfafEAuthor">${_('Authorship')}</label>
+                                        <input id="bfafEAuthor" type="text" class="BFAFE-EAuthor form-control" />
+                                    </div>
+                                    <div class="BFAFE-EInputAlt">
+                                        <label for="bfafEAlt">${_('Alternative text')}</label>
+                                        <input id="bfafEAlt" type="text" class="BFAFE-EAlt form-control" />
+                                    </div>
+                                </div>
+                                <span class="BFAFE-ETitleText" id="bfafETitleText">${_('Title')}</span>
+                                <div class="BFAFE-EInputText" id="bfafEInputText">
+                                    <label class="sr-av">${_('Title')}</label>
+                                    <input type="text" id="bfafEText" class="BFAFE-EText form-control" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="BFAFE-EReverseFacces mt-3">
+                            <a href="#" id="bfafEReverseCard" title="${_('Flip down the card')}">${_('Flip down the card')}</a>
+                            <a href="#" id="bfafEReverseFaces" title="${_('Flip down all the cards')}">${_('Flip down all the cards')}</a>
+                        </div>
+                    </div>
+                    <div class="BFAFE-ENavigationButtons gap-2">
+                        <a href="#" id="bfafEAddC" class="BFAFE-ENavigationButton" title="${_('Add question')}">
+                            <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                        <a href="#" id="bfafEFirstC" class="BFAFE-ENavigationButton" title="${_('First question')}">
+                            <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                        <a href="#" id="bfafEPreviousC" class="BFAFE-ENavigationButton" title="${_('Previous question')}">
+                            <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                        <label class="sr-av" for="bfafENumberCard">${_('Question number:')}:</label>
+                        <input type="text" class="BFAFE-NumberCard form-control" id="bfafENumberCard" value="1"/>
+                        <a href="#" id="bfafENextC" class="BFAFE-ENavigationButton" title="${_('Next question')}">
+                            <img src="${path}quextIENext.png" alt="${_('Next question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                        <a href="#" id="bfafELastC" class="BFAFE-ENavigationButton" title="${_('Last question')}">
+                            <img src="${path}quextIELast.png" alt="${_('Last question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                        <a href="#" id="bfafEDeleteC" class="BFAFE-ENavigationButton" title="${_('Delete question')}">
+                            <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                        <a href="#" id="bfafECopyC" class="BFAFE-ENavigationButton" title="${_('Copy question')}">
+                            <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                        <a href="#" id="bfafECutC" class="BFAFE-ENavigationButton" title="${_('Cut question')}">
+                            <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                        <a href="#" id="bfafEPasteC" class="BFAFE-ENavigationButton" title="${_('Paste question')}">
+                            <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="BFAFE-EButtonImage" />
+                        </a>
+                    </div>
+                    <div class="BFAFE-ENumCardDiv" id="bfafENumCardsDiv">
+                        <div class="BFAFE-ENumCardsIcon"><span class="sr-av">${_('Cards')}:</span></div>
+                        <span class="BFAFE-ENumCards" id="bfafENumCards">0</span>
+                    </div>
+                </div>
+            `,
             html = `
             <div id="beforeAfterQIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create before-and-after comparisons with side-by-side images of similar or proportional size.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/antesdespues.html',
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/antesdespues.html'
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Slide to reveal the differences between the images.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>                            
-                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="bfafEAuthory">${_('Authorship')}: </label>
-                                <input id="bfafEAuthory" type="text" class="form-control" />
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Images')}</a></legend>
-                        <div class="BFAFE-EPanel" id="bfafEPanel">
-                            <p class="exe-block-info">${_('Both images should have a similar or proportional size.')}</p>
-                            <div id="bfafEArrowsDiv" >
-                                <div class="BFAFE-Description d-flex align-items-center gap-2 mb-3">
-                                    <label for="bfafEDescription">${_('Description')}:</label>
-                                    <input id="bfafEDescription" type="text" class="form-control" />
-                                </div>
-                                <div class="mb-3">
-                                    <span class="toggle-item" role="switch" aria-checked="false" >
-                                        <span class="toggle-control">
-                                            <input type="checkbox" class="toggle-input" id="bfafEVertical" />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="bfafEVertical">${_('Vertical orientation')}.</label>
-                                    </span>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
-                                    <label for="bfafEPosition">${_('Position')}:</label>
-                                    <input type="number" name="bfafEPosition" id="bfafEPosition" value="50" min="0" max="100" step="2" class="form-control" />
-                                </div>
-                                <div class="BFAFE-EPhrase mb-2" id="bfafEPhrase">
-                                     <div class="BFAFE-EDatosCarta BFAFE-EBack" id="bfafEDatosCartaBack">
-                                        <div class="BFAFE-ETitleImage mb-3 mt-2">${_('Before')}</div>
-                                        <div class="BFAFE-EMultimedia">
-                                            <div class="BFAFE-ECard">
-                                                <img class="BFAFE-EHideBFAFE-EImage" id="bfafEImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                                <img class="BFAFE-EHideBFAFE-NoImage" id="bfafENoImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                            </div>
-                                        </div>
-                                        <span id="bfafETitleImageBack">${_('Image')}</span>
-                                        <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImageBack">
-                                            <label for="bfafEURLImageBack" class="sr-av">URL</label>
-                                            <input type="text" id="bfafEURLImageBack" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
-                                            <a href="#" id="bfafEPlayImageBack" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
-                                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
-                                            </a>
-                                            <a href="#" id="bfafEShowMoreBack" class="BFAFE-ENavigationButton BFAFE-EShowMore" title="${_('More')}">
-                                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="BFAFE-EButtonImage " />
-                                            </a>
-                                        </div>
-                                        <div class="BFAFE-EAuthorAlt" id="bfafEAuthorAltBack">
-                                            <div class="BFAFE-EInputAuthor">
-                                                <label for="bfafEAuthorBack">${_('Authorship')}</label>
-                                                <input id="bfafEAuthorBack" type="text" class="BFAFE-EAuthor form-control" />
-                                            </div>
-                                            <div class="BFAFE-EInputAlt">
-                                                <label  for="bfafEAltBack">${_('Alternative text')}</label>
-                                                <input id="bfafEAltBack" type="text" class="BFAFE-EAlt form-control" />
-                                            </div>
-                                        </div>
-                                        <span class="BFAFE-ETitleText" id="bfafETitleTextBack">${_('Title')}</span>
-                                        <div class="BFAFE-EInputText" id="bfafEInputTextBack">
-                                            <label class="sr-av">${_('Title')}</label>
-                                            <input type="text" id="bfafETextBack" class="BFAFE-EText form-control" />
-                                        </div>
-                                    </div>
-                                    <div class="BFAFE-EDatosCarta BFAFE-EFront" id="bfafEDatosCarta">
-                                        <div class="BFAFE-ETitleImage mb-3 mt-2">${_('After')}</div>
-                                        <div class="BFAFE-EMultimedia">
-                                            <div class="BFAFE-ECard">
-                                                <img class="BFAFE-EHideBFAFE-EImage" id="bfafEImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                                <img class="BFAFE-EHideBFAFE-NoImage" id="bfafENoImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                            </div>
-                                        </div>
-                                        <span id="bfafETitleImage">${_('Image')}</span>
-                                        <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImage">
-                                            <label for="bfafEURLImage" class="sr-av">URL</label>
-                                            <input type="text" id="bfafEURLImage" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
-                                            <a href="#" id="bfafEPlayImage" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
-                                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
-                                            </a>
-                                            <a href="#" id="bfafEShowMore" class="BFAFE-ENavigationButton BFAFE-EShowMore" title="${_('More')}">
-                                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="BFAFE-EButtonImage " />
-                                            </a>
-                                        </div>
-                                         <div class="BFAFE-EAuthorAlt" id="bfafEAuthorAlt">
-                                            <div class="BFAFE-EInputAuthor">
-                                                <label for="bfafEAuthor">${_('Authorship')}</label>
-                                                <input id="bfafEAuthor" type="text" class="BFAFE-EAuthor form-control" />
-                                            </div>
-                                            <div class="BFAFE-EInputAlt">
-                                                <label for="bfafEAlt">${_('Alternative text')}</label>
-                                                <input id="bfafEAlt" type="text" class="BFAFE-EAlt form-control" />
-                                            </div>
-                                        </div>
-                                        <span class="BFAFE-ETitleText" id="bfafETitleText">${_('Title')}</span>
-                                        <div class="BFAFE-EInputText" id="bfafEInputText">
-                                            <label class="sr-av">${_('Title')}</label>
-                                            <input type="text" id="bfafEText" class="BFAFE-EText form-control" />
-                                        </div>
-                                    </div>                                    
-                                </div>
-                                 <div class="BFAFE-EReverseFacces mt-3">
-                                    <a href="#" id="bfafEReverseCard" title="${_('Flip down the card')}">${_('Flip down the card')}</a>
-                                    <a href="#" id="bfafEReverseFaces" title="${_('Flip down all the cards')}">${_('Flip down all the cards')}</a>
-                                </div>
-                            </div>                        
-                            <div class="BFAFE-ENavigationButtons gap-2">
-                                <a href="#" id="bfafEAddC" class="BFAFE-ENavigationButton" title="${_('Add question')}">
-                                    <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                               
-                                <a href="#" id="bfafEFirstC" class="BFAFE-ENavigationButton" title="${_('First question')}">
-                                    <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                                <a href="#" id="bfafEPreviousC" class="BFAFE-ENavigationButton" title="${_('Previous question')}">
-                                    <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                                <label class="sr-av" for="bfafENumberCard">${_('Question number:')}:</label>
-                                <input type="text" class="BFAFE-NumberCard form-control" id="bfafENumberCard" value="1"/>
-                                <a href="#" id="bfafENextC" class="BFAFE-ENavigationButton" title="${_('Next question')}">
-                                    <img src="${path}quextIENext.png" alt="${_('Next question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                                <a href="#" id="bfafELastC" class="BFAFE-ENavigationButton" title="${_('Last question')}">
-                                    <img src="${path}quextIELast.png" alt="${_('Last question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                                <a href="#" id="bfafEDeleteC" class="BFAFE-ENavigationButton" title="${_('Delete question')}">
-                                    <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                                <a href="#" id="bfafECopyC" class="BFAFE-ENavigationButton" title="${_('Copy question')}">
-                                    <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                                <a href="#" id="bfafECutC" class="BFAFE-ENavigationButton" title="${_('Cut question')}">
-                                    <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                                <a href="#" id="bfafEPasteC" class="BFAFE-ENavigationButton" title="${_('Paste question')}">
-                                    <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="BFAFE-EButtonImage" />
-                                </a>
-                            </div>
-                            <div class="BFAFE-ENumCardDiv" id="bfafENumCardsDiv">
-                                <div class="BFAFE-ENumCardsIcon"><span class="sr-av">${_('Cards')}:</span></div> 
-                                <span class="BFAFE-ENumCards" id="bfafENumCards">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevice.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${edition.tabs.getHtml('beforeAfterQIdeviceForm', {
+                    path: path,
+                    instructions: c_('Slide to reveal the differences between the images.'),
+                    options: options,
+                    contents: cardsHtml,
+                    passwords: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                })}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('beforeAfterQIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('beforeAfterQIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
-    },
-
-    getTextFieldset: function (position) {
-        if (
-            typeof position != 'string' ||
-            (position != 'after' && position != 'before')
-        )
-            return '';
-        let tit = _('Content after'),
-            id = 'After';
-        if (position == 'before') {
-            tit = _('Content before');
-            id = 'Before';
-        }
-        return (
-            "<fieldset class='exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>\
-                    <legend><a href='#'>" +
-            tit +
-            ' (' +
-            _('Optional').toLowerCase() +
-            ")</a></legend>\
-                    <div>\
-                        <p>\
-                            <label for='eXeIdeviceText" +
-            id +
-            "' class='sr-av'>" +
-            tit +
-            ":</label>\
-                            <textarea id='eXeIdeviceText" +
-            id +
-            "' class='exe-html-editor'\></textarea>\
-                        </p>\
-                    <div>\
-				</fieldset>"
-        );
     },
 
     clearCard: function () {
@@ -612,15 +590,17 @@ var $exeDevice = {
             if (instructions.length === 1) {
                 instructions = instructions.html() || '';
                 $('#eXeGameInstructions').val(instructions);
+                tinyMCE.get('eXeGameInstructions')?.setContent(instructions);
             }
 
             let textAfter = $('.beforeafter-extra-content', wrapper);
             if (textAfter.length === 1) {
                 textAfter = textAfter.html() || '';
                 $('#eXeIdeviceTextAfter').val(textAfter);
+                tinyMCE.get('eXeIdeviceTextAfter')?.setContent(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showCard(0);
@@ -651,7 +631,10 @@ var $exeDevice = {
         const linksMedias = $exeDevice.createlinksIMedias(cards);
         let html = `<div class="beforeafter-IDevice">${divContent}<div class="beforeafter-DataGame js-hidden">${json}</div>${linksMedias}`;
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter =
+            tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
+            $('#eXeIdeviceTextAfter').val() ||
+            '';
         if (textAfter)
             html += `<div class="beforeafter-extra-content">${textAfter}</div>`;
         html += `<div class="beforeafter-bns js-hidden">${$exeDevice.msgs.msgNoSuportBrowser}</div></div>`;
@@ -708,25 +691,32 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const instructions =
+            tinyMCE.get('eXeGameInstructions')?.getContent() ||
+            $('#eXeGameInstructions').val() ||
+            '',
+            textAfter =
+                tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
+                $('#eXeIdeviceTextAfter').val() ||
+                '',
             author = $('#bfafEAuthory').val(),
+            showMinimize = $('#bfafEShowMinimize').is(':checked'),
             cardsGame = $exeDevice.cardsGame,
             id = $exeDevice.getIdeviceID(),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
 
         if (!progressBar) return false;
         if (!itinerary) return;
         return {
             typeGame: 'BeforeAfter',
             author,
+            showMinimize,
             instructions,
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
@@ -840,8 +830,15 @@ var $exeDevice = {
             $exeDevice.reverseCard();
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+
+        $('#beforeAfterQIdeviceForm').on('click', '.toggle-item', function (e) {
+            if ($(e.target).closest('.exe-idevice-help-container').length) {
+                e.preventDefault();
+                return;
+            }
+        });
 
         $('#beforeAfterQIdeviceForm').on(
             'change',
@@ -872,14 +869,13 @@ var $exeDevice = {
             $('#bfafEVertical')
                 .closest('.toggle-item')
                 .attr('aria-checked', vertChecked);
+            const minChecked = $('#bfafEShowMinimize').is(':checked');
+            $('#bfafEShowMinimize')
+                .closest('.toggle-item')
+                .attr('aria-checked', minChecked);
         })();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
     },
 
     reverseFaces: function () {
@@ -933,6 +929,14 @@ var $exeDevice = {
         $exeDevice.active = 0;
         $exeDevice.id = $exeDevice.getIdeviceID();
         $('#bfafEAuthory').val(game.author);
+        const showMinimize =
+            typeof game.showMinimize !== 'undefined'
+                ? !!game.showMinimize
+                : false;
+        $('#bfafEShowMinimize').prop('checked', showMinimize);
+        $('#bfafEShowMinimize')
+            .closest('.toggle-item')
+            .attr('aria-checked', showMinimize);
         game.evaluation =
             typeof game.evaluation !== 'undefined' ? game.evaluation : false;
         game.evaluationID =
@@ -942,22 +946,22 @@ var $exeDevice = {
         game.position =
             typeof game.position !== 'undefined' ? parseInt(game.position) : 50;
         $exeDevice.cardsGame = game.cardsGame;
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
         $('#bfafEPosition').val(game.position);
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
     },
