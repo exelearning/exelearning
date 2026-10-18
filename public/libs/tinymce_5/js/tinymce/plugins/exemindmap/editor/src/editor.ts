@@ -16,7 +16,7 @@ import MindElixir from 'mind-elixir';
 import type { MindElixirData, MindElixirInstance, NodeObj, Topic } from 'mind-elixir';
 import 'mind-elixir/style.css';
 import { domToCanvas } from 'modern-screenshot';
-import { mindElixirToMermaid } from '@ateeducacion/mind-elixir-export-mermaid';
+import { mindElixirToMermaid } from '@erseco/mind-elixir-export-mermaid';
 import './editor.css';
 import {
     MindmapFormatError,
