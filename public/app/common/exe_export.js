@@ -30,6 +30,8 @@ window.$exeExport = {
     isTogglingBox: false,
     delayLoadingPageTime: 200,
     delayLoadingIdevicesJson: 50,
+    // Give up after 30 s (600 × 50 ms) if an iDevice script never loads
+    maxLoadingIdevicesJsonAttempts: 600,
     delayLoadScorm: 50,
     scormAPIwrapper: 'SCORM_API_wrapper.js',
     scormFunctions: 'SCOFunctions.js',
@@ -357,9 +359,13 @@ window.$exeExport = {
      */
     initJsonIdeviceInterval: function (ideviceType) {
         let intervalName = 'eXe_idevice_init_interval_' + ideviceType;
-        window[intervalName] = setInterval(
-            () => this.initJsonIdevice(ideviceType, intervalName),
-            this.delayLoadingIdevicesJson);
+        let attempts = 0;
+        window[intervalName] = setInterval(() => {
+            if (this.initJsonIdevice(ideviceType, intervalName) !== false) return;
+            if (++attempts < this.maxLoadingIdevicesJsonAttempts) return;
+            clearInterval(window[intervalName]);
+            console.warn(`[exe_export] ${ideviceType} iDevice script did not load; giving up.`);
+        }, this.delayLoadingIdevicesJson);
     },
 
     /**
