@@ -17,6 +17,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'node:vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -946,6 +947,8 @@ describe('az-quiz-game edition: shared form tabs', () => {
         );
     let device;
     let previousDevices;
+    let previousApp;
+    let tooltips;
 
     beforeEach(() => {
         global.$ = realEnvironment.$;
@@ -955,6 +958,19 @@ describe('az-quiz-game edition: shared form tabs', () => {
         global.$exeIDevicesEdition = realEnvironment.edition;
         global.tinymce = realEnvironment.tinymce;
         previousDevices = global.$exeDevices;
+        previousApp = global.eXeLearning.app;
+        tooltips = new Map();
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn((scope) => {
+                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                    });
+                }),
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         // Export-side helpers (common.js) that loading and saving go through.
         global.$exeDevices = {
             iDevice: {
@@ -977,13 +993,19 @@ describe('az-quiz-game edition: shared form tabs', () => {
         };
         document.body.innerHTML = '<div id="azBody"></div>';
         global.$exeDevice = undefined;
-        device = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
+        // Keep the source filename so coverage includes the real form and its help text.
+        const filename = join(__dirname, 'az-quiz-game.js');
+        runInThisContext(readFileSync(filename, 'utf8'), { filename });
+        device = global.$exeDevice;
+        global.attachEditionLifecycle(device);
         device.init(document.getElementById('azBody'), {}, PATH);
     });
 
     afterEach(() => {
         device.$lifecycle?.destroy();
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+        global.eXeLearning.app = previousApp;
         global.$exeDevices = previousDevices;
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
@@ -1016,6 +1038,56 @@ describe('az-quiz-game edition: shared form tabs', () => {
         expect(info[0].textContent).toContain('Provide a word and its definition');
         expect(info[0].querySelector(`img[src="${PATH}roscoIcoStart.png"]`)).not.toBeNull();
         expect(document.querySelector('.exe-idevice-info')).toBeNull();
+    });
+
+    it('adds one accessible help button after the last control of each options row without changing its values', () => {
+        const rows = [...document.querySelector('#roscoOptions').children];
+        expect(rows).toHaveLength(6);
+        for (const row of rows) {
+            const buttons = row.querySelectorAll('.exe-idevice-help');
+            expect(buttons).toHaveLength(1);
+            const button = buttons[0];
+            expect(row.lastElementChild.contains(button)).toBe(true);
+            expect(button.type).toBe('button');
+            expect(button.title).toBe('Information');
+            expect(button.getAttribute('aria-label')).toBe('Information');
+            const content = document.getElementById(button.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(30);
+            const controls = [...row.querySelectorAll('input')];
+            const values = () => controls.map((control) => [control.value, control.checked, control.disabled]);
+            const previousValues = values();
+            button.click();
+            expect(values()).toEqual(previousValues);
+            expect(button.getAttribute('aria-expanded')).toBe('true');
+            expect(content.classList.contains('help-hidden')).toBe(false);
+        }
+        expect(global.eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+            document.getElementById('roscoIdeviceForm-panels')
+        );
+    });
+
+    it('explains both solution controls and the unlimited rounds setting', () => {
+        const solution = document.querySelector('.roscoShowSolutionRow');
+        const text = solution.querySelector('.help-content').textContent;
+        expect(solution.querySelectorAll('.exe-idevice-help')).toHaveLength(1);
+        expect(text).toContain('Show solutions:');
+        expect(text).toContain('Show solution in:');
+        expect(text).toContain('from 1 to 9');
+        expect(text.split('\n\n')).toHaveLength(2);
+        const rounds = document.getElementById('roscoNumberTurns').parentElement;
+        expect(rounds.querySelector('.help-content').textContent).toContain('Set 0 for unlimited rounds');
+        document.getElementById('roscoShowSolution').click();
+        expect(document.getElementById('roscoTimeShowSolution').disabled).toBe(true);
+        solution.querySelector('.exe-idevice-help').click();
+        expect(document.getElementById('roscoTimeShowSolution').disabled).toBe(true);
+    });
+
+    it('disposes the six option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(6);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
     });
 
     it('offers Import, Export and Create with AI, with the prompt of the A-Z quiz', () => {

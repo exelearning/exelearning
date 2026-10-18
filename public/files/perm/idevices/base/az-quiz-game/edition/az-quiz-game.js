@@ -184,16 +184,19 @@ var $exeDevice = {
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label idevice-title" for="roscoShowMinimize">${_('Show minimized.')}</label>
+                                    ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                                 </div>
-                                <div>
+                                <div class="d-flex align-items-center gap-2">
                                     <label for="roscoDuration">${_('Game time (seconds)')}: </label>
                                     <input type="number" class="form-control form-control-sm" name="roscoDuration" id="roscoDuration" value="240" min="5" max="9999" step="10" required />
+                                    ${edition.common.getHelpTooltip(_('Set the time available to complete the word wheel, in seconds. The game ends when the countdown reaches zero.'))}
                                 </div>
-                                <div>
+                                <div class="d-flex align-items-center gap-2">
                                     <label for="roscoNumberTurns">${_('Number of rounds')}: </label>
                                     <input type="number" class="form-control form-control-sm" value="1" min="0" max="2" id="roscoNumberTurns" required />
+                                    ${edition.common.getHelpTooltip(_('Allow one or two rounds through the letters. Set 0 for unlimited rounds while time remains. Words skipped with Move on can be answered on a later round.'))}
                                 </div>
-                                <div class="roscoShowSolutionRow d-flex align-items-center flex-wrap">
+                                <div class="roscoShowSolutionRow d-flex align-items-center flex-nowrap">
                                     <div class="toggle-item m-0" idevice-id="roscoShowSolution">
                                         <div class="toggle-control">
                                             <input type="checkbox" checked id="roscoShowSolution" class="toggle-input">
@@ -206,6 +209,10 @@ var $exeDevice = {
                                     </label>
                                     <input type="number" class="form-control form-control-sm" name="roscoTimeShowSolution" id="roscoTimeShowSolution" value="3" min="1" max="9" />
                                     <span>${_('seconds')}</span>
+                                    ${edition.common.getHelpTooltip([
+                                        `${_('Show solutions')}: ${_('Show the correct word after checking an answer.')}`,
+                                        `${_('Show solution in')}: ${_('Set how many seconds the solution remains visible before moving to the next word, from 1 to 9.')}`,
+                                    ].join('\n\n'))}
                                 </div>
                                 <div class="toggle-item" idevice-id="roscoCaseSensitive">
                                     <div class="toggle-control">
@@ -213,6 +220,7 @@ var $exeDevice = {
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label" for="roscoCaseSensitive">${_('Case sensitive')}.</label>
+                                    ${edition.common.getHelpTooltip(_('Require uppercase and lowercase letters to match the answer exactly.'))}
                                 </div>
 
                                 <div class="toggle-item" idevice-id="roscoModeBoard">
@@ -221,6 +229,7 @@ var $exeDevice = {
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label" for="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
+                                    ${edition.common.getHelpTooltip(_('Show buttons to mark an answer as correct or incorrect, or move on, when playing together on a digital whiteboard.'))}
                                 </div>
                             </div>`,
             html = `

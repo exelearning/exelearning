@@ -246,6 +246,15 @@
     margin-bottom: 0;
 }
 
+#roscoOptions > div,
+#roscoOptions .toggle-item {
+    flex-wrap: nowrap;
+}
+
+#roscoOptions > div > .exe-idevice-help-container {
+    margin-left: .25rem;
+}
+
 #roscoIdeviceForm .roscoYImageEdition,
 #roscoIdeviceForm .roscoXImageEdition {
     display: none;
@@ -255,7 +264,7 @@
 .roscoShowSolutionRow {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: .5rem;
     margin-top: .25rem;
     margin-bottom: .5rem
