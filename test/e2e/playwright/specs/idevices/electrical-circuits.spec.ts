@@ -27,12 +27,9 @@ const GENERATED_QUESTIONS = [
 ].join('\n');
 
 async function openQuestionsTab(page: Page): Promise<void> {
-    // Reveal the outer "AI" form tab, then its inner "Questions" sub-tab.
-    const aiTab = page
-        .locator(`${NODE} .exe-form-tabs a`)
-        .filter({ hasText: /^\s*(AI|IA)\s*$/ })
-        .first();
-    await aiTab.click();
+    // Open the AI share modal from the Questions toolbar, then its inner "Questions" sub-tab.
+    const aiButton = page.locator(`${NODE} button[data-exe-share="ai"]`);
+    await aiButton.click();
 
     await page.locator('#eXeETabQuestions').click();
     await page.locator('#eXeEQuestionsArea').waitFor({ state: 'visible', timeout: 10000 });

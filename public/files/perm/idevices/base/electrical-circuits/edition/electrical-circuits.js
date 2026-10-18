@@ -412,7 +412,7 @@ var $exeDevice = {
             $(this).val(p.options[j] || '');
         });
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $(
             "input.ELCE-Number[name='slcnumber'][value='" +
@@ -1418,269 +1418,275 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="elceOptions">
+                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3" id="elceActivityMode">
+                        <span>${_('Mode')}:</span>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input" type="radio" name="slcactivitymode" id="elceModeTest" value="test" checked />
+                            <label class="form-check-label" for="elceModeTest">${_('Test')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input" type="radio" name="slcactivitymode" id="elceModeShow" value="show" />
+                            <label class="form-check-label" for="elceModeShow">${_('Presentation')}</label>
+                        </div>
+                        ${edition.common.getHelpTooltip(_('Choose whether learners take a quiz on the electrical circuit or view it as an interactive presentation.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item" role="switch" aria-checked="false" data-target="elceShowMinimize">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="elceShowMinimize" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="elceShowMinimize">${_('Show minimized.')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Start with the activity collapsed. Learners can expand it when they are ready.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceAnswersRamdonDiv">
+                        <span class="toggle-item" role="switch" aria-checked="false" data-target="elceAnswersRamdon">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="elceAnswersRamdon" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="elceAnswersRamdon">${_('Random options')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Shuffle the answer choices each time the activity is loaded.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceQuestionsRandomDiv">
+                        <span class="toggle-item" role="switch" aria-checked="false" data-target="elceQuestionsRandom">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="elceQuestionsRandom" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="elceQuestionsRandom">${_('Random questions')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Shuffle questions so they appear in random order for each learner.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceShowSolutionDiv">
+                        <span class="toggle-item toggle-related" role="switch" aria-checked="true" data-target="elceShowSolution">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="elceShowSolution" checked />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="elceShowSolution">${_('Show solutions')}.</label>
+                        </span>
+                        <div class="mb-0 d-flex align-items-center gap-2 flex-nowrap">
+                            <input type="number" name="elceTimeShowSolution" id="elceTimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:6ch" />
+                            <label for="elceTimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}</label>
+                        </div>
+                        ${edition.common.getHelpTooltip([
+                            `${_('Show solutions')}: ${_('Display the correct answer when an incorrect answer is chosen.')}`,
+                            `${_('Show solution time (seconds)')}: ${_('Number of seconds the solution remains visible before moving to the next question.')}`,
+                        ].join('\n\n'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceInputPercentajeQuestions">
+                        <label for="elcePercentajeQuestionsValue" class="mb-0">${_('% Questions')}:</label>
+                        <input type="number" name="elcePercentajeQuestionsValue" id="elcePercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                        <span id="elceNumeroPercentaje" class="ms-2">1/1</span>
+                        ${edition.common.getHelpTooltip(_('Percentage of questions presented in each game session. The counter shows the actual number of questions that will be included.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-target="elceModeBoard" id="elceModeBoardDiv">
+                        <span class="toggle-item" role="switch" aria-checked="false">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="elceModeBoard" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="elceModeBoard">${_('Digital whiteboard mode')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Adapt the interface controls for touchscreens and digital whiteboards.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceGlobalTimeDiv">
+                        <label for="elceGlobalTimes" class="mb-0">${_('Time per question')}:</label>
+                        <select id="elceGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                            <option value="0" selected>15s</option>
+                            <option value="1">30s</option>
+                            <option value="2">1m</option>
+                            <option value="3">3m</option>
+                            <option value="4">5m</option>
+                            <option value="5">10m</option>
+                        </select>
+                        <button id="elceGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
+                        ${edition.common.getHelpTooltip(_('Apply the selected time limit to all questions in the activity.'))}
+                    </div>
+                </div>`,
+            questions = `
+                <div class="ELCE-EPanel" id="elcePanel">
+                    <div class="ELCE-EOptionsMedia d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <div class="ELCE-EOptionsGame">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="elceTypeDiv">
+                                <span>${_('Type')}:</span>
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-TypeSelect form-check-input" checked id="elceTypeChoose" type="radio" name="slctypeselect" value="0"/>
+                                        <label class="form-check-label" for="elceTypeChoose">${_('Select')}</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-TypeSelect form-check-input" id="elceTypeOrders" type="radio" name="slctypeselect" value="1"/>
+                                        <label class="form-check-label" for="elceTypeOrders">${_('Order')}</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-TypeSelect form-check-input" id="elceTypeWord" type="radio" name="slctypeselect" value="2"/>
+                                        <label class="form-check-label" for="elceTypeWord">${_('Word')}</label>
+                                    </div>
+                                </span>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="elceInputNumbers">
+                                <span>${_('Options Number')}:</span>
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Number form-check-input" id="numQ2" type="radio" name="slcnumber" value="2" />
+                                        <label class="form-check-label" for="numQ2">2</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Number form-check-input" id="numQ3" type="radio" name="slcnumber" value="3" />
+                                        <label class="form-check-label" for="numQ3">3</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Number form-check-input" id="numQ4" type="radio" name="slcnumber" value="4" checked="checked" />
+                                        <label class="form-check-label" for="numQ4">4</label>
+                                    </div>
+                                 </span>
+                            </div>
+                            <div id="elcePercentageSpan" class="d-none flex-wrap align-items-center gap-2 mb-3">
+                                <span >${_('Percentage of letters to show (%)')}:</span>
+                                <span class="ELCE-EPercentage" id="elcePercentage">
+                                    <input type="number" class="form-control form-control-sm"  name="elcePercentageShow" id="elcePercentageShow" value="35" min="0" max="100" step="5" />
+                                </span>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="elceTimeDiv">
+                                <span>${_('Time per question')}:</span>
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Times form-check-input" checked="checked" id="q15s" type="radio" name="slctime" value="0" />
+                                        <label class="form-check-label" for="q15s">15s</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Times form-check-input" id="q30s" type="radio" name="slctime" value="1" />
+                                        <label class="form-check-label" for="q30s">30s</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Times form-check-input" id="q1m" type="radio" name="slctime" value="2" />
+                                        <label class="form-check-label" for="q1m">1m</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Times form-check-input" id="q3m" type="radio" name="slctime" value="3" />
+                                        <label class="form-check-label" for="q3m">3m</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Times form-check-input" id="q5m" type="radio" name="slctime" value="4" />
+                                        <label class="form-check-label" for="q5m">5m</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="ELCE-Times form-check-input" id="q10m" type="radio" name="slctime" value="5" />
+                                        <label class="form-check-label" for="q10m">10m</label>
+                                    </div>
+                                </span>
+                            </div>
+                            <div id="elceScoreQuestionDiv" class="ELCE-ScoreQuestionDiv align-items-center gap-2 mb-3 d-none">
+                                <label for="elceScoreQuestion">${_('Score')}:</label>
+                                <input type="number" name="elceScoreQuestion" id="elceScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control"/>
+                            </div>
+                        </div>
+                        <div class="ELCE-EMultiMediaOption ">
+                            <div class="ELCE-EMultimedia" id="elceMultimedia">
+                                <div id="elceTikzPreview" class="ELCE-ETikzPreview"></div>
+                                <img class="ELCE-EMedia" src="${path}quextIELCBack.png" id="elceNoCircuit" alt="${_('No circuit')}" />
+                            </div>
+                            <div id="elceTikzCodeGroup">
+                                <span id="elceTitleTikz">${_('Circuit code (TikZ)')}:</span>
+                                <div class="ELCE-ETikzInput d-flex flex-nowrap align-items-start gap-2 mb-3">
+                                    <textarea id="elceTikzCode" class="form-control" rows="4" placeholder="${_('Enter TikZ circuit code…')}"></textarea>
+                                    <a href="#" id="elcePreviewTikz" class="ELCE-ENavigationButton" title="${_('Preview circuit')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Preview')}" class="ELCE-ENavigationButton" />
+                                    </a>
+                                </div>
+                            </div>
+                             <div class="mb-3 d-none" id="elceDescriptionDiv">
+                                <label for="elceDescription">${_('Description')}:</label>
+                                <input type="text" class="form-control" id="elceDescription" value="" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ELCE-EContents" id="elceContents">
+                        <div id="elceSolitionOptions" class="ELCE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="elceSolutionSelect">A</span></span></div>
+                        <div class="ELCE-EQuestionDiv" id="elceQuestionDiv">
+                            <label class="sr-av" for="elceQuestion">${_('Question')}:</label>
+                            <input type="text" class="ELCE-EQuestion form-control" id="elceQuestion" value="${c_('What type of circuit is shown?')}">
+                        </div>
+                        <div class="ELCE-EAnswers" id="elceAnswers">
+                            <div class="ELCE-EOptionDiv gap-2">
+                                <label class="sr-av" for="elceSolution0">${_('Solution')} A:</label>
+                                <input type="checkbox" class="ELCE-ESolution form-check-input me-0" name="slcsolution" id="elceSolution0" value="A" checked />
+                                <label for="elceOption0">A</label>
+                                <input type="text" class="ELCE-EOption0 ELCE-EAnwersOptions form-control" id="elceOption0" value="${c_('Series circuit')}">
+                            </div>
+                            <div class="ELCE-EOptionDiv gap-2">
+                                <label class="sr-av" for="elceSolution1">${_('Solution')} B:</label>
+                                <input type="checkbox" class="ELCE-ESolution form-check-input me-0" name="slcsolution" id="elceSolution1" value="B" />
+                                <label for="elceOption1">B</label>
+                                <input type="text" class="ELCE-EOption1 ELCE-EAnwersOptions form-control" id="elceOption1" value="${c_('Parallel circuit')}">
+                            </div>
+                            <div class="ELCE-EOptionDiv gap-2">
+                                <label class="sr-av" for="elceSolution2">${_('Solution')} C:</label>
+                                <input type="checkbox" class="ELCE-ESolution form-check-input me-0" name="slcsolution" id="elceSolution2" value="C" />
+                                <label for="elceOption2">C</label>
+                                <input type="text" class="ELCE-EOption2 ELCE-EAnwersOptions form-control" id="elceOption2" value="${c_('Mixed circuit')}">
+                            </div>
+                            <div class="ELCE-EOptionDiv gap-2">
+                                <label class="sr-av" for="elceSolution3">${_('Solution')} D:</label>
+                                <input type="checkbox" class="ELCE-ESolution form-check-input me-0" name="slcsolution" id="elceSolution3" value="D" />
+                                <label for="elceOption3">D</label>
+                                <input type="text" class="ELCE-EOption3 ELCE-EAnwersOptions form-control" id="elceOption3" value="${c_('Open circuit')}">
+                            </div>
+                        </div>
+                        <div class="ELCE-EWordDiv ELCE-DP" id="elceWordDiv">
+                            <div class="ELCE-ESolutionWord"><label for="elceSolutionWord">${_('Word/Phrase')}:</label><input type="text" id="elceSolutionWord" class="form-control"/></div>
+                            <div class="ELCE-ESolutionWord"><label for="elceDefinitionWord">${_('Definition')}:</label><input type="text" id="elceDefinitionWord" class="form-control"/></div>
+                        </div>
+                    </div>
+                    <div class="ELCE-ENavigationButtons gap-2">
+                        <a href="#" id="elceAdd" class="ELCE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="ELCE-ENavigationButton" /></a>
+                        <a href="#" id="elceFirst" class="ELCE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="ELCE-ENavigationButton" /></a>
+                        <a href="#" id="elcePrevious" class="ELCE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="ELCE-ENavigationButton" /></a>
+                        <label class="sr-av" for="elceNumberQuestion">${_('Question number:')}</label><input type="text" class="ELCE-NumberQuestion form-control" id="elceNumberQuestion" value="1"/>
+                        <a href="#" id="elceNext" class="ELCE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="ELCE-ENavigationButton" /></a>
+                        <a href="#" id="elceLast" class="ELCE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="ELCE-ENavigationButton" /></a>
+                        <a href="#" id="elceDelete" class="ELCE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="ELCE-ENavigationButton" /></a>
+                        <a href="#" id="elceCopy" class="ELCE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="ELCE-ENavigationButton" /></a>
+                        <a href="#" id="elceCut" class="ELCE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="ELCE-ENavigationButton" /></a>
+                        <a href="#" id="elcePaste" class="ELCE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="ELCE-ENavigationButton" /></a>
+                    </div>
+                    <div class="ELCE-ENumQuestionDiv" id="elceNumQuestionDiv">
+                        <div class="ELCE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="ELCE-ENumQuestions" id="elceNumQuestions">0</span>
+                    </div>
+                </div>`,
             html = `
-            <div id="electricalCircuitsIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create quiz activities based on electrical circuit diagrams drawn with TikZ.')}
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the electrical circuit and answer the questions.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div id="elceOptions">
-                            <div class="d-flex align-items-center gap-3 mb-3" id="elceActivityMode">
-                                <span>${_('Mode')}:</span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" type="radio" name="slcactivitymode" id="elceModeTest" value="test" checked />
-                                    <label class="form-check-label" for="elceModeTest">${_('Test')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" type="radio" name="slcactivitymode" id="elceModeShow" value="show" />
-                                    <label class="form-check-label" for="elceModeShow">${_('Presentation')}</label>
-                                </div>
-                            </div>
-                            <div class="toggle-item mb-3" data-target="elceShowMinimize">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="elceShowMinimize" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="elceShowMinimize">${_('Show minimized.')} </label>
-                            </div>
-                            <div class="toggle-item mb-3" data-target="elceAnswersRamdon" id="elceAnswersRamdonDiv">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="elceAnswersRamdon" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="elceAnswersRamdon">${_('Random options')}</label>
-                            </div>
-                            <div class="toggle-item mb-3" id="elceQuestionsRandomDiv">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="elceQuestionsRandom" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="elceQuestionsRandom">${_('Random questions')}</label>
-                            </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3" id="elceShowSolutionDiv">
-                                <div class="toggle-item toggle-related" data-target="elceShowSolution">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="elceShowSolution" checked />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="elceShowSolution">${_('Show solutions')}.</label>
-                                </div>
-                                <div class="mb-0 d-flex align-items-center gap-2">
-                                    <input type="number" name="elceTimeShowSolution" id="elceTimeShowSolution" value="3" min="1" max="9" class="form-control" />
-                                    <label for="elceTimeShowSolution">${_('Show solution time (seconds)')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item toggle-related" data-target="elceHasFeedBack">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="elceHasFeedBack" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="elceHasFeedBack">${_('Feedback')}.</label>
-                                </div>
-                                <div class="mb-0 d-flex align-items-center gap-2">
-                                    <input type="number" name="elcePercentajeFB" id="elcePercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
-                                    <label for="elcePercentajeFB">${_('&percnt; right to see the feedback')}</label>
-                                </div>
-                            </div>
-                            <div id="elceFeedbackP" class="ELCE-EFeedbackP mb-3">
-                                <textarea id="elceFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-                                <label for="elcePercentajeQuestionsValue">${_('% Questions')}:</label>
-                                <input type="number" name="elcePercentajeQuestionsValue" id="elcePercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" />
-                                <span id="elceNumeroPercentaje" class="ms-2">1/1</span>
-                            </div>
-                            <div class="toggle-item mb-3" data-target="elceModeBoard" id="elceModeBoardDiv">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="elceModeBoard" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="elceModeBoard">${_('Digital whiteboard mode')}</label>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 mb-3" id="elceGlobalTimeDiv">
-                                <label for="elceGlobalTimes">${_('Time per question')}:</label>
-                                <select id="elceGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
-                                    <option value="0" selected>15s</option>
-                                    <option value="1">30s</option>
-                                    <option value="2">1m</option>
-                                    <option value="3">3m</option>
-                                    <option value="4">5m</option>
-                                    <option value="5">10m</option>
-                                </select>
-                                <button id="elceGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Questions')}</a></legend>
-                        <div class="ELCE-EPanel" id="elcePanel">
-                            <div class="ELCE-EOptionsMedia d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                <div class="ELCE-EOptionsGame">
-                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="elceTypeDiv">
-                                        <span>${_('Type')}:</span>
-                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-TypeSelect form-check-input" checked id="elceTypeChoose" type="radio" name="slctypeselect" value="0"/>
-                                                <label class="form-check-label" for="elceTypeChoose">${_('Select')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-TypeSelect form-check-input" id="elceTypeOrders" type="radio" name="slctypeselect" value="1"/>
-                                                <label class="form-check-label" for="elceTypeOrders">${_('Order')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-TypeSelect form-check-input" id="elceTypeWord" type="radio" name="slctypeselect" value="2"/>
-                                                <label class="form-check-label" for="elceTypeWord">${_('Word')}</label>
-                                            </div>
-                                        </span>
-                                    </div>
-                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="elceInputNumbers">
-                                        <span>${_('Options Number')}:</span>
-                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Number form-check-input" id="numQ2" type="radio" name="slcnumber" value="2" />
-                                                <label class="form-check-label" for="numQ2">2</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Number form-check-input" id="numQ3" type="radio" name="slcnumber" value="3" />
-                                                <label class="form-check-label" for="numQ3">3</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Number form-check-input" id="numQ4" type="radio" name="slcnumber" value="4" checked="checked" />
-                                                <label class="form-check-label" for="numQ4">4</label>
-                                            </div>
-                                         </span>
-                                    </div>
-                                    <div id="elcePercentageSpan" class="d-none flex-wrap align-items-center gap-2 mb-3">
-                                        <span >${_('Percentage of letters to show (%)')}:</span>
-                                        <span class="ELCE-EPercentage" id="elcePercentage">
-                                            <input type="number" class="form-control form-control-sm"  name="elcePercentageShow" id="elcePercentageShow" value="35" min="0" max="100" step="5" />
-                                        </span>
-                                    </div>
-                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="elceTimeDiv">
-                                        <span>${_('Time per question')}:</span>
-                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Times form-check-input" checked="checked" id="q15s" type="radio" name="slctime" value="0" />
-                                                <label class="form-check-label" for="q15s">15s</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Times form-check-input" id="q30s" type="radio" name="slctime" value="1" />
-                                                <label class="form-check-label" for="q30s">30s</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Times form-check-input" id="q1m" type="radio" name="slctime" value="2" />
-                                                <label class="form-check-label" for="q1m">1m</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Times form-check-input" id="q3m" type="radio" name="slctime" value="3" />
-                                                <label class="form-check-label" for="q3m">3m</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Times form-check-input" id="q5m" type="radio" name="slctime" value="4" />
-                                                <label class="form-check-label" for="q5m">5m</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ELCE-Times form-check-input" id="q10m" type="radio" name="slctime" value="5" />
-                                                <label class="form-check-label" for="q10m">10m</label>
-                                            </div>
-                                        </span>
-                                    </div>
-                                    <div id="elceScoreQuestionDiv" class="ELCE-ScoreQuestionDiv align-items-center gap-2 mb-3 d-none">
-                                        <label for="elceScoreQuestion">${_('Score')}:</label>
-                                        <input type="number" name="elceScoreQuestion" id="elceScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control"/>
-                                    </div>
-                                </div>
-                                <div class="ELCE-EMultiMediaOption ">
-                                    <div class="ELCE-EMultimedia" id="elceMultimedia">
-                                        <div id="elceTikzPreview" class="ELCE-ETikzPreview"></div>
-                                        <img class="ELCE-EMedia" src="${path}quextIELCBack.png" id="elceNoCircuit" alt="${_('No circuit')}" />
-                                    </div>
-                                    <div id="elceTikzCodeGroup">
-                                        <span id="elceTitleTikz">${_('Circuit code (TikZ)')}:</span>
-                                        <div class="ELCE-ETikzInput d-flex flex-nowrap align-items-start gap-2 mb-3">
-                                            <textarea id="elceTikzCode" class="form-control" rows="4" placeholder="${_('Enter TikZ circuit code…')}"></textarea>
-                                            <a href="#" id="elcePreviewTikz" class="ELCE-ENavigationButton" title="${_('Preview circuit')}">
-                                                <img src="${path}quextIEPlay.png" alt="${_('Preview')}" class="ELCE-ENavigationButton" />
-                                            </a>
-                                        </div>
-                                    </div>
-                                     <div class="mb-3 d-none" id="elceDescriptionDiv">
-                                        <label for="elceDescription">${_('Description')}:</label>
-                                        <input type="text" class="form-control" id="elceDescription" value="" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="ELCE-EContents" id="elceContents">
-                                <div id="elceSolitionOptions" class="ELCE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="elceSolutionSelect">A</span></span></div>
-                                <div class="ELCE-EQuestionDiv" id="elceQuestionDiv">
-                                    <label class="sr-av" for="elceQuestion">${_('Question')}:</label>
-                                    <input type="text" class="ELCE-EQuestion form-control" id="elceQuestion" value="${c_('What type of circuit is shown?')}">
-                                </div>
-                                <div class="ELCE-EAnswers" id="elceAnswers">
-                                    <div class="ELCE-EOptionDiv gap-2">
-                                        <label class="sr-av" for="elceSolution0">${_('Solution')} A:</label>
-                                        <input type="checkbox" class="ELCE-ESolution form-check-input me-0" name="slcsolution" id="elceSolution0" value="A" checked />
-                                        <label for="elceOption0">A</label>
-                                        <input type="text" class="ELCE-EOption0 ELCE-EAnwersOptions form-control" id="elceOption0" value="${c_('Series circuit')}">
-                                    </div>
-                                    <div class="ELCE-EOptionDiv gap-2">
-                                        <label class="sr-av" for="elceSolution1">${_('Solution')} B:</label>
-                                        <input type="checkbox" class="ELCE-ESolution form-check-input me-0" name="slcsolution" id="elceSolution1" value="B" />
-                                        <label for="elceOption1">B</label>
-                                        <input type="text" class="ELCE-EOption1 ELCE-EAnwersOptions form-control" id="elceOption1" value="${c_('Parallel circuit')}">
-                                    </div>
-                                    <div class="ELCE-EOptionDiv gap-2">
-                                        <label class="sr-av" for="elceSolution2">${_('Solution')} C:</label>
-                                        <input type="checkbox" class="ELCE-ESolution form-check-input me-0" name="slcsolution" id="elceSolution2" value="C" />
-                                        <label for="elceOption2">C</label>
-                                        <input type="text" class="ELCE-EOption2 ELCE-EAnwersOptions form-control" id="elceOption2" value="${c_('Mixed circuit')}">
-                                    </div>
-                                    <div class="ELCE-EOptionDiv gap-2">
-                                        <label class="sr-av" for="elceSolution3">${_('Solution')} D:</label>
-                                        <input type="checkbox" class="ELCE-ESolution form-check-input me-0" name="slcsolution" id="elceSolution3" value="D" />
-                                        <label for="elceOption3">D</label>
-                                        <input type="text" class="ELCE-EOption3 ELCE-EAnwersOptions form-control" id="elceOption3" value="${c_('Open circuit')}">
-                                    </div>
-                                </div>
-                                <div class="ELCE-EWordDiv ELCE-DP" id="elceWordDiv">
-                                    <div class="ELCE-ESolutionWord"><label for="elceSolutionWord">${_('Word/Phrase')}:</label><input type="text" id="elceSolutionWord" class="form-control"/></div>
-                                    <div class="ELCE-ESolutionWord"><label for="elceDefinitionWord">${_('Definition')}:</label><input type="text" id="elceDefinitionWord" class="form-control"/></div>
-                                </div>
-                            </div>
-                            <div class="ELCE-ENavigationButtons gap-2">
-                                <a href="#" id="elceAdd" class="ELCE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="ELCE-ENavigationButton" /></a>
-                                <a href="#" id="elceFirst" class="ELCE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="ELCE-ENavigationButton" /></a>
-                                <a href="#" id="elcePrevious" class="ELCE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="ELCE-ENavigationButton" /></a>
-                                <label class="sr-av" for="elceNumberQuestion">${_('Question number:')}</label><input type="text" class="ELCE-NumberQuestion form-control" id="elceNumberQuestion" value="1"/>
-                                <a href="#" id="elceNext" class="ELCE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="ELCE-ENavigationButton" /></a>
-                                <a href="#" id="elceLast" class="ELCE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="ELCE-ENavigationButton" /></a>
-                                <a href="#" id="elceDelete" class="ELCE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="ELCE-ENavigationButton" /></a>
-                                <a href="#" id="elceCopy" class="ELCE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="ELCE-ENavigationButton" /></a>
-                                <a href="#" id="elceCut" class="ELCE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="ELCE-ENavigationButton" /></a>
-                                <a href="#" id="elcePaste" class="ELCE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="ELCE-ENavigationButton" /></a>
-                            </div>
-                            <div class="ELCE-ENumQuestionDiv" id="elceNumQuestionDiv">
-                                <div class="ELCE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="ELCE-ENumQuestions" id="elceNumQuestions">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(11)}
-
-            </div>`;
+                <div id="electricalCircuitsIdeviceForm">
+                    ${edition.common.getIdeviceDescription(
+                        _('Create quiz activities based on electrical circuit diagrams drawn with TikZ.')
+                    )}
+                    ${edition.tabs.getHtml('electricalCircuitsIdeviceForm', {
+                        path: path,
+                        instructions: c_('Observe the electrical circuit and answer the questions.'),
+                        options: options,
+                        contents: questions,
+                        passwords: true,
+                        feedback: true,
+                        after: true,
+                        grading: true,
+                        texts: this.ci18n,
+                        share: {
+                            importQuestions: true,
+                            exportQuestions: true,
+                            type: 11,
+                        },
+                    })}
+                </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('electricalCircuitsIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('electricalCircuitsIdeviceForm');
+        edition.gamification.scorm.init();
 
         $exeDevice.enableForm();
     },
@@ -1741,16 +1747,22 @@ var $exeDevice = {
                 if (textAfter) {
                     $exeDevice.setEditorContent('eXeIdeviceTextAfter', unescape(textAfter));
                 }
-                const textFeedBack = dataGame.textFeedBack || '';
-                if (textFeedBack) {
-                    $exeDevice.setEditorContent('elceFeedBackEditor', unescape(textFeedBack));
+                const textFeedBackDiv = $('.electrical-circuits-feedback-game', wrapper);
+                if (textFeedBackDiv.length === 1) {
+                    $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                        textFeedBackDiv.html() || ''
+                    );
+                } else if (dataGame.textFeedBack) {
+                    $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                        unescape(dataGame.textFeedBack)
+                    );
                 }
             }
         }
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.answersRamdon = game.answersRamdon || false;
@@ -1792,14 +1804,16 @@ var $exeDevice = {
         $('#elceScoreQuestionDiv')
             .addClass('d-none')
             .removeClass('d-flex');
-        $('#elceHasFeedBack').prop('checked', game.feedBack);
-        $('#elcePercentajeFB').val(game.percentajeFB);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $('#elcePercentajeQuestionsValue').val(game.percentajeQuestions);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -1828,13 +1842,7 @@ var $exeDevice = {
                     ? ''
                     : game.selectsGame[i].description;
         }
-        if (game.feedBack) {
-            $('#elceFeedbackP').show();
-        } else {
-            $('#elceFeedbackP').hide();
-        }
-        $('#elcePercentajeFB').prop('disabled', !game.feedBack);
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1864,7 +1872,7 @@ var $exeDevice = {
             return false;
         }
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         const fields = this.ci18n;
         const i18n = { ...fields };
@@ -1886,7 +1894,7 @@ var $exeDevice = {
             divContent = `<div class="electrical-circuits-instructions SLCNP-instructions">${instructions}</div>`;
         }
 
-        const textFeedBack = $exeDevice.getEditorContent('elceFeedBackEditor');
+        const textFeedBack = $exeIDevicesEdition.iDevice.gamification.feedback.getText();
 
         let html = '<div class="electrical-circuits-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
@@ -1920,7 +1928,7 @@ var $exeDevice = {
         p.tikzSvg = $exeDevice.getRenderedTikzSvgForCode(p.tikzCode);
         p.description = $('#elceDescription').val().trim();
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         p.quextion = $('#elceQuestion').val().trim();
         p.options = [];
@@ -2043,9 +2051,8 @@ var $exeDevice = {
                 $exeDevice.getEditorContent('eXeGameInstructions')
             ),
             textAfter = escape($exeDevice.getEditorContent('eXeIdeviceTextAfter')),
-            textFeedBack = escape(
-                $exeDevice.getEditorContent('elceFeedBackEditor')
-            ),
+            feedback =
+                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
             showMinimize = $('#elceShowMinimize').is(':checked'),
             modeBoard = $('#elceModeBoard').is(':checked'),
             answersRamdon = $('#elceAnswersRamdon').is(':checked'),
@@ -2055,21 +2062,20 @@ var $exeDevice = {
                 clear($('#elceTimeShowSolution').val())
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#elceHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#elcePercentajeFB').val())),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeQuestions = parseInt(
                 clear($('#elcePercentajeQuestionsValue').val())
             ),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             evaluation = progressBar.evaluation,
             evaluationID = progressBar.evaluationID,
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#elceGlobalTimes').val(), 10);
 
+        if (!feedback) return false;
         if (!itinerary) return false;
         // getValues() warns and returns false on a report identifier that is
         // too short. Without this the form carried on and saved the activity
@@ -2080,10 +2086,6 @@ var $exeDevice = {
         if (!progressBar) return false;
 
         if (activityMode === 'test') {
-            if (feedBack && textFeedBack.trim().length == 0) {
-                eXe.app.alert($exeDevice.msgs.msgProvideFB);
-                return false;
-            }
             if (showSolution && timeShowSolution.length == 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
                 return false;
@@ -2135,7 +2137,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             asignatura: '',
             author: '',
@@ -2157,10 +2159,10 @@ var $exeDevice = {
             title: '',
             customScore: false,
             textAfter: textAfter,
-            textFeedBack: textFeedBack,
+            textFeedBack: escape(feedback.textFeedBack),
             gameMode: 1,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: 3.1,
             percentajeQuestions: percentajeQuestions,
             modeBoard: modeBoard,
@@ -2246,7 +2248,8 @@ var $exeDevice = {
                     return;
                 if (
                     $(e.target).is('#eXeProgressReportID') ||
-                    $(e.target).closest('#eXeProgressReportHelpLnk').length
+                    $(e.target).closest('#eXeProgressReportHelpLnk').length ||
+                    $(e.target).closest('.exe-idevice-help-container').length
                 )
                     return;
                 const $input = $(this).find('input.toggle-input').first();
@@ -2443,11 +2446,6 @@ var $exeDevice = {
             $exeDevice.clickSolution(marcado, value);
         });
 
-        $('#elceHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#elceFeedbackP').slideToggle(marcado);
-            $('#elcePercentajeFB').prop('disabled', !marcado);
-        });
 
         $elcePercentajeQuestions
             .on('keyup', function () {
@@ -2486,19 +2484,14 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             11,
             $exeDevice.insertAIQuestions
         );
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').on('click', function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
 
@@ -2568,7 +2561,7 @@ var $exeDevice = {
                 textFeedBack = game.textFeedBack || '';
             $exeDevice.setEditorContent('eXeGameInstructions', unescape(instructions));
             $exeDevice.setEditorContent('eXeIdeviceTextAfter', unescape(tAfter));
-            $exeDevice.setEditorContent('elceFeedBackEditor', unescape(textFeedBack));
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(unescape(textFeedBack));
         } else if (game.typeGame === 'QuExt') {
             $exeDevice.selectsGame = $exeDevice.importQuExt(game);
         } else if (game.typeGame === 'Rosco' || game.typeGame === 'Adivina') {
