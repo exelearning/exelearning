@@ -84,11 +84,6 @@
     margin-left: .5em;
 }
 
-/* Ayuda */
-#gameQEIdeviceForm .QXTE-TypeGameHelp {
-    font-size: .95em
-}
-
 
 .Games-Reportdiv {
     display: flex;
@@ -302,168 +297,32 @@ input#gameQEScoreQuestion {
 }
 
 
-/* To review */
-#gameQEIdeviceForm .exe-block-info img {
-    margin-left: .2em;
-    vertical-align: middle;
+#quextEOptions > div,
+#quextEOptions .toggle-item,
+#quextEOptions .form-check-inline {
+    flex-wrap: nowrap;
 }
 
-.exe-block-close {
-    position: absolute;
-    top: 6px;
-    right: 5px;
+#quextEOptions > div > .exe-idevice-help-container {
+    margin-left: .25rem;
 }
 
-
-#gameQEIdeviceFormTab3 p:first-child {
-    margin-top: 0;
+#quextEOptions .form-check-inline {
+    white-space: nowrap;
 }
 
-#gameQEIdeviceFormTab3 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
-}
-
-#gameQEIdeviceFormTab3>* {
-    flex: 0 0 48%;
-}
-
-#gameQEIdeviceFormTab3> :first-child {
-    flex: 0 0 100%;
-}
-
-
-@media screen and (max-width:720px) {
-    #gameQEIdeviceFormTab3>* {
-        flex: 0 0 100%;
-    }
-}
-
-#gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #0BA1A1;
-    font-weight: 500;
-}
-
-#gameQEIdeviceForm #gameQEIdeviceFormTab3 input {
-    width: 100%;
-}
-
-/* Tabs (this should be common) */
-.exe-form-tabs {
-    list-style: none;
-    margin: 0 0 1.5em 0;
-    padding: 0;
-}
-
-.exe-form-tabs li {
-    display: inline;
-    list-style: none;
-    list-style-image: none;
-    margin: 0;
-    padding: 0;
-}
-
-.exe-form-tabs li:first-child a {
-    border-bottom-left-radius: 4px;
-    border-top-left-radius: 4px;
-}
-
-.exe-form-tabs li:last-child a {
-    border-bottom-right-radius: 4px;
-    border-top-right-radius: 4px;
-}
-
-.exe-form-tabs a {
-    background: #F9F9F9;
-    border: 1px solid #CCC;
-    color: #666;
-    display: inline-block;
-    padding: .5em 1em;
-}
-
-.exe-form-tabs li:not(:last-child) a {
-    border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-    background: #FFF;
-    color: #000;
-    font-weight: 500;
-}
-
-#gameQESCORMoptions {
-    margin-left: 1.5em;
-    visibility: hidden;
-}
-
-label[for=gameQEActivitySCORM] {
-    font-weight: bold;
-}
-
-#gameQESCORMinstructionsButton {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsButton ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsButton ul li {
-    list-style-image: none;
-    margin: 0 0 .5em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsAuto {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsAuto ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-.GameModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
-
-
-.GameModeLabel {
-    font-weight: normal
-}
-
-
-
-.QXTE-LivesNumber input,
-.QXTE-FeedbackPercent input {
+.QXTE-LivesNumber input {
     width: 4.2rem;
     min-width: 4.2rem;
     text-align: center;
     padding: .15rem .25rem;
 }
 
-.QXTE-FeedbackPercent {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-}
-
-
 .QXTE-LivesNumber {
     display: inline-flex;
     align-items: center;
     gap: .35rem;
 }
+
 
 

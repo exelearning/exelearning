@@ -60,7 +60,7 @@ var $exeDevice = {
         $exeDevice.initQuestions();
 
         const root = document.getElementById('gameQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -725,10 +725,10 @@ var $exeDevice = {
             $(this).val(option);
         });
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
         if (p.type !== 2 && p.audio.trim().length > 4)
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
 
         $('#quextEURLAudio').val(p.audio);
         $('#quextENumberQuestion').val(i + 1);
@@ -983,143 +983,136 @@ var $exeDevice = {
 
     createForm: function () {
         let path = $exeDevice.idevicePath,
-            html = `
-            <div id="gameQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                    _('Create activities in which students see a video, image or text and they have to choose the right answer.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/test.html',
-                )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class=" d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="quextEShowMinimize" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="quextEShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="quextEQuestionsRamdon" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="quextEQuestionsRamdon" class="toggle-label">${_('Random questions')}</label>
-                                </div>
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="quextEAnswersRamdon" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="quextEAnswersRamdon" class="toggle-label">${_('Random options')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control">
-                                    <input type="checkbox" id="quextECustomMessages" class="toggle-input"/>
-                                    <span class="toggle-visual"></span></span>
-                                    <label for="quextECustomMessages" class="toggle-label">${_('Custom messages')}.</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" checked id="quextEShowSolution" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="quextEShowSolution" class="toggle-label">${_('Show solutions')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="quextETimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
-                                    <input type="number" class="form-control" name="quextETimeShowSolution" id="quextETimeShowSolution" value="3" min="1" max="9" />
-                                    <span>${_('seconds')}</span>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="quextECustomScore" class="toggle-input"/>
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label for="quextECustomScore" class="toggle-label">${_('Custom score')}.</label>
-                                </div>
-                            </div>
-                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                ${_('Score')}:
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="QXTE-TypeGame form-check-input" checked="checked" id="quextETypeActivity" type="radio" name="qxtgamemode" value="1" />
-                                    <label for="quextETypeActivity">${_('From 0 to 10')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="QXTE-TypeGame form-check-input" id="quextEGameMode" type="radio" name="qxtgamemode" value="0" />
-                                    <label for="quextEGameMode">${_('Points and lives')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="QXTE-TypeGame form-check-input" id="quextETypeReto" type="radio" name="qxtgamemode" value="2" />
-                                    <label for="quextETypeReto">${_('No score')}</label>
-                                </div>
-                                <strong class="GameModeLabel">
-                                    <a href="#quextEGameModeHelp" id="quextEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                    </a>
-                                </strong>
-                            </div>
-                            <div id="quextEGameModeHelp" class="QXTE-TypeGameHelp exe-block-info pt-3" style="display:none" aria-hidden="true">
-                                <ul role="list">
-                                    <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                    <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
-                                    <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
-                                </ul>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" checked id="quextEUseLives" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="quextEUseLives" class="toggle-label">${_('Use lives')}.</label>
-                                </div>
-                                <div class="QXTE-LivesNumber">
-                                    <label for="quextENumberLives" class="sr-av">${_('Number of lives')}</label>
-                                    <input type="number" class="form-control" name="quextENumberLives" id="quextENumberLives" value="3" min="1" max="5" />
-                                    <span>${_('lives')}</span>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="quextEHasFeedBack" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="quextEHasFeedBack" class="toggle-label">${_('Feedback')}.</label>
-                                </div>
-                                <div class="QXTE-FeedbackPercent">
-                                    <label for="quextEPercentajeFB" class="sr-av">${_('% right to see the feedback')}</label>
-                                    <input type="number" class="form-control" name="quextEPercentajeFB" id="quextEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                                    <span>%</span>
-                                </div>
-                            </div>
-                            <div id="quextEFeedbackP" style="display:none" class="mb-3">
-                                <textarea id="quextEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label form="quextEVideoIntro">${_('Video Intro')}:</label>
-                                <input type="text" id="quextEVideoIntro" class="form-control w-25" />
-                                <a href="#" class="QXTE-ButtonLink" id="quextEVideoIntroPlay" title="${_('Play the introduction video')}">
-                                    <img src="${path}quextIEPlay.png" alt="Play" class="QXTE-ENavigationButton" />
-                                </a>
-                            </div>
-                           <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="quextEPercentajeQuestions">%${_('Questions')}:</label>
-                                <input type="number" class="form-control" name="quextEPercentajeQuestions" id="quextEPercentajeQuestions" value="100" min="1" max="100" />
-                                <span id="quextENumeroPercentaje">1/1</span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 mb-3">
-                                <label for="quextEGlobalTimes">${_('Time per question')}:</label>
-                                <select id="quextEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
-                                    <option value="0" selected>15s</option>
-                                    <option value="1">30s</option>
-                                    <option value="2">1m</option>
-                                    <option value="3">3m</option>
-                                    <option value="4">5m</option>
-                                    <option value="5">10m</option>
-                                </select>
-                                <button id="quextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">                                
-                            </div>
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="quextEOptions">
+                    <div class="toggle-item mb-3" data-target="quextEShowMinimize">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="quextEShowMinimize" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label for="quextEShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
+                        ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <div class="toggle-item" data-target="quextEQuestionsRamdon">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="quextEQuestionsRamdon" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label for="quextEQuestionsRamdon" class="toggle-label">${_('Random questions')}</label>
                         </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Questions')}</a></legend>
+                        <div class="toggle-item" data-target="quextEAnswersRamdon">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="quextEAnswersRamdon" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label for="quextEAnswersRamdon" class="toggle-label">${_('Random options')}</label>
+                        </div>
+                        ${edition.common.getHelpTooltip([
+                            `${_('Random questions')}: ${_('Present the questions in a different random order each time the game starts.')}`,
+                            `${_('Random options')}: ${_('Display the answer options in a different random order each time.')}`,
+                        ].join('\n\n'))}
+                    </div>
+                    <div class="toggle-item mb-3" data-target="quextECustomMessages">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="quextECustomMessages" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label for="quextECustomMessages" class="toggle-label">${_('Custom messages')}.</label>
+                        ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <div class="toggle-item toggle-related m-0" data-target="quextEShowSolution">
+                            <span class="toggle-control">
+                                <input type="checkbox" checked id="quextEShowSolution" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label for="quextEShowSolution" class="toggle-label">${_('Show solutions')}.</label>
+                        </div>
+                        <label for="quextETimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
+                        <input type="number" class="form-control" name="quextETimeShowSolution" id="quextETimeShowSolution" value="3" min="1" max="9" />
+                        <span>${_('seconds')}</span>
+                        ${edition.common.getHelpTooltip([
+                            `${_('Show solutions')}: ${_('Show the correct answer after checking an option or when the time runs out.')}`,
+                            `${_('Show solution time (seconds)')}: ${_('Set how many seconds the solution remains visible before moving to the next question.')}`,
+                        ].join('\n\n'))}
+                    </div>
+                    <div class="toggle-item mb-3" data-target="quextECustomScore">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="quextECustomScore" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label for="quextECustomScore" class="toggle-label">${_('Custom score')}.</label>
+                        ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Questions tab.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span>${_('Score')}:</span>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="QXTE-TypeGame form-check-input" checked="checked" id="quextETypeActivity" type="radio" name="qxtgamemode" value="1" />
+                            <label for="quextETypeActivity">${_('From 0 to 10')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="QXTE-TypeGame form-check-input" id="quextEGameMode" type="radio" name="qxtgamemode" value="0" />
+                            <label for="quextEGameMode">${_('Points and lives')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="QXTE-TypeGame form-check-input" id="quextETypeReto" type="radio" name="qxtgamemode" value="2" />
+                            <label for="quextETypeReto">${_('No score')}</label>
+                        </div>
+                        ${edition.common.getHelpTooltip([
+                            `${_('From 0 to 10')}: ${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}`,
+                            `${_('Points and lives')}: ${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}`,
+                            `${_('No score')}: ${_('No score and no lives. You have to answer right to get some information (a feedback).')}`,
+                        ].join('\n\n'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <div class="toggle-item toggle-related m-0" data-target="quextEUseLives">
+                            <span class="toggle-control">
+                                <input type="checkbox" checked id="quextEUseLives" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label for="quextEUseLives" class="toggle-label">${_('Use lives')}.</label>
+                        </div>
+                        <div class="QXTE-LivesNumber">
+                            <label for="quextENumberLives" class="sr-av">${_('Number of lives')}</label>
+                            <input type="number" class="form-control" name="quextENumberLives" id="quextENumberLives" value="3" min="1" max="5" />
+                            <span>${_('lives')}</span>
+                        </div>
+                        ${edition.common.getHelpTooltip([
+                            `${_('Use lives')}: ${_('Limit attempts in Points and lives mode. An incorrect answer or a timeout costs one life; the game ends when no lives remain.')}`,
+                            `${_('Number of lives')}: ${_('Set the number of lives available at the start of the game, from 1 to 5.')}`,
+                        ].join('\n\n'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="quextEVideoIntro">${_('Video Intro')}:</label>
+                        <input type="text" id="quextEVideoIntro" class="form-control w-25" />
+                        <a href="#" class="QXTE-ButtonLink" id="quextEVideoIntroPlay" title="${_('Play the introduction video')}">
+                            <img src="${path}quextIEPlay.png" alt="Play" class="QXTE-ENavigationButton" />
+                        </a>
+                        ${edition.common.getHelpTooltip(_('Enter a YouTube URL to show an introductory video before starting the activity.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="quextEPercentajeQuestions">%${_('Questions')}:</label>
+                        <input type="number" class="form-control" name="quextEPercentajeQuestions" id="quextEPercentajeQuestions" value="100" min="1" max="100" />
+                        <span id="quextENumeroPercentaje">1/1</span>
+                        ${edition.common.getHelpTooltip(_('Choose the percentage of questions included in each game. The counter shows how many questions will be used.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <label for="quextEGlobalTimes">${_('Time per question')}:</label>
+                        <select id="quextEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                            <option value="0" selected>15s</option>
+                            <option value="1">30s</option>
+                            <option value="2">1m</option>
+                            <option value="3">3m</option>
+                            <option value="4">5m</option>
+                            <option value="5">10m</option>
+                        </select>
+                        <button id="quextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
+                        ${edition.common.getHelpTooltip(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Questions tab.'))}
+                    </div>
+                </div>`,
+            questions = `
                         <div class="QXTE-EPanel" id="quextEPanel">
                             <div class="QXTE-EOptionsMedia">
                                 <div class="QXTE-EOptionsGame">
@@ -1356,20 +1349,34 @@ var $exeDevice = {
                                 <div class="QXTE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
                                 <span class="QXTE-ENumQuestions" id="quextENumQuestions">0</span>
                             </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 2, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(2)}
+                        </div>`,
+            html = `
+            <div id="gameQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create activities in which students see a video, image or text and they have to choose the right answer.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/test.html',
+                )}
+                ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Choose the right answer'),
+                    options: options,
+                    contents: questions,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        exportQuestions: true,
+                        type: 2,
+                    },
+                })}
             </div>
         `;
         this.ideviceBody.innerHTML = html; //eXe 3.0
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('gameQEIdeviceForm');
+        edition.gamification.scorm.init();
         tinymce.init({
             selector: '#quextEText',
             height: 220,
@@ -1513,28 +1520,26 @@ var $exeDevice = {
 
             const textFeedBack = $('.quext-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
-                $('#quextEFeedBackEditor').val(textFeedBack.html());
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html()
+                );
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
         }
     },
 
-    updateGameMode: function (gamemode, feedback, useLives) {
-        $('#quextEUseLives').prop('disabled', true);
-        $('#quextENumberLives').prop('disabled', true);
-        $('#quextEPercentajeFB').prop('disabled', !feedback && gamemode !== 2);
-        $('#quextEHasFeedBack').prop('disabled', gamemode === 2);
-        $('#quextEHasFeedBack').prop('checked', feedback);
-        if (gamemode === 2 || feedback) {
-            $('#quextEFeedbackP').slideDown();
-        }
-        if (gamemode !== 2 && !feedback) {
-            $('#quextEFeedbackP').slideUp();
-        }
+    updateGameMode: function (gamemode, useLives) {
+        $('#quextEUseLives, #quextENumberLives').prop('disabled', true);
+        gamemode = parseInt(gamemode, 10);
+        // "No score" is nothing but the feedback: answer right to get it.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setRequired(
+            gamemode === 2
+        );
+
         if (gamemode === 0) {
             $('#quextEUseLives').prop('disabled', false);
             $('#quextENumberLives').prop('disabled', !useLives);
@@ -1542,7 +1547,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.answersRamdon = game.answersRamdon || false;
@@ -1591,8 +1596,10 @@ var $exeDevice = {
         );
         $('#quextECustomScore').prop('checked', game.customScore);
         $('#quextEScoreQuestionDiv').removeClass('d-flex').addClass('d-none');
-        $('#quextEHasFeedBack').prop('checked', game.feedBack);
-        $('#quextEPercentajeFB').val(game.percentajeFB);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $(
             `input.QXTE-TypeGame[name='qxtgamemode'][value='${game.gameMode}']`
         ).prop('checked', true);
@@ -1603,17 +1610,17 @@ var $exeDevice = {
         );
         $('#quextECustomMessages').prop('checked', game.customMessages);
         $('#quextEPercentajeQuestions').val(game.percentajeQuestions);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
         $('#quextEGlobalTimes').val(game.globalTime);
 
-        $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
+        $exeDevice.updateGameMode(game.gameMode, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
 
         game.questionsGame.forEach(function (question) {
@@ -1633,20 +1640,13 @@ var $exeDevice = {
                 .addClass('d-flex');
         }
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
 
-        if (game.feedBack || game.gameMode === 2) {
-            $('#quextEFeedbackP').show();
-        } else {
-            $('#quextEFeedbackP').hide();
-        }
-
-        $('#quextEPercentajeFB').prop('disabled', !game.feedBack);
         $exeDevice.questionsGame = game.questionsGame;
         $exeDevice.updateQuestionsNumber();
         $exeDevice.showQuestion($exeDevice.active);
@@ -1705,7 +1705,8 @@ var $exeDevice = {
             divContent = `<div class="quext-instructions QXTP-instructions">${instructions}</div>`;
         }
 
-        const textFeedBack = tinyMCE.get('quextEFeedBackEditor').getContent(),
+        const textFeedBack =
+                $exeIDevicesEdition.iDevice.gamification.feedback.getText(),
             linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
 
@@ -1766,7 +1767,7 @@ var $exeDevice = {
         p.url = $('#quextEURLImage').val().trim();
         p.audio = $('#quextEURLAudio').val();
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type === 2) {
@@ -1895,7 +1896,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('test')}.txt`,
             'gameQEIdeviceForm'
@@ -2100,9 +2101,9 @@ var $exeDevice = {
                 .get('eXeGameInstructions')
                 .setContent(unescape(instructions));
             tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            tinyMCE
-                .get('quextEFeedBackEditor')
-                .setContent(unescape(textFeedBack));
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                unescape(textFeedBack)
+            );
         } else if (game.typeGame !== 'QuExt') {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
             return;
@@ -2130,9 +2131,6 @@ var $exeDevice = {
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
             textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
-            textFeedBack = escape(
-                tinyMCE.get('quextEFeedBackEditor').getContent()
-            ),
             showMinimize = $('#quextEShowMinimize').is(':checked'),
             optionsRamdon = $('#quextEQuestionsRamdon').is(':checked'),
             answersRamdon = $('#quextEAnswersRamdon').is(':checked'),
@@ -2150,31 +2148,30 @@ var $exeDevice = {
                 $('#quextEVIStart').val()
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#quextECustomScore').is(':checked'),
-            feedBack = $('#quextEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#quextEPercentajeFB').val())),
             gameMode = parseInt($('input[name=qxtgamemode]:checked').val()),
             customMessages = $('#quextECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#quextEPercentajeQuestions').val())
             ),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             questionsGame = $exeDevice.questionsGame,
             globalTime = parseInt($('#quextEGlobalTimes').val(), 10),
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
         if (!progressBar) return false;
 
-        if ((gameMode === 2 || feedBack) && textFeedBack.trim().length === 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
+        // Asks for the message itself when it is on, or compulsory ("No score").
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
+
         if (showSolution && timeShowSolution.toString().length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
             return false;
@@ -2254,10 +2251,10 @@ var $exeDevice = {
             title: '',
             customScore: customScore,
             textAfter: textAfter,
-            textFeedBack: textFeedBack,
+            textFeedBack: escape(feedback.textFeedBack),
             gameMode: gameMode,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: 2,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
@@ -2656,7 +2653,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#quextEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -2667,30 +2664,14 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
-        });
-
-        $('#quextEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#quextEFeedbackP').slideToggle(marcado);
-            $('#quextEPercentajeFB').prop('disabled', !marcado);
         });
 
         $('#gameQEIdeviceForm').on('click', 'input.QXTE-TypeGame', function () {
             const gm = parseInt($(this).val(), 10),
-                fb = $('#quextEHasFeedBack').is(':checked'),
                 ul = $('#quextEUseLives').is(':checked');
-            $exeDevice.updateGameMode(gm, fb, ul);
-        });
-
-        $('#quextEGameModeHelpLnk').on('click', function (e) {
-            e.preventDefault();
-            const $panel = $('#quextEGameModeHelp');
-            $panel.toggle();
-            const isVisible = $panel.is(':visible');
-            $panel.attr('aria-hidden', isVisible ? 'false' : 'true');
-            return false;
+            $exeDevice.updateGameMode(gm, ul);
         });
 
         $('#quextECustomMessages').on('change', function () {
@@ -2732,23 +2713,19 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
+
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             2,
             $exeDevice.insertQuestions
         );
 
         $exeDevice.loadYoutubeApi();
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').on('click', function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     playVideoIntro1: function () {
