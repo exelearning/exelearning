@@ -9,6 +9,7 @@ import {
     selectFirstPage,
     waitForAppReady,
 } from '../../helpers/workarea-helpers';
+import { waitForEditor } from '../../helpers/editor-helpers';
 
 test('Guess explains each option inline without changing its value', async ({
     authenticatedPage: page,
@@ -20,6 +21,9 @@ test('Guess explains each option inline without changing its value', async ({
     await waitForAppReady(page);
     await selectFirstPage(page);
     await addIdevice(page, 'guess');
+    // The form is built when its question editor starts: wait, or what is
+    // typed first is lost.
+    await waitForEditor(page, 'adivinaEText');
     const device = page.locator('.idevice_node.guess').first();
     const id = await device.getAttribute('id');
     expect(id).toBeTruthy();

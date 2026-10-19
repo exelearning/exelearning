@@ -46,6 +46,18 @@ export async function waitForTinyMCE(page: Page, timeout = 15000): Promise<void>
 }
 
 /**
+ * Wait for one TinyMCE editor, by id, to finish starting. Some iDevices build
+ * their form when their own editor starts, so anything typed before is lost.
+ *
+ * @param page - Playwright page
+ * @param editorId - Id of the editor's textarea
+ * @param timeout - Timeout in milliseconds
+ */
+export async function waitForEditor(page: Page, editorId: string, timeout = 15000): Promise<void> {
+    await page.waitForFunction(id => (window as any).tinymce?.get(id)?.initialized === true, editorId, { timeout });
+}
+
+/**
  * Set content in active TinyMCE editor
  *
  * @param page - Playwright page

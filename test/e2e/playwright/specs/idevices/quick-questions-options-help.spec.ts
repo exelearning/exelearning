@@ -9,6 +9,7 @@ import {
     selectFirstPage,
     waitForAppReady,
 } from '../../helpers/workarea-helpers';
+import { waitForEditor } from '../../helpers/editor-helpers';
 
 test('Quick Questions explains each option inline without changing its value', async ({
     authenticatedPage: page,
@@ -21,6 +22,9 @@ test('Quick Questions explains each option inline without changing its value', a
     await selectFirstPage(page);
     await page.route('https://www.youtube.com/iframe_api', route => route.abort());
     await addIdevice(page, 'quick-questions');
+    // The form is built when its question editor starts: wait, or what is
+    // typed first is lost.
+    await waitForEditor(page, 'quextEText');
     const device = page.locator('.idevice_node.quick-questions').first();
     const id = await device.getAttribute('id');
     expect(id).toBeTruthy();
