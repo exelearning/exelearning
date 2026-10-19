@@ -7227,6 +7227,47 @@ describe('YjsProjectBridge', () => {
 
       expect(bridge.documentManager.markDirty).toHaveBeenCalled();
     });
+
+    // #2540: without server storage the opened file is where the assets live,
+    // so they must not count as unsaved changes right after opening it.
+    describe('assets of the opened file', () => {
+      beforeEach(() => {
+        bridge.assetManager = { markAssetsSavedLocally: mock(() => {}) };
+      });
+
+      it('marks them saved locally when the project has no server storage', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).toHaveBeenCalled();
+      });
+
+      it('leaves them pending upload when the server stores the project', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: true } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
+      });
+
+      it('leaves them unsaved when importing into the current project', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: false });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
+      });
+
+      it('opens fine with an asset handler that does not track local saves', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+        bridge.assetManager = {};
+
+        const stats = await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(stats.pages).toBe(1);
+      });
+    });
   });
 
   describe('clearAssetsForNewProject', () => {
