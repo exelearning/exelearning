@@ -373,6 +373,22 @@ describe('padlock edition: shared form tabs', () => {
         expect(document.getElementById('ci18n_msgSubmit').value).toBe('Open');
     });
 
+    it('keeps the error message off when it reopens with no attempts, as the form saves them', () => {
+        // The form saves the number of attempts as the text of its field.
+        open(stored(game({ candadoAttemps: '0' })));
+
+        expect(document.getElementById('candadoEErrorMessage').disabled).toBe(true);
+    });
+
+    it('offers no more attempts than it keeps', () => {
+        const attempts = document.getElementById('candadoEAttemps');
+        attempts.value = attempts.max;
+
+        $(attempts).trigger('focusout');
+
+        expect(attempts.value).toBe(attempts.max);
+    });
+
     describe('saving', () => {
         let editors;
         let tinymceGet;

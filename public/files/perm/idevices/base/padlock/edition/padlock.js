@@ -151,7 +151,7 @@ var $exeDevice = {
                     </div>
                     <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
                         <label for="candadoEAttemps" class="mb-0">${msgs.msgNumFaildedAttemps}:</label>
-                        <input type="number" name="candadoEAttemps" id="candadoEAttemps" value="0" min="0" max="10" step="1" required class="form-control" />
+                        <input type="number" name="candadoEAttemps" id="candadoEAttemps" value="0" min="0" max="9" step="1" required class="form-control" />
                         ${help(_('After this number of wrong codes, learners see the error message. Set 0 to never show it.'))}
                     </div>
                     <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
@@ -252,7 +252,7 @@ var $exeDevice = {
             $('#candadoEErrorMessage').val(dataGame.candadoErrorMessage);
             $('#candadoEErrorMessage').prop(
                 'disabled',
-                dataGame.candadoAttemps === 0
+                !(Number(dataGame.candadoAttemps) > 0)
             );
             $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
                 evaluation: dataGame.evaluation,
