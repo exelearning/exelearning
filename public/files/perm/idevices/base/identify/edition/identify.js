@@ -148,26 +148,6 @@ var $exeDevice = {
         ); //eXe 3.0
     },
 
-    playSound: function (selectedFile) {
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        const player = new Audio(selectFile);
-        $exeDevice.playerAudio = player;
-        // Playback and its network activity stop when the editor closes.
-        this.$lifecycle.ownMedia(player, 'previewAudio');
-        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
-            player.play();
-        });
-    },
-
-    stopSound() {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause == 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
-    },
-
     showMessage: function (msg) {
         eXe.app.alert(msg);
     },
@@ -656,9 +636,6 @@ var $exeDevice = {
 
     initQuestions: function () {
         $('#idfEInputImage').css('display', 'flex');
-        $('#idfMediaNormal').prop('disabled', false);
-        $('#idfMediaImage').prop('disabled', false);
-        $('#idfMediaText').prop('disabled', false);
 
         if ($exeDevice.questionsGame.length == 0) {
             const question = $exeDevice.getCuestionDefault();
@@ -1081,35 +1058,6 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
     },
 
-    exportQuestions: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
-
-        const lines = this.getLinesQuestions(dataGame.questionsGame);
-        const fileContent = lines.join('\n');
-        const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('identify')}.txt`,
-            'identifyQEIdeviceForm'
-        );
-    },
-
-    getLinesQuestions: function (questions) {
-        let lineswords = [];
-        for (let i = 0; i < questions.length; i++) {
-            let q = questions[i];
-            let question = `${q.question}`;
-            for (let j = 0; j < q.clues.length; j++) {
-                if (q.clues[j]) {
-                    question += `#${q.clues[j]}`;
-                }
-            }
-            lineswords.push(question);
-        }
-        return lineswords;
-    },
-
     importGame: function (content, filetype) {
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
@@ -1163,20 +1111,6 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
     },
 
-    importIdentifica: function (game) {
-        const questionsGame = $exeDevice.questionsGame;
-        game.questionsGame.forEach((p) => {
-            p.time = typeof p.time === 'undefined' ? 1 : p.time;
-            p.audio = typeof p.audio === 'undefined' ? '' : p.audio;
-            p.hit = typeof p.hit === 'undefined' ? -1 : p.hit;
-            p.error = typeof p.error === 'undefined' ? -1 : p.error;
-            p.msgHit = typeof p.msgHit === 'undefined' ? '' : p.msgHit;
-            p.msgError = typeof p.msgError === 'undefined' ? '' : p.msgError;
-            questionsGame.push(p);
-        });
-        return questionsGame;
-    },
-
     removeTags: function (str) {
         let wrapper = $('<div></div>');
         wrapper.html(str);
@@ -1222,11 +1156,6 @@ var $exeDevice = {
 
         const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
-
-        if (showSolution && timeShowSolution.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
 
         const questionsGame = $exeDevice.questionsGame;
         for (let i = 0; i < questionsGame.length; i++) {
@@ -1289,14 +1218,6 @@ var $exeDevice = {
             const $target = $('#idfEAuthorAlt');
             const show = $target.hasClass('d-none');
             $target.toggleClass('d-none', !show).toggleClass('d-flex', show);
-        });
-
-        $('#idfShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#idfCodeAccess, #idfMessageCodeAccess').prop(
-                'disabled',
-                !marcado
-            );
         });
 
         $('#idfEAdd').on('click', (e) => {
@@ -1403,9 +1324,6 @@ var $exeDevice = {
                     });
                     reader.readAsText(file);
                 });
-            $('#eXeGameExportQuestions').on('click', () => {
-                $exeDevice.exportQuestions();
-            });
         } else $('#eXeGameExportImport').hide();
 
         $('#idfEShowSolution').on('change', function () {
