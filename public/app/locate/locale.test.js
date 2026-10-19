@@ -192,6 +192,17 @@ describe('Locale translations', () => {
       expect(window.$exe_i18n.previous).toBe('Previous');
     });
 
+    it('should fall back to English when the host answers a missing locale with HTML', async () => {
+      locale._contentLang = 'ru';
+      vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: true, text: async () => '<!DOCTYPE html><html></html>' })
+        .mockResolvedValueOnce({ ok: true, text: async () => PREBUILT_EN });
+
+      await locale.refreshI18nGlobals();
+
+      expect(window.$exe_i18n.previous).toBe('Previous');
+    });
+
     it('should warn and return early when both fetches fail', async () => {
       locale._contentLang = 'fr';
       vi.spyOn(global, 'fetch').mockResolvedValue({ ok: false, status: 404 });
