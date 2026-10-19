@@ -1757,6 +1757,9 @@ var $exeDevice = {
                         unescape(dataGame.textFeedBack)
                     );
                 }
+                $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                    dataGame.msgs
+                );
             }
         }
     },

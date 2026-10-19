@@ -1615,6 +1615,18 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
         expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
     });
 
+    it('keeps the custom texts when the iDevice is edited again', () => {
+        device.idevicePreviousData = `
+            <div class="electrical-circuits-IDevice">
+                <div class="electrical-circuits-DataGame js-hidden">${JSON.stringify(game({ msgs: { msgScore: 'Points' } }))}</div>
+            </div>`;
+        vi.spyOn(device, 'showQuestion').mockImplementation(() => {});
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('ci18n_msgScore').value).toBe('Points');
+    });
+
     it('loads the saved message into the shared editor', () => {
         device.idevicePreviousData = `
             <div class="electrical-circuits-IDevice">
