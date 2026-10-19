@@ -89,6 +89,11 @@ export function dialogButton(page: Page, name: 'Save' | 'Cancel'): Locator {
     return page.locator('.tox-dialog__footer button').filter({ hasText: text });
 }
 
+/** A double click Mind Elixir recognises (see renameTopic). */
+export function doubleClick(target: Locator): Promise<void> {
+    return target.dblclick({ delay: 20 });
+}
+
 /** A node of the map by its exact caption. */
 export function topic(frame: FrameLocator, caption: string): Locator {
     return frame.locator('me-tpc').filter({ hasText: new RegExp(`^${escapeRegExp(caption)}$`) });
@@ -106,13 +111,13 @@ export async function editorData(frame2: Frame): Promise<MindElixirData> {
 }
 
 /**
- * Replaces the caption of a node: a click selects it and a double click opens the caption
- * editor, as a user does (Mind Elixir only edits a node that is already selected).
+ * Replaces the caption of a node with a double click, as a user does. Mind Elixir detects its
+ * own double click: two taps on the same element more than 0 and less than 300 ms apart (whole
+ * milliseconds). Playwright's double click releases both in the same millisecond, so each press
+ * lasts a little, as a person's does.
  */
 export async function renameTopic(page: Page, frame: FrameLocator, from: string, to: string): Promise<void> {
-    await topic(frame, from).click();
-    await expect(topic(frame, from)).toHaveClass(/selected/);
-    await topic(frame, from).dblclick();
+    await doubleClick(topic(frame, from));
     const input = frame.locator('#input-box');
     await expect(input).toBeVisible();
     await page.keyboard.press('ControlOrMeta+a');

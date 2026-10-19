@@ -6,6 +6,7 @@ import {
     cancelMindmap,
     countNodes,
     dialogButton,
+    doubleClick,
     editTextIdevice,
     editorData,
     findNode,
@@ -157,8 +158,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await expect(frame.locator('#map-title')).toHaveValue('Sin título');
         await expect(frame.locator('#map-caption')).not.toBeChecked();
         // A caption still being typed is kept when Save is clicked
-        await topic(frame, 'Hija').click();
-        await topic(frame, 'Hija').dblclick();
+        await doubleClick(topic(frame, 'Hija'));
         await expect(frame.locator('#input-box')).toBeVisible();
         await page.keyboard.press('ControlOrMeta+a');
         await page.keyboard.type('Hija editada');
