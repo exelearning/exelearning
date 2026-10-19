@@ -863,6 +863,7 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             'instructions',
             'options',
             'contents',
+            'passwords',
             'feedback',
             'after',
             'grading',
@@ -872,6 +873,7 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
         expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
         expect(panel('options').querySelector('#descubreEOptions')).not.toBeNull();
         expect(panel('contents').querySelector('.Descubre-EPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameCodeAccess')).not.toBeNull();
         expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
         expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
         expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
@@ -980,43 +982,46 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             tinymceGet.mockRestore();
         });
 
+        const game = (overrides = {}) => ({
+            showMinimize: true,
+            caseSensitive: true,
+            customMessages: false,
+            showCards: true,
+            percentajeQuestions: 100,
+            timeShowSolution: 5,
+            gameMode: 0,
+            gameLevels: 0,
+            time: 0,
+            attempts: 0,
+            itinerary: {},
+            evaluation: false,
+            evaluationID: '',
+            passScoreMode: 0,
+            passScoreCustom: 5,
+            isScorm: 0,
+            textButtonScorm: '',
+            repeatActivity: false,
+            weighted: false,
+            feedBack: true,
+            percentajeFB: 80,
+            imgCard: '',
+            wordsGame: [
+                {
+                    data: [
+                        { type: 0, url: 'img1.png', audio: '', x: 0, y: 0, author: '', alt: '', eText: 'One', color: '#000', backcolor: '#fff' },
+                        { type: 0, url: 'img2.png', audio: '', x: 0, y: 0, author: '', alt: '', eText: 'Two', color: '#000', backcolor: '#fff' },
+                        { type: 0, url: '', audio: '', x: 0, y: 0, author: '', alt: '', eText: '', color: '#000', backcolor: '#fff' },
+                        { type: 0, url: '', audio: '', x: 0, y: 0, author: '', alt: '', eText: '', color: '#000', backcolor: '#fff' },
+                    ],
+                    msgError: '',
+                    msgHit: '',
+                },
+            ],
+            ...overrides,
+        });
+
         it('saves form data with feedback and extra content', () => {
-            device.updateFieldGame({
-                showMinimize: true,
-                caseSensitive: true,
-                customMessages: false,
-                showCards: true,
-                percentajeQuestions: 100,
-                timeShowSolution: 5,
-                gameMode: 0,
-                gameLevels: 0,
-                time: 0,
-                attempts: 0,
-                itinerary: {},
-                evaluation: false,
-                evaluationID: '',
-                passScoreMode: 0,
-                passScoreCustom: 5,
-                isScorm: 0,
-                textButtonScorm: '',
-                repeatActivity: false,
-                weighted: false,
-                feedBack: true,
-                percentajeFB: 80,
-                imgCard: '',
-                wordsGame: [
-                    {
-                        data: [
-                            { type: 0, url: 'img1.png', audio: '', x: 0, y: 0, author: '', alt: '', eText: 'One', color: '#000', backcolor: '#fff' },
-                            { type: 0, url: 'img2.png', audio: '', x: 0, y: 0, author: '', alt: '', eText: 'Two', color: '#000', backcolor: '#fff' },
-                            { type: 0, url: '', audio: '', x: 0, y: 0, author: '', alt: '', eText: '', color: '#000', backcolor: '#fff' },
-                            { type: 0, url: '', audio: '', x: 0, y: 0, author: '', alt: '', eText: '', color: '#000', backcolor: '#fff' },
-                        ],
-                        msgError: '',
-                        msgHit: '',
-                    },
-                ],
-            });
+            device.updateFieldGame(game());
             device.showQuestion(0);
             $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Feedback message</p>');
             const data = device.validateData();
@@ -1030,6 +1035,22 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             const savedHtml = device.save();
             expect(savedHtml).toContain('descubre-feedback-game');
             expect(savedHtml).toContain('descubre-extra-content');
+        });
+
+        it('keeps the access code and the clue when saving', () => {
+            const itinerary = {
+                showClue: true,
+                clueGame: 'Next key: river',
+                percentageClue: 60,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Code of the previous activity?',
+            };
+            device.updateFieldGame(game({ itinerary }));
+            device.showQuestion(0);
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Feedback message</p>');
+
+            expect(device.validateData().itinerary).toEqual(itinerary);
         });
     });
 });

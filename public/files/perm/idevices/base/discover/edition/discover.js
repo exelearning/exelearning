@@ -359,6 +359,7 @@ var $exeDevice = {
             instructions: c_('Birds of a feather flock together.'),
             options: optionsHtml,
             contents: questionsHtml,
+            passwords: true,
             feedback: true,
             after: true,
             grading: true,
