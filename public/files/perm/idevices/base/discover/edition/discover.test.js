@@ -959,6 +959,15 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
         expect(document.getElementById('eXeGamePercentajeFB').value).toBe('75');
     });
 
+    it('offers a button to cut a card next to copy and paste', () => {
+        const cut = vi.spyOn(device, 'cutQuestion').mockImplementation(() => {});
+        const buttons = [...document.querySelectorAll('.Descubre-ENavigationButton')].map((button) => button.id);
+
+        expect(buttons.slice(-3)).toEqual(['descubreECopy', 'descubreECut', 'descubreEPaste']);
+        document.getElementById('descubreECut').click();
+        expect(cut).toHaveBeenCalledTimes(1);
+    });
+
     it('imports the cards of a text file', () => {
         device.importGame('Heart#Organ that pumps blood\r\nLung#Organ for breathing\r\n', 'text/plain');
 
@@ -1049,6 +1058,16 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             const savedHtml = device.save();
             expect(savedHtml).toContain('descubre-feedback-game');
             expect(savedHtml).toContain('descubre-extra-content');
+        });
+
+        it('saves only what the form edits', () => {
+            device.updateFieldGame(game());
+            device.showQuestion(0);
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Feedback message</p>');
+
+            expect(device.validateQuestion()).toBe(true);
+            expect(device.wordsGame[0]).not.toHaveProperty('msgError');
+            expect(device.validateData()).not.toHaveProperty('caseSensitive');
         });
 
         it('keeps the access code and the clue when saving', () => {

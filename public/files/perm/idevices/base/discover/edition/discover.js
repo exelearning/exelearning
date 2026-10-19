@@ -342,6 +342,9 @@ var $exeDevice = {
                         <a href="#" id="descubreECopy" class="Descubre-ENavigationButton" title="${_('Copy question')}">
                             <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="Descubre-EButtonImage b-copy" />
                         </a>
+                        <a href="#" id="descubreECut" class="Descubre-ENavigationButton" title="${_('Cut question')}">
+                            <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="Descubre-EButtonImage b-cut" />
+                        </a>
                         <a href="#" id="descubreEPaste" class="Descubre-ENavigationButton" title="${_('Paste question')}">
                             <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="Descubre-EButtonImage b-paste" />
                         </a>
@@ -506,7 +509,6 @@ var $exeDevice = {
             $exeDevice.updateTextOverlay(k);
         }
         $('#descubreEMessageOK').val(q.msgHit);
-        $('#descubreEMessageKO').val(q.msgError);
         $('#descubreENumberQuestion').text(i + 1);
     },
 
@@ -996,7 +998,6 @@ var $exeDevice = {
         }
 
         q.msgHit = $('#descubreEMessageOK').val();
-        q.msgError = $('#descubreEMessageKO').val();
 
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
@@ -1047,7 +1048,6 @@ var $exeDevice = {
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
             itinerary =
                 $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            caseSensitive = $('#descubreECaseSensitive').is(':checked'),
             customMessages = $('#descubreECustomMessages').is(':checked'),
             showCards = $('#descubreEShowCards').is(':checked'),
             percentajeQuestions = parseInt(
@@ -1133,7 +1133,6 @@ var $exeDevice = {
             weighted: scorm.weighted,
             textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
-            caseSensitive: caseSensitive,
             feedBack: feedback.feedBack,
             percentajeFB: feedback.percentajeFB,
             customMessages: customMessages,
@@ -2039,7 +2038,6 @@ var $exeDevice = {
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#descubreEShowMinimize').prop('checked', game.showMinimize);
-        $('#descubreECaseSensitive').prop('checked', game.caseSensitive);
         $('#descubreECustomMessages').prop('checked', game.customMessages);
         $('#descubreEShowCards').prop('checked', game.showCards);
         $('#descubreEPercentajeQuestions').val(game.percentajeQuestions);
