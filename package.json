@@ -103,7 +103,7 @@
     "nunjucks": "^3.2.4",
     "pdfjs-dist": "6.3.289",
     "uuid": "^14.0.3",
-    "ws": "^8.21.3",
+    "ws": "^8.22.0",
     "y-websocket": "^3.1.0",
     "yjs": "^13.6.33"
   },
@@ -117,7 +117,7 @@
     "@types/mime-types": "^3.0.1",
     "@types/node": "^26.6.2",
     "@types/nunjucks": "^3.2.6",
-    "@types/ws": "^8.18.1",
+    "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^5.0.5",
     "@vitest/ui": "^5.0.5",
     "abcjs": "^6.6.2",
