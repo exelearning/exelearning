@@ -407,14 +407,12 @@ describe('trivial iDevice edition lifecycle', () => {
     });
 
     describe('game import file readers', () => {
-        /** Builds the two file inputs `addEvents` wires the readers to. */
+        /** Builds the file input `addEvents` wires the reader to. */
         const buildImportInputs = () => {
-            ['eXeGameImportGame', 'trivialLoadGame', 'eXeGameExportImport', 'eXeGameExportQuestions'].forEach(id => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.id = id;
-                document.body.appendChild(input);
-            });
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.id = 'trivialLoadGame';
+            document.body.appendChild(input);
         };
 
         const selectFile = (id, file) => {
@@ -429,39 +427,14 @@ describe('trivial iDevice edition lifecycle', () => {
             $exeDevice.addEvents();
         });
 
-        it('imports a game while the edition is open', () => {
-            const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-
-            selectFile('eXeGameImportGame', { name: 'game.json', type: 'application/json' });
-            const reader = FakeFileReader.instances[0];
-            expect(reader).toBeDefined();
-            reader.fire('{"a":1}');
-
-            expect(importGame).toHaveBeenCalledWith('{"a":1}');
-            importGame.mockRestore();
-        });
-
         it('aborts an in-flight import read when the edition closes', () => {
-            selectFile('eXeGameImportGame', { name: 'game.json', type: 'application/json' });
+            selectFile('trivialLoadGame', { name: 'game.json', type: 'application/json' });
             const reader = FakeFileReader.instances[0];
             expect(reader.readyState).toBe(1);
 
             $exeDevice.$lifecycle.destroy();
 
             expect(reader.abort).toHaveBeenCalledTimes(1);
-        });
-
-        it('ignores a late import callback instead of importing into a closed edition', () => {
-            const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-
-            selectFile('eXeGameImportGame', { name: 'game.json', type: 'application/json' });
-            const reader = FakeFileReader.instances[0];
-
-            $exeDevice.$lifecycle.destroy();
-            reader.fire('{"a":1}');
-
-            expect(importGame).not.toHaveBeenCalled();
-            importGame.mockRestore();
         });
 
         it('adds a game file while the edition is open', () => {

@@ -144,9 +144,6 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         var msgs = this.msgs;
-        msgs.msgEProvideDefinition = _(
-            'Please provide the word definition or the valid URL of an image'
-        );
         msgs.msgESelectFile = _(
             'The selected file does not contain a valid game'
         );
@@ -155,12 +152,10 @@ var $exeDevice = {
         );
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgEUnavailableVideo = _('This video is not currently available');
         msgs.msgECompleteQuestion = _('You have to complete the question');
         msgs.msgECompleteAllOptions = _(
             'You have to complete all the selected options'
         );
-        msgs.msgESelectSolution = _('Choose the right answer');
         msgs.msgECompleteURLYoutube = _('Please type or paste a valid URL.');
         msgs.msgEStartEndVideo = _(
             'You have to indicate the start and the end of the video that you want to show'
@@ -310,12 +305,6 @@ var $exeDevice = {
                 $exeDevice.updateSoundVideo();
             }
         }
-    },
-
-    updateProgressBar: function () {
-        $('#progress-bar').val(
-            (player.getCurrentTime() / player.getDuration()) * 100
-        );
     },
 
     onPlayerError: function (event) {
@@ -474,9 +463,6 @@ var $exeDevice = {
             $('#trivialENumQuestions').text(
                 $exeDevice.temas[$exeDevice.activeTema].length
             );
-            $('#trivialNumberQuestion').text(
-                $exeDevice.activesQuestions[$exeDevice.activeTema] + 1
-            );
         }
     },
 
@@ -577,37 +563,6 @@ var $exeDevice = {
                 );
             }
         }
-    },
-
-    validarTemas: function () {
-        for (let j = 0; j < $exeDevice.numeroTemas; j++) {
-            for (let i = 0; i < $exeDevice.temas[j].length; i++) {
-                const cuestion = $exeDevice.temas[j][i];
-                if (cuestion.pregunta.length == 0) {
-                    return false;
-                }
-                if (cuestion.typeSelect == 0) {
-                    for (let z = 0; z < cuestion.numberOptions; z++) {
-                        if (cuestion.options[z].length == 0) {
-                            return false;
-                        }
-                    }
-                } else if (cuestion.typeSelect == 1) {
-                    if (cuestion.solution.length != cuestion.numberOptions) {
-                        return false;
-                    }
-                } else if (cuestion.typeSelect == 2) {
-                    if (cuestion.solutionQuestion.length == 0) {
-                        return false;
-                    }
-                } else if (cuestion.typeSelect == 3) {
-                    if (cuestion.solutionQuestion.length == 0) {
-                        cuestion.solutionQuestion = 'open';
-                    }
-                }
-            }
-        }
-        return true;
     },
 
     showQuestion: function (i) {
@@ -911,7 +866,6 @@ var $exeDevice = {
     },
 
     changeTypeQuestion: function (type) {
-        $exeDevice.hideFlex($('#trivialETitleAltImage'));
         $exeDevice.hideFlex($('#trivialEAuthorAlt'));
         $exeDevice.hideFlex($('#trivialETitleImage'));
         $exeDevice.hideFlex($('#trivialEInputImage'));
@@ -953,7 +907,6 @@ var $exeDevice = {
                 );
                 break;
             case 2:
-                $exeDevice.showFlex($('#trivialEImageVideo'));
                 $exeDevice.showFlex($('#trivialETitleVideo'));
                 $exeDevice.showFlex($('#trivialEInputVideo'));
                 $exeDevice.showFlex($('#trivialENoVideo'));
@@ -2121,21 +2074,6 @@ var $exeDevice = {
         }
         return html;
     },
-    exportGame: function () {
-        if (!$exeDevice.validateQuestion()) return;
-
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], {
-            type: 'text/plain',
-        });
-        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-TriviEx.json`,
-            'gameQEIdeviceForm'
-        );
-    },
     importQuExt: function (data) {
         for (let i = 0; i < data.questionsGame.length; i++) {
             const p = $exeDevice.getCuestionDefault(),
@@ -2237,72 +2175,6 @@ var $exeDevice = {
             p.percentageShow = cuestion.percentageShow;
             $exeDevice.temas[$exeDevice.activeTema].push(p);
         }
-    },
-
-    importGame: function (content) {
-        content = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(content);
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-        } else if (game.typeGame == 'Trivial') {
-            game.trivialID = $exeDevice.getId();
-            game.id = $exeDevice.getIdeviceID();
-            let temas = [];
-            for (let i = 0; i < 6; i++) {
-                let tema = [];
-                const question = $exeDevice.getCuestionDefault();
-                tema.push(question);
-                if (i < game.numeroTemas) {
-                    let ntema = game.temas[i];
-                    for (let j = 0; j < ntema.length; j++) {
-                        let numOpt = 0;
-                        let p = ntema[j];
-                        for (let z = 0; z < p.options.length; z++) {
-                            if (p.options[z].trim().indexOf('<' == 0)) {
-                                p.options[z] = p.options[z].replace('<', ' ');
-                            }
-                            if (p.options[z].trim().length == 0) {
-                                p.numberOptions = numOpt;
-                                break;
-                            }
-                            numOpt++;
-                        }
-                        if (p.type == 3) {
-                            p.eText = p.eText;
-                        }
-                        ntema[j] = p;
-                    }
-                    tema = ntema;
-                }
-                temas.push(tema);
-            }
-
-            $exeDevice.temas = temas;
-            game.temas = $exeDevice.temas;
-            $exeDevice.numeroTemas = game.numeroTemas;
-            $exeDevice.nombresTemas = game.nombresTemas;
-            $exeDevice.updateFieldGame(game);
-            $exeDevice.changeNumberTemas(game.numeroTemas);
-            const instructions = game.instructionsExe || game.instructions;
-            tinymce.editors[0].setContent(unescape(instructions));
-        } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-        }
-    },
-
-    updateNumberTema: function (tema) {
-        for (let i = 0; i < tema.length; i++) {
-            let numOpt = 0;
-            for (let j = 0; j < tema[i].length; j++) {
-                if (tema[i].options[j].trim().length == 0) {
-                    tema[i].numberOptions = numOpt;
-                    break;
-                }
-                numOpt++;
-            }
-        }
-        return tema;
     },
 
     importAdivina: function (data) {
@@ -2441,11 +2313,6 @@ var $exeDevice = {
 
         if (!itinerary) return false;
         if (!progressBar) return false;
-
-        if (showSolution && timeShowSolution.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
 
         for (let z = 0; z < numeroTemas; z++) {
             if (nombresTemas.length == 0) {
@@ -2634,12 +2501,6 @@ var $exeDevice = {
             }
         );
 
-        $('#trivialShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#trivialCodeAccess').prop('disabled', !marcado);
-            $('#trivialMessageCodeAccess').prop('disabled', !marcado);
-        });
-
         $('.TRVLE-EPanel').on('click', 'input.TRVLE-Type', function (e) {
             const type = parseInt($(this).val());
             $exeDevice.changeTypeQuestion(type);
@@ -2782,20 +2643,6 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                self.$lifecycle.ownFileReader(reader);
-                reader.onload = self.$lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-
             $('#trivialLoadGame').attr('accept', '.txt, .json, .xml');
             $('#trivialLoadGame').on('change', function (e) {
                 const file = e.target.files[0];
@@ -2822,11 +2669,6 @@ var $exeDevice = {
                 });
                 reader.readAsText(file);
             });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
         }
 
         $('#trivialEInitVideo').css('color', '#2c6d2c');
@@ -2877,10 +2719,6 @@ var $exeDevice = {
             });
         });
 
-        $('#trivialUseLives').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#trivialNumberLives').prop('disabled', !marcado);
-        });
         $('#trivialEShowSolution').on('change', function () {
             const marcado = $(this).is(':checked');
             $('#trivialETimeShowSolution').prop('disabled', !marcado);
@@ -2997,20 +2835,6 @@ var $exeDevice = {
         });
 
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
-    },
-
-    showModeOpen: function (open) {
-        $exeDevice.showFlex($('#trivialTypeChoose'));
-        $exeDevice.showFlex($('#trivialTypeOrders'));
-        $exeDevice.showFlex($('label[for=trivialTypeChoose]'));
-        $exeDevice.showFlex($('label[for=trivialTypeOrders]'));
-        if (open) {
-            $('#trivialTypeWord').prop('checked', open);
-            $exeDevice.hideFlex($('#trivialTypeChoose'));
-            $exeDevice.hideFlex($('#trivialTypeOrders'));
-            $exeDevice.hideFlex($('label[for=trivialTypeChoose]'));
-            $exeDevice.hideFlex($('label[for=trivialTypeOrders]'));
-        }
     },
 
     importMoodle(xmlString) {
@@ -3293,35 +3117,6 @@ var $exeDevice = {
         return valids > 0 ? questions : false;
     },
 
-    setInputFilter: function (textbox, inputFilter) {
-        [
-            'input',
-            'keydown',
-            'keyup',
-            'mousedown',
-            'mouseup',
-            'select',
-            'contextmenu',
-            'drop',
-        ].forEach(function (event) {
-            textbox.addEventListener(event, function () {
-                if (inputFilter(this.value)) {
-                    this.oldValue = this.value;
-                    this.oldSelectionStart = this.selectionStart;
-                    this.oldSelectionEnd = this.selectionEnd;
-                } else if (this.hasOwnProperty('oldValue')) {
-                    this.value = this.oldValue;
-                    this.setSelectionRange(
-                        this.oldSelectionStart,
-                        this.oldSelectionEnd
-                    );
-                } else {
-                    this.value = '';
-                }
-            });
-        });
-    },
-
     validateScoreQuestion: function (text) {
         const isValid =
             text.length > 0 &&
@@ -3424,21 +3219,6 @@ var $exeDevice = {
                 $el.removeClass('d-flex').addClass('d-none');
             } else if (!$el.hasClass('d-flex') && !$el.hasClass('d-none')) {
                 $el.hide();
-            }
-        }
-    },
-    toggleFlex: function ($el) {
-        if ($el && $el.length) {
-            if ($el.hasClass('d-none')) {
-                $el.removeClass('d-none').addClass('d-flex');
-            } else if ($el.hasClass('d-flex')) {
-                $el.removeClass('d-flex').addClass('d-none');
-            } else {
-                if ($el.is(':visible')) {
-                    $el.hide();
-                } else {
-                    $el.show();
-                }
             }
         }
     },
