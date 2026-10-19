@@ -104,6 +104,9 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         const afterSave = await storedMaps(page);
         expect(afterSave[0].format).toBe('mind-elixir');
         expect(afterSave[0].svg).toContain('>Planeta Tierra</tspan>');
+        // Legacy underline and strike-through are drawn again
+        expect(afterSave[0].svg).toContain('text-decoration="underline"');
+        expect(afterSave[0].svg).toContain('text-decoration="line-through"');
         expect(before[0].svg).toBe('');
         expect(afterSave.slice(1).map(m => m.format)).toEqual(['legacy', 'legacy']);
 

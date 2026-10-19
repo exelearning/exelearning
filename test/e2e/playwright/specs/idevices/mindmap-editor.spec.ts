@@ -79,13 +79,28 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await frame.locator('#bold').click();
         await expect(frame.locator('#bold')).toHaveAttribute('aria-pressed', 'true');
         await frame.locator('#italic').click();
+        await frame.locator('#underline').click();
         await frame.locator('#font-larger').click();
         await frame.locator('#text-color').fill('#c0392b');
         let luz = findNode((await editorData(frame2)).nodeData, 'Luz');
-        expect(luz?.style).toMatchObject({ fontWeight: 'bold', fontStyle: 'italic', color: '#c0392b' });
+        expect(luz?.style).toMatchObject({
+            fontWeight: 'bold',
+            fontStyle: 'italic',
+            textDecoration: 'underline',
+            color: '#c0392b',
+        });
         expect(Number.parseFloat(luz?.style?.fontSize ?? '0')).toBeGreaterThan(16);
-        // Underline and strike-through are not offered: neither Mind Elixir nor the SVG draws them
-        await expect(frame.locator('#underline, #strike')).toHaveCount(0);
+        // The editor shows the decoration on the caption (Mind Elixir alone would not)
+        const decoration = () =>
+            topic(frame, 'Luz')
+                .locator('.text')
+                .evaluate(e => getComputedStyle(e).textDecorationLine);
+        expect(await decoration()).toBe('underline');
+        await frame.locator('#strike').click();
+        await expect(frame.locator('#strike')).toHaveAttribute('aria-pressed', 'true');
+        await expect(frame.locator('#underline')).toHaveAttribute('aria-pressed', 'false');
+        expect(findNode((await editorData(frame2)).nodeData, 'Luz')?.style?.textDecoration).toBe('line-through');
+        expect(await decoration()).toBe('line-through');
 
         // Branch colour, also applied to the children
         await frame.locator('#branch-color').fill('#2e7d32');
@@ -129,6 +144,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
             expect(saved.svg).toContain(`>${caption}</tspan>`);
         }
         expect(saved.svg).toContain('fill="#c0392b"');
+        expect(saved.svg).toContain('text-decoration="line-through"');
         // The editor's theme: a white central idea with an orange border, on white
         expect(saved.svg).toMatch(/fill="#ffffff" stroke="#ffa500"/);
         expect(saved.svg).toMatch(/<title[^>]*>Fotosíntesis<\/title>/);

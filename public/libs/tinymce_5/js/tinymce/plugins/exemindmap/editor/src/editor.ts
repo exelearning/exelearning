@@ -41,6 +41,8 @@ import smallerIcon from '@material-symbols/svg-400/outlined/text_decrease.svg';
 import largerIcon from '@material-symbols/svg-400/outlined/text_increase.svg';
 import boldIcon from '@material-symbols/svg-400/outlined/format_bold.svg';
 import italicIcon from '@material-symbols/svg-400/outlined/format_italic.svg';
+import underlineIcon from '@material-symbols/svg-400/outlined/format_underlined.svg';
+import strikeIcon from '@material-symbols/svg-400/outlined/format_strikethrough.svg';
 import './editor.css';
 import {
     MindmapFormatError,
@@ -170,7 +172,7 @@ async function patchStyle(update: (style: NodeStyle, tpc: Topic) => void): Promi
     refreshControls();
 }
 
-function toggle(key: 'fontWeight' | 'fontStyle', on: string): () => Promise<void> {
+function toggle(key: 'fontWeight' | 'fontStyle' | 'textDecoration', on: string): () => Promise<void> {
     return () =>
         patchStyle((style) => {
             style[key] = style[key] === on ? undefined : on;
@@ -260,7 +262,7 @@ function toHex(color: string): string {
 function refreshControls(): void {
     const tpc = selectedTopics()[0];
     const isRoot = tpc ? tpc.nodeObj.id === mind.nodeData.id : false;
-    for (const id of ['font-smaller', 'font-larger', 'bold', 'italic', 'text-color', 'add-child']) {
+    for (const id of ['font-smaller', 'font-larger', 'bold', 'italic', 'underline', 'strike', 'text-color', 'add-child']) {
         controls[id].disabled = !tpc;
     }
     for (const id of ['add-sibling', 'remove', 'branch-color', 'branch-color-children']) controls[id].disabled = !tpc || isRoot;
@@ -269,6 +271,8 @@ function refreshControls(): void {
     const style = (tpc.nodeObj.style ?? {}) as NodeStyle;
     controls.bold.setAttribute('aria-pressed', String(style.fontWeight === 'bold'));
     controls.italic.setAttribute('aria-pressed', String(style.fontStyle === 'italic'));
+    controls.underline.setAttribute('aria-pressed', String(style.textDecoration === 'underline'));
+    controls.strike.setAttribute('aria-pressed', String(style.textDecoration === 'line-through'));
     (controls['text-color'] as HTMLInputElement).value = toHex(style.color ?? getComputedStyle(tpc).color);
     (controls['branch-color'] as HTMLInputElement).value = toHex(tpc.nodeObj.branchColor ?? '#000000');
 }
@@ -336,12 +340,19 @@ function buildInspector(): HTMLElement {
             button('font-smaller', _('Smaller text'), changeFontSize(-FONT_STEP), { icon: smallerIcon, iconOnly: true }),
             button('font-larger', _('Larger text'), changeFontSize(FONT_STEP), { icon: largerIcon, iconOnly: true }),
         ),
-        // Underline and strike-through are not offered: Mind Elixir does not draw them, so
-        // neither does the SVG. Legacy maps keep them in their data.
+        // One decoration at a time, as in the legacy editor (editor.css makes Mind Elixir show it)
         field(
             _('Text style'),
             button('bold', _('Bold'), toggle('fontWeight', 'bold'), { icon: boldIcon, iconOnly: true }),
             button('italic', _('Italic'), toggle('fontStyle', 'italic'), { icon: italicIcon, iconOnly: true }),
+            button('underline', _('Underline'), toggle('textDecoration', 'underline'), {
+                icon: underlineIcon,
+                iconOnly: true,
+            }),
+            button('strike', _('Strikethrough'), toggle('textDecoration', 'line-through'), {
+                icon: strikeIcon,
+                iconOnly: true,
+            }),
         ),
         field(
             _('Text color'),
@@ -556,7 +567,8 @@ export function start(load: Record<string, unknown> = {}): MindElixirInstance {
         newTopicName: _('New idea'),
         theme: THEME,
     }) as WithVectorSvgExport<MindElixirInstance>;
-    mind.install(createSvgExportPlugin());
+    // The SVG draws underline and strike-through, which editor.css makes the editor show
+    mind.install(createSvgExportPlugin({ textDecoration: true }));
     // The font the SVG is laid out for, so the map looks the same in the editor and the content
     mind.container.style.fontFamily = DEFAULT_FONT_FAMILY;
     mind.init(data);

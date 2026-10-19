@@ -118,6 +118,12 @@ input:focus-visible,
     background-size: 24px 24px;
 }
 
+/* Mind Elixir applies a topic's style to the box, which leaves out the caption's
+   text-decoration; the SVG draws it too (textDecoration option) */
+#map .map-container me-tpc > .text {
+    text-decoration: inherit;
+}
+
 /* The dialog cannot go full screen from its iframe, and it is already as large as it can be */
 #map #fullscreen {
     display: none;

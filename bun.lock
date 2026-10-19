@@ -44,7 +44,7 @@
         "@biomejs/biome": "^2.5.15",
         "@codecov/bundle-analyzer": "^2.0.1",
         "@electron/notarize": "^3.1.1",
-        "@erseco/mind-elixir-export-svg": "0.2.0",
+        "@erseco/mind-elixir-export-svg": "0.2.1",
         "@material-symbols/svg-400": "^0.48.0",
         "@playwright/test": "~1.58.2",
         "@types/fs-extra": "^11.0.4",
@@ -178,7 +178,7 @@
 
     "@epic-web/invariant": ["@epic-web/invariant@1.0.0", "", {}, "sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA=="],
 
-    "@erseco/mind-elixir-export-svg": ["@erseco/mind-elixir-export-svg@0.2.0", "", {}, "sha512-0DQaViKu25nXsF7WzLsvo9GGI0lW8n54AjEr6Pi6kh7KaM3SSMrDpY7j7FKmvk+lFBwyQnyudxX3rdOwQXxmGQ=="],
+    "@erseco/mind-elixir-export-svg": ["@erseco/mind-elixir-export-svg@0.2.1", "", {}, "sha512-T5GfQAn4cQuhhwvUdg7hzy3lP99KBsTSklLUPso9Pfgfh26epO2AgSgfvU17hjbUR2+N0dPYF3ZwgbjrhHeoJg=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.28.2", "", { "os": "aix", "cpu": "ppc64" }, "sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ=="],
 
