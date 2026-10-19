@@ -48,6 +48,7 @@ var $exeDevice = {
 
         $('#rclETextDiv, #rclETextDivBack').hide();
         this.active = 0;
+        $('#rclENumCards').text($exeDevice.cardsGame.length);
     },
 
     refreshTranslations: function () {
@@ -210,11 +211,11 @@ var $exeDevice = {
                                     </div>
                                     <span id="rclETitleText">${_('Text')}</span>
                                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="rclEInputText">
-                                        <label class="sr-av">${_('Text')}</label>
+                                        <label class="sr-av" for="rclEText">${_('Text')}</label>
                                         <input type="text" id="rclEText" class="form-control w-100  me-0" />
-                                        <label id="rclELblColor">${_('Color')}: </label>
+                                        <label id="rclELblColor" for="rclEColor">${_('Color')}: </label>
                                         <input id="rclEColor" type="color" class="form-control form-control-color" value="#000000">
-                                        <label id="rclELblBgColor">${_('Background')}:</label>
+                                        <label id="rclELblBgColor" for="rclEBgColor">${_('Background')}:</label>
                                         <input id="rclEBgColor" type="color" class="form-control form-control-color" value="#ffffff">
                                     </div>
                                     <span id="rclETitleImage">${_('Image')}</span>
@@ -236,11 +237,11 @@ var $exeDevice = {
                                     </div>
                                     <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap" id="rclEAuthorAlt">
                                         <div class="d-flex w-50 flex-wrap align-items-center gap-2">
-                                            <label class="mb-0">${_('Authorship')}</label>
+                                            <label class="mb-0" for="rclEAuthor">${_('Authorship')}</label>
                                             <input id="rclEAuthor" type="text" class="w-100 form-control" />
                                         </div>
                                         <div class="d-flex flex-wrap w-50 align-items-center gap-2">
-                                            <label class="mb-0">${_('Alternative text')}</label>
+                                            <label class="mb-0" for="rclEAlt">${_('Alternative text')}</label>
                                             <input id="rclEAlt" type="text" class="w-100 form-control" />
                                         </div>
                                     </div>
@@ -264,11 +265,11 @@ var $exeDevice = {
                                     </div>
                                     <span id="rclETitleTextBack">${_('Text')}</span>
                                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="rclEInputTextBack">
-                                        <label class="sr-av">${_('Text')}</label>
+                                        <label class="sr-av" for="rclETextBack">${_('Text')}</label>
                                         <input type="text" id="rclETextBack" class="w-100 form-control me-0" />
-                                        <label id="rclELblColorBack">${_('Color')}: </label>
+                                        <label id="rclELblColorBack" for="rclEColorBack">${_('Color')}: </label>
                                         <input id="rclEColorBack" type="color" class="form-control form-control-color" value="#000000">
-                                        <label id="rclELblBgColorBack">${_('Background')}:</label>
+                                        <label id="rclELblBgColorBack" for="rclEBgColorBack">${_('Background')}:</label>
                                         <input id="rclEBgColorBack" type="color" class="form-control form-control-color" value="#ffffff">
                                     </div>
                                     <span id="rclETitleImageBack">${_('Image')}</span>
@@ -290,11 +291,11 @@ var $exeDevice = {
                                     </div>
                                     <div class="d-none align-items-center gap-2 mb-3 flex-nowrap" id="rclEAuthorAltBack">
                                         <div class="d-flex w-50 flex-wrap align-items-center gap-2">
-                                            <label class="mb-0">${_('Authorship')}</label>
+                                            <label class="mb-0" for="rclEAuthorBack">${_('Authorship')}</label>
                                             <input id="rclEAuthorBack" type="text" class="w-100 form-control" />
                                         </div>
                                         <div class="RLC-EInputAlt d-flex flex-wrap w-50 align-items-center gap-2">
-                                            <label class="mb-0">${_('Alternative text')}</label>
+                                            <label class="mb-0" for="rclEAltBack">${_('Alternative text')}</label>
                                             <input id="rclEAltBack" type="text" class="w-100 form-control" />
                                         </div>
                                     </div>
@@ -452,9 +453,8 @@ var $exeDevice = {
             active = cards.length - 1;
         }
 
-        $('#rclENumberCard').val(active);
-        $exeDevice.showCard(active);
         $exeDevice.active = active;
+        $exeDevice.showCard(active);
 
         $exeDevice.typeEdit = -1;
         $('#rclEPasteC').hide();
@@ -489,6 +489,7 @@ var $exeDevice = {
         if ($exeDevice.typeEdit == 0) {
             active++;
             cards.splice(active, 0, $exeDevice.clipBoard);
+            $exeDevice.updateCardsNumber();
         } else if ($exeDevice.typeEdit == 1) {
             $('#rclEPasteC').hide();
             $exeDevice.typeEdit = -1;
@@ -651,7 +652,7 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initCards();
 
-        const root = document.getElementById('relacionaIdeviceForm') || document;
+        const root = document.getElementById('relateQIdeviceForm') || document;
         $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
@@ -1133,7 +1134,7 @@ var $exeDevice = {
         const checkMaxCards = (e) => {
             e.preventDefault();
             const numcards = $exeDevice.cardsGame.length;
-            if (numcards.length > maxCards) {
+            if (numcards >= maxCards) {
                 $exeDevice.showMessage(
                     $exeDevice.msgs.msgMaxCards.replace('%s', maxCards)
                 );
@@ -1274,6 +1275,7 @@ var $exeDevice = {
                 if (!isNaN(num) && num > 0) {
                     if ($exeDevice.validateCard() === false) {
                         $(this).val($exeDevice.active + 1);
+                        return;
                     }
                     $exeDevice.active =
                         num < $exeDevice.cardsGame.length
@@ -1328,10 +1330,16 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
+        // Store the card on screen first, as saving does.
+        if (!$exeDevice.validateCard()) return false;
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
         const lines = this.getLinesQuestions(dataGame.cardsGame);
+        if (lines.length === 0) {
+            eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
+            return false;
+        }
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
@@ -1341,13 +1349,25 @@ var $exeDevice = {
         );
     },
 
+    /**
+     * "front#back" lines, the format Import and the AI read back. Texts are
+     * stored encoded, so they are decoded; pairs without text on both sides
+     * have no line.
+     */
     getLinesQuestions: function (cards) {
-        let lineswords = [];
-        for (let i = 0; i < cards.length; i++) {
-            let card = `${$exeDevice.decodeURIComponentSafe(cards[i].eText)}#${$exeDevice.decodeURIComponentSafe(cards[i].eTextBk)}`;
-            lineswords.push(card);
-        }
-        return lineswords;
+        const plain = (value) => {
+            let text = value || '';
+            try {
+                text = $exeDevice.decodeURIComponentSafe(text) || '';
+            } catch {
+                // A text imported before it was encoded is already plain.
+            }
+            return text.replace(/[#\s]+/g, ' ').trim();
+        };
+        return cards
+            .map((card) => [plain(card.eText), plain(card.eTextBk)])
+            .filter(([front, back]) => front && back)
+            .map(([front, back]) => `${front}#${back}`);
     },
 
     reverseFaces: function () {
@@ -1624,8 +1644,6 @@ var $exeDevice = {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
             return;
-        } else if (game && game.typeGame && game.typeGame == 'Relaciona') {
-            return this.handleGame(game);
         } else {
             return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
         }
@@ -1661,6 +1679,10 @@ var $exeDevice = {
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
             if (card.eTextBk && card.eText) {
+                // Stored encoded, as the form stores them: in plain text a %
+                // breaks the card.
+                card.eText = $exeDevice.encodeURIComponentSafe(card.eText);
+                card.eTextBk = $exeDevice.encodeURIComponentSafe(card.eTextBk);
                 $exeDevice.cardsGame.push(card);
             }
         }

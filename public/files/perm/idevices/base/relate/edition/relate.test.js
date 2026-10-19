@@ -418,6 +418,62 @@ describe('relate edition: shared form tabs and share windows', () => {
         expect(document.getElementById('ci18n_msgCheck').value).toBe('Verify');
     });
 
+    it('starts the voice recorders of its own form only', () => {
+        device.$lifecycle.destroy();
+        const recorders = vi.spyOn(global.$exeIDevicesEdition.iDevice.voiceRecorder, 'initVoiceRecorders');
+        device = global.loadIdevice(join(__dirname, 'relate.js'));
+        document.body.innerHTML = '<div id="relateBody"></div>';
+        device.init(document.getElementById('relateBody'), {}, PATH);
+
+        expect(recorders).toHaveBeenCalledWith(document.getElementById('relateQIdeviceForm'));
+        recorders.mockRestore();
+    });
+
+    it('counts the first card of a new activity', () => {
+        expect(document.getElementById('rclENumCards').textContent).toBe('1');
+    });
+
+    it('names each text, colour, authorship and alternative text field', () => {
+        for (const side of ['', 'Back']) {
+            for (const field of ['rclEText', 'rclEColor', 'rclEBgColor', 'rclEAuthor', 'rclEAlt']) {
+                expect(document.getElementById(`${field}${side}`).labels).toHaveLength(1);
+            }
+        }
+    });
+
+    it('stores imported and generated texts encoded, as the form does', () => {
+        device.insertCards(['50% off#Half price']);
+
+        const added = device.cardsGame[device.cardsGame.length - 1];
+        expect(added.eText).toBe(device.encodeURIComponentSafe('50% off'));
+        expect(device.decodeURIComponentSafe(added.eText)).toBe('50% off');
+    });
+
+    it('tells the author a file is not a relate text or Moodle file instead of failing', () => {
+        expect(() => device.importGame(JSON.stringify(game()), 'application/json')).not.toThrow();
+        expect(eXe.app.getLastAlert()).toBe('The selected file does not contain a valid game');
+    });
+
+    it('writes clean front#back lines, and no line for a pair without both texts', () => {
+        const lines = device.getLinesQuestions([
+            card('Sun # star', 'Sol'),
+            card('Moon', ''),
+            { eText: 'Plain 50%', eTextBk: 'Text' },
+        ]);
+
+        expect(lines).toEqual(['Sun star#Sol', 'Plain 50%#Text']);
+    });
+
+    it('shows the number of the card left after deleting the last one', () => {
+        device.cardsGame = [card('A', 'a'), card('B', 'b'), card('C', 'c')];
+        device.active = 2;
+
+        device.removeCard();
+
+        expect(device.active).toBe(1);
+        expect(document.getElementById('rclENumberCard').value).toBe('2');
+    });
+
     describe('saving', () => {
         let editors;
 
@@ -455,6 +511,51 @@ describe('relate edition: shared form tabs and share windows', () => {
             device.updateFieldGame(game({ itinerary }));
 
             expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('counts a pasted copy in the pairs per game', () => {
+            device.copyCard();
+            device.pasteCard();
+
+            expect(device.cardsGame).toHaveLength(2);
+            expect(document.getElementById('rclENumeroPercentaje').textContent).toBe('2/2');
+        });
+
+        it('stops adding cards at the maximum', () => {
+            device.cardsGame = Array.from({ length: 200 }, () => card('A', 'a'));
+
+            document.getElementById('rclEAddC').click();
+
+            expect(device.cardsGame).toHaveLength(200);
+            expect(eXe.app.getLastAlert()).toBe('Maximum card number: 200.');
+        });
+
+        it('stays on a card that is not complete when its number is typed', () => {
+            device.cardsGame = [card('A', 'a'), card('B', 'b')];
+            device.active = 0;
+            document.getElementById('rclEText').value = '';
+            document.getElementById('rclETextBack').value = '';
+            const number = document.getElementById('rclENumberCard');
+            number.value = '2';
+
+            $(number).trigger($.Event('keyup', { keyCode: 13 }));
+
+            expect(device.active).toBe(0);
+            expect(number.value).toBe('1');
+        });
+
+        it('exports the card on screen with the others', async () => {
+            const blobs = [];
+            vi.spyOn(global.$exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob').mockImplementation(
+                (blob) => {
+                    blobs.push(blob);
+                    return true;
+                }
+            );
+
+            device.exportQuestions();
+
+            expect(await blobs[0].text()).toBe('Sun#Sol');
         });
     });
 });
