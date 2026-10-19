@@ -235,6 +235,51 @@ var $exeDevice = {
         }
     },
 
+    /**
+     * Add the questions validated in the AI window: "A#question#option…" for
+     * a choice (the solution in letters or 0-3) and "word#definition" for a
+     * word. They start with the default model, which the author changes in
+     * each one.
+     *
+     * @param {string[]} lines
+     * @returns {{handledMessaging: boolean}|undefined} handledMessaging when
+     * nothing was added and the author has already been told why.
+     */
+    insertQuestions: function (lines) {
+        // Keep the question on screen before leaving it, as "Add" does.
+        if (!$exeDevice.validateQuestion()) return { handledMessaging: true };
+        const choice = /^([0-3]|[A-D]{1,4})#([^#]+)#([^#]+)#([^#]*)(#[^#]*){0,2}$/i,
+            word = /^([^#]+)#([^#]+)$/,
+            questions = [];
+        lines.forEach((line) => {
+            const text = line.trim(),
+                fields = text.split('#'),
+                p = $exeDevice.getCuestionDefault();
+            if (choice.test(text)) {
+                const solution = fields[0].toUpperCase();
+                p.solution = /^[0-3]$/.test(solution) ? 'ABCD'.charAt(Number(solution)) : solution;
+                p.quextion = fields[1];
+                p.options = [2, 3, 4, 5].map((i) => fields[i] || '');
+                p.numberOptions = fields.length - 2;
+                questions.push(p);
+            } else if (word.test(text)) {
+                p.typeSelect = 2;
+                p.solutionQuestion = fields[0];
+                p.quextion = fields[1];
+                p.options = ['', '', '', ''];
+                questions.push(p);
+            }
+        });
+        if (questions.length === 0) {
+            eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
+            return { handledMessaging: true };
+        }
+        $exeDevice.selectsGame.push(...questions);
+        $exeDevice.active = $exeDevice.selectsGame.length - questions.length;
+        $exeDevice.showQuestion($exeDevice.active);
+        $exeDevice.updateSelectOrder();
+    },
+
     removeQuestion: function () {
         if ($exeDevice.selectsGame.length < 2) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
@@ -1576,7 +1621,7 @@ var $exeDevice = {
                         share: {
                             importQuestions: false,
                             exportQuestions: false,
-                            type: 2,
+                            type: 3,
                         },
                     })}
                 </div>`;
@@ -2589,7 +2634,10 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
-        $exeIDevicesEdition.iDevice.gamification.share.addEvents(2);
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
+            3,
+            $exeDevice.insertQuestions
+        );
     },
 
     clickSolution: function (checked, value) {

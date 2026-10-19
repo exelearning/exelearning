@@ -992,6 +992,58 @@ describe('3dmol edition: shared form tabs and feedback', () => {
         expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
     });
 
+    describe('creating questions with AI', () => {
+        // enableForm() shows the first question once the default model is in,
+        // and only then wires the AI window.
+        const ready = () => vi.waitFor(() => expect(document.getElementById('dmoleQuestion').value).not.toBe(''));
+        const saveFromAI = async (lines) => {
+            document.getElementById('eXeEQuestionsArea').value = lines.join('\n');
+            document.getElementById('eXeESaveButton').click();
+            await vi.waitFor(() => expect(global.eXe.app.alert).toHaveBeenCalled());
+        };
+
+        it('adds choice and word questions after the existing ones', async () => {
+            await ready();
+
+            await saveFromAI([
+                'AC#Which elements are in water?#Hydrogen#Carbon#Oxygen',
+                '1#How many bonds does it have?#One#Two',
+                'Benzene#Aromatic ring of six carbon atoms',
+            ]);
+
+            expect(global.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
+            expect(device.selectsGame).toHaveLength(4);
+            const [, choice, numbered, word] = device.selectsGame;
+            expect(choice).toMatchObject({
+                typeSelect: 0,
+                solution: 'AC',
+                quextion: 'Which elements are in water?',
+                options: ['Hydrogen', 'Carbon', 'Oxygen', ''],
+                numberOptions: 3,
+                modelData: 'SAMPLE_DATA',
+            });
+            expect(numbered).toMatchObject({ solution: 'B', options: ['One', 'Two', '', ''], numberOptions: 2 });
+            expect(word).toMatchObject({
+                typeSelect: 2,
+                solutionQuestion: 'Benzene',
+                quextion: 'Aromatic ring of six carbon atoms',
+            });
+            expect(device.active).toBe(1);
+            expect(document.getElementById('dmoleQuestion').value).toBe('Which elements are in water?');
+            expect(document.getElementById('dmoleNumQuestions').textContent).toBe('4');
+        });
+
+        it('adds nothing while the question on screen is incomplete', async () => {
+            await ready();
+            document.getElementById('dmoleQuestion').value = '';
+
+            await saveFromAI(['A#Which is the lightest element?#Hydrogen#Helium']);
+
+            expect(device.selectsGame).toHaveLength(1);
+            expect(global.eXe.app.alert).not.toHaveBeenCalledWith('The questions have been added successfully');
+        });
+    });
+
     describe('saving', () => {
         let editors;
         let tinymceGet;
