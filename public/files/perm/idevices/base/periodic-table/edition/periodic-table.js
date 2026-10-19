@@ -309,149 +309,108 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const path = $exeDevice.idevicePath,
+        const edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            toggle = (id, label, checked = false, hidden = false) => `
+                            <span class="toggle-item"${hidden ? ' style="display:none"' : ''}>
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="${id}" class="toggle-input"${checked ? ' checked' : ''} />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="${id}">${label}</label>
+                            </span>`,
+            radio = (id, name, value, label, checked = false, inputClass = '') => `
+                            <div class="form-check form-check-inline m-0">
+                                <input class="${inputClass}form-check-input" id="${id}" type="radio" name="${name}" value="${value}"${checked ? ' checked="checked"' : ''} />
+                                <label for="${id}" class="form-check-label">${label}</label>
+                            </div>`,
+            contents = `
+                <div id="ptEPanel">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <span>${_('Mode')}:</span>
+                        ${radio('ptEGame', 'ptmode', 0, _('Game'), true)}
+                        ${radio('ptEComplete', 'ptmode', 1, _('Complete'))}
+                        ${radio('ptEMobile', 'ptmode', 2, _('Mobile'))}
+                        ${help(
+                            [
+                                `${_('Game')}: ${_('Learners find on the table the element they are asked for.')}`,
+                                `${_('Complete')}: ${_('Learners fill in the missing data of the marked elements.')}`,
+                                `${_('Mobile')}: ${_('Learners write the missing data of one element at a time. Small screens always use this mode.')}`,
+                            ].join('\n\n'),
+                        )}
+                    </div>
+                    <div id="ptCompleteData" class="mb-3" style="display:none">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span>${_('Data to complete')}:</span>
+                            ${help(_('Data learners have to fill in for each marked element. Choose at least one.'))}
+                            ${toggle('ptEnumber', _('Number'))}
+                            ${toggle('ptEname', _('Name'))}
+                            ${toggle('ptEsymbol', _('Symbol'), true)}
+                            ${toggle('ptEgroup', _('Group'))}
+                            ${toggle('ptEelectronicConfig', _('Electronic configuration'), false, true)}
+                            ${toggle('ptEoxidations', _('Oxidation states'), false, true)}
+                        </div>
+                    </div>
+                    <div id="ptGameType" class="mb-3">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            <span>${_('Type')}:</span>
+                            ${radio('ptETypeNumber', 'ptgametype', 0, _('Number'), false, 'PTP-TypeGame ')}
+                            ${radio('ptETypeName', 'ptgametype', 1, _('Name'), false, 'PTP-TypeGame ')}
+                            ${radio('ptETypeSymbol', 'ptgametype', 2, _('Symbol'), true, 'PTP-TypeGame ')}
+                            ${help(_('The data of each element the activity uses: in Game, learners get it and find the element; in Mobile, they write it.'))}
+                        </div>
+                    </div>
+                    <div class="PTP-periodic-table-groups mb-3" id="ptCheckBoxesGroups">
+                        ${$exeDevice.generateGroupCheckboxes()}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="ptEQuestionNumber" class="mb-0">${_('Number of questions')}:</label>
+                        <input type="number" id="ptEQuestionNumber" value="5" min="1" max="99" class="form-control" style="width:6ch" />
+                        ${help(_('How many elements each game asks about.'))}
+                    </div>
+                </div>`,
+            options = `
+                <div id="ptEOptions">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="ptEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                        <input type="number" id="ptEAttemptsNumber" value="1" min="0" max="99" class="form-control" style="width:6ch" />
+                        ${help(_('Attempts learners have for each element before moving on. Set 0 for no limit.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('ptEShowSolution', `${_('Show solutions')}.`, true)}
+                        ${help(_('Show the right answer when the learner runs out of attempts.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('ptEShowMinimize', _('Show minimized.'))}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                </div>`,
             html = `
         <div id="ptQEIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+            ${edition.common.getIdeviceDescription(
                 _('Create interactive activities for the periodic table'),
                 'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/tabla-periodica.html',
             )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following questions about the periodic table.'))}
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                                <span>${_('Mode')}: </span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" id="ptEGame" type="radio" name="ptmode" value="0" checked="checked" />
-                                    <label for="ptEGame" class="form-check-label">${_('Game')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" id="ptEComplete" type="radio" name="ptmode" value="1" />
-                                    <label for="ptEComplete" class="form-check-label">${_('Complete')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" id="ptEMobile" type="radio" name="ptmode" value="2" />
-                                    <label for="ptEMobile" class="form-check-label">${_('Mobile')}</label>
-                                </div>
-                            </div>                    
-                            <div id="ptCompleteData" class="align-items-center flex-nowrap gap-2 mb-3" style="display:none">
-                                <span>${_('Data to complete')}:  </span>
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="ptEnumber" class="toggle-input"/>
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEnumber">${_('Number')}</label>
-                                </span>
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="ptEname" class="toggle-input"/>
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEname">${_('Name')}</label>
-                                </span>
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="ptEsymbol" class="toggle-input" checked="checked"/>
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEsymbol">${_('Symbol')}</label>
-                                </span>
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="ptEgroup" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEgroup">${_('Group')}</label>
-                                </span>
-                                <span class="toggle-item" role="switch" aria-checked="false" style="display:none">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="ptEelectronicConfig" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEelectronicConfig">${_('Electronic configuration')}</label>
-                                </span>
-                                <span class="toggle-item" role="switch" aria-checked="false" style="display:none">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="ptEoxidations" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEoxidations">${_('Oxidation states')}</label>
-                                </span>
-                            </div>
-                            <div id="ptGameType" class="align-items-center flex-nowrap gap-2 mb-3" style="display:flex;">
-                                <span>${_('Type')}: </span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="PTP-TypeGame form-check-input" id="ptETypeNumber" type="radio" name="ptgametype" value="0" />
-                                    <label for="ptETypeNumber" class="form-check-label">${_('Number')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="PTP-TypeGame form-check-input" id="ptETypeName" type="radio" name="ptgametype" value="1" />
-                                    <label for="ptETypeName" class="form-check-label">${_('Name')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="PTP-TypeGame form-check-input" id="ptETypeSymbol" type="radio" name="ptgametype" value="2"  checked="checked"/>
-                                    <label for="ptETypeSymbol" class="form-check-label">${_('Symbol')}</label>
-                                </div>
-                            </div>
-                            <div class="PTP-periodic-table-groups" id="ptCheckBoxesGroups">
-                                ${$exeDevice.generateGroupCheckboxes()}
-                            </div>                        
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="ptEQuestionNumber" class="mb-0">${_('Number of questions')}:</label>
-                                <input type="number" id="ptEQuestionNumber" value="5" min="1" max="99" class="form-control" style="width:6ch" />
-                            </div> 
-                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="ptEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
-                                <input type="number" id="ptEAttemptsNumber" value="1" min="0" max="99" class="form-control" style="width:6ch" />
-                            </div>                         
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" checked id="ptEShowSolution" class="toggle-input">
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEShowSolution">${_('Show solutions')}.</label>
-                                </span>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="ptEShowMinimize" class="toggle-input">
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEShowMinimize">${_('Show minimized.')}</label>
-                                </span>
-                            </div> 
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="ptEHasFeedBack" class="toggle-input">
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ptEHasFeedBack">${_('Feedback')}.</label>
-                                </span>
-                                <input type="number" name="ptEPercentajeFB" id="ptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" /><label for="ptEPercentajeFB" class="ms-2">${_('% right to see the feedback')}</label>
-                            </div>
-                            <div id="ptEFeedbackP" class="PTE-EFeedbackP mb-3">
-                                <textarea id="ptEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                            </div>
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">                                
-                            </div>
-                        </div>
-                    </fieldset>                
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            </div>
+            ${edition.tabs.getHtml('ptQEIdeviceForm', {
+                path: $exeDevice.idevicePath,
+                instructions: c_('Complete the following questions about the periodic table.'),
+                options: options,
+                contents: contents,
+                passwords: true,
+                feedback: true,
+                after: true,
+                grading: true,
+                texts: this.ci18n,
+                share: false,
+                info: {
+                    contents: _('Choose what learners do with the periodic table: the mode, the data, the groups of elements and how many questions there are.'),
+                },
+            })}
+        </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('ptQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('ptQEIdeviceForm');
+        edition.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -488,10 +447,11 @@ var $exeDevice = {
                 $('#eXeGameInstructions').val(instructions);
             }
 
-            let textFeedBack = $('.periodic-table-feedback-game', wrapper);
+            const textFeedBack = $('.periodic-table-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
-                textFeedBack = textFeedBack.html() || '';
-                $('#ptEFeedBackEditor').val(textFeedBack);
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html() || ''
+                );
             }
 
             let textAfter = $('.periodic-table-extra-content', wrapper);
@@ -500,7 +460,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
         }
@@ -521,7 +481,8 @@ var $exeDevice = {
         dataGame.msgs = i18n;
         let json = JSON.stringify(dataGame);
 
-        const textFeedBack = tinyMCE.get('ptEFeedBackEditor').getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
 
         let divInstructions = '';
         if (dataGame.instructions !== '') {
@@ -600,11 +561,13 @@ var $exeDevice = {
             _('Actinides'),
         ];
 
-        let html =
-            '<div class="d-flex align-items-center mb-3 gap-2 flex-wrap">';
-        html += `<span class="me-2">${_('Element Groups')}:</span>`;
+        let html = '<div class="d-flex align-items-center gap-2 flex-wrap">';
+        html += `<span>${_('Element Groups')}:</span>`;
+        html += $exeIDevicesEdition.iDevice.common.getHelpTooltip(
+            _('Groups of elements the questions are taken from. Choose All, or one or more groups.')
+        );
         html += `
-            <span class="toggle-item" role="switch" aria-checked="true">
+            <span class="toggle-item">
                 <span class="toggle-control">
                     <input type="checkbox" class="toggle-input" checked value="0" />
                     <span class="toggle-visual" aria-hidden="true"></span>
@@ -613,7 +576,7 @@ var $exeDevice = {
             </span>`;
         groups.forEach((group, index) => {
             html += `
-            <span class="toggle-item" role="switch" aria-checked="false">
+            <span class="toggle-item">
                 <span class="toggle-control">
                     <input type="checkbox" class="toggle-input" value="${index + 1}" />
                     <span class="toggle-visual" aria-hidden="true"></span>
@@ -647,25 +610,22 @@ var $exeDevice = {
 
     validateData: function () {
         const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('ptEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             time = $('#ptETime').val(),
             showMinimize = $('#ptEShowMinimize').is(':checked'),
             showSolution = $('#ptEShowSolution').is(':checked'),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#ptEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt($('#ptEPercentajeFB').val()),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             number = $('#ptEQuestionNumber').val(),
             attempts = $('#ptEAttemptsNumber').val(),
             id = $exeDevice.getIdeviceID(),
             types = $exeDevice.checkCheckboxesStatus(),
             groups = $exeDevice.getCheckboxGroupsStates(),
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
             mode = parseInt($('input[name=ptmode]:checked').val(), 10),
             gameType = parseInt($('input[name=ptgametype]:checked').val(), 10);
 
@@ -679,12 +639,12 @@ var $exeDevice = {
         }
 
         if (!itinerary) return false;
-
-        if (feedBack && textFeedBack.trim().length === 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
         if (!progressBar) return false;
+
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
+
         if (itinerary.showClue && itinerary.clueGame.length == '') {
             return false;
         }
@@ -710,10 +670,10 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted || 100,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
-            feedBack,
-            percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: $exeDevice.version,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
@@ -727,43 +687,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        const lifecycle = this.$lifecycle;
-        // Inicializar toggles (ARIA y targets) y manejarlos en cambios
-        const initToggle = function ($input) {
-            const checked = $input.is(':checked');
-            $input
-                .closest('.toggle-item[role="switch"]')
-                .attr('aria-checked', checked);
-            const targetSel = $input.data('target');
-            if (targetSel) {
-                const $target = $(targetSel);
-                if (checked) {
-                    $target.css('display', 'flex');
-                } else {
-                    $target.hide();
-                }
-            }
-        };
-        $('.toggle-input').each(function () {
-            initToggle($(this));
-        });
-        lifecycle.on(document, 'change', '.toggle-input', event => {
-            initToggle($(event.currentTarget));
-        });
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $('#ptEHasFeedBack').on('change', function () {
-            const checked = $(this).is(':checked');
-            if (checked) {
-                $('#ptEFeedbackP').slideDown();
-            } else {
-                $('#ptEFeedbackP').slideUp();
-            }
-            $('#ptEPercentajeFB').prop('disabled', !checked);
-        });
-
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#ptETime')
             .on('keyup', function () {
@@ -778,13 +704,13 @@ var $exeDevice = {
         $('input[name="ptmode"]').on('change', function () {
             var selectedValue = $(this).val();
             if (selectedValue === '1') {
-                $('#ptCompleteData').css('display', 'flex');
+                $('#ptCompleteData').show();
                 $('#ptGameType').hide();
             } else if (selectedValue === '0') {
-                $('#ptGameType').css('display', 'flex');
+                $('#ptGameType').show();
                 $('#ptCompleteData').hide();
             } else if (selectedValue === '2') {
-                $('#ptGameType').css('display', 'flex');
+                $('#ptGameType').show();
                 $('#ptCompleteData').hide();
             }
         });
@@ -810,18 +736,13 @@ var $exeDevice = {
             }
         );
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').on('click', function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
     },
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.weighted =
@@ -834,13 +755,15 @@ var $exeDevice = {
         $('#ptEShowMinimize').prop('checked', game.showMinimize);
         $('#ptETime').val(game.time);
         $('#ptEShowSolution').prop('checked', game.showSolution);
-        $('#ptEHasFeedBack').prop('checked', game.feedBack);
-        $('#ptEPercentajeFB').val(game.percentajeFB);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -855,7 +778,7 @@ var $exeDevice = {
             true
         );
         if (game.mode == 1) {
-            $('#ptCompleteData').css('display', 'flex');
+            $('#ptCompleteData').show();
             $('#ptGameType').hide();
         } else if (game.mode == 0) {
             $('#ptGameType').show();
@@ -865,20 +788,12 @@ var $exeDevice = {
             $('#ptGameType').show();
         }
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
-
-        if (game.feedBack) {
-            $('#ptEFeedbackP').show();
-        } else {
-            $('#ptEFeedbackP').hide();
-        }
-
-        $('#ptEPercentajeFB').prop('disabled', !game.feedBack);
     },
 
     validTime: function (time) {
