@@ -1614,6 +1614,81 @@ describe('PreviewPanelManager', () => {
       expect(result).toContain('<style>');
       expect(result).toContain('body { margin: 0; }');
     });
+
+    it('should inline binary images as data URIs and skip data:, blob: and missing sources', () => {
+      const html = '<img src="a.png"><img src="b.xyz"><img src="data:image/png;base64,AA=="><img src="blob:x"><img src="c.png">';
+      const files = { 'a.png': new Uint8Array([1]), 'b.xyz': new Uint8Array([2]) };
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toBe(
+        '<img src="data:image/png;base64,AQ=="><img src="data:application/octet-stream;base64,Ag==">' +
+          '<img src="data:image/png;base64,AA=="><img src="blob:x"><img src="c.png">',
+      );
+    });
+
+    describe('url() references inside inlined CSS', () => {
+      const png = new Uint8Array([137, 80, 78, 71]);
+      const pngDataUri = 'data:image/png;base64,iVBORw==';
+      const inline = (href, css, extraFiles = {}) =>
+        manager._inlineResources(`<head><link rel="stylesheet" href="${href}"></head>`, {
+          'theme/style.css': css,
+          ...extraFiles,
+        });
+
+      it('should resolve theme url(img/icons.png) relative to the stylesheet, not the page', () => {
+        const result = inline('../theme/style.css', '.nav { background: url(img/icons.png) no-repeat; }', {
+          'theme/img/icons.png': png,
+        });
+
+        expect(result).toContain(`.nav { background: url("${pngDataUri}") no-repeat; }`);
+      });
+
+      it('should handle quoted forms, whitespace, query strings and hashes', () => {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>';
+        const result = inline(
+          'theme/style.css',
+          "a{background:url('img/icons.png?v=2')} b{background:url( \"img/arrow.svg#x\" )}",
+          { 'theme/img/icons.png': png, 'theme/img/arrow.svg': svg },
+        );
+
+        expect(result).toContain(`a{background:url("${pngDataUri}")}`);
+        expect(result).toContain(`b{background:url("data:image/svg+xml;base64,${btoa(svg)}")}`);
+      });
+
+      it('should resolve ../ references from a stylesheet in a subfolder', () => {
+        const result = manager._inlineResources('<link rel="stylesheet" href="../libs/widget/css/widget.css">', {
+          'libs/widget/css/widget.css': '.w{background:url(../img/w.gif)}',
+          'libs/widget/img/w.gif': new Uint8Array([2]).buffer,
+        });
+
+        expect(result).toContain('.w{background:url("data:image/gif;base64,Ag==")}');
+      });
+
+      it('should use font MIME types for @font-face sources', () => {
+        const result = inline('theme/style.css', "@font-face{src:url('fonts/a.woff2')}", {
+          'theme/fonts/a.woff2': new Uint8Array([1]),
+        });
+
+        expect(result).toContain('@font-face{src:url("data:font/woff2;base64,AQ==")}');
+      });
+
+      it('should leave external, data, blob, absolute, fragment and missing references untouched', () => {
+        const css = [
+          'a{background:url(data:image/png;base64,AAAA)}',
+          'b{background:url(blob:https://x.test/1)}',
+          'c{background:url(https://cdn.test/a.png)}',
+          'd{background:url(//cdn.test/a.png)}',
+          'e{background:url(/files/a.png)}',
+          'f{filter:url(#shadow)}',
+          'g{background:url(img/missing.png)}',
+        ].join('\n');
+
+        const result = inline('theme/style.css', css);
+
+        expect(result).toContain(css);
+      });
+    });
   });
 
   describe('_replacePdfEmbedsForBlob', () => {
