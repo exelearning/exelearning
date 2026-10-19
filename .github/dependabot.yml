@@ -25,6 +25,12 @@ updates:
       # when the Pele replacement (#2556) lands and removes the dependency.
       - dependency-name: "mermaid"
         versions: [">=12"]
+      # jQuery 4 removes jQuery.trim and other statics still used by the
+      # editor save path, iDevice export runtimes, qTip2 and author/legacy
+      # content that ships in every export. Held on 3.x until the migration
+      # tracked in #2572 lands; that PR must drop this entry.
+      - dependency-name: "jquery"
+        versions: [">=4"]
     groups:
       # vitest and its @vitest/* companions pin each other with exact-version
       # peer dependencies; bumping one alone breaks the run (#2384).
