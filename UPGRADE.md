@@ -52,6 +52,22 @@ This document describes breaking changes and migration steps between major versi
 
   List several origins comma-separated if needed. Deployments that do not use
   platform integration need no action.
+- Outbound platform callbacks (`get_ode.php` / `set_ode.php`) now go through the
+  SSRF egress guard and no longer follow redirects. A Moodle whose host resolves
+  to a loopback, RFC1918 or IPv6 unique-local address (internal network, VPN,
+  private DNS, or `http://localhost` in development) is refused unless you opt in:
+
+  ```env
+  PROVIDER_URLS=http://moodle.intranet:80
+  PROVIDER_ALLOW_PRIVATE_NETWORK=true
+  ```
+
+  The opt-in only applies to hosts that match `PROVIDER_URLS`; link-local
+  (cloud metadata), CGNAT, multicast and reserved addresses stay blocked. Include
+  the port in those entries, since an entry without one matches every port.
+  Moodle must answer the callbacks directly: an HTTP-to-HTTPS redirect in front of
+  `get_ode.php`/`set_ode.php` now fails, so use the final scheme in `PROVIDER_URLS`
+  and in Moodle's `wwwroot`.
 
 ---
 

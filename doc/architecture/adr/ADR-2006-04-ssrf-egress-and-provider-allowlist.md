@@ -155,6 +155,13 @@ guarantee.
 
 - Operators who set `PROVIDER_TOKENS`/`PROVIDER_IDS` but forget `PROVIDER_URLS`
   now have every callback rejected; mitigated by the one-time startup warning.
+- The egress guard also rejects a legitimate Moodle on a private network (internal
+  DNS, VPN, RFC1918, `localhost`), which worked before this change. Validation
+  against a real Moodle 5.0.7 reached at `http://localhost` reproduced the
+  refusal. Operators opt in with `PROVIDER_ALLOW_PRIVATE_NETWORK=true`, which
+  lets only hosts matching `PROVIDER_URLS` resolve to loopback, RFC1918 or IPv6
+  unique-local addresses (`isTrustedPrivateAddress`). Link-local/metadata, CGNAT,
+  multicast and reserved ranges stay blocked, and the default stays closed.
 - `safeFetch` does not pin the validated IP into the socket, so a DNS-rebinding
   attacker with an authoritative server can still bypass it. This is an
   explicit, documented residual risk.

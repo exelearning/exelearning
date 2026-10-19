@@ -5,7 +5,7 @@
  * for bidirectional project transfer.
  */
 import type { PlatformJWTPayload } from '../utils/platform-jwt';
-import { buildIntegrationUrl, getExportTypeFromPkgType } from '../utils/platform-jwt';
+import { buildIntegrationUrl, getExportTypeFromPkgType, isPrivateNetworkProviderAllowed } from '../utils/platform-jwt';
 import { safeFetch, type LookupFn } from '../utils/ssrf-guard';
 import { db as defaultDb } from '../db/client';
 import {
@@ -137,9 +137,11 @@ export async function platformPetitionGet(payload: PlatformJWTPayload, jwtToken:
 
     try {
         // Route through the SSRF guard, and refuse to follow redirects
-        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets, but
-        // this POST carries the integration JWT (and, for uploads, the full
-        // exported package), so an allow-listed provider that open-redirects to
+        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets
+        // (private networks only for an allow-listed provider opted in with
+        // PROVIDER_ALLOW_PRIVATE_NETWORK), but this POST carries the integration
+        // JWT (and, for uploads, the full exported package), so an allow-listed
+        // provider that open-redirects to
         // an attacker's *public* host must NOT have the body replayed there — a
         // 3xx becomes a clean failure instead. These are POST-to-JSON-API
         // endpoints that do not legitimately redirect. lookupFn/fetchImpl stay
@@ -148,6 +150,7 @@ export async function platformPetitionGet(payload: PlatformJWTPayload, jwtToken:
             method: 'POST',
             body: formData,
             maxRedirects: 0,
+            allowPrivateNetwork: isPrivateNetworkProviderAllowed(platformUrl),
             lookupFn: deps.lookupFn,
             fetchImpl: deps.fetchImpl,
         });
@@ -302,9 +305,11 @@ export async function platformPetitionSet(
         formData.append('ode_data', JSON.stringify(postData));
 
         // Route through the SSRF guard, and refuse to follow redirects
-        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets, but
-        // this POST carries the integration JWT (and, for uploads, the full
-        // exported package), so an allow-listed provider that open-redirects to
+        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets
+        // (private networks only for an allow-listed provider opted in with
+        // PROVIDER_ALLOW_PRIVATE_NETWORK), but this POST carries the integration
+        // JWT (and, for uploads, the full exported package), so an allow-listed
+        // provider that open-redirects to
         // an attacker's *public* host must NOT have the body replayed there — a
         // 3xx becomes a clean failure instead. These are POST-to-JSON-API
         // endpoints that do not legitimately redirect. lookupFn/fetchImpl stay
@@ -313,6 +318,7 @@ export async function platformPetitionSet(
             method: 'POST',
             body: formData,
             maxRedirects: 0,
+            allowPrivateNetwork: isPrivateNetworkProviderAllowed(platformUrl),
             lookupFn: deps.lookupFn,
             fetchImpl: deps.fetchImpl,
         });
@@ -431,9 +437,11 @@ export async function platformPetitionSetForward(
         formData.append('ode_data', JSON.stringify(postData));
 
         // Route through the SSRF guard, and refuse to follow redirects
-        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets, but
-        // this POST carries the integration JWT (and, for uploads, the full
-        // exported package), so an allow-listed provider that open-redirects to
+        // (maxRedirects: 0). assertUrlAllowed still blocks internal targets
+        // (private networks only for an allow-listed provider opted in with
+        // PROVIDER_ALLOW_PRIVATE_NETWORK), but this POST carries the integration
+        // JWT (and, for uploads, the full exported package), so an allow-listed
+        // provider that open-redirects to
         // an attacker's *public* host must NOT have the body replayed there — a
         // 3xx becomes a clean failure instead. These are POST-to-JSON-API
         // endpoints that do not legitimately redirect. lookupFn/fetchImpl stay
@@ -442,6 +450,7 @@ export async function platformPetitionSetForward(
             method: 'POST',
             body: formData,
             maxRedirects: 0,
+            allowPrivateNetwork: isPrivateNetworkProviderAllowed(platformUrl),
             lookupFn: deps.lookupFn,
             fetchImpl: deps.fetchImpl,
         });

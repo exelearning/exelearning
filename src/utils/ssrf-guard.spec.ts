@@ -1,4 +1,11 @@
-import { assertUrlAllowed, isBlockedAddress, safeFetch, SsrfBlockedError, type LookupFn } from './ssrf-guard';
+import {
+    assertUrlAllowed,
+    isBlockedAddress,
+    isTrustedPrivateAddress,
+    safeFetch,
+    SsrfBlockedError,
+    type LookupFn,
+} from './ssrf-guard';
 
 /** Lookup that always resolves to a given address (hermetic — no real DNS). */
 function lookupTo(address: string): LookupFn {
@@ -64,6 +71,39 @@ describe('ssrf-guard', () => {
         });
     });
 
+    describe('isTrustedPrivateAddress', () => {
+        it('accepts RFC1918, loopback and unique-local addresses', () => {
+            for (const ip of [
+                '10.1.2.3',
+                '172.16.5.4',
+                '192.168.0.1',
+                '127.0.0.1',
+                '::1',
+                'fd12::1',
+                '::ffff:10.0.0.1',
+            ]) {
+                expect(isTrustedPrivateAddress(ip)).toBe(true);
+            }
+        });
+
+        it('rejects link-local, metadata, unspecified, CGNAT, multicast, reserved and public addresses', () => {
+            for (const ip of [
+                '169.254.169.254',
+                '::ffff:169.254.169.254',
+                'fe80::1',
+                '0.0.0.0',
+                '::',
+                '100.64.1.1',
+                '224.0.0.1',
+                '240.0.0.1',
+                '93.184.216.34',
+                '',
+            ]) {
+                expect(isTrustedPrivateAddress(ip)).toBe(false);
+            }
+        });
+    });
+
     describe('assertUrlAllowed', () => {
         it('rejects non-http(s) schemes', async () => {
             await expect(assertUrlAllowed('file:///etc/passwd')).rejects.toBeInstanceOf(SsrfBlockedError);
@@ -88,6 +128,29 @@ describe('ssrf-guard', () => {
         it('allows a public host that resolves to a public address', async () => {
             const url = await assertUrlAllowed('https://example.com/page', { lookupFn: lookupTo('93.184.216.34') });
             expect(url.hostname).toBe('example.com');
+        });
+
+        it('allows a trusted private-network address only when allowPrivateNetwork is set', async () => {
+            const lookupFn = lookupTo('10.0.0.5');
+            await expect(assertUrlAllowed('http://moodle.intranet/', { lookupFn })).rejects.toBeInstanceOf(
+                SsrfBlockedError,
+            );
+            const url = await assertUrlAllowed('http://moodle.intranet/', { lookupFn, allowPrivateNetwork: true });
+            expect(url.hostname).toBe('moodle.intranet');
+            await expect(assertUrlAllowed('http://127.0.0.1/', { allowPrivateNetwork: true })).resolves.toBeInstanceOf(
+                URL,
+            );
+        });
+
+        it('keeps link-local metadata and other non-private ranges blocked under allowPrivateNetwork', async () => {
+            await expect(
+                assertUrlAllowed('http://169.254.169.254/latest/meta-data/', { allowPrivateNetwork: true }),
+            ).rejects.toBeInstanceOf(SsrfBlockedError);
+            // One blocked address among the resolved set still rejects the host.
+            const mixed: LookupFn = async () => [{ address: '10.0.0.5' }, { address: '169.254.169.254' }];
+            await expect(
+                assertUrlAllowed('http://moodle.intranet/', { lookupFn: mixed, allowPrivateNetwork: true }),
+            ).rejects.toBeInstanceOf(SsrfBlockedError);
         });
 
         it('rejects a host that does not resolve', async () => {
@@ -174,6 +237,20 @@ describe('ssrf-guard', () => {
             ).rejects.toBeInstanceOf(SsrfBlockedError);
             // The redirect target must never be contacted.
             expect(calls).toBe(1);
+        });
+
+        it('reaches a trusted private-network host only when allowPrivateNetwork is passed', async () => {
+            const fetchImpl = (async () => res(200)) as unknown as typeof fetch;
+            const lookupFn = lookupTo('192.168.1.20');
+            await expect(safeFetch('http://moodle.intranet/', { lookupFn, fetchImpl })).rejects.toBeInstanceOf(
+                SsrfBlockedError,
+            );
+            const response = await safeFetch('http://moodle.intranet/', {
+                lookupFn,
+                fetchImpl,
+                allowPrivateNetwork: true,
+            });
+            expect(response.status).toBe(200);
         });
     });
 });

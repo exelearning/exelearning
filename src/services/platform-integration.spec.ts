@@ -239,6 +239,63 @@ describe('Platform Integration Service', () => {
             );
             expect(fetchCalls).toBe(0);
         });
+
+        describe('allow-listed provider on a private network', () => {
+            const savedEnv = {
+                PROVIDER_URLS: process.env.PROVIDER_URLS,
+                PROVIDER_ALLOW_PRIVATE_NETWORK: process.env.PROVIDER_ALLOW_PRIVATE_NETWORK,
+            };
+            const okResponse = () =>
+                new Response(JSON.stringify({ status: '0', ode_file: 'YmFzZTY0', ode_filename: 'project.elpx' }));
+
+            beforeEach(() => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com';
+                delete process.env.PROVIDER_ALLOW_PRIVATE_NETWORK;
+                configure({ lookupFn: async () => [{ address: '10.0.0.5' }] });
+            });
+
+            afterEach(() => {
+                for (const [key, value] of Object.entries(savedEnv)) {
+                    if (value === undefined) {
+                        delete process.env[key];
+                    } else {
+                        process.env[key] = value;
+                    }
+                }
+            });
+
+            it('is blocked by default', async () => {
+                let fetchCalls = 0;
+                globalThis.fetch = async () => {
+                    fetchCalls++;
+                    return okResponse();
+                };
+
+                await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow('Blocked address');
+                expect(fetchCalls).toBe(0);
+            });
+
+            it('is reached once PROVIDER_ALLOW_PRIVATE_NETWORK is enabled', async () => {
+                process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+                globalThis.fetch = async () => okResponse();
+
+                const result = await platformPetitionGet(mockPayload, 'jwt-token');
+                expect(result.ode_filename).toBe('project.elpx');
+            });
+
+            it('stays blocked for a host outside PROVIDER_URLS even with the opt-in', async () => {
+                process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+                process.env.PROVIDER_URLS = 'https://other.example.com';
+                let fetchCalls = 0;
+                globalThis.fetch = async () => {
+                    fetchCalls++;
+                    return okResponse();
+                };
+
+                await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow('Blocked address');
+                expect(fetchCalls).toBe(0);
+            });
+        });
     });
 
     describe('platformPetitionSet', () => {
