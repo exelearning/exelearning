@@ -1,5 +1,5 @@
 /**
- * Unit tests for Drag and drop iDevice export helpers.
+ * Unit tests for the Drag and drop iDevice edition.
  */
 
 /* eslint-disable no-undef */
@@ -10,45 +10,6 @@ import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-describe('dragdrop iDevice export helpers', () => {
-    let $exeDevice;
-    let downloadBlob;
-
-    beforeEach(() => {
-        global.$exeDevice = undefined;
-        $exeDevice = global.loadIdevice(join(__dirname, 'dragdrop.js'));
-        // The setup's edition object is the real one: spy on it and restore it.
-        downloadBlob = vi
-            .spyOn(global.$exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
-            .mockReturnValue(true);
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
-
-    it('exports question text with the dragdrop filename and container', () => {
-        vi.spyOn($exeDevice, 'validateData').mockReturnValue({
-            wordsGame: [{ word: 'Source', definition: 'Target' }],
-        });
-
-        expect($exeDevice.exportQuestions()).toBe(true);
-        expect(downloadBlob).toHaveBeenCalledTimes(1);
-        expect(downloadBlob.mock.calls[0][1]).toBe('words-dragdrop.txt');
-        expect(downloadBlob.mock.calls[0][2]).toBe('dragdropQIdeviceForm');
-    });
-
-    it('exports game JSON with the dragdrop filename and container', () => {
-        const dataGame = { wordsGame: [{ word: 'Source', definition: 'Target' }] };
-        vi.spyOn($exeDevice, 'validateData').mockReturnValue(dataGame);
-
-        expect($exeDevice.exportGame()).toBe(true);
-        expect(downloadBlob).toHaveBeenCalledTimes(1);
-        expect(downloadBlob.mock.calls[0][1]).toBe('Activity-DragDrop.json');
-        expect(downloadBlob.mock.calls[0][2]).toBe('dragdropQIdeviceForm');
-    });
-});
 
 // Handlers whose callback is a single guarded call: [selector, event, method]
 const guardedEditionHandlers = [
@@ -61,7 +22,6 @@ const guardedEditionHandlers = [
     ['#dadEPreviousC', 'click', 'previousCard'],
     ['#dadENextC', 'click', 'nextCard'],
     ['#dadELastC', 'click', 'lastCard'],
-    ['#eXeGameExportQuestions', 'click', 'exportQuestions'],
     ['#dadEPercentajeCards', 'keyup', 'updateCardsNumber'],
     ['#dadEPercentajeCards', 'click', 'updateCardsNumber'],
     ['#dadEPercentajeCards', 'focusout', 'updateCardsNumber'],
@@ -89,11 +49,6 @@ function buildEditionForm() {
             <a href="#" id="dadEPreviousC"></a>
             <a href="#" id="dadENextC"></a>
             <a href="#" id="dadELastC"></a>
-            <div id="eXeGameExportImport">
-                <p class="exe-field-instructions"></p>
-                <input id="eXeGameImportGame" type="file" />
-                <a href="#" id="eXeGameExportQuestions"></a>
-            </div>
             <input id="dadEPercentajeCards" type="text" value="50" />
             <input id="dadEURLAudioDefinition" type="text" value="sound.mp3" />
             <input id="dadEURLImage" type="text" value="picture.png" />
@@ -264,41 +219,6 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
             }
         });
 
-        it('aborts an in-flight game import when the edition closes', () => {
-            const reader = {
-                readyState: 1,
-                abort: vi.fn(),
-                readAsText: vi.fn(),
-                onload: null,
-            };
-            const readerSpy = vi.spyOn(global, 'FileReader').mockImplementation(function () {
-                return reader;
-            });
-
-            try {
-                const file = new File(['{}'], 'game.json', {
-                    type: 'application/json',
-                });
-                const input = document.getElementById('eXeGameImportGame');
-                Object.defineProperty(input, 'files', { value: [file] });
-
-                $(input).trigger('change');
-                expect(reader.readAsText).toHaveBeenCalledWith(file);
-
-                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-                reader.onload({ target: { result: '{}' } });
-                expect(importGame).toHaveBeenCalledTimes(1);
-
-                $exeDevice.$lifecycle.destroy();
-                expect(reader.abort).toHaveBeenCalledTimes(1);
-
-                reader.onload({ target: { result: '{}' } });
-                expect(importGame).toHaveBeenCalledTimes(1);
-            } finally {
-                readerSpy.mockRestore();
-            }
-        });
-
         it('stops the preview audio when the edition closes', () => {
             const audio = {
                 play: vi.fn(),
@@ -450,6 +370,12 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
         expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
         expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
         expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('offers no import, export or AI windows', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+        expect(document.getElementById('eXeGameImportGame')).toBeNull();
+        expect(document.getElementById('eXeEQuestionsArea')).toBeNull();
     });
 
     it('provides accessible help tooltips for option rows', () => {
