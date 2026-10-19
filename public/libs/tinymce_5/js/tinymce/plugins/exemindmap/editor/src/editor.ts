@@ -32,6 +32,10 @@ import {
 import addChildIcon from '@material-symbols/svg-400/outlined/subdirectory_arrow_right.svg';
 import addSiblingIcon from '@material-symbols/svg-400/outlined/add_row_below.svg';
 import deleteIcon from '@material-symbols/svg-400/outlined/delete.svg';
+import moveUpIcon from '@material-symbols/svg-400/outlined/arrow_upward.svg';
+import moveDownIcon from '@material-symbols/svg-400/outlined/arrow_downward.svg';
+import addIcon from '@material-symbols/svg-400/outlined/add.svg';
+import closeIcon from '@material-symbols/svg-400/outlined/close.svg';
 import undoIcon from '@material-symbols/svg-400/outlined/undo.svg';
 import redoIcon from '@material-symbols/svg-400/outlined/redo.svg';
 import importIcon from '@material-symbols/svg-400/outlined/upload.svg';
@@ -265,7 +269,9 @@ function refreshControls(): void {
     for (const id of ['font-smaller', 'font-larger', 'bold', 'italic', 'underline', 'strike', 'text-color', 'add-child']) {
         controls[id].disabled = !tpc;
     }
-    for (const id of ['add-sibling', 'remove', 'branch-color', 'branch-color-children']) controls[id].disabled = !tpc || isRoot;
+    for (const id of ['add-sibling', 'remove', 'move-up', 'move-down', 'branch-color', 'branch-color-children']) {
+        controls[id].disabled = !tpc || isRoot;
+    }
     (document.getElementById('format-hint') as HTMLElement).hidden = !!tpc;
     if (!tpc) return;
     const style = (tpc.nodeObj.style ?? {}) as NodeStyle;
@@ -301,6 +307,13 @@ function buildToolbar(): HTMLElement {
             button('add-child', _('Add child'), () => mind.addChild(), { icon: addChildIcon, shortcut: 'Tab' }),
             button('add-sibling', _('Add sibling'), () => mind.insertSibling('after'), { icon: addSiblingIcon, shortcut: 'Enter' }),
             button('remove', _('Delete'), () => mind.removeNodes(selectedTopics()), { icon: deleteIcon, shortcut: 'Del' }),
+            // Also by dragging an idea just above or below another
+            button('move-up', _('Move up'), () => mind.moveUpNode(), { icon: moveUpIcon, iconOnly: true, shortcut: 'Alt+↑' }),
+            button('move-down', _('Move down'), () => mind.moveDownNode(), {
+                icon: moveDownIcon,
+                iconOnly: true,
+                shortcut: 'Alt+↓',
+            }),
         ),
         group(
             _('History'),
@@ -401,6 +414,49 @@ function labelMindElixirToolbars(): void {
     }
 }
 
+/** Calls `fn` when the map moves or zooms, or the window is resized. */
+function onViewChange(fn: () => void): void {
+    new MutationObserver(fn).observe(mind.map, { attributes: true, attributeFilter: ['style'] });
+    window.addEventListener('resize', fn);
+}
+
+/**
+ * The legacy nub, on the selected idea: a "+" on the side its children grow adds a child, and a
+ * "×" on the other side deletes the idea (the central idea cannot be deleted).
+ */
+function buildNodeActions(): void {
+    const map = document.getElementById('map') as HTMLElement;
+    const add = button('node-add', _('Add child'), () => mind.addChild(), { icon: addIcon, iconOnly: true, shortcut: 'Tab' });
+    const remove = button('node-remove', _('Delete'), () => mind.removeNodes(selectedTopics()), {
+        icon: closeIcon,
+        iconOnly: true,
+        shortcut: 'Del',
+    });
+    add.className = remove.className = 'node-action';
+    map.append(add, remove);
+
+    const SIZE = 22;
+    const GAP = 6;
+    const place = () => {
+        const selected = selectedTopics();
+        const tpc = selected.length === 1 ? selected[0] : undefined;
+        // Out of the way while a caption is edited
+        add.hidden = remove.hidden = !tpc || !!mind.nodes.querySelector('#input-box');
+        if (!tpc || add.hidden) return;
+        const r = tpc.getBoundingClientRect();
+        const m = map.getBoundingClientRect();
+        const left = !!tpc.closest('.lhs');
+        const at = (b: HTMLElement, x: number, y: number) => Object.assign(b.style, { left: `${x - m.left}px`, top: `${y - m.top}px` });
+        if (mind.direction === 3) at(add, r.left + r.width / 2 - SIZE / 2, r.bottom + GAP);
+        else at(add, left ? r.left - GAP - SIZE : r.right + GAP, r.top + r.height / 2 - SIZE / 2);
+        at(remove, (left ? r.right : r.left) - SIZE / 2, r.top - SIZE / 2);
+        remove.hidden = tpc.nodeObj.id === mind.nodeData.id;
+    };
+    for (const event of ['selectNodes', 'unselectNodes', 'operation', 'linkDiv'] as const) mind.bus.addListener(event, place);
+    onViewChange(place);
+    place();
+}
+
 /**
  * The legacy Navigator: the whole map, drawn by the SVG exporter, with the visible part framed.
  * A click or a drag on it moves the map there.
@@ -467,8 +523,7 @@ function buildNavigator(): void {
     });
     // Redrawn when the map changes (Mind Elixir relinks it after every change), framed when it moves
     mind.bus.addListener('linkDiv', render);
-    new MutationObserver(place).observe(mind.map, { attributes: true, attributeFilter: ['style'] });
-    window.addEventListener('resize', place);
+    onViewChange(place);
     render();
 }
 
@@ -574,6 +629,7 @@ export function start(load: Record<string, unknown> = {}): MindElixirInstance {
     mind.init(data);
     labelMindElixirToolbars();
     buildNavigator();
+    buildNodeActions();
     // The whole map in view, unless that makes its text too small to read, and the central
     // idea selected, ready for Tab and Enter
     mind.scaleFit();

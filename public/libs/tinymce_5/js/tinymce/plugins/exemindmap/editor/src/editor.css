@@ -129,6 +129,34 @@ input:focus-visible,
     display: none;
 }
 
+/* The legacy nub on the selected idea: add a child, delete it */
+.node-action {
+    position: absolute;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-height: 0;
+    padding: 0;
+    color: var(--exe-primary-dark);
+    border-color: var(--exe-primary);
+    border-radius: 50%;
+    box-shadow: 0 1px 2px #0003;
+}
+
+.node-action svg {
+    width: 16px;
+    height: 16px;
+}
+
+.node-action[hidden] {
+    display: none;
+}
+
+#node-remove {
+    color: #cf222e;
+    border-color: #cf222e;
+}
+
 /* The legacy Navigator, over the canvas like the legacy panels */
 #navigator {
     position: absolute;
@@ -290,6 +318,7 @@ input[type="color"]:disabled {
     #message,
     #inspector,
     #navigator,
+    .node-action,
     .mind-elixir-toolbar,
     .context-menu {
         display: none !important;

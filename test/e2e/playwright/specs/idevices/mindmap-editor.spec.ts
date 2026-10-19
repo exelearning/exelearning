@@ -156,6 +156,64 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         expect(errors).toEqual([]);
     });
 
+    test('adds, deletes and reorders ideas from the map, as in the legacy editor', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        await newProjectWithTextIdevice(page, createProject, 'Mind map nub');
+        const { frame, frame2 } = await openMindmapEditor(page);
+        const children = async (caption: string) =>
+            findNode((await editorData(frame2)).nodeData, caption)?.children?.map(c => c.topic);
+        /** The legacy nub: the "+" on the selected idea adds a child */
+        const addWithNub = async (parent: string, caption: string) => {
+            await topic(frame, parent).click();
+            await frame.locator('#node-add').click();
+            await expect(frame.locator('#input-box')).toBeVisible();
+            await expect(frame.locator('#node-add')).toBeHidden();
+            await page.keyboard.press('ControlOrMeta+a');
+            await page.keyboard.type(caption);
+            await page.keyboard.press('Enter');
+            await expect(topic(frame, caption)).toHaveCount(1);
+        };
+
+        // The central idea cannot be deleted, so it has no "×"
+        await expect(frame.locator('#node-add')).toBeVisible();
+        await expect(frame.locator('#node-remove')).toBeHidden();
+        await addWithNub('Central Idea', 'Rama');
+        for (const caption of ['Uno', 'Dos', 'Tres']) await addWithNub('Rama', caption);
+        expect(await children('Rama')).toEqual(['Uno', 'Dos', 'Tres']);
+
+        // Move up and down
+        await topic(frame, 'Tres').click();
+        await frame.locator('#move-up').click();
+        expect(await children('Rama')).toEqual(['Uno', 'Tres', 'Dos']);
+        await frame.locator('#move-down').click();
+        expect(await children('Rama')).toEqual(['Uno', 'Dos', 'Tres']);
+
+        // Dragged just above another idea, an idea goes before it; dropped on one, it becomes its child
+        const drag = async (from: string, to: string, above: boolean) => {
+            const a = await topic(frame, from).boundingBox();
+            const b = await topic(frame, to).boundingBox();
+            if (!a || !b) throw new Error('topic not found');
+            await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+            await page.mouse.down();
+            await page.mouse.move(b.x + b.width / 2, above ? b.y - 5 : b.y + b.height / 2, { steps: 10 });
+            await page.mouse.up();
+        };
+        await drag('Tres', 'Uno', true);
+        expect(await children('Rama')).toEqual(['Tres', 'Uno', 'Dos']);
+        await drag('Dos', 'Uno', false);
+        expect(await children('Rama')).toEqual(['Tres', 'Uno']);
+        expect(await children('Uno')).toEqual(['Dos']);
+
+        // The "×" deletes the selected idea
+        await topic(frame, 'Tres').click();
+        await expect(frame.locator('#node-remove')).toBeVisible();
+        await frame.locator('#node-remove').click();
+        await expect(topic(frame, 'Tres')).toHaveCount(0);
+        expect(await children('Rama')).toEqual(['Uno']);
+    });
+
     test('leaves the caption out on request, and keeps the title and caption when reopened', async ({
         authenticatedPage: page,
         createProject,
