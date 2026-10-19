@@ -588,16 +588,6 @@ var $exeDevice = {
         }
     },
 
-    updateProgressBarLocal: function () {
-        if ($exeDevice.localPlayer) {
-            $('#progress-bar').val(
-                (Math.round($exeDevice.localPlayer.currentTime) /
-                    Math.round($exeDevice.localPlayer.duration)) *
-                    100
-            );
-        }
-    },
-
     enableForm: function () {
         this.initQuestions();
 
@@ -722,11 +712,9 @@ var $exeDevice = {
     },
 
     changeTypeQuestion: function (type) {
-        $('#adivinaETitleAltImage').hide();
         $('#adivinaEAuthorAlt').hide();
         $('#adivinaTitleImage').hide();
         $('#adivinaEInputImage').hide();
-        $('#adivinaETitleAudio').show();
         $('#adivinaEInputAudio').show();
         $('#adivinaETitleInputAudio').show();
         $('#adivinaTitleVideo').hide();
@@ -751,7 +739,7 @@ var $exeDevice = {
                 break;
             case 1:
                 $('#adivinaENoImage').show();
-                $('#adivinaETitleImage').show();
+                $('#adivinaTitleImage').show();
                 $('#adivinaEInputImage').css('display', 'flex');
                 $('#adivinaEAuthorAlt').css('display', 'flex');
                 $('#adivinaECursor').show();
@@ -942,12 +930,6 @@ var $exeDevice = {
             );
             $('adivinaEVITime').text(time);
         }
-    },
-
-    updateProgressBar: function () {
-        $('#progress-bar').val(
-            (player.getCurrentTime() / player.getDuration()) * 100
-        );
     },
 
     onPlayerError: function () {
@@ -1763,18 +1745,6 @@ var $exeDevice = {
             const marcado = $(this).is(':checked');
             $('#adivinaETimeShowSolution').prop('disabled', !marcado);
         });
-
-        $('#adivinaETimeQuestion')
-            .on('keyup', function () {
-                let v = this.value.replace(/\D/g, '').substring(0, 3);
-                this.value = v;
-            })
-            .on('focusout', function () {
-                let value =
-                    this.value.trim() === '' ? 30 : parseInt(this.value, 10);
-                value = Math.max(1, Math.min(value, 600));
-                this.value = value;
-            });
 
         $('#adivinaETimeSilence').on('keyup', function () {
             let v = this.value.replace(/\D/g, '').substring(0, 3);

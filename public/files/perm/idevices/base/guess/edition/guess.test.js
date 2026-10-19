@@ -841,6 +841,12 @@ describe('guess edition: shared form tabs and feedback', () => {
     expect(states()).toEqual(before);
   });
 
+  it('shows the image URL label for an image question', () => {
+    device.changeTypeQuestion(1);
+
+    expect(document.getElementById('adivinaTitleImage').style.display).not.toBe('none');
+  });
+
   it('escapes translated help text in the explanation', () => {
     const text = 'Use "Accept" <once> & keep the learner\'s answer.';
     const container = document.createElement('div');
