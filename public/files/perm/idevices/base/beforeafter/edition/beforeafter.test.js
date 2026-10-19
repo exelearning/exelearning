@@ -159,6 +159,13 @@ describe('beforeafter edition: shared form tabs', () => {
         document.body.innerHTML = '';
     });
 
+    it('explains what goes in the Questions tab', () => {
+        const info = panel('contents').firstElementChild;
+
+        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.textContent).toContain('Add the cards: each one compares a before image with an after image. Edit them one by one.');
+    });
+
     it('leaves the state of each switch to its native checkbox', () => {
         document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
 

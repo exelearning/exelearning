@@ -290,6 +290,9 @@ var $exeDevice = {
                     grading: true,
                     texts: this.ci18n,
                     share: false,
+                    info: {
+                        contents: _('Add the cards: each one compares a before image with an after image. Edit them one by one.'),
+                    },
                 })}
             </div>
         `;

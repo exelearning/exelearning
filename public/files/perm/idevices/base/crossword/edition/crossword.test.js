@@ -619,6 +619,13 @@ describe('crossword edition: shared form tabs and feedback', () => {
       tinymceGet.mockRestore();
     });
 
+    it('explains what goes in the Questions tab', () => {
+        const info = panel('contents').firstElementChild;
+
+        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.textContent).toContain('Add the words and their definitions, and edit them one by one.');
+    });
+
     it('leaves the state of each switch to its native checkbox', () => {
         document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
 

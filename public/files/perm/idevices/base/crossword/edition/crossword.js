@@ -357,6 +357,9 @@ var $exeDevice = {
                         exportQuestions: true,
                         type: 9,
                     },
+                    info: {
+                        contents: _('Add the words and their definitions, and edit them one by one.'),
+                    },
                 })}
             </div>
         `;

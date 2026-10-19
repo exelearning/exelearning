@@ -386,6 +386,9 @@ var $exeDevice = {
                         exportQuestions: true,
                         type: 5,
                     },
+                    info: {
+                        contents: _('Add the cards and choose the group each one belongs to. The groups are named in Options.'),
+                    },
                 })}
             </div>
         `;

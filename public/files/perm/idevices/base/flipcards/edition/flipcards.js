@@ -408,6 +408,9 @@ var $exeDevice = {
                         exportQuestions: true,
                         type: 0,
                     },
+                    info: {
+                        contents: _('Add the cards with the text, image or sound of each side, and edit them one by one.'),
+                    },
                 })}
             </div>
         `;
