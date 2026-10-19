@@ -221,6 +221,7 @@ var $exeDevice = {
                 $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit === 1) {
             $('#hiEPaste').hide();
             $exeDevice.typeEdit = -1;
