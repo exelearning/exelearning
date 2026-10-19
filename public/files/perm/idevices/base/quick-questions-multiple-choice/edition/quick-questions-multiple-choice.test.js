@@ -809,6 +809,17 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
         expect(states()).toEqual(before);
     });
 
+    it('shows the clock of a local video', () => {
+        const clock = document.getElementById('seleccionaEVideoTime');
+        clock.style.display = 'none';
+        device.localPlayer = { play: vi.fn() };
+        vi.spyOn(device.clockVideo, 'start').mockImplementation(() => {});
+
+        device.startVideo('video.mp4', 0, 10, 1);
+
+        expect(clock.style.display).not.toBe('none');
+    });
+
     it('keeps a locked switch and its message when its row is clicked', () => {
         document.querySelector('input[name="slcgamemode"][value="2"]').click();
         const feedbackSwitch = document.getElementById('eXeGameHasFeedBack');

@@ -430,7 +430,7 @@ var $exeDevice = {
                 $exeDevice.localPlayer.play();
                 $exeDevice.clockVideo.start('local');
             }
-            $('#adivinaEVideoTime').show();
+            $('#seleccionaEVideoTime').show();
             return;
         }
 
@@ -1163,7 +1163,6 @@ var $exeDevice = {
     },
 
     changeTypeQuestion: function (type) {
-        $('#seleccionaETitleAltImage').hide();
         $('#seleccionaEAuthorAlt').removeClass('d-flex').addClass('d-none');
         $('#seleccionaETitleImage').hide();
         $('#seleccionaEInputImage').hide();
@@ -1211,7 +1210,6 @@ var $exeDevice = {
                 );
                 break;
             case 2:
-                $('#seleccionaEImageVideo').show();
                 $('#seleccionaETitleVideo').show();
                 $('#seleccionaEInputVideo').show();
                 $('#seleccionaENoVideo').show();
@@ -2650,14 +2648,6 @@ var $exeDevice = {
                     color: '#2c6d2c',
                 });
             });
-
-        $('#seleccionaShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#seleccionaCodeAccess, #seleccionaMessageCodeAccess').prop(
-                'disabled',
-                !marcado
-            );
-        });
 
         $('.SLCNE-EPanel').on('click', 'input.SLCNE-Type', function () {
             const type = parseInt($(this).val(), 10);
