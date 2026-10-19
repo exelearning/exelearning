@@ -135,9 +135,11 @@ export default defineConfig({
     // closed the browser (run 39160048282). That runner has 4 cores, so '100%' is 4
     // editors at once. The Firefox job in `.github/workflows/e2e.yml` passes
     // `--workers=2`. Chromium and static stay at 100%. The auth fixture aborts a
-    // Firefox newPage that does not return and opens the page on a new context
-    // of the browser Playwright already launched. Closing that context is what
-    // lets the next newPage succeed, so the first attempt does it itself.
+    // Firefox newPage that does not return, including browser.newPage(), and
+    // opens the page on a new context of the browser Playwright already
+    // launched. A relaunch stays on that same browser type. Closing the stalled
+    // context is what lets the next newPage succeed, so the first attempt does
+    // it itself.
     workers: process.env.CI ? '100%' : Math.min(4, Math.max(1, Math.floor(os.cpus().length * 0.8))),
 
     /* Reporter to use */

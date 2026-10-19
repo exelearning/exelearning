@@ -948,7 +948,28 @@ export default class IdeviceNode {
         });
     }
 
+    /**
+     * A local Yjs write does not rebuild a node that was created from the
+     * original '{}'. Re-read the stored string before refusing edition, or an
+     * edit click never sees the damage and never shows the alert.
+     */
+    syncMalformedJsonPropertiesFromYjs() {
+        if (!this.isYjsEnabled()) return;
+
+        const stored =
+            eXeLearning.app.project?._yjsBridge?.structureBinding?.getComponent(
+                this.odeIdeviceId
+            )?.jsonProperties;
+        if (typeof stored !== 'string') return;
+
+        const parsed = parseIdeviceJsonProperties(stored);
+        this.jsonProperties = parsed.value;
+        this.jsonPropertiesParseError = parsed.error;
+        this.malformedJsonPropertiesRaw = parsed.error ? stored : null;
+    }
+
     preventEditingMalformedJsonProperties() {
+        this.syncMalformedJsonPropertiesFromYjs();
         if (!this.jsonPropertiesParseError) return false;
 
         eXeLearning.app.modals.alert.show({

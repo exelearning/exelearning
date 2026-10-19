@@ -510,6 +510,20 @@ describe('Modal', () => {
       vi.useRealTimers();
     });
 
+    it('does not let a previous close wipe the body a later show just set', () => {
+      vi.useFakeTimers();
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', true);
+      modal.setBody('old');
+      modal.close();
+      modal.show({ body: 'damaged data' });
+      vi.advanceTimersByTime(modal.timeMin);
+      expect(modal.modalElementBody.innerHTML).toBe('damaged data');
+      vi.advanceTimersByTime(100);
+      expect(modal.modalElementBody.innerHTML).toBe('damaged data');
+      expect(mockBootstrapModal.show).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+
     it('clears interval if set', () => {
       const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
       modal.intervalCloseCheck = setInterval(() => {}, 1000);
