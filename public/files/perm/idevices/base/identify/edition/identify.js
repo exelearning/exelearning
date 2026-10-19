@@ -37,7 +37,7 @@ var $exeDevice = {
         this.createForm();
 
         const root = document.getElementById('identifyQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     enableForm: function () {
@@ -136,7 +136,6 @@ var $exeDevice = {
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgECompleteQuestion = _('You have to complete the question');
         msgs.msgECompleteAllClues = _('Please complete all the clues');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -330,9 +329,9 @@ var $exeDevice = {
         });
 
         p.audio = p.audio && p.audio != 'undefined' ? p.audio : '';
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         if (p.type != 2 && p.audio.trim().length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
         $('#idfEURLAudio').val(p.audio);
         $('#idfENumberQuestion').val(i + 1);
@@ -429,236 +428,228 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="idfEOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="idfEShowMinimize" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="idfEShowMinimize">${_('Show minimized.')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="idfESAvancedMode" class="toggle-input" checked />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="idfESAvancedMode">${_('Advanced mode')}.</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Learners reveal the clues one by one, and each clue they use lowers the points they can win. Otherwise they can open any clue.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="idfEQuestionRamdon" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="idfEQuestionRamdon">${_('Random questions')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Present the questions in a different random order each time the game starts.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="idfECustomMessages" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="idfECustomMessages">${_('Custom messages')}.</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="idfEShowSolution" class="toggle-input" checked />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="idfEShowSolution">${_('Show solutions')}.</label>
+                        </span>
+                        <label for="idfETimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}</label>
+                        <input type="number" name="idfETimeShowSolution" class="form-control" id="idfETimeShowSolution" value="3" min="1" max="9" style="width:6ch" />
+                        ${edition.common.getHelpTooltip([
+                            `${_('Show solutions')}: ${_('Show the right answer when the learner runs out of attempts.')}`,
+                            `${_('Show solution time (seconds)')}: ${_('Set how many seconds the solution remains visible before moving to the next question.')}`,
+                        ].join('\n\n'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="idfEPercentajeQuestions" class="mb-0">%${_('Questions')}:</label>
+                        <input type="number" name="idfEPercentajeQuestions" id="idfEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
+                        <span id="idfENumeroPercentaje">1/1</span>
+                        ${edition.common.getHelpTooltip(_('Choose the percentage of questions included in each game. The counter shows how many questions will be used.'))}
+                    </div>
+                </div>`,
+            questions = `
+                <div class="IDFE-EPanel" id="idfEPanel">
+                    <div class="IDFE-EPistasMedia">
+                        <div class="IDFE-EPistasGame">
+                            <span>${_('Message')}</span>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label class="sr-av">${_('Message')}:</label>
+                                <input type="text" class="form-control w-100" id="idfEQuestion">
+                            </div>
+                            <span>${_('Solution')}</span>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label class="sr-av">${_('Solution')}:</label>
+                                <input type="text" class="form-control w-100" id="idfESolution">
+                            </div>
+                            <span id="idfETitleImage">${_('Image URL')}</span>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfEInputImage">
+                                <label class="sr-av" for="idfEURLImage">${_('Image URL')}</label>
+                                <input type="text" class="exe-file-picker w-100 form-control me-0" id="idfEURLImage"/>
+                                <a href="#" id="idfEPlayImage" class="IDFE-ENavigationButton IDFE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="IDFE-EButtonImage " /></a>
+                                <a href="#" id="idfEShowMore" class="IDFE-ENavigationButton IDFE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="IDFE-EButtonImage " /></a>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfInputCluesImage">
+                                <div class="IDFE-ECoord">
+                                    <label for="idfEXImage">X:</label>
+                                    <input id="idfEXImage" type="text" value="0" />
+                                    <label for="idfEYImage">Y:</label>
+                                    <input id="idfEYImage" type="text" value="0" />
+                                </div>
+                            </div>
+                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="idfEAuthorAlt">
+                                <div class="IDFE-EInputAuthor wp-50">
+                                    <label for="idfEAuthor">${_('Authorship')}</label>
+                                    <input id="idfEAuthor" type="text" class="IDFE-EAuthor form-control w-100" />
+                                </div>
+                                <div class="IDFE-EInputAlt wp-50">
+                                    <label for="idfEAlt">${_('Alt')}</label>
+                                    <input id="idfEAlt" type="text" class="IDFE-EAlt form-control w-100" />
+                                </div>
+                            </div>
+                            <span>${_('Audio')}</span>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfEInputAudio" data-voice-recorder data-voice-input="#idfEURLAudio">
+                                <label class="sr-av" for="idfEURLAudio">${_('URL')}</label>
+                                <input type="text" class="exe-file-picker w-100 form-control me-0" id="idfEURLAudio"/>
+                                <a href="#" id="idfEPlayAudio" class="IDFE-ENavigationButton IDFE-EPlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="IDFE-EButtonImage " /></a>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="idfEAttemptsNumber">${_('Number of attempts')}:</label>
+                                <input type="number" name="idfEAttemptsNumber" id="idfEAttemptsNumber" class="form-control" value="3" min="1" max="8" step="1" />
+                            </div>
+                        </div>
+                        <div class="IDFE-EMultiMediaClue">
+                            <div class="IDFE-EMultimedia" id="idfEMultimedia">
+                                <img class="IDFE-EMedia" src="${path}quextIEImage.png" id="idfEImage" alt="${_('Image')}" />
+                                <img class="IDFE-EMedia" src="${path}quextIEImage.png" id="idfENoImage" alt="${_('No image')}" />
+                                <img class="IDFE-ECursor" src="${path}quextIECursor.gif" id="idfECursor" alt="" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="IDFE-EContents">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <label for="idfECluesNumber">${_('Number of clues')}:</label>
+                            <input type="number" name="idfECluesNumber" class="form-control" id="idfECluesNumber" value="4" min="2" max="8" step="1" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                            <div class="IDFE-EPistaDiv gap-2 mb-3">
+                                <label>1:</label>
+                                <input type="text" class="IDFE-EPista0 IDFE-EAnwersClues form-control" id="idfEPista0">
+                            </div>
+                            <div class="IDFE-EPistaDiv gap-2 mb-3">
+                                <label>2:</label>
+                                <input type="text" class="IDFE-EPista1 IDFE-EAnwersClues form-control" id="idfEPista1">
+                            </div>
+                            <div class="IDFE-EPistaDiv gap-2 mb-3">
+                                <label>3:</label>
+                                <input type="text" class="IDFE-EPista2 IDFE-EAnwersClues form-control" id="idfEPista2">
+                            </div>
+                            <div class="IDFE-EPistaDiv gap-2 mb-3">
+                                <label>4:</label>
+                                <input type="text" class="IDFE-EPista3 IDFE-EAnwersClues form-control" id="idfEPista3">
+                            </div>
+                            <div class="IDFE-EPistaDiv gap-2 mb-3">
+                                <label>5:</label>
+                                <input type="text" class="IDFE-EPista4 IDFE-EAnwersClues form-control" id="idfEPista4">
+                            </div>
+                            <div class="IDFE-EPistaDiv gap-2 mb-3">
+                                <label>6:</label>
+                                <input type="text" class="IDFE-EPista5 IDFE-EAnwersClues form-control" id="idfEPista5">
+                            </div>
+                            <div class="IDFE-EPistaDiv gap-2 mb-3">
+                                <label>7:</label>
+                                <input type="text" class="IDFE-EPista6 IDFE-EAnwersClues form-control" id="idfEPista6">
+                            </div>
+                            <div class="IDFE-EPistaDiv gap-2 mb-3">
+                                <label>8:</label>
+                                <input type="text" class="IDFE-EPista7 IDFE-EAnwersClues form-control" id="idfEPista7">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="IDFE-EOrders" id="idfEOrder">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <span class="sr-av">${_('Hit')}</span>
+                            <span class="IDFE-EHit"></span>
+                            <label for="idfEMessageOK">${_('Message')}:</label>
+                            <input type="text" class="" id="idfEMessageOK">
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <span class="sr-av">${_('Error')}</span>
+                            <span class="IDFE-EError"></span>
+                            <label for="idfEMessageKO">${_('Message')}:</label>
+                            <input type="text" class="" id="idfEMessageKO">
+                        </div>
+                    </div>
+                    <div class="IDFE-ENavigationButtons gap-1">
+                        <a href="#" id="idfEAdd" class="IDFE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="IDFE-EButtonImage" /></a>
+                        <a href="#" id="idfEFirst" class="IDFE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="IDFE-EButtonImage" /></a>
+                        <a href="#" id="idfEPrevious" class="IDFE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="IDFE-EButtonImage" /></a>
+                        <label class="sr-av" for="idfENumberQuestion">${_('Question number:')}</label>
+                        <input type="text" class="IDFE-NumberQuestion" id="idfENumberQuestion" value="1"/>
+                        <a href="#" id="idfENext" class="IDFE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="IDFE-EButtonImage" /></a>
+                        <a href="#" id="idfELast" class="IDFE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="IDFE-EButtonImage" /></a>
+                        <a href="#" id="idfEDelete" class="IDFE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="IDFE-EButtonImage" /></a>
+                        <a href="#" id="idfECopy" class="IDFE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="IDFE-EButtonImage" /></a>
+                        <a href="#" id="idfECut" class="IDFE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="IDFE-EButtonImage" /></a>
+                        <a href="#" id="idfEPaste" class="IDFE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="IDFE-EButtonImage" /></a>
+                    </div>
+                    <div class="IDFE-ENumQuestionDiv" id="idfENumQuestionDiv">
+                        <div class="IDFE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
+                        <span class="IDFE-ENumQuestions" id="idfENumQuestions">0</span>
+                    </div>
+                </div>`,
             html = `
             <div id="identifyQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create activities in which the players, with some clues, will have to guess a character, an object or the solution to a problem.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/identifica.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Use the clues to guess the hidden answer for each question.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="idfEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="idfEShowMinimize">${_('Show minimized.')}</label>
-                                </span>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="idfESAvancedMode" class="toggle-input" checked />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="idfESAvancedMode">${_('Advanced mode')}.</label>
-                                </span>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="idfEQuestionRamdon" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="idfEQuestionRamdon">${_('Random questions')}</label>
-                                </span>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="idfECustomMessages" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="idfECustomMessages">${_('Custom messages')}.</label>
-                                </span>
-                            </div>
-                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap flex-wrap">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="idfEShowSolution" class="toggle-input" checked />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="idfEShowSolution">${_('Show solutions')}.</label>
-                                </span>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="idfETimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}</label>
-                                    <input type="number" name="idfETimeShowSolution" class="form-control" id="idfETimeShowSolution" value="3" min="1" max="9" style="width:6ch" />
-                                </div>
-                            </div>
-                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap flex-wrap">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="idfEHasFeedBack" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="idfEHasFeedBack">${_('Feedback')}.</label>
-                                </span>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="idfEPercentajeFB" class="mb-0">%FB</label>
-                                    <input type="number" name="idfEPercentajeFB" id="idfEPercentajeFB" class="form-control" value="100" min="5" max="100" step="5" disabled />
-                                    <span class="ms-2">${_('% right to see the feedback')}</span>
-                                </div>
-                            </div>
-                            <div id="idfEFeedbackP" class="IDFE-EFeedbackP mb-3">
-                                <textarea id="idfEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="idfEPercentajeQuestions" class="mb-0">%${_('Questions')}:</label>
-                                <input type="number" name="idfEPercentajeQuestions" id="idfEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
-                                <span id="idfENumeroPercentaje">1/1</span>
-                            </div>
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Questions')}</a></legend>
-                        <div class="IDFE-EPanel" id="idfEPanel">
-                            <div class="IDFE-EPistasMedia">
-                                <div class="IDFE-EPistasGame">
-                                    <span>${_('Message')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                        <label class="sr-av">${_('Message')}:</label>
-                                        <input type="text" class="form-control w-100" id="idfEQuestion">
-                                    </div>
-                                    <span>${_('Solution')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                        <label class="sr-av">${_('Solution')}:</label>
-                                        <input type="text" class="form-control w-100" id="idfESolution">
-                                    </div>
-                                    <span id="idfETitleImage">${_('Image URL')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfEInputImage">
-                                        <label class="sr-av" for="idfEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="idfEURLImage"/>
-                                        <a href="#" id="idfEPlayImage" class="IDFE-ENavigationButton IDFE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="IDFE-EButtonImage " /></a>
-                                        <a href="#" id="idfEShowMore" class="IDFE-ENavigationButton IDFE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="IDFE-EButtonImage " /></a>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfInputCluesImage">
-                                        <div class="IDFE-ECoord">
-                                            <label for="idfEXImage">X:</label>
-                                            <input id="idfEXImage" type="text" value="0" />
-                                            <label for="idfEYImage">Y:</label>
-                                            <input id="idfEYImage" type="text" value="0" />
-                                        </div>
-                                    </div>
-                                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="idfEAuthorAlt">
-                                        <div class="IDFE-EInputAuthor wp-50">
-                                            <label for="idfEAuthor">${_('Authorship')}</label>
-                                            <input id="idfEAuthor" type="text" class="IDFE-EAuthor form-control w-100" />
-                                        </div>
-                                        <div class="IDFE-EInputAlt wp-50">
-                                            <label for="idfEAlt">${_('Alt')}</label>
-                                            <input id="idfEAlt" type="text" class="IDFE-EAlt form-control w-100" />
-                                        </div>
-                                    </div>
-                                    <span>${_('Audio')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfEInputAudio" data-voice-recorder data-voice-input="#idfEURLAudio">
-                                        <label class="sr-av" for="idfEURLAudio">${_('URL')}</label>
-                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="idfEURLAudio"/>
-                                        <a href="#" id="idfEPlayAudio" class="IDFE-ENavigationButton IDFE-EPlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="IDFE-EButtonImage " /></a>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                        <label for="idfEAttemptsNumber">${_('Number of attempts')}:</label>
-                                        <input type="number" name="idfEAttemptsNumber" id="idfEAttemptsNumber" class="form-control" value="3" min="1" max="8" step="1" />
-                                    </div>
-                                </div>
-                                <div class="IDFE-EMultiMediaClue">
-                                    <div class="IDFE-EMultimedia" id="idfEMultimedia">
-                                        <img class="IDFE-EMedia" src="${path}quextIEImage.png" id="idfEImage" alt="${_('Image')}" />
-                                        <img class="IDFE-EMedia" src="${path}quextIEImage.png" id="idfENoImage" alt="${_('No image')}" />
-                                        <img class="IDFE-ECursor" src="${path}quextIECursor.gif" id="idfECursor" alt="" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="IDFE-EContents">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                    <label for="idfECluesNumber">${_('Number of clues')}:</label>
-                                    <input type="number" name="idfECluesNumber" class="form-control" id="idfECluesNumber" value="4" min="2" max="8" step="1" />
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
-                                    <div class="IDFE-EPistaDiv gap-2 mb-3">
-                                        <label>1:</label>
-                                        <input type="text" class="IDFE-EPista0 IDFE-EAnwersClues form-control" id="idfEPista0">
-                                    </div>
-                                    <div class="IDFE-EPistaDiv gap-2 mb-3">
-                                        <label>2:</label>
-                                        <input type="text" class="IDFE-EPista1 IDFE-EAnwersClues form-control" id="idfEPista1">
-                                    </div>
-                                    <div class="IDFE-EPistaDiv gap-2 mb-3">
-                                        <label>3:</label>
-                                        <input type="text" class="IDFE-EPista2 IDFE-EAnwersClues form-control" id="idfEPista2">
-                                    </div>
-                                    <div class="IDFE-EPistaDiv gap-2 mb-3">
-                                        <label>4:</label>
-                                        <input type="text" class="IDFE-EPista3 IDFE-EAnwersClues form-control" id="idfEPista3">
-                                    </div>
-                                    <div class="IDFE-EPistaDiv gap-2 mb-3">
-                                        <label>5:</label>
-                                        <input type="text" class="IDFE-EPista4 IDFE-EAnwersClues form-control" id="idfEPista4">
-                                    </div>
-                                    <div class="IDFE-EPistaDiv gap-2 mb-3">
-                                        <label>6:</label>
-                                        <input type="text" class="IDFE-EPista5 IDFE-EAnwersClues form-control" id="idfEPista5">
-                                    </div>
-                                    <div class="IDFE-EPistaDiv gap-2 mb-3">
-                                        <label>7:</label>
-                                        <input type="text" class="IDFE-EPista6 IDFE-EAnwersClues form-control" id="idfEPista6">
-                                    </div>
-                                    <div class="IDFE-EPistaDiv gap-2 mb-3">
-                                        <label>8:</label>
-                                        <input type="text" class="IDFE-EPista7 IDFE-EAnwersClues form-control" id="idfEPista7">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="IDFE-EOrders" id="idfEOrder">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                    <span class="sr-av">${_('Hit')}</span>
-                                    <span class="IDFE-EHit"></span>
-                                    <label for="idfEMessageOK">${_('Message')}:</label>
-                                    <input type="text" class="" id="idfEMessageOK">
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                    <span class="sr-av">${_('Error')}</span>
-                                    <span class="IDFE-EError"></span>
-                                    <label for="idfEMessageKO">${_('Message')}:</label>
-                                    <input type="text" class="" id="idfEMessageKO">
-                                </div>
-                            </div>
-                            <div class="IDFE-ENavigationButtons gap-1">
-                                <a href="#" id="idfEAdd" class="IDFE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="IDFE-EButtonImage" /></a>
-                                <a href="#" id="idfEFirst" class="IDFE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="IDFE-EButtonImage" /></a>
-                                <a href="#" id="idfEPrevious" class="IDFE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="IDFE-EButtonImage" /></a>
-                                <label class="sr-av" for="idfENumberQuestion">${_('Question number:')}</label>
-                                <input type="text" class="IDFE-NumberQuestion" id="idfENumberQuestion" value="1"/>
-                                <a href="#" id="idfENext" class="IDFE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="IDFE-EButtonImage" /></a>
-                                <a href="#" id="idfELast" class="IDFE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="IDFE-EButtonImage" /></a>
-                                <a href="#" id="idfEDelete" class="IDFE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="IDFE-EButtonImage" /></a>
-                                <a href="#" id="idfECopy" class="IDFE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="IDFE-EButtonImage" /></a>
-                                <a href="#" id="idfECut" class="IDFE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="IDFE-EButtonImage" /></a>
-                                <a href="#" id="idfEPaste" class="IDFE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="IDFE-EButtonImage" /></a>
-                            </div>
-                            <div class="IDFE-ENumQuestionDiv" id="idfENumQuestionDiv">
-                                <div class="IDFE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
-                                <span class="IDFE-ENumQuestions" id="idfENumQuestions">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>                
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 4)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(4)}
+                ${edition.tabs.getHtml('identifyQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Use the clues to guess the hidden answer for each question.'),
+                    options: options,
+                    contents: questions,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        exportQuestions: false,
+                        type: 4,
+                    },
+                })}
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('identifyQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('identifyQEIdeviceForm');
+        edition.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -759,28 +750,17 @@ var $exeDevice = {
 
             const textFeedBack = $('.identifica-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#idfEFeedBackEditor').val(textFeedBack.html());
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(textFeedBack.html());
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
         }
     },
 
-    updateGameMode: function (feedback) {
-        $('#idfEPercentajeFB').prop('disabled', !feedback);
-        $('#idfEHasFeedBack').prop('checked', feedback);
-
-        if (feedback) {
-            $('#idfEFeedbackP').slideDown();
-        } else {
-            $('#idfEFeedbackP').slideUp();
-        }
-    },
-
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.questonsRamdo = game.questonsRamdo || false;
@@ -810,20 +790,21 @@ var $exeDevice = {
         $('#idfEShowSolution').prop('checked', game.showSolution);
         $('#idfETimeShowSolution').val(game.timeShowSolution);
         $('#idfETimeShowSolution').prop('disabled', !game.showSolution);
-        $('#idfEHasFeedBack').prop('checked', game.feedBack);
-        $('#idfEPercentajeFB').val(game.percentajeFB);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $('#idfECustomMessages').prop('checked', game.customMessages);
         $('#idfEPercentajeQuestions').val(game.percentajeQuestions);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
 
-        $exeDevice.updateGameMode(game.feedBack);
         $exeDevice.showSelectOrder(game.customMessages);
 
         for (let i = 0; i < game.questionsGame.length; i++) {
@@ -841,19 +822,12 @@ var $exeDevice = {
                     : game.questionsGame[i].msgError;
         }
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
-
-        if (game.feedBack) {
-            $('#idfEFeedbackP').show();
-        } else {
-            $('#idfEFeedbackP').hide();
-        }
-        $('#idfEPercentajeFB').prop('disabled', !game.feedBack);
 
         $exeDevice.questionsGame = game.questionsGame;
         $exeDevice.updateQuestionsNumber();
@@ -901,7 +875,7 @@ var $exeDevice = {
                 instructions +
                 '</div>';
 
-        const textFeedBack = tinyMCE.get('idfEFeedBackEditor').getContent(),
+        const textFeedBack = $exeIDevicesEdition.iDevice.gamification.feedback.getText(),
             linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
 
@@ -974,7 +948,7 @@ var $exeDevice = {
         p.msgHit = $('#idfEMessageOK').val();
         p.msgError = $('#idfEMessageKO').val();
         p.attempts = parseInt($('#idfEAttemptsNumber').val());
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let clueEmpy = false;
         $('.IDFE-EAnwersClues').each(function (i) {
@@ -1082,7 +1056,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     exportQuestions: function () {
@@ -1092,7 +1065,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('identify')}.txt`,
             'identifyQEIdeviceForm'
@@ -1153,11 +1126,7 @@ var $exeDevice = {
                     .get('eXeGameInstructions')
                     .setContent(unescape(instructions));
             else $('#eXeGameInstructions').val(unescape(instructions));
-            if (tinyMCE.get('idfEFeedBackEditor'))
-                tinyMCE
-                    .get('idfEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            else $('#idfEFeedBackEditor').val(unescape(textFeedBack));
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(unescape(textFeedBack));
             if (tinyMCE.get('eXeIdeviceTextAfter'))
                 tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
             else $('#eXeIdeviceTextAfter').val(unescape(tAfter));
@@ -1169,7 +1138,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importIdentifica: function (game) {
@@ -1207,9 +1175,6 @@ var $exeDevice = {
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
             textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
-            textFeedBack = escape(
-                tinyMCE.get('idfEFeedBackEditor').getContent()
-            ),
             showMinimize = $('#idfEShowMinimize').is(':checked'),
             avancedMode = $('#idfESAvancedMode').is(':checked'),
             questionsRamdon = $('#idfEQuestionRamdon').is(':checked'),
@@ -1218,28 +1183,23 @@ var $exeDevice = {
                 $exeDevice.removeTags($('#idfETimeShowSolution').val())
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#idfEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(
-                $exeDevice.removeTags($('#idfEPercentajeFB').val())
-            ),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#idfECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 $exeDevice.removeTags($('#idfEPercentajeQuestions').val())
             ),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
         if (!progressBar) return false;
 
-        if (feedBack && textFeedBack.trim().length === 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
+        const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
+
         if (showSolution && timeShowSolution.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
             return false;
@@ -1262,7 +1222,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             asignatura: '',
             author: '',
@@ -1281,9 +1241,9 @@ var $exeDevice = {
             weighted: scorm.weighted,
             title: '',
             textAfter: textAfter,
-            textFeedBack: textFeedBack,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            textFeedBack: escape(feedback.textFeedBack),
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: $exeDevice.version,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
@@ -1300,29 +1260,6 @@ var $exeDevice = {
         // Captured lexically so the deferred file-reader callback below stays
         // bound to this edition instead of resolving the mutable global.
         const self = this;
-        const initToggle = $input => {
-            const checked = $input.is(':checked');
-            $input
-                .closest('.toggle-item[role="switch"]')
-                .attr('aria-checked', checked);
-            const targetSel = $input.data('target');
-            if (targetSel) {
-                const $target = $(targetSel);
-                if (checked) {
-                    $target.css('display', 'flex');
-                } else {
-                    $target.hide();
-                }
-            }
-        };
-        $('.toggle-input').each(function () {
-            initToggle($(this));
-        });
-        // Delegated on document, so the edition lifecycle owns it: the handler
-        // is removed when the editor closes.
-        this.$lifecycle.on(document, 'change', '.toggle-input', e => {
-            initToggle($(e.currentTarget));
-        });
         $('#idfEPaste, #idfEAuthorAlt').hide();
         $('#idfEAuthorAlt').removeClass('d-flex').addClass('d-none');
         $('#idfEShowMore').on('click', (e) => {
@@ -1501,7 +1438,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#idfEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1512,14 +1449,8 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
-        });
-
-        $('#idfEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#idfEFeedbackP').slideToggle();
-            $('#idfEPercentajeFB').prop('disabled', !marcado);
         });
 
         $('#idfECustomMessages').on('change', function () {
@@ -1547,21 +1478,14 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
-
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             4,
             $exeDevice.insertQuestions
         );
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     clickImage: function (img, epx, epy) {

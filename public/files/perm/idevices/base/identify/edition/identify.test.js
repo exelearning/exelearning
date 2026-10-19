@@ -262,7 +262,7 @@ describe('identify iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -290,8 +290,8 @@ describe('identify iDevice', () => {
     let savedMedia;
 
     beforeEach(() => {
-      savedGamification = global.$exeDevicesEdition.iDevice.gamification;
-      global.$exeDevicesEdition.iDevice.gamification = {
+      savedGamification = global.$exeIDevicesEdition.iDevice.gamification;
+      global.$exeIDevicesEdition.iDevice.gamification = {
         ...savedGamification,
         progressBar: { addEvents: vi.fn() },
         itinerary: { addEvents: vi.fn() },
@@ -305,10 +305,6 @@ describe('identify iDevice', () => {
 
       document.body.innerHTML = `
         <div id="idfIdeviceForm">
-          <span class="toggle-item" role="switch">
-            <input id="tgl" class="toggle-input" type="checkbox" data-target="#tgt">
-          </span>
-          <div id="tgt"></div>
           <input id="eXeGameImportGame" type="file">
         </div>
       `;
@@ -321,39 +317,8 @@ describe('identify iDevice', () => {
       // leak into the next one.
       $exeDevice.$lifecycle.destroy();
       document.body.innerHTML = '';
-      global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+      global.$exeIDevicesEdition.iDevice.gamification = savedGamification;
       global.$exeDevices.iDevice.gamification.media = savedMedia;
-    });
-
-    describe('delegated .toggle-input handler on document', () => {
-      it('reacts to a change while the edition is open', () => {
-        $('#tgl').prop('checked', true).trigger('change');
-
-        expect($('.toggle-item').attr('aria-checked')).toBe('true');
-        expect($('#tgt').css('display')).toBe('flex');
-      });
-
-      it('stops reacting once the edition is closed', () => {
-        $('#tgl').prop('checked', true).trigger('change');
-        expect($('.toggle-item').attr('aria-checked')).toBe('true');
-
-        $exeDevice.$lifecycle.destroy();
-        $('.toggle-item').attr('aria-checked', 'stale');
-        $('#tgl').prop('checked', false).trigger('change');
-
-        expect($('.toggle-item').attr('aria-checked')).toBe('stale');
-      });
-
-      it('leaves unrelated document handlers registered', () => {
-        const unrelated = vi.fn();
-        $(document).on('change.identifyUnrelated', '.toggle-input', unrelated);
-
-        $exeDevice.$lifecycle.destroy();
-        $('#tgl').trigger('change');
-
-        expect(unrelated).toHaveBeenCalledTimes(1);
-        $(document).off('change.identifyUnrelated');
-      });
     });
 
     describe('import FileReader', () => {
@@ -459,4 +424,265 @@ describe('identify minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('identify edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/identify/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const feedback = () => edition().gamification.feedback;
+    const tabNames = () =>
+        [...document.querySelectorAll('#identifyQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`identifyQEIdeviceForm-panel-${name}`);
+    const question = (overrides = {}) => ({
+        numberClues: 3,
+        url: '',
+        x: 0,
+        y: 0,
+        author: '',
+        alt: '',
+        question: 'Who am I?',
+        solution: 'Mercury',
+        clues: ['Closest planet to the Sun', 'Smallest planet', 'Named after a Roman god', '', '', '', '', ''],
+        audio: '',
+        msgHit: '',
+        msgError: '',
+        attempts: 4,
+        ...overrides,
+    });
+    const game = (overrides = {}) => ({
+        typeGame: 'Identifica',
+        showMinimize: false,
+        avancedMode: true,
+        questionsRamdon: false,
+        showSolution: true,
+        timeShowSolution: 3,
+        customMessages: false,
+        percentajeQuestions: 100,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        questionsGame: [question()],
+        feedBack: false,
+        percentajeFB: 100,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        evaluation: false,
+        evaluationID: '',
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+    };
+    let device;
+    let previousApp;
+    let previousMedia;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
+        device = global.loadIdevice(join(__dirname, 'identify.js'));
+        document.body.innerHTML = '<div id="identifyBody"></div>';
+        device.init(document.getElementById('identifyBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toContain('Use the clues');
+        expect(panel('options').querySelector('#idfEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#idfEPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('leaves the feedback to the shared block, without controls of its own', () => {
+        for (const id of ['idfEHasFeedBack', 'idfEPercentajeFB', 'idfEFeedbackP', 'idfEFeedBackEditor']) {
+            expect(document.getElementById(id)).toBeNull();
+        }
+    });
+
+    it('offers to import and to create with AI, as it did, but not to export', () => {
+        const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+    });
+
+    it('explains each option without changing any of them', () => {
+        const helps = [...panel('options').querySelectorAll('#idfEOptions .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('#identifyQEIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(6);
+        for (const help of helps) {
+            expect(help.title).toBe('Information');
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBeGreaterThanOrEqual(6);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('restores the options and the feedback with the game', () => {
+        device.updateFieldGame(game({ avancedMode: false, feedBack: true, percentajeFB: 80 }));
+
+        expect(document.getElementById('idfESAvancedMode').checked).toBe(false);
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+        expect(document.getElementById('idfESolution').value).toBe('Mercury');
+    });
+
+    it('keeps the custom texts and the feedback message when the iDevice is edited again', () => {
+        device.idevicePreviousData = `
+            <div class="identifica-IDevice">
+                <div class="identifica-version js-hidden">1</div>
+                <div class="identifica-feedback-game"><p>Well done</p></div>
+                <div class="identifica-DataGame js-hidden">${JSON.stringify(game({ feedBack: true, msgs: { msgScore: 'Points' } }))}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+
+        expect(feedback().getText()).toBe('<p>Well done</p>');
+        expect(document.getElementById('ci18n_msgScore').value).toBe('Points');
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '',
+                eXeGameFeedBackEditor: '',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves the feedback values the export reads', () => {
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
+            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+
+            const data = device.validateData();
+
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(70);
+            expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+            const html = device.save();
+            expect(html).toContain('<div class="identifica-feedback-game"><p>Bravo</p></div>');
+            expect(html).not.toContain('exe-idevice-help');
+        });
+
+        it('does not save when the feedback is on without a message', () => {
+            device.updateFieldGame(game({ feedBack: true }));
+
+            expect(device.validateData()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');
+        });
+
+        it('keeps the access code and the clue when saving', () => {
+            const itinerary = {
+                showClue: true,
+                clueGame: 'Next key: river',
+                percentageClue: 60,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Code of the previous activity?',
+            };
+            device.updateFieldGame(game({ itinerary }));
+
+            expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+    });
 });
