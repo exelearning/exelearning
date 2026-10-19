@@ -298,6 +298,27 @@ describe('periodic-table edition: shared form tabs and feedback', () => {
         expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
     });
 
+    it('saves and restores the oxidation states with the other data to complete', () => {
+        device.setCheckboxesStatus([0, 0, 0, 0, 0, 1]);
+
+        expect(document.getElementById('ptEoxidations').checked).toBe(true);
+        expect(device.checkCheckboxesStatus()).toEqual([0, 0, 0, 0, 0, 1]);
+    });
+
+    it('names each group of elements on its switch, so clicking the name chooses it', () => {
+        const groups = [...document.querySelectorAll('#ptCheckBoxesGroups .toggle-input')];
+
+        expect(groups).toHaveLength(11);
+        for (const input of groups) {
+            expect(input.labels).toHaveLength(1);
+            expect(input.labels[0].textContent.length).toBeGreaterThan(2);
+        }
+        groups[7].labels[0].click();
+
+        expect(groups[7].checked).toBe(true);
+        expect(groups[0].checked).toBe(false);
+    });
+
     it('loads the saved feedback message into the shared editor', () => {
         device.idevicePreviousData = `
             <div class="periodic-table-IDevice">

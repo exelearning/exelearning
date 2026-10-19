@@ -517,7 +517,7 @@ var $exeDevice = {
             '#ptEsymbol',
             '#ptEgroup',
             '#ptEelectronicConfig',
-            'ptEoxidations',
+            '#ptEoxidations',
         ];
         const statusArray = checkboxes.map((selector) =>
             $(selector).is(':checked') ? 1 : 0
@@ -534,7 +534,7 @@ var $exeDevice = {
             '#ptEsymbol',
             '#ptEgroup',
             '#ptEelectronicConfig',
-            'ptEoxidations',
+            '#ptEoxidations',
         ];
         if (types.length !== checkboxes.length) {
             console.error(
@@ -569,19 +569,19 @@ var $exeDevice = {
         html += `
             <span class="toggle-item">
                 <span class="toggle-control">
-                    <input type="checkbox" class="toggle-input" checked value="0" />
+                    <input type="checkbox" id="ptEGroup0" class="toggle-input" checked value="0" />
                     <span class="toggle-visual" aria-hidden="true"></span>
                 </span>
-                <label class="toggle-label">${_('All')}</label>
+                <label class="toggle-label" for="ptEGroup0">${_('All')}</label>
             </span>`;
         groups.forEach((group, index) => {
             html += `
             <span class="toggle-item">
                 <span class="toggle-control">
-                    <input type="checkbox" class="toggle-input" value="${index + 1}" />
+                    <input type="checkbox" id="ptEGroup${index + 1}" class="toggle-input" value="${index + 1}" />
                     <span class="toggle-visual" aria-hidden="true"></span>
                 </span>
-                <label class="toggle-label">${_(group)}</label>
+                <label class="toggle-label" for="ptEGroup${index + 1}">${_(group)}</label>
             </span>`;
         });
         html += '</div>';
