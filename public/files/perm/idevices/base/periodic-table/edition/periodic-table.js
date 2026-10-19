@@ -506,10 +506,6 @@ var $exeDevice = {
         return html;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     checkCheckboxesStatus: function () {
         const checkboxes = [
             '#ptEnumber',
@@ -611,7 +607,6 @@ var $exeDevice = {
     validateData: function () {
         const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
-            time = $('#ptETime').val(),
             showMinimize = $('#ptEShowMinimize').is(':checked'),
             showSolution = $('#ptEShowSolution').is(':checked'),
             itinerary =
@@ -645,17 +640,6 @@ var $exeDevice = {
             $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
 
-        if (itinerary.showClue && itinerary.clueGame.length == '') {
-            return false;
-        }
-
-        if (
-            itinerary.showCodeAccess &&
-            (itinerary.codeAccess.length == '' ||
-                itinerary.messageCodeAccess.length == '')
-        ) {
-            return false;
-        }
         return {
             typeGame: 'Periodic table',
             types,
@@ -679,7 +663,6 @@ var $exeDevice = {
             evaluationID: progressBar.evaluationID,
             passScoreMode: passScore.passScoreMode,
             passScoreCustom: passScore.passScoreCustom,
-            time,
             mode,
             gameType,
             id,
@@ -690,16 +673,6 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
-
-        $('#ptETime')
-            .on('keyup', function () {
-                let v = this.value.replace(/\D/g, '').substring(0, 3);
-                this.value = v;
-            })
-            .on('focusout', function () {
-                this.value = this.value.trim() === '' ? 0 : this.value;
-                this.value = Math.min(Math.max(this.value, 0), 59);
-            });
 
         $('input[name="ptmode"]').on('change', function () {
             var selectedValue = $(this).val();
@@ -741,7 +714,6 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevice.active = 0;
         $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
@@ -753,7 +725,6 @@ var $exeDevice = {
         $exeDevice.setCheckboxGroupStates(game.groups);
         $('#ptEQuestionNumber').val(game.number);
         $('#ptEShowMinimize').prop('checked', game.showMinimize);
-        $('#ptETime').val(game.time);
         $('#ptEShowSolution').prop('checked', game.showSolution);
         $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
             feedBack: game.feedBack,
