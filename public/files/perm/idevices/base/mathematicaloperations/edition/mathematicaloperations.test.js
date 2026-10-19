@@ -279,66 +279,6 @@ describe('mathematicaloperations iDevice', () => {
             expect(source).toContain('gamification.passScore.addEvents()');
         });
     });
-
-  describe('edition lifecycle teardown', () => {
-    let itinerary;
-    let previousItinerary;
-
-    beforeEach(() => {
-      // The edition is loaded through the shared helper so it gets the same
-      // real lifecycle IdeviceNode hands it in the workarea.
-      global.$exeDevice = undefined;
-      $exeDevice = global.loadIdevice(join(__dirname, 'mathematicaloperations.js'));
-
-      itinerary = { addEvents: vi.fn() };
-      previousItinerary = global.$exeIDevicesEdition.iDevice.gamification.itinerary;
-      global.$exeIDevicesEdition.iDevice.gamification.itinerary = itinerary;
-
-      document.body.innerHTML = `
-        <form id="mathematicaloperationsQEIdeviceForm">
-          <div id="eXeGameExportImport">
-            <input type="file" id="eXeGameImportGame" />
-            <button id="eXeGameExportQuestions"></button>
-          </div>
-        </form>`;
-    });
-
-    afterEach(() => {
-      if (!$exeDevice.$lifecycle.isDestroyed()) $exeDevice.$lifecycle.destroy();
-      global.$exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
-      document.body.innerHTML = '';
-    });
-
-    it('imports a game file read by the edition', async () => {
-      const importGame = vi.fn();
-      $exeDevice.importGame = importGame;
-      $exeDevice.addEvents();
-
-      const event = $.Event('change');
-      event.target = { files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })] };
-      $('#eXeGameImportGame').trigger(event);
-
-      await vi.waitFor(() => expect(importGame).toHaveBeenCalledWith('{"a":1}'));
-    });
-
-    it('aborts an in-flight import read and never imports into a closed edition', async () => {
-      const abortSpy = vi.spyOn(window.FileReader.prototype, 'abort');
-      const importGame = vi.fn();
-      $exeDevice.importGame = importGame;
-      $exeDevice.addEvents();
-
-      const event = $.Event('change');
-      event.target = { files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })] };
-      $('#eXeGameImportGame').trigger(event);
-
-      $exeDevice.$lifecycle.destroy();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-
-      expect(abortSpy).toHaveBeenCalledTimes(1);
-      expect(importGame).not.toHaveBeenCalled();
-      abortSpy.mockRestore();
-    });
-  });
 });
 
 describe('mathematicaloperations minimum score text', () => {
