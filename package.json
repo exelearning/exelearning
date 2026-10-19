@@ -128,7 +128,7 @@
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "fabric": "^7.4.0",
-    "happy-dom": "^20.11.6",
+    "happy-dom": "^21.0.3",
     "html2canvas": "^1.4.1",
     "http-proxy-middleware": "^4.2.0",
     "interactjs": "^1.10.27",
