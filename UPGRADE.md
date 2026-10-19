@@ -26,6 +26,11 @@ This document describes breaking changes and migration steps between major versi
   `doc/development/authentication.md` and `doc/development/environment.md`.
 - No action for local development or the Docker image beyond providing secrets
   in production compose/env as documented.
+- The same production signal now sets the `Secure` attribute on the session and
+  SSO cookies. A non-Docker deployment with `APP_ENV=prod` that is served over
+  plain HTTP (not `localhost`) used to get non-`Secure` cookies; browsers now
+  drop them and login loops. Serve it over HTTPS, directly or behind a TLS
+  proxy.
 
 ---
 
