@@ -454,7 +454,7 @@ const PDF_EMBED_HANDLER_SCRIPT = `
 
         el.parentNode.replaceChild(container, el);
 
-        pdfjsLib.getDocument(src).promise.then(function(pdf) {
+        pdfjsLib.getDocument({ url: src }).promise.then(function(pdf) {
             loading.remove();
             tb.style.display = 'flex';
             tb.querySelector('.epc').textContent = pdf.numPages;
@@ -814,7 +814,7 @@ function createPdfViewerResponse(filePath, pathname, basePath) {
         'try{' +
         'var m=await import("' + safeBasePath + 'libs/pdfjs/pdf.min.js");' +
         'm.GlobalWorkerOptions.workerSrc="' + safeBasePath + 'libs/pdfjs/pdf.worker.min.js";' +
-        'var pdf=await m.getDocument(window.location.href).promise;' +
+        'var pdf=await m.getDocument({ url: window.location.href }).promise;' +
         'document.getElementById("loading").style.display="none";' +
         'var tb=document.getElementById("tb");tb.style.display="flex";' +
         'document.getElementById("pc").textContent=pdf.numPages;' +
