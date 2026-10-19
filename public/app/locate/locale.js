@@ -119,7 +119,11 @@ export default class Locale {
             const response = await fetch(url);
             if (response.ok) {
                 content = await response.text();
-            } else if (lang !== 'en') {
+            }
+            // Hosts with an SPA fallback answer a language without a bundle
+            // (e.g. ru, und) with index.html and a 200.
+            if (content?.trimStart().startsWith('<')) content = null;
+            if (!content && lang !== 'en') {
                 // Fall back to English
                 const enUrl = `${base}/app/common/i18n/common_i18n.en.js`;
                 try {
