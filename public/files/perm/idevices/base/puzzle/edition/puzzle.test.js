@@ -505,6 +505,49 @@ describe('puzzle edition: shared form tabs and feedback', () => {
         expect(feedback().getText()).toBe('<p>Well done</p>');
     });
 
+    it('offers only the sizes a puzzle accepts, and explains a refused one', () => {
+        for (const id of ['puzzleERows', 'puzzleEColumns']) {
+            expect([...document.getElementById(id).options].map((option) => option.value)).toEqual([
+                '2',
+                '3',
+                '4',
+                '5',
+                '6',
+            ]);
+        }
+        document.getElementById('puzzleEURLImageDefinition').value = 'files/cat.jpg';
+        $('#puzzleERows').append('<option>9</option>').val('9');
+
+        expect(device.validatePuzzle()).toBe(false);
+        expect(eXe.app.getLastAlert()).toBe(device.msgs.msgRowsNumber);
+    });
+
+    it('shows the empty picture again when a puzzle is cleared', () => {
+        device.clearPuzzle();
+
+        expect(document.getElementById('puzzleEImageDefinition').getAttribute('src')).toBe(
+            `${PATH}quextIEImagen.png`
+        );
+    });
+
+    it('names the picture, its authorship and its alternative text', () => {
+        for (const id of ['puzzleEURLImageDefinition', 'puzzleEAuthorDefinition', 'puzzleEAltDefinition']) {
+            expect(document.getElementById(id).labels).toHaveLength(1);
+        }
+    });
+
+    it('writes the links of the files without leaking a global', () => {
+        delete globalThis.linkImage;
+
+        const links =
+            device.createlinksImage([puzzle({ url: 'files/cat.jpg' })]) +
+            device.createlinksAudio([puzzle({ audioDefinition: 'files/a.mp3', audioClue: 'files/b.mp3' })]);
+
+        expect(links).toContain('puzzle-LinkImagesDef');
+        expect(links).toContain('puzzle-LinkAudiosClue');
+        expect(globalThis.linkImage).toBeUndefined();
+    });
+
     describe('saving', () => {
         let editors;
         let tinymceGet;
@@ -568,6 +611,26 @@ describe('puzzle edition: shared form tabs and feedback', () => {
             open({ itinerary });
 
             expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('counts a pasted copy in the puzzles per game', () => {
+            open();
+
+            device.copyPuzzle();
+            device.pastePuzzle();
+
+            expect(device.puzzlesGame).toHaveLength(2);
+            expect(document.getElementById('puzzleENumeroPercentaje').textContent).toBe('2/2');
+        });
+
+        it('tells the author when there is no room for another puzzle', () => {
+            open({ puzzlesGame: Array.from({ length: 30 }, () => puzzle()) });
+
+            device.copyPuzzle();
+            device.pastePuzzle();
+
+            expect(device.puzzlesGame).toHaveLength(30);
+            expect(eXe.app.getLastAlert()).toBe('Maximum number of activities: 30');
         });
     });
 });

@@ -146,6 +146,7 @@ var $exeDevice = {
         );
         msgs.msgSelectPuzzleImage = _('You must select the puzzle image');
         msgs.msgSelectImage = _('Select an image');
+        msgs.msgPairsMax = _('Maximum number of activities: 30');
     },
 
     createForm: function () {
@@ -209,7 +210,6 @@ var $exeDevice = {
                                 <option>4</option>
                                 <option>5</option>
                                 <option>6</option>
-                                <option>7</option>
                             </select>
                         </span>
                         <span class="d-flex align-items-center flex-nowrap gap-2">
@@ -220,7 +220,6 @@ var $exeDevice = {
                                 <option>4</option>
                                 <option>5</option>
                                 <option>6</option>
-                                <option>7</option>
                             </select>
                         </span>
                         ${help(_('How many pieces the image is cut into: rows by columns.'))}
@@ -243,16 +242,16 @@ var $exeDevice = {
                     </div>
                     <div>
                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                            <label>${_('Image')}:</label>
+                            <label for="puzzleEURLImageDefinition" class="mb-0">${_('Image')}:</label>
                             <input type="text" id="puzzleEURLImageDefinition" class="exe-file-picker form-control me-0" />
                             <a href="#" id="puzzleEPlayImageDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
                             <a href="#" id="puzzleEShowMoreDefinition" class="PZLE-ENavigationButton PZLE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="PZLE-EButtonImage " /></a>
                         </div>
                         <div id="puzzleEDefinitionAltAuthor" class="d-none">
                             <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                                <label>${_('Authorship')}:</label>
+                                <label for="puzzleEAuthorDefinition" class="mb-0">${_('Authorship')}:</label>
                                 <input id="puzzleEAuthorDefinition" type="text" class="form-control" />
-                                <label>${_('Alternative text')}:</label>
+                                <label for="puzzleEAltDefinition" class="mb-0">${_('Alternative text')}:</label>
                                 <input id="puzzleEAltDefinition" type="text" class="form-control" />
                             </div>
                         </div>
@@ -412,7 +411,7 @@ var $exeDevice = {
             puzzle.columns >= 2 &&
             puzzle.columns <= 6;
         if (!pcc) {
-            $exeDevice.showMessage($exeDevice.msgs.rowsNumber);
+            $exeDevice.showMessage($exeDevice.msgs.msgRowsNumber);
             return false;
         }
 
@@ -629,7 +628,7 @@ var $exeDevice = {
                 q.url.indexOf('http') != 0 &&
                 q.url.length > 4
             ) {
-                linkImage =
+                const linkImage =
                     '<a href="' +
                     q.url +
                     '" class="js-hidden puzzle-LinkImagesDef">' +
@@ -650,7 +649,7 @@ var $exeDevice = {
                 q.audioDefinition.indexOf('http') != 0 &&
                 q.audioDefinition.length > 4
             ) {
-                linkImage =
+                const linkImage =
                     '<a href="' +
                     q.audioDefinition +
                     '" class="js-hidden puzzle-LinkAudiosDef">' +
@@ -663,7 +662,7 @@ var $exeDevice = {
                 q.audioClue.indexOf('http') != 0 &&
                 q.audioClue.length > 4
             ) {
-                linkImage =
+                const linkImage =
                     '<a href="' +
                     q.audioClue +
                     '" class="js-hidden puzzle-LinkAudiosClue">' +
@@ -1077,7 +1076,7 @@ var $exeDevice = {
         $('#puzzleEAuthorDefinition').val('');
         $('#puzzleEImageDefinition').attr(
             'src',
-            $exeDevice.iDevicePath + 'quextIEImagen.png'
+            $exeDevice.idevicePath + 'quextIEImagen.png'
         );
         $('#puzzleEURLAudioDefinition').val('');
         $('#puzzleECluePuzzle').val('');
@@ -1144,6 +1143,7 @@ var $exeDevice = {
             $exeDevice.puzzlesGame.splice($exeDevice.active, 0, p);
             $exeDevice.showPuzzle($exeDevice.active);
             $('#puzzleENumPuzzles').text($exeDevice.puzzlesGame.length);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit === 1) {
             $('#puzzleEPaste').hide();
             $exeDevice.typeEdit = -1;
