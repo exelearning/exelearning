@@ -132,71 +132,70 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-        <div id="relateQIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('Create matching games with images, sounds and enriched texts.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/relaciona.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
-                <fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                            <span>${_('Level')}:</span>
-                            <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="RLC-Type form-check-input" checked id="rclETypeShow" type="radio" name="flctype" value="0"/>
-                                    <label for="rclETypeShow">${_('Essential')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="RLC-Type form-check-input" id="rclETypeNavigation" type="radio" name="flctype" value="1"/>
-                                    <label for="rclETypeNavigation">${_('Medium')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="RLC-Type form-check-input" id="rclETypeIdentify" type="radio" name="flctype" value="2"/>
-                                    <label for="rclETypeIdentify">${_('Advanced')}</label>
-                                </div>
+            edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            options = `
+                <div id="rclEOptions">
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                        <span>${_('Level')}:</span>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="RLC-Type form-check-input" checked id="rclETypeShow" type="radio" name="flctype" value="0"/>
+                            <label for="rclETypeShow">${_('Essential')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="RLC-Type form-check-input" id="rclETypeNavigation" type="radio" name="flctype" value="1"/>
+                            <label for="rclETypeNavigation">${_('Medium')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="RLC-Type form-check-input" id="rclETypeIdentify" type="radio" name="flctype" value="2"/>
+                            <label for="rclETypeIdentify">${_('Advanced')}</label>
+                        </div>
+                        ${help(
+                            [
+                                `${_('Essential')}: ${_('Only the right pairs can be joined.')}`,
+                                `${_('Medium')}: ${_('Any two cards can be joined; learners check their answers at the end.')}`,
+                                `${_('Advanced')}: ${_('As in Medium, with a time limit.')}`,
+                            ].join('\n\n'),
+                        )}
+                    </div>
+                    <div class="d-none align-items-center flex-nowrap gap-2 mb-3">
+                        <div class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" checked id="rclEShowSolution" class="toggle-input" />
+                                <span class="toggle-visual"></span>
                             </span>
+                            <label class="toggle-label" for="rclEShowSolution">${_('Show solutions')}</label>
                         </div>
-                        <div class="d-none align-items-center flex-nowrap gap-2 mb-3">
-                            <div class="toggle-item">
-                                <span class="toggle-control">
-                                    <input type="checkbox" checked id="rclEShowSolution" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="rclEShowSolution">${_('Show solutions')}</label>
-                            </div>
-                            <label for="rclETimeShowSolution">${_('Show solution time (seconds)')}:</label>
-                            <input type="number" class="form-control" name="rclETimeShowSolution" id="rclETimeShowSolution" value="3" min="1" max="9" />
-                        </div>
-                        <div id="rclETimeDiv" class="d-none align-items-center flex-nowrap gap-2 mb-3">
-                            <label for="rclETime" class="mb-0">${_('Time (minutes)')}:</label>
-                            <input type="number" class="form-control" name="rclETime" id="rclETime" value="3" min="0" max="59" />
-                        </div>
-                        <div class="toggle-item mb-3">
+                        <label for="rclETimeShowSolution">${_('Show solution time (seconds)')}:</label>
+                        <input type="number" class="form-control" name="rclETimeShowSolution" id="rclETimeShowSolution" value="3" min="1" max="9" />
+                    </div>
+                    <div id="rclETimeDiv" class="d-none align-items-center flex-nowrap gap-2 mb-3">
+                        <label for="rclETime" class="mb-0">${_('Time (minutes)')}:</label>
+                        <input type="number" class="form-control" name="rclETime" id="rclETime" value="3" min="0" max="59" />
+                        ${help(_('Time to join all the pairs in the Advanced level, in minutes. Set 0 for no time limit.'))}
+                    </div>
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                        <div class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="rclEShowMinimize" class="toggle-input" />
                                 <span class="toggle-visual"></span>
                             </span>
                             <label class="toggle-label" for="rclEShowMinimize">${_('Show minimized.')}</label>
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <label for="rclEPercentajeCards" class="mb-0">%${_('Cards')}:</label>
-                            <input type="number" class="form-control" name="rclEPercentajeCards" id="rclEPercentajeCards" value="100" min="1" max="100" />
-                            <span id="rclENumeroPercentaje">1/1</span>
-                        </div>
-                        <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
-                            <label for="rclEAuthory" class="mb-0">${_('Authorship')}:</label>
-                            <input id="rclEAuthory" type="text" class="form-control" />
-                        </div>
-                        <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                        </div>
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                     </div>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Pairs')}</a></legend>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="rclEPercentajeCards" class="mb-0">%${_('Cards')}:</label>
+                        <input type="number" class="form-control" name="rclEPercentajeCards" id="rclEPercentajeCards" value="100" min="1" max="100" />
+                        <span id="rclENumeroPercentaje">1/1</span>
+                        ${help(_('Choose the percentage of pairs included in each game. The counter shows how many pairs will be used.'))}
+                    </div>
+                    <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="rclEAuthory" class="mb-0">${_('Authorship')}:</label>
+                        <input id="rclEAuthory" type="text" class="form-control" />
+                    </div>
+                </div>`,
+            cards = `
                     <div class="RLC-EPanel" id="rclEPanel">
                         <div id="rclEArrowsDiv">
                             <div class="RLC-EPhrase" id="rclEPhrase">
@@ -349,57 +348,37 @@ var $exeDevice = {
                             <div class="RLC-ENumCardsIcon"><span class="sr-av">${_('Cards')}:</span></div>
                             <span class="RLC-ENumCards" id="rclENumCards">0</span>
                         </div>
-                    </div>
-                </fieldset>
-                ${$exeDevice.getTextFieldset('after')}
-            </div>
-
-            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
+                    </div>`,
+            html = `
+        <div id="relateQIdeviceForm">
+            ${edition.common.getIdeviceDescription(
+                _('Create matching games with images, sounds and enriched texts.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/relaciona.html',
+            )}
+            ${edition.tabs.getHtml('relateQIdeviceForm', {
+                path: path,
+                instructions: c_('Match each card with its pair.'),
+                options: options,
+                contents: cards,
+                passwords: true,
+                after: true,
+                grading: true,
+                texts: this.ci18n,
+                share: {
+                    importQuestions: true,
+                    exportQuestions: true,
+                    type: 0,
+                },
+                info: {
+                    contents: _('Add the pairs of cards with the text, image or sound of each side, and edit them one by one.'),
+                },
+            })}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('relateQIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('relateQIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
-    },
-
-    getTextFieldset: function (position) {
-        if (
-            typeof position != 'string' ||
-            (position != 'after' && position != 'before')
-        )
-            return '';
-        let tit = _('Content after'),
-            id = 'After';
-        if (position == 'before') {
-            tit = _('Content before');
-            id = 'Before';
-        }
-        return (
-            "<fieldset class='exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>\
-                    <legend><a href='#'>" +
-            tit +
-            ' (' +
-            _('Optional').toLowerCase() +
-            ")</a></legend>\
-                    <div>\
-                        <p>\
-                            <label for='eXeIdeviceText" +
-            id +
-            "' class='sr-av'>" +
-            tit +
-            ":</label>\
-                            <textarea id='eXeIdeviceText" +
-            id +
-            "' class='exe-html-editor'\></textarea>\
-                        </p>\
-                    <div>\
-				</fieldset>"
-        );
     },
 
     clearCard: function () {
@@ -563,7 +542,7 @@ var $exeDevice = {
     showCard: function (i) {
         let num = Math.max(0, Math.min(i, $exeDevice.cardsGame.length - 1)),
             p = $exeDevice.cardsGame[num];
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $('#rclEURLImage').val(p.url);
         $('#rclEURLImageBack').val(p.urlBk);
@@ -650,7 +629,7 @@ var $exeDevice = {
             ),
         };
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let message = '';
         if (!p.eText && !p.url && !p.audio) {
@@ -673,7 +652,7 @@ var $exeDevice = {
         $exeDevice.initCards();
 
         const root = document.getElementById('relacionaIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -900,7 +879,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showCard(0);
@@ -1002,17 +981,17 @@ var $exeDevice = {
                 clear($('#rclETimeShowSolution').val())
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#rclEPercentajeCards').val())),
             author = $('#rclEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#rclETime').val()),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1337,21 +1316,15 @@ var $exeDevice = {
                 .toggleClass('d-flex', type === 2);
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertCards
         );
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     exportQuestions: function () {
@@ -1361,7 +1334,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.cardsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('Relate')}.txt`,
             'relateQIdeviceForm'
@@ -1454,13 +1427,13 @@ var $exeDevice = {
         }
 
         if (url.length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
         }
     },
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.evaluation =
@@ -1483,11 +1456,11 @@ var $exeDevice = {
             true
         );
         $('#rclETimeDiv').removeClass('d-flex').addClass('d-none');
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -1502,7 +1475,7 @@ var $exeDevice = {
         $('#rclEArrowsDiv').show();
 
         $('#rclENumCards').text($exeDevice.cardsGame.length);
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1517,7 +1490,7 @@ var $exeDevice = {
         if (!dataGame) return false;
 
         const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('Activity')}-Relaciona.json`,
             'relateQIdeviceForm'
@@ -1786,7 +1759,6 @@ var $exeDevice = {
         $exeDevice.showCard($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateCardsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {

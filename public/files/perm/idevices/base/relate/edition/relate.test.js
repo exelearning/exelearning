@@ -35,8 +35,8 @@ describe('relate iDevice', () => {
         let savedMedia;
 
         beforeEach(() => {
-            savedGamification = global.$exeDevicesEdition.iDevice.gamification;
-            global.$exeDevicesEdition.iDevice.gamification = {
+            savedGamification = global.$exeIDevicesEdition.iDevice.gamification;
+            global.$exeIDevicesEdition.iDevice.gamification = {
                 ...savedGamification,
                 progressBar: { addEvents: vi.fn() },
                 itinerary: { addEvents: vi.fn() },
@@ -62,7 +62,7 @@ describe('relate iDevice', () => {
             // into the next one.
             $exeDevice.$lifecycle.destroy();
             document.body.innerHTML = '';
-            global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+            global.$exeIDevicesEdition.iDevice.gamification = savedGamification;
             global.$exeDevices.iDevice.gamification.media = savedMedia;
         });
 
@@ -161,7 +161,7 @@ describe('relate iDevice', () => {
     });
 
     /**
-     * The pass-score control is a shared block in common_edition.js, exercised
+     * The pass-score control is a shared block in common_idevices_edition.js, exercised
      * by its own tests. What is specific to this iDevice -- and what silently
      * breaks if someone edits the form -- is the wiring: all four call sites
      * have to be present, and the two saved fields have to reach the stored
@@ -181,7 +181,7 @@ describe('relate iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -212,5 +212,249 @@ describe('relate minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('relate edition: shared form tabs and share windows', () => {
+    const PATH = '/files/perm/idevices/base/relate/edition/';
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    const tabNames = () =>
+        [...document.querySelectorAll('#relateQIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`relateQIdeviceForm-panel-${name}`);
+    const card = (front, back, overrides = {}) => ({
+        id: '',
+        type: 2,
+        url: '',
+        audio: '',
+        x: 0,
+        y: 0,
+        author: '',
+        alt: '',
+        eText: encodeURIComponent(front),
+        color: '#000000',
+        backcolor: '#ffffff',
+        correct: 0,
+        urlBk: '',
+        audioBk: '',
+        xBk: 0,
+        yBk: 0,
+        authorBk: '',
+        altBk: '',
+        eTextBk: encodeURIComponent(back),
+        colorBk: '#000000',
+        backcolorBk: '#ffffff',
+        ...overrides,
+    });
+    const game = (overrides = {}) => ({
+        typeGame: 'Relaciona',
+        author: '',
+        randomCards: true,
+        instructions: '',
+        showMinimize: false,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        cardsGame: [card('Sun', 'Sol')],
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        textAfter: '',
+        version: 2,
+        percentajeCards: 100,
+        type: 0,
+        showSolution: true,
+        timeShowSolution: 3,
+        time: 3,
+        evaluation: false,
+        evaluationID: '',
+        ...overrides,
+    });
+    let device;
+    let previousApp;
+    let tooltips;
+    let previousHelpers;
+    let previousMedia;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        previousHelpers = { ...helpers() };
+        Object.assign(helpers(), {
+            isJsonString: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return false;
+                }
+            },
+            sanitizeJSONString: (text) => text,
+        });
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
+        device = global.loadIdevice(join(__dirname, 'relate.js'));
+        document.body.innerHTML = '<div id="relateBody"></div>';
+        device.init(document.getElementById('relateBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        for (const key of ['isJsonString', 'sanitizeJSONString']) {
+            if (key in previousHelpers) helpers()[key] = previousHelpers[key];
+            else delete helpers()[key];
+        }
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its cards', () => {
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('edits the pairs in Questions and the game in Options', () => {
+        expect(panel('contents').firstElementChild.textContent).toContain('Add the pairs of cards');
+        expect(panel('contents').querySelector('#rclEPanel #rclEText')).not.toBeNull();
+        expect(panel('contents').querySelector('#rclEPanel #rclETextBack')).not.toBeNull();
+        expect(panel('options').querySelector('#rclEOptions #rclETypeIdentify')).not.toBeNull();
+        expect(panel('options').querySelector('#rclEOptions #rclEPercentajeCards')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgCheck')).not.toBeNull();
+    });
+
+    it('offers importing, exporting and creating the pairs with AI', () => {
+        expect(
+            [...panel('contents').querySelectorAll('[data-exe-share]')].map((link) => link.dataset.exeShare)
+        ).toEqual(['import', 'export', 'ai']);
+    });
+
+    it('explains each option without changing any of them', () => {
+        const helps = [...document.querySelectorAll('#rclEOptions .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('#relateQIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(4);
+        for (const help of helps) {
+            expect(help.title).toBe('Information');
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('disposes all tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(4);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('asks for the time only in the Advanced level', () => {
+        const time = document.getElementById('rclETimeDiv');
+        expect(time.classList.contains('d-none')).toBe(true);
+
+        document.getElementById('rclETypeIdentify').click();
+
+        expect(time.classList.contains('d-none')).toBe(false);
+
+        document.getElementById('rclETypeShow').click();
+
+        expect(time.classList.contains('d-none')).toBe(true);
+    });
+
+    it('restores the options, the cards and the texts with the game', () => {
+        device.idevicePreviousData = `
+            <div class="relaciona-IDevice">
+                <div class="relaciona-DataGame js-hidden">${JSON.stringify(
+                    game({ type: 2, time: 5, showMinimize: true, msgs: { msgCheck: 'Verify' } })
+                )}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('rclETypeIdentify').checked).toBe(true);
+        expect(document.getElementById('rclETimeDiv').classList.contains('d-none')).toBe(false);
+        expect(document.getElementById('rclETime').value).toBe('5');
+        expect(document.getElementById('rclEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('rclEText').value).toBe('Sun');
+        expect(document.getElementById('ci18n_msgCheck').value).toBe('Verify');
+    });
+
+    describe('saving', () => {
+        let editors;
+
+        beforeEach(() => {
+            editors = { eXeGameInstructions: '<p>Instructions</p>', eXeIdeviceTextAfter: '' };
+            vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors ? { initialized: true, getContent: () => editors[id] } : null
+            );
+            document.getElementById('rclEText').value = 'Sun';
+            document.getElementById('rclETextBack').value = 'Sol';
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('keeps the cards where the export reads them', () => {
+            const html = device.save();
+
+            expect(html).toContain('relaciona-DataGame');
+            expect(html).toContain('"eText":"Sun"');
+            expect(html).toContain('"eTextBk":"Sol"');
+            expect(html).not.toContain('exe-idevice-help');
+        });
+
+        it('keeps the access code and the clue when saving', () => {
+            const itinerary = {
+                showClue: true,
+                clueGame: 'Next key: river',
+                percentageClue: 60,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Code of the previous activity?',
+            };
+            device.updateFieldGame(game({ itinerary }));
+
+            expect(device.validateData().itinerary).toEqual(itinerary);
+        });
     });
 });

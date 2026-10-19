@@ -2,7 +2,6 @@
 	width: 100%;
 }
 
-
 #relateQIdeviceForm input[type="color"],
 #relateQIdeviceForm input[type="button"] {
 	margin-right: 0 !important;
@@ -23,150 +22,6 @@
 #relateQIdeviceForm input[type="checkbox"],
 #relateQIdeviceForm input[type=button] {
 	cursor: pointer;
-}
-
-.RLC-DEOptionsMedia {
-	align-items: center;
-	display: flex;
-	justify-content: space-between;
-	margin-bottom: 1em;
-	width: 100%;
-}
-
-/* Medias */
-.RLC-DEMultiMediaOption {
-	height: 100%;
-	min-height: 300px;
-	min-width: 400px;
-	position: relative;
-	width: 50%;
-}
-
-.RLC-DEMultimedia {
-	background-color: #fff;
-	border-radius: .5em;
-	height: 227px;
-	margin: 40px auto auto auto;
-	position: relative;
-	width: 400px;
-}
-
-.RLC-DEMedia {
-	border: 1px solid #cccccc;
-	border-radius: .5em;
-	height: 100%;
-	left: 0;
-	position: absolute;
-	top: 0;
-	width: 100%;
-}
-
-
-.RLC-DEOptionsGame {
-	min-height: 300px;
-	width: 50%;
-}
-
-.RLC-DEOptionsGame div {
-	margin-bottom: 0.7em;
-}
-
-.RLC-DEOptionsGame input[type=text] {
-	margin-right: .2em;
-	width: 5em;
-}
-
-.RLC-DEInputImage {
-	align-items: center;
-	display: flex;
-	flex-wrap: nowrap;
-	justify-content: flex-start;
-	min-width: 100px;
-	width: 100%;
-}
-
-#ccgmQEIdeviceForm .RLC-DEInputImage input[type=text] {
-	flex-flow: 1;
-	margin-right: 0.2em;
-	min-width: 100px;
-	width: 100%;
-}
-
-.RLC-DEInputImage input[type=button] {
-	flex-shrink: 0;
-}
-
-.RLC-DEAuthorAlt {
-	align-items: center;
-	display: flex;
-	flex-wrap: nowrap;
-	justify-content: space-between;
-	display: none;
-
-}
-
-.RLC-DEAuthorAlt div {
-	width: 49%;
-}
-
-.RLC-DEAuthorAlt label {
-	display: block;
-}
-
-.RLC-DEAuthorAlt input[type=text] {
-	width: 97%;
-}
-
-.RLC-DEAuthorAlt div {
-	width: 49%;
-}
-
-.RLC-DEAuthorAlt label {
-	display: block;
-}
-
-.RLC-DEAuthorAlt input[type=text] {
-	width: 97%;
-}
-
-.RLC-DEInputAudio,
-.RLC-DEInputImage {
-	align-items: center;
-	display: flex;
-	justify-content: flex-start;
-}
-
-.RLC-DEInputAudio,
-.RLC-DEInputImage {
-	align-items: center;
-	display: flex;
-	justify-content: flex-start;
-}
-
-.RLC-DEInputAudio input[type=text],
-.RLC-DEInputImage input[type=text] {
-	flex-flow: 1;
-	margin-right: 0.2em;
-	min-width: 100px;
-	width: 100%;
-}
-
-.RLC-DEInputAudio input[type=button],
-.RLC-DEInputImage input[type=button] {
-	flex-shrink: 0;
-}
-
-
-
-.RLC-DButtonImage:hover {
-	-webkit-transform: scale(1.05);
-	transform: scale(1.05);
-}
-
-#relateQIdeviceForm .RLC-EReport {
-	display: flex;
-	justify-content: flex-start;
-	align-items: center;
 }
 
 /*Panel parejas */
@@ -246,20 +101,6 @@
 	width: 100%;
 }
 
-/* Medias */
-
-.RLC-EImageFit {
-	width: 240px;
-	min-height: 240px;
-	height: 240px;
-	min-width: 240px;
-	object-fit: contain;
-	object-position: center;
-	margin: auto;
-	background-color: white;
-	position: absolute;
-}
-
 .RLC-EImage,
 .RLC-NoImage {
 	position: absolute;
@@ -272,31 +113,7 @@
 	display: none;
 }
 
-/* Opciones imagen */
-
-.RLC-EAuthorAlt {
-	align-items: center;
-	display: flex;
-	flex-wrap: nowrap;
-	justify-content: space-between;
-}
-
-.RLC-EAuthorAlt div {
-	width: 49%;
-}
-
-.RLC-EAuthorAlt label {
-	display: block;
-}
-
-.RLC-EAuthorAlt input[type=text] {
-	width: 97%;
-}
-
-
-.RLC-EInputAudio,
-.RLC-EInputImage,
-.RLC-EInputText {
+.RLC-EInputAudio {
 	align-items: center;
 	display: flex;
 	justify-content: flex-start;
@@ -305,8 +122,7 @@
 	width: 100%;
 }
 
-.RLC-EInputAudio input[type=text],
-.RLC-EInputImage input[type=text] {
+.RLC-EInputAudio input[type=text] {
 	flex-flow: 1;
 	margin-right: 0.2em;
 	min-width: 100px;
@@ -314,8 +130,7 @@
 
 }
 
-.RLC-EInputAudio input[type=button],
-.RLC-EInputImage input[type=button] {
+.RLC-EInputAudio input[type=button] {
 	flex-shrink: 0;
 }
 
@@ -360,42 +175,6 @@
 
 }
 
-/* Itinerario */
-
-.RLC-EHit {
-	background-image: url(quextIEHit.png);
-	background-size: 100% 100%;
-	display: inline-block;
-	height: 1.5em;
-	width: 1.5em;
-}
-
-.RLC-Hide {
-	display: none;
-}
-
-.RLC-ECustomMessageDiv,
-.RLC-ECustomMessageDef {
-	margin-top: 0.6em;
-	display: flex;
-	align-items: center;
-	justify-content: flex-start;
-	flex-wrap: nowrap;
-}
-
-.RLC-ECustomMessageDiv label,
-.RLC-ECustomMessageDef label {
-	white-space: nowrap;
-	margin-right: 0.1em;
-}
-
-.RLC-ECustomMessageDiv input[type=text],
-.RLC-ECustomMessageDef input[type=text] {
-	width: 100%;
-	max-width: 1000px;
-	margin-right: 0.2em;
-}
-
 /*Numero Preguntas */
 .RLC-ENumCardDiv {
 	align-items: center;
@@ -427,23 +206,6 @@
 	width: 2em;
 }
 
-.RLC-ECustomMessage {
-	align-items: center;
-	display: flex;
-	justify-content: flex-start;
-	margin-top: 1em;
-	width: 100%;
-}
-
-.RLC-ECustomMessage input[type=text] {
-	width: 100%;
-	margin-right: 0.1em;
-}
-
-.RLC-ECustomMessage label {
-	margin: 0 0.1em;
-}
-
 /* barra edición */
 .RLC-ENavigationButtons {
 	align-items: center;
@@ -469,138 +231,6 @@
 	display: none;
 }
 
-
-#relateQIdeviceFormTab3 p:first-child {
-	margin-top: 0;
-}
-
-#relateQIdeviceFormTab3 {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 2%;
-}
-
-#relateQIdeviceFormTab3>* {
-	flex: 0 0 48%;
-}
-
-#relateQIdeviceFormTab3> :first-child {
-	flex: 0 0 100%;
-}
-
-
-@media screen and (max-width:720px) {
-	#relateQIdeviceFormTab3>* {
-		flex: 0 0 100%;
-	}
-}
-
-#relateQIdeviceForm #relateQIdeviceFormTab3 label {
-	display: block;
-	margin-bottom: .2em;
-	color: #0BA1A1;
-	font-weight: 500;
-}
-
-#relateQIdeviceForm #relateQIdeviceFormTab3 input {
-	width: 100%;
-}
-
-
-/* Tabs (this should be common) */
-.exe-form-tabs {
-	list-style: none;
-	margin: 0 0 1.5em 0;
-	padding: 0;
-}
-
-#main .exe-form-tabs li {
-	display: inline;
-	list-style: none;
-	list-style-image: none;
-	margin: 0;
-	padding: 0;
-}
-
-.exe-form-tabs li:first-child a {
-	border-bottom-left-radius: 4px;
-	border-top-left-radius: 4px;
-}
-
-.exe-form-tabs li:last-child a {
-	border-bottom-right-radius: 4px;
-	border-top-right-radius: 4px;
-}
-
-.exe-form-tabs a {
-	background: #F9F9F9;
-	border: 1px solid #CCC;
-	color: #666;
-	display: inline-block;
-	padding: .5em 1em;
-}
-
-.exe-form-tabs li:not(:last-child) a {
-	border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-	background: #FFF;
-	color: #000;
-	font-weight: 500;
-}
-
-#gameQESCORMoptions {
-	margin-left: 1.5em;
-	visibility: hidden;
-}
-
-label[for=gameQEActivitySCORM] {
-	font-weight: bold;
-}
-
-#gameQESCORMinstructionsButton {
-	color: #777;
-	display: none;
-	margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsButton ul {
-	list-style: none;
-	margin: 1.5em 0 .7em 0;
-	padding: 0;
-}
-
-#gameQESCORMinstructionsButton ul li {
-	list-style-image: none;
-	margin: 0 0 .5em 0;
-	padding: 0;
-}
-
-#gameQESCORMinstructionsAuto {
-	color: #777;
-	display: none;
-	margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsAuto ul {
-	list-style: none;
-	margin: 1.5em 0 .7em 0;
-	padding: 0;
-}
-
-.GameModeHelpLink {
-	margin: 0 2px;
-	vertical-align: middle;
-}
-
-.GameModeLabel {
-	font-weight: normal
-}
-
-.Games-Reportdiv {
-	display: flex;
-	justify-content: flex-start;
-	align-items: center;
-	gap: 2px;
+#rclEOptions .toggle-item {
+    flex-wrap: nowrap;
 }
