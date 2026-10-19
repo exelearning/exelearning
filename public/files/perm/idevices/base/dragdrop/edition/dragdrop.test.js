@@ -25,16 +25,10 @@ const guardedEditionHandlers = [
     ['#dadEPercentajeCards', 'keyup', 'updateCardsNumber'],
     ['#dadEPercentajeCards', 'click', 'updateCardsNumber'],
     ['#dadEPercentajeCards', 'focusout', 'updateCardsNumber'],
-    ['#dadEURLAudioDefinition', 'change', 'loadAudio'],
     ['#dadEURLImage', 'change', 'loadImage'],
     ['#dadEPlayImage', 'click', 'loadImage'],
-    ['#dadEURLImageBack', 'change', 'loadImage'],
-    ['#dadEPlayImageBack', 'click', 'loadImage'],
     ['#dadEURLAudio', 'change', 'loadAudio'],
     ['#dadEPlayAudio', 'click', 'loadAudio'],
-    ['#dadEPlayAudioBack', 'click', 'loadAudio'],
-    ['#dadEImage', 'click', 'clickImage'],
-    ['#dadEImageBack', 'click', 'clickImageBack'],
 ];
 
 function buildEditionForm() {
@@ -50,16 +44,11 @@ function buildEditionForm() {
             <a href="#" id="dadENextC"></a>
             <a href="#" id="dadELastC"></a>
             <input id="dadEPercentajeCards" type="text" value="50" />
-            <input id="dadEURLAudioDefinition" type="text" value="sound.mp3" />
             <input id="dadEURLImage" type="text" value="picture.png" />
             <a href="#" id="dadEPlayImage"></a>
-            <input id="dadEURLImageBack" type="text" value="picture.png" />
-            <a href="#" id="dadEPlayImageBack"></a>
             <input id="dadEURLAudio" type="text" value="sound.mp3" />
             <a href="#" id="dadEPlayAudio"></a>
-            <a href="#" id="dadEPlayAudioBack"></a>
             <img id="dadEImage" alt="" />
-            <img id="dadEImageBack" alt="" />
             <input id="dadENumberCard" type="text" value="2" />
             <span class="toggle-item">
                 <input class="toggle-input" type="checkbox" data-target="#dadEToggleTarget" />
@@ -86,7 +75,6 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
         };
         $exeDevice = global.loadIdevice(join(__dirname, 'dragdrop.js'));
         $exeDevice.addEvents();
-        $exeDevice.addEventCard();
     });
 
     afterEach(() => {
@@ -376,6 +364,15 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
         expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
         expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
         expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('starts a new card without the alternative text of the previous one', () => {
+        vi.spyOn(device, 'validateCard').mockReturnValue(true);
+        document.getElementById('dadEAlt').value = 'A red apple';
+
+        device.addCard();
+
+        expect(document.getElementById('dadEAlt').value).toBe('');
     });
 
     it('offers no import, export or AI windows', () => {

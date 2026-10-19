@@ -47,7 +47,6 @@ var $exeDevice = {
         );
         if (!$exeDevice.cardsGame.length)
             $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
-        $('#dadETextDiv, #dadETextDivBack').hide();
         this.active = 0;
     },
 
@@ -333,7 +332,7 @@ var $exeDevice = {
     clearCard: function () {
         $('#dadEURLImage').val('');
         $('#dadEAuthor').val('');
-        $('#dadEDAlt').val('');
+        $('#dadEAlt').val('');
         $('#dadEURLAudio').val('');
         $('#dadEDefinition').val('');
         $exeDevice.showImage();
@@ -503,7 +502,6 @@ var $exeDevice = {
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
-        $exeDevice.addEventCard();
     },
 
     updateCardsNumber: function () {
@@ -519,94 +517,6 @@ var $exeDevice = {
         let num = Math.max(Math.round((percentaje * totalQuestions) / 100), 1);
 
         $('#dadENumeroPercentaje').text(`${num}/${totalQuestions}`);
-    },
-
-    addEventCard: function () {
-        const loadAndPlayImage = (index) => $exeDevice?.loadImage(index),
-            loadAndPlayAudio = (selector) =>
-                $exeDevice?.loadAudio($(selector).val());
-
-        $('#dadEURLImage').on('change', () => loadAndPlayImage(0));
-        $('#dadEURLImageBack').on('change', () => loadAndPlayImage(1));
-
-        $('#dadEPlayImage').on('click', (e) => {
-            e.preventDefault();
-            loadAndPlayImage(0);
-        });
-        $('#dadEPlayImageBack').on('click', (e) => {
-            e.preventDefault();
-            loadAndPlayImage(1);
-        });
-
-        $('#dadEURLAudio, #dadEURLAudioBack').on('change', function () {
-            loadAndPlayAudio(this);
-        });
-
-        $('#dadEPlayAudio').on('click', (e) => {
-            e.preventDefault();
-            loadAndPlayAudio('#dadEURLAudio');
-        });
-        $('#dadEPlayAudioBack').on('click', (e) => {
-            e.preventDefault();
-            loadAndPlayAudio('#dadEURLAudioBack');
-        });
-
-        $('#dadEText, #dadETextBack').on('keyup', function () {
-            const textDiv = $(this).is('#dadEText')
-                ? '#dadETextDiv'
-                : '#dadETextDivBack';
-            $(textDiv)
-                .html($(this).val())
-                .toggle($(this).val().trim().length > 0);
-        });
-
-        $('#dadEColor, #dadEColorBack').on('change', function () {
-            const textDiv = $(this).is('#dadEColor')
-                ? '#dadETextDiv'
-                : '#dadETextDivBack';
-            $(textDiv).css('color', $(this).val());
-        });
-
-        $('#dadEBgColor, #dadEBgColorBack').on('change', function () {
-            if (!$exeDevice) return;
-            const textDiv = $(this).is('#dadEBgColor')
-                    ? '#dadETextDiv'
-                    : '#dadETextDivBack',
-                bc = $exeDevice.hexToRgba($(this).val(), 0.7);
-            $(textDiv).css('background-color', bc);
-        });
-
-        $('#dadEImage').on('click', (e) =>
-            $exeDevice?.clickImage(e.pageX, e.pageY)
-        );
-
-        $('#dadECursor').on('click', function () {
-            $(this).hide();
-            $('#dadEX, #dadEY').val(0);
-        });
-
-        $('#dadEImageBack').on('click', (e) =>
-            $exeDevice?.clickImageBack(e.pageX, e.pageY)
-        );
-
-        $('#dadECursorBack').on('click', function () {
-            $(this).hide();
-            $('#dadEXBack, #dadEYBack').val(0);
-        });
-    },
-
-    hexToRgba: function (hex, opacity) {
-        return (
-            'rgba(' +
-            (hex = hex.replace('#', ''))
-                .match(new RegExp('(.{' + hex.length / 3 + '})', 'g'))
-                .map(function (l) {
-                    return parseInt(hex.length % 2 ? l + l : l, 16);
-                })
-                .concat(isFinite(opacity) ? opacity : 1)
-                .join(',') +
-            ')'
-        );
     },
 
     getDefaultCard: function () {
@@ -1046,10 +956,6 @@ var $exeDevice = {
                 $exeDevice?.updateCardsNumber();
             });
 
-        $('#dadEURLAudioDefinition').on('change', function () {
-            $exeDevice?.loadAudio($(this).val());
-        });
-
         $('#dadENumberCard').keyup(function (e) {
             if (!$exeDevice) return;
             if (e.keyCode === 13) {
@@ -1099,27 +1005,6 @@ var $exeDevice = {
         });
         $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
-
-        $('#dadEURLImage').on('change', function () {
-            const url = $(this).val().trim();
-            $exeDevice?.loadImage(url);
-        });
-
-        $('#dadEPlayImage').on('click', function (e) {
-            e.preventDefault();
-            const url = $('#dadEURLImage').val().trim();
-            $exeDevice?.loadImage(url);
-        });
-
-        $('#dadEURLAudio').on('change', function () {
-            $exeDevice?.loadAudio($(this).val());
-        });
-
-        $('#dadEPlayAudio').on('click', function (e) {
-            e.preventDefault();
-            const audio = $('#dadEURLAudio').val();
-            $exeDevice?.loadAudio(audio);
-        });
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
@@ -1271,52 +1156,6 @@ var $exeDevice = {
         }
 
         return { w: wImage, h: hImage, x: xImagen, y: yImagen };
-    },
-
-    clickImage: function (epx, epy) {
-        const $cursor = $('#dadECursor'),
-            $image = $('#dadEImage'),
-            $x = $('#dadEX'),
-            $y = $('#dadEY'),
-            posX = epx - $image.offset().left,
-            posY = epy - $image.offset().top,
-            wI = $image.width() || 1,
-            hI = $image.height() || 1,
-            lI = $image.position().left,
-            tI = $image.position().top;
-
-        $x.val(posX / wI);
-        $y.val(posY / hI);
-        $cursor
-            .css({
-                left: posX + lI,
-                top: posY + tI,
-                'z-index': 50,
-            })
-            .show();
-    },
-
-    clickImageBack: function (epx, epy) {
-        const $cursor = $('#dadECursorBack'),
-            $image = $('#dadEImageBack'),
-            $x = $('#dadEXBack'),
-            $y = $('#dadEYBack'),
-            posX = epx - $image.offset().left,
-            posY = epy - $image.offset().top,
-            wI = $image.width() || 1,
-            hI = $image.height() || 1,
-            lI = $image.position().left,
-            tI = $image.position().top;
-
-        $x.val(posX / wI);
-        $y.val(posY / hI);
-        $cursor
-            .css({
-                left: posX + lI,
-                top: posY + tI,
-                'z-index': 50,
-            })
-            .show();
     },
 
     removeTags: function (str) {
