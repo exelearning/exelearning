@@ -821,6 +821,26 @@ describe('guess edition: shared form tabs and feedback', () => {
     }
   });
 
+  it('does not switch an option when its help or open explanation is clicked', () => {
+    // The rows are wired once the question editor is ready.
+    const { setup } = tinymceInit.mock.calls.find(([config]) => config.setup)[0];
+    let editorReady;
+    setup({ on: (event, callback) => event === 'init' && (editorReady = callback) });
+    editorReady();
+    const helps = [...document.querySelectorAll('.toggle-item .exe-idevice-help')];
+    const states = () => [...document.querySelectorAll('.toggle-input')].map((input) => input.checked);
+    const before = states();
+
+    expect(helps.length).toBeGreaterThan(0);
+    for (const help of helps) {
+      help.click();
+      help.querySelector('span').click();
+      document.getElementById(help.getAttribute('aria-controls')).click();
+    }
+
+    expect(states()).toEqual(before);
+  });
+
   it('escapes translated help text in the explanation', () => {
     const text = 'Use "Accept" <once> & keep the learner\'s answer.';
     const container = document.createElement('div');

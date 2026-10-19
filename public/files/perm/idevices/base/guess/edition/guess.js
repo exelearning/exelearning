@@ -1618,7 +1618,10 @@ var $exeDevice = {
             'click.guess.toggle',
             '.toggle-item',
             function (e) {
-                if ($(e.target).is('input.toggle-input, label[for]')) return;
+                // The control, its label and the help (button and open
+                // explanation) live inside the row: they must not switch it.
+                const own = e.target.closest('input.toggle-input, label[for], .exe-idevice-help-container');
+                if (own && this.contains(own)) return;
                 const $input = $(this).find('input.toggle-input').first();
                 // A locked switch (the feedback in "No score") stays as it is.
                 if ($input.length && !$input.prop('disabled')) {
