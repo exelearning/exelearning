@@ -886,5 +886,52 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(savedHtml).toContain('clasifica-feedback-game');
             expect(savedHtml).toContain('clasifica-extra-content');
         });
+
+        describe('exporting', () => {
+            let downloadBlob;
+            let validateQuestion;
+            const item = (fields) => ({ ...device.getCuestionDefault(), ...fields });
+            const exportItems = (items) => {
+                device.updateFieldGame(game());
+                device.wordsGame = items;
+                device.active = 0;
+                device.showQuestion(0);
+                document.getElementById('eXeGameExportQuestions').click();
+            };
+
+            beforeEach(() => {
+                downloadBlob = vi.spyOn(edition().gamification.share, 'downloadBlob').mockReturnValue(true);
+                // The item on screen is stored first, as on saving; happy-dom
+                // cannot read the selected group back, so that step is stubbed.
+                validateQuestion = vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+            });
+
+            afterEach(() => {
+                downloadBlob.mockRestore();
+                validateQuestion.mockRestore();
+            });
+
+            it('downloads the items with text as lines the import reads back', async () => {
+                exportItems([
+                    item({ type: 1, group: 0, eText: 'Lion' }),
+                    item({ type: 0, group: 1, url: 'images/rabbit.png' }),
+                    item({ type: 2, group: 1, url: 'images/cow.png', eText: 'Cow #1' }),
+                ]);
+
+                expect(validateQuestion).toHaveBeenCalled();
+                expect(downloadBlob).toHaveBeenCalledTimes(1);
+                const [blob, fileName, containerId] = downloadBlob.mock.calls[0];
+                expect(await blob.text()).toBe('0#Lion\n1#Cow 1');
+                expect(fileName).toBe('Classify.txt');
+                expect(containerId).toBe('clasificaQEIdeviceForm');
+            });
+
+            it('tells the author when no item has a text to export', () => {
+                exportItems([item({ type: 0, group: 0, url: 'images/rabbit.png' })]);
+
+                expect(downloadBlob).not.toHaveBeenCalled();
+                expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
+            });
+        });
     });
 });

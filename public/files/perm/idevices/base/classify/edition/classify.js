@@ -1430,7 +1430,7 @@ var $exeDevice = {
         ) {
             $('#eXeGameExportImport .exe-field-instructions')
                 .eq(0)
-                .text(`${_('Supported formats')}: txt)`);
+                .text(`${_('Supported formats')}: txt`);
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame').attr('accept', '.txt, .xml');
             $('#eXeGameImportGame').on('change', (e) => {
@@ -1459,6 +1459,9 @@ var $exeDevice = {
                     this.importGame(event.target.result, file.type);
                 });
                 reader.readAsText(file);
+            });
+            $('#eXeGameExportQuestions').on('click', () => {
+                $exeDevice.exportQuestions();
             });
         } else {
             $('#eXeGameExportImport').hide();
@@ -1770,6 +1773,30 @@ var $exeDevice = {
     importText: function (content) {
         const lines = content.split('\n');
         $exeDevice.insertWords(lines);
+    },
+
+    /**
+     * Download the items that have a text as "group#text" lines, the format
+     * the Import window and the AI read back. Items that are only an image
+     * have no text form, so they are left out.
+     */
+    exportQuestions: function () {
+        if (!$exeDevice.validateQuestion()) return false;
+        const dataGame = $exeDevice.validateData();
+        if (!dataGame) return false;
+
+        const lines = dataGame.wordsGame
+            .filter((word) => word.type !== 0 && (word.eText || '').trim())
+            .map((word) => `${word.group}#${word.eText.replace(/[#\s]+/g, ' ').trim()}`);
+        if (lines.length === 0) {
+            eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
+            return false;
+        }
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
+            new Blob([lines.join('\n')], { type: 'text/plain' }),
+            `${_('Classify')}.txt`,
+            'clasificaQEIdeviceForm'
+        );
     },
 
     insertWords: function (lines) {
