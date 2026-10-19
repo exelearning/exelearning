@@ -1244,12 +1244,11 @@ var $exeIDevicesEdition = {
                                     <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
                                     <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
                                         ${$exeIDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
-                                        <textarea class="form-control font-monospace fs-6" style="display:none" id="eXeEQuestionsIA"> </textarea>
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-end  border-secondary p-2">
-                                   <button id="eXeESaveButton"  class="btn  btn-primary ms-2"/>${_('Save')}</button>
-                                   <button id="eXeECopyButton"  class="btn btn-primary ms-2"/>${_('Copy')}</button>
+                                   <button type="button" id="eXeESaveButton" class="btn btn-primary ms-2">${_('Save')}</button>
+                                   <button type="button" id="eXeECopyButton" class="btn btn-primary ms-2">${_('Copy')}</button>
                                    <select id="eXeEIASelect" name="eXeEIASelect" class="form-select form-select-sm w-auto ms-2">
                                         <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
                                         <option value="https://claude.ai/new?q=">Claude</option>
@@ -1258,8 +1257,7 @@ var $exeIDevicesEdition = {
                                         <option value="https://grok.com/?q=">Grok</option>
                                         <option value="https://chat.qwen.ai/?text=">Qwen</option>
                                     </select>
-                                   <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
-                                   <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>
+                                   <button type="button" id="eXeEOpenChatGPTButton" class="btn btn-primary ms-2">${_('Send to AI')}</button>
                                 </div>
                             </div>`;
                     return tab.replace(/[ \t]+/g, ' ').trim();
@@ -1576,7 +1574,6 @@ var $exeIDevicesEdition = {
                         : () => (getOptions && typeof getOptions === 'object' ? getOptions : {});
                     const $textQuestionsArea = $('#eXeEQuestionsArea');
                     const $textPrompt = $('#eXeEPromptArea');
-                    const $textAreaIa = $('#eXeEQuestionsIA');
                     const $divEIA = $('#eXeEIADiv');
 
                     const $tabQuestions = $('#eXeETabQuestions');
@@ -1586,7 +1583,6 @@ var $exeIDevicesEdition = {
                     const $copyButton = $('#eXeECopyButton');
                     const $openChatGPTButton = $('#eXeEOpenChatGPTButton');
                     const $saveButton = $('#eXeESaveButton');
-                    const $iaButton = $('#eXeEIAButton');
                     const $iaSelect = $('#eXeEIASelect');
 
                     const $eXeGameAddQuestion = $('#eXeGameAddQuestion');
@@ -1612,7 +1608,6 @@ var $exeIDevicesEdition = {
                     $textPrompt.show()
                     $copyButton.show();
                     $openChatGPTButton.show();
-                    $iaButton.hide();
                     $iaSelect.show()
                     $divEIA.hide();                   
 
@@ -1659,7 +1654,6 @@ var $exeIDevicesEdition = {
                         $saveButton.show();
                         $copyButton.hide();
                         $openChatGPTButton.hide();
-                        $iaButton.hide();
                         $iaSelect.hide()
                     });
 
@@ -1675,7 +1669,6 @@ var $exeIDevicesEdition = {
                         $copyButton.show();
                         $openChatGPTButton.show();
                         $iaSelect.show();
-                        $iaButton.hide();
                     });
 
                     $tabIA.on('click', function (e) {
@@ -1691,7 +1684,6 @@ var $exeIDevicesEdition = {
                         $saveButton.hide();
                         $copyButton.hide();
                         $openChatGPTButton.hide();
-                        $iaButton.hide();
                         $iaSelect.hide();
                     });
 
@@ -1727,30 +1719,6 @@ var $exeIDevicesEdition = {
                         // It may also return `remainingLines` (questions it could not
                         // add): refill the textarea with them, cleared, so the user can
                         // correct them and save again.
-                        const result = await saveQuestions(questions.validLines, questions.invalidLines);
-                        if (result && result.handledMessaging) {
-                            if (Array.isArray(result.remainingLines)) {
-                                $textQuestionsArea.val(result.remainingLines.join('\n'));
-                            }
-                            return;
-                        }
-                        if (questions.invalidLines.length > 0) {
-                            eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
-                        } else {
-                            // The window has done its job: the questions are in the form.
-                            $exeIDevicesEdition.iDevice.gamification.share.close('ai');
-                            eXe.app.alert(_('The questions have been added successfully'));
-                        }
-                    });
-                    $iaButton.on('click', async function () {
-                        const content = $textAreaIa.val().trim();
-                        if (!content) {
-                            eXe.app.alert(_("Please enter at least one question."));
-                            return;
-                        }
-
-                        const questions = $exeIDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
-
                         const result = await saveQuestions(questions.validLines, questions.invalidLines);
                         if (result && result.handledMessaging) {
                             if (Array.isArray(result.remainingLines)) {

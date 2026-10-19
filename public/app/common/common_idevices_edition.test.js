@@ -2532,6 +2532,21 @@ describe('common_idevices_edition.js', () => {
       expect(result).not.toContain('generate multiple questions');
     });
 
+    it('getIAContents offers only working buttons, each with its own label', () => {
+      const container = document.createElement('div');
+      container.innerHTML = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getIAContents(0);
+
+      // The "Add questions" button was hidden in every tab and read another textarea.
+      expect(container.querySelector('#eXeEIAButton, #eXeEQuestionsIA')).toBeNull();
+      const footer = container.querySelector('#eXeEAddArea > :last-child');
+      const buttons = [...footer.querySelectorAll('button')].map((button) => [button.id, button.type, button.textContent.trim()]);
+      expect(buttons).toEqual([
+        ['eXeESaveButton', 'button', 'Save'],
+        ['eXeECopyButton', 'button', 'Copy'],
+        ['eXeEOpenChatGPTButton', 'button', 'Send to AI'],
+      ]);
+    });
+
     it('getIAContents returns the AI controls without a tab around them', () => {
       const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getIAContents(0);
       expect(result).not.toContain('exe-form-tab');
@@ -2879,11 +2894,9 @@ describe('common_idevices_edition.js', () => {
         document.body.innerHTML = `
           <textarea id="eXeEQuestionsArea"></textarea>
           <textarea id="eXeEPromptArea"></textarea>
-          <textarea id="eXeEQuestionsIA"></textarea>
           <div id="eXeEIADiv"></div>
           <div id="eXeEAddArea" style="display:none"></div>
           <button id="eXeESaveButton"></button>
-          <button id="eXeEIAButton"></button>
           <button id="eXeECopyButton"></button>
           <button id="eXeEOpenChatGPTButton"></button>
           <select id="eXeEIASelect">
@@ -2979,46 +2992,6 @@ describe('common_idevices_edition.js', () => {
         expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
       });
 
-      it('iaButton click shows success alert when all lines are valid', async () => {
-        const saveQuestionsMock = vi.fn();
-        $('#eXeEQuestionsIA').val('Word1#Definition1');
-        $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
-
-        globalThis.$exeIDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
-        $('#eXeEIAButton').trigger('click');
-        await flushAsync();
-
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
-      });
-
-      it('iaButton click refills the textarea with the remainingLines the callback could not add', async () => {
-        const saveQuestionsMock = vi
-          .fn()
-          .mockResolvedValue({ handledMessaging: true, remainingLines: ['Bad#line'] });
-        $('#eXeEQuestionsIA').val('SomeContent');
-        $('#eXeEQuestionsArea').val('Good#Definition\nBad#line');
-
-        globalThis.$exeIDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
-        $('#eXeEIAButton').trigger('click');
-        await flushAsync();
-
-        expect($('#eXeEQuestionsArea').val()).toBe('Bad#line');
-        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
-      });
-
-      it('iaButton click shows invalid lines alert when some lines are invalid', async () => {
-        const saveQuestionsMock = vi.fn();
-        $('#eXeEQuestionsIA').val('SomeContent');
-        $('#eXeEQuestionsArea').val('BadFormat\nWord1#Definition1');
-
-        globalThis.$exeIDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
-        $('#eXeEIAButton').trigger('click');
-        await flushAsync();
-
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
-      });
-
       it('openChatGPTButton click shows alert when prompt is empty', () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEPromptArea').val('');
@@ -3097,17 +3070,6 @@ describe('common_idevices_edition.js', () => {
         expect(saveQuestionsMock).not.toHaveBeenCalled();
       });
 
-      it('iaButton click shows alert when IA textarea is empty', () => {
-        const saveQuestionsMock = vi.fn();
-        $('#eXeEQuestionsIA').val('');
-
-        globalThis.$exeIDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
-        $('#eXeEIAButton').trigger('click');
-
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please enter at least one question.');
-        expect(saveQuestionsMock).not.toHaveBeenCalled();
-      });
-
       it('openChatGPTButton click shows alert when no AI service selected', () => {
         const saveQuestionsMock = vi.fn();
         $('#eXeEPromptArea').val('Test prompt');
@@ -3138,11 +3100,9 @@ describe('common_idevices_edition.js', () => {
       document.body.innerHTML = `
         <textarea id="eXeEPromptArea"></textarea>
         <textarea id="eXeEQuestionsArea"></textarea>
-        <textarea id="eXeEQuestionsIA"></textarea>
         <div id="eXeEIADiv"></div>
         <div id="eXeEAddArea" style="display:none"></div>
         <button id="eXeESaveButton"></button>
-        <button id="eXeEIAButton"></button>
         <button id="eXeECopyButton"></button>
         <button id="eXeEOpenChatGPTButton"></button>
         <button id="eXeGameAddQuestion"></button>
