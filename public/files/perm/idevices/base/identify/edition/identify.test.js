@@ -609,6 +609,34 @@ describe('identify edition: shared form tabs and feedback', () => {
         expect(document.getElementById('idfESolution').value).toBe('Mercury');
     });
 
+    it('takes every field after the solution of an AI line as a clue', async () => {
+        document.getElementById('eXeEQuestionsArea').value = 'Mercury#Closest to the Sun#Smallest planet#No moons';
+        document.getElementById('eXeESaveButton').click();
+        await vi.waitFor(() => expect(eXe.app.getLastAlert()).toBe('The questions have been added successfully'));
+
+        const added = device.questionsGame.at(-1);
+        expect(added).toMatchObject({ solution: 'Mercury', question: '', numberClues: 3 });
+        expect(added.clues.slice(0, 3)).toEqual(['Closest to the Sun', 'Smallest planet', 'No moons']);
+    });
+
+    it('accepts webp pictures from the project files', () => {
+        const picture = document.getElementById('idfEURLImage');
+        picture.value = 'files/picture.webp';
+        $(picture).trigger('change');
+
+        expect(eXe.app.getLastAlert() ?? '').not.toContain('Supported formats');
+    });
+
+    it('counts a pasted copy among the questions used in each game', () => {
+        device.updateFieldGame(game());
+
+        device.copyQuestion();
+        device.pasteQuestion();
+
+        expect(device.questionsGame).toHaveLength(2);
+        expect(document.getElementById('idfENumeroPercentaje').textContent).toBe('2/2');
+    });
+
     it('keeps the custom texts and the feedback message when the iDevice is edited again', () => {
         device.idevicePreviousData = `
             <div class="identifica-IDevice">

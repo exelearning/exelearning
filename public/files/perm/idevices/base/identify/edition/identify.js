@@ -229,6 +229,7 @@ var $exeDevice = {
                 $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit == 1) {
             $('#idfEPaste').hide();
             $exeDevice.typeEdit = -1;
@@ -1045,6 +1046,28 @@ var $exeDevice = {
         $exeDevice.addWords(valids);
     },
 
+    /**
+     * Add the questions validated in the AI window. Its lines are
+     * "solution#clue1#clue2…", without the message a text file carries, so
+     * every field after the solution is a clue.
+     *
+     * @param {string[]} lines
+     */
+    insertAIQuestions: function (lines) {
+        let valids = 0;
+        lines.forEach((line) => {
+            const [solution, ...clues] = line.trim().split('#'),
+                p = $exeDevice.getCuestionDefault();
+            if (!solution || clues.length < 2) return;
+            p.solution = solution;
+            p.numberClues = Math.min(clues.length, p.clues.length);
+            for (let i = 0; i < p.numberClues; i++) p.clues[i] = clues[i];
+            valids++;
+            $exeDevice.questionsGame.push(p);
+        });
+        $exeDevice.addWords(valids);
+    },
+
     addWords: function (valids) {
         if (valids === 0) {
             eXe.app.alert(
@@ -1391,7 +1414,7 @@ var $exeDevice = {
         });
 
         $('#idfEURLImage').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
@@ -1409,7 +1432,7 @@ var $exeDevice = {
 
         $('#idfEPlayImage').on('click', (e) => {
             e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp`'],
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $('#idfEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
@@ -1484,7 +1507,7 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             4,
-            $exeDevice.insertQuestions
+            $exeDevice.insertAIQuestions
         );
     },
 
