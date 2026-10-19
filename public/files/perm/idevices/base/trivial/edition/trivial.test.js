@@ -642,6 +642,32 @@ describe('trivial edition: shared form tabs', () => {
         }
     });
 
+    it('counts a new question as soon as it is added', () => {
+        vi.spyOn(global.tinymce, 'get').mockImplementation(() => ({
+            initialized: true,
+            getContent: () => '',
+            setContent: () => {},
+            hide: () => {},
+            show: () => {},
+        }));
+        device.temas[0] = [
+            { ...device.getCuestionDefault(), quextion: 'First', options: ['Right', 'Wrong', '', ''], numberOptions: 2, solution: 'A' },
+        ];
+        device.nombresTemas = ['Maths', 'History', '', '', '', ''];
+        device.showTema(0);
+
+        device.addQuestion();
+
+        expect(document.getElementById('trivialENumQuestions').textContent).toBe('2');
+    });
+
+    it('names the loader, the topic name, the share of letters and the text', () => {
+        for (const id of ['trivialLoadGame', 'trivialNameTema', 'trivialPercentageShow', 'trivialEText']) {
+            expect(document.getElementById(id).labels, id).toHaveLength(1);
+        }
+        expect(document.getElementById('trivialNameTema').labels[0].textContent).toBe('Name');
+    });
+
     it('restores the options and the access code of a saved game', () => {
         const itinerary = {
             showClue: true,

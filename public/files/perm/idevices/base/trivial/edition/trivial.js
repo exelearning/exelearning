@@ -444,7 +444,7 @@ var $exeDevice = {
             );
             $exeDevice.typeEdit = -1;
             $exeDevice.hideFlex($('#trivialEPaste'));
-            $('#trivialENumQuestions').val(
+            $('#trivialENumQuestions').text(
                 $exeDevice.temas[$exeDevice.activeTema].length
             );
         }
@@ -1079,11 +1079,11 @@ var $exeDevice = {
                                         <span>${_('Topic')}:</span>
                                         <label class="sr-av" for="trivialNumberTema">${_('Topic number')}</label>
                                          <input type="number" class="form-control me-0" name="trivialNumberTema" id="trivialNumberTema" value="1" min="1" max="2" step="1" style="width:6ch" /> 
-                                        <label class="sr-av" for="trivialNameTema">${_('Topic number')}</label>
+                                        <label class="sr-av" for="trivialNameTema">${_('Name')}</label>
                                         <input type="text" id="trivialNameTema" class="form-control w-100" />
                                     </div>
                                     <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                                        <span>${_('Load')}:</span>
+                                        <label for="trivialLoadGame" class="mb-0">${_('Load')}:</label>
                                         ${help(_('Add to this topic the questions of a text, Moodle XML or game file.'))}
                                         <input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".json" class="mw-100" />
                                     </div>                                    
@@ -1141,7 +1141,7 @@ var $exeDevice = {
                                         </div>
                                     </div>                                    
                                     <div class="d-none align-items-center flex-wrap gap-2 mb-3" id="trivialPercentage">
-                                        <span id="trivialPercentageSpan">${_('Percentage of letters to show (%)')}:</span>
+                                        <label for="trivialPercentageShow" id="trivialPercentageSpan" class="mb-0">${_('Percentage of letters to show (%)')}:</label>
                                         <input type="number" name="trivialPercentageShow" id="trivialPercentageShow" value="35" min="0" max="100" step="5" />
                                     </div>                                    
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
@@ -1248,6 +1248,7 @@ var $exeDevice = {
                                 </div>
                                 <div class="TRVLE-EMultiMediaOption">
                                     <div class="TRVLE-EMultimedia" id="trivialEMultimedia">
+                                        <label for="trivialEText" class="sr-av">${_('Text')}</label>
                                         <textarea id="trivialEText"></textarea>
                                         <img class="TRVLE-EMedia" src="${path}quextIEImage.png" id="trivialEImage" alt="${_('Image')}" />
                                         <img class="TRVLE-EMedia" src="${path}quextIEImage.png" id="trivialENoImage" alt="${_('No image')}" />
