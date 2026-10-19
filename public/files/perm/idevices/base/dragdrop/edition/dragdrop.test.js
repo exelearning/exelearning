@@ -206,42 +206,6 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
                 $(document).off('change.dragdropUnrelated');
             }
         });
-
-        it('stops the preview audio when the edition closes', () => {
-            const audio = {
-                play: vi.fn(),
-                pause: vi.fn(),
-                load: vi.fn(),
-                removeAttribute: vi.fn(),
-                addEventListener: vi.fn(),
-                removeEventListener: vi.fn(),
-            };
-            const audioSpy = vi.spyOn(global, 'Audio').mockImplementation(function () {
-                return audio;
-            });
-            global.$exeDevices.iDevice.gamification.media = {
-                ...global.$exeDevices.iDevice.gamification.media,
-                extractURLGD: vi.fn(url => url),
-            };
-
-            try {
-                $exeDevice.playSound('sound.mp3');
-                const [type, handler] = audio.addEventListener.mock.calls[0];
-                expect(type).toBe('canplaythrough');
-
-                handler();
-                expect(audio.play).toHaveBeenCalledTimes(1);
-
-                $exeDevice.$lifecycle.destroy();
-                expect(audio.pause).toHaveBeenCalledTimes(1);
-                expect(audio.removeAttribute).toHaveBeenCalledWith('src');
-
-                handler();
-                expect(audio.play).toHaveBeenCalledTimes(1);
-            } finally {
-                audioSpy.mockRestore();
-            }
-        });
     });
 });
 

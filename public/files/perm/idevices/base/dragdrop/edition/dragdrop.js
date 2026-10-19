@@ -22,7 +22,6 @@ var $exeDevice = {
     numberCutCuestion: -1,
     clipBoard: '',
     idevicePath: '',
-    playerAudio: '',
     version: 2.0,
     id: false,
     mode: false,
@@ -821,27 +820,6 @@ var $exeDevice = {
             .on('error', function () {
                 return false;
             });
-    },
-
-    playSound: function (selectedFile) {
-        const lifecycle = this.$lifecycle;
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        // The element is never inserted in the form, so closing the editor
-        // would otherwise leave it playing and downloading.
-        lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
-        lifecycle.addEventListener($exeDevice.playerAudio, 'canplaythrough', () => {
-            $exeDevice?.playerAudio.play();
-        });
-    },
-
-    stopSound: function () {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause === 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
     },
 
     paintMouse: function (image, cursor, x, y) {
