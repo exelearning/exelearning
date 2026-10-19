@@ -1413,10 +1413,6 @@ var $exeDevice = {
             $exeDevice.updateCardsNumber();
         });
 
-        $('#flipcardsEURLAudioDefinition').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
-        });
-
         $('#flipcardsENumberCard').keyup(function (e) {
             if (e.keyCode == 13) {
                 const num = parseInt($(this).val());
@@ -1491,10 +1487,16 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
+        // Store the card on screen first, as saving does.
+        if (!$exeDevice.validateCard()) return false;
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
         const lines = this.getLinesQuestions(dataGame.cardsGame);
+        if (lines.length === 0) {
+            eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
+            return false;
+        }
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
@@ -1504,14 +1506,25 @@ var $exeDevice = {
         );
     },
 
+    /**
+     * "front#back" lines, the format Import and the AI read back. Texts are
+     * stored encoded, so they are decoded; cards without text on both sides
+     * have no line.
+     */
     getLinesQuestions: function (cards) {
-        let linequestions = [];
-        for (let i = 0; i < cards.length; i++) {
-            let c = cards[i];
-            let card = `${c.eText}#${c.eTextBk}`;
-            linequestions.push(card);
-        }
-        return linequestions;
+        const plain = (value) => {
+            let text = value || '';
+            try {
+                text = $exeDevice.decodeURIComponentSafe(text) || '';
+            } catch {
+                // A text imported before it was encoded is already plain.
+            }
+            return text.replace(/[#\s]+/g, ' ').trim();
+        };
+        return cards
+            .map((card) => [plain(card.eText), plain(card.eTextBk)])
+            .filter(([front, back]) => front && back)
+            .map(([front, back]) => `${front}#${back}`);
     },
 
     swapProperties: function (card) {
@@ -1776,6 +1789,16 @@ var $exeDevice = {
         $exeDevice.addCards(cardsjs);
     },
 
+    /**
+     * Cards coming from a file, another game or the AI carry plain text; the
+     * form and the activity read it encoded (a plain "%" would break them).
+     */
+    encodeCardTexts: function (card) {
+        card.eText = $exeDevice.encodeURIComponentSafe(card.eText);
+        card.eTextBk = $exeDevice.encodeURIComponentSafe(card.eTextBk);
+        return card;
+    },
+
     addCards: function (cards) {
         if (!cards || cards.length == 0) {
             eXe.app.alert(
@@ -1786,7 +1809,7 @@ var $exeDevice = {
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
             if (card.eTextBk && card.eText) {
-                $exeDevice.cardsGame.push(card);
+                $exeDevice.cardsGame.push($exeDevice.encodeCardTexts(card));
             }
         }
         $exeDevice.postImportProcessing();
@@ -1838,7 +1861,7 @@ var $exeDevice = {
         }
 
         if (cards && cards.length > 0) {
-            $exeDevice.cardsGame = cards;
+            $exeDevice.cardsGame = cards.map((card) => $exeDevice.encodeCardTexts(card));
         } else {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;

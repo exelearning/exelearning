@@ -968,5 +968,53 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             expect(savedHtml).toContain('flipcards-DataGame');
             expect(savedHtml).toContain('flipcards-extra-content');
         });
+
+        describe('sharing the cards as text', () => {
+            let downloadBlob;
+            const encode = (text) => device.encodeURIComponentSafe(text);
+            const showCards = (cards) => {
+                device.cardsGame = cards;
+                device.active = 0;
+                device.showCard(0);
+            };
+
+            beforeEach(() => {
+                downloadBlob = vi
+                    .spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+                    .mockReturnValue(true);
+            });
+
+            afterEach(() => {
+                downloadBlob.mockRestore();
+            });
+
+            it('exports readable lines for the cards with text on both sides', async () => {
+                showCards([
+                    { ...device.getCardDefault(), eText: encode('Heart 50%'), eTextBk: encode('Organ #1') },
+                    { ...device.getCardDefault(), url: 'images/front.png', urlBk: 'images/back.png' },
+                ]);
+
+                document.getElementById('eXeGameExportQuestions').click();
+
+                expect(downloadBlob).toHaveBeenCalledTimes(1);
+                expect(await downloadBlob.mock.calls[0][0].text()).toBe('Heart 50%#Organ 1');
+            });
+
+            it('does not export a card left empty', () => {
+                showCards([device.getCardDefault()]);
+
+                document.getElementById('eXeGameExportQuestions').click();
+
+                expect(downloadBlob).not.toHaveBeenCalled();
+            });
+
+            it('imports text cards ready for the activity, even with a "%"', () => {
+                device.importGame('Heart 50%#Organ that pumps blood', 'text/plain');
+
+                const card = device.cardsGame.at(-1);
+                expect(device.decodeURIComponentSafe(card.eText)).toBe('Heart 50%');
+                expect(device.decodeURIComponentSafe(card.eTextBk)).toBe('Organ that pumps blood');
+            });
+        });
     });
 });
