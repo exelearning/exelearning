@@ -2612,16 +2612,15 @@ var $exeDevice = {
             'click.qq.toggle',
             '.toggle-item',
             function (e) {
-                // Evita doble cambio si el clic es directamente sobre el input, label asociado
-                // o sobre controles interactivos internos (números, textos, selects, botones)
-                if (
-                    $(e.target).is(
-                        'input.toggle-input, label[for], input[type=number], input[type=text], select, textarea, button'
-                    )
-                )
-                    return;
+                // The controls of the row and its help (button and open
+                // explanation) must not switch it.
+                const own = e.target.closest(
+                    'input, label[for], select, textarea, button, .exe-idevice-help-container'
+                );
+                if (own && this.contains(own)) return;
                 const $input = $(this).find('input.toggle-input').first();
-                if ($input.length) {
+                // A locked switch (the feedback in "No score") stays as it is.
+                if ($input.length && !$input.prop('disabled')) {
                     const newVal = !$input.prop('checked');
                     $input.prop('checked', newVal).trigger('change');
                 }

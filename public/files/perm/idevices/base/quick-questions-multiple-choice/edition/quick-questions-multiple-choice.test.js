@@ -794,6 +794,32 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
         expect(feedback().isRequired()).toBe(true);
     });
 
+    it('does not switch an option when its help or open explanation is clicked', () => {
+        const helps = [...document.querySelectorAll('.toggle-item .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('.toggle-input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps.length).toBeGreaterThan(0);
+        for (const help of helps) {
+            help.click();
+            help.querySelector('span').click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+        }
+
+        expect(states()).toEqual(before);
+    });
+
+    it('keeps a locked switch and its message when its row is clicked', () => {
+        document.querySelector('input[name="slcgamemode"][value="2"]').click();
+        const feedbackSwitch = document.getElementById('eXeGameHasFeedBack');
+
+        feedbackSwitch.closest('.toggle-item').click();
+
+        expect(feedbackSwitch.checked).toBe(true);
+        expect(feedbackSwitch.disabled).toBe(true);
+        expect(document.getElementById('eXeGameFeedbackP').classList.contains('d-none')).toBe(false);
+    });
+
     it('escapes translated help text in the explanation', () => {
         const text = 'Use "Accept" <once> & keep the learner\'s answer.';
         const container = document.createElement('div');
