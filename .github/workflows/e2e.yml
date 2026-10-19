@@ -70,6 +70,13 @@ jobs:
             public/files/perm/idevices/base/progress-report/export/html2canvas.js
             public/files/perm/idevices/base/checklist/export/html2canvas.js
             public/files/perm/idevices/base/rubric/export/html2canvas.js
+            public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
+            public/files/perm/idevices/base/three-d-viewer/export/draco/**
+            public/files/perm/idevices/base/three-d-viewer/export/basis/**
+            public/files/perm/idevices/base/three-d-viewer/export/three.module.min.js
+            public/files/perm/idevices/base/three-d-viewer/export/OrbitControls.js
+            public/files/perm/idevices/base/three-d-viewer/export/STLLoader.js
+            public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7

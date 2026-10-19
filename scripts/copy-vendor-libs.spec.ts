@@ -72,10 +72,7 @@ describe('copy-vendor-libs', () => {
                 'basis/basis_transcoder.js',
                 'basis/basis_transcoder.wasm',
             ]) {
-                expect(
-                    dests.some(d => d.endsWith(exportDir + file)),
-                    file,
-                ).toBe(true);
+                expect(dests.some(d => d.endsWith(exportDir + file)), file).toBe(true);
             }
         });
 
@@ -91,6 +88,22 @@ describe('copy-vendor-libs', () => {
             // with upstream and drop the author/license captions.
             const dests = COPIES.map(c => c.dest.replace(/\\/g, '/'));
             expect(dests.filter(d => d.includes('simple-lightbox'))).toEqual([]);
+        });
+
+        it('copies the legacy pdf.js build, which polyfills Map.getOrInsertComputed and Math.sumPrecise', () => {
+            // The modern build calls those APIs with no polyfill, so preview fails
+            // on browsers that do not ship them yet (pdf.js 6.3).
+            const pdfCopies = COPIES.filter(c => c.dest.replace(/\\/g, '/').includes('/libs/pdfjs/'));
+            const srcs = pdfCopies.map(c => c.src.replace(/\\/g, '/'));
+            expect(srcs).toEqual([
+                expect.stringContaining('pdfjs-dist/legacy/build/pdf.min.mjs'),
+                expect.stringContaining('pdfjs-dist/legacy/build/pdf.worker.min.mjs'),
+            ]);
+            for (const copy of pdfCopies) {
+                const source = fs.readFileSync(copy.src, 'utf8');
+                expect(source).toContain('getOrInsertComputed:function');
+                expect(source).toContain('sumPrecise:function');
+            }
         });
 
         it('strips sourceMappingURL from the Bootstrap dist copies exports actually load', () => {

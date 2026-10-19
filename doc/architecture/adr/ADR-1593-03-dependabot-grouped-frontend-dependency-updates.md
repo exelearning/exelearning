@@ -43,7 +43,7 @@ poor fit:
   a compatible `yjs` / `y-websocket` / `lib0` set; bumping one without the others
   can reintroduce duplicate-instance or protocol mismatches.
 - **Some packages need manual validation and must not auto-bump silently.**
-  MathJax (`mathjax-full`) backs the customized `exe_math/` subset that ADR-1593-01
+  MathJax (`mathjax` and `@mathjax/*`) backs the customized `exe_math/` subset that ADR-1593-01
   explicitly leaves out of the copy flow.
 
 PR #1593 adds a Dependabot configuration to automate updates with grouping that
@@ -86,9 +86,11 @@ separately — without drowning maintainers in per-package PRs?
 
 ### Option 3: Grouped Dependabot with targeted groups and separate ecosystems (chosen)
 
-Weekly npm updates with named groups (`yjs-ecosystem`, `mathjax`, `elysia`,
-`test-tools`, `build-tools`), plus separate weekly update streams for Docker,
-Docker Compose, and GitHub Actions.
+Weekly Bun updates with named groups (`vitest`, `yjs-ecosystem`, `mathjax`,
+`elysia`, `test-tools`, `build-tools`, `frontend-libs`), plus separate weekly
+update streams for Docker, Docker Compose, and GitHub Actions. One `groups`
+key holds every group. A package belongs to only one group, so `vitest` is not
+also listed under `test-tools`.
 
 - Pros: coupled packages bump together; MathJax isolated for manual validation;
   toolchains grouped to cut noise; covers container and CI supply chain. Chosen.
@@ -97,20 +99,25 @@ Docker Compose, and GitHub Actions.
 
 ## Evidence
 
-- `.github/dependabot.yml` — `version: 2`, an `npm` ecosystem at `/` on a weekly
-  schedule with `open-pull-requests-limit: 10` and these `groups`:
+- `.github/dependabot.yml` — `version: 2`, a `bun` ecosystem at `/` on a weekly
+  schedule with `open-pull-requests-limit: 10` and a single `groups` key:
+  - `vitest`: patterns `vitest`, `@vitest/*` — exact-version peers must move
+    together (#2384).
   - `yjs-ecosystem`: patterns `yjs`, `y-*`, `lib0` — commented "keep in sync —
     shim build depends on compatible versions" (the ADR-1593-02 constraint).
-  - `mathjax`: pattern `mathjax-full` — commented "pinned separately — exe_math/
-    is a custom subset requiring manual validation" (the ADR-1593-01 exclusion).
+  - `mathjax`: patterns `mathjax`, `@mathjax/*` — commented "pinned separately —
+    exe_math/ is a custom subset requiring manual validation" (the ADR-1593-01
+    exclusion). `mathjax-full` is not a dependency.
   - `elysia`: patterns `elysia`, `@elysiajs/*`.
-  - `test-tools`: patterns `vitest`, `@vitest/*`, `@playwright/test`, `happy-dom`.
+  - `test-tools`: patterns `@playwright/test`, `happy-dom`.
   - `build-tools`: patterns `esbuild`, `vite`, `sass`, `@biomejs/*` — covers the
     `esbuild` used by the Yjs shim build (ADR-1593-02).
+  - `frontend-libs`: the browser assets `scripts/copy-vendor-libs.js` copies,
+    including `pdfjs-dist` and `mermaid`.
 - The same file adds `docker` (at `/`), `docker-compose` (at `/doc/deploy`), and
   `github-actions` (at `/`) ecosystems, each weekly.
 - `package.json` — the packages these groups govern are the runtime dependencies
-  (`yjs`, `y-websocket`, `lib0`, `mermaid`, `pdfjs-dist`, `mathjax-full`,
+  (`yjs`, `y-websocket`, `lib0`, `mermaid`, `pdfjs-dist`, `mathjax`, `@mathjax/*`,
   `elysia`) and devDependencies (`esbuild`, `vite`, `sass`, `@biomejs/biome`,
   `vitest`, `@vitest/*`, `@playwright/test`, `happy-dom`, and the newly added UI
   libraries) introduced or relied on by ADR-1593-01 / ADR-1593-02.
@@ -121,12 +128,13 @@ Docker Compose, and GitHub Actions.
 ## Decision
 
 We will manage the newly npm-managed frontend dependencies with a Dependabot
-configuration (`.github/dependabot.yml`) that runs weekly npm updates grouped
-into `yjs-ecosystem` (kept in lockstep because the Yjs shim build depends on
-compatible versions), `mathjax` (isolated for manual `exe_math/` validation),
-`elysia`, `test-tools`, and `build-tools`, capped at 10 open PRs, and that
-additionally tracks Docker base images, the Docker Compose deploy variants, and
-GitHub Actions on the same weekly cadence.
+configuration (`.github/dependabot.yml`) that runs weekly Bun updates grouped
+into `vitest`, `yjs-ecosystem` (kept in lockstep because the Yjs shim build
+depends on compatible versions), `mathjax` (isolated for manual `exe_math/`
+validation; patterns `mathjax` and `@mathjax/*`), `elysia`, `test-tools`,
+`build-tools`, and `frontend-libs` (including `pdfjs-dist` and `mermaid`),
+capped at 10 open PRs. The same file also tracks Docker base images, the
+Docker Compose deploy variants, and GitHub Actions on the same weekly cadence.
 
 ## Consequences
 
