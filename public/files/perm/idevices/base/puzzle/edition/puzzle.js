@@ -14,20 +14,13 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'puzzle',
     active: 0,
-    activeCard: 0,
-    activeID: '',
     puzzlesGame: [],
-    puzzle: {},
     typeEdit: -1,
-    typeEditC: -1,
-    idPaste: '',
     numberCutCuestion: -1,
     clipBoard: '',
-    playerAudio: '',
     version: 1,
     id: false,
     idevicePath: '',
-    accesibilityIsOk: true,
     ci18n: {},
 
     checkAltImage: true,
@@ -123,9 +116,6 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
@@ -421,12 +411,9 @@ var $exeDevice = {
         puzzle.showAttemps = $('#puzzleEShowAttemps').is(':checked');
         puzzle.alt = $('#puzzleEAltDefinition').val();
         puzzle.author = $('#puzzleEAuthorDefinition').val();
-        puzzle.msgHit = $('#puzzleEMessageOK').val();
-        puzzle.msgError = $('#puzzleEMessageKO').val();
         puzzle.definition = $('#puzzleEDefinition').val();
         puzzle.audioDefinition = $('#puzzleEURLAudioDefinition').val();
         puzzle.audioClue = $('#puzzleEURLAudioClue').val();
-        puzzle.audioError = $('#puzzleEURLAudioKO').val();
         puzzle.clue = $('#puzzleECluePuzzle').val();
         puzzle.type = parseInt($('input[name=pzltype]:checked').val());
         $exeDevice.puzzlesGame[$exeDevice.active] = puzzle;
@@ -455,8 +442,6 @@ var $exeDevice = {
             columns: 3,
             showImage: false,
             showNumber: false,
-            msgError: '',
-            msgHit: '',
             definition: '',
             audioDefinition: '',
             audioClue: '',
@@ -551,13 +536,6 @@ var $exeDevice = {
                 dataGame.msgs
             );
             $exeDevice.showPuzzle(0, true);
-        }
-    },
-
-    getMediaType: function () {
-        const ele = document.getElementsByName('qxtype');
-        for (let i = 0; i < ele.length; i++) {
-            if (ele[i].checked) return ele[i].value;
         }
     },
 
@@ -767,83 +745,6 @@ var $exeDevice = {
         return data;
     },
 
-    showImage: function (id) {
-        const $image = $(`#puzzleEImage-${id}`),
-            $nimage = $(`#puzzleENoImage-${id}`),
-            alt = $(`#puzzleEAlt-${id}`).val(),
-            url = $(`#puzzleEURLImage-${id}`).val();
-
-        $image.hide();
-        $image.attr('alt', alt);
-        $nimage.show();
-
-        const onLoadHandler = function () {
-            if (
-                !this.complete ||
-                typeof this.naturalWidth === 'undefined' ||
-                this.naturalWidth === 0
-            ) {
-                return false;
-            } else {
-                const mData = $exeDevice.placeImageWindows(
-                    this,
-                    this.naturalWidth,
-                    this.naturalHeight
-                );
-                $exeDevice.drawImage(this, mData);
-                $image.show();
-                $nimage.hide();
-                return true;
-            }
-        };
-
-        const onErrorHandler = function () {
-            return false;
-        };
-
-        $image
-            .prop('src', url)
-            .on('load', onLoadHandler)
-            .on('error', onErrorHandler);
-
-        $exeDevice.imageLoadHandlers = $exeDevice.imageLoadHandlers || {};
-        $exeDevice.imageLoadHandlers[id] = {
-            load: onLoadHandler,
-            error: onErrorHandler,
-        };
-    },
-
-    removeImageEvents: function (id) {
-        const $image = $(`#puzzleEImage-${id}`),
-            handlers =
-                $exeDevice.imageLoadHandlers &&
-                $exeDevice.imageLoadHandlers[id];
-
-        if (handlers) {
-            $image.off('load', handlers.load).off('error', handlers.error);
-
-            delete $exeDevice.imageLoadHandlers[id];
-        }
-    },
-
-    playSound: function (selectedFile) {
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        const player = new Audio(selectFile);
-        $exeDevice.playerAudio = player;
-        // Playback and its network activity stop when the editor closes.
-        this.$lifecycle.ownMedia(player, 'previewAudio');
-        player.play().catch(error => console.error('Error playing audio:', error));
-    },
-
-    stopSound: function () {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause === 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
-    },
-
     drawImage: function (image, mData) {
         $(image).css({
             position: 'absolute',
@@ -902,35 +803,6 @@ var $exeDevice = {
             $exeDevice.cutPuzzle();
         });
 
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-
-            $('#eXeGameImportGame').on('change', e => {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                // The read is aborted and its result discarded if the editor
-                // closes before it completes.
-                this.$lifecycle.ownFileReader(reader);
-                reader.onload = this.$lifecycle.bind(function (event) {
-                    this.importGame(event.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
-
         $('#puzzleEPercentajeQuestions').on('keyup', function () {
             let v = this.value;
             v = v.replace(/\D/g, '');
@@ -947,34 +819,9 @@ var $exeDevice = {
             this.value = this.value < 1 ? 1 : this.value;
             $exeDevice.updateQuestionsNumber();
         });
-        $('#puzzleETime').on('focusout', function () {
-            this.value = this.value.trim() == '' ? 0 : this.value;
-            this.value = this.value > 999 ? 999 : this.value;
-            this.value = this.value < 0 ? 0 : this.value;
-        });
-
-        $('#puzzleETime').on('keyup', function () {
-            let v = this.value;
-            v = v.replace(/\D/g, '');
-            v = v.substring(0, 3);
-            this.value = v;
-        });
 
         $('#puzzleEPercentajeQuestions').on('click', function () {
             $exeDevice.updateQuestionsNumber();
-        });
-
-        $('#puzzleETimeShowSolution').on('keyup', function () {
-            let v = this.value;
-            v = v.replace(/\D/g, '');
-            v = v.substring(0, 3);
-            this.value = v;
-        });
-
-        $('#puzzleETimeShowSolution').on('focusout', function () {
-            this.value = this.value.trim() == '' ? 3 : this.value;
-            this.value = this.value > 999 ? 999 : this.value;
-            this.value = this.value < 1 ? 1 : this.value;
         });
 
         $('#puzzleEURLAudioDefinition').on('change', function () {
@@ -1025,20 +872,6 @@ var $exeDevice = {
 
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
-    },
-
-    loadImage: function (id) {
-        const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#puzzleEURLImage-' + id).val(),
-            ext = url.split('.').pop().toLowerCase();
-
-        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg webp'
-            );
-            return false;
-        }
-        $exeDevice.showImage(id);
     },
 
     loadImageDefinition: function () {
@@ -1210,7 +1043,6 @@ var $exeDevice = {
         $('#puzzleEShowMinimize').prop('checked', game.showMinimize);
         $('#puzzleERandomPuzzles').prop('checked', game.randomPuzzles);
         $('#puzzleEPercentajeQuestions').val(game.percentajeQuestions);
-        $('#puzzleETimeShowSolution').val(game.timeShowSolution);
         $('#puzzleEAuthor').val(game.author);
 
         $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
@@ -1240,47 +1072,6 @@ var $exeDevice = {
             passScoreCustom: game.passScoreCustom,
 
         });
-    },
-
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-Puzzle.json`,
-            'puzzleIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame === 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'Puzzle') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions || '',
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-
-        $('#eXeGameInstructions').val(unescape(instructions));
-        $('#eXeIdeviceTextAfter').val(unescape(tAfter));
-        $exeIDevicesEdition.iDevice.gamification.feedback.setText(
-            unescape(textFeedBack)
-        );
-
-        $exeDevice.showPuzzle(0, false);
     },
 
     validTime: function (time) {
@@ -1316,27 +1107,6 @@ var $exeDevice = {
             x: xImage,
             y: yImage,
         };
-    },
-
-    clickImage: function (id, epx, epy) {
-        const $image = $('#puzzleEImage-' + id),
-            $x = $('#puzzleEX-' + id),
-            $y = $('#puzzleEY-' + id),
-            posX = epx - $image.offset().left,
-            posY = epy - $image.offset().top,
-            wI = $image.width() > 0 ? $image.width() : 1,
-            hI = $image.height() > 0 ? $image.height() : 1,
-            lI = $image.position().left,
-            tI = $image.position().top;
-
-        $x.val(posX / wI);
-        $y.val(posY / hI);
-        $cursor.css({
-            left: posX + lI,
-            top: posY + tI,
-            'z-index': 120,
-        });
-        $cursor.show();
     },
 
     removeTags: function (str) {
