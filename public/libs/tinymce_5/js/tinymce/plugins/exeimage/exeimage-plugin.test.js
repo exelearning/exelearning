@@ -558,3 +558,36 @@ describe('ExeImage Plugin - non-editable auto-derived caption (PR #1868)', () =>
     expect(() => exeLockCaptionEditable({})).not.toThrow();
   });
 });
+
+describe('ExeImage Plugin - waitLoadImage on a detached image (Sentry: Range.setStart not a Node)', () => {
+  // Runs the real waitLoadImage from plugin.min.js: after the dialog saves, the
+  // figure rewrite can replace the <img> before it loads, and selecting the
+  // detached node made Range.setStart throw.
+  const fs = require('fs');
+  const path = require('path');
+  const source = fs.readFileSync(path.join(__dirname, 'plugin.min.js'), 'utf-8');
+  const body = source.slice(source.indexOf('var waitLoadImage'), source.indexOf('var blobToDataUri'));
+  const waitLoadImage = new Function('hasDimensions', `${body}; return waitLoadImage;`)(() => false);
+
+  function makeEditor() {
+    return { selection: { select: vi.fn() }, nodeChanged: vi.fn(), dom: { setAttribs: vi.fn() } };
+  }
+
+  it('does not select an image that was removed before it loaded', () => {
+    const editor = makeEditor();
+    const img = document.createElement('img');
+    waitLoadImage(editor, {}, img);
+    img.onload();
+    expect(editor.selection.select).not.toHaveBeenCalled();
+  });
+
+  it('still selects an image that is in the document', () => {
+    const editor = makeEditor();
+    const img = document.createElement('img');
+    document.body.appendChild(img);
+    waitLoadImage(editor, {}, img);
+    img.onload();
+    expect(editor.selection.select).toHaveBeenCalledWith(img);
+    img.remove();
+  });
+});
