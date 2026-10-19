@@ -555,6 +555,95 @@ describe('sort edition: shared form tabs and feedback', () => {
         expect(feedback().getText()).toBe('<p>Well done</p>');
     });
 
+    it('offers the card size and the fixed headers only with the columns they need', () => {
+        $('#odntype1').prop('checked', true).trigger('change');
+
+        expect(shown('ordenaCustomizeCard')).toBe(false);
+        expect(shown('ordenaFixedHeaders')).toBe(false);
+
+        $('#odn1').prop('checked', true).trigger('change');
+
+        expect(shown('ordenaCustomizeCard')).toBe(true);
+        expect(shown('ordenaFixedHeaders')).toBe(false);
+
+        $('#odn3').prop('checked', true).trigger('change');
+
+        expect(shown('ordenaFixedHeaders')).toBe(true);
+    });
+
+    it('keeps the form inside the iDevice when the cards go in columns', () => {
+        $('#odntype1').prop('checked', true).trigger('change');
+        $('#odn3').prop('checked', true).trigger('change');
+
+        expect(document.getElementById('gameQEIdeviceForm').style.width).toBe('');
+        expect(document.getElementById('ordenaEPhrase').style.maxWidth).toBe('100%');
+    });
+
+    it('shows the text of the card being typed in its own preview', () => {
+        const input = document.querySelector('#ordenaEPhrase .ODNE-EText');
+        const id = input.id.replace('ordenaEText-', '');
+        device.activeID = 'another';
+
+        input.value = 'Cat';
+        $(input).trigger('keyup');
+
+        expect(document.getElementById(`ordenaETextDiv-${id}`).style.display).not.toBe('none');
+    });
+
+    it('starts a new activity without the statement, audio and messages of the previous one', () => {
+        const fields = [
+            'ordenaEDefinition',
+            'ordenaEURLAudioDefinition',
+            'ordenaEMessageOK',
+            'ordenaEMessageKO',
+            'ordenaEURLAudioOK',
+            'ordenaEURLAudioKO',
+        ];
+        for (const id of fields) document.getElementById(id).value = 'previous';
+
+        device.clearPhrase();
+
+        for (const id of fields) expect(document.getElementById(id).value).toBe('');
+    });
+
+    it('names every field of the activity and of its cards', () => {
+        $('#odntype1').prop('checked', true).trigger('change');
+        const fields = [
+            ...document.querySelectorAll('#ordenaEPanel input[type="text"], #ordenaEPanel input[type="color"]'),
+        ];
+
+        expect(fields.length).toBeGreaterThan(10);
+        for (const field of fields) expect(field.labels, field.id).toHaveLength(1);
+    });
+
+    it('accepts wav files from the project', () => {
+        const play = vi.spyOn(edition().gamification.helpers, 'playSound').mockImplementation(() => {});
+
+        device.loadAudio('files/sound.wav');
+
+        expect(play).toHaveBeenCalledWith('files/sound.wav');
+        play.mockRestore();
+    });
+
+    it('drops a stored image link too short to be a file', () => {
+        device.idevicePreviousData = stored(game({ type: 1 }), '<a href="x" class="js-hidden ordena-LinkImages-0">0</a>');
+        device.phrasesGame = [];
+
+        device.loadPreviousValues();
+
+        expect(device.phrasesGame[0].cards[0].url).toBe('');
+    });
+
+    it('shows the back image without leaking globals', () => {
+        delete globalThis.$image;
+        delete globalThis.$nimage;
+
+        device.showImageCard('files/back.png');
+
+        expect(globalThis.$image).toBeUndefined();
+        expect(globalThis.$nimage).toBeUndefined();
+    });
+
     describe('saving', () => {
         let editors;
 
@@ -614,6 +703,25 @@ describe('sort edition: shared form tabs and feedback', () => {
             device.updateFieldGame(game({ itinerary }));
 
             expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('moves an activity with the cut and paste buttons', () => {
+            device.updateFieldGame(game({ phrasesGame: [phrase({ phrase: 'First one' }), phrase({ phrase: 'Second one' })] }));
+            device.showPhrase(0, true);
+
+            document.getElementById('ordenaECut').click();
+            device.active = 1;
+            document.getElementById('ordenaEPaste').click();
+
+            expect(device.phrasesGame.map((p) => p.phrase)).toEqual(['Second one', 'First one']);
+        });
+
+        it('counts a pasted copy in the activities per game', () => {
+            device.copyPhrase();
+            device.pastePhrase();
+
+            expect(device.phrasesGame).toHaveLength(2);
+            expect(document.getElementById('ordenaENumeroPercentaje').textContent).toBe('2/2');
         });
     });
 });

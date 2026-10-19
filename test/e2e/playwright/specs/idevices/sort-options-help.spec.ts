@@ -27,7 +27,7 @@ test('Sort explains its options inline without changing their values', async ({
     // Each type of activity has options of its own.
     await page.locator('#gameQEIdeviceForm-tab-options').click();
     for (const [type, count] of [
-        ['#odntype1', 12],
+        ['#odntype1', 10],
         ['#odntype0', 6],
     ] as const) {
         await page.locator(type).check();

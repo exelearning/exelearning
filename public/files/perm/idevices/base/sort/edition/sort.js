@@ -313,21 +313,21 @@ var $exeDevice = {
                     <div class="ODNE-ECustomMessageDef d-none flex-nowrap align-items-center gap-2 mb-3" id="ordenaEDefinitionDiv" data-voice-recorder data-voice-input="#ordenaEURLAudioDefinition">
                         <label for="ordenaEDefinition">${_('Statement')}:</label>
                         <input type="text" id="ordenaEDefinition" class="form-control w-100 me-0"/>
-                        <label >${_('Audio')}</label>
+                        <label for="ordenaEURLAudioDefinition">${_('Audio')}</label>
                         <input type="text" id="ordenaEURLAudioDefinition" class="exe-file-picker form-control me-0 w-100" />
                         <a href="#" id="ordenaEPlayAudioDefinition" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="ODNE-ENavigationButton" /></a>
                     </div>
                     <div class="ODNE-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#ordenaEURLAudioOK">
                         <label for="ordenaEMessageOK" >${_('Success')}:</label>
                         <input type="text" id="ordenaEMessageOK" class="form-control w-100 me-0"/>
-                        <label >${_('Audio')}</label>
+                        <label for="ordenaEURLAudioOK">${_('Audio')}</label>
                         <input type="text" id="ordenaEURLAudioOK" class="exe-file-picker form-control me-0 w-100" />
                         <a href="#" id="ordenaEPlayAudioOK" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="${_('Audio')}" class="ODNE-ENavigationButton" /></a>
                     </div>
                     <div class="ODNE-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#ordenaEURLAudioKO" >
                         <label for="ordenaEMessageKO" >${_('Error')}:</label>
                         <input type="text" id="ordenaEMessageKO" class="form-control w-100 me-0"/>
-                        <label >${_('Audio')}</label>
+                        <label for="ordenaEURLAudioKO">${_('Audio')}</label>
                         <input type="text" id="ordenaEURLAudioKO" class="exe-file-picker form-control me-0 w-100" />
                         <a href="#" id="ordenaEPlayAudioKO" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="${_('Audio')}" class="ODNE-ENavigationButton" /></a>
                     </div>
@@ -388,10 +388,23 @@ var $exeDevice = {
             $('#ordenaButtonsPrhaseDiv').insertBefore('#ordenaEPhrase');
         } else {
             $(
-                '#ordenaTimeShowDiv, #ordenaColumnsDiv, #ordenaActivityNumberDiv, #ordenaButtonCardDiv, #ordenaCustomizeCard, #ordenaFixedHeaders, #ordenaStartAutomaticallyDiv, #ordenaECustomMessagesDiv'
+                '#ordenaTimeShowDiv, #ordenaColumnsDiv, #ordenaActivityNumberDiv, #ordenaButtonCardDiv, #ordenaStartAutomaticallyDiv, #ordenaECustomMessagesDiv'
             )
                 .removeClass('d-none')
                 .addClass('d-flex');
+
+            // The card size and the fixed headers only apply with columns.
+            const columns =
+                parseInt(
+                    $('input.ODNE-EColumns[name=odncolumns]:checked').val(),
+                    10
+                ) || 0;
+            $('#ordenaCustomizeCard')
+                .toggleClass('d-none', columns === 0)
+                .toggleClass('d-flex', columns !== 0);
+            $('#ordenaFixedHeaders')
+                .toggleClass('d-none', columns < 2)
+                .toggleClass('d-flex', columns > 1);
 
             $('#ordenaEBackDiv').show();
 
@@ -641,37 +654,37 @@ var $exeDevice = {
                 </div>
                <span class="ODNE-ETitleText" id="ordenaETitleText-${$exeDevice.activeID}">${_('Text')}</span>
                <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="ordenaEInputText-${$exeDevice.activeID}">
-                    <label class="sr-av">${_('Text')}</label>
+                    <label class="sr-av" for="ordenaEText-${$exeDevice.activeID}">${_('Text')}</label>
                     <input type="text" id="ordenaEText-${$exeDevice.activeID}" class="ODNE-EText form-control w-100 me-0" />
-                    <label id="ordenaELblColor-${$exeDevice.activeID}">${_('Color')}: </label>
+                    <label id="ordenaELblColor-${$exeDevice.activeID}" for="ordenaEColor-${$exeDevice.activeID}">${_('Color')}: </label>
                     <input id="ordenaEColor-${$exeDevice.activeID}" type="color" class="ODNE-EColor form-control form-control-color" value="#000000">
-                    <label id="ordenaELblBgColor-${$exeDevice.activeID}">${_('Background')}: </label>
+                    <label id="ordenaELblBgColor-${$exeDevice.activeID}" for="ordenaEBgColor-${$exeDevice.activeID}">${_('Background')}: </label>
                     <input id="ordenaEBgColor-${$exeDevice.activeID}" type="color" class="ODNE-EBackColor form-control form-control-color" value="#ffffff">
                 </div>
                <span class="ODNE-ETitleImage" id="ordenaETitleImage-${$exeDevice.activeID}">${_('Image')}</span>
                <div class="ODNE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="ordenaEInputImage-${$exeDevice.activeID}">
-                   <label class="sr-av">URL</label>
+                   <label class="sr-av" for="ordenaEURLImage-${$exeDevice.activeID}">URL</label>
                    <input type="text" id="ordenaEURLImage-${$exeDevice.activeID}" class="ODNE-EURLImage exe-file-picker form-control me-0 w-100"/>
                    <a href="#" id="ordenaEPlayImage-${$exeDevice.activeID}" class="ODNE-ENavigationButton " title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ODNE-ENavigationButton" /></a>
                    <a href="#" id="ordenaEShowMore-${$exeDevice.activeID}" class="ODNE-ENavigationButton ODNE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="ODNE-ENavigationButton" /></a>
                </div>
                <div class="d-none flex-wrap align-items-center gap-2 mb-3">
-                   <label class="mb-0">X:</label>
+                   <label class="mb-0" for="ordenaEX-${$exeDevice.activeID}">X:</label>
                    <input id="ordenaEX-${$exeDevice.activeID}" class="ODNE-EX form-control" type="text" value="0" />
-                   <label class="mb-0">Y:</label>
+                   <label class="mb-0" for="ordenaEY-${$exeDevice.activeID}">Y:</label>
                    <input id="ordenaEY-${$exeDevice.activeID}" class="ODNE-EY form-control" type="text" value="0" />
                </div>
                <div class="d-none flex-wrap align-items-center gap-2 mb-3" id="ordenaEAuthorAlt-${$exeDevice.activeID}">
                    <div class=" d-flex flex-wrap align-items-center w-100 gap-2">
-                       <label class="mb-0">${_('Author')}</label><input type="text" class="ODNE-EAuthor w-100 form-control" />
+                       <label class="mb-0" for="ordenaEAuthor-${$exeDevice.activeID}">${_('Author')}</label><input type="text" id="ordenaEAuthor-${$exeDevice.activeID}" class="ODNE-EAuthor w-100 form-control" />
                    </div>
                    <div class=" d-flex flex-wrap align-items-center w-100 gap-2">
-                       <label class="mb-0">${_('Alternative text')}</label><input type="text" class="ODNE-EAlt w-100 form-control" />
+                       <label class="mb-0" for="ordenaEAlt-${$exeDevice.activeID}">${_('Alternative text')}</label><input type="text" id="ordenaEAlt-${$exeDevice.activeID}" class="ODNE-EAlt w-100 form-control" />
                    </div>
                </div>
                <span>${_('Audio')}</span>
                <div class="ODNE-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-2" data-voice-recorder data-voice-input="#ordenaEURLAudio-${$exeDevice.activeID}">
-                   <label class="sr-av">URL</label>
+                   <label class="sr-av" for="ordenaEURLAudio-${$exeDevice.activeID}">URL</label>
                    <input type="text" id="ordenaEURLAudio-${$exeDevice.activeID}" class="ODNE-EURLAudio exe-file-picker form-control me-0 w-100" />
                    <a href="#" id="ordenaEPlayAudio-${$exeDevice.activeID}" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="ODNE-ENavigationButton" /></a>
                </div>
@@ -884,9 +897,9 @@ var $exeDevice = {
         $('#ordenaEText-' + id).on('keyup', function () {
             $('#ordenaETextDiv-' + id).text($(this).val());
             if ($(this).val().trim().length > 0) {
-                $('#ordenaETextDiv-' + $exeDevice.activeID).show();
+                $('#ordenaETextDiv-' + id).show();
             } else {
-                $('#ordenaETextDiv-' + $exeDevice.activeID).hide();
+                $('#ordenaETextDiv-' + id).hide();
             }
         });
 
@@ -1046,7 +1059,7 @@ var $exeDevice = {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < cards.length) {
                         cards[iq].url = $(this).attr('href');
-                        if (cards[iq].url < 4) {
+                        if (cards[iq].url.length < 4) {
                             cards[iq].url = '';
                         }
                     }
@@ -1573,6 +1586,11 @@ var $exeDevice = {
             $exeDevice.copyPhrase();
         });
 
+        $('#ordenaECut').on('click', function (e) {
+            e.preventDefault();
+            $exeDevice.cutPhrase();
+        });
+
         $('#ordenaEPaste').on('click', function (e) {
             e.preventDefault();
             $exeDevice.pastePhrase();
@@ -1775,14 +1793,12 @@ var $exeDevice = {
         }
         wd = wd < 700 ? 800 : wd;
         wd = wd > 1200 ? 1200 : wd;
-        $('#ordenaEPhrase').width(wd);
+        // Only the cards follow the columns, and never past the tab: a wider
+        // form spilled out of the iDevice.
         $('#ordenaEPhrase').css({
-            'max-width': wd + 'px',
+            width: wd + 'px',
+            'max-width': '100%',
         });
-        $('#gameQEIdeviceForm').css({
-            'max-width': wd + 'px',
-        });
-        $('#gameQEIdeviceForm').width(wd);
     },
 
     loadImage: function (id) {
@@ -1799,7 +1815,7 @@ var $exeDevice = {
     },
 
     loadAudio: function (url) {
-        const validExt = ['mp3', 'wab', 'ogg'],
+        const validExt = ['mp3', 'wav', 'ogg'],
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(_('Supported formats') + ': mp3, wav, ogg');
@@ -1813,7 +1829,9 @@ var $exeDevice = {
 
     clearPhrase: function () {
         $('#ordenaEPhrase').empty();
-        $('#ordenaEPraseI').val('');
+        $(
+            '#ordenaEPraseI, #ordenaEDefinition, #ordenaEURLAudioDefinition, #ordenaEMessageOK, #ordenaEMessageKO, #ordenaEURLAudioOK, #ordenaEURLAudioKO'
+        ).val('');
     },
 
     addPhrase: function () {
@@ -1882,6 +1900,7 @@ var $exeDevice = {
             $exeDevice.phrasesGame.splice($exeDevice.active, 0, p);
             $exeDevice.showPhrase($exeDevice.active, true);
             $('#ordenaENumPhrases').text($exeDevice.phrasesGame.length);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit == 1) {
             $('#ordenaEPaste').hide();
             $exeDevice.typeEdit = -1;
@@ -2037,8 +2056,8 @@ var $exeDevice = {
     },
 
     showImageCard: function (url) {
-        $image = $('#ordenaECard');
-        $nimage = $('#ordenaENoCard');
+        const $image = $('#ordenaECard'),
+            $nimage = $('#ordenaENoCard');
         $image.hide();
         $nimage.show();
         if (!url) return;
