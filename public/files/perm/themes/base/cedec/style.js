@@ -234,26 +234,25 @@ var eXeCedecStyle = {
     getBreadcrumbs: function () {
         if (!this.breadcrumbs) return;
         if ($('html').attr('id') == 'exe-index') return;
+        // Page titles are text: build nodes, never markup
+        function link(a) {
+            var text = a.text();
+            return $('<a></a>')
+                .attr('href', a.attr('href'))
+                .attr('title', text)
+                .append($('<span></span>').text(eXeCedecStyle.truncate(text)));
+        }
         function getNodeLinks() {
-            var res =
-                '<li><strong><span>' +
-                eXeCedecStyle.truncate($('.page-header .page-title').text()) +
-                '</span></strong></li>';
-            var extra = '';
+            var items = [];
             // File name of the current page
             var loc = window.location.href;
             loc = loc.split('/');
             loc = loc[loc.length - 1];
             loc = loc.split('?')[0];
             loc = loc.split('#')[0];
-            var mainTit = '';
-            var mainLnk = '';
-            $('#siteNav a').each(function (x) {
+            var main = $('#siteNav a').first();
+            $('#siteNav a').each(function () {
                 var e = $(this);
-                if (x == 0) {
-                    mainTit = e.text();
-                    mainLnk = e.attr('href');
-                }
                 var ref = e.attr('href');
                 if (!ref) return;
                 if (ref == loc || ref.endsWith('/' + loc)) {
@@ -262,38 +261,34 @@ var eXeCedecStyle = {
                         .parents('li')
                         .each(function () {
                             var a = $('a', this).eq(0);
-                            extra =
-                                '<li><a href="' +
-                                a.attr('href') +
-                                '" title="' +
-                                eXeCedecStyle.removeQuotes(a.text()) +
-                                '"><span>' +
-                                eXeCedecStyle.truncate(a.text()) +
-                                '</span></a></li>' +
-                                extra;
+                            items.unshift($('<li></li>').append(link(a)));
                         });
                 }
             });
-            var img = '../theme/img/home.png';
-            var tit = eXeCedecStyle.removeQuotes(mainTit);
-            return (
-                '<li><a href="' +
-                mainLnk +
-                '" id="siteBreadcrumbsHome" title="' +
-                tit +
-                '"><img src="' +
-                img +
-                '" width="19" height="19" alt="' +
-                tit +
-                '"><span class="sr-av">' +
-                mainTit +
-                '</span></a></li>' +
-                extra +
-                res
+            var mainTit = main.text();
+            var home = $('<a id="siteBreadcrumbsHome"></a>')
+                .attr('href', main.attr('href'))
+                .attr('title', mainTit)
+                .append(
+                    $('<img width="19" height="19">')
+                        .attr('src', '../theme/img/home.png')
+                        .attr('alt', mainTit)
+                )
+                .append($('<span class="sr-av"></span>').text(mainTit));
+            items.unshift($('<li></li>').append(home));
+            items.push(
+                $('<li></li>').append(
+                    $('<strong></strong>').append(
+                        $('<span></span>').text(
+                            eXeCedecStyle.truncate($('.page-header .page-title').text())
+                        )
+                    )
+                )
             );
+            return items;
         }
-        var breadcrumb =
-            '<div id="siteBreadcrumbs"><ul>' + getNodeLinks() + '</ul></div>';
+        var breadcrumb = $('<div id="siteBreadcrumbs"><ul></ul></div>');
+        breadcrumb.find('ul').append(getNodeLinks());
         $('.package-header').prepend(breadcrumb).addClass('width-breadcrumbs');
     },
     // Institutional logo band, website only. Trademarks: see config.xml.

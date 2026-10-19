@@ -52,7 +52,7 @@ The project-level `screenshot.png` at the **ZIP root** is the **project thumbnai
 
 Each theme directory contains a `config.xml` that declares its identity and licensing terms. The file is valid XML 1.0.
 
-Annotated example, based on `public/files/perm/themes/base/base/config.xml`:
+Annotated example (illustrative values; each theme ships its own `config.xml`):
 
 ```xml
 <?xml version="1.0"?>

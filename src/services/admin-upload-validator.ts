@@ -82,8 +82,20 @@ export const SUPPORTED_LOCALES = [
     'ar',
 ];
 
-// Base theme names that cannot be overwritten
-export const BASE_THEME_NAMES = ['base', 'neo', 'flux', 'nova', 'zen'];
+// Base theme names that cannot be overwritten (one per directory in public/files/perm/themes/base/)
+export const BASE_THEME_NAMES = [
+    'base',
+    'cedec',
+    'educablue',
+    'etwinning',
+    'flux',
+    'intef',
+    'kids',
+    'neo',
+    'nova',
+    'universal',
+    'zen',
+];
 
 // ============================================================================
 // Factory Function
