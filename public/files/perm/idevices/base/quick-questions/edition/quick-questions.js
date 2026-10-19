@@ -403,12 +403,6 @@ var $exeDevice = {
         }
     },
 
-    updateProgressBar: function () {
-        $('#progress-bar').val(
-            (player.getCurrentTime() / player.getDuration()) * 100
-        );
-    },
-
     onPlayerError: function () {
         // $exeDevice.showMessage("El video no está disponible");
     },
@@ -901,7 +895,6 @@ var $exeDevice = {
     },
 
     changeTypeQuestion: function (type) {
-        $('#quextETitleAltImage').removeClass('d-flex').addClass('d-none');
         $('#quextEAuthorAlt').removeClass('d-flex').addClass('d-none');
         $('#quextETitleImage').hide();
         $('#quextEInputImage').removeClass('d-flex').addClass('d-none');
@@ -942,7 +935,6 @@ var $exeDevice = {
                 );
                 break;
             case 2:
-                $('#quextEImageVideo').show();
                 $('#quextETitleVideo').show();
                 $('#quextEInputVideo').removeClass('d-none').addClass('d-flex');
                 $('#quextENoVideo').show();
@@ -2319,14 +2311,6 @@ var $exeDevice = {
             }
         );
 
-        $('#quextShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#quextCodeAccess, #quextMessageCodeAccess').prop(
-                'disabled',
-                !marcado
-            );
-        });
-
         $('.QXTE-EPanel').on('click', 'input.QXTE-Type', (e) => {
             const type = parseInt($(e.target).val());
             $exeDevice.changeTypeQuestion(type);
@@ -2571,11 +2555,6 @@ var $exeDevice = {
                 ? $('#quextEVIStart')
                 : $('#quextEVIEnd');
             $timeV.val($('#quextEVITime').text());
-        });
-
-        $('#quextUseLives').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#quextNumberLives').prop('disabled', !marcado);
         });
 
         $('#quextEShowSolution').on('change', function () {

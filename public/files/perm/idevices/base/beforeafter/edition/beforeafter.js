@@ -41,7 +41,6 @@ var $exeDevice = {
         if (!$exeDevice.cardsGame.length)
             $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
 
-        $('#bfafETextDiv, #bfafETextDivBack').hide();
         this.active = 0;
     },
 

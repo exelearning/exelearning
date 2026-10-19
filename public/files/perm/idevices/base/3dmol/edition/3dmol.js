@@ -1298,8 +1298,6 @@ var $exeDevice = {
         $('.DMOLE-EAnwersOptions').each(function () {
             $(this).val('');
         });
-        $('#dmoleMessageOK').val('');
-        $('#dmoleMessageKO').val('');
     },
 
     showOptions: function (number) {
@@ -2315,14 +2313,6 @@ var $exeDevice = {
                 e.stopPropagation();
             }
         );
-
-        $('#dmoleShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#dmoleCodeAccess, #dmoleMessageCodeAccess').prop(
-                'disabled',
-                !marcado
-            );
-        });
 
         $('.DMOLE-EPanel').on('click', 'input.DMOLE-TypeSelect', function () {
             const type = parseInt($(this).val(), 10);

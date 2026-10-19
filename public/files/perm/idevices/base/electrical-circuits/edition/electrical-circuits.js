@@ -1384,8 +1384,6 @@ var $exeDevice = {
         $('.ELCE-EAnwersOptions').each(function () {
             $(this).val('');
         });
-        $('#elceMessageOK').val('');
-        $('#elceMessageKO').val('');
     },
 
     showOptions: function (number) {
@@ -2270,14 +2268,6 @@ var $exeDevice = {
                 e.stopPropagation();
             }
         );
-
-        $('#elceShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#elceCodeAccess, #elceMessageCodeAccess').prop(
-                'disabled',
-                !marcado
-            );
-        });
 
         $('.ELCE-EPanel').on('click', 'input.ELCE-TypeSelect', function () {
             const type = parseInt($(this).val(), 10);
