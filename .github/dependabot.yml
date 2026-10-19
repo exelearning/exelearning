@@ -13,13 +13,6 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    groups:
-      # vitest and its @vitest/* companions pin each other with exact-version
-      # peer dependencies; bumping one alone breaks the run (#2384).
-      vitest:
-        patterns:
-          - "vitest"
-          - "@vitest/*"
     ignore:
       # Playwright 1.62 ships a Firefox build whose driver intermittently
       # never attaches the SW-served preview iframe, hanging frameLocator
@@ -28,16 +21,25 @@ updates:
       - dependency-name: "@playwright/test"
         versions: [">=1.59"]
     groups:
+      # vitest and its @vitest/* companions pin each other with exact-version
+      # peer dependencies; bumping one alone breaks the run (#2384).
+      # Kept out of test-tools: a dependency may belong to only one group.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
       # Yjs ecosystem: keep in sync — shim build depends on compatible versions
       yjs-ecosystem:
         patterns:
           - "yjs"
           - "y-*"
           - "lib0"
-      # MathJax: pinned separately — exe_math/ is a custom subset requiring manual validation
+      # MathJax: pinned separately — exe_math/ is a custom subset requiring manual validation.
+      # The packages we install are mathjax and @mathjax/*, not mathjax-full.
       mathjax:
         patterns:
-          - "mathjax-full"
+          - "mathjax"
+          - "@mathjax/*"
       # Elysia framework
       elysia:
         patterns:
@@ -46,8 +48,6 @@ updates:
       # Test tooling
       test-tools:
         patterns:
-          - "vitest"
-          - "@vitest/*"
           - "@playwright/test"
           - "happy-dom"
       # Build tooling
@@ -69,10 +69,12 @@ updates:
           - "fflate"
           - "abcjs"
           - "html2canvas"
-          - "simplelightbox"
           - "interactjs"
           - "dompurify"
           - "fabric"
+          - "pdfjs-dist"
+          - "mermaid"
+          - "simplelightbox"
 
   # Electron main-process dependencies. app/ has its own manifest and lockfile,
   # which the "/" entry above does not cover, so electron-updater, electron-log,

@@ -288,6 +288,9 @@
 *   Files: /public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
     *   Copyright: Andre Rinas
     *   License: MIT
+    *   Note: stock SimpleLightbox 2.14.3, copied from the npm package by
+        scripts/copy-vendor-libs.js. image-gallery.js builds the title, author
+        and license caption itself.
 *   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0

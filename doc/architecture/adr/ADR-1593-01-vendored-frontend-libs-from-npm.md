@@ -203,7 +203,7 @@ ported.
 | `image-gallery/export/simple-lightbox.min.css` | SimpleLightbox 2.10.1 CSS plus a local `/* SDWEB */` block (caption link colour and author/license padding). | Replaced by npm's 2.14.3 CSS; the SDWEB rules moved to `image-gallery.css`, scoped to `.sl-caption`. |
 | `public/libs/simplelightbox/dist/*` | Upstream 2.10.1 (`simple-lightbox.min.js` identical to npm; other variants only reformatted), and nothing loaded it. | Removed; the image-gallery copy is now generated from the same `simplelightbox` package. |
 | `html2canvas.js` ×3 (`checklist`, `progress-report`, `rubric`) | Same version as npm (1.4.1), but a Prettier-reformatted non-minified build; two copies also carried an added `/* eslint-disable */`. No functional change. | Replaced by npm's `html2canvas.min.js` 1.4.1. |
-| `public/libs/abcjs/abcjs-audio.css` | Upstream 6.0.4 file, reformatted, plus an eXe block of presentation rules (`.abc-container`, `pre.abc-music`, …). | Kept tracked (not generated) because of the eXe block; the upstream part was aligned with abcjs 6.7.0 (`line-height: 1` on `.abcjs-btn`). |
+| `public/libs/abcjs/abcjs-audio.css` | Upstream 6.0.4 file, reformatted, plus an eXe block of presentation rules (`.abc-container`, `pre.abc-music`, …). | Kept tracked (not generated) because of the eXe block; the upstream part was aligned with abcjs 6.7.1 (`line-height: 1` on `.abcjs-btn`). The 6.7.1 stylesheet is unchanged from 6.7.0. |
 | Bootstrap `*.min.{js,css}` | Upstream files; npm's `sourceMappingURL` comments announce maps not shipped in exports. | Generated; the comments are stripped during the copy (#2260). |
 
 ## Consequences
