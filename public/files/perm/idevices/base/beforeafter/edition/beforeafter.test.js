@@ -165,6 +165,27 @@ describe('beforeafter edition: shared form tabs', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
+    it('keeps the "Show minimized" switch working after unchecking it', () => {
+        const input = document.getElementById('bfafEShowMinimize');
+
+        input.click();
+        input.click();
+        expect(input.checked).toBe(false);
+        expect(input.style.display).not.toBe('none');
+
+        input.click();
+        expect(input.checked).toBe(true);
+    });
+
+    it('stores the orientation in the card on screen', () => {
+        device.cardsGame = [{ vertical: false }];
+        device.active = 0;
+
+        document.getElementById('bfafEVertical').click();
+
+        expect(device.cardsGame[0].vertical).toBe(true);
+    });
+
     it('lays the form out in the shared tabs, and opens on its questions (contents)', () => {
         expect(tabNames()).toEqual([
             'instructions',

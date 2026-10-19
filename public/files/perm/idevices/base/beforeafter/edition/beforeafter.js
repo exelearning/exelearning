@@ -123,7 +123,7 @@ var $exeDevice = {
             options = `
                 <div id="bfafEOptions">
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" data-target="bfafEShowMinimize">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="bfafEShowMinimize" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -837,27 +837,11 @@ var $exeDevice = {
             }
         });
 
-        $('#beforeAfterQIdeviceForm').on(
-            'change',
-            '.toggle-input',
-            function () {
-                const $input = $(this);
-                const checked = $input.is(':checked');
-                const target = $input.closest('.toggle-item').data('target');
-                if (target) {
-                    const $targetEl = $('#' + target);
-                    if ($targetEl.length) {
-                        $targetEl.toggle(checked);
-                    }
-                }
-                if (this.id === 'bfafEVertical') {
-                    if ($exeDevice.cardsGame[$exeDevice.active]) {
-                        $exeDevice.cardsGame[$exeDevice.active].vertical =
-                            checked;
-                    }
-                }
+        $('#beforeAfterQIdeviceForm').on('change', '#bfafEVertical', function () {
+            if ($exeDevice.cardsGame[$exeDevice.active]) {
+                $exeDevice.cardsGame[$exeDevice.active].vertical = this.checked;
             }
-        );
+        });
 
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
     },
