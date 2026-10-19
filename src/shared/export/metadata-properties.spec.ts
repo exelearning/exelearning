@@ -186,6 +186,8 @@ describe('metadata-properties', () => {
             expect(isExcludedFromXml('odeIdentifier')).toBe(true);
             expect(isExcludedFromXml('createdAt')).toBe(true);
             expect(isExcludedFromXml('modifiedAt')).toBe(true);
+            // The thumbnail travels as screenshot.png, not inside content.xml
+            expect(isExcludedFromXml('screenshot')).toBe(true);
         });
 
         it('returns true for SCORM properties', () => {
