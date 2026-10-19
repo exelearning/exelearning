@@ -276,7 +276,6 @@ var $exeDevice = {
     youTubeReady: function () {
         if (typeof YT == 'undefined' || !$exeDevice) return false;
         const lifecycle = $exeDevice.$lifecycle;
-        $('#vquextMediaVideo').prop('disabled', false);
         $exeDevice.player = new YT.Player('vquextEVideo', {
             width: '100%',
             height: '100%',
@@ -345,14 +344,6 @@ var $exeDevice = {
                     $exeDevice.endVideoQuExt = lduration;
                 }
             }
-        }
-    },
-
-    updateProgressBar: function () {
-        if ($exeDevice.videoType > 0) {
-            $exeDevice.updateProgressBarLocal();
-        } else {
-            $exeDevice.updateProgressBarYT();
         }
     },
 
@@ -466,14 +457,6 @@ var $exeDevice = {
         }
     },
 
-    updateProgressBarYT: function () {
-        $('#progress-bar').val(
-            ($eXeDevice.player.getCurrentTime() /
-                $eXeDevice.player.getDuration()) *
-                100
-        );
-    },
-
     startVideoLocal: function (url, start, end) {
         if ($exeDevice.localPlayer) {
             $exeDevice.pointEnd = end;
@@ -575,16 +558,6 @@ var $exeDevice = {
                 $exeDevice.localPlayer.pause();
                 $exeDevice.pointEnd = 100000;
             }
-        }
-    },
-
-    updateProgressBarLocal: function () {
-        if ($exeDevice.localPlayer) {
-            $('#progress-bar').val(
-                (Math.round($exeDevice.localPlayer.currentTime) /
-                    Math.round($exeDevice.localPlayer.duration)) *
-                    100
-            );
         }
     },
 
@@ -795,7 +768,7 @@ var $exeDevice = {
         $('.VDQXTE-Times')[0].checked = true;
         $('.VDQXTE-Number')[2].checked = true;
 
-        $('#vquextPoint, #vquextEInitVideo, #vquextEEndVideo').val('00:00:00');
+        $('#vquextPoint').val('00:00:00');
         $('#vquextECheckSoundVideo, #vquextECheckImageVideo').prop(
             'checked',
             true
@@ -840,7 +813,6 @@ var $exeDevice = {
         $('input.VDQXTE-Number').prop('disabled', type === 1);
         $('#vquextEAnswers, #vquextEQuestionDiv').toggle(type === 0);
         $('#vquextEWordDiv').toggle(type === 1);
-        $('#vquextSolutionWordDiv').toggle(type !== 0);
     },
 
     showSolution: function (solution) {
@@ -1167,12 +1139,6 @@ var $exeDevice = {
     },
 
     initQuestions: function () {
-        $('#vquextEInputOptionsImage').css('display', 'flex');
-        $('#vquextEInputVideo').css('display', 'flex');
-        $('#vquextMediaNormal').prop('disabled', false);
-        $('#vquextMediaImage').prop('disabled', false);
-        $('#vquextMediaText').prop('disabled', false);
-        $('#vquextSolutionWordDiv').hide();
         $('#vquextERepeatQuestion').hide();
         $('label[for="vquextERepeatQuestion"]').hide();
 
@@ -1328,7 +1294,6 @@ var $exeDevice = {
         $('#vquextEUseLives').prop('checked', game.useLives);
         $('#vquextENumberLives').val(game.numberLives);
         $('#vquextEPercentajeQuestions').val(game.percentajeQuestions || 100);
-        $('#vquextEVideoIntro').val(game.idVideoQuExt);
         $('#vquextEShowSolution').prop('checked', game.showSolution);
         $('#vquextETimeShowSolution').val(game.timeShowSolution);
         $('#vquextETimeShowSolution').prop('disabled', !game.showSolution);
@@ -1835,12 +1800,6 @@ var $exeDevice = {
             $('#vquextETimeShowSolution').prop('disabled', !marcado);
         });
 
-        $('#vquextShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#vquextCodeAccess').prop('disabled', !marcado);
-            $('#vquextMessageCodeAccess').prop('disabled', !marcado);
-        });
-
         $('.VDQXTE-EPanel').on('click', 'input.VDQXTE-Number', function () {
             const number = parseInt($(this).val());
             $exeDevice?.showOptions(number);
@@ -2011,16 +1970,6 @@ var $exeDevice = {
                     color: '#2c6d2c',
                 });
             }
-        });
-
-        $('#vquextUseLives').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#vquextENumberLives').prop('disabled', !marcado);
-        });
-
-        $('#vquextEShowSolution').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#vquextETimeShowSolution').prop('disabled', !marcado);
         });
 
         $('#vquextEVIURL').change(function () {
