@@ -1717,6 +1717,9 @@ describe('PreviewPanelManager', () => {
       expect(result).toContain('libs/pdfjs/pdf.min.js');
       expect(result).toContain('libs/pdfjs/pdf.worker.min.js');
       expect(result).toContain("createElement('canvas')");
+      // pdf.js 6 rejects a plain string; the parameter object is required.
+      expect(result).toContain('getDocument({ url: src })');
+      expect(result).not.toContain('getDocument(src)');
     });
 
     it('should inject toolbar elements in embed rendering script', () => {
@@ -2215,7 +2218,8 @@ describe('PreviewPanelManager', () => {
       const viewerHtml = await secondCallArg.text();
       expect(viewerHtml).toContain('libs/pdfjs/pdf.min.js');
       expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.js');
-      expect(viewerHtml).toContain('getDocument(');
+      expect(viewerHtml).toContain('getDocument({ url:');
+      expect(viewerHtml).not.toContain('getDocument("');
       expect(viewerHtml).toContain('createElement("canvas")');
       expect(viewerHtml).not.toContain('<iframe');
       // Verify toolbar elements
