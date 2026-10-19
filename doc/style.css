@@ -25,3 +25,52 @@
     --md-primary-fg-color--dark: #075f5f;
     --md-accent-fg-color: #0ba1a1;
 }
+
+/* Plugins guides (doc/plugins/) */
+.md-typeset .lang-switch {
+    float: right;
+    font-size: 0.7rem;
+    margin-top: -2.6rem;
+}
+
+/* Screenshots of the plugins guides live under doc/plugins/img/ */
+.md-typeset img[src*="img/"] {
+    border: 1px solid var(--md-default-fg-color--lightest);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Print / "Save as PDF": one guide per page, no web chrome */
+@media print {
+    .md-typeset .lang-switch,
+    .md-content__button,
+    .md-source-file {
+        display: none !important;
+    }
+
+    .md-typeset h1 {
+        break-before: page;
+    }
+
+    .md-content__inner > h1:first-child {
+        break-before: avoid;
+    }
+
+    .md-typeset img,
+    .md-typeset table,
+    .md-typeset .admonition,
+    .md-typeset details {
+        break-inside: avoid;
+    }
+
+    .md-typeset h2,
+    .md-typeset h3 {
+        break-after: avoid;
+    }
+}
+
+.md-typeset .manual-logo {
+    display: block;
+    width: 40%;
+    margin: 1rem auto 2rem;
+}
