@@ -2,7 +2,7 @@
  * Build script for the mind map editor of the exemindmap TinyMCE plugin.
  *
  * Bundles editor/src/editor.ts with Mind Elixir and @erseco/mind-elixir-export-svg
- * (both pinned in package.json) into a
+ * (both pinned in package.json), and the Material Symbols icons it uses, into a
  * self-contained IIFE and one stylesheet, so the editor iframe loads two local files and
  * nothing from the network:
  *
@@ -23,6 +23,8 @@ const result = await Bun.build({
     format: 'iife',
     minify: true,
     target: 'browser',
+    // Icons are inlined as SVG markup
+    loader: { '.svg': 'text' },
 });
 
 if (!result.success) {

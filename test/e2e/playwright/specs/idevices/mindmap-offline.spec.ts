@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { waitForAppReady, gotoWorkarea, addTextIdevice } from '../../helpers/workarea-helpers';
-import { editTextIdevice, openMindmapEditor, renameTopic, topic } from '../../helpers/mindmap-helpers';
+import { editTextIdevice, openMindmapEditor, renameTopic, saveMindmap, topic } from '../../helpers/mindmap-helpers';
 
 /**
  * The mind map editor works with no network: it must not request anything that this
@@ -29,9 +29,15 @@ test.describe('Mind map editor offline contract', () => {
             if (url.startsWith('data:') || url.startsWith('blob:')) return;
             if (!url.startsWith(origin)) foreign.push(`${request.resourceType()} ${url}`);
             // What the editor page loads (the page itself may go through a static server's
-            // clean-URL redirects, which are navigations, not files the editor needs)
-            const isEditor = url.includes('exemindmap-editor') || url.includes('/exemindmap/');
-            if (isEditor && request.resourceType() !== 'document') {
+            // clean-URL redirects, which are navigations, not files the editor needs). Saving
+            // inserts the map into TinyMCE, whose own document then loads the plugin's preview.
+            let frameUrl = '';
+            try {
+                frameUrl = request.frame().url();
+            } catch {
+                // A service worker request has no frame
+            }
+            if (frameUrl.includes('exemindmap') && request.resourceType() !== 'document') {
                 editorFiles.push(new URL(url).pathname.split('/').pop() || '');
             }
         });
@@ -46,8 +52,7 @@ test.describe('Mind map editor offline contract', () => {
         await frame.locator('#text-color').fill('#336699');
         await frame.locator('.mind-elixir-toolbar.rb span').last().click();
         await frame.locator('#export').click();
-        await frame.locator('#save').click();
-        await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0);
+        await saveMindmap(page, frame);
 
         expect(foreign, `editor requested remote resources:\n${foreign.join('\n')}`).toEqual([]);
         // The editor is two built files next to its page, each requested once

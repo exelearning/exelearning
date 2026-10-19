@@ -187,20 +187,31 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         await openElpFile(page, FIXTURE);
         await selectFirstPage(page);
 
+        // The stored source of every map, exactly as it is in the page
+        const rawCodes = () =>
+            page.locator('#node-content .exe-mindmap-code').evaluateAll(codes => codes.map(c => c.innerHTML));
+        const original = await rawCodes();
+
         const simpleBlock = await editTextIdevice(page, 1);
         let { frame, frame2 } = await openMindmapEditor(page, 0);
         await expect(topic(frame, 'Mi primer mapa')).toBeVisible();
         await expect(topic(frame, 'Segunda idea')).toBeVisible();
+        await renameTopic(page, frame, 'Segunda idea', 'No guardado');
         await cancelMindmap(page);
         await saveIdevice(page, simpleBlock);
         // Cancelling changed nothing
         expect((await storedMaps(page))[1].format).toBe('legacy');
 
-        await editTextIdevice(page, 2);
+        const largeBlock = await editTextIdevice(page, 2);
         ({ frame, frame2 } = await openMindmapEditor(page, 0));
         const start = Date.now();
         await expect(frame.locator('me-tpc')).toHaveCount(311, { timeout: 15000 });
         expect(Date.now() - start).toBeLessThan(15000);
         expect(countNodes((await editorData(frame2)).nodeData)).toBe(311);
+        // Closing the dialog does not convert or touch the legacy source either
+        await page.locator('.tox-dialog__header button[aria-label="Close"]').click();
+        await expect(page.locator('.tox-dialog')).toHaveCount(0);
+        await saveIdevice(page, largeBlock);
+        expect(await rawCodes()).toEqual(original);
     });
 });

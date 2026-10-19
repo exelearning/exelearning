@@ -1,5 +1,17 @@
 /* Mind map editor (exemindmap plugin) */
 
+:root {
+    /* eXeLearning's colours (public/style/workarea) */
+    --exe-primary: #0ba1a1;
+    --exe-primary-dark: #107275;
+    --exe-primary-light: #e3f8f9;
+    --exe-border: #d1d5db;
+    --exe-surface: #f6f8fa;
+    --exe-hover: #e5e7eb;
+    --exe-text: #1f2937;
+    --exe-muted: #4b5563;
+}
+
 html,
 body {
     height: 100%;
@@ -10,7 +22,7 @@ body {
     display: flex;
     flex-direction: column;
     font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    color: #1f2328;
+    color: var(--exe-text);
     background: #fff;
 }
 
@@ -18,34 +30,45 @@ body {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px 12px;
-    padding: 6px 8px;
-    border-bottom: 1px solid #d0d7de;
-    background: #f6f8fa;
+    gap: 6px 16px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--exe-border);
+    background: var(--exe-surface);
 }
 
-#toolbar .group {
+.group {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
 }
 
-#toolbar .spacer {
+.spacer {
     flex: 1;
 }
 
 button {
-    font: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 30px;
     padding: 3px 8px;
-    border: 1px solid #c4ccd4;
-    border-radius: 4px;
-    background: #fff;
+    font: inherit;
     color: inherit;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+    background: #fff;
     cursor: pointer;
 }
 
+button svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
 button:hover:not(:disabled) {
-    background: #eef1f4;
+    background: var(--exe-hover);
 }
 
 button:disabled {
@@ -54,51 +77,16 @@ button:disabled {
 }
 
 button[aria-pressed="true"] {
-    background: #dbe9ff;
-    border-color: #6c9ce0;
+    color: var(--exe-primary-dark);
+    border-color: var(--exe-primary);
+    background: var(--exe-primary-light);
 }
 
-button.primary {
-    background: #00897b;
-    border-color: #00796b;
-    color: #fff;
-    font-weight: 600;
-}
-
-button.primary:hover:not(:disabled) {
-    background: #00796b;
-}
-
-#bold {
-    font-weight: 700;
-}
-
-#italic {
-    font-style: italic;
-}
-
-#underline {
-    text-decoration: underline;
-}
-
-#strike {
-    text-decoration: line-through;
-}
-
-label.color {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin: 0 4px;
-}
-
-label.color input {
-    width: 28px;
-    height: 24px;
-    padding: 0;
-    border: 1px solid #c4ccd4;
-    border-radius: 4px;
-    background: none;
+button:focus-visible,
+input:focus-visible,
+.mind-elixir-toolbar span:focus-visible {
+    outline: 2px solid var(--exe-primary);
+    outline-offset: 1px;
 }
 
 #message {
@@ -112,20 +100,134 @@ label.color input {
     border-color: #cf222e;
 }
 
-#map {
+#main {
+    display: flex;
     flex: 1;
     min-height: 0;
+}
+
+#map {
+    flex: 1;
+    min-width: 0;
+}
+
+/* A light grid, as in the previous editor; it is not part of the saved image */
+#map .map-container {
+    background-image: linear-gradient(#eef0f3 1px, transparent 1px), linear-gradient(90deg, #eef0f3 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+/* The dialog cannot go full screen from its iframe, and it is already as large as it can be */
+#map #fullscreen {
+    display: none;
+}
+
+#inspector {
+    flex: none;
+    width: 210px;
+    padding: 12px;
+    overflow-y: auto;
+    border-left: 1px solid var(--exe-border);
+    background: var(--exe-surface);
+}
+
+#inspector section + section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--exe-border);
+}
+
+#inspector h2 {
+    margin: 0 0 8px;
+    font-size: 14px;
+}
+
+label[for="map-title"] {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+#map-title {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 5px 8px;
+    font: inherit;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+}
+
+.check {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.check input {
+    margin: 3px 0 0;
+}
+
+#format-hint {
+    margin: 0 0 10px;
+    color: var(--exe-muted);
+}
+
+.field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.field-label {
+    flex: 1 0 100%;
+    color: var(--exe-muted);
+}
+
+input[type="color"] {
+    width: 38px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+
+input[type="color"]:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+@media (max-width: 640px) {
+    #toolbar button span {
+        display: none;
+    }
+
+    #main {
+        flex-direction: column;
+    }
+
+    #inspector {
+        width: auto;
+        max-height: 40%;
+        border-top: 1px solid var(--exe-border);
+        border-left: 0;
+    }
 }
 
 @media print {
     #toolbar,
     #message,
+    #inspector,
     .mind-elixir-toolbar,
     .context-menu {
         display: none !important;
     }
 
-    #map {
+    #main {
         height: 100vh;
     }
 }

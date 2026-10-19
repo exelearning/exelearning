@@ -327,25 +327,10 @@ test.describe('Text iDevice', () => {
             await expect(mindmapButton).toBeVisible({ timeout: 10000 });
             await mindmapButton.click();
 
-            // Wait for the mindmap TinyMCE dialog to appear
+            // The editor opens straight away, in one TinyMCE dialog
             const dialog = page.locator('.tox-dialog');
-            await expect(dialog).toBeVisible({ timeout: 10000 });
-
-            // Verify the dialog title contains "Mind map" or similar
-            const dialogTitle = dialog.locator('.tox-dialog__title');
-            await expect(dialogTitle).toContainText(/Mind|Mapa/i, { timeout: 5000 });
-
-            // Find and click the "Open the mind map editor" button (it's a primary button)
-            const openEditorButton = dialog.locator('button.tox-button').filter({
-                hasText: /Open.*mind.*map|Abrir.*mapa.*mental|editor/i,
-            });
-            await expect(openEditorButton).toBeVisible({ timeout: 5000 });
-            await openEditorButton.click();
-
-            // Wait for the mindmap editor dialog (nested dialog) to appear
-            // This is a second dialog that contains an iframe with the mindmap editor
-            const editorDialog = page.locator('.tox-dialog').nth(1);
-            await expect(editorDialog).toBeVisible({ timeout: 10000 });
+            await expect(dialog).toHaveCount(1, { timeout: 10000 });
+            await expect(dialog.locator('.tox-dialog__title')).toContainText(/Mind|Mapa/i, { timeout: 5000 });
 
             // Find the mindmap editor iframe
             // Server mode: /api/exemindmap-editor/index.html
@@ -357,23 +342,11 @@ test.describe('Text iDevice', () => {
             await expect(mindmapFrame.locator('#toolbar')).toBeVisible({ timeout: 15000 });
             await expect(mindmapFrame.locator('me-root me-tpc')).toBeVisible({ timeout: 5000 });
 
-            // Close both dialogs
-            // First close the editor dialog (the nested one)
-            const closeEditorButton = editorDialog
-                .locator('.tox-dialog__header-close, button[aria-label="Close"]')
-                .first();
-            if ((await closeEditorButton.count()) > 0) {
-                await closeEditorButton.click();
-            }
-
-            // Then close the main mindmap dialog
-            const cancelButton = dialog
-                .locator('button')
+            // Close it without saving
+            await dialog
+                .locator('.tox-dialog__footer button')
                 .filter({ hasText: /Cancel|Cancelar/i })
-                .first();
-            if ((await cancelButton.count()) > 0 && (await cancelButton.isVisible())) {
-                await cancelButton.click();
-            }
+                .click();
 
             // Verify dialogs are closed
             await expect(page.locator('.tox-dialog')).not.toBeVisible({ timeout: 5000 });

@@ -7,10 +7,11 @@ import type { MindElixirData, NodeObj } from 'mind-elixir';
 
 /**
  * Drives the exemindmap TinyMCE plugin and its Mind Elixir editor the way a user does:
- * a text iDevice, TinyMCE, the plugin dialog, then the editor iframe.
+ * a text iDevice, TinyMCE, then the editor in the plugin's dialog.
  *
- * Selectors are the ids the editor assigns (#toolbar, #add-child, #save, …) and Mind
- * Elixir's own elements (me-tpc, me-epd), whose `data-nodeid` is "me" plus the node id.
+ * Selectors are the ids the editor assigns (#toolbar, #add-child, #map-title, …), Mind
+ * Elixir's own elements (me-tpc, me-epd), whose `data-nodeid` is "me" plus the node id, and
+ * the Save and Cancel buttons of the TinyMCE dialog.
  */
 
 export const MINDMAP_BUTTON = '.tox-tbtn[aria-label*="Mind map"], .tox-tbtn[aria-label*="Mapa mental"]';
@@ -61,8 +62,9 @@ export async function setTextContent(page: Page, html: string): Promise<void> {
 }
 
 /**
- * Opens the plugin dialog and the editor. With `mapIndex`, the existing map at that
- * position in the TinyMCE content is clicked first, as a user does to edit it.
+ * Opens the editor: the mind map button shows it straight away, in one TinyMCE dialog. With
+ * `mapIndex`, the existing map at that position in the TinyMCE content is clicked first, as a
+ * user does to edit it.
  */
 export async function openMindmapEditor(
     page: Page,
@@ -72,18 +74,19 @@ export async function openMindmapEditor(
         await tinymceFrame(page).locator('.exe-mind-map').nth(mapIndex).click();
     }
     await showMindmapButton(page, true);
-    const dialog = page.locator('.tox-dialog');
-    await expect(dialog).toBeVisible();
-    await dialog
-        .locator('button.tox-button')
-        .filter({ hasText: /Open.*mind.*map|Abrir.*mapa.*mental/i })
-        .click();
-    const frame = page.frameLocator('iframe[src*="exemindmap"]');
+    await expect(page.locator('.tox-dialog')).toHaveCount(1);
+    const frame = page.frameLocator('.tox-dialog iframe[src*="exemindmap"]');
     await expect(frame.locator('#toolbar')).toBeVisible({ timeout: 15000 });
     await expect(frame.locator('me-root me-tpc')).toBeVisible({ timeout: 15000 });
     const frame2 = page.frames().find(f => f.url().includes('exemindmap'));
     if (!frame2) throw new Error('mind map editor frame not found');
     return { frame, frame2 };
+}
+
+/** A button of the editor dialog's footer (Save or Cancel). */
+export function dialogButton(page: Page, name: 'Save' | 'Cancel'): Locator {
+    const text = name === 'Save' ? /^(Save|Guardar)$/ : /^(Cancel|Cancelar)$/;
+    return page.locator('.tox-dialog__footer button').filter({ hasText: text });
 }
 
 /** A node of the map by its exact caption. */
@@ -118,31 +121,20 @@ export async function renameTopic(page: Page, frame: FrameLocator, from: string,
     await expect(topic(frame, to)).toBeVisible();
 }
 
-/** Closes the editor without saving, then cancels the plugin dialog. */
+/** Closes the editor with its Cancel button, without saving. */
 export async function cancelMindmap(page: Page): Promise<void> {
-    await page.locator('#closebutton').click();
-    await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0);
-    await page
-        .locator('.tox-dialog__footer button')
-        .filter({ hasText: /^(Cancel|Cancelar)$/ })
-        .click();
+    await dialogButton(page, 'Cancel').click();
     await expect(page.locator('.tox-dialog')).toHaveCount(0);
 }
 
-/** Saves from the editor, gives the map a title and closes the plugin dialog. */
-export async function saveMindmap(page: Page, frame: FrameLocator, title: string): Promise<void> {
-    await frame.locator('#save').click();
-    await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0, { timeout: 15000 });
-    const dialog = page.locator('.tox-dialog');
-    const titleInput = dialog
-        .locator('.tox-form__group', { hasText: /Descriptive title|Título descriptivo/i })
-        .locator('input');
-    await titleInput.fill(title);
-    await dialog
-        .locator('.tox-dialog__footer button')
-        .filter({ hasText: /^(Save|Guardar)$/ })
-        .click();
-    await expect(dialog).toHaveCount(0, { timeout: 10000 });
+/**
+ * Saves the map with the dialog's Save button, which closes the dialog. With `title`, the
+ * descriptive title is typed first; otherwise it is the one the editor proposes.
+ */
+export async function saveMindmap(page: Page, frame: FrameLocator, title?: string): Promise<void> {
+    if (title !== undefined) await frame.locator('#map-title').fill(title);
+    await dialogButton(page, 'Save').click();
+    await expect(page.locator('.tox-dialog')).toHaveCount(0, { timeout: 15000 });
 }
 
 /** Leaves iDevice edition through its Save button. */

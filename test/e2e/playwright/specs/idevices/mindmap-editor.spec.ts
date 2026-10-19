@@ -5,6 +5,7 @@ import { waitForAppReady, gotoWorkarea, addTextIdevice } from '../../helpers/wor
 import {
     cancelMindmap,
     countNodes,
+    dialogButton,
     editTextIdevice,
     editorData,
     findNode,
@@ -52,10 +53,17 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         const block = await newProjectWithTextIdevice(page, createProject, 'Mind map new');
 
         const { frame, frame2 } = await openMindmapEditor(page);
+        // One dialog: the editor itself, with TinyMCE's Save and Cancel
+        await expect(page.locator('.tox-dialog')).toHaveCount(1);
+        await expect(dialogButton(page, 'Save')).toBeVisible();
         await expect(frame.locator('#message')).toBeHidden();
         // The editor draws the map in the font the SVG is laid out for
         expect(await frame.locator('.map-container').evaluate(e => getComputedStyle(e).fontFamily)).toMatch(/^Arial,/);
+        // A new map's title follows its central idea
+        await expect(frame.locator('#map-title')).toHaveValue('Central Idea');
+        await expect(frame.locator('#map-caption')).toBeChecked();
         await renameTopic(page, frame, 'Central Idea', 'Fotosíntesis');
+        await expect(frame.locator('#map-title')).toHaveValue('Fotosíntesis');
         await addChild(page, frame, 'Fotosíntesis', 'Luz');
         await addChild(page, frame, 'Fotosíntesis', 'Agua & CO₂ <H2O>');
         await addChild(page, frame, 'Luz', 'Clorofila');
@@ -65,19 +73,13 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await frame.locator('#bold').click();
         await expect(frame.locator('#bold')).toHaveAttribute('aria-pressed', 'true');
         await frame.locator('#italic').click();
-        await frame.locator('#underline').click();
         await frame.locator('#font-larger').click();
         await frame.locator('#text-color').fill('#c0392b');
         let luz = findNode((await editorData(frame2)).nodeData, 'Luz');
-        expect(luz?.style).toMatchObject({
-            fontWeight: 'bold',
-            fontStyle: 'italic',
-            textDecoration: 'underline',
-            color: '#c0392b',
-        });
+        expect(luz?.style).toMatchObject({ fontWeight: 'bold', fontStyle: 'italic', color: '#c0392b' });
         expect(Number.parseFloat(luz?.style?.fontSize ?? '0')).toBeGreaterThan(16);
-        await frame.locator('#strike').click();
-        expect(findNode((await editorData(frame2)).nodeData, 'Luz')?.style?.textDecoration).toBe('line-through');
+        // Underline and strike-through are not offered: neither Mind Elixir nor the SVG draws them
+        await expect(frame.locator('#underline, #strike')).toHaveCount(0);
 
         // Branch colour, also applied to the children
         await frame.locator('#branch-color').fill('#2e7d32');
@@ -99,7 +101,8 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await topic(frame, 'Fotosíntesis').click();
         await expect(frame.locator('#remove')).toBeDisabled();
 
-        await saveMindmap(page, frame, 'Fotosíntesis');
+        // One Save: the title is the one the editor proposed
+        await saveMindmap(page, frame);
         // TinyMCE uploads the image as a project asset, like any other image
         await expect
             .poll(() => page.evaluate(() => (window as any).tinymce.get('textTextarea').getContent()))
@@ -120,6 +123,9 @@ test.describe('Mind map editor (Mind Elixir)', () => {
             expect(saved.svg).toContain(`>${caption}</tspan>`);
         }
         expect(saved.svg).toContain('fill="#c0392b"');
+        // The editor's theme: a white central idea with an orange border, on white
+        expect(saved.svg).toMatch(/fill="#ffffff" stroke="#ffa500"/);
+        expect(saved.svg).toMatch(/<title[^>]*>Fotosíntesis<\/title>/);
         expect(saved.svg).not.toMatch(/<script|<foreignObject/);
         const img = page.locator('#node-content .exe-mind-map img').first();
         await expect(img).toHaveAttribute('alt', 'Fotosíntesis');
@@ -128,33 +134,82 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('leaves the caption out on request; the alt names the map', async ({
+    test('leaves the caption out on request, and keeps the title and caption when reopened', async ({
         authenticatedPage: page,
         createProject,
     }) => {
         const block = await newProjectWithTextIdevice(page, createProject, 'Mind map caption');
-        const { frame } = await openMindmapEditor(page);
+        let { frame } = await openMindmapEditor(page);
         await renameTopic(page, frame, 'Central Idea', 'Raíz "1" # *a*');
         await addChild(page, frame, 'Raíz "1" # *a*', 'Hija');
+        await frame.locator('#map-title').fill('Sin título');
+        await frame.locator('#map-caption').uncheck();
+        await saveMindmap(page, frame);
+        await expect(tinymceFrame(page).locator('.exe-mind-map figcaption')).toHaveCount(0);
 
-        await frame.locator('#save').click();
-        await expect(page.locator('iframe[src*="exemindmap"]')).toHaveCount(0);
-        const dialog = page.locator('.tox-dialog');
-        await dialog
-            .locator('.tox-form__group', { hasText: /Descriptive title/i })
-            .locator('input')
-            .fill('Sin título');
-        await dialog.locator('.tox-checkbox', { hasText: /Show the title/i }).click();
-        await dialog
-            .locator('.tox-dialog__footer button')
-            .filter({ hasText: /^(Save|Guardar)$/ })
-            .click();
+        // Reopened, the title (not the central idea) and the caption setting are kept
+        ({ frame } = await openMindmapEditor(page, 0));
+        await expect(frame.locator('#map-title')).toHaveValue('Sin título');
+        await expect(frame.locator('#map-caption')).not.toBeChecked();
+        // A caption still being typed is kept when Save is clicked
+        await topic(frame, 'Hija').click();
+        await topic(frame, 'Hija').dblclick();
+        await expect(frame.locator('#input-box')).toBeVisible();
+        await page.keyboard.press('ControlOrMeta+a');
+        await page.keyboard.type('Hija editada');
+        await saveMindmap(page, frame);
         await saveIdevice(page, block);
 
         const [saved] = await storedMaps(page);
         expect(saved.svg).toContain('>Raíz &quot;1&quot; # *a*</tspan>');
+        expect(saved.svg).toContain('>Hija editada</tspan>');
+        await expect(page.locator('#node-content .exe-mind-map')).toHaveCount(1);
         await expect(page.locator('#node-content .exe-mind-map figcaption')).toHaveCount(0);
         await expect(page.locator('#node-content .exe-mind-map img')).toHaveAttribute('alt', 'Sin título');
+    });
+
+    test('cancelling or closing changes nothing; a failed save keeps the dialog and the map', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const block = await newProjectWithTextIdevice(page, createProject, 'Mind map cancel');
+        const content = () => page.evaluate(() => (window as any).tinymce.get('textTextarea').getContent());
+
+        // A new map that is cancelled is not inserted
+        let { frame } = await openMindmapEditor(page);
+        await renameTopic(page, frame, 'Central Idea', 'Descartado');
+        await cancelMindmap(page);
+        expect(await content()).not.toContain('exe-mind-map');
+
+        // A saved map, then edits closed with the dialog's close button
+        ({ frame } = await openMindmapEditor(page));
+        await renameTopic(page, frame, 'Central Idea', 'Guardado');
+        await saveMindmap(page, frame);
+        // TinyMCE stores the image as an asset after the map is inserted
+        await expect.poll(content).toMatch(/<img src="asset:\/\/[^"]+\.svg"/);
+        const saved = await content();
+        let frame2;
+        ({ frame, frame2 } = await openMindmapEditor(page, 0));
+        await renameTopic(page, frame, 'Guardado', 'Cerrado sin guardar');
+        await page.locator('.tox-dialog__header button[aria-label="Close"]').click();
+        await expect(page.locator('.tox-dialog')).toHaveCount(0);
+        expect(await content()).toBe(saved);
+
+        // An SVG that cannot be made: the dialog stays open, says why and can save again
+        ({ frame, frame2 } = await openMindmapEditor(page, 0));
+        await renameTopic(page, frame, 'Guardado', 'Falla');
+        await frame2.evaluate(() => {
+            (window as any).__mindmapEditor.exportVectorSvg = () => Promise.reject(new Error('no SVG'));
+        });
+        await dialogButton(page, 'Save').click();
+        await expect(frame.locator('#message.error')).toContainText('no SVG');
+        await expect(page.locator('.tox-dialog')).toHaveCount(1);
+        await expect(dialogButton(page, 'Save')).toBeEnabled();
+        expect(await content()).toBe(saved);
+        await cancelMindmap(page);
+        expect(await content()).toBe(saved);
+        await saveIdevice(page, block);
+        expect((await storedMaps(page))[0].data.nodeData.topic).toBe('Guardado');
     });
 
     test('imports a legacy mindmaps JSON file and exports the map as JSON', async ({
@@ -271,6 +326,20 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await expect(topic(frame, 'Primero')).toHaveCount(1);
         await renameTopic(page, frame, 'Primero', 'Primero editado');
         await saveMindmap(page, frame, 'Primero editado');
+
+        // The map was replaced where it was, as one TinyMCE undo step
+        const titles = () =>
+            page.evaluate(() =>
+                Array.from(
+                    (window as any).tinymce.get('textTextarea').getBody().querySelectorAll('.exe-mind-map img'),
+                    (img: HTMLImageElement) => img.alt,
+                ),
+            );
+        expect(await titles()).toEqual(['Primero editado', 'Segundo']);
+        await page.evaluate(() => (window as any).tinymce.get('textTextarea').undoManager.undo());
+        expect(await titles()).toEqual(['Primero', 'Segundo']);
+        await page.evaluate(() => (window as any).tinymce.get('textTextarea').undoManager.redo());
+        expect(await titles()).toEqual(['Primero editado', 'Segundo']);
         await saveIdevice(page, block);
 
         const maps = await storedMaps(page);
