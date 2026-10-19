@@ -548,7 +548,7 @@ describe('flipcards iDevice', () => {
 
       document.body.innerHTML = `
         <div id="flipcardsIdeviceForm">
-          <span class="toggle-item" role="switch">
+          <span class="toggle-item">
             <input id="tgl" class="toggle-input" type="checkbox" data-target="#tgt">
           </span>
           <div id="tgt"></div>
@@ -577,19 +577,17 @@ describe('flipcards iDevice', () => {
       it('reacts to a change while the edition is open', () => {
         $('#tgl').prop('checked', true).trigger('change');
 
-        expect($('.toggle-item').attr('aria-checked')).toBe('true');
         expect($('#tgt').css('display')).toBe('flex');
       });
 
       it('stops reacting once the edition is closed', () => {
         $('#tgl').prop('checked', true).trigger('change');
-        expect($('.toggle-item').attr('aria-checked')).toBe('true');
+        expect($('#tgt').css('display')).toBe('flex');
 
         $exeDevice.$lifecycle.destroy();
-        $('.toggle-item').attr('aria-checked', 'stale');
         $('#tgl').prop('checked', false).trigger('change');
 
-        expect($('.toggle-item').attr('aria-checked')).toBe('stale');
+        expect($('#tgt').css('display')).toBe('flex');
       });
 
       it('leaves unrelated document handlers registered', () => {
@@ -793,6 +791,12 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             global.eXeLearning.app = previousApp;
         }
         vi.unstubAllGlobals();
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
     it('organises the edition form into shared WAI-ARIA tabs', () => {

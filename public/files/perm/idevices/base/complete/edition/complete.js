@@ -154,7 +154,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div id="cmptEWordsLimitDiv" class="CMPT-EWordsNo mb-3 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptEWordsLimit" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -187,7 +187,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="mb-3 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptEShowSolution" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -199,7 +199,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptEEstrictCheck" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -215,7 +215,7 @@ var $exeDevice = {
                     </span>
                 </div>
                 <div id="cmptECaseSensitiveDiv" class="mb-3 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptECaseSensitive" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -227,7 +227,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="mb-3 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptEWordsSize" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -239,7 +239,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="mb-3 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptEShowMinimize" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -251,7 +251,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptBack0" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -657,10 +657,9 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
-        // Toggle genérico: sincroniza aria-checked y muestra/oculta el target si existe
+        // Show or hide the block each switch controls (data-target).
         $form.on('change', '.toggle-input', function () {
             const checked = $(this).is(':checked');
-            $(this).attr('aria-checked', checked);
             const target = $(this).data('target');
             if (target) $(target).toggle(checked);
         });
@@ -777,10 +776,7 @@ var $exeDevice = {
             $exeDevice.showImageBack(hasBack, selectedFile);
         });
 
-        $form.find('.toggle-input').each(function () {
-            const checked = $(this).is(':checked');
-            $(this).attr('aria-checked', checked).trigger('change');
-        });
+        $form.find('.toggle-input').trigger('change');
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').on('click', function () {

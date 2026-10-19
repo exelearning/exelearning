@@ -732,6 +732,12 @@ describe('classify edition: shared form tabs and feedback', () => {
         vi.unstubAllGlobals();
     });
 
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
     it('organises the edition form into shared WAI-ARIA tabs', () => {
         expect(tabNames()).toEqual([
             'instructions',

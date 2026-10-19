@@ -1520,6 +1520,12 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
         document.body.innerHTML = '';
     });
 
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
     it('lays the form out in the shared tabs, and opens on its questions', () => {
         expect(tabNames()).toEqual([
             'instructions',

@@ -216,7 +216,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div id="clasificaECustomMessagesDiv" class="d-flex align-items-center mb-3">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" class="toggle-input" id="clasificaECustomMessages" />
                             <span class="toggle-visual"></span>
@@ -280,7 +280,7 @@ var $exeDevice = {
                     <input type="text" id="clasificaTitle8" class="CQE-EGroup form-control" value="${_('Group')} 9"/>
                 </div>
                 <div class="d-flex align-items-center mb-3">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" class="toggle-input" id="clasificaEShowMinimize" />
                             <span class="toggle-visual"></span>

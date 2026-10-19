@@ -169,7 +169,7 @@ var $exeDevice = {
         const optionsHtml = `
             <div id="descubreEOptions">
                 <div class="mb-3 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="descubreEShowMinimize" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -217,7 +217,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="mb-2 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="descubreEShowCards" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -236,7 +236,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="mb-2 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="descubreECustomMessages" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -262,7 +262,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="mb-3 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="true">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" checked id="descubreEShowSolution" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -1247,12 +1247,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        // Inicializar toggles (ARIA + data-target)
+        // Show or hide the block each switch controls (data-target).
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            $input
-                .closest('.toggle-item[role="switch"]')
-                .attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);

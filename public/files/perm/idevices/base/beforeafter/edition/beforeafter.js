@@ -123,7 +123,7 @@ var $exeDevice = {
             options = `
                 <div id="bfafEOptions">
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" role="switch" aria-checked="false" data-target="bfafEShowMinimize">
+                        <span class="toggle-item" data-target="bfafEShowMinimize">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="bfafEShowMinimize" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -146,7 +146,7 @@ var $exeDevice = {
                             <input id="bfafEDescription" type="text" class="form-control" />
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
+                            <span class="toggle-item">
                                 <span class="toggle-control">
                                     <input type="checkbox" class="toggle-input" id="bfafEVertical" />
                                     <span class="toggle-visual" aria-hidden="true"></span>
@@ -445,9 +445,6 @@ var $exeDevice = {
         $('#bfafEDescription').val(p.description);
         $('#bfafEPosition').val(p.position);
         $('#bfafEVertical').prop('checked', p.vertical);
-        $('#bfafEVertical')
-            .closest('.toggle-item')
-            .attr('aria-checked', !!p.vertical);
 
         $exeDevice.showImage(0);
         $exeDevice.showImage(1);
@@ -846,9 +843,7 @@ var $exeDevice = {
             function () {
                 const $input = $(this);
                 const checked = $input.is(':checked');
-                const $item = $input.closest('.toggle-item');
-                $item.attr('aria-checked', checked);
-                const target = $item.data('target');
+                const target = $input.closest('.toggle-item').data('target');
                 if (target) {
                     const $targetEl = $('#' + target);
                     if ($targetEl.length) {
@@ -863,17 +858,6 @@ var $exeDevice = {
                 }
             }
         );
-
-        (function initToggleStates() {
-            const vertChecked = $('#bfafEVertical').is(':checked');
-            $('#bfafEVertical')
-                .closest('.toggle-item')
-                .attr('aria-checked', vertChecked);
-            const minChecked = $('#bfafEShowMinimize').is(':checked');
-            $('#bfafEShowMinimize')
-                .closest('.toggle-item')
-                .attr('aria-checked', minChecked);
-        })();
 
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
     },
@@ -934,9 +918,6 @@ var $exeDevice = {
                 ? !!game.showMinimize
                 : false;
         $('#bfafEShowMinimize').prop('checked', showMinimize);
-        $('#bfafEShowMinimize')
-            .closest('.toggle-item')
-            .attr('aria-checked', showMinimize);
         game.evaluation =
             typeof game.evaluation !== 'undefined' ? game.evaluation : false;
         game.evaluationID =

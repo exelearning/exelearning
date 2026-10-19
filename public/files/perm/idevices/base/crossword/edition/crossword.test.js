@@ -178,7 +178,7 @@ describe('crossword iDevice', () => {
     beforeEach(() => {
       document.body.innerHTML = `
         <div id="crosswordForm">
-          <span class="toggle-item" role="switch">
+          <span class="toggle-item">
             <input id="tgl" class="toggle-input" type="checkbox" data-target="#tgt">
           </span>
           <div id="tgt"></div>
@@ -207,20 +207,18 @@ describe('crossword iDevice', () => {
         const $input = $('#tgl');
         $input.prop('checked', true).trigger('change');
 
-        expect($('.toggle-item').attr('aria-checked')).toBe('true');
         expect($('#tgt').css('display')).toBe('flex');
       });
 
       it('stops reacting once the edition is closed', () => {
         $('#tgl').prop('checked', true).trigger('change');
-        expect($('.toggle-item').attr('aria-checked')).toBe('true');
+        expect($('#tgt').css('display')).toBe('flex');
 
         $exeDevice.$lifecycle.destroy();
 
-        $('.toggle-item').attr('aria-checked', 'stale');
         $('#tgl').prop('checked', false).trigger('change');
 
-        expect($('.toggle-item').attr('aria-checked')).toBe('stale');
+        expect($('#tgt').css('display')).toBe('flex');
       });
 
       it('leaves unrelated document handlers registered', () => {
@@ -619,6 +617,12 @@ describe('crossword edition: shared form tabs and feedback', () => {
 
     afterEach(() => {
       tinymceGet.mockRestore();
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
     it('saves the feedback values the export reads', () => {

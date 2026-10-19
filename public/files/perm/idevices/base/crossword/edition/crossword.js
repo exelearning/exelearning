@@ -160,7 +160,7 @@ var $exeDevice = {
             options = `
                 <div id="ccgmEOptions">
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="ccgmEShowMinimize" class="toggle-input" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -175,7 +175,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Set the maximum time in minutes to complete the crossword puzzle. Set to 0 for unlimited time.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" role="switch" aria-checked="true">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" checked id="ccgmEShowSolution" class="toggle-input" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -185,7 +185,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Show the solution when completing the crossword or when the time runs out.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="ccgmECaseSensitive" class="toggle-input" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -195,7 +195,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Require uppercase and lowercase letters to match the answer exactly.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" checked id="ccgmETilde" class="toggle-input" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -216,7 +216,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Choose the percentage of words included in each game. The counter shows how many words will be used.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" role="switch" aria-checked="true">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="ccgmBack0" class="toggle-input" checked />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -900,9 +900,6 @@ var $exeDevice = {
 
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            $input
-                .closest('.toggle-item[role="switch"]')
-                .attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);

@@ -1434,7 +1434,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Choose whether learners take a quiz on the electrical circuit or view it as an interactive presentation.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" role="switch" aria-checked="false" data-target="elceShowMinimize">
+                        <span class="toggle-item" data-target="elceShowMinimize">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="elceShowMinimize" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -1444,7 +1444,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Start with the activity collapsed. Learners can expand it when they are ready.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceAnswersRamdonDiv">
-                        <span class="toggle-item" role="switch" aria-checked="false" data-target="elceAnswersRamdon">
+                        <span class="toggle-item" data-target="elceAnswersRamdon">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="elceAnswersRamdon" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -1454,7 +1454,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Shuffle the answer choices each time the activity is loaded.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceQuestionsRandomDiv">
-                        <span class="toggle-item" role="switch" aria-checked="false" data-target="elceQuestionsRandom">
+                        <span class="toggle-item" data-target="elceQuestionsRandom">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="elceQuestionsRandom" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -1464,7 +1464,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Shuffle questions so they appear in random order for each learner.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceShowSolutionDiv">
-                        <span class="toggle-item toggle-related" role="switch" aria-checked="true" data-target="elceShowSolution">
+                        <span class="toggle-item toggle-related" data-target="elceShowSolution">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="elceShowSolution" checked />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -1487,7 +1487,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Percentage of questions presented in each game session. The counter shows the actual number of questions that will be included.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-target="elceModeBoard" id="elceModeBoardDiv">
-                        <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="elceModeBoard" />
                                 <span class="toggle-visual" aria-hidden="true"></span>

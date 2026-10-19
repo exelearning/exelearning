@@ -1348,7 +1348,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Choose whether learners take a quiz on the 3D model or view it as an interactive presentation.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item" role="switch" aria-checked="false" data-target="dmoleShowMinimize">
+                        <span class="toggle-item" data-target="dmoleShowMinimize">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="dmoleShowMinimize" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -1358,7 +1358,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Start with the activity collapsed. Learners can expand it when they are ready.'))}
                     </div>  
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="dmoleAnswersRamdonDiv">
-                        <span class="toggle-item" role="switch" aria-checked="false" data-target="dmoleAnswersRamdon">
+                        <span class="toggle-item" data-target="dmoleAnswersRamdon">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="dmoleAnswersRamdon" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -1368,7 +1368,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Shuffle the answer choices each time the activity is loaded.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="dmoleQuestionsRandomDiv">
-                        <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="dmoleQuestionsRandom" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -1378,7 +1378,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Shuffle questions so they appear in random order for each learner.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="dmoleShowSolutionDiv">
-                        <span class="toggle-item toggle-related" role="switch" aria-checked="true" data-target="dmoleShowSolution">
+                        <span class="toggle-item toggle-related" data-target="dmoleShowSolution">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="dmoleShowSolution" checked />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -1401,7 +1401,7 @@ var $exeDevice = {
                         ${edition.common.getHelpTooltip(_('Percentage of questions presented in each game session. The counter shows the actual number of questions that will be included.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-target="dmoleModeBoard" id="dmoleModeBoardDiv">
-                        <span class="toggle-item" role="switch" aria-checked="false">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="dmoleModeBoard" />
                                 <span class="toggle-visual" aria-hidden="true"></span>

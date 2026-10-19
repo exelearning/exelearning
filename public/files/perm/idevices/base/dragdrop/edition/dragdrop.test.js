@@ -61,7 +61,7 @@ function buildEditionForm() {
             <img id="dadEImage" alt="" />
             <img id="dadEImageBack" alt="" />
             <input id="dadENumberCard" type="text" value="2" />
-            <span class="toggle-item" role="switch">
+            <span class="toggle-item">
                 <input class="toggle-input" type="checkbox" data-target="#dadEToggleTarget" />
             </span>
             <div id="dadEToggleTarget"></div>
@@ -197,7 +197,7 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
 
     describe('edition lifecycle teardown (#2293)', () => {
         it('releases the toggle handler delegated on document', () => {
-            const item = document.querySelector('.toggle-item');
+            const target = document.getElementById('dadEToggleTarget');
             const input = document.querySelector('.toggle-input');
             const unrelated = vi.fn();
             $(document).on('change.dragdropUnrelated', '.toggle-input', unrelated);
@@ -205,14 +205,14 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
             try {
                 input.checked = true;
                 $(input).trigger('change');
-                expect(item.getAttribute('aria-checked')).toBe('true');
+                expect(target.style.display).toBe('flex');
                 expect(unrelated).toHaveBeenCalledTimes(1);
 
-                item.setAttribute('aria-checked', 'untouched');
                 $exeDevice.$lifecycle.destroy();
+                input.checked = false;
                 $(input).trigger('change');
 
-                expect(item.getAttribute('aria-checked')).toBe('untouched');
+                expect(target.style.display).toBe('flex');
                 expect(unrelated).toHaveBeenCalledTimes(2);
             } finally {
                 $(document).off('change.dragdropUnrelated');
@@ -350,6 +350,12 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
             global.eXeLearning.app = previousApp;
         }
         vi.unstubAllGlobals();
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
     it('organises the edition form into shared WAI-ARIA tabs', () => {

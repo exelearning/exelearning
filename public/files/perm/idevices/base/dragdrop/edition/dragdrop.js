@@ -168,7 +168,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div style="display:none" class="mb-3">
-                    <span class="toggle-item" role="switch" aria-checked="true">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" checked id="dadEShowSolution" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -187,7 +187,7 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="mb-3 d-flex align-items-center gap-2">
-                    <span class="toggle-item" role="switch" aria-checked="false">
+                    <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="dadEShowMinimize" class="toggle-input" />
                             <span class="toggle-visual" aria-hidden="true"></span>
@@ -970,11 +970,9 @@ var $exeDevice = {
     addEvents: function () {
         const lifecycle = this.$lifecycle;
         $('#dadEPasteC').hide();
-        // Inicializar toggles (sin afectar lógica existente)
+        // Show or hide the block each switch controls (data-target).
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            const $item = $input.closest('.toggle-item[role="switch"]');
-            if ($item.length) $item.attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);
