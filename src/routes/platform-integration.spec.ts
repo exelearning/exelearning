@@ -905,6 +905,68 @@ describe('Platform Integration Routes', () => {
             expect(fetchCalled).toBe(false);
             expect(updateCalled).toBe(false);
         });
+
+        it('re-saves a project already linked to the module when Moodle signs cmid as an integer', async () => {
+            // mod_exescorm/mod_exeweb put `(int) $cmid` in the JWT, while
+            // projects.platform_id is a varchar read back as '456'. A second
+            // "Save to Moodle" in the same session must not be refused.
+            const token = await createValidToken({ cmid: 456 });
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'owned-uuid', platform_id: '456' }),
+            });
+            configureService({ lookupFn: publicLookup, updateProjectByUuid: async () => undefined });
+            let fetchCalled = false;
+            globalThis.fetch = async () => {
+                fetchCalled = true;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'owned-uuid');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(200);
+            expect((await response.json()).responseMessage).toBe('OK');
+            expect(fetchCalled).toBe(true);
+        });
+
+        it('still denies an integer cmid that differs from the linked module (IDOR)', async () => {
+            const token = await createValidToken({ cmid: 456 });
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'victim-uuid', platform_id: '4567' }),
+            });
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'victim-uuid');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(403);
+        });
+
+        it('denies a linked project when the JWT carries no cmid', async () => {
+            const token = await createValidToken({ cmid: undefined });
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'victim-uuid', platform_id: '456' }),
+            });
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'victim-uuid');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(403);
+        });
     });
 });
 

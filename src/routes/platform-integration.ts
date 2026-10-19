@@ -71,7 +71,10 @@ export function resetPlatformIntegrationRoutesDependencies(): void {
  *
  * @returns `true` if the export may proceed, `false` if it must be denied.
  */
-async function isProjectAuthorizedForPlatform(projectUuid: string, jwtCmid: string): Promise<boolean> {
+async function isProjectAuthorizedForPlatform(
+    projectUuid: string,
+    jwtCmid: string | number | null | undefined,
+): Promise<boolean> {
     const project = await routeDeps.findProjectByUuid(routeDeps.db, projectUuid);
 
     // Not found here is not an authorization failure: defer to the service,
@@ -87,7 +90,9 @@ async function isProjectAuthorizedForPlatform(projectUuid: string, jwtCmid: stri
     }
 
     // Linked projects may only be exported to the platform module they belong to.
-    return project.platform_id === jwtCmid;
+    // Moodle signs `cmid` as an integer while platform_id is a varchar, so
+    // compare the string forms; a JWT without a cmid never matches.
+    return jwtCmid != null && project.platform_id === String(jwtCmid);
 }
 
 /**
