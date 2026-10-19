@@ -218,7 +218,7 @@ $exe.tooltips = {
 					},				
 					content : {
 						title : $exe.tooltips.getTooltipTitle(this.title),
-						text : $("#"+id),
+						text : $(document.getElementById(id)), // "#"+id throws when the link has no id
 						button : c.indexOf("with-button")==-1 ? false : true
 					},
 					hide : c.indexOf("with-button")==-1 ? {} : { event : false },
