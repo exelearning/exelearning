@@ -519,6 +519,37 @@ describe('word-search edition: shared form tabs and feedback', () => {
         expect(document.getElementById('sopaENumQuestions').textContent).toBe('2');
     });
 
+    it('counts the first word of a new activity', () => {
+        expect(device.wordsGame).toHaveLength(1);
+        expect(document.getElementById('sopaENumQuestions').textContent).toBe('1');
+    });
+
+    it('counts a pasted copy in the words per game', () => {
+        device.wordsGame = [word('CASA', 'Hogar'), word('ARBOL', 'Planta con tronco')];
+        device.active = 0;
+        device.showQuestion(0);
+        device.updateQuestionsNumber();
+
+        device.copyQuestion();
+        device.pasteQuestion();
+
+        expect(device.wordsGame).toHaveLength(3);
+        expect(document.getElementById('sopaENumeroPercentaje').textContent).toBe('3/3');
+    });
+
+    it('does not tell the author that the AI words were added when none fits the game', async () => {
+        document.getElementById('eXeEQuestionsArea').value = 'SOLAR SYSTEM#The sun and its planets';
+
+        document.getElementById('eXeESaveButton').click();
+        await vi.waitFor(() =>
+            expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.')
+        );
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
+        expect(device.wordsGame).toHaveLength(1);
+    });
+
     describe('saving', () => {
         let editors;
         let tinymceGet;
@@ -576,6 +607,25 @@ describe('word-search edition: shared form tabs and feedback', () => {
             device.updateFieldGame(game({ itinerary }));
 
             expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('exports the word on screen with the others', async () => {
+            const blobs = [];
+            const download = vi
+                .spyOn(global.$exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+                .mockImplementation((blob) => {
+                    blobs.push(blob);
+                    return true;
+                });
+            device.active = 0;
+            document.getElementById('sopaESolutionWord').value = 'SUN';
+            document.getElementById('sopaEDefinitionWord').value = 'The star of our system';
+
+            device.exportQuestions();
+            download.mockRestore();
+
+            expect(blobs).toHaveLength(1);
+            expect(await blobs[0].text()).toBe('SUN#The star of our system\nARBOL#Planta con tronco');
         });
 
         it('saves its options', () => {
