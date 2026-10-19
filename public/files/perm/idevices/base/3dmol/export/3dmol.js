@@ -121,10 +121,10 @@ var $eXe3Dmol = {
     loadGame: function () {
         // Running activities keep their entry; each one is stored at its own index.
         $eXe3Dmol.options.length = $eXe3Dmol.activities.length;
-        $eXe3Dmol.viewers = {};
         $eXe3Dmol.activities.each(function (i) {
             const dl = $('.dmole-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
+            $eXe3Dmol.destroyViewer(i);
             const version = $('.dmole-version', this).eq(0).text(),
                 mOption = $eXe3Dmol.loadDataGame(dl, version),
                 msg = mOption.msgs.msgPlayStart;
