@@ -192,9 +192,6 @@ var $exeDevice = {
         msgs.msgEDefintion = _(
             'Please provide the definition of the word or phrase'
         );
-        msgs.msgProvideFB = _(
-            'Write the message to be displayed when passing the game'
-        );
         msgs.msgDuration = _(
             "The video's end time must be shorter than its total duration"
         );
@@ -852,169 +849,121 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-                <div id="vquextQEIdeviceForm">
-                    ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                        _('Create activities consisting on a video with interactive questions.'),
-                        'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/videotest.html',
-                    )}
-                    <div class="exe-form-tab" title="${_('General settings')}">
-                        ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
-                        <fieldset class="exe-fieldset exe-fieldset-closed">
-                            <legend><a href="#">${_('Options')}</a></legend>
-                            <div>
-                                <div class="toggle-item mb-3">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="vquextEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="vquextEShowMinimize">${_('Show minimized.')}</label>
-                                </div>
-                                <div class="toggle-item mb-3">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="vquextEAnswersRamdon" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="vquextEAnswersRamdon">${_('Random options')}</label>
-                                </div>
-                                <div class="toggle-item mb-3">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="vquextECustomMessages" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="vquextECustomMessages">${_('Custom messages')}.</label>
-                                </div>
-                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    <div class="toggle-item">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextEShowSolution" class="toggle-input" checked />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextEShowSolution">${_('Show solutions')}.</label>
-                                    </div>
-                                    <label for="vquextETimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}</label><input class="form-control" type="number" name="vquextETimeShowSolution" id="vquextETimeShowSolution" value="3" min="1" max="9" />
-                                </div>
-                                <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                                    <span>${_('Score')}:</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                        <div class="form-check form-check-inline m-0">                                        
-                                            <input class="form-check-input VDQXTE-TypeGame" checked="checked" id="vquextETypeActivity" type="radio" name="vqxtgamemode" value="1" />
-                                            <label for="vquextETypeActivity">${_('From 0 to 10')}</label>
-                                        </div>
-                                        <div class="form-check form-check-inline m-0">
-                                            <input class="form-check-input VDQXTE-TypeGame" id="vquextEGameMode" type="radio" name="vqxtgamemode" value="0" />
-                                            <label for="vquextEGameMode">${_('Points and lives')}</label>
-                                        </div>
-                                        <div class="form-check form-check-inline m-0">
-                                            <input class="form-check-input VDQXTE-TypeGame" id="vquextETypeReto" type="radio" name="vqxtgamemode" value="2" />
-                                            <label for="vquextETypeReto">${_('No score')}</label>
-                                        </div>
-                                    </div>
-                                    <a href="#vquextEGameModeHelp" id="vquextEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a>
-                                </div>
-                                <div id="vquextEGameModeHelp" class="VDQXTE-TypeGameHelp exe-block-info pt-3">
-                                    <ul>
-                                        <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                        <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
-                                        <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
-                                    </ul>
-                                </div>
-                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    <div class="toggle-item mb-0">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextEUseLives" class="toggle-input" checked />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextEUseLives">${_('Use lives')}.</label>
-                                    </div>
-                                    <label for="vquextENumberLives" >${_('Number of lives')}:</label>
-                                    <input class="form-control" type="number" name="vquextENumberLives" id="vquextENumberLives" value="3" min="1" max="5" />
-                                </div>
-                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    <div class="toggle-item mb-0">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextEHasFeedBack" class="toggle-input" />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextEHasFeedBack">${_('Feedback')}.</label>
-                                    </div>
-                                    <input class="form-control" type="number" name="vquextEPercentajeFB" id="vquextEPercentajeFB" value="100" min="5" max="100" step="5" disabled style="width: 9.5ch !important; max-width:9.5ch !important;"/>
-                                    <label for="vquextEPercentajeFB" class="mb-0">${_('% right to see the feedback')}</label>
-                                </div>
-                                <div id="vquextEFeedbackP" class="VDQXTE-EFeedbackP mb-3">
-                                    <textarea id="vquextEFeedBackEditor" class="exe-html-editor"></textarea>
-                                </div>
-                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    <div class="toggle-item mb-0">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextENavigable" class="toggle-input" />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextENavigable">${_('Navigable')}.</label>
-                                    </div>
-                                    <div class="toggle-item mb-0 d-none">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextERepeatQuestion" class="toggle-input" disabled />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextERepeatQuestion">${_('Repeat question')}.</label>
-                                    </div>
-                                </div>
-                                <div class="VDQXTE-Flex mb-3 gap-3">
-                                    <div class="toggle-item mb-0">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextEReloadQuestion" class="toggle-input" />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextEReloadQuestion">${_('Reload video')}.</label>
-                                    </div>
-                                    <div class="toggle-item mb-0">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextEPreviewQuestions" class="toggle-input" />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextEPreviewQuestions">${_('Preview questions')}.</label>
-                                    </div>
-                                    <div class="toggle-item mb-0">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="vquextEPauseVideo" class="toggle-input" />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label" for="vquextEPauseVideo">${_('Pause video')}.</label>
-                                    </div>
-                                </div>
-                                <div class="mb-3 d-none align-items-center gap-2 flex-nowrap">
-                                    <label for="vquextEAuthor">${_('Authorship')}: </label><input id="vquextEAuthor" class="form-control" type="text" />
-                                </div>
-                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    <label for="vquextEPercentajeQuestions" class="mb-0">%${_('Questions')}:</label><input class="form-control" type="number" name="vquextEPercentajeQuestions" id="vquextEPercentajeQuestions" value="100" min="1" max="100" style="width: 9.5ch !important; max-width:9.5ch !important;"/>
-                                    <span id="vquextENumeroPercentaje">1/1</span>
-                                </div>
-                                <div class="toggle-item mb-3">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="vquextEModeBoard" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="vquextEModeBoard">${_('Digital whiteboard mode')}</label>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 mb-3">
-                                    <label for="vquextEGlobalTimes">${_('Time per question')}:</label>
-                                    <select id="vquextEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
-                                        <option value="0" selected>15s</option>
-                                        <option value="1">30s</option>
-                                        <option value="2">1m</option>
-                                        <option value="3">3m</option>
-                                        <option value="4">5m</option>
-                                        <option value="5">10m</option>
-                                    </select>
-                                    <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
-                                </div>
-                                <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
-                                </div>
-                            </div>
-                        </fieldset>
-                        <fieldset class="exe-fieldset">
-                            <legend><a href="#">${_('Questions')}</a></legend>
+            edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            toggle = (id, label, checked = false, extra = '') => `
+                            <span class="toggle-item"${extra}>
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="${id}" class="toggle-input"${checked ? ' checked' : ''} />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="${id}">${label}</label>
+                            </span>`,
+            options = `
+                <div id="vquextEOptions">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextEShowMinimize', _('Show minimized.'))}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextEAnswersRamdon', _('Random options'))}
+                        ${help(_('Display the answer options in a different random order each time.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextECustomMessages', `${_('Custom messages')}.`)}
+                        ${help(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextEShowSolution', `${_('Show solutions')}.`, true)}
+                        <label for="vquextETimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
+                        <input class="form-control" type="number" name="vquextETimeShowSolution" id="vquextETimeShowSolution" value="3" min="1" max="9" />
+                        <span>${_('seconds')}</span>
+                        ${help(
+                            [
+                                `${_('Show solutions')}: ${_('Show the correct answer after checking an option or when the time runs out.')}`,
+                                `${_('Show solution time (seconds)')}: ${_('Set how many seconds the solution remains visible before moving to the next question.')}`,
+                            ].join('\n\n'),
+                        )}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <span>${_('Score')}:</span>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input VDQXTE-TypeGame" checked="checked" id="vquextETypeActivity" type="radio" name="vqxtgamemode" value="1" />
+                            <label for="vquextETypeActivity">${_('From 0 to 10')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input VDQXTE-TypeGame" id="vquextEGameMode" type="radio" name="vqxtgamemode" value="0" />
+                            <label for="vquextEGameMode">${_('Points and lives')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input VDQXTE-TypeGame" id="vquextETypeReto" type="radio" name="vqxtgamemode" value="2" />
+                            <label for="vquextETypeReto">${_('No score')}</label>
+                        </div>
+                        ${help(
+                            [
+                                `${_('From 0 to 10')}: ${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}`,
+                                `${_('Points and lives')}: ${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}`,
+                                `${_('No score')}: ${_('No score and no lives. You have to answer right to get some information (a feedback).')}`,
+                            ].join('\n\n'),
+                        )}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextEUseLives', `${_('Use lives')}.`, true)}
+                        <label for="vquextENumberLives" class="sr-av">${_('Number of lives')}</label>
+                        <input class="form-control" type="number" name="vquextENumberLives" id="vquextENumberLives" value="3" min="1" max="5" />
+                        <span>${_('lives')}</span>
+                        ${help(
+                            [
+                                `${_('Use lives')}: ${_('Limit attempts in Points and lives mode. An incorrect answer or a timeout costs one life; the game ends when no lives remain.')}`,
+                                `${_('Number of lives')}: ${_('Set the number of lives available at the start of the game, from 1 to 5.')}`,
+                            ].join('\n\n'),
+                        )}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextENavigable', `${_('Navigable')}.`)}
+                        ${toggle('vquextERepeatQuestion', `${_('Repeat question')}.`, false, ' style="display:none"')}
+                        ${help(_('Let learners move between the questions with the buttons and the marks of the progress bar.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextEReloadQuestion', `${_('Reload video')}.`)}
+                        ${help(_('Show a button to watch again the part of the video that leads to the question.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextEPreviewQuestions', `${_('Preview questions')}.`)}
+                        ${help(_('Show a button to read the next question before it comes up in the video.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextEPauseVideo', `${_('Pause video')}.`)}
+                        ${help(_('Show a button to pause the video.'))}
+                    </div>
+                    <div class="mb-3 d-none align-items-center gap-2 flex-nowrap">
+                        <label for="vquextEAuthor">${_('Authorship')}: </label><input id="vquextEAuthor" class="form-control" type="text" />
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="vquextEPercentajeQuestions" class="mb-0">%${_('Questions')}:</label>
+                        <input class="form-control" type="number" name="vquextEPercentajeQuestions" id="vquextEPercentajeQuestions" value="100" min="1" max="100" style="width: 9.5ch !important; max-width:9.5ch !important;"/>
+                        <span id="vquextENumeroPercentaje">1/1</span>
+                        ${help(_('Choose the percentage of questions included in each game. The counter shows how many questions will be used.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('vquextEModeBoard', _('Digital whiteboard mode'))}
+                        ${help(_('Show buttons to mark an answer as correct or incorrect, or move on, when playing together on a digital whiteboard.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="vquextEGlobalTimes" class="mb-0">${_('Time per question')}:</label>
+                        <select id="vquextEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                            <option value="0" selected>15s</option>
+                            <option value="1">30s</option>
+                            <option value="2">1m</option>
+                            <option value="3">3m</option>
+                            <option value="4">5m</option>
+                            <option value="5">10m</option>
+                        </select>
+                        <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
+                        ${help(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Questions tab.'))}
+                    </div>
+                </div>`,
+            questions = `
                                 <div class="VDQXTE-EPanel" id="vquextEPanel">
                                     <div class="d-flex align-items-center mb-0 flex-nowrap gap-2">                                    
                                         <label for="vquextEVIURL">URL:</label>
@@ -1187,18 +1136,33 @@ var $exeDevice = {
                                     <div class="VDQXTE-ENumQuestionDiv" id="vquextENumQuestionDiv">
                                         <div class="VDQXTE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="VDQXTE-ENumQuestions" id="vquextENumQuestions">0</span>
                                     </div>
-                                </div>
-                        </fieldset>
-                         ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                    </div>
-                    ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                    ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                                </div>`,
+            html = `
+                <div id="vquextQEIdeviceForm">
+                    ${edition.common.getIdeviceDescription(
+                        _('Create activities consisting on a video with interactive questions.'),
+                        'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/videotest.html',
+                    )}
+                    ${edition.tabs.getHtml('vquextQEIdeviceForm', {
+                        path: path,
+                        instructions: c_('Choose the right answer'),
+                        options: options,
+                        contents: questions,
+                        passwords: true,
+                        feedback: true,
+                        after: true,
+                        grading: true,
+                        texts: this.ci18n,
+                        share: false,
+                        info: {
+                            contents: _('Choose the video, then add the questions and the point of the video where each one appears.'),
+                        },
+                    })}
                 </div>
             `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('vquextQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('vquextQEIdeviceForm');
+        edition.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -1286,10 +1250,11 @@ var $exeDevice = {
                 $('#eXeGameInstructions').val(instructions);
             }
 
-            let textFeedBack = $('.vquext-feedback-game', wrapper);
+            const textFeedBack = $('.vquext-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
-                textFeedBack = textFeedBack.html() || '';
-                $('#vquextEFeedBackEditor').val(textFeedBack);
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html() || ''
+                );
             }
 
             let textAfter = $('.vquext-extra-content', wrapper);
@@ -1298,7 +1263,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -1318,7 +1283,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.answersRamdon = game.answersRamdon || false;
@@ -1379,8 +1344,6 @@ var $exeDevice = {
                 game.startVideoQuExt
             )
         );
-        $('#vquextEHasFeedBack').prop('checked', game.feedBack);
-        $('#vquextEPercentajeFB').val(game.percentajeFB);
         $(
             "input.VDQXTE-TypeGame[name='vqxtgamemode'][value='" +
                 game.gameMode +
@@ -1397,23 +1360,27 @@ var $exeDevice = {
         $('#vquextERepeatQuestion').prop('checked', game.repeatQuestion);
         $('#vquextERepeatQuestion').prop('disabled', !game.isNavigable);
         $('#vquextEModeBoard').prop('checked', game.modeBoard);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
         $('#vquextEGlobalTimes').val(game.globalTime);
 
-        $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
+        $exeDevice.updateGameMode(game.gameMode, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
         // The weight too: setValues defaults it to 100 when the argument is
         // missing, so the stored value never reached the field — and the next
         // save read that 100 back out of the form and overwrote it. Every
         // other iDevice passes four arguments here.
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1451,21 +1418,13 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
     },
 
-    updateGameMode: function (gamemode, feedback, useLives) {
-        $('#vquextEUseLives, #vquextENumberLives, #vquextEPercentajeFB').prop(
-            'disabled',
-            true
+    updateGameMode: function (gamemode, useLives) {
+        $('#vquextEUseLives, #vquextENumberLives').prop('disabled', true);
+        gamemode = parseInt(gamemode, 10);
+        // "No score" is nothing but the feedback: answer right to get it.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setRequired(
+            gamemode === 2
         );
-        $('#vquextEHasFeedBack')
-            .prop('disabled', gamemode === 2)
-            .prop('checked', feedback);
-
-        if (gamemode === 2 || feedback) {
-            $('#vquextEFeedbackP').slideDown();
-            $('#vquextEPercentajeFB').prop('disabled', false);
-        } else {
-            $('#vquextEFeedbackP').slideUp();
-        }
 
         if (gamemode === 0) {
             $('#vquextEUseLives').prop('disabled', false);
@@ -1522,7 +1481,8 @@ var $exeDevice = {
                 tinyMCE.get('eXeGameInstructions').getContent() || '',
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent() || '',
             textFeedBack =
-                tinyMCE.get('vquextEFeedBackEditor').getContent() || '';
+                $exeIDevicesEdition.iDevice.gamification.feedback.getText() ||
+                '';
 
         let html = '<div class="vquext-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
@@ -1686,9 +1646,6 @@ var $exeDevice = {
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
             textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
-            textFeedBack = escape(
-                tinyMCE.get('vquextEFeedBackEditor').getContent()
-            ),
             showMinimize = $('#vquextEShowMinimize').is(':checked'),
             answersRamdon = $('#vquextEAnswersRamdon').is(':checked'),
             reloadQuestion = $('#vquextEReloadQuestion').is(':checked'),
@@ -1710,9 +1667,7 @@ var $exeDevice = {
                     $('#vquextEVIStart').val()
                 ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#vquextEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#vquextEPercentajeFB').val())),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             gameMode = parseInt($('input[name=vqxtgamemode]:checked').val()),
             validExtAudio = ['mp3', 'wav'],
             validExt = ['mp4', 'ogg', 'webm', 'ogv'],
@@ -1742,18 +1697,18 @@ var $exeDevice = {
             ),
             modeBoard = $('#vquextEModeBoard').is(':checked'),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#vquextEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
         if (!progressBar) return false;
-        if ((gameMode === 2 || feedBack) && textFeedBack.trim().length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
+
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
 
         if (
             ($exeDevice.videoType === 0 &&
@@ -1807,7 +1762,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             asignatura: '',
@@ -1836,10 +1791,10 @@ var $exeDevice = {
             previewQuestions,
             pauseVideo,
             textAfter,
-            textFeedBack,
+            textFeedBack: escape(feedback.textFeedBack),
             gameMode,
-            feedBack,
-            percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             videoType: $exeDevice.videoType,
             customMessages,
             version: 2,
@@ -2093,31 +2048,15 @@ var $exeDevice = {
             }
         });
 
-        $('#vquextEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#vquextEFeedbackP').slideDown();
-            } else {
-                $('#vquextEFeedbackP').slideUp();
-            }
-            $('#vquextEPercentajeFB').prop('disabled', !marcado);
-        });
-
         $('#vquextQEIdeviceForm').on(
             'click',
             'input.VDQXTE-TypeGame',
             function () {
                 const gm = parseInt($(this).val()),
-                    fb = $('#vquextEHasFeedBack').is(':checked'),
                     ul = $('#vquextEUseLives').is(':checked');
-                $exeDevice?.updateGameMode(gm, fb, ul);
+                $exeDevice?.updateGameMode(gm, ul);
             }
         );
-
-        $('#vquextEGameModeHelpLnk').click(function () {
-            $('#vquextEGameModeHelp').toggle();
-            return false;
-        });
 
         if ($exeDevice.videoType > 0) {
             $exeDevice.startVideo(
@@ -2157,8 +2096,8 @@ var $exeDevice = {
                 }
             }
         });
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#vquextGlobalTimeButton').on('click', function (e) {
             if (!$exeDevice) return;
@@ -2174,13 +2113,8 @@ var $exeDevice = {
             ).prop('checked', true);
         });
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
     },
 
     /**
