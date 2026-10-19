@@ -14,11 +14,6 @@ var $exeDevice = {
     idevicePath: '',
     msgs: {},
     classIdevice: 'padlock',
-    active: 0,
-    typeActive: 0,
-    challengesGame: [],
-    candadoInstructions: '',
-    candadoRetro: '',
     candadoTime: 40,
     candadoSolution: '',
     candadoShowMinimize: false,
@@ -82,13 +77,11 @@ var $exeDevice = {
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEGeneralSettings = _('General settings');
         msgs.msgEIntrucctions = _('Please write the instructions.');
         msgs.msgTime = _('Max time');
         msgs.msgERetro = _('Please write the feedback.');
         msgs.msgCodeAccess = _('Access code');
         msgs.msgEnterCodeAccess = _('Enter the access code');
-        msgs.msgEInstructions = _('Instructions');
         msgs.msgEREtroalimatacion = _('Feedback');
         msgs.msgEShowMinimize = _('Show minimized.');
         msgs.msgERebootActivity = _('Repeat activity');
@@ -230,7 +223,6 @@ var $exeDevice = {
             $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
-            $exeDevice.typeActive = 0;
             $exeDevice.evaluation =
                 typeof dataGame.evaluation !== 'undefined'
                     ? dataGame.evaluation
