@@ -45,9 +45,6 @@ var $exeDevice = {
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgWriteText = _('You have to type a text in the editor');
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgNoSuportBrowser = _(
@@ -742,11 +739,6 @@ var $exeDevice = {
             instructions = $('#eXeGameInstructions').val();
         }
 
-        if (showSolution && timeShowSolution.length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-
         const questions = $exeDevice.questions;
         if (questions.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
@@ -790,14 +782,6 @@ var $exeDevice = {
         if (isNaN(parseFloat(lastCharacter))) {
             e.value = str.substring(0, str.length - 1);
         }
-    },
-
-    setDecimalsInResults: function (v) {
-        if (v == 0) $('#eCQdecimalsInResults').prop('disabled', false);
-        else
-            $('#eCQdecimalsInResults')
-                .prop('checked', true)
-                .attr('disabled', 'disabled');
     },
 
     enableForm: function () {
@@ -982,31 +966,6 @@ var $exeDevice = {
 
     addEvents: function () {
         const lifecycle = this.$lifecycle;
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                let file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                lifecycle.ownFileReader(reader);
-                reader.onload = lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
 
         $('#eCQTime').on('keyup', function () {
             let v = this.value;
@@ -1086,19 +1045,6 @@ var $exeDevice = {
             this.value = this.value > 100 ? 100 : this.value;
             this.value = this.value < 1 ? 1 : this.value;
             $exeDevice.updateQuestionsNumber();
-        });
-
-        $('#eCQPercentajeError').on('keyup', function () {
-            let v = this.value;
-            v = v.replace(/\D/g, '');
-            v = v.substring(0, 2);
-            this.value = v;
-        });
-
-        $('#eCQPercentajeError').on('focusout', function () {
-            this.value = this.value.trim() == '' ? 0 : this.value;
-            this.value = this.value > 99 ? 99 : this.value;
-            this.value = this.value < 0 ? 0 : this.value;
         });
 
         $('#eCQfeedbackLink').on('click', function (e) {
@@ -1280,53 +1226,6 @@ var $exeDevice = {
             game.scorm.repeatActivity,
             game.weighted
         );
-    },
-
-    exportGame: function () {
-        if (!$exeDevice.validateQuestion()) return;
-
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], {
-            type: 'text/plain',
-        });
-        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            _('Activity') + '-MathProblems.json',
-            'gameQEIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'MathProblems') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-        let instructions = game.instructionsExe || game.instructions || '',
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-        if (tinyMCE.get('eXeGameInstructions')) {
-            tinyMCE.get('eXeGameInstructions').setContent(instructions);
-        } else {
-            $('#eXeGameInstructions').val(instructions);
-        }
-        $exeIDevicesEdition.iDevice.gamification.feedback.setText(textFeedBack);
-        if (tinyMCE.get('eXeIdeviceTextAfter')) {
-            tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter);
-        } else {
-            $('#eXeIdeviceTextAfter').val(tAfter);
-        }
-        $exeDevice.showQuestion(0);
     },
 
     validTime: function (time) {

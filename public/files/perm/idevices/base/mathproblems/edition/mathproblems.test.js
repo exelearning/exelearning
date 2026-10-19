@@ -2,8 +2,8 @@
  * Unit tests for the mathproblems iDevice edition code.
  *
  * They exercise the edition lifecycle: the formula listener is delegated on
- * `document` and the question importer owns a `FileReader`, so both must be
- * released when the editor closes rather than surviving into a later edition.
+ * `document`, so it must be released when the editor closes rather than
+ * surviving into a later edition.
  */
 
 /* eslint-disable no-undef */
@@ -30,10 +30,6 @@ describe('mathproblems iDevice (edition)', () => {
 
         document.body.innerHTML = `
             <form id="mathproblemsQEIdeviceForm">
-                <div id="eXeGameExportImport">
-                    <input type="file" id="eXeGameImportGame" />
-                    <button id="eXeGameExportQuestions"></button>
-                </div>
                 <input type="text" id="eCQformula" />
                 <div id="eQCVariablesContainer"></div>
                 <div id="eCQAleaContainer"></div>
@@ -98,39 +94,6 @@ describe('mathproblems iDevice (edition)', () => {
             $(document).off('input.mtpUnrelated');
         });
 
-        it('imports a game file read by the edition', async () => {
-            const importGame = vi.fn();
-            $exeDevice.importGame = importGame;
-            $exeDevice.addEvents();
-
-            const event = $.Event('change');
-            event.target = {
-                files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })],
-            };
-            $('#eXeGameImportGame').trigger(event);
-
-            await vi.waitFor(() => expect(importGame).toHaveBeenCalledWith('{"a":1}'));
-        });
-
-        it('aborts an in-flight import read and never imports into a closed edition', async () => {
-            const abortSpy = vi.spyOn(window.FileReader.prototype, 'abort');
-            const importGame = vi.fn();
-            $exeDevice.importGame = importGame;
-            $exeDevice.addEvents();
-
-            const event = $.Event('change');
-            event.target = {
-                files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })],
-            };
-            $('#eXeGameImportGame').trigger(event);
-
-            $exeDevice.$lifecycle.destroy();
-            await new Promise(resolve => setTimeout(resolve, 20));
-
-            expect(abortSpy).toHaveBeenCalledTimes(1);
-            expect(importGame).not.toHaveBeenCalled();
-            abortSpy.mockRestore();
-        });
     });
 
     /**
