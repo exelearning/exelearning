@@ -3880,6 +3880,65 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('pass score notice metadata updates', () => {
+    let metadata;
+    let refreshNotices;
+    let originalDevices;
+
+    beforeEach(() => {
+      originalDevices = window.$exeDevices;
+      metadata = new window.Y.Doc().getMap('metadata');
+      bridge.documentManager = { getMetadata: () => metadata };
+      bridge.updateUndoRedoButtons = mock(() => {});
+      bridge.syncMetadataToLegacy = mock(() => {});
+      refreshNotices = mock(() => {});
+      window.$exeDevices = {
+        iDevice: { gamification: { report: { refreshPassScoreNotices: refreshNotices } } },
+      };
+      bridge.setupMetadataObserver();
+    });
+
+    afterEach(() => {
+      metadata.doc.destroy();
+      window.$exeDevices = originalDevices;
+    });
+
+    it.each(['remote', 'local', 'undo'])('refreshes notices on %s pass score changes', (origin) => {
+      bridge.isUndoRedoInProgress = origin === 'undo';
+      metadata.doc.transact(() => metadata.set('passScore', 9), origin);
+
+      expect(refreshNotices).toHaveBeenCalledTimes(1);
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('ignores unrelated metadata changes', () => {
+      metadata.set('description', 'Updated description');
+
+      expect(refreshNotices).not.toHaveBeenCalled();
+    });
+
+    it('handles a pass score change before the activity runtime has loaded', () => {
+      delete window.$exeDevices;
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('keeps syncing the metadata when a notice fails to refresh', () => {
+      const failure = new Error('notice failed');
+      refreshNotices.mockImplementation(() => {
+        throw failure;
+      });
+      bridge.app = { project: { properties: {} } };
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+
+      expect(console.error).toHaveBeenCalledWith('[YjsProjectBridge] Error refreshing pass score notices:', failure);
+      expect(bridge.syncMetadataToLegacy).toHaveBeenCalled();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+  });
+
   describe('syncMetadataToLegacy', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
@@ -4009,6 +4068,23 @@ describe('YjsProjectBridge', () => {
         get: (key) => key === 'addExeLink' ? 'true' : undefined,
       };
       bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.checked).toBe(true);
+    });
+
+    it('updates the every-activity pass rule checkbox from its metadata key', () => {
+      const mockInput = {
+        getAttribute: (attr) => attr === 'property' ? 'pp_passScoreEveryActivity' : 'checkbox',
+        type: 'checkbox',
+        checked: false,
+        value: '',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+      bridge.documentManager.getMetadata = () => ({
+        get: (key) => key === 'passScoreEveryActivity' ? 'true' : undefined,
+      });
 
       bridge.forceAllFormInputsSync();
 
@@ -5449,6 +5525,48 @@ describe('YjsProjectBridge', () => {
       delete global.window.electronAPI;
       delete global.window.__lastElpxExportSummary;
       delete global.window.__lastElpxExportTimeline;
+    });
+
+    it('measures Electron phases from one clock reading, however slow the bridge is', async () => {
+      // On a loaded CI runner the clock moves between two reads in the bridge,
+      // which made the Electron durations come out a millisecond short.
+      let now = 0;
+      bridge.getElpxExportDebugNow = () => (now += 1);
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({
+          export: mock(() => Promise.resolve({
+            success: true,
+            data: new ArrayBuffer(8),
+            filename: 'project.elpx',
+          })),
+        })),
+      };
+      global.eXeLearning = { config: { debugElpxExport: true, isOfflineInstallation: true } };
+      global.window.eXeLearning = global.eXeLearning;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: { totalMs: 44, promptMs: 30, normalizeMs: 4, writeMs: 10 },
+        })),
+      };
+
+      try {
+        await bridge.exportToElpx();
+
+        expect(global.window.__lastElpxExportSummary).toEqual(
+          expect.objectContaining({ electronSaveMs: 44, electronPromptMs: 30 })
+        );
+      } finally {
+        delete bridge.getElpxExportDebugNow;
+        delete global.eXeLearning;
+        delete global.window.eXeLearning;
+        delete global.window.electronAPI;
+        delete global.window.__lastElpxExportSummary;
+        delete global.window.__lastElpxExportTimeline;
+      }
     });
 
     it('falls back to browser download when not in Electron mode', async () => {
@@ -7089,6 +7207,47 @@ describe('YjsProjectBridge', () => {
       await bridge.importFromElpx(file, { clearExisting: false });
 
       expect(bridge.documentManager.markDirty).toHaveBeenCalled();
+    });
+
+    // #2540: without server storage the opened file is where the assets live,
+    // so they must not count as unsaved changes right after opening it.
+    describe('assets of the opened file', () => {
+      beforeEach(() => {
+        bridge.assetManager = { markAssetsSavedLocally: mock(() => {}) };
+      });
+
+      it('marks them saved locally when the project has no server storage', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).toHaveBeenCalled();
+      });
+
+      it('leaves them pending upload when the server stores the project', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: true } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
+      });
+
+      it('leaves them unsaved when importing into the current project', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: false });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
+      });
+
+      it('opens fine with an asset handler that does not track local saves', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+        bridge.assetManager = {};
+
+        const stats = await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(stats.pages).toBe(1);
+      });
     });
   });
 

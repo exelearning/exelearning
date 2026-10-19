@@ -10,6 +10,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'node:vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -301,6 +302,158 @@ describe('trueorfalse iDevice', () => {
     });
   });
 
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(join(__dirname, 'trueorfalse.js'), 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            expect(source).toContain('passScoreMode: game.passScoreMode');
+            expect(source).toContain('passScoreCustom: game.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            expect(source).toContain('passScoreMode: passScore.passScoreMode');
+            expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
+
+    /**
+     * The progress report is offered only in quiz mode, because that is the
+     * only mode that produces a score to report. It used to live in a container
+     * this iDevice showed and hid with the mode; the Grading tab left it always
+     * visible, so an author could switch it on and watch validateData discard
+     * it in silence.
+     */
+    describe('progress report availability', () => {
+        beforeEach(() => {
+            document.body.innerHTML =
+                '<div class="exe-progress-report-wrapper"></div>';
+        });
+
+        it('hides the report when quiz mode is off', () => {
+            $exeDevice.toggleProgressReport(false);
+            expect(
+                document
+                    .querySelector('.exe-progress-report-wrapper')
+                    .classList.contains('d-none')
+            ).toBe(true);
+        });
+
+        it('shows the report when quiz mode is on', () => {
+            $exeDevice.toggleProgressReport(false);
+            $exeDevice.toggleProgressReport(true);
+            expect(
+                document
+                    .querySelector('.exe-progress-report-wrapper')
+                    .classList.contains('d-none')
+            ).toBe(false);
+        });
+
+        it('no longer carries the container the report used to sit in', () => {
+            const source = readFileSync(
+                join(__dirname, 'trueorfalse.js'),
+                'utf-8'
+            );
+            // Emptied when the report moved to the Grading tab. Leaving it
+            // behind meant the mode kept toggling a div with nothing in it.
+            expect(source).not.toContain('Games-Reportdiv');
+        });
+
+        it('still reads the report only in quiz mode', () => {
+            const source = readFileSync(
+                join(__dirname, 'trueorfalse.js'),
+                'utf-8'
+            );
+            // A box ticked before the mode was turned off is stale: the control
+            // is hidden, and saving it would promise a report nothing writes.
+            const gate = source.indexOf('if (isTest) {');
+            const read = source.indexOf('gamification.progressBar.getValues()');
+            expect(gate).toBeGreaterThan(-1);
+            expect(read).toBeGreaterThan(gate);
+            expect(source.slice(gate, read)).not.toContain('}');
+        });
+    });
+
+    describe('progress report in the initialized editor', () => {
+        let previousEdition;
+        let previousLearning;
+
+        beforeEach(() => {
+            previousEdition = globalThis.$exeDevicesEdition;
+            previousLearning = globalThis.eXeLearning;
+            globalThis.eXeLearning = { app: { project: { odeId: 'report-test' } } };
+            globalThis.$exeDevicesEdition = require('../../../../../../app/common/common_edition.js');
+            vi.spyOn($exeDevicesEdition.iDevice.tabs, 'init').mockImplementation(() => {});
+            vi.spyOn($exeDevicesEdition.iDevice.gamification.scorm, 'init').mockImplementation(() => {});
+            vi.spyOn($exeDevicesEdition.iDevice.gamification.share, 'getTabIA').mockReturnValue('');
+            // Load the real script with its filename so coverage includes the initialization path.
+            const filename = join(__dirname, 'trueorfalse.js');
+            runInThisContext(readFileSync(filename, 'utf8'), { filename });
+            $exeDevice = globalThis.$exeDevice;
+            document.body.innerHTML = '<div id="editor" idevice-id="tof-new"></div>';
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+            globalThis.$exeDevicesEdition = previousEdition;
+            globalThis.eXeLearning = previousLearning;
+        });
+
+        it.each([{}, null])('hides the report for a new self-check activity with previous data %s', previous => {
+            $exeDevice.init(document.getElementById('editor'), previous, 'assets/');
+            expect($('#tofEIsTest').is(':checked')).toBe(false);
+            expect($('.exe-progress-report-wrapper')).toHaveLength(1);
+            expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(true);
+        });
+
+        it('shows the report in test mode and preserves it through save and reopen', () => {
+            $exeDevice.init(document.getElementById('editor'), {}, 'assets/');
+            $('#tofEIsTest').trigger('click');
+            expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(false);
+            $('#eXeProgressReport').prop('checked', true);
+            $('#eXeProgressReportID').val('report-test');
+            $exeDevice.questionsGame = [{ question: 'Question', solution: true, feedback: '', suggestion: '' }];
+            const saved = $exeDevice.validateData();
+            expect(saved).toMatchObject({ isTest: true, evaluation: true, evaluationID: 'report-test' });
+            $exeDevice.init(document.getElementById('editor'), saved, 'assets/');
+            expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(false);
+            expect($('#eXeProgressReport').is(':checked')).toBe(true);
+            expect($('#eXeProgressReportID').val()).toBe('report-test');
+            $('#tofEIsTest').trigger('click');
+            expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(true);
+            expect($exeDevice.validateData()).toMatchObject({ isTest: false, evaluation: false, evaluationID: '' });
+        });
+    });
+
   /**
    * Importing a question file is asynchronous, so the read can complete after
    * the editor closed. The callback used to reach `$exeDevice` through the
@@ -403,5 +556,15 @@ describe('trueorfalse iDevice', () => {
       expect(second.importGame).not.toHaveBeenCalled();
       global.$exeDevice = first;
     });
+  });
+});
+
+describe('trueorfalse minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'trueorfalse.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });

@@ -251,7 +251,8 @@
                 &[property="pp_addPagination"],
                 &[property="pp_addSearchBox"],
                 &[property="pp_addAccessibilityToolbar"],
-                &[property="pp_addMathJax"] {
+                &[property="pp_addMathJax"],
+                &[property="pp_passScoreEveryActivity"] {
                     display: flex;
                     flex-direction: row;
                     justify-content: flex-start;
@@ -271,8 +272,16 @@
                 max-width: 45%;
                 float: left;
             }
+            // The two fields that spell out a label above their control read as a
+            // pair, so each one opens its own line in the left column instead of
+            // being pulled up beside the checkbox that happens to precede it.
+            #props-pane-export .form-properties .property-row[property="pp_globalFont"],
+            #props-pane-export .form-properties .property-row[property="pp_passScore"] {
+                clear: left;
+            }
         }
-        .property-row[property="pp_globalFont"] {
+        .property-row[property="pp_globalFont"],
+        .property-row[property="pp_passScore"] {
             margin-top:1em;
         }
     }
@@ -286,6 +295,16 @@
 .property-row .form-control,
 .property-row .form-select {
     transition: box-shadow .15s ease, border-color .15s ease, background-color .15s ease;
+}
+
+// Numeric properties (pass score, ...). A full-width box for a two-character
+// value reads as a text field and invites free text, so it is sized to its
+// content instead of stretching across the pane -- wide enough for a decimal
+// separator plus the spinner arrows the browser draws inside the field.
+.property-row .form-control.exe-number-field {
+    width: 6.5rem;
+    max-width: 6.5rem;
+    flex: 0 0 auto;
 }
 
 // Legacy license warning style - uses data attribute for simpler JS

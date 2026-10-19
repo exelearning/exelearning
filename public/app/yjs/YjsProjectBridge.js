@@ -1620,6 +1620,17 @@ class YjsProjectBridge {
       const isRemote = transaction.origin === 'remote';
       Logger.log('[YjsProjectBridge] Metadata changed, remote:', isRemote);
 
+      // This only refreshes notices, so it is safe during editing and undo/redo:
+      // the activity DOM, answers and scores must not be rebuilt or reset.
+      if (event.keysChanged.has('passScore')) {
+        try {
+          window.$exeDevices?.iDevice?.gamification?.report?.refreshPassScoreNotices?.();
+        } catch (error) {
+          // A notice that fails to refresh must not stop the metadata sync below.
+          console.error('[YjsProjectBridge] Error refreshing pass score notices:', error);
+        }
+      }
+
       // During undo/redo, skip structure updates to prevent form recreation cascade
       // The undo/redo methods handle UI sync directly via forceTitleSync()
       if (this.isUndoRedoInProgress) {
@@ -2078,6 +2089,8 @@ class YjsProjectBridge {
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
       'pp_globalFont': 'globalFont',
+      'pp_passScore': 'passScore',
+      'pp_passScoreEveryActivity': 'passScoreEveryActivity',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
@@ -3521,11 +3534,13 @@ class YjsProjectBridge {
             const saveBufferStartElapsed = trace
               ? Math.round(this.getElpxExportDebugNow() - trace.startedMs)
               : 0;
-            this.logElpxExportPhase('bridge:electron:save-buffer:start', {
+            // The Electron phases below are derived from this one reading, so the starts
+            // use it too: a second read could be a millisecond later and shorten them.
+            this.appendElpxExportPhaseEntry('bridge:electron:save-buffer:start', saveBufferStartElapsed, {
               filename: exportFilename,
               bytes: uint8Array.byteLength,
             }, trace);
-            this.logElpxExportPhase('bridge:electron:dialog:start', {
+            this.appendElpxExportPhaseEntry('bridge:electron:dialog:start', saveBufferStartElapsed, {
               filename: exportFilename,
             }, trace);
             // saveBuffer returns false when the user cancels the OS save dialog
@@ -3950,6 +3965,11 @@ class YjsProjectBridge {
     }
 
     if (clearExisting) {
+      // Without server storage (Electron, static) assets are never uploaded:
+      // the file just opened already holds them, so they are not unsaved (#2540).
+      if (window.eXeLearning?.app?.capabilities?.storage?.remote === false) {
+        this.assetManager?.markAssetsSavedLocally?.();
+      }
       if (typeof this.documentManager?.markClean === 'function') {
         this.documentManager.markClean();
       }

@@ -307,6 +307,14 @@ var $interactivevideo = {
                 $interactivevideo.isInExe
             );
         }
+        // Above the whole video and below the author's text before it, the
+        // same place as in every other iDevice. `mOptions` is `{}` until
+        // getOptions() runs, hence the check for its main container.
+        if ($interactivevideo.mOptions && $interactivevideo.mOptions.main) {
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+                $interactivevideo.mOptions
+            );
+        }
 
         // console.log(typeof top.interactiveVideoEditor.activityToSave);
         // Only show "no slides" message if there's truly no content at all
@@ -3016,6 +3024,11 @@ var $interactivevideo = {
             weighted: IV.scorm.weighted != null ? IV.scorm.weighted : 100,
             evaluation: !!IV.evaluation,
             evaluationID: IV.evaluationID || '',
+            // Listed explicitly because this builds its options object field by
+            // field rather than passing the saved JSON along -- an omission
+            // here would silently leave the activity on the project value.
+            passScoreMode: IV.passScoreMode,
+            passScoreCustom: IV.passScoreCustom,
             isInExe: this.isInExe,
             main: '.exe-interactive-video',
             idevice: ideviceTarget,

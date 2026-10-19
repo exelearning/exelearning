@@ -48,7 +48,6 @@ const THIRD_PARTY_LIBS = new Set([
   'jquery',
   'jquery-ui',
   'showdown',
-  'simplelightbox',
   'tinymce_5',
   'yjs',
 ]);
@@ -493,6 +492,11 @@ class ResourceFetcher {
       if (result) {
         files.set(result.t, result.blob);
       }
+    }
+    // Flag a partial bundle so ResourceCache.set() does not persist it: a
+    // transient or host-side failure must not stick for the whole version.
+    if (results.includes(null)) {
+      files.incomplete = true;
     }
     return files;
   }
@@ -1133,6 +1137,11 @@ class ResourceFetcher {
         continue;
       }
       filtered.set(filePath, blob);
+    }
+    // Keep the assembleBundleFromLoose() flag so ResourceCache.set() still
+    // skips a partial static bundle.
+    if (libFiles.incomplete) {
+      filtered.incomplete = true;
     }
     return filtered;
   }

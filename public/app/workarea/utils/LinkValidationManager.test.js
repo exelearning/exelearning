@@ -49,9 +49,22 @@ describe('LinkValidationManager', () => {
                 validated: 0,
                 valid: 0,
                 broken: 0,
+                unavailable: 0,
                 unknown: 0,
                 pending: 0,
             });
+        });
+
+        it('should count unavailable links apart from broken ones (#2502)', () => {
+            const manager = new LinkValidationManager();
+            manager.links.set('1', { id: '1', status: 'unavailable' });
+            manager.links.set('2', { id: '2', status: 'broken' });
+
+            const stats = manager.getStats();
+
+            expect(stats.unavailable).toBe(1);
+            expect(stats.broken).toBe(1);
+            expect(stats.validated).toBe(2);
         });
 
         it('should count links by status', () => {
@@ -347,7 +360,7 @@ describe('LinkValidationManager', () => {
             await manager.startValidation([]);
 
             expect(onComplete).toHaveBeenCalledWith(
-                { total: 0, validated: 0, valid: 0, broken: 0, unknown: 0, pending: 0 },
+                { total: 0, validated: 0, valid: 0, broken: 0, unavailable: 0, unknown: 0, pending: 0 },
                 false
             );
         });
@@ -424,6 +437,7 @@ describe('LinkValidationManager', () => {
                 validated: 1,
                 valid: 1,
                 broken: 0,
+                unavailable: 0,
                 unknown: 0,
                 pending: 0,
             });
