@@ -531,6 +531,32 @@ describe('mathematicaloperations edition: shared form tabs and feedback', () => 
         expect(feedback().getText()).toBe('<p>Well done</p>');
     });
 
+    it('restores the custom texts with the game', () => {
+        device.idevicePreviousData = `
+            <div class="mathoperations-IDevice">
+                <div class="mathoperations-DataGame js-hidden">${JSON.stringify(game({ msgs: { msgSubmit: 'Check it' } }))}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('ci18n_msgSubmit').value).toBe('Check it');
+    });
+
+    it('shows the settings of a fractions game and hides the decimal ones', () => {
+        const shown = (id) => document.getElementById(id).style.display !== 'none';
+
+        device.updateFieldGame(game({ mode: 1, negativeFractions: true }));
+
+        expect(shown('eRMQNegativesFractionsDiv')).toBe(true);
+        expect(shown('eRMQErrorAbsoluteDiv')).toBe(false);
+        expect(document.getElementById('eRMQNegativesFractions').checked).toBe(true);
+
+        device.changeGameMode(0);
+
+        expect(shown('eRMQNegativesFractionsDiv')).toBe(false);
+        expect(shown('eRMQErrorAbsoluteDiv')).toBe(true);
+    });
+
     describe('saving', () => {
         let editors;
         let tinymceGet;
@@ -591,6 +617,12 @@ describe('mathematicaloperations edition: shared form tabs and feedback', () => 
             device.updateFieldGame(game({ itinerary }));
 
             expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('keeps the negative fractions of a fractions game', () => {
+            device.updateFieldGame(game({ mode: 1, negativeFractions: true }));
+
+            expect(device.validateData().negativeFractions).toBe(true);
         });
     });
 });

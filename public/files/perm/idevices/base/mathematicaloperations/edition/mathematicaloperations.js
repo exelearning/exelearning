@@ -354,7 +354,7 @@ var $exeDevice = {
             decimalsInResults = $('#eRMQdecimalsInResults').is(':checked'),
             negative = $('#eRMQnegative').is(':checked'),
             solution = $('#eRMQSolution').is(':checked'),
-            negativeFractions = $('#eRMQNegativesFracctions').is(':checked'),
+            negativeFractions = $('#eRMQNegativesFractions').is(':checked'),
             zero = $('#eRMQzero').is(':checked'),
             time = parseInt($('#eRMQTime').val()),
             errorRelative = parseFloat($('#eRMQPercentajeRelative').val()),
@@ -524,6 +524,8 @@ var $exeDevice = {
                 textAfter = textAfter.html() || '';
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
+
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
         }
     },
 
@@ -743,7 +745,7 @@ var $exeDevice = {
         $('#eRMQdecimalsInResults').prop('checked', game.decimalsInResults);
         $('#eRMQnegative').prop('checked', game.negative);
         $('#eRMQSolution').prop('checked', game.solution);
-        $('#eRMQNegativesFracctions').prop('checked', game.negativeFractions);
+        $('#eRMQNegativesFractions').prop('checked', game.negativeFractions);
         $('#eRMQzero').prop('checked', game.zero);
         $('#eRMQnum').val(game.number);
         $('#eRMQmax').val(game.max);
@@ -780,8 +782,8 @@ var $exeDevice = {
             $('#eRMQdecimalsResultDiv').hide();
             $('#eRMQZeroDiv').hide();
             $('#eRMQErrorRelativeDiv').hide();
-            $('#eRMQErrorAsoluteDiv').hide();
-            $('#eRMQNegativesFracctionsDiv').show();
+            $('#eRMQErrorAbsoluteDiv').hide();
+            $('#eRMQNegativesFractionsDiv').show();
             $('#eRMQSolutionDiv').show();
             $('#eRMQnegativeDiv').hide();
         } else {
@@ -789,8 +791,8 @@ var $exeDevice = {
             $('#eRMQdecimalsResultDiv').show();
             $('#eRMQZeroDiv').show();
             $('#eRMQErrorRelativeDiv').show();
-            $('#eRMQErrorAsoluteDiv').show();
-            $('#eRMQNegativesFracctionsDiv').hide();
+            $('#eRMQErrorAbsoluteDiv').show();
+            $('#eRMQNegativesFractionsDiv').hide();
             $('#eRMQSolutionDiv').hide();
             $('#eRMQnegativeDiv').show();
         }
