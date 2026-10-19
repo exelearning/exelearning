@@ -223,7 +223,7 @@ var $exeDevice = {
                             </div>
                             <div class="mb-3">
                                 <div class="d-flex flex-nowrap align-items-center gap-2 mb-3 SLCME-EDefinitioMedia">
-                                    <label class="mb-0">${_('Image')}:</label>
+                                    <label for="slcmEURLImageDefinition" class="mb-0">${_('Image')}:</label>
                                     <input type="text" id="slcmEURLImageDefinition" class="exe-file-picker form-control me-0 w-100" />
                                     <a href="#" id="slcmEPlayImageDefinition" class="SLCME-ENavigationButton" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                                     <a href="#" id="slcmEShowMoreDefinition" class="SLCME-ENavigationButton SLCME-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="SLCME-EButtonImage" /></a>
@@ -240,21 +240,21 @@ var $exeDevice = {
                                 </div>
                             </div>
                             <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioDefinition">
-                                <label class="mb-0">${_('Audio')}:</label>
+                                <label for="slcmEURLAudioDefinition" class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioDefinition" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioDefinition" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
                             <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioOK">
                                 <label for="slcmEMessageOK" class="mb-0">${_('Success')}:</label>
                                 <input type="text" id="slcmEMessageOK" class="form-control" />
-                                <label class="mb-0">${_('Audio')}:</label>
+                                <label for="slcmEURLAudioOK" class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioOK" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioOK" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
                             <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioKO" >
                                 <label for="slcmEMessageKO" class="mb-0">${_('Error')}:</label>
                                 <input type="text" id="slcmEMessageKO" class="form-control" />
-                                <label class="mb-0">${_('Audio')}:</label>
+                                <label for="slcmEURLAudioKO" class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioKO" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioKO" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
@@ -501,16 +501,16 @@ var $exeDevice = {
                 </div>
                 <span class="SLCME-ETitleText" id="slcmETitleText-${$exeDevice.activeID}">${_('Text')}</span>
                 <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="slcmEInputText-${$exeDevice.activeID}">
-                    <label class="sr-av">${_('Text')}</label>
+                    <label class="sr-av" for="slcmEText-${$exeDevice.activeID}">${_('Text')}</label>
                     <input type="text" id="slcmEText-${$exeDevice.activeID}" class="SLCME-EText form-control w-100 me-0" />
-                    <label id="slcmELblColor-${$exeDevice.activeID}">${_('Color')}:</label>
+                    <label id="slcmELblColor-${$exeDevice.activeID}" for="slcmEColor-${$exeDevice.activeID}">${_('Color')}:</label>
                     <input id="slcmEColor-${$exeDevice.activeID}" type="color" class="SLCME-EColor form-control" value="#000000">
-                    <label id="slcmELblBgColor-${$exeDevice.activeID}">${_('Background')}:</label>
+                    <label id="slcmELblBgColor-${$exeDevice.activeID}" for="slcmEBgColor-${$exeDevice.activeID}">${_('Background')}:</label>
                     <input id="slcmEBgColor-${$exeDevice.activeID}" type="color" class="SLCME-EBackColor form-control" value="#ffffff">
                 </div>
                 <span class="SLCME-ETitleImage" id="slcmETitleImage-${$exeDevice.activeID}">${_('Image')}</span>
                 <div class="SLCME-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="slcmEInputImage-${$exeDevice.activeID}">
-                    <label class="sr-av">URL</label>
+                    <label class="sr-av" for="slcmEURLImage-${$exeDevice.activeID}">URL</label>
                     <input type="text" id="slcmEURLImage-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLImage form-control me-0 w-100" />
                     <a href="#" id="slcmEPlayImage-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Show')}">
                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SLCME-EButtonImage" />
@@ -521,17 +521,17 @@ var $exeDevice = {
                 </div>
         <div class="d-none flex-nowrap align-items-center gap-2 mb-3" id="slcmEAuthorAlt-${$exeDevice.activeID}">
                     <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
-                        <label>${_('Authorship')}</label>
-            <input type="text" class="form-control me-0 w-100 SLCME-EAuthor" />
+                        <label for="slcmEAuthor-${$exeDevice.activeID}">${_('Authorship')}</label>
+            <input type="text" id="slcmEAuthor-${$exeDevice.activeID}" class="form-control me-0 w-100 SLCME-EAuthor" />
                     </div>
                     <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
-                        <label>${_('Alt')}</label>
-            <input type="text" class="form-control me-0 w-100 SLCME-EAlt" />
+                        <label for="slcmEAlt-${$exeDevice.activeID}">${_('Alt')}</label>
+            <input type="text" id="slcmEAlt-${$exeDevice.activeID}" class="form-control me-0 w-100 SLCME-EAlt" />
                     </div>
                 </div>
                 <span>${_('Audio')}</span>
                 <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudio-${$exeDevice.activeID}">
-                    <label class="sr-av">URL</label>
+                    <label class="sr-av" for="slcmEURLAudio-${$exeDevice.activeID}">URL</label>
                     <input type="text" id="slcmEURLAudio-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                     <a href="#" id="slcmEPlayAudio-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Audio')}">
                         <img src="${path}quextIEPlay.png" alt="Play" class="SLCME-EButtonImage" />
@@ -671,16 +671,11 @@ var $exeDevice = {
         });
 
         $('#slcmEText-' + id).on('keyup', function () {
-            $('#slcmETextDiv-' + id).text($(this).val());
-            if ($(this).val().trim().length > 0) {
-                $('#slcmETextDiv-' + $exeDevice.activeID)
-                    .removeClass('d-flex')
-                    .addClass('d-none');
-            } else {
-                $('#slcmETextDiv-' + $exeDevice.activeID)
-                    .removeClass('d-none')
-                    .addClass('d-flex');
-            }
+            const hasText = $(this).val().trim().length > 0;
+            $('#slcmETextDiv-' + id)
+                .text($(this).val())
+                .toggleClass('d-none', !hasText)
+                .toggleClass('d-flex', hasText);
         });
 
         $('#slcmEColor-' + id).on('change', function () {
@@ -838,7 +833,7 @@ var $exeDevice = {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < cards.length) {
                         cards[iq].url = $(this).attr('href');
-                        if (cards[iq].url < 4) {
+                        if (cards[iq].url.length < 4) {
                             cards[iq].url = '';
                         }
                     }
@@ -1055,7 +1050,7 @@ var $exeDevice = {
                 q.url.indexOf('http') != 0 &&
                 q.url.length > 4
             ) {
-                linkImage =
+                const linkImage =
                     '<a href="' +
                     q.url +
                     '" class="js-hidden seleccionamedias-LinkImagesDef">' +
@@ -1359,6 +1354,11 @@ var $exeDevice = {
             $exeDevice.copyPhrase();
         });
 
+        $('#slcmECut').on('click', function (e) {
+            e.preventDefault();
+            $exeDevice.cutPhrase();
+        });
+
         $('#slcmEPaste').on('click', function (e) {
             e.preventDefault();
             $exeDevice.pastePhrase();
@@ -1568,7 +1568,7 @@ var $exeDevice = {
         const validExt = ['mp3', 'ogg', 'wav'],
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waq');
+            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, wav');
             return false;
         } else {
             if (url.length > 4) {
@@ -1584,7 +1584,9 @@ var $exeDevice = {
         $('#slcmEAltDefinition').val('');
         $('#slcmEAuthorDefinition').val('');
         $('#slcmEImageDefinition').attr('src', '');
-        $('#slcmEURLAudioDefinition').attr('src', '');
+        $(
+            '#slcmEURLAudioDefinition, #slcmEMessageOK, #slcmEMessageKO, #slcmEURLAudioOK, #slcmEURLAudioKO'
+        ).val('');
         $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
     },
 
@@ -1654,6 +1656,7 @@ var $exeDevice = {
             $exeDevice.phrasesGame.splice($exeDevice.active, 0, p);
             $exeDevice.showPhrase($exeDevice.active);
             $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit == 1) {
             $exeDevice.hideFlex($('#slcmEPaste'));
             $exeDevice.typeEdit = -1;
@@ -1738,6 +1741,9 @@ var $exeDevice = {
         $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
 
         $('#slcmECustomMessages').prop('checked', game.customMessages);
+        $('.SLCME-ECustomMessageDiv')
+            .toggleClass('d-none', !game.customMessages)
+            .toggleClass('d-flex', !!game.customMessages);
 
         $exeDevice.updateQuestionsNumber();
         $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({

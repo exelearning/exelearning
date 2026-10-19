@@ -925,6 +925,7 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
             },
             decrypt: (text) => text,
             encrypt: (text) => text,
+            arrayMove: (list, from, to) => list.splice(to, 0, list.splice(from, 1)[0]),
         });
         previousMedia = global.$exeDevices.iDevice.gamification.media;
         global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
@@ -940,7 +941,7 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
             global.eXeLearning.app = previousApp;
         }
         vi.unstubAllGlobals();
-        for (const key of ['isJsonString', 'decrypt', 'encrypt']) {
+        for (const key of ['isJsonString', 'decrypt', 'encrypt', 'arrayMove']) {
             if (key in previousHelpers) helpers()[key] = previousHelpers[key];
             else delete helpers()[key];
         }
@@ -1034,6 +1035,79 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
         expect(feedback().getText()).toBe('<p>Well done</p>');
     });
 
+    it('shows the custom messages of a game reopened with them', () => {
+        device.updateFieldGame(game({ customMessages: true }));
+
+        const rows = [...document.querySelectorAll('.SLCME-ECustomMessageDiv')];
+        expect(rows).toHaveLength(2);
+        for (const row of rows) expect(row.classList.contains('d-none')).toBe(false);
+    });
+
+    it('shows the text of a card in its preview while it is typed', () => {
+        const input = document.querySelector('#slcmEPhrase .SLCME-EText');
+        const id = input.id.replace('slcmEText-', '');
+        const preview = document.getElementById(`slcmETextDiv-${id}`);
+
+        input.value = 'Cat';
+        $(input).trigger('keyup');
+
+        expect(preview.textContent).toBe('Cat');
+        expect(preview.classList.contains('d-none')).toBe(false);
+
+        input.value = '';
+        $(input).trigger('keyup');
+
+        expect(preview.classList.contains('d-none')).toBe(true);
+    });
+
+    it('starts a new activity without the audio and messages of the previous one', () => {
+        for (const id of ['slcmEURLAudioDefinition', 'slcmEMessageOK', 'slcmEMessageKO', 'slcmEURLAudioOK', 'slcmEURLAudioKO']) {
+            document.getElementById(id).value = 'files/previous.mp3';
+        }
+
+        device.clearPhrase();
+
+        for (const id of ['slcmEURLAudioDefinition', 'slcmEMessageOK', 'slcmEMessageKO', 'slcmEURLAudioOK', 'slcmEURLAudioKO']) {
+            expect(document.getElementById(id).value).toBe('');
+        }
+    });
+
+    it('names every field of the activity and of its cards', () => {
+        const fields = [
+            ...document.querySelectorAll('#slcmEPanel input[type="text"], #slcmEPanel input[type="color"]'),
+        ];
+
+        expect(fields.length).toBeGreaterThan(10);
+        for (const field of fields) expect(field.labels, field.id).toHaveLength(1);
+    });
+
+    it('drops a stored image link too short to be a file', () => {
+        device.idevicePreviousData = stored(
+            game(),
+            '<a href="x" class="js-hidden seleccionamedias-LinkImages-0">0</a>'
+        );
+        device.phrasesGame = [];
+
+        device.loadPreviousValues();
+
+        expect(device.phrasesGame[0].cards[0].url).toBe('');
+    });
+
+    it('writes the links of the files without leaking a global', () => {
+        delete globalThis.linkImage;
+
+        const links = device.createlinksImage([phrase({ url: 'files/statement.jpg' })]);
+
+        expect(links).toContain('seleccionamedias-LinkImagesDef');
+        expect(globalThis.linkImage).toBeUndefined();
+    });
+
+    it('names wav among the audio formats it supports', () => {
+        device.loadAudio('files/sound.flac');
+
+        expect(eXe.app.getLastAlert()).toBe('Supported formats: mp3, ogg, wav');
+    });
+
     describe('saving', () => {
         let editors;
 
@@ -1093,6 +1167,25 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
             device.updateFieldGame(game({ itinerary }));
 
             expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('moves an activity with the cut and paste buttons', () => {
+            device.updateFieldGame(game({ phrasesGame: [phrase({ definition: 'First' }), phrase({ definition: 'Second' })] }));
+            device.showPhrase(0, true);
+
+            document.getElementById('slcmECut').click();
+            device.active = 1;
+            document.getElementById('slcmEPaste').click();
+
+            expect(device.phrasesGame.map((p) => p.definition)).toEqual(['Second', 'First']);
+        });
+
+        it('counts a pasted copy in the activities per game', () => {
+            device.copyPhrase();
+            device.pastePhrase();
+
+            expect(device.phrasesGame).toHaveLength(2);
+            expect(document.getElementById('slcmENumeroPercentaje').textContent).toBe('2/2');
         });
     });
 });
