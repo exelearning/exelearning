@@ -1084,12 +1084,26 @@ var $eXeSeleccionaMedias = {
         }
     },
 
-    initializeMasonry: function (instance) {
+    initializeMasonry: function (instance, attempt = 0) {
         const $grid = $('#slcmpMainContainer-' + instance).find(
             '.SLCMP-Multimedia'
         );
-        // Without the plugin (mansory-jq.js) the cards keep their normal flow.
-        if (typeof $grid.masonry !== 'function') return;
+        if ($grid.hasClass('SLCMP-ModeTable')) return;
+        // Without the plugin (mansory-jq.js) the cards keep their normal flow
+        // until it finishes loading.
+        if (typeof $grid.masonry !== 'function') {
+            if (attempt < 20) {
+                setTimeout(
+                    () =>
+                        $eXeSeleccionaMedias.initializeMasonry(
+                            instance,
+                            attempt + 1
+                        ),
+                    250
+                );
+            }
+            return;
+        }
         $grid.masonry({
             itemSelector: '.SLCMP-GridItem',
             columnWidth: '.SLCMP-GridItem',

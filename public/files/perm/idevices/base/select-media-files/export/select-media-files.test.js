@@ -516,6 +516,12 @@ describe('select-media-files iDevice export', () => {
             document.body.innerHTML =
                 '<div id="slcmpMainContainer-0"><div class="SLCMP-Multimedia"></div></div>';
             delete $.fn.masonry;
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            delete $.fn.masonry;
         });
 
         it('does not throw when switching layouts', () => {
@@ -537,7 +543,28 @@ describe('select-media-files iDevice export', () => {
             dmedia.destroyMasonry(2);
 
             expect(destroyed).toEqual(['slcmpMainContainer-0']);
-            delete $.fn.masonry;
+        });
+
+        it('lays out the grid once the plugin finishes loading', () => {
+            dmedia.initializeMasonry(0);
+            $.fn.masonry = vi.fn();
+
+            vi.advanceTimersByTime(250);
+
+            expect($.fn.masonry).toHaveBeenCalledWith(expect.objectContaining({ itemSelector: '.SLCMP-GridItem' }));
+            expect($.fn.masonry.mock.contexts[0][0]).toBe(document.querySelector('#slcmpMainContainer-0 .SLCMP-Multimedia'));
+        });
+
+        it('does not lay out a grid switched to table mode while the plugin was loading', () => {
+            document.body.innerHTML =
+                '<div id="slcmpMainContainer-0"><div id="slcmpMultimedia-0" class="SLCMP-Multimedia"></div></div>';
+            dmedia.initializeMasonry(0);
+            $('#slcmpMultimedia-0').addClass('SLCMP-ModeTable');
+            $.fn.masonry = vi.fn();
+
+            vi.advanceTimersByTime(250);
+
+            expect($.fn.masonry).not.toHaveBeenCalled();
         });
     });
 });
