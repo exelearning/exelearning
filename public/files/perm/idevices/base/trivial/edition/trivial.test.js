@@ -20,10 +20,10 @@ describe('trivial iDevice edition', () => {
 
   beforeEach(() => {
     global.$exeDevice = undefined;
-    previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+    previousItinerary = $exeIDevicesEdition.iDevice.gamification.itinerary;
     // addEvents wires the whole editor. The itinerary component lives outside
     // this iDevice's source, so it is stubbed rather than exercised here.
-    $exeDevicesEdition.iDevice.gamification.itinerary = {
+    $exeIDevicesEdition.iDevice.gamification.itinerary = {
       addEvents: () => {},
       getTab: () => '',
       init: () => {},
@@ -39,7 +39,7 @@ describe('trivial iDevice edition', () => {
   });
 
   afterEach(() => {
-    $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+    $exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
     document.body.innerHTML = '';
   });
 
@@ -58,7 +58,7 @@ describe('trivial iDevice edition', () => {
   });
 
     /**
-     * The pass-score control is a shared block in common_edition.js, exercised
+     * The pass-score control is a shared block in common_idevices_edition.js, exercised
      * by its own tests. What is specific to this iDevice -- and what silently
      * breaks if someone edits the form -- is the wiring: all four call sites
      * have to be present, and the two saved fields have to reach the stored
@@ -78,7 +78,7 @@ describe('trivial iDevice edition', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: \{ hidebutton: true \}/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -153,6 +153,7 @@ describe('trivial iDevice edition lifecycle', () => {
     let originalYT;
     let originalItinerary;
     let originalStopSound;
+    let originalVoiceRecorder;
 
     beforeEach(() => {
         FakeFileReader.instances = [];
@@ -160,14 +161,15 @@ describe('trivial iDevice edition lifecycle', () => {
 
         originalFileReader = global.FileReader;
         originalYT = global.YT;
-        originalItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
-        originalStopSound = $exeDevicesEdition.iDevice.gamification.helpers.stopSound;
+        originalItinerary = $exeIDevicesEdition.iDevice.gamification.itinerary;
+        originalStopSound = $exeIDevicesEdition.iDevice.gamification.helpers.stopSound;
+        originalVoiceRecorder = $exeIDevicesEdition.iDevice.voiceRecorder;
 
         global.FileReader = FakeFileReader;
         window.FileReader = FakeFileReader;
-        $exeDevicesEdition.iDevice.gamification.itinerary = { addEvents: vi.fn() };
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound = vi.fn();
-        $exeDevicesEdition.iDevice.voiceRecorder = { initVoiceRecorders: vi.fn() };
+        $exeIDevicesEdition.iDevice.gamification.itinerary = { addEvents: vi.fn() };
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound = vi.fn();
+        $exeIDevicesEdition.iDevice.voiceRecorder = { initVoiceRecorders: vi.fn() };
 
         global.$exeDevice = undefined;
         $exeDevice = global.loadIdevice(join(__dirname, 'trivial.js'));
@@ -178,8 +180,9 @@ describe('trivial iDevice edition lifecycle', () => {
         global.FileReader = originalFileReader;
         window.FileReader = originalFileReader;
         global.YT = originalYT;
-        $exeDevicesEdition.iDevice.gamification.itinerary = originalItinerary;
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound = originalStopSound;
+        $exeIDevicesEdition.iDevice.gamification.itinerary = originalItinerary;
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound = originalStopSound;
+        $exeIDevicesEdition.iDevice.voiceRecorder = originalVoiceRecorder;
         vi.useRealTimers();
     });
 
@@ -495,4 +498,181 @@ describe('trivial minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('trivial edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/trivial/edition/';
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    const tabNames = () =>
+        [...document.querySelectorAll('#gameQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`gameQEIdeviceForm-panel-${name}`);
+    let device;
+    let previousApp;
+    let tooltips;
+    let previousHelpers;
+    let tinymceInit;
+    let previousMedia;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        previousHelpers = { ...helpers() };
+        Object.assign(helpers(), {
+            isJsonString: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return false;
+                }
+            },
+            sanitizeJSONString: (text) => text,
+            hourToSeconds: () => 0,
+            secondsToHour: () => '00:00:00',
+        });
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = {
+            getIDYoutube: () => false,
+            getURLVideoMediaTeca: () => false,
+            extractURLGD: (url) => url,
+        };
+        tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation(() => Promise.resolve([]));
+        device = global.loadIdevice(join(__dirname, 'trivial.js'));
+        vi.spyOn(device, 'loadYoutubeApi').mockImplementation(() => {});
+        document.body.innerHTML = '<div id="trivialBody"></div>';
+        device.init(document.getElementById('trivialBody'), {}, PATH);
+        // The form is wired once its question editor is ready.
+        const { setup } = tinymceInit.mock.calls.find(([config]) => config.setup)[0];
+        let editorReady;
+        setup({ on: (event, callback) => event === 'init' && (editorReady = callback) });
+        editorReady();
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        for (const key of ['isJsonString', 'sanitizeJSONString', 'hourToSeconds', 'secondsToHour']) {
+            if (key in previousHelpers) helpers()[key] = previousHelpers[key];
+            else delete helpers()[key];
+        }
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('sets the topics and their questions in Questions, and the game in Options', () => {
+        expect(panel('contents').firstElementChild.textContent).toContain('Choose a topic, name it');
+        expect(panel('contents').querySelector('#trivialEPanel #trivialNameTema')).not.toBeNull();
+        expect(panel('contents').querySelector('#trivialEPanel #trivialLoadGame')).not.toBeNull();
+        expect(panel('options').querySelector('#trivialEOptions #trivialNG6')).not.toBeNull();
+        expect(panel('options').querySelector('#trivialEOptions #trivialModeBoard')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgReply')).not.toBeNull();
+    });
+
+    it('offers no share windows, no save score button and no clue percentage, as before', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+        expect(document.getElementById('eXeGameSCORMblock').classList.contains('d-none')).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeClue').style.display).toBe('none');
+    });
+
+    it('keeps its accessibility warning in view', () => {
+        const warning = document.querySelector('#gameQEIdeviceForm > .alert-warning');
+
+        expect(warning.textContent).toContain('This game may present accessibility problems');
+        expect(document.querySelector('.exe-block-dismissible, .exe-block-close')).toBeNull();
+    });
+
+    it('explains each setting without changing any of them', () => {
+        const helps = [...document.querySelectorAll('#trivialEOptions .exe-idevice-help, #trivialEPanel .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('#gameQEIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(6);
+        for (const help of helps) {
+            expect(help.title).toBe('Information');
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('disposes all tooltips when the edition closes', () => {
+        // Every tooltip of the form, its own and those of the shared tabs.
+        expect(tooltips.size).toBe(document.querySelectorAll('#gameQEIdeviceForm .exe-app-tooltip').length);
+        expect(tooltips.size).toBeGreaterThanOrEqual(6);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('restores the options and the access code of a saved game', () => {
+        const itinerary = {
+            showClue: true,
+            clueGame: 'Next key: river',
+            percentageClue: 100,
+            showCodeAccess: true,
+            codeAccess: '1234',
+            messageCodeAccess: 'Code of the previous activity?',
+        };
+        device.updateFieldGame({
+            showMinimize: true,
+            showSolution: false,
+            timeShowSolution: 3,
+            modeBoard: true,
+            numeroTemas: 3,
+            nombresTemas: ['One', 'Two', 'Three', '', '', ''],
+            temas: device.temas,
+            itinerary,
+            isScorm: 0,
+            textButtonScorm: 'Save score',
+            repeatActivity: true,
+            weighted: 100,
+            evaluation: false,
+            evaluationID: '',
+            globalTime: 0,
+        });
+
+        expect(document.getElementById('trivialEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('trivialModeBoard').checked).toBe(true);
+        expect(document.getElementById('trivialNG3').checked).toBe(true);
+        expect(document.getElementById('eXeGameCodeAccess').value).toBe('1234');
+        expect(global.$exeIDevicesEdition.iDevice.gamification.itinerary.getValues()).toEqual(itinerary);
+    });
 });

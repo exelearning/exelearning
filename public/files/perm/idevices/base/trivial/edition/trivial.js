@@ -58,7 +58,7 @@ var $exeDevice = {
         $exeDevice.initQuestions();
 
         const root = document.getElementById('gameQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -695,9 +695,9 @@ var $exeDevice = {
         });
 
         p.audio = p.audio && p.audio != 'undefined' ? p.audio : '';
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         if (p.type != 2 && p.audio.trim().length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#trivialEURLAudio').val(p.audio);
@@ -1001,83 +1001,77 @@ var $exeDevice = {
     },
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-            <div id="gameQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                    _('Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/triviext.html',
-                )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-                                <span class="mb-0">${_('Number of topics')}: </span>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="TRVLE-NumeroTemas form-check-input" checked id="trivialNG2" type="radio" name="tvlnt" value="2" />
-                                    <label for="trivialNG2" class="form-check-label mb-0">2</label>
-                                </div>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="3" id="trivialNG3" />
-                                    <label for="trivialNG3" class="form-check-label mb-0">3</label>
-                                </div>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="4" id="trivialNG4" />
-                                    <label for="trivialNG4" class="form-check-label mb-0">4</label>
-                                </div>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="5" id="trivialNG5" />
-                                    <label for="trivialNG5" class="form-check-label mb-0">5</label>
-                                </div>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="6" id="trivialNG6" />
-                                    <label for="trivialNG6" class="form-check-label mb-0">6</label>
-                                </div>
-                            </div>
-                            <div class="toggle-item mb-3">
+            edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            toggle = (id, label, checked = false) => `
+                            <div class="toggle-item mb-0">
                                 <span class="toggle-control">
-                                    <input type="checkbox" id="trivialEShowMinimize" class="toggle-input" />
+                                    <input type="checkbox" id="${id}" class="toggle-input"${checked ? ' checked' : ''} />
                                     <span class="toggle-visual"></span>
                                 </span>
-                                <label class="toggle-label mb-0" for="trivialEShowMinimize">${_('Show minimized.')}</label>
-                            </div>
-                            <div class="d-flex align-items-center flex-nowrap mb-3 gap-2 flex-wrap">
-                                <div class="toggle-item mb-0">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="trivialEShowSolution" class="toggle-input" checked />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="trivialEShowSolution">${_('Show solutions')}.</label>
-                                </div>
-                                <label for="trivialETimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}</label>
-                                <input type="number" name="trivialETimeShowSolution" id="trivialETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:6ch" />
-                            </div>
-                            <div class="toggle-item mb-3">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="trivialModeBoard" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="trivialModeBoard">${_('Digital whiteboard mode')}</label>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 mb-3">
-                                <label for="trivialEGlobalTimes">${_('Time per question')}:</label>
-                                <select id="trivialEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
-                                    <option value="0" selected>15s</option>
-                                    <option value="1">30s</option>
-                                    <option value="2">1m</option>
-                                    <option value="3">3m</option>
-                                    <option value="4">5m</option>
-                                    <option value="5">10m</option>
-                                </select>
-                                <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
-                            </div>
-                            <div class="Games-Reportdiv d-flex align-items-center flex-nowrap gap-2 mb-3 flex-wrap">
-                            </div>
+                                <label class="toggle-label mb-0" for="${id}">${label}</label>
+                            </div>`,
+            options = `
+                <div id="trivialEOptions">
+                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
+                        <span class="mb-0">${_('Number of topics')}: </span>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="TRVLE-NumeroTemas form-check-input" checked id="trivialNG2" type="radio" name="tvlnt" value="2" />
+                            <label for="trivialNG2" class="form-check-label mb-0">2</label>
                         </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Questions')}</a></legend>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="3" id="trivialNG3" />
+                            <label for="trivialNG3" class="form-check-label mb-0">3</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="4" id="trivialNG4" />
+                            <label for="trivialNG4" class="form-check-label mb-0">4</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="5" id="trivialNG5" />
+                            <label for="trivialNG5" class="form-check-label mb-0">5</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="6" id="trivialNG6" />
+                            <label for="trivialNG6" class="form-check-label mb-0">6</label>
+                        </div>
+                        ${help(_('How many topics the board has. Each topic has its own questions in the Questions tab.'))}
+                    </div>
+                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
+                        ${toggle('trivialEShowMinimize', _('Show minimized.'))}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
+                        ${toggle('trivialEShowSolution', `${_('Show solutions')}.`, true)}
+                        <label for="trivialETimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
+                        <input type="number" name="trivialETimeShowSolution" id="trivialETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:6ch" />
+                        <span>${_('seconds')}</span>
+                        ${help(
+                            [
+                                `${_('Show solutions')}: ${_('Show the correct answer after checking an option or when the time runs out.')}`,
+                                `${_('Show solution time (seconds)')}: ${_('Set how many seconds the solution remains visible before moving to the next question.')}`,
+                            ].join('\n\n'),
+                        )}
+                    </div>
+                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
+                        ${toggle('trivialModeBoard', _('Digital whiteboard mode'))}
+                        ${help(_('Show buttons to mark an answer as correct or incorrect, or move on, when playing together on a digital whiteboard.'))}
+                    </div>
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                        <label for="trivialEGlobalTimes" class="mb-0">${_('Time per question')}:</label>
+                        <select id="trivialEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                            <option value="0" selected>15s</option>
+                            <option value="1">30s</option>
+                            <option value="2">1m</option>
+                            <option value="3">3m</option>
+                            <option value="4">5m</option>
+                            <option value="5">10m</option>
+                        </select>
+                        <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
+                        ${help(_('Select a time limit and click Accept to apply it to all the questions of the topic shown in the Questions tab.'))}
+                    </div>
+                </div>`,
+            questions = `
                         <div class="TRVLE-EPanel" id="trivialEPanel">
                             <div class="TRVLE-EOptionsMedia">
                                 <div class="TRVLE-EOptionsGame">                                    
@@ -1088,8 +1082,10 @@ var $exeDevice = {
                                         <label class="sr-av" for="trivialNameTema">${_('Topic number')}</label>
                                         <input type="text" id="trivialNameTema" class="form-control w-100" />
                                     </div>
-                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                        <span>${_('Load')}:</span><input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".json" />
+                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                                        <span>${_('Load')}:</span>
+                                        ${help(_('Add to this topic the questions of a text, Moodle XML or game file.'))}
+                                        <input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".json" class="mw-100" />
                                     </div>                                    
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                         <span>${_('Type')}:</span>
@@ -1350,25 +1346,37 @@ var $exeDevice = {
                                 </div>
                                 <span class="TRVLE-ENumQuestions" id="trivialENumQuestions">0</span>
                             </div>
-                        </div>
-                    </fieldset>
-                        ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                    ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                    ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                    <p class="exe-block-warning exe-block-dismissible" style="position:relative">
-                        ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
-                        <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>x</a>
-                    </p>
-                </div>
+                        </div>`,
+            html = `
+            <div id="gameQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/triviext.html',
+                )}
+                ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    path: path,
+                    instructions: $exeDevice.msgs.msgGameIntrunctions,
+                    options: options,
+                    contents: questions,
+                    passwords: true,
+                    after: true,
+                    grading: { hidebutton: true },
+                    texts: this.ci18n,
+                    share: false,
+                    info: {
+                        contents: _('Choose a topic, name it and add its questions, and edit them one by one.'),
+                    },
+                })}
+                <p class="alert alert-warning mt-3 mb-0">
+                    ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
+                </p>
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
 
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('gameQEIdeviceForm');
+        edition.gamification.scorm.init();
         tinymce.init({
             selector: '#trivialEText',
             height: 220,
@@ -1389,14 +1397,13 @@ var $exeDevice = {
             },
         });
 
+        // The clue is shown at the end of the game, whatever the score.
         $('#eXeGamePercentajeClue option[value=100]').attr(
             'selected',
             'selected'
         );
         $('#labelPercentajeClue').hide();
         $('#eXeGamePercentajeClue').hide();
-        $('#eXeGameSCORMButtonSave').hide();
-        $('label[for="eXeGameSCORMButtonSave"]').hide();
     },
 
     validTime: function (time) {
@@ -1642,7 +1649,7 @@ var $exeDevice = {
             }
 
             // i18n
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.changeNumberTemas(dataGame.numeroTemas);
@@ -1655,7 +1662,7 @@ var $exeDevice = {
         $exeDevice.activesQuestions = [0, 0, 0, 0, 0, 0];
         $exeDevice.temas = game.temas;
         $exeDevice.nombresTemas = game.nombresTemas;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.evaluation =
@@ -1693,17 +1700,17 @@ var $exeDevice = {
         $('#trivialNumberTema').val(1);
         $('#trivialLoadGame').val('');
         $('#trivialNameTema').val(game.nombresTemas[0]);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
         $('#trivialEGlobalTimes').val(game.globalTime);
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1964,7 +1971,7 @@ var $exeDevice = {
         }
 
         p.audio = $('#trivialEURLAudio').val();
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         p.soundVideo = $('#trivialECheckSoundVideo').is(':checked') ? 1 : 0;
         p.imageVideo = $('#trivialECheckImageVideo').is(':checked') ? 1 : 0;
@@ -2122,7 +2129,7 @@ var $exeDevice = {
         const newBlob = new Blob([JSON.stringify(dataGame)], {
             type: 'text/plain',
         });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('Activity')}-TriviEx.json`,
             'gameQEIdeviceForm'
@@ -2278,7 +2285,6 @@ var $exeDevice = {
             $exeDevice.changeNumberTemas(game.numeroTemas);
             const instructions = game.instructionsExe || game.instructions;
             tinymce.editors[0].setContent(unescape(instructions));
-            //$('.exe-form-tabs li:first-child a').click();
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
         }
@@ -2422,13 +2428,13 @@ var $exeDevice = {
             endVideo = 0,
             startVideo = 0,
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = false,
             temas = [],
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#trivialEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
@@ -2517,7 +2523,7 @@ var $exeDevice = {
             temas.push(tema);
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             asignatura: '',
@@ -2933,14 +2939,14 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#trivialEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
         $('#trivialEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -2971,9 +2977,9 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#trivialGlobalTimeButton').on('click', function (e) {
             e.preventDefault();
@@ -2989,12 +2995,7 @@ var $exeDevice = {
             ).prop('checked', true);
         });
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
     },
 
     showModeOpen: function (open) {
