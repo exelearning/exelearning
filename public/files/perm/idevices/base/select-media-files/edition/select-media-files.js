@@ -14,20 +14,16 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'select-media-files',
     active: 0,
-    activeCard: 0,
     activeID: '',
     phrasesGame: [],
-    phrase: {},
     typeEdit: -1,
     typeEditC: -1,
     idPaste: '',
     numberCutCuestion: -1,
     clipBoard: '',
     idevicePath: '',
-    playerAudio: '',
     version: 1.5,
     id: false,
-    accesibilityIsOk: true,
     ci18n: {},
 
     init: function (element, previousData, path) {
@@ -116,9 +112,6 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
@@ -689,9 +682,6 @@ var $exeDevice = {
             });
         });
 
-        $('#slcmEImage-' + id).on('click', function (e) {
-            $exeDevice.clickImage(id, e.pageX, e.pageY);
-        });
     },
     cardToJson: function ($card) {
         return {
@@ -1175,10 +1165,6 @@ var $exeDevice = {
             $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
 
-        if (showSolution && timeShowSolution.length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
         if (phrasesGame.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
@@ -1251,26 +1237,6 @@ var $exeDevice = {
             });
     },
 
-    playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        // Closing the editor must silence the preview and drop its stream.
-        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
-        $exeDevice.playerAudio
-            .play()
-            .catch((error) => console.error('Error playing audio:', error));
-    },
-
-    stopSound() {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause == 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
-    },
-
     drawImage: function (image, mData) {
         $(image).css({
             position: 'absolute',
@@ -1282,9 +1248,6 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        // Captured lexically so the deferred file-reader callback below stays
-        // bound to this edition instead of resolving the mutable global.
-        const self = this;
         $exeDevice.hideFlex($('#slcmEPasteC'));
 
         $('#slcmEAddC').on('click', function (e) {
@@ -1363,37 +1326,6 @@ var $exeDevice = {
             e.preventDefault();
             $exeDevice.pastePhrase();
         });
-
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $exeDevice.showFlex($('#eXeGameExportImport'));
-            $('#eXeGameImportGame').on('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                self.$lifecycle.ownFileReader(reader);
-                reader.onload = self.$lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                const dataGame = $exeDevice.validateData();
-                $exeIDevicesEdition.iDevice.gamification.share.exportGame(
-                    dataGame,
-                    'gameQEIdeviceForm',
-                    _('Select media files')
-                );
-            });
-        } else {
-            $exeDevice.hideFlex($('#eXeGameExportImport'));
-        }
 
         $('#slcmECustomMessages').on('change', function () {
             const messages = $(this).is(':checked');
@@ -1759,33 +1691,6 @@ var $exeDevice = {
         $('#slcmEANumberMaxCard').val(game.numberMaxCards);
     },
 
-    importGame: function (content) {
-        const game = $exeDevice.isJsonString(content);
-
-        if (!game || typeof game.typeGame == 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'SeleccionaMedias') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions,
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-        tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
-        tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        $exeIDevicesEdition.iDevice.gamification.feedback.setText(
-            unescape(textFeedBack)
-        );
-
-        $exeDevice.showPhrase(0, false);
-    },
-
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
                 $(image).parent().width() > 0 ? $(image).parent().width() : 1,
@@ -1816,18 +1721,6 @@ var $exeDevice = {
         };
     },
 
-    clickImage: function (id, epx, epy) {
-        const $image = $('#slcmEImage-' + id),
-            $x = $('#slcmEX-' + id),
-            $y = $('#slcmEY-' + id),
-            posX = epx - $image.offset().left,
-            posY = epy - $image.offset().top,
-            wI = $image.width() > 0 ? $image.width() : 1,
-            hI = $image.height() > 0 ? $image.height() : 1;
-        $x.val(posX / wI);
-        $y.val(posY / hI);
-    },
-
     removeTags: function (str) {
         let wrapper = $('<div></div>');
         wrapper.html(str);
@@ -1848,21 +1741,6 @@ var $exeDevice = {
                 $el.removeClass('d-flex').addClass('d-none');
             } else if (!$el.hasClass('d-flex') && !$el.hasClass('d-none')) {
                 $el.hide();
-            }
-        }
-    },
-    toggleFlex: function ($el) {
-        if ($el && $el.length) {
-            if ($el.hasClass('d-none')) {
-                $el.removeClass('d-none').addClass('d-flex');
-            } else if ($el.hasClass('d-flex')) {
-                $el.removeClass('d-flex').addClass('d-none');
-            } else {
-                if ($el.is(':visible')) {
-                    $el.hide();
-                } else {
-                    $el.show();
-                }
             }
         }
     },
