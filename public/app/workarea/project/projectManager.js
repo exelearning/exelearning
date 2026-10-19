@@ -163,7 +163,7 @@ export default class projectManager {
             Logger.log('[ProjectManager] Found pending import file, importing...');
             const file = window.__pendingImportFile;
             window.__pendingImportFile = null; // Clear it
-            this.importElp(file).catch(err => {
+            this.app.openStaticFile(file).catch(err => {
                 console.error('[ProjectManager] Failed to import pending file:', err);
             });
         }
