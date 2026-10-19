@@ -1,4 +1,5 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { JSDOM } from 'jsdom';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // The real library shipped to production. Loading it here (instead of a stub)
 // exercises the exact sanitisation policy the browser applies.
 import createDOMPurify from '../../../libs/dompurify/purify.min.js';
@@ -126,33 +127,13 @@ describe('sanitizeRichHtml (DOMPurify global path)', () => {
 
 describe('sanitizeRichHtml (real vendored DOMPurify path)', () => {
     let originalDOMPurify;
-    let originalNodeName;
     let DOMPurify;
 
     beforeAll(() => {
-        // happy-dom 21 returns '' from the Node.prototype `nodeName` getter and only
-        // overrides it on subclasses. DOMPurify reads nodeName through that base getter
-        // (correct in real browsers), so under happy-dom every tag looks unnamed and the
-        // sanitizer removes <body>. Dispatch the base getter to the most-derived one, then
-        // build a DOMPurify instance so it captures the patched getter.
-        originalNodeName = Object.getOwnPropertyDescriptor(Node.prototype, 'nodeName');
-        Object.defineProperty(Node.prototype, 'nodeName', {
-            configurable: true,
-            get() {
-                for (let p = Object.getPrototypeOf(this); p && p !== Node.prototype; p = Object.getPrototypeOf(p)) {
-                    const own = Object.getOwnPropertyDescriptor(p, 'nodeName');
-                    if (own?.get) {
-                        return own.get.call(this);
-                    }
-                }
-                return originalNodeName.get.call(this);
-            },
-        });
-        DOMPurify = createDOMPurify(window);
-    });
-
-    afterAll(() => {
-        Object.defineProperty(Node.prototype, 'nodeName', originalNodeName);
+        // Bind the vendored UMD to a jsdom Window, as sanitizeHtml.test.js does.
+        // happy-dom 21 returns '' from the Node.prototype nodeName getter DOMPurify
+        // reads, so on the test window DOMPurify drops <img> and keeps <script>.
+        DOMPurify = createDOMPurify(new JSDOM('<!doctype html><html><body></body></html>').window);
     });
 
     beforeEach(() => {
