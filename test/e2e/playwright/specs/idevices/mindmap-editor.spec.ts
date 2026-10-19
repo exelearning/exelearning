@@ -59,6 +59,10 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await expect(frame.locator('#message')).toBeHidden();
         // The editor draws the map in the font the SVG is laid out for
         expect(await frame.locator('.map-container').evaluate(e => getComputedStyle(e).fontFamily)).toMatch(/^Arial,/);
+        // The navigator previews the whole map
+        const preview = frame.locator('#navigator img');
+        await expect(preview).toHaveAttribute('src', /^data:image\/svg\+xml;base64,/);
+        const firstPreview = await preview.getAttribute('src');
         // A new map's title follows its central idea
         await expect(frame.locator('#map-title')).toHaveValue('Central Idea');
         await expect(frame.locator('#map-caption')).toBeChecked();
@@ -67,6 +71,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await addChild(page, frame, 'Fotosíntesis', 'Luz');
         await addChild(page, frame, 'Fotosíntesis', 'Agua & CO₂ <H2O>');
         await addChild(page, frame, 'Luz', 'Clorofila');
+        await expect.poll(() => preview.getAttribute('src')).not.toBe(firstPreview);
 
         // Text style controls reflect and change the selected node
         await topic(frame, 'Luz').click();

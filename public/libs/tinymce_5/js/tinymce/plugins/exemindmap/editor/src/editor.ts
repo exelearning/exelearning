@@ -390,6 +390,77 @@ function labelMindElixirToolbars(): void {
     }
 }
 
+/**
+ * The legacy Navigator: the whole map, drawn by the SVG exporter, with the visible part framed.
+ * A click or a drag on it moves the map there.
+ */
+function buildNavigator(): void {
+    const toggle = el('button', { type: 'button', id: 'navigator-toggle', 'aria-expanded': 'true' }, _('Navigator'));
+    const view = el('div', { class: 'navigator-view' });
+    const image = el('img', { alt: '' });
+    const frame = el('div', { class: 'navigator-frame' });
+    view.append(image, frame);
+    const navigator = el('div', { id: 'navigator' });
+    navigator.append(toggle, view);
+    (document.getElementById('map') as HTMLElement).append(navigator);
+
+    /** Where the map's content is on screen: Mind Elixir's nodes box without its padding. */
+    const content = () => {
+        const box = mind.nodes.getBoundingClientRect();
+        const css = getComputedStyle(mind.nodes);
+        const pad = (side: string) => Number.parseFloat(css.getPropertyValue(`padding-${side}`)) * mind.scaleVal;
+        const left = box.left + pad('left');
+        const top = box.top + pad('top');
+        return { left, top, width: box.right - pad('right') - left, height: box.bottom - pad('bottom') - top };
+    };
+    const place = () => {
+        const c = content();
+        const v = mind.container.getBoundingClientRect();
+        const clamp = (n: number) => Math.min(100, Math.max(0, n * 100));
+        const x0 = clamp((v.left - c.left) / c.width);
+        const y0 = clamp((v.top - c.top) / c.height);
+        Object.assign(frame.style, {
+            left: `${x0}%`,
+            top: `${y0}%`,
+            width: `${clamp((v.right - c.left) / c.width) - x0}%`,
+            height: `${clamp((v.bottom - c.top) / c.height) - y0}%`,
+        });
+    };
+    let timer = 0;
+    const render = () => {
+        clearTimeout(timer);
+        timer = window.setTimeout(async () => {
+            image.src = toDataUrl((await mind.exportVectorSvg({ padding: 0 })).svg);
+            place();
+        }, 150);
+    };
+    const moveTo = (event: PointerEvent) => {
+        const r = view.getBoundingClientRect();
+        const c = content();
+        const v = mind.container.getBoundingClientRect();
+        const x = c.left + ((event.clientX - r.left) / r.width) * c.width;
+        const y = c.top + ((event.clientY - r.top) / r.height) * c.height;
+        mind.move(v.left + v.width / 2 - x, v.top + v.height / 2 - y);
+    };
+
+    toggle.addEventListener('click', () => {
+        view.hidden = !view.hidden;
+        toggle.setAttribute('aria-expanded', String(!view.hidden));
+    });
+    view.addEventListener('pointerdown', (event) => {
+        view.setPointerCapture(event.pointerId);
+        moveTo(event);
+    });
+    view.addEventListener('pointermove', (event) => {
+        if (view.hasPointerCapture(event.pointerId)) moveTo(event);
+    });
+    // Redrawn when the map changes (Mind Elixir relinks it after every change), framed when it moves
+    mind.bus.addListener('linkDiv', render);
+    new MutationObserver(place).observe(mind.map, { attributes: true, attributeFilter: ['style'] });
+    window.addEventListener('resize', place);
+    render();
+}
+
 // ---------------------------------------------------------------------------
 // Export, print and save
 // ---------------------------------------------------------------------------
@@ -490,6 +561,7 @@ export function start(load: Record<string, unknown> = {}): MindElixirInstance {
     mind.container.style.fontFamily = DEFAULT_FONT_FAMILY;
     mind.init(data);
     labelMindElixirToolbars();
+    buildNavigator();
     // The whole map in view, unless that makes its text too small to read, and the central
     // idea selected, ready for Tab and Enter
     mind.scaleFit();

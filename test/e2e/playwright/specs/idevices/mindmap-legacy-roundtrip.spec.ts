@@ -208,6 +208,17 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         await expect(frame.locator('me-tpc')).toHaveCount(311, { timeout: 15000 });
         expect(Date.now() - start).toBeLessThan(15000);
         expect(countNodes((await editorData(frame2)).nodeData)).toBe(311);
+        // The navigator shows the whole map with the visible part framed, and a click moves there
+        const navigator = frame.locator('#navigator .navigator-view');
+        await expect(navigator.locator('img')).toHaveAttribute('src', /^data:image\/svg\+xml;base64,/);
+        const framed = () => frame.locator('.navigator-frame').evaluate(f => [f.style.left, f.style.width]);
+        await expect.poll(async () => Number.parseFloat((await framed())[1])).toBeLessThan(100);
+        const before = await framed();
+        const box = await navigator.boundingBox();
+        await navigator.click({ position: { x: 3, y: (box?.height ?? 0) / 2 } });
+        await expect.poll(framed).not.toEqual(before);
+        await frame.locator('#navigator-toggle').click();
+        await expect(navigator).toBeHidden();
         // Closing the dialog does not convert or touch the legacy source either
         await page.locator('.tox-dialog__header button[aria-label="Close"]').click();
         await expect(page.locator('.tox-dialog')).toHaveCount(0);

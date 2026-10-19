@@ -107,6 +107,7 @@ input:focus-visible,
 }
 
 #map {
+    position: relative;
     flex: 1;
     min-width: 0;
 }
@@ -120,6 +121,65 @@ input:focus-visible,
 /* The dialog cannot go full screen from its iframe, and it is already as large as it can be */
 #map #fullscreen {
     display: none;
+}
+
+/* The legacy Navigator, over the canvas like the legacy panels */
+#navigator {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 190px;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 1px 2px #0003;
+}
+
+#navigator-toggle {
+    justify-content: space-between;
+    width: 100%;
+    min-height: 26px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 0;
+    border-radius: 6px;
+    background: var(--exe-surface);
+}
+
+#navigator-toggle::after {
+    content: "–";
+}
+
+#navigator-toggle[aria-expanded="false"]::after {
+    content: "+";
+}
+
+.navigator-view {
+    position: relative;
+    width: fit-content;
+    margin: 6px auto;
+    cursor: pointer;
+    touch-action: none;
+}
+
+.navigator-view[hidden] {
+    display: none;
+}
+
+.navigator-view img {
+    display: block;
+    max-width: 176px;
+    max-height: 110px;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.navigator-frame {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid #d32f2f;
+    pointer-events: none;
 }
 
 #inspector {
@@ -202,7 +262,8 @@ input[type="color"]:disabled {
 }
 
 @media (max-width: 640px) {
-    #toolbar button span {
+    #toolbar button span,
+    #navigator {
         display: none;
     }
 
@@ -222,6 +283,7 @@ input[type="color"]:disabled {
     #toolbar,
     #message,
     #inspector,
+    #navigator,
     .mind-elixir-toolbar,
     .context-menu {
         display: none !important;
