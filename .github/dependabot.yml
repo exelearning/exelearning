@@ -20,11 +20,6 @@ updates:
       # exit criteria and drop this together with the pin once fixed.
       - dependency-name: "@playwright/test"
         versions: [">=1.59"]
-      # Mermaid 12 breaks the server-side pre-render with "CSSStyleSheet is
-      # not defined" (#2528, #2544), so it is held on 11.x. Drop this entry
-      # when the Pele replacement (#2556) lands and removes the dependency.
-      - dependency-name: "mermaid"
-        versions: [">=12"]
       # jQuery 4 removes jQuery.trim and other statics still used by the
       # editor save path, iDevice export runtimes, qTip2 and author/legacy
       # content that ships in every export. Held on 3.x until the migration
