@@ -84,14 +84,18 @@ which runs BEFORE each entry is inflated. All four sinks delegate to it.
   cumulative byte total using each entry's `originalSize` and throws
   `ZipLimitError` before inflation when a cap is exceeded. `fflate` is
   dependency-injectable for hermetic tests.
-- Documented limitation (in the module header and inline): `originalSize` is the
-  attacker-declared uncompressed size from the ZIP central directory, not a
-  measured value; a crafted entry can understate it and then inflate past the
-  declared size, and `fflate.unzipSync` cannot abort mid-entry through this
-  filter. The check still stops the common over-declared bomb cheaply.
-- Consumers delegating to the shared guard:
-  `src/shared/import/ElpxImporter.ts`, `src/services/admin-upload-validator.ts`,
-  `src/services/zip.ts`, and `src/services/folder-manager.ts`.
+- `originalSize` is the declared uncompressed size from the ZIP central
+  directory, not a measured value. An entry that understates it does not get
+  past the caps: `fflate.unzipSync` inflates each entry into a buffer of exactly
+  the declared size and stops there, so the entry comes back truncated. Review
+  measured this with a 50 MiB entry declared as 1 KiB (1024 bytes returned, no
+  RSS growth), and `safe-unzip.spec.ts` pins it.
+- Limits, `ZipLimitError` and its structured `details` come from
+  `src/shared/import/importPolicy.ts`, the policy the ELP/ELPX importer already
+  uses, so there is one error type and one set of conservative caps.
+- Consumers delegating to the shared guard: `src/services/admin-upload-validator.ts`,
+  `src/services/zip.ts`, and `src/services/folder-manager.ts`. The ELP/ELPX
+  importer keeps its own runtime-specific limits (ADR-2193-01).
 - Tests: `src/utils/safe-unzip.spec.ts` (per-entry, cumulative, and entry-count
   caps; DI-injected fflate). The import-path ZIP-bomb guard tests were made fast
   and deterministic (commit `eb775aabd`, "test(import): make ZIP-bomb guard
@@ -120,9 +124,9 @@ limitation.
 
 ### Negative
 
-- The guard does not defeat a bomb that under-declares `originalSize` and
-  inflates past it; `fflate.unzipSync` cannot abort mid-entry. This is a known,
-  documented residual risk, not full protection.
+- An archive that under-declares `originalSize` is not rejected; its entry is
+  silently truncated to the declared size. Memory stays bounded, but the caller
+  receives corrupt data rather than an error.
 - Legitimate very large archives above the 500 MB / 200 MB / 10000-entry caps
   are rejected and require an explicit per-call limit override.
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test';
 import { zipSync, strToU8 } from 'fflate';
 import { safeUnzipSync, ZipLimitError, DEFAULT_ZIP_LIMITS } from './safe-unzip';
+import { ZipLimitError as PolicyZipLimitError } from '../shared/import/importPolicy';
 
 describe('safe-unzip', () => {
     describe('DEFAULT_ZIP_LIMITS', () => {
@@ -46,6 +47,21 @@ describe('safe-unzip', () => {
             );
         });
 
+        it('never inflates an entry past its declared size, even when the declaration lies', () => {
+            // Shrink the declared uncompressed size of a 1 MiB entry to 1 KiB in
+            // both the local header and the central directory. The size checks
+            // trust that declaration, so the memory bound depends on fflate
+            // allocating exactly the declared size and stopping there.
+            const zip = zipSync({ 'lie.bin': [new Uint8Array(1024 * 1024), { level: 9 }] });
+            const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+            const centralDirectory = view.getUint32(zip.length - 22 + 16, true);
+            view.setUint32(22, 1024, true);
+            view.setUint32(centralDirectory + 24, 1024, true);
+
+            const out = safeUnzipSync(zip, { limits: { maxEntryBytes: 2048, maxTotalBytes: 2048 } });
+            expect(out['lie.bin'].length).toBe(1024);
+        });
+
         it('uses an injected fflate implementation when provided', () => {
             let called = false;
             const fakeFflate = {
@@ -61,11 +77,23 @@ describe('safe-unzip', () => {
     });
 
     describe('ZipLimitError', () => {
-        it('is a named Error subclass', () => {
-            const err = new ZipLimitError('boom');
-            expect(err).toBeInstanceOf(Error);
-            expect(err.name).toBe('ZipLimitError');
-            expect(err.message).toBe('boom');
+        it('is the shared import-policy error, with structured details', () => {
+            const zip = zipSync({ 'big.bin': new Uint8Array(2048) });
+            let caught: unknown;
+            try {
+                safeUnzipSync(zip, { label: 'theme ZIP', limits: { maxEntryBytes: 1024 } });
+            } catch (err) {
+                caught = err;
+            }
+            expect(caught).toBeInstanceOf(PolicyZipLimitError);
+            expect(ZipLimitError).toBe(PolicyZipLimitError);
+            expect((caught as PolicyZipLimitError).details).toEqual({
+                kind: 'entry-size',
+                archiveLabel: 'theme ZIP',
+                entryName: 'big.bin',
+                actualValue: 2048,
+                limitValue: 1024,
+            });
         });
     });
 });

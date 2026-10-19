@@ -15,41 +15,25 @@
  * inflated, so we refuse oversized/over-numerous archives without materialising
  * the offending bytes.
  *
- * KNOWN LIMITATION (intentional): `originalSize` is attacker-declared metadata,
- * not a measured value. A crafted entry can understate it and then inflate to
- * more than declared; fflate decompresses synchronously and cannot abort
- * mid-entry through this filter. The declared-size check still stops the common
- * over-declared zip bomb cheaply and without inflation.
+ * `originalSize` is attacker-declared metadata, not a measured value. A crafted
+ * entry that understates it does not get past the caps: fflate inflates each
+ * entry into a buffer of exactly the declared size and stops there, so such an
+ * entry comes back truncated (corrupt), never larger than declared. The spec
+ * pins that behavior because the memory bound depends on it.
  */
 import * as fflateModule from 'fflate';
+import {
+    DEFAULT_ZIP_LIMITS,
+    entryCountError,
+    entrySizeError,
+    totalSizeError,
+    type ZipDecompressionLimits,
+} from '../shared/import/importPolicy';
 
-/** Caps applied to every inflate path. */
-export interface ZipDecompressionLimits {
-    /** Maximum total uncompressed bytes across all entries. */
-    maxTotalBytes: number;
-    /** Maximum uncompressed bytes for any single entry. */
-    maxEntryBytes: number;
-    /** Maximum number of entries in the archive. */
-    maxEntries: number;
-}
-
-/** Default ZIP decompression limits applied to every inflate path. */
-export const DEFAULT_ZIP_LIMITS: ZipDecompressionLimits = {
-    maxTotalBytes: 500 * 1024 * 1024, // 500 MB cumulative
-    maxEntryBytes: 200 * 1024 * 1024, // 200 MB per entry
-    maxEntries: 10000, // entry-count cap
-};
-
-/**
- * Thrown when a ZIP archive would exceed the configured decompression limits.
- * The inflate is aborted before the offending data is materialised in memory.
- */
-export class ZipLimitError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'ZipLimitError';
-    }
-}
+// The limits and the error type come from the shared import policy so every
+// server unzip sink and the ELP/ELPX importer report the same ZipLimitError
+// (with structured `details`) against the same conservative caps.
+export { DEFAULT_ZIP_LIMITS, ZipLimitError, type ZipDecompressionLimits } from '../shared/import/importPolicy';
 
 /** Options for {@link safeUnzipSync}. */
 export interface SafeUnzipOptions {
@@ -77,25 +61,19 @@ export function safeUnzipSync(buffer: Uint8Array, options: SafeUnzipOptions = {}
         filter: (file: { name: string; originalSize: number }) => {
             entryCount++;
             if (entryCount > maxEntries) {
-                throw new ZipLimitError(`${label} exceeds the maximum allowed number of entries (${maxEntries}).`);
+                throw entryCountError(label, entryCount, maxEntries);
             }
 
-            // NOTE: `originalSize` is the attacker-declared uncompressed size from
-            // the central directory, checked before inflation as a cheap guard.
+            // `originalSize` is the declared uncompressed size from the central
+            // directory; fflate never inflates past it (see the module comment).
             const entrySize = file.originalSize;
             if (entrySize > maxEntryBytes) {
-                throw new ZipLimitError(
-                    `Entry '${file.name}' in ${label} is too large when decompressed ` +
-                        `(${entrySize} bytes > ${maxEntryBytes} byte limit).`,
-                );
+                throw entrySizeError(label, file.name, entrySize, maxEntryBytes);
             }
 
             cumulativeBytes += entrySize;
             if (cumulativeBytes > maxTotalBytes) {
-                throw new ZipLimitError(
-                    `${label} exceeds the maximum total decompressed size ` +
-                        `(${cumulativeBytes} bytes > ${maxTotalBytes} byte limit).`,
-                );
+                throw totalSizeError(label, cumulativeBytes, maxTotalBytes);
             }
 
             return true;

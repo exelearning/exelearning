@@ -196,8 +196,9 @@ Mitigations map to the five ADRs. Residual risks (explicitly documented, not
 overclaimed):
 
 - **ZIP (ADR-2006-02):** `originalSize` is attacker-declared; an under-declared
-  entry can still inflate past the cap because `fflate.unzipSync` cannot abort
-  mid-entry. The over-declared bomb (the common case) is blocked cheaply.
+  entry is truncated to the declared size rather than rejected, so memory stays
+  bounded but the extracted data is corrupt. The over-declared bomb is rejected
+  before inflation.
 - **SSRF (ADR-2006-04):** `safeFetch` does not pin the validated IP into the socket,
   so DNS rebinding / TOCTOU by an attacker controlling authoritative DNS is not
   fully prevented; literal-IP, static-resolve, and redirect cases are blocked.
