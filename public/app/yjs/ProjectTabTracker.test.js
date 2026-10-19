@@ -526,6 +526,40 @@ describe('ProjectTabTracker', () => {
 
       tracker.stop();
     });
+
+    it('should keep the sender registered when TAB_OPENED arrives before its storage write is visible', () => {
+      // Firefox can deliver the BroadcastChannel message before the new tab's
+      // localStorage write reaches this tab. The heartbeat this tab sends in
+      // reply must not overwrite the registry without the new tab.
+      const callback = vi.fn();
+      const tracker = new ProjectTabTracker('project-123', callback);
+      tracker.start();
+
+      // Stale snapshot: the registry only holds this tab, not the sender.
+      expect(Object.keys(JSON.parse(mockLocalStorage.getItem('exe-tabs-project-123')))).toEqual([tracker.tabId]);
+
+      tracker._handleMessage({ data: { type: 'TAB_OPENED', tabId: 'new-tab' } });
+
+      const tabs = JSON.parse(mockLocalStorage.getItem('exe-tabs-project-123'));
+      expect(Object.keys(tabs).sort()).toEqual([tracker.tabId, 'new-tab'].sort());
+
+      // Closing this tab right away must not look like the last tab closing.
+      tracker._handleBeforeUnload();
+      expect(callback).not.toHaveBeenCalled();
+      expect(Object.keys(JSON.parse(mockLocalStorage.getItem('exe-tabs-project-123')))).toEqual(['new-tab']);
+    });
+
+    it('should ignore TAB_OPENED messages without a sender id', () => {
+      const tracker = new ProjectTabTracker('project-123', () => {});
+      tracker.start();
+
+      tracker._handleMessage({ data: { type: 'TAB_OPENED' } });
+
+      const tabs = JSON.parse(mockLocalStorage.getItem('exe-tabs-project-123'));
+      expect(Object.keys(tabs)).toEqual([tracker.tabId]);
+
+      tracker.stop();
+    });
   });
 
   describe('localStorage error handling', () => {
