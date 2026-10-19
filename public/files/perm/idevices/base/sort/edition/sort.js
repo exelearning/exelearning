@@ -16,10 +16,8 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'sort',
     active: 0,
-    activeCard: 0,
     activeID: '',
     phrasesGame: [],
-    phrase: {},
     typeEdit: -1,
     typeEditC: -1,
     idPaste: '',
@@ -27,10 +25,6 @@ var $exeDevice = {
     clipBoard: '',
     idevicePath: '',
     checkAltImage: true,
-    playerAudio: '',
-    screenLocked: false,
-    /** Overlay state recorded by `lockScreen()`, restored when it unlocks. */
-    loadScreenState: null,
     version: 1.5,
     id: false,
     ci18n: {},
@@ -46,11 +40,6 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
-        // The upload overlay covers the whole workarea, not just this form, so
-        // closing the editor mid-upload must never leave it on screen.
-        this.$lifecycle.own(() => {
-            if (this.screenLocked) this.hideLoadScreen();
-        });
     },
     refreshTranslations: function () {
         this.ci18n = {
@@ -133,9 +122,6 @@ var $exeDevice = {
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
@@ -779,90 +765,10 @@ var $exeDevice = {
                     });
             });
     },
-    processFile: function (file, id, type) {
-        try {
-            this.addUploadImage(file, file.name, id, type);
-        } catch (err) {
-            console.error('Error processing file:', err);
-        }
-    },
-
-    addUploadImage: async function (imageData, imageName, id) {
-        let fd = new FormData();
-        fd.append('file', imageData);
-        fd.append('filename', imageName);
-        fd.append('odeSessionId', eXeLearning.app.project.odeSession);
-
-        this.lockScreen();
-        let lockStartTime = Date.now();
-
-        try {
-            let response = await eXe.app.uploadLargeFile(fd);
-            let loadTime = Date.now() - lockStartTime;
-
-            if (response?.savedPath && response?.savedFilename) {
-                let fileUrl = `${response.savedPath}/${response.savedFilename}`;
-                let $fileContainerField = $(`#${id}`);
-
-                if ($fileContainerField.length) {
-                    $fileContainerField.val(fileUrl).trigger('change');
-                }
-            } else {
-                eXe.app.alert(_(response?.code || 'Upload failed'));
-            }
-
-            this.unlockScreen(loadTime);
-        } catch (err) {
-            console.error('Upload failed:', err);
-            this.unlockScreen();
-        }
-    },
-
-    lockScreen: function () {
-        const loadScreen = document.getElementById('load-screen-node-content');
-        if (!loadScreen) return;
-        // The overlay is the workarea's own page loading screen, not part of
-        // this form. Record the state this upload found it in so unlocking can
-        // hand it back untouched, instead of forcing a hidden overlay on
-        // whatever else may be using it by then.
-        if (!this.screenLocked) {
-            this.loadScreenState = {
-                className: loadScreen.className,
-                style: loadScreen.getAttribute('style') || '',
-            };
-        }
-        $(loadScreen)
-            .css({ zIndex: 9999, position: 'fixed', top: 0, left: 0 })
-            .removeClass('hide hidden')
-            .addClass('loading');
-        this.screenLocked = true;
-    },
-
     /**
      * Put the shared upload overlay back the way it was found. Extracted so the
      * fade-out timer and the edition teardown restore exactly the same state.
      */
-    hideLoadScreen: function () {
-        this.screenLocked = false;
-        const state = this.loadScreenState;
-        this.loadScreenState = null;
-        const loadScreen = document.getElementById('load-screen-node-content');
-        if (!loadScreen || !state) return;
-        loadScreen.className = state.className;
-        if (state.style) loadScreen.setAttribute('style', state.style);
-        else loadScreen.removeAttribute('style');
-    },
-
-    unlockScreen: function (delay = 1000) {
-        delay = delay > 1000 ? 400 : 0;
-        let $loadScreen = $('#load-screen-node-content');
-
-        $loadScreen.removeClass('loading').addClass('hidding');
-        this.$lifecycle.setTimeout(function () {
-            this.hideLoadScreen();
-        }, delay);
-    },
-
     addEventCard: function (id) {
         $('#ordenaEAuthorAlt-' + id)
             .removeClass('d-flex')
@@ -1341,7 +1247,6 @@ var $exeDevice = {
             wordBorder = $('#ordenaEWordBorder').is(':checked'),
             itinerary =
                 $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            caseSensitive = $('#ordenaECaseSensitive').is(':checked'),
             customMessages = $('#ordenaECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#ordenaEPercentajeQuestions').val())
@@ -1394,7 +1299,7 @@ var $exeDevice = {
             weighted: scorm.weighted,
             textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
-            caseSensitive: caseSensitive,
+            caseSensitive: false,
             feedBack: feedback.feedBack,
             percentajeFB: feedback.percentajeFB,
             customMessages: customMessages,
@@ -1455,26 +1360,6 @@ var $exeDevice = {
             .on('error', function () {
                 return false;
             });
-    },
-
-    playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        // Closing the editor must silence the preview and drop its stream.
-        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
-        $exeDevice.playerAudio
-            .play()
-            .catch((error) => console.error('Error playing audio:', error));
-    },
-
-    stopSound() {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause == 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
     },
 
     paintMouse: function (image, cursor, x, y) {
@@ -1538,18 +1423,6 @@ var $exeDevice = {
         });
 
         $('#ordenaEPaste').hide();
-
-        $('input.ODNE-GameMode').on('click', function () {
-            $('#ordenaEDatosCarta-2').hide();
-            $('#ordenaEDatosCarta-3').hide();
-            const type = parseInt($(this).val());
-            if (type == 1) {
-                $('#ordenaEDatosCarta-2').show();
-            } else if (type == 2) {
-                $('#ordenaEDatosCarta-2').show();
-                $('#ordenaEDatosCarta-3').show();
-            }
-        });
 
         $('#ordenaEAdd').on('click', function (e) {
             e.preventDefault();
@@ -1758,18 +1631,6 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
 
-        $('.sortable_container').on('dragenter', function (e) {
-            e.preventDefault();
-            $(this).addClass('drag-over');
-        });
-
-        $('.sortable_container').on('dragleave', function () {
-            $(this).removeClass('drag-over');
-        });
-
-        $('.sortable_container').on('drop', function () {
-            $(this).removeClass('drag-over');
-        });
         $('#ordenaEURLImgCard').on('change', () => $exeDevice.loadImageCard());
     },
     loadImageCard: function () {
@@ -1978,7 +1839,6 @@ var $exeDevice = {
 
         $('#ordenaEShowMinimize').prop('checked', game.showMinimize);
         $('#ordenaEWordBorder').prop('checked', game.wordBorder);
-        $('#ordenaECaseSensitive').prop('checked', game.caseSensitive);
         $('#ordenaEPercentajeQuestions').val(game.percentajeQuestions);
         $('#ordenaETime').val(game.time);
         $('#ordenaETimeShowSolution').val(game.timeShowSolution);
@@ -2079,33 +1939,6 @@ var $exeDevice = {
             .on('error', function () {
                 return false;
             });
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame == 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'Ordena') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions,
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-        tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
-        tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        $exeIDevicesEdition.iDevice.gamification.feedback.setText(
-            unescape(textFeedBack)
-        );
-        $exeDevice.showPhrase(0, false);
     },
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
