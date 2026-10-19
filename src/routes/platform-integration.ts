@@ -384,6 +384,8 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
      * @body jwt_token    Platform JWT, validated server-side.
      * @body projectUuid  UUID of the project (optional; used to remember the
      *                    Moodle cmid so re-edit can find the project).
+     * @body projectSaved `1` when the browser saved the project and its assets
+     *                    to the server first, so the next edit may reopen it.
      * @returns Success/error status with the platform return URL.
      */
     .post(
@@ -392,8 +394,9 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
             const {
                 jwt_token,
                 projectUuid,
+                projectSaved,
                 package: packageFile,
-            } = body as { jwt_token: string; projectUuid?: string; package: File };
+            } = body as { jwt_token: string; projectUuid?: string; projectSaved?: string; package: File };
 
             const params = await getPlatformIntegrationParams(jwt_token, 'set');
             if (!params) {
@@ -423,7 +426,16 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
                         ? (packageFile as { name: string }).name
                         : 'package.zip';
 
-                const result = await platformPetitionSetForward(params, jwt_token, projectUuid ?? '', buffer, filename);
+                const result = await platformPetitionSetForward(
+                    params,
+                    jwt_token,
+                    projectUuid ?? '',
+                    buffer,
+                    filename,
+                    {
+                        projectSaved: projectSaved === '1',
+                    },
+                );
 
                 if (!result.success) {
                     set.status = 500;

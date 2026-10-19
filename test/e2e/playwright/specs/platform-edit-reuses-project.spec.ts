@@ -6,7 +6,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { SignJWT } from 'jose';
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForLoadingScreen, addPage } from '../helpers/workarea-helpers';
+import { waitForLoadingScreen, addPage, navigateToPageByTitle } from '../helpers/workarea-helpers';
 
 /**
  * Editing a Moodle activity reopens one project per user (issue #2549).
@@ -26,6 +26,8 @@ import { waitForLoadingScreen, addPage } from '../helpers/workarea-helpers';
 const PLATFORM_SECRET = 'e2e-platform-secret';
 const CMID = 1234;
 const FIXTURE = path.join(__dirname, '../../../fixtures/really-simple-test-project.elpx');
+const IMAGE_FIXTURE = path.join(__dirname, '../../../fixtures/sample-3.jpg');
+const IMAGE_NAME = 'moodle-activity-image.jpg';
 
 interface StandInMoodle {
     url: string;
@@ -147,6 +149,42 @@ function changedInMoodle(elpx: Buffer): Buffer {
     return Buffer.from(zipSync({ ...files, 'content.xml': strToU8(contentXml) }));
 }
 
+/** The fixture package with an image on its first page, as eXeLearning packages it. */
+function withImage(elpx: Buffer, image: Buffer): Buffer {
+    const files = unzipSync(new Uint8Array(elpx));
+    const img = `<img src="{{context_path}}/${IMAGE_NAME}" alt="Activity image" width="40" height="40" />`;
+    const contentXml = strFromU8(files['content.xml'])
+        .replace('<div><p>Lorem ipsum', `<div><p>${img}Lorem ipsum`)
+        .replace('"textTextarea":"<p>Lorem ipsum', `"textTextarea":"<p>${img.replace(/"/g, '\\"')}Lorem ipsum`);
+    return Buffer.from(
+        zipSync({
+            ...files,
+            'content.xml': strToU8(contentXml),
+            [`content/resources/${IMAGE_NAME}`]: new Uint8Array(image),
+        }),
+    );
+}
+
+function packageHasImage(pkg: Buffer): boolean {
+    return Object.keys(unzipSync(new Uint8Array(pkg))).some(name => name.endsWith(IMAGE_NAME));
+}
+
+/** Width of the activity image as the editor shows it on the first page (0 when broken). */
+async function imageWidthInEditor(page: Page): Promise<number> {
+    await navigateToPageByTitle(page, 'Page 1');
+    const image = page.locator('#node-content article .idevice_node.text img[alt="Activity image"]').first();
+    await expect(image).toBeVisible({ timeout: 15000 });
+    await expect
+        .poll(() => image.evaluate((el: HTMLImageElement) => el.naturalWidth), { timeout: 15000 })
+        .toBeGreaterThan(0);
+    return image.evaluate((el: HTMLImageElement) => el.naturalWidth);
+}
+
+async function finish(page: Page, moodle: StandInMoodle): Promise<void> {
+    await page.locator('#head-top-finish-button').click();
+    await page.waitForURL(`${moodle.url}/mod/exescorm/view.php**`, { timeout: 60000 });
+}
+
 test.describe('Editing a Moodle activity reuses one project per user', () => {
     let moodle: StandInMoodle;
 
@@ -222,5 +260,38 @@ test.describe('Editing a Moodle activity reuses one project per user', () => {
             expect(afterFinish.opened).toEqual({ responseMessage: 'OK', unchanged: true });
             expect(await pageNames(page)).toContain('Changed in Moodle');
         });
+    });
+    // A reopened project is not imported again, so its images must be on the
+    // eXeLearning server and not only in the browser that imported it (#2550).
+    test('keeps the images when the activity is edited again from another browser', async ({
+        authenticatedPage: page,
+        browser,
+    }, testInfo) => {
+        test.setTimeout(240000);
+        moodle.packageBytes = withImage(await fs.readFile(FIXTURE), await fs.readFile(IMAGE_FIXTURE));
+
+        const first = await editActivity(page, moodle, '5');
+        expect(first.opened.elpFile).toBeTruthy();
+        expect(await imageWidthInEditor(page)).toBeGreaterThan(0);
+        await finish(page, moodle);
+        expect(packageHasImage(moodle.packageBytes)).toBe(true);
+
+        // Same eXeLearning user, but none of the first browser's caches.
+        const baseURL = String(testInfo.project.use.baseURL || 'http://localhost:3001');
+        const otherBrowser = await browser.newContext({ baseURL, storageState: await page.context().storageState() });
+        try {
+            const otherPage = await otherBrowser.newPage();
+
+            const again = await editActivity(otherPage, moodle, '5');
+
+            expect(again.projectUuid).toBe(first.projectUuid);
+            expect(again.opened).toEqual({ responseMessage: 'OK', unchanged: true });
+            expect(await imageWidthInEditor(otherPage)).toBeGreaterThan(0);
+
+            await finish(otherPage, moodle);
+            expect(packageHasImage(moodle.packageBytes)).toBe(true);
+        } finally {
+            await otherBrowser.close();
+        }
     });
 });

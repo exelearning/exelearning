@@ -542,7 +542,9 @@ export default class projectManager {
                         } else {
                             let saved = false;
                             try {
-                                const saveResult = await this._yjsBridge.documentManager.saveToServer();
+                                // A full save also uploads the package's assets: the next
+                                // edit may reopen this project from another browser (#2550).
+                                const saveResult = await this._yjsBridge.save({ showProgress: false });
                                 saved = saveResult?.success === true;
                                 Logger.log('[ProjectManager] Document saved to server after platform import');
                             } catch (saveError) {

@@ -1019,6 +1019,37 @@ describe('Platform Integration Routes', () => {
             expect(linkedCmid).toBe('456');
         });
 
+        // The next edit of the activity reopens the project as it is only when
+        // the server holds its assets too, so the browser says whether it
+        // saved them (#2550).
+        it('records the package only when the browser saved the project with its assets', async () => {
+            const token = await createValidToken();
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+            const recordedHashes: unknown[] = [];
+            configureService({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'project-uuid-123' }),
+                updateProjectByUuid: async (_db, _uuid, updates) => {
+                    recordedHashes.push(updates.platform_package_hash);
+                    return undefined;
+                },
+            });
+
+            for (const projectSaved of ['1', undefined]) {
+                const formData = new FormData();
+                formData.append('jwt_token', token);
+                formData.append('projectUuid', 'project-uuid-123');
+                if (projectSaved) {
+                    formData.append('projectSaved', projectSaved);
+                }
+                formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+                const response = await app.handle(buildBrowserUploadRequest(formData));
+                expect(response.status).toBe(200);
+            }
+
+            expect(recordedHashes).toEqual([hashPlatformPackage(ZIP_BYTES), null]);
+        });
+
         it('propagates platform error descriptions back to the client as 500', async () => {
             const token = await createValidToken();
             globalThis.fetch = async () =>

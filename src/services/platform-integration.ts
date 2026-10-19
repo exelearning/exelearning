@@ -153,13 +153,14 @@ export async function isPlatformPackageCurrent(
 /**
  * Bind a project to the JWT's activity and remember the package it now holds.
  *
- * A project bound to another activity keeps its binding. Returns whether the
+ * A `null` hash forgets the package, so the next edit imports it again. A
+ * project bound to another activity keeps its binding. Returns whether the
  * project was updated.
  */
 export async function recordPlatformPackage(
     project: Project,
     payload: PlatformJWTPayload,
-    packageHash: string,
+    packageHash: string | null,
 ): Promise<boolean> {
     const binding = getPlatformBinding(payload);
     if (!binding || isBoundToOtherPlatformActivity(project, payload)) {
@@ -432,6 +433,7 @@ export async function platformPetitionSetForward(
     projectUuid: string,
     packageData: ArrayBuffer | Uint8Array | Buffer,
     filename: string,
+    options: { projectSaved?: boolean } = {},
 ): Promise<PlatformSetResponse> {
     const platformUrl = buildIntegrationUrl(payload.returnurl, 'set');
 
@@ -497,12 +499,16 @@ export async function platformPetitionSetForward(
 
         // Best-effort link the project to the activity so the next edit
         // reopens it. Failures here must not abort the upload because the
-        // platform already accepted the package.
+        // platform already accepted the package. The package is remembered
+        // only when the browser saved the project with its assets: otherwise
+        // the next edit, maybe from another browser, would reopen a project
+        // whose images live only in this browser (#2550).
         if (projectUuid) {
             try {
                 const project = await deps.findProjectByUuid(deps.db, projectUuid);
                 if (project) {
-                    await recordPlatformPackage(project, payload, hashPlatformPackage(buffer));
+                    const packageHash = options.projectSaved ? hashPlatformPackage(buffer) : null;
+                    await recordPlatformPackage(project, payload, packageHash);
                 }
             } catch (linkError) {
                 const linkMessage = linkError instanceof Error ? linkError.message : String(linkError);

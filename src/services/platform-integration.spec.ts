@@ -710,7 +710,9 @@ describe('Platform Integration Service', () => {
 
             // Moodle signs cmid as a JSON number.
             const payload = { ...forwardPayload, cmid: 42 as unknown as string };
-            const result = await platformPetitionSetForward(payload, 'jwt', 'project-uuid', samplePackage, 'p.zip');
+            const result = await platformPetitionSetForward(payload, 'jwt', 'project-uuid', samplePackage, 'p.zip', {
+                projectSaved: true,
+            });
 
             expect(result.success).toBe(true);
             expect(updates).toEqual([
@@ -719,6 +721,27 @@ describe('Platform Integration Service', () => {
                     platform_site: 'https://moodle.example.com',
                     platform_package_hash: hashPlatformPackage(samplePackage),
                 },
+            ]);
+        });
+
+        it('forgets the package of a project whose assets may not be on the server', async () => {
+            const updates: Record<string, unknown>[] = [];
+            configure({
+                findProjectByUuid: async () =>
+                    ({ uuid: 'project-uuid', platform_id: '42', platform_package_hash: 'b'.repeat(64) }) as never,
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    updates.push(data);
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            await platformPetitionSetForward(forwardPayload, 'jwt', 'project-uuid', samplePackage, 'p.zip');
+
+            // The next edit imports the package again instead of reopening a
+            // project that would miss its images in another browser (#2550).
+            expect(updates).toEqual([
+                { platform_id: '42', platform_site: 'https://moodle.example.com', platform_package_hash: null },
             ]);
         });
 
