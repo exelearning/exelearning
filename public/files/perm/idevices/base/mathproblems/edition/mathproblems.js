@@ -53,7 +53,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgProvideFB = _('Message to display when passing the game');
     },
 
     refreshTranslations: function () {
@@ -141,185 +140,150 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const html = `
+        const edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            toggle = (id, label, checked = false, inputClass = '') => `
+                            <span class="toggle-item">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="${id}" class="${inputClass}toggle-input"${checked ? ' checked' : ''} />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label for="${id}" class="toggle-label">${label}</label>
+                            </span>`,
+            options = `
+                <div id="eCQEOptions">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('eCQShowMinimize', _('Show minimized.'))}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('eCQOptionsRamdon', `${_('Random questions')}.`)}
+                        ${help(_('Present the questions in a different random order each time the game starts.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('eCQShowSolution', `${_('Show solutions')}.`, true)}
+                        <label for="eCQTimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
+                        <input type="number" name="eCQTimeShowSolution" id="eCQTimeShowSolution" value="3" min="1" max="9" step="1" class="form-control" style="width:6ch" />
+                        <span>${_('seconds')}</span>
+                        ${help(
+                            [
+                                `${_('Show solutions')}: ${_('Show the right answer after each reply or when the time runs out.')}`,
+                                `${_('Show solution time (seconds)')}: ${_('Set how many seconds the solution remains visible before moving to the next question.')}`,
+                            ].join('\n\n'),
+                        )}
+                    </div>
+                    <div id="eCQErrorRelativeDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('eCQRelative', `${_('Relative error')}.`, false, 'MTOE-ErrorType ')}
+                        <input type="number" name="eCQPercentajeRelative" id="eCQPercentajeRelative" value="0" min="0" max="1" step="0.01" class="form-control" style="display:none; width:7ch" />
+                        ${help(_('Accept answers that differ from the right one by up to this fraction of it, from 0 to 1 (0.1 is 10%).'))}
+                    </div>
+                    <div id="eCQErrorAbsoluteDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('eCQAbsolute', `${_('Absolute error')}.`, false, 'MTOE-ErrorType ')}
+                        <input type="number" name="eCQPercentajeAbsolute" id="eCQPercentajeAbsolute" value="0" min="0" max="99.0" step="0.01" class="form-control" style="display:none; width:7ch" />
+                        ${help(_('Accept answers that differ from the right one by up to this amount.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="eCQPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
+                        <input type="number" name="eCQPercentajeQuestions" id="eCQPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
+                        <span id="eCQNumeroPercentaje">1/1</span>
+                        ${help(_('Choose the percentage of questions included in each game. The counter shows how many questions will be used.'))}
+                    </div>
+                    <div style="display:none" class="mb-3">
+                        ${toggle('eCQModeBoard', _('Digital whiteboard mode'))}
+                    </div>
+                </div>`,
+            problems = `
+                <div id="eCQEPanel" class="position-relative">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="eCQTime" class="mb-0">${_('Time (s)')}:</label>
+                        <input type="number" name="eCQTime" id="eCQTime" value="180" min="1" max="3600" class="form-control" />
+                        ${help(_('Time to solve this problem, in seconds.'))}
+                    </div>
+                    <div id="eCQformulaDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="eCQformula" class="mb-0">${_('Formula')}:</label>
+                        <input id="eCQformula" type="text" value="{b}*{h}/2" class="form-control" />
+                        <span class="text-nowrap"><span class="sr-av">${_('Operations:')}</span> <a href="https://www.w3schools.com/js/js_arithmetic.asp" target="_blank" rel="noopener" hreflang="en" title="+  -  *  /  **  ()">${_('Help')}</a> - <a href="https://www.w3schools.com/js/js_math.asp" target="_blank" rel="noopener" hreflang="en" title="JavaScript Math">${_('More')}</a></span>
+                        ${help(_('The operation that gives the answer, with each variable in braces, for example {b}*{h}/2. For a problem with several answers, separate their formulas with |.'))}
+                    </div>
+                    <div class="mb-3">
+                        <label for="eCQwording" class="mb-1 d-block">${_('Question text:')}</label>
+                        <textarea name="eCQwording" id="eCQwording" class="exe-html-editor form-control" rows="6">${_('Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m')}</textarea>
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('eCQDefinidedVariables', _('Define the domain of each variable'))}
+                        ${help(_('Write the values each variable can take, separated by commas: numbers (12), ranges (-9 - 9), excluded values (!0) and ranges with a step (0 - 10 # 2).'))}
+                    </div>
+                    <div id="eQCVariablesContainer" class="mb-3"></div>
+                    <div id="eCQAleaContainer">
+                        <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                            <span class="d-flex align-items-center gap-2 flex-nowrap me-2">
+                                <label for="eCQmin" class="mb-0">${_('Smallest number')}:</label>
+                                <input id="eCQmin" type="text" value="1" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
+                            </span>
+                            <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="eCQmax" class="mb-0">${_('Highest number')}:</label>
+                                <input id="eCQmax" type="text" value="10" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
+                            </span>
+                            ${help(_('Range of the random numbers given to the variables.'))}
+                        </div>
+                        <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                            <label for="eCQdecimals" class="mb-0">${_('Decimals')}:</label>
+                            <select id="eCQdecimals" class="form-control" style="width:auto; max-width:16ch">
+                                <option value="0">${_('No decimals')}</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                            ${help(_('Decimals of the random numbers given to the variables.'))}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <a href="#" id="eCQfeedbackLink">${_('Feedback (optional)')}</a>
+                        <div id="eCQfeedbackQuestionDiv" style="display:none" class="mt-2">
+                            <label for="eCQfeedbackQuestion" class="sr-av">${_('Feedback (optional)')}</label>
+                            <textarea name="eCQfeedbackQuestion" id="eCQfeedbackQuestion" class="exe-html-editor form-control" rows="4"></textarea>
+                            <span class="info d-block mt-1">${_('Use the Feedback to add an explanation or the right formula.')}</span>
+                        </div>
+                    </div>
+                    <div class="MTOE-ENavigationButtons gap-2">
+                        <a href="#" id="eCQAdd" class="MTOE-ENavigationButton" title="${_('Add question')}"><img src="${$exeDevice.idevicePath}quextIEAdd.png" alt="${_('Add question')}" class="MTOE-EButtonImage b-add" /></a>
+                        <a href="#" id="eCQFirst" class="MTOE-ENavigationButton" title="${_('First question')}"><img src="${$exeDevice.idevicePath}quextIEFirst.png" alt="${_('First question')}" class="MTOE-EButtonImage b-first" /></a>
+                        <a href="#" id="eCQPrevious" class="MTOE-ENavigationButton" title="${_('Previous question')}"><img src="${$exeDevice.idevicePath}quextIEPrev.png" alt="${_('Previous question')}" class="MTOE-EButtonImage b-prev" /></a>
+                        <label class="sr-av" for="eCQNumberQuestion">${_('Question number:')}:</label><input type="text" class="MTOE-NumberQuestion form-control" id="eCQNumberQuestion" value="1"/>
+                        <a href="#" id="eCQNext" class="MTOE-ENavigationButton" title="${_('Next question')}"><img src="${$exeDevice.idevicePath}quextIENext.png" alt="${_('Next question')}" class="MTOE-EButtonImage b-next" /></a>
+                        <a href="#" id="eCQLast" class="MTOE-ENavigationButton" title="${_('Last question')}"><img src="${$exeDevice.idevicePath}quextIELast.png" alt="${_('Last question')}" class="MTOE-EButtonImage b-last" /></a>
+                        <a href="#" id="eCQDelete" class="MTOE-ENavigationButton" title="${_('Delete question')}"><img src="${$exeDevice.idevicePath}quextIEDelete.png" alt="${_('Delete question')}" class="MTOE-EButtonImage b-delete" /></a>
+                        <a href="#" id="eCQCopy" class="MTOE-ENavigationButton" title="${_('Copy question')}"><img src="${$exeDevice.idevicePath}quextIECopy.png" alt="${_('Copy question')}" class="MTOE-EButtonImage b-copy" /></a>
+                        <a href="#" id="eCQCut" class="MTOE-ENavigationButton" title="${_('Cut question')}"><img src="${$exeDevice.idevicePath}quextIECut.png" alt="${_('Cut question')}" class="MTOE-EButtonImage b-cut" /></a>
+                        <a href="#" id="eCQPaste" class="MTOE-ENavigationButton" title="${_('Paste question')}"><img src="${$exeDevice.idevicePath}quextIEPaste.png" alt="${_('Paste question')}" class="MTOE-EButtonImage b-paste" /></a>
+                    </div>
+                    <div class="MTOE-ENumQuestionDiv" id="eCQENumQuestionDiv">
+                        <div class="MTOE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="MTOE-ENumQuestions" id="eCQNumQuestions">1</span>
+                    </div>
+                </div>`,
+            html = `
             <div id="gameQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create random basic math problems.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/problemas-matematicos.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following math problems.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="eCQShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
-                                </span>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="eCQOptionsRamdon" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQOptionsRamdon" class="toggle-label">${_('Random questions')}.</label>
-                                </span>
-                            </div>
-                            <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="eCQShowSolution" class="toggle-input" checked />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQShowSolution" class="toggle-label">${_('Show solutions')}.</label>
-                                </span>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="eCQTimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}:</label>
-                                    <input type="number" name="eCQTimeShowSolution" id="eCQTimeShowSolution" value="3" min="1" max="9" step="1" class="form-control" style="width:6ch" />
-                                </div>
-                            </div>
-                            <div id="eCQErrorRelativeDiv" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input class="MTOE-ErrorType toggle-input" id="eCQRelative" type="checkbox" name="ecqtype" value="0" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQRelative" class="toggle-label">${_('Relative error')}.</label>
-                                </span>
-                                <input type="number" name="eCQPercentajeRelative" id="eCQPercentajeRelative" value="0" min="0" max="1" step="0.01" class="form-control" style="display:none; width:7ch" />
-                            </div>
-                            <div id="eCQErrorAbsoluteDiv" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input class="MTOE-ErrorType toggle-input" id="eCQAbsolute" type="checkbox" name="ecqtype" value="1" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQAbsolute" class="toggle-label">${_('Absolute error')}.</label>
-                                </span>
-                                <input type="number" name="eCQPercentajeAbsolute" id="eCQPercentajeAbsolute" value="0" min="0" max="99.0" step="0.01" class="form-control" style="display:none; width:7ch" />
-                            </div>
-                            <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="eCQHasFeedBack" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQHasFeedBack" class="toggle-label">${_('Feedback')}.</label>
-                                </span>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="eCQPercentajeFB" class="mb-0">%FB</label>
-                                    <input type="number" name="eCQPercentajeFB" id="eCQPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
-                                    <span>${_('% right to see the feedback')}.</span>
-                                </div>
-                            </div>
-                            <div id="eCQFeedbackP" class="MTOE-EFeedbackP mb-3" style="display:none">
-                                <textarea id="eCQFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                            </div>
-                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
-                                <label for="eCQPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
-                                <input type="number" name="eCQPercentajeQuestions" id="eCQPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:7ch" />
-                                <span id="eCQNumeroPercentaje">1/1</span>
-                            </div>
-                            <div style="display:none" class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="eCQModeBoard" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQModeBoard" class="toggle-label">${_('Digital whiteboard mode')}</label>
-                                </span>
-                            </div>
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset" style="position:relative">
-                        <legend><a href="#">${_('Problems')}</a></legend>
-                        <div>
-                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                                <label for="eCQTime" class="mb-0">${_('Time (s)')}:</label>
-                                <input type="number" name="eCQTime" id="eCQTime" value="180" min="1" max="3600" class="form-control" style="width:7ch" />
-                            </div>
-                            <div id="eCQformulaDiv" class="mb-3 d-flex flex-wrap align-items-center gap-2">
-                                <label for="eCQformula" class="mb-0">${_('Formula')}:</label>
-                                <input id="eCQformula" type="text" value="{b}*{h}/2" class="form-control" style="width:50%" />
-                                <span><span class="sr-av">${_('Operations:')}</span> <a href="https://www.w3schools.com/js/js_arithmetic.asp" target="_blank" rel="noopener" hreflang="en" title="+  -  *  /  **  ()">${_('Help')}</a> - <a href="https://www.w3schools.com/js/js_math.asp" target="_blank" rel="noopener" hreflang="en" title="JavaScript Math">${_('More')}</a></span>
-                            </div>
-                            <div class="mb-3">
-                                <label for="eCQwording" class="mb-1 d-block">${_('Question text:')}</label>
-                                <textarea name="eCQwording" id="eCQwording" class="exe-html-editor form-control" rows="6">${_('Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m')}</textarea>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="eCQDefinidedVariables" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQDefinidedVariables" class="toggle-label">${_('Define the domain of each variable')}</label>
-                                </span>
-                            </div>
-                            <p id="eQCVariablesContainer"></p>
-                            <div id="eCQAleaContainer">
-                                <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                        <label for="eCQmin" class="mb-0">${_('Smallest number')}:</label>
-                                        <input id="eCQmin" type="text" value="1" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                        <label for="eCQmax" class="mb-0">${_('Highest number')}:</label>
-                                        <input id="eCQmax" type="text" value="10" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
-                                    </div>
-                                </div>
-                                <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="eCQdecimals" class="mb-0">${_('Decimals')}:</label>
-                                    <select id="eCQdecimals" class="form-control" style="max-width:16ch">
-                                        <option value="0">${_('No decimals')}</option>
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <a href="#" id="eCQfeedbackLink">${_('Feedback (optional)')}</a>
-                                <div id="eCQfeedbackQuestionDiv" style="display:none" class="mt-2">
-                                    <label for="eCQfeedbackQuestion" class="sr-av">${_('Feedback (optional)')}</label>
-                                    <textarea name="eCQfeedbackQuestion" id="eCQfeedbackQuestion" class="exe-html-editor form-control" rows="4"></textarea>
-                                    <span class="info d-block mt-1">${_('Use the Feedback to add an explanation or the right formula.')}</span>
-                                </div>
-                            </div>
-                            <div class="MTOE-ENavigationButtons gap-2">
-                                <a href="#" id="eCQAdd" class="MTOE-ENavigationButton" title="${_('Add question')}"><img src="${$exeDevice.idevicePath}quextIEAdd.png" alt="${_('Add question')}" class="MTOE-EButtonImage b-add" /></a>
-                                <a href="#" id="eCQFirst" class="MTOE-ENavigationButton" title="${_('First question')}"><img src="${$exeDevice.idevicePath}quextIEFirst.png" alt="${_('First question')}" class="MTOE-EButtonImage b-first" /></a>
-                                <a href="#" id="eCQPrevious" class="MTOE-ENavigationButton" title="${_('Previous question')}"><img src="${$exeDevice.idevicePath}quextIEPrev.png" alt="${_('Previous question')}" class="MTOE-EButtonImage b-prev" /></a>
-                                <label class="sr-av" for="eCQNumberQuestion">${_('Question number:')}:</label><input type="text" class="MTOE-NumberQuestion form-control" id="eCQNumberQuestion" value="1"/>
-                                <a href="#" id="eCQNext" class="MTOE-ENavigationButton" title="${_('Next question')}"><img src="${$exeDevice.idevicePath}quextIENext.png" alt="${_('Next question')}" class="MTOE-EButtonImage b-next" /></a>
-                                <a href="#" id="eCQLast" class="MTOE-ENavigationButton" title="${_('Last question')}"><img src="${$exeDevice.idevicePath}quextIELast.png" alt="${_('Last question')}" class="MTOE-EButtonImage b-last" /></a>
-                                <a href="#" id="eCQDelete" class="MTOE-ENavigationButton" title="${_('Delete question')}"><img src="${$exeDevice.idevicePath}quextIEDelete.png" alt="${_('Delete question')}" class="MTOE-EButtonImage b-delete" /></a>
-                                <a href="#" id="eCQCopy" class="MTOE-ENavigationButton" title="${_('Copy question')}"><img src="${$exeDevice.idevicePath}quextIECopy.png" alt="${_('Copy question')}" class="MTOE-EButtonImage b-copy" /></a>
-                                <a href="#" id="eCQCut" class="MTOE-ENavigationButton" title="${_('Cut question')}"><img src="${$exeDevice.idevicePath}quextIECut.png" alt="${_('Cut question')}" class="MTOE-EButtonImage b-cut" /></a>
-                                <a href="#" id="eCQPaste" class="MTOE-ENavigationButton" title="${_('Paste question')}"><img src="${$exeDevice.idevicePath}quextIEPaste.png" alt="${_('Paste question')}" class="MTOE-EButtonImage b-paste" /></a>
-                            </div>
-                            <div class="MTOE-ENumQuestionDiv" id="eCQENumQuestionDiv">
-                                <div class="MTOE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="MTOE-ENumQuestions" id="eCQNumQuestions">1</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    path: $exeDevice.idevicePath,
+                    instructions: c_('Solve the following math problems.'),
+                    options: options,
+                    contents: problems,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                })}
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('gameQEIdeviceForm');
+        edition.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -732,9 +696,7 @@ var $exeDevice = {
             modeBoard = $('#eCQModeBoard').is(':checked'),
             timeShowSolution = parseInt(clear($('#eCQTimeShowSolution').val())),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#eCQHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#eCQPercentajeFB').val())),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeQuestions = parseInt(
                 clear($('#eCQPercentajeQuestions').val())
             ),
@@ -745,9 +707,9 @@ var $exeDevice = {
                 clear($('#eCQPercentajeRelative').val())
             ),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         let errorType = 0;
@@ -755,17 +717,14 @@ var $exeDevice = {
         if (!itinerary) return;
         if (!progressBar) return false;
 
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
+
         if ($('#eCQRelative').is(':checked')) {
             errorType = 1;
         } else if ($('#eCQAbsolute').is(':checked')) {
             errorType = 2;
-        }
-
-        let textFeedBack = '';
-        if (tinyMCE.get('eCQFeedBackEditor')) {
-            textFeedBack = tinyMCE.get('eCQFeedBackEditor').getContent();
-        } else {
-            textFeedBack = S('#eCQFeedBackEditor').val();
         }
 
         let textAfter = '';
@@ -787,17 +746,12 @@ var $exeDevice = {
             return false;
         }
 
-        if (feedBack && textFeedBack.trim().length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
-
         const questions = $exeDevice.questions;
         if (questions.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             typeGame: 'MathProblems',
             instruccions: instructions,
@@ -809,9 +763,9 @@ var $exeDevice = {
             percentajeQuestions: percentajeQuestions,
             modeBoard: modeBoard,
             questions: questions,
-            feedBack: feedBack,
-            textFeedBack: textFeedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            textFeedBack: feedback.textFeedBack,
+            percentajeFB: feedback.percentajeFB,
             scorm: scorm,
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
@@ -891,7 +845,9 @@ var $exeDevice = {
 
             const textFeedBack = $('.mathproblems-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#eCQFeedBackEditor').val(textFeedBack.html());
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html() || ''
+                );
 
             $exeDevice.showQuestion(0);
         }
@@ -978,7 +934,8 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '',
-            textFeedBack = tinyMCE.get('eCQFeedBackEditor').getContent(),
+            textFeedBack =
+                $exeIDevicesEdition.iDevice.gamification.feedback.getText(),
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
 
@@ -1144,15 +1101,6 @@ var $exeDevice = {
             e.preventDefault();
             $('#eCQfeedbackQuestionDiv').fadeToggle();
         });
-        $('#eCQHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#eCQFeedbackP').slideDown();
-            } else {
-                $('#eCQFeedbackP').slideUp();
-            }
-            $('#eCQPercentajeFB').prop('disabled', !marcado);
-        });
 
         $('#eCQRelative').on('change', function () {
             const type = $(this).is(':checked') ? 1 : 0;
@@ -1200,9 +1148,9 @@ var $exeDevice = {
             this.value = this.value < 0 ? 0 : this.value;
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#eQCVariablesContainer').on(
             'input',
@@ -1231,13 +1179,8 @@ var $exeDevice = {
 
         lifecycle.on(document, 'input', '#eCQformula', this.updateVariables);
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-
-        //eX3 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
     },
 
     setErrorType: function (type) {
@@ -1299,36 +1242,31 @@ var $exeDevice = {
         $('#eCQShowSolution').prop('checked', game.showSolution);
         $('#eCQTimeShowSolution').val(game.timeShowSolution);
         $('#eCQTimeShowSolution').prop('disabled', !game.showSolution);
-        $('#eCQHasFeedBack').prop('checked', game.feedBack);
-        $('#eCQPercentajeFB').val(game.percentajeFB);
         $('#eCQPercentajeQuestions').val(game.percentajeQuestions);
         $('#eCQPercentajeRelative').val(game.errorRelative);
         $('#eCQPercentajeAbsolute').val(game.errorAbsolute);
         $('#eCQModeBoard').prop('checked', game.modeBoard);
-        $('#eCQPercentajeFB').prop('disabled', !game.feedBack);
-        $('#eCQHasFeedBack').prop('checked', game.feedBack);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevice.setErrorType(game.errorType);
-        if (game.feedBack) {
-            $('#eCQFeedbackP').slideDown();
-        } else {
-            $('#eCQFeedbackP').slideUp();
-        }
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
 
         $exeDevice.questions = game.questions;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         $exeDevice.updateQuestionsNumber();
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.scorm.isScorm,
             game.scorm.textButtonScorm,
             game.scorm.repeatActivity,
@@ -1345,7 +1283,7 @@ var $exeDevice = {
         const newBlob = new Blob([JSON.stringify(dataGame)], {
             type: 'text/plain',
         });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             _('Activity') + '-MathProblems.json',
             'gameQEIdeviceForm'
@@ -1374,17 +1312,12 @@ var $exeDevice = {
         } else {
             $('#eXeGameInstructions').val(instructions);
         }
-        if (tinyMCE.get('eCQFeedBackEditor')) {
-            tinyMCE.get('eCQFeedBackEditor').setContent(textFeedBack);
-        } else {
-            $('#eCQFeedBackEditor').val(textFeedBack);
-        }
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText(textFeedBack);
         if (tinyMCE.get('eXeIdeviceTextAfter')) {
             tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter);
         } else {
             $('#eXeIdeviceTextAfter').val(tAfter);
         }
-        //$('.exe-form-tabs li:first-child a').click();
         $exeDevice.showQuestion(0);
     },
 
