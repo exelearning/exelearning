@@ -333,13 +333,21 @@ export default class EmbeddingBridge {
         // Convert blob to ArrayBuffer
         const bytes = await blob.arrayBuffer();
 
-        this.postToParent({
+        // Handing the package to the host is the embedded save. Clear the dirty
+        // flag only after SAVE_FILE is delivered, so this transition emits
+        // PROJECT_SAVED and the next edit emits PROJECT_DIRTY. A failed export
+        // throws before this point and leaves the document dirty.
+        const delivered = this.postToParent({
             type: 'SAVE_FILE',
             requestId,
             bytes,
             filename,
             size: bytes.byteLength,
         });
+        const documentManager = project?._yjsBridge?.documentManager;
+        if (delivered && typeof documentManager?.markClean === 'function') {
+            documentManager.markClean();
+        }
     }
 
     /**
@@ -499,19 +507,23 @@ export default class EmbeddingBridge {
     /**
      * Post message to parent window
      * @param {Object} message - Message to send
+     * @returns {boolean} True when the parent received the message
      */
     postToParent(message) {
-        if (window.parent !== window && this.parentOrigin) {
-            try {
-                window.parent.postMessage(message, this.parentOrigin);
-            } catch (e) {
-                // If origin validation fails, try with '*' for same-origin iframes
-                if (e.name === 'DataCloneError') {
-                    getLogger().error('[EmbeddingBridge] Cannot serialize message:', e);
-                } else {
-                    window.parent.postMessage(message, '*');
-                }
+        if (window.parent === window || !this.parentOrigin) {
+            return false;
+        }
+        try {
+            window.parent.postMessage(message, this.parentOrigin);
+            return true;
+        } catch (e) {
+            // If origin validation fails, try with '*' for same-origin iframes
+            if (e.name === 'DataCloneError') {
+                getLogger().error('[EmbeddingBridge] Cannot serialize message:', e);
+                return false;
             }
+            window.parent.postMessage(message, '*');
+            return true;
         }
     }
 
