@@ -1869,12 +1869,6 @@ var $exeDevice = {
         }
     },
 
-    updateGameMode: function (feedback) {
-        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
-            feedBack: feedback,
-        });
-    },
-
     clearQuestion: function () {
         for (let i = 0; i < $exeDevice.NUMMAXCARD; i++) {
             $('.Descubre-Type-' + i)[0].checked = true;

@@ -1484,12 +1484,6 @@ var $exeDevice = {
             e.preventDefault();
             $exeDevice.loadImageCard();
         });
-
-        $('.toggle-item').on('click', function (e) {
-            if ($(e.target).closest('.exe-idevice-help-container').length) {
-                return;
-            }
-        });
     },
 
     loadImageCard: function () {
@@ -1553,12 +1547,6 @@ var $exeDevice = {
 
     showSelectOrder: function (messages) {
         messages ? $('.CQE-EOrders').slideDown() : $('.CQE-EOrders').slideUp();
-    },
-
-    updateGameMode: function (feedback) {
-        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
-            feedBack: feedback,
-        });
     },
 
     clearQuestion: function () {

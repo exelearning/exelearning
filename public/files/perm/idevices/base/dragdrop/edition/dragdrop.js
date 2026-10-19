@@ -915,12 +915,7 @@ var $exeDevice = {
 
     playSound: function (selectedFile) {
         const lifecycle = this.$lifecycle;
-        const media =
-            ($exeIDevicesEdition.iDevice && $exeIDevicesEdition.iDevice.gamification.media) ||
-            ($exeDevices.iDevice && $exeDevices.iDevice.gamification.media);
-        const selectFile = media
-            ? media.extractURLGD(selectedFile)
-            : selectedFile;
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
         // The element is never inserted in the form, so closing the editor
         // would otherwise leave it playing and downloading.

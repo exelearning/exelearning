@@ -833,13 +833,6 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
-        $('#beforeAfterQIdeviceForm').on('click', '.toggle-item', function (e) {
-            if ($(e.target).closest('.exe-idevice-help-container').length) {
-                e.preventDefault();
-                return;
-            }
-        });
-
         $('#beforeAfterQIdeviceForm').on('change', '#bfafEVertical', function () {
             if ($exeDevice.cardsGame[$exeDevice.active]) {
                 $exeDevice.cardsGame[$exeDevice.active].vertical = this.checked;

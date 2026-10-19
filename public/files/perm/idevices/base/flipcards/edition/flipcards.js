@@ -1488,13 +1488,6 @@ var $exeDevice = {
             0,
             $exeDevice.insertCards
         );
-
-        $('#flipcardsQEIdeviceForm').on('click', '.toggle-item', function (e) {
-            if ($(e.target).closest('.exe-idevice-help-container').length) {
-                e.preventDefault();
-                return;
-            }
-        });
     },
 
     exportQuestions: function () {
