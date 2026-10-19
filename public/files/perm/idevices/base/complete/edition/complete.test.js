@@ -347,6 +347,7 @@ describe('complete edition: shared form tabs and feedback', () => {
             'instructions',
             'options',
             'contents',
+            'passwords',
             'feedback',
             'after',
             'grading',
@@ -356,6 +357,7 @@ describe('complete edition: shared form tabs and feedback', () => {
         expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
         expect(panel('options').querySelector('#cmptEOptions')).not.toBeNull();
         expect(panel('contents').querySelector('#cmptEPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameCodeAccess')).not.toBeNull();
         expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
         expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
         expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
@@ -489,6 +491,28 @@ describe('complete edition: shared form tabs and feedback', () => {
             expect(savedHtml).toContain('completa-feedback-game');
             expect(savedHtml).toContain('completa-extra-content');
             expect(savedHtml).toContain('completa-text-game');
+        });
+
+        it('keeps the access code and the clue when saving', () => {
+            const itinerary = {
+                showClue: true,
+                clueGame: 'Next key: river',
+                percentageClue: 60,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Code of the previous activity?',
+            };
+            device.updateFieldGame(game({ itinerary }));
+
+            expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('does not save when the feedback is on without a message', () => {
+            device.updateFieldGame(game({ feedBack: true }));
+            edition().gamification.feedback.setText('');
+
+            expect(device.validateData()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');
         });
     });
 });

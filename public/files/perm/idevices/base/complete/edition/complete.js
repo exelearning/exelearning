@@ -122,7 +122,6 @@ var $exeDevice = {
             'The selected file does not contain a valid game'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
@@ -299,6 +298,7 @@ var $exeDevice = {
             instructions: c_('Read the text and complete the missing words.'),
             options: optionsHtml,
             contents: textPanelHtml,
+            passwords: true,
             feedback: true,
             after: true,
             grading: true,
@@ -571,10 +571,6 @@ var $exeDevice = {
     validateData: function () {
         const instructions = $exeDevice.getEditorContent('eXeGameInstructions'),
             textText = $exeDevice.getEditorContent('cmptEText'),
-            feedback =
-                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
-            textFeedBack =
-                $exeIDevicesEdition.iDevice.gamification.feedback.getText(),
             textAfter = $exeDevice.getEditorContent('eXeIdeviceTextAfter'),
             showMinimize = $('#cmptEShowMinimize').is(':checked'),
             showSolution = $('#cmptEShowSolution').is(':checked'),
@@ -584,8 +580,6 @@ var $exeDevice = {
             time = parseInt($('#cmptETime').val(), 10),
             itinerary =
                 $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = feedback.feedBack,
-            percentajeFB = feedback.percentajeFB,
             percentajeError = parseInt($('#cmptEPercentajeError').val(), 10),
             type = parseInt($('input[name=cmpttype]:checked').val(), 10),
             wordsErrors = $('#cmptEWordsErrors').val(),
@@ -603,6 +597,9 @@ var $exeDevice = {
         if (!itinerary) return;
         if (!progressBar) return false;
 
+        const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
+
         if (textText.trim().length === 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
             return false;
@@ -611,11 +608,6 @@ var $exeDevice = {
         const regex = /@@(.*?)@@/;
         if (!regex.test(textText)) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
-
-        if (feedBack && textFeedBack.trim().length === 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
             return false;
         }
 
@@ -631,10 +623,10 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted || 100,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: $exeDevice.version,
             estrictCheck: estrictCheck,
             wordsSize: wordsSize,
