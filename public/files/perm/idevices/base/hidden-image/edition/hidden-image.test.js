@@ -296,7 +296,7 @@ describe('hidden-image iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -324,8 +324,8 @@ describe('hidden-image iDevice', () => {
     let savedMedia;
 
     beforeEach(() => {
-      savedGamification = global.$exeDevicesEdition.iDevice.gamification;
-      global.$exeDevicesEdition.iDevice.gamification = {
+      savedGamification = global.$exeIDevicesEdition.iDevice.gamification;
+      global.$exeIDevicesEdition.iDevice.gamification = {
         ...savedGamification,
         progressBar: { addEvents: vi.fn() },
         itinerary: { addEvents: vi.fn() },
@@ -350,7 +350,7 @@ describe('hidden-image iDevice', () => {
       // leak into the next one.
       $exeDevice.$lifecycle.destroy();
       document.body.innerHTML = '';
-      global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+      global.$exeIDevicesEdition.iDevice.gamification = savedGamification;
       global.$exeDevices.iDevice.gamification.media = savedMedia;
     });
 
@@ -393,4 +393,230 @@ describe('hidden-image minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('hidden-image edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/hidden-image/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const tabNames = () =>
+        [...document.querySelectorAll('#hiQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`hiQEIdeviceForm-panel-${name}`);
+    const question = (overrides = {}) => ({
+        numberOptions: 4,
+        attempts: 4,
+        rows: 4,
+        columns: 4,
+        time: 30,
+        url: 'https://example.com/picture.png',
+        author: '',
+        alt: 'A picture',
+        question: 'What is in the picture?',
+        options: ['A cat', 'A dog', 'A bird', 'A fish'],
+        solution: 0,
+        audio: '',
+        msgHit: '',
+        msgError: '',
+        ...overrides,
+    });
+    const game = (overrides = {}) => ({
+        typeGame: 'HiddenImage',
+        showMinimize: false,
+        optionsRamdon: false,
+        answersRamdon: false,
+        showSolution: true,
+        timeShowSolution: 3,
+        revealTime: 1,
+        customMessages: false,
+        percentajeQuestions: 100,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        questionsGame: [question()],
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        evaluation: false,
+        evaluationID: '',
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+    };
+    let device;
+    let previousApp;
+    let previousMedia;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
+        device = global.loadIdevice(join(__dirname, 'hidden-image.js'));
+        document.body.innerHTML = '<div id="hiddenImageBody"></div>';
+        device.init(document.getElementById('hiddenImageBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toContain(
+            'Reveal the hidden image'
+        );
+        expect(panel('options').querySelector('#hiEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#hiEPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('offers no import, export or AI windows', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('explains each option without changing any of them', () => {
+        const helps = [...panel('options').querySelectorAll('#hiEOptions .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('#hiQEIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(6);
+        for (const help of helps) {
+            expect(help.title).toBe('Information');
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(6);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('restores the options with the game', () => {
+        device.updateFieldGame(game({ showMinimize: true, revealTime: 5, percentajeQuestions: 50 }));
+
+        expect(document.getElementById('hiEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('hiERevealTime').value).toBe('5');
+        expect(document.getElementById('hiEPercentajeQuestions').value).toBe('50');
+        expect(document.getElementById('hiEQuestion').value).toBe('What is in the picture?');
+    });
+
+    it('keeps the custom texts when the iDevice is edited again', () => {
+        device.idevicePreviousData = `
+            <div class="hiddenimage-IDevice">
+                <div class="hiddenimage-version js-hidden">1</div>
+                <div class="hiddenimage-DataGame js-hidden">${JSON.stringify(game({ msgs: { msgScore: 'Points' } }))}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('ci18n_msgScore').value).toBe('Points');
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '<p>Extra info</p>',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? { initialized: true, getContent: () => editors[id], setContent: (html) => (editors[id] = html) }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('keeps the access code and the clue when saving', () => {
+            const itinerary = {
+                showClue: true,
+                clueGame: 'Next key: river',
+                percentageClue: 60,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Code of the previous activity?',
+            };
+            device.updateFieldGame(game({ itinerary }));
+
+            expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('saves the game without the help of the form', () => {
+            device.updateFieldGame(game({ showMinimize: true }));
+
+            const html = device.save();
+
+            expect(html).toContain('hiddenimage-DataGame');
+            expect(html).toContain('"showMinimize":true');
+            expect(html).toContain('hiddenimage-extra-content');
+            expect(html).not.toContain('exe-idevice-help');
+        });
+    });
 });
