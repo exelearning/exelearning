@@ -140,26 +140,6 @@ var $exeDevice = {
         );
     },
 
-    playSound: function (selectedFile) {
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        const player = new Audio(selectFile);
-        $exeDevice.playerAudio = player;
-        // Playback and its network activity stop when the editor closes.
-        this.$lifecycle.ownMedia(player, 'previewAudio');
-        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
-            player.play();
-        });
-    },
-
-    stopSound: function () {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause === 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
-    },
-
     showMessage: function (msg) {
         eXe.app.alert(msg);
     },
@@ -304,8 +284,6 @@ var $exeDevice = {
         $('#hiEQuestion').val(p.question);
         $('#hiENumQuestions').text($exeDevice.questionsGame.length);
         $('#hiEURLImage').val(p.url);
-        $('#hiEXImage').val(p.x);
-        $('#hiEYImage').val(p.y);
         $('#hiEAuthor').val(p.author);
         $('#hiEAlt').val(p.alt);
         $('#hiETimeQuestion').val(p.time);
@@ -360,11 +338,8 @@ var $exeDevice = {
         $exeDevice.showSolution(0);
         $('.HIE-Number')[2].checked = true;
         $('#hiEURLImage').val('');
-        $('#hiEXImage').val('0');
-        $('#hiEYImage').val('0');
         $('#hiEAuthor').val('');
         $('#hiEAlt').val('');
-        $('#hiEURLYoutube').val('');
         $('#hiEURLAudio').val('');
         $('#hiEQuestion').val('');
         $('.HIE-AnwersOptions').each(function () {
@@ -612,7 +587,6 @@ var $exeDevice = {
 
     initQuestions: function () {
         $('#hiEInputImage').css('display', 'flex');
-        $('#hiEMediaNormal, #hiEMediaImage').prop('disabled', false);
 
         if ($exeDevice.questionsGame.length === 0) {
             const question = $exeDevice.getDefaultQuestion();
@@ -746,9 +720,6 @@ var $exeDevice = {
         $('#hiETimeShowSolution').val(game.timeShowSolution);
         $('#hiETimeShowSolution').prop('disabled', !game.showSolution);
         $('#hiECustomScore').prop('checked', game.customScore);
-        $(
-            `input.HIE-TypeGame[name='qxtgamemode'][value='${game.gameMode}']`
-        ).prop('checked', true);
         $('#hiECustomMessages').prop('checked', game.customMessages);
         $('#hiEPercentajeQuestions').val(game.percentajeQuestions);
         $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
@@ -791,15 +762,6 @@ var $exeDevice = {
             $('.HIE-Orders').slideDown();
         } else {
             $('.HIE-Orders').slideUp();
-        }
-    },
-
-    getMediaType: function () {
-        const ele = document.getElementsByName('qxtype');
-        for (let i = 0; i < ele.length; i++) {
-            if (ele[i].checked) {
-                return ele[i].value;
-            }
         }
     },
 
@@ -997,10 +959,6 @@ var $exeDevice = {
         if (!itinerary) return false;
         if (!progressBar) return false;
 
-        if (showSolution && timeShowSolution.toString().length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
         for (let i = 0; i < questionsGame.length; i++) {
             const mquestion = questionsGame[i];
             mquestion.customScore =
@@ -1073,13 +1031,6 @@ var $exeDevice = {
     addEvents: function () {
         $('#hiEPaste').hide();
 
-        $('#hiEShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#hiECodeAccess, #hiEMessageCodeAccess').prop(
-                'disabled',
-                !marcado
-            );
-        });
         $('.HIE-Panel').on('click', 'input.HIE-Number', (e) => {
             const number = parseInt($(e.target).val());
             $exeDevice.showOptions(number);
@@ -1189,16 +1140,9 @@ var $exeDevice = {
                 );
                 return false;
             }
-            const url = selectedFile,
-                alt = $('#hiEAlt').val(),
-                x = parseFloat($('#hiEXImage').val()),
-                y = parseFloat($('#hiEYImage').val());
-            $exeDevice.showImage(url, alt);
+            $exeDevice.showImage(selectedFile, $('#hiEAlt').val());
         });
 
-        $('#hiEImage').on('click', (e) => {
-            $exeDevice.clickImage(e.currentTarget, e.pageX, e.pageY);
-        });
         $('#hiEPlayAudio').on('click', (e) => {
             e.preventDefault();
             const selectedFile = $('#hiEURLAudio').val().trim();
@@ -1216,11 +1160,6 @@ var $exeDevice = {
             } else if (selectedFile.length > 4) {
                   $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
-        });
-
-        $('#hiEGameModeHelpLnk').on('click', function () {
-            $('#hiEGameModeHelp').toggle();
-            return false;
         });
 
         $('#hiECustomMessages').on('change', function () {
@@ -1267,30 +1206,6 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
-    },
-
-    clickImage: function (img, epx, epy) {
-        const $cursor = $('#hiECursor'),
-            $x = $('#hiEXImage'),
-            $y = $('#hiEYImage'),
-            $img = $(img),
-            offset = $img.offset(),
-            posX = epx - offset.left,
-            posY = epy - offset.top,
-            wI = Math.max($img.width(), 1),
-            hI = Math.max($img.height(), 1),
-            position = $img.position(),
-            lI = position.left,
-            tI = position.top;
-
-        $x.val(posX / wI);
-        $y.val(posY / hI);
-        $cursor.css({
-            left: posX + lI,
-            top: posY + tI,
-            'z-index': 30,
-        });
-        $cursor.show();
     },
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
