@@ -43,7 +43,7 @@ var $exeDevice = {
         this.createForm();
 
         const root = document.getElementById('sopaQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
     refreshTranslations: function () {
         this.ci18n = {
@@ -133,7 +133,6 @@ var $exeDevice = {
             'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -293,7 +292,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importAdivina: function (data) {
@@ -342,174 +340,168 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const showSolveBtn = _('Show "Solve" button.');
         const path = $exeDevice.idevicePath,
-            html = `
-        <div id="sopaQEIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('Create word search games with additional text, images or sound.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/buscar-palabras.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Find the hidden words.'))}
-                <fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <div class="toggle-item mb-3">
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="sopaEOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="sopaEShowMinimize" class="toggle-input" />
-                                <span class="toggle-visual"></span>
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
                             <label class="toggle-label mb-0" for="sopaEShowMinimize">${_('Show minimized.')}</label>
-                        </div>
-                        <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <label for="sopaETime" class="mb-0">${_('Time (minutes)')}:</label>
-                            <input type="number" class="form-control" name="sopaETime" id="sopaETime" value="0" min="0" max="59" />
-                        </div>
-                        <div class="toggle-item mb-3">
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="sopaETime" class="mb-0">${_('Time (minutes)')}:</label>
+                        <input type="number" class="form-control" name="sopaETime" id="sopaETime" value="0" min="0" max="59" />
+                        ${edition.common.getHelpTooltip(_('Set the maximum time in minutes to find all the words. Set to 0 for unlimited time.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="sopaEShowResolve" class="toggle-input" checked />
-                                <span class="toggle-visual"></span>
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
-                            <label class="toggle-label mb-0" for="sopaEShowResolve">${showSolveBtn}</label>
-                        </div>
-                        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
-                            <span class="mb-0">${_('Accept')}:</span>
-                            <div class="toggle-item mb-0">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="sopaEDiagonals" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="sopaEDiagonals">${_('Diagonal')}.</label>
+                            <label class="toggle-label mb-0" for="sopaEShowResolve">${_('Show "Solve" button.')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Show a button that ends the game and reveals where all the words are hidden.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3">
+                        <span>${_('Accept')}:</span>
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="sopaEDiagonals" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="sopaEDiagonals">${_('Diagonal')}.</label>
+                        </span>
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="sopaEReverses" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="sopaEReverses">${_('Inverse')}.</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Diagonal: words can also be hidden diagonally. Inverse: words can also be written backwards.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="sopaEPercentajeQuestions" class="mb-0">%${_('Words')}:</label>
+                        <input type="number" class="form-control" name="sopaEPercentajeQuestions" id="sopaEPercentajeQuestions" value="100" min="1" max="100" />
+                        <span id="sopaENumeroPercentaje">1/1</span>
+                        ${edition.common.getHelpTooltip(_('Choose the percentage of words included in each game. The counter shows how many words will be used.'))}
+                    </div>
+                </div>`,
+            words = `
+                <div class="SPE-EPanel" id="sopaEPanel">
+                    <div class="SPE-EOptionsMedia">
+                        <div class="SPE-EOptionsGame">
+                            <span class="SPE-sopaETitleAudio">${_('Word')}</span>
+                            <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                <label class="sr-av" for="sopaESolutionWord">${_('Word/Phrase')}:</label>
+                                <input type="text" id="sopaESolutionWord" maxlength="14" class="form-control w-100"/>
                             </div>
-                            <div class="toggle-item mb-0">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="sopaEReverses" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="sopaEReverses">${_('Inverse')}.</label>
+                            <span class="SPE-sopaETitleAudio">${_('Definition')}</span>
+                            <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                <label class="sr-av" for="sopaEDefinitionWord">${_('Definition')}:</label>
+                                <input type="text" id="sopaEDefinitionWord" class="form-control w-100"/>
+                            </div>
+                            <span class="SPE-ETitleImage" id="sopaETitleImage">${_('Image URL')}</span>
+                            <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="sopaEInputImage">
+                                <label class="sr-av" for="sopaEURLImage">${_('Image URL')}</label>
+                                <input type="text" class="exe-file-picker SPE-EURLImage form-control me-0 w-100" id="sopaEURLImage" />
+                                <a href="#" id="sopaEPlayImage" class="SPE-ENavigationButton SPE-EPlayVideo" title="${_('Show')}">
+                                    <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SPE-EButtonImage" />
+                                </a>
+                                <a href="#" id="sopaEShowMore" class="SPE-ENavigationButton SPE-EShowMore" title="${_('More')}">
+                                    <img src="${path}quextEIMore.png" alt="${_('More')}" class="SPE-EButtonImage" />
+                                </a>
+                            </div>
+                            <div class="d-none">
+                                <label for="sopaEXImage" class="mb-0">X:</label>
+                                <input id="sopaEXImage" type="text" value="0" class="form-control" />
+                                <label for="sopaEYImage" class="mb-0">Y:</label>
+                                <input id="sopaEYImage" type="text" value="0" class="form-control" />
+                            </div>
+                            <div class="d-none flex-nowrap align-items-center gap-2 mb-3" id="sopaEAuthorAlt">
+                                <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
+                                    <label for="sopaEAuthor">${_('Authorship')}</label>
+                                    <input id="sopaEAuthor" type="text" class="me-0 w-100 form-control" />
+                                </div>
+                                <div class="d-flex flex-nowrap align-items-center gap-2">
+                                    <label for="sopaEAlt">${_('Alt')}</label>
+                                    <input id="sopaEAlt" type="text" class="me-0 w-100 form-control" />
+                                </div>
+                            </div>
+                            <span id="sopaETitleAudio">${_('Audio')}</span>
+                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="sopaEInputAudio" data-voice-recorder data-voice-input="#sopaEURLAudio">
+                                <label class="sr-av" for="sopaEURLAudio">${_('URL')}</label>
+                                <input type="text" class="exe-file-picker SPE-EURLAudio form-control me-0 w-100" id="sopaEURLAudio" />
+                                <a href="#" id="sopaEPlayAudio" class="SPE-ENavigationButton SPE-EPlayVideo" title="${_('Play audio')}">
+                                    <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="SPE-EButtonImage" />
+                                </a>
                             </div>
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <div class="toggle-item mb-0">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="sopaEHasFeedBack" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="sopaEHasFeedBack">${_('Feedback')}.</label>
+                        <div class="SPE-EMultiMediaOption">
+                            <div class="SPE-EMultimedia" id="sopaEMultimedia">
+                                <img class="SPE-EMedia" src="${path}quextIEImage.png" id="sopaEImage" alt="${_('Image')}" />
+                                <img class="SPE-EMedia" src="${path}quextIEImage.png" id="sopaENoImage" alt="${_('No image')}" />
+                                <img class="SPE-ECursor" src="${path}quextIECursor.gif" id="sopaECursor" alt="" />
                             </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2">
-                                <label for="sopaEPercentajeFB" class="mb-0"></label>
-                                <input type="number" class="form-control" name="sopaEPercentajeFB" id="sopaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                                <span class="mb-0">${_('% right to see the feedback')}</span>
-                            </div>
-                        </div>
-                        <div id="sopaEFeedbackP" class="SPE-EFeedbackP mb-3">
-                            <textarea id="sopaEFeedBackEditor" class="exe-html-editor"></textarea>
-                        </div>
-                        <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <label for="sopaEPercentajeQuestions" class="mb-0">%${_('Words')}:</label>
-                            <input type="number" class="form-control" name="sopaEPercentajeQuestions" id="sopaEPercentajeQuestions" value="100" min="1" max="100" />
-                            <span id="sopaENumeroPercentaje">1/1</span>
-                        </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                         </div>
                     </div>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Words/Phrases')}</a></legend>
-                    <div class="SPE-EPanel" id="sopaEPanel">
-                        <div class="SPE-EOptionsMedia">
-                            <div class="SPE-EOptionsGame">
-                                <span class="SPE-sopaETitleAudio">${_('Word')}</span>
-                                <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                    <label class="sr-av" for="sopaESolutionWord">${_('Word/Phrase')}:</label>
-                                    <input type="text" id="sopaESolutionWord" maxlength="14" class="form-control w-100"/>
-                                </div>
-                                <span class="SPE-sopaETitleAudio">${_('Definition')}</span>
-                                <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                    <label class="sr-av" for="sopaEDefinitionWord">${_('Definition')}:</label>
-                                    <input type="text" id="sopaEDefinitionWord" class="form-control w-100"/>
-                                </div>
-                                <span class="SPE-ETitleImage" id="sopaETitleImage">${_('Image URL')}</span>
-                                <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="sopaEInputImage">
-                                    <label class="sr-av" for="sopaEURLImage">${_('Image URL')}</label>
-                                    <input type="text" class="exe-file-picker SPE-EURLImage form-control me-0 w-100" id="sopaEURLImage" />
-                                    <a href="#" id="sopaEPlayImage" class="SPE-ENavigationButton SPE-EPlayVideo" title="${_('Show')}">
-                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SPE-EButtonImage" />
-                                    </a>
-                                    <a href="#" id="sopaEShowMore" class="SPE-ENavigationButton SPE-EShowMore" title="${_('More')}">
-                                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="SPE-EButtonImage" />
-                                    </a>
-                                </div>
-                                  <div class="d-none">
-                                    <label for="sopaEXImage" class="mb-0">X:</label>
-                                    <input id="sopaEXImage" type="text" value="0" class="form-control" />
-                                    <label for="sopaEYImage" class="mb-0">Y:</label>
-                                    <input id="sopaEYImage" type="text" value="0" class="form-control" />
-                                </div>
-                                <div class="d-none flex-nowrap align-items-center gap-2 mb-3" id="sopaEAuthorAlt">
-                                    <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
-                                        <label for="sopaEAuthor">${_('Authorship')}</label>
-                                        <input id="sopaEAuthor" type="text" class="me-0 w-100 form-control" />
-                                    </div>
-                                    <div class="d-flex flex-nowrap align-items-center gap-2">
-                                        <label for="sopaEAlt">${_('Alt')}</label>
-                                        <input id="sopaEAlt" type="text" class="me-0 w-100 form-control" />
-                                    </div>
-                                </div>
-                                <span id="sopaETitleAudio">${_('Audio')}</span>
-                                <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="sopaEInputAudio" data-voice-recorder data-voice-input="#sopaEURLAudio">
-                                    <label class="sr-av" for="sopaEURLAudio">${_('URL')}</label>
-                                    <input type="text" class="exe-file-picker SPE-EURLAudio form-control me-0 w-100" id="sopaEURLAudio" />
-                                    <a href="#" id="sopaEPlayAudio" class="SPE-ENavigationButton SPE-EPlayVideo" title="${_('Play audio')}">
-                                        <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="SPE-EButtonImage" />
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="SPE-EMultiMediaOption">
-                                <div class="SPE-EMultimedia" id="sopaEMultimedia">
-                                    <img class="SPE-EMedia" src="${path}quextIEImage.png" id="sopaEImage" alt="${_('Image')}" />
-                                    <img class="SPE-EMedia" src="${path}quextIEImage.png" id="sopaENoImage" alt="${_('No image')}" />
-                                    <img class="SPE-ECursor" src="${path}quextIECursor.gif" id="sopaECursor" alt="" />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="SPE-EContents">
-                            <div class="SPE-ENavigationButtons d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3">
-                                <a href="#" id="sopaEAdd" class="SPE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="SPE-EButtonImage b-add" /></a>
-                                <a href="#" id="sopaEFirst" class="SPE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="SPE-EButtonImage b-first" /></a>
-                                <a href="#" id="sopaEPrevious" class="SPE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="SPE-EButtonImage b-prev" /></a>
-                                <label class="sr-av" for="sopaENumberQuestion">${_('Question number:')}</label>
-                                <input type="text" class="SPE-NumberQuestion form-control" id="sopaENumberQuestion" value="1" />
-                                <a href="#" id="sopaENext" class="SPE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="SPE-EButtonImage b-next" /></a>
-                                <a href="#" id="sopaELast" class="SPE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="SPE-EButtonImage b-last" /></a>
-                                <a href="#" id="sopaEDelete" class="SPE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="SPE-EButtonImage b-delete" /></a>
-                                <a href="#" id="sopaECopy" class="SPE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="SPE-EButtonImage b-copy" /></a>
-                                <a href="#" id="sopaECut" class="SPE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="SPE-EButtonImage b-cut" /></a>
-                                <a href="#" id="sopaEPaste" class="SPE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="SPE-EButtonImage b-paste" /></a>
-                            </div>
-                        </div>
-                        <div class="SPE-ENumQuestionDiv d-flex flex-nowrap align-items-center gap-2" id="sopaENumQuestionDiv">
-                            <div class="SPE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
-                            <span class="SPE-ENumQuestions" id="sopaENumQuestions">0</span>
+                    <div class="SPE-EContents">
+                        <div class="SPE-ENavigationButtons d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3">
+                            <a href="#" id="sopaEAdd" class="SPE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="SPE-EButtonImage b-add" /></a>
+                            <a href="#" id="sopaEFirst" class="SPE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="SPE-EButtonImage b-first" /></a>
+                            <a href="#" id="sopaEPrevious" class="SPE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="SPE-EButtonImage b-prev" /></a>
+                            <label class="sr-av" for="sopaENumberQuestion">${_('Question number:')}</label>
+                            <input type="text" class="SPE-NumberQuestion form-control" id="sopaENumberQuestion" value="1" />
+                            <a href="#" id="sopaENext" class="SPE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="SPE-EButtonImage b-next" /></a>
+                            <a href="#" id="sopaELast" class="SPE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="SPE-EButtonImage b-last" /></a>
+                            <a href="#" id="sopaEDelete" class="SPE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="SPE-EButtonImage b-delete" /></a>
+                            <a href="#" id="sopaECopy" class="SPE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="SPE-EButtonImage b-copy" /></a>
+                            <a href="#" id="sopaECut" class="SPE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="SPE-EButtonImage b-cut" /></a>
+                            <a href="#" id="sopaEPaste" class="SPE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="SPE-EButtonImage b-paste" /></a>
                         </div>
                     </div>
-                </fieldset>
-
-                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+                    <div class="SPE-ENumQuestionDiv d-flex flex-nowrap align-items-center gap-2" id="sopaENumQuestionDiv">
+                        <div class="SPE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
+                        <span class="SPE-ENumQuestions" id="sopaENumQuestions">0</span>
+                    </div>
+                </div>`,
+            html = `
+            <div id="sopaQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create word search games with additional text, images or sound.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/buscar-palabras.html',
+                )}
+                ${edition.tabs.getHtml('sopaQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Find the hidden words.'),
+                    options: options,
+                    contents: words,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        exportQuestions: true,
+                        type: 9,
+                    },
+                    info: {
+                        contents: _('Add the words and their definitions, and edit them one by one.'),
+                    },
+                })}
             </div>
-
-            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(9)}
-        </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('sopaQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('sopaQEIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -552,10 +544,10 @@ var $exeDevice = {
         $('#sopaEAlt').val(p.alt);
 
         $exeDevice.showImage(p.url, p.x, p.y, p.alt);
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         if (p.audio.trim().length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
         $('#sopaEURLAudio').val(p.audio);
         $('#sopaENumberQuestion').val(i + 1);
@@ -646,7 +638,7 @@ var $exeDevice = {
             let textFeedBack = $('.sopa-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
                 textFeedBack = textFeedBack.html() || '';
-                $('#sopaEFeedBackEditor').val(textFeedBack);
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(textFeedBack);
             }
 
             let textAfter = $('.sopa-extra-content', wrapper);
@@ -655,7 +647,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showQuestion(0);
@@ -692,7 +684,8 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('sopaEFeedBackEditor').getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
 
         if (dataGame.instructions != '')
             divInstructions =
@@ -792,7 +785,7 @@ var $exeDevice = {
                 percentageShow: 100,
             };
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         if (p.word.length == 0) {
             message = $exeDevice.msgs.msgEProvideWord;
@@ -827,14 +820,13 @@ var $exeDevice = {
     validateData: function () {
         const clear = $exeDevice.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('sopaEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#sopaEShowMinimize').is(':checked'),
             showResolve = $('#sopaEShowResolve').is(':checked'),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#sopaEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#sopaEPercentajeFB').val())),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            feedback =
+                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
             percentajeQuestions = parseInt(
                 clear($('#sopaEPercentajeQuestions').val())
             ),
@@ -842,20 +834,17 @@ var $exeDevice = {
             diagonals = $('#sopaEDiagonals').is(':checked'),
             reverses = $('#sopaEReverses').is(':checked'),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
         if (!progressBar) return false;
 
-        if (feedBack && textFeedBack.trim().length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
+        if (!feedback) return false;
 
         if (wordsGame.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
@@ -888,10 +877,10 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted || 100,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
-            feedBack: feedBack,
-            percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: 1,
             percentajeQuestions,
             time,
@@ -1049,7 +1038,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#sopaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1169,20 +1158,10 @@ var $exeDevice = {
                 );
             } else {
                 if (selectedFile.length > 4) {
-                    $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
-                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                    $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
+                    $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
             }
-        });
-
-        $('#sopaEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#sopaEFeedbackP').show();
-            } else {
-                $('#sopaEFeedbackP').hide();
-            }
-            $('#sopaEPercentajeFB').prop('disabled', !marcado);
         });
 
         $('#sopaEPercentajeQuestions').on('keyup', function () {
@@ -1242,21 +1221,17 @@ var $exeDevice = {
             this.value = this.value < 0 ? 0 : this.value;
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
-            0,
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
+            9,
             $exeDevice.insertWords
         );
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     clearQuestion: function () {
@@ -1378,7 +1353,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
 
@@ -1401,22 +1376,24 @@ var $exeDevice = {
 
         $('#sopaEShowMinimize').prop('checked', game.showMinimize);
         $('#sopaEShowResolve').prop('checked', game.showResolve);
-        $('#sopaEHasFeedBack').prop('checked', game.feedBack);
         $('#sopaEDiagonals').prop('checked', game.diagonals);
         $('#sopaEReverses').prop('checked', game.reverses);
         $('#sopaETime').val(game.time);
-        $('#sopaEPercentajeFB').val(game.percentajeFB);
         $('#sopaEPercentajeQuestions').val(game.percentajeQuestions);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1424,14 +1401,6 @@ var $exeDevice = {
         );
 
         $exeDevice.wordsGame = game.wordsGame;
-
-        if (game.feedBack) {
-            $('#sopaEFeedbackP').show();
-        } else {
-            $('#sopaEFeedbackP').hide();
-        }
-
-        $('#sopaEPercentajeFB').prop('disabled', !game.feedBack);
         $exeDevice.updateQuestionsNumber();
     },
 
@@ -1442,7 +1411,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('words')}-sopa.txt`,
             'sopaQEIdeviceForm'
@@ -1493,18 +1462,12 @@ var $exeDevice = {
             } else {
                 $('#eXeGameInstructions').val(unescape(instructions));
             }
-            if (tinyMCE.get('sopaEFeedBackEditor')) {
-                tinyMCE
-                    .get('sopaEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            } else {
-                $('#sopaEFeedBackEditor').val(unescape(textFeedBack));
-            }
             if (tinyMCE.get('eXeIdeviceTextAfter')) {
                 tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
             } else {
                 $('#eXeIdeviceTextAfter').val(unescape(tAfter));
             }
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(unescape(textFeedBack));
         } else if (game.typeGame == 'Adivina') {
             $exeDevice.importAdivina(game);
         } else if (game.typeGame == 'Rosco') {
@@ -1517,7 +1480,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {
