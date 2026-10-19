@@ -402,7 +402,6 @@ var $exeDevice = {
         $('#ccgmEDefinitionWord').val(p.definition);
         $('#ccgmENumQuestions').text($exeDevice.wordsGame.length);
         $('#ccgmESolutionWord').val(p.word);
-        $('#ccgmEPercentageShow').val(p.percentageShow);
 
         if (p.url.length > 4) {
             $('#ccgmEURLImage').val(p.url);
@@ -422,8 +421,6 @@ var $exeDevice = {
     },
 
     initQuestions: function () {
-        $('#ccgmEMediaNormal, #ccgmEMediaImage').prop('disabled', false);
-
         if ($exeDevice.wordsGame.length === 0) {
             const question = $exeDevice.getCuestionDefault();
             $exeDevice.wordsGame.push(question);
@@ -669,7 +666,6 @@ var $exeDevice = {
                 alt: $('#ccgmEAlt').val(),
                 url: $('#ccgmEURLImage').val().trim(),
                 audio: $('#ccgmEURLAudio').val(),
-                percentageShow: parseInt($('#ccgmEPercentageShow').val()),
             };
 
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();

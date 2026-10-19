@@ -632,6 +632,16 @@ describe('crossword edition: shared form tabs and feedback', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
+    it('stores a word with the fields of its form only', () => {
+      device.active = 0;
+      $('#ccgmESolutionWord').val('HEART');
+      $('#ccgmEDefinitionWord').val('Organ that pumps blood');
+
+      expect(device.validateQuestion()).toBeTruthy();
+      expect(device.wordsGame[0]).toMatchObject({ word: 'HEART', definition: 'Organ that pumps blood' });
+      expect(device.wordsGame[0]).not.toHaveProperty('percentageShow');
+    });
+
     it('saves the feedback values the export reads', () => {
       device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true, percentajeFB: 70 }));
       editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
