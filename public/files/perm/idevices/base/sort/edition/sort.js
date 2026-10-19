@@ -144,7 +144,6 @@ var $exeDevice = {
             'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -163,77 +162,62 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-    <div id="gameQEIdeviceForm">
-        ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-            _('Create interactive activities in which players will have to order cards with images, texts and/or sounds.'),
-            'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/ordena.html',
-        )}
-        <div class="exe-form-tab" title="${_('General settings')}">
-            ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each letter to its correct position'))}
-            <fieldset class="exe-fieldset exe-fieldset-closed">
-                <legend><a href="#">${_('Options')}</a></legend>
-                <div>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <span class="mb-0">${_('Type')}:</span>
-                        <span class="ODNE-EInputColumns d-flex align-items-center gap-2 flex-wrap">
-                            <div class="form-check form-check-inline m-0">
-                                <input class="ODNE-EType form-check-input" id="odntype0" checked type="radio" name="odntype" value="0" />
-                                <label for="odntype0" class="mb-0">${_('Phrases')}</label>
-                            </div>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="ODNE-EType form-check-input" id="odntype1" type="radio" name="odntype" value="1" />
-                                <label for="odntype1" class="mb-0">${_('Multimedia')}</label>
-                            </div>
-                        </span>
+            edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            toggle = (id, label, checked = false) => `
+                        <div class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="${id}" class="toggle-input"${checked ? ' checked' : ''} />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label" for="${id}">${label}</label>
+                        </div>`,
+            options = `
+                <div id="ordenaEOptions">
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <span>${_('Type')}:</span>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="ODNE-EType form-check-input" id="odntype0" checked type="radio" name="odntype" value="0" />
+                            <label for="odntype0" class="mb-0">${_('Phrases')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="ODNE-EType form-check-input" id="odntype1" type="radio" name="odntype" value="1" />
+                            <label for="odntype1" class="mb-0">${_('Multimedia')}</label>
+                        </div>
+                        ${help(
+                            [
+                                `${_('Phrases')}: ${_('Learners put the words of each phrase in order.')}`,
+                                `${_('Multimedia')}: ${_('Learners put cards with images, texts or sounds in order.')}`,
+                            ].join('\n\n'),
+                        )}
                     </div>
-                    <div class="toggle-item mb-3">
-                        <span class="toggle-control">
-                            <input type="checkbox" id="ordenaEShowMinimize" class="toggle-input" />
-                            <span class="toggle-visual"></span>
-                        </span>
-                        <label class="toggle-label" for="ordenaEShowMinimize">${_('Show minimized.')}</label>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('ordenaEShowMinimize', _('Show minimized.'))}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                     </div>
-                    <div id="ordenaTimeShowDiv" class="ODNE-Hide flex-wrap align-items-center gap-2 mb-3">
+                    <div id="ordenaTimeShowDiv" class="ODNE-Hide flex-nowrap align-items-center gap-2 mb-3">
                         <label for="ordenaETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
                         <input type="number" class="form-control" name="ordenaETimeShowSolution" id="ordenaETimeShowSolution" value="3" min="1" max="999" />
+                        ${help(_('Seconds the cards stay on screen after checking them, before the next activity.'))}
                     </div>
-                    <div id="ordenaECustomMessagesDiv" class="ODNE-Hide toggle-item mb-3">
-                        <span class="toggle-control">
-                            <input type="checkbox" id="ordenaECustomMessages" class="toggle-input" />
-                            <span class="toggle-visual"></span>
-                        </span>
-                        <label class="toggle-label" for="ordenaECustomMessages">${_('Custom messages')}.</label>
+                    <div id="ordenaECustomMessagesDiv" class="ODNE-Hide flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('ordenaECustomMessages', `${_('Custom messages')}.`)}
+                        ${help(_('Add a message, and its audio, for the right and the wrong answer of each activity in the Questions tab.'))}
                     </div>
                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
                         <label for="ordenaETime" class="mb-0">${_('Time (minutes)')}:</label>
                         <input type="number" class="form-control" name="ordenaETime" id="ordenaETime" value="0" min="0" max="120" step="1" />
+                        ${help(_('Time to complete the whole game, in minutes. Set 0 for no time limit.'))}
                     </div>
-                    <div class="toggle-item mb-3">
-                        <span class="toggle-control">
-                            <input type="checkbox" checked id="ordenaEShowSolution" class="toggle-input" />
-                            <span class="toggle-visual"></span>
-                        </span>
-                        <label class="toggle-label" for="ordenaEShowSolution">${_('Show solutions')}.</label>
-                    </div>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <div class="toggle-item mb-0">
-                            <span class="toggle-control">
-                                <input type="checkbox" id="ordenaEHasFeedBack" class="toggle-input" />
-                                <span class="toggle-visual"></span>
-                            </span>
-                            <label class="toggle-label" for="ordenaEHasFeedBack">${_('Feedback')}</label>
-                        </div>
-                        <label for="ordenaEPercentajeFB" class="mb-0"></label>
-                        <input type="number" class="form-control" name="ordenaEPercentajeFB" id="ordenaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                    </div>
-                    <div id="ordenaEFeedbackP" class="ODNE-EFeedbackP mb-3">
-                        <textarea id="ordenaEFeedBackEditor" class="exe-html-editor"></textarea>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('ordenaEShowSolution', `${_('Show solutions')}.`, true)}
+                        ${help(_('Mark the words or cards that are in the right place after checking.'))}
                     </div>
                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
                         <label for="ordenaEPercentajeQuestions" class="mb-0">${_('% Activities')}:</label>
                         <input type="number" class="form-control" name="ordenaEPercentajeQuestions" id="ordenaEPercentajeQuestions" value="100" min="1" max="100" />
                         <span id="ordenaENumeroPercentaje">1/1</span>
+                        ${help(_('Choose the percentage of activities included in each game. The counter shows how many activities will be used.'))}
                     </div>
                     <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
                         <label for="ordenaEAuthor" class="mb-0">${_('Author')}:</label>
@@ -241,61 +225,55 @@ var $exeDevice = {
                     </div>
                     <div id="ordenaColumnsDiv" class="d-none flex-nowrap align-items-center gap-2 mb-3">
                         <span>${_('Columns')}:</span>
-                        <span class="ODNE-EInputColumns d-flex align-items-center gap-2 flex-wrap">
-                            <div class="form-check form-check-inline m-0">
-                                <input class="ODNE-EColumns form-check-input" id="odn0" checked type="radio" name="odncolumns" value="0" />
-                                <label for="odn0" class="mb-0">No</label>
-                            </div>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="ODNE-EColumns form-check-input" id="odn1" type="radio" name="odncolumns" value="1" />
-                                <label for="odn1" class="mb-0">1</label>
-                            </div>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="ODNE-EColumns form-check-input" id="odn2" type="radio" name="odncolumns" value="2" />
-                                <label for="odn2" class="mb-0">2</label>
-                            </div>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="ODNE-EColumns form-check-input" id="odn3" type="radio" name="odncolumns" value="3" />
-                                <label for="odn3" class="mb-0">3</label>
-                            </div>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="ODNE-EColumns form-check-input" id="odn4" type="radio" name="odncolumns" value="4" />
-                                <label for="odn4" class="mb-0">4</label>
-                            </div>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="ODNE-EColumns form-check-input" id="odn5" type="radio" name="odncolumns" value="5" />
-                                <label for="odn5" class="mb-0">5</label>
-                            </div>
-                        </span>
-                    </div>
-                    <div id="ordenaCustomizeCard" class="d-none flex-wrap align-items-center gap-2 mb-3">
-                        <div class="toggle-item mb-0">
-                            <span class="toggle-control">
-                                <input type="checkbox" checked id="ordenaMaxWidth" class="toggle-input" />
-                                <span class="toggle-visual"></span>
-                            </span>
-                            <label class="toggle-label" for="ordenaMaxWidth">${_('Maximum width')}.</label>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="ODNE-EColumns form-check-input" id="odn0" checked type="radio" name="odncolumns" value="0" />
+                            <label for="odn0" class="mb-0">No</label>
                         </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="ODNE-EColumns form-check-input" id="odn1" type="radio" name="odncolumns" value="1" />
+                            <label for="odn1" class="mb-0">1</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="ODNE-EColumns form-check-input" id="odn2" type="radio" name="odncolumns" value="2" />
+                            <label for="odn2" class="mb-0">2</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="ODNE-EColumns form-check-input" id="odn3" type="radio" name="odncolumns" value="3" />
+                            <label for="odn3" class="mb-0">3</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="ODNE-EColumns form-check-input" id="odn4" type="radio" name="odncolumns" value="4" />
+                            <label for="odn4" class="mb-0">4</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="ODNE-EColumns form-check-input" id="odn5" type="radio" name="odncolumns" value="5" />
+                            <label for="odn5" class="mb-0">5</label>
+                        </div>
+                        ${help(_('Arrange the cards in this number of columns. With No, they are placed freely.'))}
+                    </div>
+                    <div id="ordenaCustomizeCard" class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('ordenaMaxWidth', `${_('Maximum width')}.`, true)}
                         <label for="ordenaCardHeight" class="mb-0">${_('Height (px)')}:</label>
                         <input type="number" class="form-control" name="ordenaCardHeight" id="ordenaCardHeight" value="200" min="0" max="1000" />
+                        ${help(
+                            [
+                                `${_('Maximum width')}: ${_('The cards take all the width of their column.')}`,
+                                `${_('Height (px)')}: ${_('The height of the cards that take the maximum width.')}`,
+                            ].join('\n\n'),
+                        )}
                     </div>
-                    <div id="ordenaFixedHeaders" class="d-none flex-wrap align-items-center gap-2 mb-3">
-                        <span class="toggle-control">
-                            <input type="checkbox" id="ordenaOrderedColumns" class="toggle-input" />
-                            <span class="toggle-visual"></span>
-                        </span>
-                        <label class="toggle-label" for="ordenaOrderedColumns">${_('Fixed headers')}.</label>
+                    <div id="ordenaFixedHeaders" class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('ordenaOrderedColumns', `${_('Fixed headers')}.`)}
+                        ${help(_('With two or more columns, the cards of the first row stay in place as the headers of their columns.'))}
                     </div>
-                    <div id="ordenaStartAutomaticallyDiv" style="display:none;" class="toggle-item mb-3">
-                        <span class="toggle-control">
-                            <input type="checkbox" id="ordenaStartAutomatically" class="toggle-input" />
-                            <span class="toggle-visual"></span>
-                        </span>
-                        <label class="toggle-label" for="ordenaStartAutomatically">${_('Automatic start')}.</label>
+                    <div id="ordenaStartAutomaticallyDiv" class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('ordenaStartAutomatically', `${_('Automatic start')}.`)}
+                        ${help(_('Start the game as soon as the page loads, without the start button.'))}
                     </div>
                     <div id="ordenaEBackDiv" style="display:none" class="mb-3">
                         <div class="ODNE-EInputImageBack d-flex flex-nowrap align-items-center gap-2 mb-2">
-                            <label for="ordenaEURLImgCard" class="mb-0">${_('Image back')}:</label>
+                            <label for="ordenaEURLImgCard" class="mb-0 text-nowrap">${_('Image back')}:</label>
+                            ${help(_('An image for the back of the cards.'))}
                             <input type="text" class="exe-file-picker form-control me-0 w-100 ODNE-EURLImage" id="ordenaEURLImgCard"/>
                             <a href="#" id="ordenaEPlayCard" class="ODNE-ENavigationButton" title="${_('Show')}">
                                  <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ODNE-ENavigationButton" />
@@ -306,19 +284,12 @@ var $exeDevice = {
                             <img class="ODNE-EImageBack" src="${path}ordenaHome.png" id="ordenaENoCard" alt="${_('No image')}" />
                         </div>
                     </div>
-                    <div id="ordenaEWordBorderDiv" class="toggle-item mb-3">
-                        <span class="toggle-control">
-                            <input type="checkbox" checked id="ordenaEWordBorder" class="toggle-input" />
-                            <span class="toggle-visual"></span>
-                        </span>
-                        <label class="toggle-label" for="ordenaEWordBorder">${_('Word border')}.</label>
+                    <div id="ordenaEWordBorderDiv" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('ordenaEWordBorder', `${_('Word border')}.`, true)}
+                        ${help(_('Draw a border around each word.'))}
                     </div>
-                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                    </div>
-                </div>
-            </fieldset>
-            <fieldset class="exe-fieldset">
-                <legend><a href="#">${_('Activities')}</a></legend>
+                </div>`,
+            activities = `
                 <div class="ODNE-EPanel" id="ordenaEPanel">
                     <div class="d-flex flex-nowrap align-items-center gap-2 mt-4 mb-3" id="ordenaEPĥraseIDiv">
                         <label for="ordenaEPraseI" class="mb-0">${_('Phrase')}:</label>
@@ -371,18 +342,33 @@ var $exeDevice = {
                     <div class="ODNE-ENumPhrasesDiv" id="ordenaENumPhrasesDiv">
                         <div class="ODNE-ENumPhraseS"><span class="sr-av">${_('Phrases:')}</span></div><span class="ODNE-ENumPhrases" id="ordenaENumPhrases">1</span>
                     </div>
-                </div>
-            </fieldset>
-            ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-        </div>
-        ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-        ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-        ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                </div>`,
+            html = `
+    <div id="gameQEIdeviceForm">
+        ${edition.common.getIdeviceDescription(
+            _('Create interactive activities in which players will have to order cards with images, texts and/or sounds.'),
+            'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/ordena.html',
+        )}
+        ${edition.tabs.getHtml('gameQEIdeviceForm', {
+            path: path,
+            instructions: c_('Drag each letter to its correct position'),
+            options: options,
+            contents: activities,
+            passwords: true,
+            feedback: true,
+            after: true,
+            grading: true,
+            texts: this.ci18n,
+            share: false,
+            info: {
+                contents: _('Add the activities to put in order, a phrase or a set of cards, and edit them one by one.'),
+            },
+        })}
     </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('gameQEIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -544,7 +530,7 @@ var $exeDevice = {
         $exeDevice.initPhrases();
 
         const root = document.getElementById('gameQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         const initialType = parseInt(
@@ -601,7 +587,7 @@ var $exeDevice = {
         $('#ordenaEURLAudioKO').val(phrase.audioError);
         $('#ordenaEPraseI').val(phrase.phrase);
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
     initPhrases: function () {
         $exeDevice.active = 0;
@@ -698,7 +684,7 @@ var $exeDevice = {
         const $card = $('#ordenaEPhrase').find('div.ODNE-EDatosCarta').last();
 
         $exeDevice.addEventCard($exeDevice.activeID);
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders($card);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders($card);
         $exeDevice.showImage($exeDevice.activeID);
         $('#ordenaETextDiv-' + $exeDevice.activeID).hide();
         return $card;
@@ -708,7 +694,7 @@ var $exeDevice = {
         const $container = $('#ordenaEDatosCarta-' + cardId);
         if (!$container.length) return;
 
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders($container);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders($container);
 
         const filemanager = window.eXeLearning?.app?.modals?.filemanager;
 
@@ -1124,9 +1110,11 @@ var $exeDevice = {
 
             const textFeedBack = $('.ordena-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#ordenaEFeedBackEditor').val(textFeedBack.html());
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html() || ''
+                );
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showPhrase(0, true);
@@ -1163,7 +1151,8 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('ordenaEFeedBackEditor').getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
 
         if (dataGame.instructions != '')
             divContent =
@@ -1334,15 +1323,12 @@ var $exeDevice = {
     validateData: function () {
         const clear = $exeDevice.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('ordenaEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#ordenaEShowMinimize').is(':checked'),
             wordBorder = $('#ordenaEWordBorder').is(':checked'),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ordenaECaseSensitive').is(':checked'),
-            feedBack = $('#ordenaEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#ordenaEPercentajeFB').val())),
             customMessages = $('#ordenaECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#ordenaEPercentajeQuestions').val())
@@ -1362,20 +1348,24 @@ var $exeDevice = {
             orderedColumns = $('#ordenaOrderedColumns').is(':checked'),
             phrasesGame = $exeDevice.phrasesGame,
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             type = parseInt($('input.ODNE-EType[name=odntype]:checked').val());
 
         if (!itinerary) return;
         if (!progressBar) return false;
+
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
         if (phrasesGame.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             typeGame: 'Ordena',
@@ -1389,11 +1379,11 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
             caseSensitive: caseSensitive,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
             timeShowSolution: timeShowSolution,
@@ -1588,16 +1578,6 @@ var $exeDevice = {
             $exeDevice.pastePhrase();
         });
 
-        $('#ordenaEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-
-            $('#ordenaEFeedbackP')
-                .toggleClass('d-none', !marcado)
-                .toggleClass('d-flex', marcado);
-
-            $('#ordenaEPercentajeFB').prop('disabled', !marcado);
-        });
-
         $('#ordenaECustomMessages').on('change', function () {
             const messages = $(this).is(':checked');
             $('.ODNE-ECustomMessageDiv')
@@ -1745,9 +1725,9 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         const gameColumns = parseInt(
                 $('input.ODNE-EColumns[name=odncolumns]:checked').val()
@@ -1757,12 +1737,8 @@ var $exeDevice = {
         if (type == 1) {
             $exeDevice.resizePanel(orderedColumns, gameColumns);
         }
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
 
         $('.sortable_container').on('dragenter', function (e) {
             e.preventDefault();
@@ -1830,18 +1806,8 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
-        }
-    },
-
-    updateGameMode: function (feedback) {
-        $('#ordenaEHasFeedBack').prop('checked', feedback);
-        if (feedback) {
-            $('#ordenaEFeedbackP').slideDown();
-        }
-        if (!feedback) {
-            $('#ordenaEFeedbackP').slideUp();
         }
     },
 
@@ -1965,7 +1931,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.maxWidth =
@@ -1994,25 +1960,25 @@ var $exeDevice = {
         $('#ordenaEShowMinimize').prop('checked', game.showMinimize);
         $('#ordenaEWordBorder').prop('checked', game.wordBorder);
         $('#ordenaECaseSensitive').prop('checked', game.caseSensitive);
-        $('#ordenaEHasFeedBack').prop('checked', game.feedBack);
-        $('#ordenaEPercentajeFB').val(game.percentajeFB);
         $('#ordenaEPercentajeQuestions').val(game.percentajeQuestions);
         $('#ordenaETime').val(game.time);
         $('#ordenaETimeShowSolution').val(game.timeShowSolution);
         $('#ordenaEAuthor').val(game.author);
         $('#ordenaEShowSolution').prop('checked', game.showSolution);
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
         $exeDevice.phrasesGame = game.phrasesGame;
-        $exeDevice.updateGameMode(game.feedBack);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
 
         $('#ordenaENumPhrases').text($exeDevice.phrasesGame.length);
-        $('#ordenaEPercentajeFB').prop('disabled', !game.feedBack);
         $('#ordenaECustomMessages').prop('checked', game.customMessages);
 
         $(
@@ -2032,11 +1998,11 @@ var $exeDevice = {
         $('#ordenaStartAutomatically').prop('checked', game.startAutomatically);
         $('#ordenaMaxWidth').prop('checked', game.maxWidth);
         $('#ordenaOrderedColumns').prop('checked', game.orderedColumns);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -2117,8 +2083,9 @@ var $exeDevice = {
             textFeedBack = game.textFeedBack || '';
         tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
         tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        tinyMCE.get('ordenaEFeedBackEditor').setContent(unescape(textFeedBack));
-        //$('.exe-form-tabs li:first-child a').click();
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+            unescape(textFeedBack)
+        );
         $exeDevice.showPhrase(0, false);
     },
 
