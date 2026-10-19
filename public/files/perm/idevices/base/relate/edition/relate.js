@@ -13,15 +13,11 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'relate',
     active: 0,
-    activeCard: 0,
-    activeID: '',
     cardsGame: [],
     typeEdit: -1,
-    idPaste: '',
     numberCutCuestion: -1,
     clipBoard: '',
     idevicePath: '',
-    playerAudio: '',
     version: 2.0,
     id: false,
     checkAltImage: true,
@@ -998,18 +994,6 @@ var $exeDevice = {
         if (!itinerary) return false;
         if (!progressBar) return false;
 
-        if (itinerary.showClue && itinerary.clueGame.length == '') {
-            return false;
-        }
-
-        if (
-            itinerary.showCodeAccess &&
-            (itinerary.codeAccess.length == '' ||
-                itinerary.messageCodeAccess.length == '')
-        ) {
-            return false;
-        }
-
         return {
             typeGame: 'Relaciona',
             author,
@@ -1076,26 +1060,6 @@ var $exeDevice = {
             .on('error', function () {
                 return false;
             });
-    },
-
-    playSound: function (selectedFile) {
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        const player = new Audio(selectFile);
-        $exeDevice.playerAudio = player;
-        // Playback and its network activity stop when the editor closes.
-        this.$lifecycle.ownMedia(player);
-        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
-            player.play();
-        });
-    },
-
-    stopSound: function () {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause === 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
     },
 
     paintMouse: function (image, cursor, x, y) {
@@ -1264,10 +1228,6 @@ var $exeDevice = {
             .on('click', () => {
                 $exeDevice.updateCardsNumber();
             });
-
-        $('#rclEURLAudioDefinition').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
-        });
 
         $('#rclENumberCard').keyup(function (e) {
             if (e.keyCode === 13) {
@@ -1504,19 +1464,6 @@ var $exeDevice = {
         $exeDevice.updateCardsNumber();
     },
 
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-Relaciona.json`,
-            'relateQIdeviceForm'
-        );
-    },
-
     importMoodle: function (xmlString) {
         const xmlDoc = $.parseXML(xmlString),
             $xml = $(xmlDoc);
@@ -1527,103 +1474,6 @@ var $exeDevice = {
         } else {
             return false;
         }
-    },
-
-    importCuestionaryXML: function (xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc);
-
-        if ($xml.find('parsererror').length > 0) return false;
-
-        const $quiz = $xml.find('quiz').first();
-        if ($quiz.length === 0) {
-            return false;
-        }
-
-        const cardsJson = [];
-        $quiz.find('question').each(function () {
-            const $question = $(this),
-                type = $question.attr('type');
-            if (type !== 'shortanswer') {
-                return true;
-            }
-            const questionText = $question
-                    .find('questiontext')
-                    .first()
-                    .text()
-                    .trim(),
-                $answers = $question.find('answer');
-            let eText = '',
-                maxFraction = -1;
-            $answers.each(function () {
-                const $answer = $(this),
-                    answerText = $answer.find('text').eq(0).text(),
-                    currentFraction = parseInt($answer.attr('fraction'), 10);
-                if (currentFraction > maxFraction) {
-                    maxFraction = currentFraction;
-                    eText = answerText;
-                }
-            });
-            if (eText && questionText) {
-                cardsJson.push({
-                    eTextBk: $exeDevice.removeTags(questionText),
-                    eText: $exeDevice.removeTags(eText),
-                });
-            }
-        });
-
-        const validQuestions = [];
-        cardsJson.forEach((card) => {
-            const p = $exeDevice.getDefaultCard();
-            p.eTextBk = card.eTextBk;
-            p.eText = card.eText;
-            if (p.eText && p.eTextBk) {
-                $exeDevice.cardsGame.push(p);
-                validQuestions.push(p);
-            }
-        });
-        return validQuestions.length > 0 ? $exeDevice.cardsGame : false;
-    },
-
-    importGlosary: function (xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc);
-
-        if ($xml.find('parsererror').length > 0) return false;
-
-        const $entries = $xml.find('ENTRIES').first();
-
-        if ($entries.length === 0) return false;
-
-        const cardsJson = [];
-        $entries.find('ENTRY').each(function () {
-            const $this = $(this),
-                concept = $this.find('CONCEPT').text(),
-                definition = $this
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, ''); // Elimina HTML
-            if (concept && definition) {
-                cardsJson.push({
-                    eText: concept,
-                    eTextBk: definition,
-                });
-            }
-        });
-
-        let valids = 0;
-        cardsJson.forEach((card) => {
-            const p = $exeDevice.getDefaultCard();
-            p.eTextBk = card.eTextBk;
-            p.eText = card.eText;
-            if (p.eText && p.eTextBk) {
-                $exeDevice.cardsGame.push(p);
-                valids++;
-            }
-        });
-        return valids > 0 ? $exeDevice.cardsGame : false;
     },
 
     importGame(content, filetype) {

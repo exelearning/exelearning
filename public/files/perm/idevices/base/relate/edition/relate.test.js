@@ -129,35 +129,6 @@ describe('relate iDevice', () => {
                 expect(importGame).toHaveBeenCalledWith('card', 'text/plain');
             });
         });
-
-        describe('preview audio', () => {
-            it('stops playback and releases the stream when the edition closes', () => {
-                $exeDevice.playSound('files/beep.mp3');
-                const player = $exeDevice.playerAudio;
-                const pause = vi.spyOn(player, 'pause');
-
-                $exeDevice.$lifecycle.destroy();
-
-                expect(pause).toHaveBeenCalledTimes(1);
-                expect(player.hasAttribute('src')).toBe(false);
-                pause.mockRestore();
-            });
-
-            it('plays on canplaythrough while open, and stays silent afterwards', () => {
-                $exeDevice.playSound('files/beep.mp3');
-                const player = $exeDevice.playerAudio;
-                const play = vi.spyOn(player, 'play').mockReturnValue(undefined);
-
-                player.dispatchEvent(new Event('canplaythrough'));
-                expect(play).toHaveBeenCalledTimes(1);
-
-                $exeDevice.$lifecycle.destroy();
-                player.dispatchEvent(new Event('canplaythrough'));
-
-                expect(play).toHaveBeenCalledTimes(1);
-                play.mockRestore();
-            });
-        });
     });
 
     /**
