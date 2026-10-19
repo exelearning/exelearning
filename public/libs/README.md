@@ -77,9 +77,15 @@
 *   Package: @xmldom/xmldom
     *   Copyright: Christopher J. Brody and other contributors
     *   License: MIT
+*   Package: abcjs
+    *   Copyright: Paul Rosen
+    *   License: MIT
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
+*   Package: bootstrap
+    *   Copyright: The Bootstrap Authors
+    *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT
@@ -110,6 +116,9 @@
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
     *   License: MIT
+*   Package: fflate
+    *   Copyright: Arjun Barrett
+    *   License: MIT
 *   Package: fs-extra
     *   Copyright: JP Richardson
     *   License: MIT
@@ -119,17 +128,29 @@
 *   Package: happy-dom
     *   Copyright: David Ortner
     *   License: MIT
+*   Package: html2canvas
+    *   Copyright: Niklas von Hertzen
+    *   License: MIT
 *   Package: http-proxy-middleware
     *   Copyright: Steven Chim
     *   License: MIT
 *   Package: i18n
     *   Copyright: Marcus Spiegel
     *   License: MIT
+*   Package: interactjs
+    *   Copyright: Taye Adeyemi
+    *   License: MIT
 *   Package: ioredis
     *   Copyright: Zihua Li
     *   License: MIT
 *   Package: jose
     *   Copyright: Filip Skokan
+    *   License: MIT
+*   Package: jquery
+    *   Copyright: OpenJS Foundation and other contributors
+    *   License: MIT
+*   Package: jquery-ui
+    *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
 *   Package: jsdom
     *   Copyright: Elijah Insua, Domenic Denicola, Sebastian Mayr
@@ -169,6 +190,9 @@
     *   License: MIT
 *   Package: scorm-again
     *   Copyright: Jonathan Putney
+    *   License: MIT
+*   Package: showdown
+    *   Copyright: Estevão Santos
     *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
@@ -258,6 +282,10 @@
 *   Files: /public/files/perm/idevices/\*/export/html2canvas.js
     *   Copyright: Niklas von Hertzen
     *   License: MIT
+*   Files: /public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
+    *   Copyright: Andre Rinas
+    *   License: MIT
+    *   Note: eXeLearning-patched fork of SimpleLightbox 2.10.3 (array `captionsData`, title/author/license caption links, SDWEB CSS block). Kept in git, outside the npm vendor pipeline, until the patch is ported to an upstream release.
 *   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
@@ -352,9 +380,6 @@
     *   License: MIT
 *   Files: /public/libs/showdown/* (Showdown v2)
     *   Copyright: ShowdownJS
-    *   License: MIT
-*   Files: /public/libs/simplelightbox/\*
-    *   Copyright: Andre Rinas
     *   License: MIT
 *   Files: /public/libs/tinymce\_5/\*
     *   Copyright: Tiny Technologies Inc.
