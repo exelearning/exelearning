@@ -21,7 +21,7 @@ function resolveServiceWorkerVersion(search) {
 }
 
 /** Revision of this script. Bump it whenever preview-sw.js changes. */
-const SW_VERSION = '1.2.0';
+const SW_VERSION = '1.2.1';
 
 /** App version the worker was registered with (?v=), reported by GET_STATUS. */
 const SW_APP_VERSION = resolveServiceWorkerVersion(
@@ -454,7 +454,7 @@ const PDF_EMBED_HANDLER_SCRIPT = `
 
         el.parentNode.replaceChild(container, el);
 
-        pdfjsLib.getDocument(src).promise.then(function(pdf) {
+        pdfjsLib.getDocument({ url: src }).promise.then(function(pdf) {
             loading.remove();
             tb.style.display = 'flex';
             tb.querySelector('.epc').textContent = pdf.numPages;
@@ -714,7 +714,7 @@ function createPdfViewerResponse(filePath, pathname, basePath) {
         'try{' +
         'var m=await import("' + safeBasePath + 'libs/pdfjs/pdf.min.js");' +
         'm.GlobalWorkerOptions.workerSrc="' + safeBasePath + 'libs/pdfjs/pdf.worker.min.js";' +
-        'var pdf=await m.getDocument(window.location.href).promise;' +
+        'var pdf=await m.getDocument({ url: window.location.href }).promise;' +
         'document.getElementById("loading").style.display="none";' +
         'var tb=document.getElementById("tb");tb.style.display="flex";' +
         'document.getElementById("pc").textContent=pdf.numPages;' +
