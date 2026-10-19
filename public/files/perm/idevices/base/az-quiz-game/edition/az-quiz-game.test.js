@@ -1040,6 +1040,21 @@ describe('az-quiz-game edition: shared form tabs', () => {
         expect(document.querySelector('.exe-idevice-info')).toBeNull();
     });
 
+    it('does not switch an option when its help or open explanation is clicked', () => {
+        const helps = [...document.querySelectorAll('.toggle-item .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('.toggle-input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps.length).toBeGreaterThan(0);
+        for (const help of helps) {
+            help.click();
+            help.querySelector('span').click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+        }
+
+        expect(states()).toEqual(before);
+    });
+
     it('adds one accessible help button after the last control of each options row without changing its values', () => {
         const rows = [...document.querySelector('#roscoOptions').children];
         expect(rows).toHaveLength(6);
