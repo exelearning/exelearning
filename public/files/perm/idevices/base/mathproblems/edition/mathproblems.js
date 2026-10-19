@@ -455,7 +455,7 @@ var $exeDevice = {
                     .trim();
                 for (let i = 0; i < values.length; i++) {
                     if (valname == values[i].name) {
-                        value = $(this)
+                        $(this)
                             .find('input.MTOE-ValuesInput')
                             .eq(0)
                             .val(values[i].value);
@@ -524,6 +524,7 @@ var $exeDevice = {
                 $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit == 1) {
             $('#eCQPaste').hide();
             $exeDevice.typeEdit = -1;
@@ -591,7 +592,7 @@ var $exeDevice = {
         percentaje = Math.max(1, Math.min(percentaje, 100));
         const totalQuestions = $exeDevice.questions.length,
             num = Math.max(1, Math.round((percentaje * totalQuestions) / 100));
-        $('#eCQPercentajeQuestions').text(num + '/' + totalQuestions);
+        $('#eCQNumeroPercentaje').text(num + '/' + totalQuestions);
     },
 
     removeTags: function (str) {
@@ -624,7 +625,7 @@ var $exeDevice = {
 
         p.formula = $('#eCQformula').val();
 
-        if (!p.definedVariables && (p.min.length == 0 || p.max.length == 0)) {
+        if (!p.definedVariables && (isNaN(p.min) || isNaN(p.max))) {
             message = _('Only the Feedback is optional');
         } else if (p.formula.trim().length == 0) {
             message = _('Only the Feedback is optional');
@@ -731,14 +732,14 @@ var $exeDevice = {
         if (tinyMCE.get('eXeIdeviceTextAfter')) {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
         } else {
-            textAfter = S('#eXeIdeviceTextAfter').val();
+            textAfter = $('#eXeIdeviceTextAfter').val();
         }
 
         let instructions = '';
         if (tinyMCE.get('eXeGameInstructions')) {
             instructions = tinyMCE.get('eXeGameInstructions').getContent();
         } else {
-            instructions = S('#eXeGameInstructions').val();
+            instructions = $('#eXeGameInstructions').val();
         }
 
         if (showSolution && timeShowSolution.length == 0) {
@@ -815,7 +816,7 @@ var $exeDevice = {
             wrapper.html(originalHTML);
             const json = $('.mathproblems-DataGame', wrapper).text(),
                 $wordings = $('.mathproblems-LinkWordings', wrapper),
-                $feeebacks = $('.mapa-LinkFeedBacks', wrapper),
+                $feeebacks = $('.mathproblems-LinkFeedBacks', wrapper),
                 djson = $exeDevices.iDevice.gamification.helpers.decrypt(json),
                 dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(
@@ -849,6 +850,9 @@ var $exeDevice = {
                     textFeedBack.html() || ''
                 );
 
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                dataGame.msgs
+            );
             $exeDevice.showQuestion(0);
         }
     },
@@ -1100,6 +1104,10 @@ var $exeDevice = {
         $('#eCQfeedbackLink').on('click', function (e) {
             e.preventDefault();
             $('#eCQfeedbackQuestionDiv').fadeToggle();
+        });
+
+        $('#eCQShowSolution').on('change', function () {
+            $('#eCQTimeShowSolution').prop('disabled', !this.checked);
         });
 
         $('#eCQRelative').on('change', function () {

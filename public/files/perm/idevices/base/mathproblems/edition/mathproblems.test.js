@@ -388,6 +388,56 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
         expect(feedback().getText()).toBe('<p>Well done</p>');
     });
 
+    it('restores the custom texts with the game', () => {
+        device.idevicePreviousData = stored(game({ msgs: { msgSubmit: 'Check it' } }));
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('ci18n_msgSubmit').value).toBe('Check it');
+    });
+
+    it('loads the feedback of each problem from the block the export reads', () => {
+        device.idevicePreviousData = stored(
+            game({ questions: [question({ textFeedBack: '<p>Old</p>' })] }),
+            '<div class="js-hidden mathproblems-LinkFeedBacks" data-id="0"><p>Linked</p></div>'
+        );
+
+        device.loadPreviousValues();
+
+        expect(device.questions[0].textFeedBack).toBe('<p>Linked</p>');
+    });
+
+    it('counts the problems each game uses next to the percentage', () => {
+        device.questions = [question(), question(), question(), question()];
+        document.getElementById('eCQPercentajeQuestions').value = '50';
+
+        device.updateQuestionsNumber();
+
+        expect(document.getElementById('eCQNumeroPercentaje').textContent).toBe('2/4');
+        expect(document.getElementById('eCQPercentajeQuestions').value).toBe('50');
+    });
+
+    it('lets the solution time be changed again once the solutions are shown', () => {
+        const time = document.getElementById('eCQTimeShowSolution');
+        device.updateFieldGame(game({ showSolution: false }));
+        expect(time.disabled).toBe(true);
+
+        document.getElementById('eCQShowSolution').click();
+
+        expect(time.disabled).toBe(false);
+    });
+
+    it('fills the domain of each variable without leaking a global', () => {
+        delete globalThis.value;
+        document.getElementById('eCQformula').value = '{x}';
+        device.updateVariables();
+
+        device.updateVariablesValues([{ name: 'x', value: '1 - 5' }]);
+
+        expect(document.querySelector('#eQCVariablesContainer .MTOE-ValuesInput').value).toBe('1 - 5');
+        expect(globalThis.value).toBeUndefined();
+    });
+
     describe('saving', () => {
         let editors;
         let tinymceGet;
@@ -452,6 +502,34 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
             device.updateFieldGame(game({ itinerary }));
 
             expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('reads the instructions and the text after before their editors start', () => {
+            delete editors.eXeGameInstructions;
+            delete editors.eXeIdeviceTextAfter;
+            document.getElementById('eXeGameInstructions').value = '<p>Read me</p>';
+            document.getElementById('eXeIdeviceTextAfter').value = '<p>The end</p>';
+
+            const data = device.validateData();
+
+            expect(data.instruccions).toBe('<p>Read me</p>');
+            expect(data.textAfter).toBe('<p>The end</p>');
+        });
+
+        it('asks for the range when one of its numbers is missing', () => {
+            document.getElementById('eCQmin').value = '';
+
+            expect(device.validateQuestion()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Only the Feedback is optional');
+        });
+
+        it('counts a pasted copy in the problems per game', () => {
+            device.copyQuestion();
+            device.pasteQuestion();
+
+            expect(device.questions).toHaveLength(2);
+            expect(document.getElementById('eCQNumQuestions').textContent).toBe('2');
+            expect(document.getElementById('eCQNumeroPercentaje').textContent).toBe('2/2');
         });
     });
 });
