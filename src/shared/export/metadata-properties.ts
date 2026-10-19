@@ -309,6 +309,16 @@ export const METADATA_PROPERTIES: MetadataPropertyConfig[] = [
         excludeFromXml: true,
         category: 'internal',
     },
+    {
+        // Project thumbnail as a data URL. The .elpx already carries it as screenshot.png
+        // (read back on import), so writing it into content.xml only duplicates it.
+        key: 'screenshot',
+        xmlKey: 'pp_screenshot',
+        type: 'string',
+        defaultValue: '',
+        excludeFromXml: true,
+        category: 'internal',
+    },
 
     // =========================================================================
     // SCORM-specific Properties (go in manifest, not odeProperties)
