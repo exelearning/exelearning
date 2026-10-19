@@ -312,7 +312,3 @@ input#ccgmQEScoreQuestion {
 #ccgmEOptions .toggle-item {
 	flex-wrap: nowrap;
 }
-
-#ccgmEOptions > div > .exe-idevice-help-container {
-	margin-left: .25rem;
-}

@@ -490,10 +490,6 @@
     flex-wrap: nowrap;
 }
 
-#dragdropEOptions > div > .exe-idevice-help-container {
-    margin-left: .25rem;
-}
-
 #dragdropEOptions .form-check-inline {
     white-space: nowrap;
 }

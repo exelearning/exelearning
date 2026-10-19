@@ -4,7 +4,7 @@
     cursor: pointer;
 }
 
-#completeQEIdeviceForm #cmptEPercentajeFB, #completeQEIdeviceForm #cmptEPercentajeError {
+#completeQEIdeviceForm #cmptEPercentajeError {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
 }
@@ -91,11 +91,6 @@
 
 #cmptEWordsLimitDiv .toggle-item {
     max-width: 280px;
-}
-
-#cmptEOptions > div > .exe-idevice-help-container,
-#cmptEOptions .toggle-item + .exe-idevice-help-container {
-    margin-left: .25rem;
 }
 
 #cmptEOptions .form-check-inline {

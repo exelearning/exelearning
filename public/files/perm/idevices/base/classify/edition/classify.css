@@ -14,8 +14,7 @@
 
 }
 
-#clasificaQEIdeviceForm #clasificaEPercentajeQuestions,
-#clasificaQEIdeviceForm #clasificaEPercentajeFB {
+#clasificaQEIdeviceForm #clasificaEPercentajeQuestions {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
 }
@@ -315,8 +314,7 @@
 }
 
 /* Ocutar elementos */
-.CQE-ECoord,
-.CQE-EFeedbackP {
+.CQE-ECoord {
     display: none;
 }
 
@@ -328,10 +326,6 @@
 #clasificaEOptions .toggle-item,
 #clasificaEOptions .form-check-inline {
     flex-wrap: nowrap;
-}
-
-#clasificaEOptions > div > .exe-idevice-help-container {
-    margin-left: .25rem;
 }
 
 #clasificaEOptions .form-check-inline {

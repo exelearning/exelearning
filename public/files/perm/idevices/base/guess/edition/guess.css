@@ -244,10 +244,6 @@
     flex-wrap: nowrap;
 }
 
-#adivinaEOptions > div > .exe-idevice-help-container {
-    margin-left: .25rem;
-}
-
 #adivinaEOptions .form-check-inline {
     white-space: nowrap;
 }

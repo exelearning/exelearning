@@ -13,7 +13,6 @@
     width: 3em !important;
 }
 
-#descubreQEIdeviceForm #descubreEPercentajeFB,
 #descubreQEIdeviceForm #descubreEPercentajeQuestions {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
@@ -303,8 +302,7 @@
 }
 
 /* Ocutar elementos */
-.Descubre-ECoord,
-.Descubre-EFeedbackP {
+.Descubre-ECoord {
     display: none;
 }
 
@@ -316,12 +314,6 @@
 #descubreEOptions .toggle-item,
 #descubreEOptions .form-check-inline {
     flex-wrap: nowrap;
-}
-
-#descubreEOptions > div > .exe-idevice-help-container,
-#descubreEOptions .toggle-item + .exe-idevice-help-container,
-#descubreEOptions .Descubre-EInputImageBack > .exe-idevice-help-container {
-    margin-left: .25rem;
 }
 
 #descubreEOptions .form-check-inline {

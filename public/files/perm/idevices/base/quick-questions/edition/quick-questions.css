@@ -11,8 +11,7 @@
 }
 
 
-#gameQEIdeviceForm #quextEPercentajeQuestions,
-#gameQEIdeviceForm #quextEPercentajeFB {
+#gameQEIdeviceForm #quextEPercentajeQuestions {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
 }
@@ -312,10 +311,6 @@ input#gameQEScoreQuestion {
 #quextEOptions .toggle-item,
 #quextEOptions .form-check-inline {
     flex-wrap: nowrap;
-}
-
-#quextEOptions > div > .exe-idevice-help-container {
-    margin-left: .25rem;
 }
 
 #quextEOptions .form-check-inline {

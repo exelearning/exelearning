@@ -422,11 +422,6 @@
 	flex-wrap: nowrap;
 }
 
-#bfafEOptions > div > .exe-idevice-help-container,
-.BFAFE-EPanel .exe-idevice-help-container {
-	margin-left: .25rem;
-}
-
 #bfafEOptions .form-check-inline {
 	white-space: nowrap;
 }

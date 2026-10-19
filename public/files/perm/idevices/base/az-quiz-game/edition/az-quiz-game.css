@@ -251,10 +251,6 @@
     flex-wrap: nowrap;
 }
 
-#roscoOptions > div > .exe-idevice-help-container {
-    margin-left: .25rem;
-}
-
 #roscoIdeviceForm .roscoYImageEdition,
 #roscoIdeviceForm .roscoXImageEdition {
     display: none;

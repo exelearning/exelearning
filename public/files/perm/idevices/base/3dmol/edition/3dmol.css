@@ -330,10 +330,6 @@
     flex-wrap: nowrap;
 }
 
-#dmoleOptions > div > .exe-idevice-help-container {
-    margin-left: .25rem;
-}
-
 #dmoleOptions .form-check-inline {
     white-space: nowrap;
 }

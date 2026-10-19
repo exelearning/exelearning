@@ -416,7 +416,6 @@
 .SLCNE-EVIDiv,
 .SLCNE-ScoreQuestionDiv,
 .SLCNE-ECoord,
-.SLCNE-EFeedbackP,
 .SLCNE-ETitleImage,
 .SLCNE-ETitleVideo,
 .SLCNE-EInputVideo,
@@ -465,10 +464,6 @@ input#gameQEScoreQuestion {
 #seleccionaEOptions .toggle-item,
 #seleccionaEOptions .form-check-inline {
     flex-wrap: nowrap;
-}
-
-#seleccionaEOptions > div > .exe-idevice-help-container {
-    margin-left: .25rem;
 }
 
 #seleccionaEOptions .form-check-inline {

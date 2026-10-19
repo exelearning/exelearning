@@ -3,8 +3,7 @@
 }
 
 #electricalCircuitsIdeviceForm #elcePercentajeQuestions,
-#electricalCircuitsIdeviceForm #elcePercentajeQuestionsValue,
-#electricalCircuitsIdeviceForm #elcePercentajeFB {
+#electricalCircuitsIdeviceForm #elcePercentajeQuestionsValue {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
 }
@@ -313,11 +312,6 @@
 #elceOptions .toggle-item,
 #elceOptions .form-check-inline {
     flex-wrap: nowrap;
-}
-
-#elceOptions > div > .exe-idevice-help-container,
-#elceOptions .exe-idevice-help-container {
-    margin-left: .25rem;
 }
 
 #elceOptions .form-check-inline {
