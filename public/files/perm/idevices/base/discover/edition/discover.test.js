@@ -959,6 +959,16 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
         expect(document.getElementById('eXeGamePercentajeFB').value).toBe('75');
     });
 
+    it('imports the cards of a text file', () => {
+        device.importGame('Heart#Organ that pumps blood\r\nLung#Organ for breathing\r\n', 'text/plain');
+
+        expect(device.wordsGame.map((card) => card.data.slice(0, 2).map((side) => side.eText))).toEqual([
+            ['Heart', 'Organ that pumps blood'],
+            ['Lung', 'Organ for breathing'],
+        ]);
+        expect(document.querySelector('input[name="qtxgamemode"][value="0"]').checked).toBe(true);
+    });
+
     describe('saving and validation', () => {
         let editors;
         let tinymceGet;

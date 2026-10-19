@@ -2133,51 +2133,6 @@ var $exeDevice = {
         return lineswords;
     },
 
-    importText: function (content) {
-        const lines = content.split('\n'),
-            lineFormat = /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/,
-            questions = [];
-        types = [0, 0, 0];
-        lines.forEach(function (line) {
-            if (lineFormat.test(line)) {
-                const q = $exeDevice.getQuestionDefault();
-                let linarray = line.trim().split('#'),
-                    typeGame = linarray.length - 2;
-                types[typeGame]++;
-                for (let i = 0; i < q.data.length; i++) {
-                    if (i < linarray.length) {
-                        q.data[i].eText = linarray[i];
-                    }
-                }
-                questions.push(q);
-            }
-        });
-        let gameMode = 2;
-        if (types[0] > 0) {
-            gameMode = 0;
-        } else if (types[1] > 0) {
-            gameMode = 1;
-        }
-
-        if (types[gameMode] > 0) {
-            $("input[name='qtxgamemode'][value='" + gameMode + "']").prop(
-                'checked',
-                true
-            );
-            $('#descubreEDatosCarta-2').hide();
-            $('#descubreEDatosCarta-3').hide();
-            if (gameMode == 1) {
-                $('#descubreEDatosCarta-2').show();
-            } else if (gameMode == 2) {
-                $('#descubreEDatosCarta-2').show();
-                $('#descubreEDatosCarta-3').show();
-            }
-            return questions;
-        } else {
-            return false;
-        }
-    },
-
     importGame(content, filetype) {
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
