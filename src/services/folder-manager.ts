@@ -527,27 +527,21 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             };
         }
 
-        // Extract ZIP contents with hardened decompression limits (zip-bomb / DoS
-        // guard). safeUnzipSync rejects oversized or over-numerous entries BEFORE
-        // they are inflated, throwing ZipLimitError instead of materialising the
-        // whole payload in memory.
+        // Refuse archives over the decompression limits before any entry is inflated.
+        // safeUnzipSync is the shared guard for every server unzip sink. Its
+        // central-directory check is the same pre-inflation cap main added on this
+        // path, and an injected zipLimits override still applies.
         const uint8ZipData = new Uint8Array(zipData);
         let unzipped: Record<string, Uint8Array>;
         try {
             unzipped = safeUnzipSync(uint8ZipData, { label: 'project ZIP asset', fflate, limits: zipLimits });
         } catch (err) {
-            if (err instanceof ZipLimitError) {
-                return {
-                    success: false,
-                    error: err.message,
-                    extractedCount: 0,
-                    folders: [],
-                    assets: [],
-                };
-            }
             return {
                 success: false,
-                error: 'Failed to extract ZIP file - invalid or corrupted archive',
+                error:
+                    err instanceof ZipLimitError
+                        ? err.message
+                        : 'Failed to extract ZIP file - invalid or corrupted archive',
                 extractedCount: 0,
                 folders: [],
                 assets: [],
