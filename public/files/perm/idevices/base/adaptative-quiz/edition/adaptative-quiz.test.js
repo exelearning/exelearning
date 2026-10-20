@@ -2227,6 +2227,10 @@ describe('adaptative-quiz edition: shared form tabs', () => {
         );
         expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
         expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
+        // It reads txt files only: the Import window does not offer Moodle xml.
+        expect(document.querySelector('#eXeShareModal-import .modal-body').firstElementChild.textContent).toBe(
+            'You can import questions compatible with this activity from txt files.'
+        );
     });
 
     it('provides one accessible information button at the end of each options row', () => {

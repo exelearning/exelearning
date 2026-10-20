@@ -487,6 +487,8 @@ var $exeDevice = {
                     texts: this.ci18n,
                     share: {
                         importQuestions: true,
+                        // It reads txt files only, not Moodle xml.
+                        importInfo: _('You can import questions compatible with this activity from txt files.'),
                         exportQuestions: true,
                         type: 10,
                         options: { numLevels: this.numLevels },
