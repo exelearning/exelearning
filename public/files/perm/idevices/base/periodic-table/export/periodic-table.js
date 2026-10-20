@@ -80,7 +80,8 @@ var $periodicTable = {
     },
 
     loadGame: function () {
-        $periodicTable.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $periodicTable.options.length = $periodicTable.activities.length;
 
         $periodicTable.activities.each(function (i) {
             let dl = $('.periodic-table-DataGame', this);
@@ -93,7 +94,7 @@ var $periodicTable = {
             mOption.main = 'ptMainContainer-' + i;
             mOption.idevice = 'periodic-table-IDevice';
 
-            $periodicTable.options.push(mOption);
+            $periodicTable.options[i] = mOption;
 
             const pt = $periodicTable.createInterfacePT(i);
 
@@ -1071,7 +1072,7 @@ var $periodicTable = {
             return search;
         }
         return {
-            id: number,
+            id: id,
             number: '',
             name: '',
             symbol: '',

@@ -29,7 +29,7 @@ var $eXeHiddenImage = {
         yellow: '#fcf4d3',
         correct: '#dcffdc',
     },
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
     initialScore: '',
@@ -54,7 +54,8 @@ var $eXeHiddenImage = {
     },
 
     loadGame: function () {
-        $eXeHiddenImage.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeHiddenImage.options.length = $eXeHiddenImage.activities.length;
         $eXeHiddenImage.activities.each(function (i) {
             const dl = $('.hiddenimage-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -74,7 +75,7 @@ var $eXeHiddenImage = {
             mOption.main = 'hiPMainContainer-' + i;
             mOption.idevice = 'hiddenimage-IDevice';
 
-            $eXeHiddenImage.options.push(mOption);
+            $eXeHiddenImage.options[i] = mOption;
 
             const hiP = $eXeHiddenImage.createInterfacehiP(i);
             dl.before(hiP).remove();
