@@ -361,7 +361,9 @@ var $exeDevice = {
                     texts: this.ci18n,
                     share: {
                         importQuestions: true,
-                        exportQuestions: false,
+                        // It reads txt files only, not Moodle xml.
+                        importInfo: _('You can import questions compatible with this activity from txt files.'),
+                        exportQuestions: true,
                         type: 8,
                     },
                     info: {
@@ -428,9 +430,37 @@ var $exeDevice = {
                 });
                 reader.readAsText(file);
             });
+            $('#eXeGameExportQuestions').on('click', () => {
+                $exeDevice.exportQuestions();
+            });
         } else {
             $('#eXeGameExportImport').hide();
         }
+    },
+
+    /**
+     * Download the list in the format Import reads back: one line with the
+     * elements in their right order, separated by #.
+     *
+     * @returns {boolean} Whether the file was offered.
+     */
+    exportQuestions: function () {
+        const items = [];
+        this.ideviceBody.querySelectorAll('#sortableListFormList input').forEach((el) => {
+            // # separates the elements: inside one it would split it in two.
+            const val = (el.value || '').replace(/#/g, ' ').trim();
+            if (val !== '') items.push(val);
+        });
+        if (items.length < this.items_min) {
+            eXe.app.alert(_('Add at least 3 elements.'));
+            return false;
+        }
+        const blob = new Blob([items.join('#')], { type: 'text/plain' });
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
+            blob,
+            `${_('Scrambled list')}.txt`,
+            'scrambledlistIdeviceForm'
+        );
     },
 
     importGame: function (content, filetype) {

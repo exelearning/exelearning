@@ -392,14 +392,49 @@ describe('scrambled-list edition: shared form tabs', () => {
         expect(panel('texts').querySelector('#ci18n_msgCheck').value).toBe('Check');
     });
 
-    it('offers Import and Create with AI on the Questions tab, but not Export, as main did', () => {
+    it('offers Import, Export and Create with AI on the Activities tab', () => {
         open();
         const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
 
-        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
         expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame')).not.toBeNull();
+        expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
         expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
         expect(panel('contents').firstElementChild.textContent).toContain('Write the elements of the list in the right order');
+    });
+
+    it('says the Import window reads txt files, without the Moodle xml it does not read', () => {
+        open();
+        const info = document.querySelector('#eXeShareModal-import .modal-body').firstElementChild.textContent;
+
+        expect(info).toBe('You can import questions compatible with this activity from txt files.');
+        expect(info).not.toContain('xml');
+    });
+
+    it('exports the list in the format Import reads back', async () => {
+        open({ options: ['Wake up', 'Have #2 breakfast', 'Go to school'] });
+        const download = vi
+            .spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+            .mockReturnValue(true);
+
+        document.getElementById('eXeGameExportQuestions').click();
+
+        expect(download).toHaveBeenCalledTimes(1);
+        // One line, the elements in order; a # inside one would split it.
+        const line = await download.mock.calls[0][0].text();
+        expect(line).toBe('Wake up#Have  2 breakfast#Go to school');
+        device.insertWords([line]);
+        expect(document.getElementById('sortableListFormList1').value).toBe('Have  2 breakfast');
+    });
+
+    it('asks for three elements before exporting, as saving does', () => {
+        open({ options: ['Wake up', 'Have breakfast'] });
+        const download = vi.spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob');
+        eXe.app.alert.mockClear();
+
+        expect(device.exportQuestions()).toBe(false);
+        expect(download).not.toHaveBeenCalled();
+        expect(eXe.app.alert).toHaveBeenCalledWith('Add at least 3 elements.');
     });
 
     it('provides one accessible information button at the end of each options row', () => {

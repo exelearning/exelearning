@@ -1365,6 +1365,16 @@ describe('common_idevices_edition.js', () => {
       expect(document.querySelector('.exe-share-modal')).toBeNull();
     });
 
+    it('lets an iDevice word the message of the Import window, and keeps the shared one otherwise', () => {
+      render({ contents: '', share: { importInfo: 'Only txt files.' } });
+      expect(modal('import').querySelector('.modal-body').firstElementChild.textContent).toBe('Only txt files.');
+
+      render({ contents: '' });
+      expect(modal('import').querySelector('.modal-body').firstElementChild.textContent).toContain(
+        'txt or xml (Moodle)'
+      );
+    });
+
     it('gives no links to a form without a Questions tab', () => {
       render({ options: '' });
 

@@ -76,6 +76,9 @@ test('Scrambled list explains its options inline and imports its elements', asyn
     // Import a real text file: its list replaces the elements.
     await page.locator('#scrambledlistIdeviceForm-tab-contents').click();
     await page.locator('[data-exe-share="import"]').click();
+    await expect(page.locator('#eXeShareModal-import .modal-body > p').first()).toHaveText(
+        'You can import questions compatible with this activity from txt files.',
+    );
     await page.locator('#eXeGameImportGame').setInputFiles({
         name: 'list.txt',
         mimeType: 'text/plain',
@@ -95,6 +98,18 @@ test('Scrambled list explains its options inline and imports its elements', asyn
     await alert.locator('.close').first().click();
     await expect(alert).toBeHidden();
     await expect(page.locator('#sortableListFormList3')).toHaveValue('Flower');
+
+    // Export writes the list as Import reads it: one line, separated by #.
+    await page.locator('[data-exe-share="export"]').click();
+    const downloading = page.waitForEvent('download');
+    await page.locator('#eXeGameExportQuestions').click();
+    const download = await downloading;
+    const stream = await download.createReadStream();
+    let exported = '';
+    for await (const chunk of stream) exported += chunk.toString();
+    expect(exported).toBe('Seed#Sprout#Plant#Flower');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#eXeShareModal-export')).toBeHidden();
 
     await saveIdevice(page, id!);
     await expect(page.getByRole('tooltip')).toHaveCount(0);

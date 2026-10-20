@@ -893,6 +893,9 @@ var $exeIDevicesEdition = {
                  * @param {boolean|Object} [settings] The `share` setting of
                  * tabs.getHtml.
                  * @param {boolean} [settings.importQuestions=true] Offer Import.
+                 * @param {string} [settings.importInfo] The message of the
+                 * Import window, for an iDevice that does not read both txt
+                 * and Moodle xml files.
                  * @param {boolean} [settings.exportQuestions=true] Offer Export.
                  * @param {number} [settings.type=0] The game, for the AI prompt.
                  * @param {Object} [settings.options] Prompt options of the game.
@@ -908,7 +911,10 @@ var $exeIDevicesEdition = {
                             name: 'import',
                             icon: 'upload',
                             title: _('Import'),
-                            info: _('You can import questions compatible with this activity from txt or xml (Moodle) files.'),
+                            info:
+                                typeof options.importInfo === 'string' && options.importInfo
+                                    ? options.importInfo
+                                    : _('You can import questions compatible with this activity from txt or xml (Moodle) files.'),
                             content: share.getImportContents(),
                         });
                     }
