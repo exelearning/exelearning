@@ -176,12 +176,12 @@ var $exeDevice = {
             (this.ideviceBody.querySelector('#sortableListWrongText') || {})
                 .value || '';
         const progressBar =
-            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
         this.evaluationID = progressBar.evaluationID;
         this.evaluation = progressBar.evaluation;
         const passScore =
-            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+            $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
         this.passScoreMode = passScore.passScoreMode;
         this.passScoreCustom = passScore.passScoreCustom;
         this.showSolutions = !!(
@@ -222,7 +222,7 @@ var $exeDevice = {
      * @returns string
      */
     dataJson: function () {
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         this.data = {
             typeGame: 'ScrambledList',
             instructions: this.instructions,
@@ -318,53 +318,61 @@ var $exeDevice = {
         const textWrongAnswer_2 = _(
             'The right answer will be shown after this text.'
         );
-        const textContentAfter_1 = _('after');
-        const textContentAfter_2 = _('optional');
-        const hiddenClass = '';
-        const html = `
+        const edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="sortableListOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="sortableShowSolutions" class="toggle-input" checked />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="sortableShowSolutions">${_('Show solutions')}.</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('After checking, show the learners the elements in the right order.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="sortableAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                        <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
+                        ${edition.common.getHelpTooltip(_('How many times the learners can check the list before it is marked.'))}
+                    </div>
+                </div>`,
+            contents = `
+                <div id="tofEPanel">
+                    <div id="ef${id}" class="exe-form-content">
+                        ${this.getListsFields()}
+                        ${this.createInputHTML('sortableListButtonText', textButtonText, false, true)}
+                        ${this.createInputHTML('sortableListRightText', textCorrectAnswer, false, true)}
+                        ${this.createInputHTML('sortableListWrongText', textWrongAnswer_1, textWrongAnswer_2, true)}
+                    </div>
+                </div>`,
+            html = `
             <div id="scrambledlistIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create interactive text ordering activities.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/lista-desordenada.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('List')}</a></legend>
-                        <div  id="tofEPanel">
-                            <div id="ef${id}" class="exe-form-content${hiddenClass}">
-                                ${this.getListsFields()}
-                                ${this.createInputHTML('sortableListButtonText', textButtonText, false, true)}
-                                ${this.createInputHTML('sortableListRightText', textCorrectAnswer, false, true)}
-                                ${this.createInputHTML('sortableListWrongText', textWrongAnswer_1, textWrongAnswer_2, true)}
-                            
-                                <div class="toggle-item mb-3">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="sortableShowSolutions" class="toggle-input" checked />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="sortableShowSolutions">${_('Show solutions')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                    <label for="sortableAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
-                                    <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
-                                </div>
-                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                </div>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(this.idevicePath)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
+                ${edition.tabs.getHtml('scrambledlistIdeviceForm', {
+                    path: this.idevicePath,
+                    instructions: c_('Arrange the following texts in the correct order to complete the activity.'),
+                    options: options,
+                    contents: contents,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        exportQuestions: false,
+                        type: 8,
+                    },
+                    info: {
+                        contents: _('Write the elements of the list in the right order, and the texts the learners will see when they check it.'),
+                    },
+                })}
             </div>`;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('scrambledlistIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('scrambledlistIdeviceForm');
+        edition.gamification.scorm.init();
         this.loadPreviousValues();
     },
 
@@ -372,8 +380,8 @@ var $exeDevice = {
         // Captured lexically so the deferred file-reader callback below stays
         // bound to this edition instead of resolving the mutable global.
         const self = this;
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#sortableAttemptsNumber')
             .on('keyup', function () {
@@ -387,7 +395,7 @@ var $exeDevice = {
                 this.value = val;
             });
 
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             8,
             $exeDevice.insertWords
         );
@@ -470,7 +478,6 @@ var $exeDevice = {
                 </li>`;
         }
         $('#sortableListFormList ol').append(inputList);
-        //$('.exe-form-tabs li:first-child a').trigger('click');
     },
 
     /**
@@ -575,11 +582,11 @@ var $exeDevice = {
             data.evaluationID.trim() !== ''
                 ? data.evaluationID
                 : '';
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: evalChecked,
             evaluationID: evalIDValue,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: data.passScoreMode,
             passScoreCustom: data.passScoreCustom,
         });
@@ -603,13 +610,13 @@ var $exeDevice = {
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
             data.weighted
         );
-        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+        $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
             data.msgs
         );
     },
