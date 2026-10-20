@@ -336,10 +336,11 @@ var $exeDevice = {
         if (originalHTML != '') {
             var wrapper = $("<div id='interactiveVideoTmpWrapper'></div>");
             wrapper.html(originalHTML);
-            // Check the CSS class (Show/Hide results)
+            // Check the CSS class (Show/Hide results). It is on the activity's
+            // own block: the content before and the evaluation ids come first.
             if (
-                $('div', wrapper)
-                    .eq(0)
+                $('.exe-interactive-video', wrapper)
+                    .first()
                     .hasClass('exe-interactive-video-no-results')
             ) {
                 $('#interactiveVideoShowResults').prop('checked', false);
@@ -495,6 +496,10 @@ var $exeDevice = {
                     typeof InteractiveVideo.scoreNIA == 'undefined'
                         ? true
                         : InteractiveVideo.scoreNIA;
+                $('#interactiveVideoScoreNIA').prop(
+                    'checked',
+                    !!InteractiveVideo.scoreNIA
+                );
                 InteractiveVideo.evaluation =
                     typeof InteractiveVideo.evaluation == 'undefined'
                         ? false

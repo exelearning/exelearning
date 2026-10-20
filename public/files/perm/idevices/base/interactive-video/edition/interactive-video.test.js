@@ -253,6 +253,56 @@ describe('interactive-video iDevice edition', () => {
     });
   });
 
+  describe('options of a saved activity', () => {
+    const PATH = '/files/perm/idevices/base/interactive-video/edition/';
+    const stored = (classes, data) => `
+      <div class="exe-interactive-video-content-before"><p>Watch carefully</p></div>
+      <div class="game-evaluation-ids js-hidden" data-id="" data-evaluationb="false" data-evaluationid=""></div>
+      <div class="exe-interactive-video${classes}">
+        <p id="exe-interactive-video-file" class="js-hidden"><a href="files/tmp/video.mp4">mp4</a></p>
+        <script id="exe-interactive-video-contents" type="application/json">${JSON.stringify({ slides: [], ...data })}</script>
+      </div>`;
+    let previousTop;
+
+    beforeEach(() => {
+      previousTop = global.top;
+      global.top = {};
+    });
+
+    afterEach(() => {
+      global.top = previousTop;
+    });
+
+    const open = (previousData) => {
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      $exeDevice.init(container, previousData, PATH);
+    };
+
+    it('keeps the results hidden when the author hid them', () => {
+      open(stored(' exe-interactive-video-no-results', {}));
+
+      expect(document.getElementById('interactiveVideoShowResults').checked).toBe(false);
+    });
+
+    it('keeps the results shown otherwise', () => {
+      open(stored('', {}));
+
+      expect(document.getElementById('interactiveVideoShowResults').checked).toBe(true);
+    });
+
+    it.each([
+      [true, true],
+      [false, false],
+      // Saved before the option existed: the runtime scores every slide.
+      [undefined, true],
+    ])('restores whether every slide scores (stored %s)', (scoreNIA, checked) => {
+      open(stored('', { scoreNIA }));
+
+      expect(document.getElementById('interactiveVideoScoreNIA').checked).toBe(checked);
+    });
+  });
+
   describe('hasScorableSlide', () => {
     const question = { type: 'singleChoice' };
     const picture = { type: 'image' };
