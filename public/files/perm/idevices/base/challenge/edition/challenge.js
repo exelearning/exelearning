@@ -324,6 +324,7 @@ var $exeDevice = {
         show('label[for="desafioECSolution"], #desafioECSolution');
 
         $('#desafioENumQuestionDiv').show();
+        $('#desafioSelects').hide();
 
         $('#desafioENavigationButtons').show();
 
@@ -364,40 +365,6 @@ var $exeDevice = {
                         </span>
                         ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <label id="desafiolblEDType" for="desafioEDType" class="mb-0">${_('Type')}:</label>
-                        <select id="desafioEDType" class="form-select form-select-sm">
-                            <option value="0" selected>Lineal</option>
-                            <option value="1">Libre</option>
-                        </select>
-                        ${edition.common.getHelpTooltip(_('Linear: the trials open one after another. Free: they can be solved in any order.'))}
-                    </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <label id="desafiolblEDTime" for="desafioEDTime" class="mb-0">${_('Max time')}:</label>
-                        <select id="desafioEDTime" class="form-select form-select-sm">
-                            <option value="1">1m</option>
-                            <option value="10">10m</option>
-                            <option value="15">15m</option>
-                            <option value="20">20m</option>
-                            <option value="25">25m</option>
-                            <option value="30">30m</option>
-                            <option value="35">35m</option>
-                            <option value="40" selected>40m</option>
-                            <option value="45">45m</option>
-                            <option value="50">50m</option>
-                            <option value="55">55m</option>
-                            <option value="60">60m</option>
-                            <option value="70">70m</option>
-                            <option value="80">80m</option>
-                            <option value="90">90m</option>
-                            <option value="120">120m</option>
-                            <option value="150">150m</option>
-                            <option value="180">180m</option>
-                            <option value="210">210m</option>
-                            <option value="240">240m</option>
-                        </select>
-                        ${edition.common.getHelpTooltip(_('Time to complete the trials and the final challenge. When it runs out, the game has to be restarted.'))}
-                    </div>
                 </div>`,
             contents = `
                 <div class="desafio-EPanel" id="desafioEPanel">
@@ -418,6 +385,38 @@ var $exeDevice = {
                                 <label for="desafioEDSolution">${_('Solution')}:</label><input type="text" id="desafioEDSolution" class="form-control form-control-sm" />
                                 <label for="desafioECTitle">${_('Title')}:</label><input type="text" id="desafioECTitle" class="form-control form-control-sm" />
                                 <label for="desafioECSolution">${_('Solution')}:</label><input type="text" id="desafioECSolution" class="form-control form-control-sm" />
+                            </div>
+                            <div id="desafioSelects" class="align-items-center gap-2 flex-nowrap justify-flex-start mb-3">
+                                <label id="desafiolblEDType" for="desafioEDType" class="mb-0">${_('Type')}:</label>
+                                <select id="desafioEDType" class="form-select form-select-sm">
+                                    <option value="0" selected>Lineal</option>
+                                    <option value="1">Libre</option>
+                                </select>
+                                ${edition.common.getHelpTooltip(_('Linear: the trials open one after another. Free: they can be solved in any order.'))}
+                                <label id="desafiolblEDTime" for="desafioEDTime" class="mb-0 ms-3">${_('Max time')}:</label>
+                                <select id="desafioEDTime" class="form-select form-select-sm">
+                                    <option value="1">1m</option>
+                                    <option value="10">10m</option>
+                                    <option value="15">15m</option>
+                                    <option value="20">20m</option>
+                                    <option value="25">25m</option>
+                                    <option value="30">30m</option>
+                                    <option value="35">35m</option>
+                                    <option value="40" selected>40m</option>
+                                    <option value="45">45m</option>
+                                    <option value="50">50m</option>
+                                    <option value="55">55m</option>
+                                    <option value="60">60m</option>
+                                    <option value="70">70m</option>
+                                    <option value="80">80m</option>
+                                    <option value="90">90m</option>
+                                    <option value="120">120m</option>
+                                    <option value="150">150m</option>
+                                    <option value="180">180m</option>
+                                    <option value="210">210m</option>
+                                    <option value="240">240m</option>
+                                </select>
+                                ${edition.common.getHelpTooltip(_('Time to complete the trials and the final challenge. When it runs out, the game has to be restarted.'))}
                             </div>
                         </div>
                         <div class="desafio-EInputMedias">
@@ -982,6 +981,7 @@ var $exeDevice = {
         hide('label[for="desafioECSolution"], #desafioECSolution');
 
         $exeDevice.typeActive = 0;
+        $('#desafioSelects').css('display', 'flex');
         $('#desafioENavigationButtons').hide();
         $('#desafioENumQuestionDiv').hide();
         $('#desafioEDTitle').val($exeDevice.desafioTitle);

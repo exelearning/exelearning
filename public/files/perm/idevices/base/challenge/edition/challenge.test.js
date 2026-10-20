@@ -665,9 +665,11 @@ describe('challenge edition: shared form tabs', () => {
             'Solve all the trials and complete the final challenge.'
         );
         expect(panel('options').querySelector('#desafioEShowMinimize')).not.toBeNull();
-        expect(panel('options').querySelector('#desafioEDType')).not.toBeNull();
-        expect(panel('options').querySelector('#desafioEDTime')).not.toBeNull();
+        expect(panel('options').querySelectorAll('input, select')).toHaveLength(1);
         expect(panel('contents').querySelector('#desafioEPanel')).not.toBeNull();
+        // The type and the time stay under the challenge's title and solution, as in main.
+        expect(panel('contents').querySelector('.desafio-EDataChallenger #desafioSelects #desafioEDType')).not.toBeNull();
+        expect(panel('contents').querySelector('.desafio-EDataChallenger #desafioSelects #desafioEDTime')).not.toBeNull();
         expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
         expect(panel('texts').querySelector('#ci18n_msgStartGame').value).toBe('Click here to start');
     });
@@ -681,14 +683,17 @@ describe('challenge edition: shared form tabs', () => {
         expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
     });
 
-    it('provides one accessible information button at the end of each options row', () => {
+    it('provides one accessible information button after each setting', () => {
         open();
-        const helpButtons = [...panel('options').querySelectorAll('#desafioEOptions .exe-idevice-help')];
+        const helpButtons = [
+            ...document.querySelectorAll('#desafioEOptions .exe-idevice-help, #desafioSelects .exe-idevice-help'),
+        ];
 
         expect(helpButtons).toHaveLength(3);
         for (const help of helpButtons) {
-            const row = help.closest('.d-flex');
-            expect(row.lastElementChild.contains(help)).toBe(true);
+            const row = help.closest('.d-flex, #desafioSelects');
+            // Right after its control: the type and the time share a row.
+            expect(help.parentElement.previousElementSibling.matches('select, .toggle-item')).toBe(true);
             expect(help.type).toBe('button');
             expect(help.getAttribute('aria-label')).toBe(help.title);
             expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
@@ -719,13 +724,16 @@ describe('challenge edition: shared form tabs', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
-    it('keeps the type and the time of the game in Options in both modes', () => {
+    it('shows the type and the time with the challenge and hides them with the trials, as in main', () => {
         open();
+        const selects = document.getElementById('desafioSelects');
+        expect(selects.style.display).toBe('flex');
 
         document.getElementById('desafioEReto').click();
+        expect(selects.style.display).toBe('none');
 
-        expect(panel('options').querySelector('#desafioEDType').closest('.d-flex').style.display).not.toBe('none');
-        expect(panel('options').querySelector('#desafioEDTime').closest('.d-flex').style.display).not.toBe('none');
+        document.getElementById('desafioEDesafio').click();
+        expect(selects.style.display).toBe('flex');
     });
 
     it('restores the options of a saved game', () => {
