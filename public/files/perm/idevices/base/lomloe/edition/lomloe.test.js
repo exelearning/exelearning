@@ -1369,6 +1369,24 @@ describe.each(['lomloe-ES.json', 'lomloe-ES-EFP.json', 'lomloe-ES-EX.json', 'lom
                 );
             }
         });
+
+        it('offers 4º ESO Matemáticas A and B with their own criterios and saberes', () => {
+            const cuarto = data.ESO['4º ESO'];
+            const expected = {
+                MMA: { denominacion: 'Matemáticas A', saberes: [11, 2, 5, 15, 10, 7] },
+                MMB: { denominacion: 'Matemáticas B', saberes: [8, 2, 7, 15, 10, 7] },
+            };
+            for (const [codArea, { denominacion, saberes }] of Object.entries(expected)) {
+                const area = cuarto[codArea];
+                expect(area?.denominacion, codArea).toBe(denominacion);
+                const criterios = Object.values(area.competencias_especificas).map(c => c.criterios_evaluacion.length);
+                expect(criterios, codArea).toEqual([3, 2, 3, 2, 2, 3, 2, 2, 2, 2]);
+                const bloques = Object.values(area.saberes_basicos.bloques).map(items => items.length);
+                expect(bloques, codArea).toEqual(saberes);
+            }
+            const ce1 = Object.values(cuarto.MMB.competencias_especificas)[0].criterios_evaluacion;
+            expect(ce1[1].descripcion).toMatch(/^Analizar y seleccionar diferentes herramientas/);
+        });
     },
 );
 
