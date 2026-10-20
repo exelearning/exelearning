@@ -9,6 +9,7 @@
  * - Required file validation (config.xml for themes, content.xml for templates)
  */
 import * as fflateModule from 'fflate';
+import { safeUnzipSync } from '../utils/safe-unzip';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
@@ -171,7 +172,7 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
         try {
             // Unzip to inspect contents
             const uint8Data = new Uint8Array(buffer);
-            const unzipped = fflate.unzipSync(uint8Data);
+            const unzipped = safeUnzipSync(uint8Data, { fflate });
             const entries = Object.keys(unzipped);
 
             // Validate path security
@@ -220,7 +221,7 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
         try {
             // Unzip to inspect contents
             const uint8Data = new Uint8Array(buffer);
-            const unzipped = fflate.unzipSync(uint8Data);
+            const unzipped = safeUnzipSync(uint8Data, { fflate });
             const entries = Object.keys(unzipped);
 
             // Validate path security
@@ -257,7 +258,7 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
      */
     const extractTheme = async (buffer: Buffer, targetDir: string): Promise<string[]> => {
         const uint8Data = new Uint8Array(buffer);
-        const unzipped = fflate.unzipSync(uint8Data);
+        const unzipped = safeUnzipSync(uint8Data, { fflate });
         const extractedFiles: string[] = [];
 
         await fs.ensureDir(targetDir);

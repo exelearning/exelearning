@@ -71,7 +71,10 @@ export function resetPlatformIntegrationRoutesDependencies(): void {
  *
  * @returns `true` if the export may proceed, `false` if it must be denied.
  */
-async function isProjectAuthorizedForPlatform(projectUuid: string, jwtCmid: string): Promise<boolean> {
+async function isProjectAuthorizedForPlatform(
+    projectUuid: string,
+    jwtCmid: string | number | null | undefined,
+): Promise<boolean> {
     const project = await routeDeps.findProjectByUuid(routeDeps.db, projectUuid);
 
     // Not found here is not an authorization failure: defer to the service,
@@ -87,7 +90,9 @@ async function isProjectAuthorizedForPlatform(projectUuid: string, jwtCmid: stri
     }
 
     // Linked projects may only be exported to the platform module they belong to.
-    return project.platform_id === jwtCmid;
+    // Moodle signs `cmid` as an integer while platform_id is a varchar, so
+    // compare the string forms; a JWT without a cmid never matches.
+    return jwtCmid != null && project.platform_id === String(jwtCmid);
 }
 
 /**
@@ -326,6 +331,24 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
             if (!packageFile || typeof packageFile === 'string') {
                 set.status = 400;
                 return { responseMessage: 'Missing package file' };
+            }
+
+            // Ownership gate (IDOR): mirror the check the non-browser
+            // set_platform_new_ode handler performs above. A valid platform JWT
+            // only authorizes the course module it was issued for; a
+            // client-supplied projectUuid already bound to a *different* module
+            // must not have a package forwarded on its behalf or be rebound
+            // (platformPetitionSetForward writes projects.platform_id). Checking
+            // before reading the upload also avoids buffering a large file for an
+            // unauthorized request. Unknown/unlinked projects stay allowed.
+            if (projectUuid) {
+                const authorized = await isProjectAuthorizedForPlatform(projectUuid, params.cmid);
+                if (!authorized) {
+                    set.status = 403;
+                    return {
+                        responseMessage: 'Forbidden: project does not belong to this platform identity',
+                    };
+                }
             }
 
             let buffer: Buffer;

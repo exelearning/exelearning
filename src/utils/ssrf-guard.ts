@@ -35,12 +35,46 @@ const EXTRA_BLOCKED_V4_CIDRS = [
     '240.0.0.0/4', // reserved
 ];
 
+/**
+ * Private-network ranges an explicitly trusted destination may resolve to when
+ * a caller passes `allowPrivateNetwork` (RFC1918, loopback, IPv6 unique-local).
+ * Link-local (cloud metadata 169.254.169.254, fe80::/10), unspecified, CGNAT,
+ * multicast and reserved ranges are deliberately absent: no trusted provider
+ * legitimately lives there.
+ */
+const TRUSTED_PRIVATE_CIDRS = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8', '::1/128', 'fc00::/7'];
+
 export type LookupFn = (hostname: string) => Promise<Array<{ address: string }>>;
 
 const defaultLookup: LookupFn = async hostname => {
     const result = await lookup(hostname, { all: true });
     return result.map(r => ({ address: r.address }));
 };
+
+/**
+ * Convert an IPv4-mapped IPv6 address (`::ffff:1.2.3.4` dotted form, or
+ * `::ffff:hhhh:hhhh` hex form) to its dotted IPv4 string, else `null`. Node's
+ * `isIP()` reports these as IPv6, so without this normalization the IPv4-only
+ * controls below (`isIP(addr) === 4` gating the `EXTRA_BLOCKED_V4_CIDRS` loop)
+ * are skipped and the mapped form bypasses the egress guard.
+ */
+function mappedIpv4(host: string): string | null {
+    const m = /^::ffff:(.+)$/i.exec(host);
+    if (!m) {
+        return null;
+    }
+    const rest = m[1];
+    if (isIP(rest) === 4) {
+        return rest; // dotted tail, e.g. ::ffff:169.254.169.254
+    }
+    const hex = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(rest);
+    if (hex) {
+        const hi = parseInt(hex[1], 16);
+        const lo = parseInt(hex[2], 16);
+        return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+    }
+    return null;
+}
 
 /**
  * Returns true if the given resolved IP must not be contacted (loopback,
@@ -51,7 +85,12 @@ export function isBlockedAddress(ip: string): boolean {
         return true;
     }
     // Strip an IPv6 zone id (e.g. fe80::1%eth0).
-    const addr = ip.split('%')[0].trim();
+    const stripped = ip.split('%')[0].trim();
+    // Normalize IPv4-mapped IPv6 to dotted IPv4 first, so EVERY v4 control below
+    // (isPrivateIp AND the EXTRA_BLOCKED_V4_CIDRS loop, which isIP gates on v4)
+    // applies. Without this, ::ffff:100.64.0.1 / ::ffff:224.0.0.1 etc. slip past
+    // as "IPv6" and reach CGNAT / multicast / reserved / this-host ranges.
+    const addr = mappedIpv4(stripped) ?? stripped;
     if (addr === '' || addr === '0.0.0.0' || addr === '::' || addr === '0:0:0:0:0:0:0:0') {
         return true;
     }
@@ -68,8 +107,28 @@ export function isBlockedAddress(ip: string): boolean {
     return false;
 }
 
+/**
+ * Returns true if the given IP belongs to a private network that an explicitly
+ * trusted destination may use (see {@link TRUSTED_PRIVATE_CIDRS}). IPv4-mapped
+ * IPv6 is normalized first, like {@link isBlockedAddress}.
+ */
+export function isTrustedPrivateAddress(ip: string): boolean {
+    const stripped = ip.split('%')[0].trim();
+    const addr = mappedIpv4(stripped) ?? stripped;
+    if (isIP(addr) === 0) {
+        return false;
+    }
+    return TRUSTED_PRIVATE_CIDRS.some(cidr => isIpInCidr(addr, cidr));
+}
+
 export interface AssertUrlAllowedOptions {
     lookupFn?: LookupFn;
+    /**
+     * Also accept addresses in {@link TRUSTED_PRIVATE_CIDRS}. Only for
+     * destinations an administrator explicitly trusts (an allow-listed platform
+     * provider with PROVIDER_ALLOW_PRIVATE_NETWORK), never for user-supplied URLs.
+     */
+    allowPrivateNetwork?: boolean;
 }
 
 /**
@@ -110,7 +169,7 @@ export async function assertUrlAllowed(urlStr: string, opts: AssertUrlAllowedOpt
     }
 
     for (const address of addresses) {
-        if (isBlockedAddress(address)) {
+        if (isBlockedAddress(address) && !(opts.allowPrivateNetwork && isTrustedPrivateAddress(address))) {
             throw new SsrfBlockedError(`Blocked address for host ${host}: ${address}`);
         }
     }
@@ -120,6 +179,8 @@ export async function assertUrlAllowed(urlStr: string, opts: AssertUrlAllowedOpt
 export interface SafeFetchOptions extends RequestInit {
     /** Maximum redirect hops to follow (each re-validated). Default 5. */
     maxRedirects?: number;
+    /** Forwarded to {@link assertUrlAllowed} for every hop. */
+    allowPrivateNetwork?: boolean;
     /** Injectable DNS resolver (for tests). */
     lookupFn?: LookupFn;
     /** Injectable fetch implementation (for tests). */
@@ -147,14 +208,14 @@ export interface SafeFetchOptions extends RequestInit {
  * firewall.
  */
 export async function safeFetch(urlStr: string, options: SafeFetchOptions = {}): Promise<Response> {
-    const { maxRedirects = 5, lookupFn, fetchImpl = fetch, ...init } = options;
+    const { maxRedirects = 5, lookupFn, allowPrivateNetwork, fetchImpl = fetch, ...init } = options;
     let currentUrl = urlStr;
 
     for (let hop = 0; hop <= maxRedirects; hop++) {
         // NOTE: this validates the host's currently-resolved addresses; the
         // fetch below resolves DNS again independently (see DNS TOCTOU /
         // rebinding limitation in this function's doc comment).
-        await assertUrlAllowed(currentUrl, { lookupFn });
+        await assertUrlAllowed(currentUrl, { lookupFn, allowPrivateNetwork });
         const response = await fetchImpl(currentUrl, { ...init, redirect: 'manual' });
 
         const location = response.headers.get('location');
