@@ -104,6 +104,28 @@ test.describe('iDevice edition lifecycle (#2293)', () => {
         authenticatedPage: page,
         createProject,
     }) => {
+        // Each information button of the form listens for clicks outside it on
+        // the document, in the capture phase. Track those listeners from the
+        // start of the page, so the count works in every browser.
+        await page.addInitScript(() => {
+            const tracked = new Set<EventListenerOrEventListenerObject>();
+            const isCapture = (options?: boolean | AddEventListenerOptions | EventListenerOptions) =>
+                typeof options === 'boolean' ? options : !!options?.capture;
+            const add = EventTarget.prototype.addEventListener;
+            const remove = EventTarget.prototype.removeEventListener;
+            EventTarget.prototype.addEventListener = function (type, listener, options) {
+                if (this === document && type === 'click' && listener && isCapture(options)) tracked.add(listener);
+                return add.call(this, type, listener, options);
+            };
+            EventTarget.prototype.removeEventListener = function (type, listener, options) {
+                if (this === document && type === 'click' && listener && isCapture(options)) tracked.delete(listener);
+                return remove.call(this, type, listener, options);
+            };
+            (window as any).__documentClickCaptureListeners = () => tracked.size;
+        });
+        const countDocumentClickListeners = () =>
+            page.evaluate(() => (window as any).__documentClickCaptureListeners() as number);
+
         const uuid = await createProject(page, 'Grading help lifecycle');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -112,16 +134,6 @@ test.describe('iDevice edition lifecycle (#2293)', () => {
         await page.locator('#ri_CreateNewRubric').click();
         await expect(page.locator('#ri_Table')).toBeVisible();
         const ideviceId = (await page.locator('#node-content .idevice_node.rubric').getAttribute('id'))!;
-        // Each information button of the form listens for clicks outside it on
-        // the document, in the capture phase. Count those listeners through the
-        // DevTools protocol, the only way to read them from outside the page.
-        const cdp = await page.context().newCDPSession(page);
-        const countDocumentClickListeners = async () => {
-            const { result } = await cdp.send('Runtime.evaluate', { expression: 'document' });
-            const { listeners } = await cdp.send('DOMDebugger.getEventListeners', { objectId: result.objectId! });
-            await cdp.send('Runtime.releaseObject', { objectId: result.objectId! });
-            return listeners.filter(listener => listener.type === 'click' && listener.useCapture).length;
-        };
         const helps = page.locator('#ri_IdeviceForm .exe-idevice-help');
         const closed: number[] = [];
 
