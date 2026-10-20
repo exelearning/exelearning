@@ -80,10 +80,7 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
         await rows.nth(index).locator('input.ri_Weight').nth(0).fill('4');
         await rows.nth(index).locator('input.ri_Weight').nth(1).fill('3');
     }
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#ri_IdeviceForm-tab-grading').click();
     await page.locator('#eXeProgressReport').check();
     const reportId = await page.locator('#eXeProgressReportID').inputValue();
     await page.locator('#eXePassScoreCustom').check();

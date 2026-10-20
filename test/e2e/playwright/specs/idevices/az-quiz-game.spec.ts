@@ -169,18 +169,10 @@ async function fillWords(
 }
 
 /**
- * Helper to set game duration
- * Note: The Options fieldset must be expanded first
+ * Helper to set game duration, in the Options tab of the form
  */
 async function setGameDuration(page: Page, duration: string): Promise<void> {
-    // First, expand the Options fieldset by clicking its header link
-    const optionsHeader = page
-        .locator('fieldset legend a:has-text("Options"), fieldset legend a:has-text("Opciones")')
-        .first();
-    if ((await optionsHeader.count()) > 0) {
-        await optionsHeader.click();
-        await page.waitForTimeout(500);
-    }
+    await page.locator('#roscoIdeviceForm-tab-options').click();
 
     const durationInput = page.locator('#roscoDuration');
     if ((await durationInput.count()) > 0) {
@@ -839,10 +831,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
     test.describe('Minimum score notice', () => {
         /** Set the SCORM mode and the minimum score in the Grading tab of the open form. */
         async function setGrading(page: Page, mark: string): Promise<void> {
-            await page
-                .locator('.exe-form-tabs a')
-                .filter({ hasText: /^Grading$/ })
-                .click();
+            await page.locator('#roscoIdeviceForm-tab-grading').click();
             await page.locator('#eXeGameSCORMAutoSave').check();
             await page.locator('#eXePassScoreCustom').check();
             await page.locator('#eXePassScoreValue').fill(mark);

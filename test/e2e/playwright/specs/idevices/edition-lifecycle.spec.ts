@@ -112,40 +112,41 @@ test.describe('iDevice edition lifecycle (#2293)', () => {
         await page.locator('#ri_CreateNewRubric').click();
         await expect(page.locator('#ri_Table')).toBeVisible();
         const ideviceId = (await page.locator('#node-content .idevice_node.rubric').getAttribute('id'))!;
-        const helpIds = [
-            'eXePassScoreHelp',
-            'eXeGameSCORMNoSaveHelp',
-            'eXeGameSCORMAutoSaveHelp',
-            'eXeGameSCORMButtonSaveHelp',
-            'eXeGameSCORMWeightHelp',
-        ];
-        const countHelpHandlers = () =>
-            page.evaluate(ids => {
-                const handlers = (window as any).jQuery._data(document, 'events')?.click || [];
-                return handlers.filter((handler: { selector: string }) =>
-                    ids.some(id => handler.selector === `#${id}Lnk`),
-                ).length;
-            }, helpIds);
+        // Each information button of the form listens for clicks outside it on
+        // the document, in the capture phase. Count those listeners through the
+        // DevTools protocol, the only way to read them from outside the page.
+        const cdp = await page.context().newCDPSession(page);
+        const countDocumentClickListeners = async () => {
+            const { result } = await cdp.send('Runtime.evaluate', { expression: 'document' });
+            const { listeners } = await cdp.send('DOMDebugger.getEventListeners', { objectId: result.objectId! });
+            await cdp.send('Runtime.releaseObject', { objectId: result.objectId! });
+            return listeners.filter(listener => listener.type === 'click' && listener.useCapture).length;
+        };
+        const helps = page.locator('#ri_IdeviceForm .exe-idevice-help');
+        const closed: number[] = [];
 
         for (let round = 0; round < 2; round++) {
             if (round > 0) await editIdevice(page, ideviceId);
-            await page
-                .locator('.exe-form-tabs a')
-                .filter({ hasText: /^Grading$/ })
-                .click();
-            await expect.poll(countHelpHandlers).toBe(helpIds.length);
+            await page.locator('#ri_IdeviceForm-tab-grading').click();
             await page.locator('#eXeGameSCORMButtonSave').check();
-            for (const id of helpIds) {
-                const note = page.locator(`#${id}`);
+            const gradingHelps = page.locator('#ri_IdeviceForm-panel-grading .exe-idevice-help:visible');
+            expect(await gradingHelps.count()).toBeGreaterThan(0);
+            for (const button of await gradingHelps.all()) {
+                const note = page.locator(`#${await button.getAttribute('aria-controls')}`);
                 await expect(note).toBeHidden();
-                await page.locator(`#${id}Lnk`).click();
+                await button.click();
                 await expect(note).toBeVisible();
-                await page.locator(`#${id}Lnk`).click();
+                await button.press('Escape');
                 await expect(note).toBeHidden();
             }
+            const open = await countDocumentClickListeners();
+            const buttons = await helps.count();
             await saveIdevice(page, ideviceId);
-            await expect.poll(countHelpHandlers).toBe(0);
+            await expect.poll(countDocumentClickListeners).toBe(open - buttons);
+            closed.push(open - buttons);
         }
+        // Reopening binds them again, and closing releases them again.
+        expect(closed[1]).toBe(closed[0]);
     });
 
     for (const exit of ['save', 'discard', 'delete'] as const) {
