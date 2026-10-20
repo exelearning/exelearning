@@ -25,7 +25,7 @@ var $eXeCompleta = {
         yellow: '#f5efd6',
     },
     image: '',
-    options: {},
+    options: [],
     msgs: '',
     hasSCORMbutton: false,
     isInExe: false,
@@ -50,7 +50,8 @@ var $eXeCompleta = {
     },
 
     loadGame: function () {
-        $eXeCompleta.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeCompleta.options.length = $eXeCompleta.activities.length;
 
         $eXeCompleta.activities.each(function (i) {
             const dl = $('.completa-DataGame', this);
@@ -72,7 +73,7 @@ var $eXeCompleta = {
                     ? `${mOption.idevicePath}cmptbackground.webp`
                     : mOption.urlBack;
 
-            $eXeCompleta.options.push(mOption);
+            $eXeCompleta.options[i] = mOption;
             const completa = $eXeCompleta.createInterfaceCompleta(i);
             dl.before(completa).remove();
             $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
