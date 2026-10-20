@@ -374,6 +374,18 @@ p.exe-block-success {
     padding: 1em
 }
 
+.exe-block-download {
+    background: #E7EEFB;
+    color: #2C4A86;
+    border: 1px solid #D3DFF5;
+    padding: 0 1em;
+    border-radius: 4px
+}
+
+p.exe-block-download {
+    padding: 1em
+}
+
 .exe-content .exe-block-warning a,
 .exe-content .exe-block-warning a:hover,
 .exe-content .exe-block-warning a:focus {
@@ -404,11 +416,18 @@ p.exe-block-success {
     color: #093C0A
 }
 
+.exe-content .exe-block-download a,
+.exe-content .exe-block-download a:hover,
+.exe-content .exe-block-download a:focus {
+    color: #051640
+}
+
 div.exe-block-warning,
 div.exe-block-alert,
 div.exe-block-danger,
 div.exe-block-info,
-div.exe-block-success {
+div.exe-block-success,
+div.exe-block-download {
     margin: 1em 0
 }
 
