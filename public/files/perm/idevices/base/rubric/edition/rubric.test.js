@@ -87,7 +87,6 @@ describe('rubric iDevice CSV tools (edition)', () => {
     const alertSpy = vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
     vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
     vi.spyOn($exeDevice, 'clearCurrentRubricEdition').mockImplementation(() => {});
-    vi.spyOn($exeDevice, 'enableFieldsetToggle').mockImplementation(() => {});
     vi.spyOn($exeDevice, 'setEditionFocus').mockImplementation(() => {});
 
     $exeDevice.importCSV(csv);
@@ -118,7 +117,6 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     const jsonToTableSpy = vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
     vi.spyOn($exeDevice, 'clearCurrentRubricEdition').mockImplementation(() => {});
-    vi.spyOn($exeDevice, 'enableFieldsetToggle').mockImplementation(() => {});
     vi.spyOn($exeDevice, 'setEditionFocus').mockImplementation(() => {});
     vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
 

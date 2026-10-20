@@ -169,15 +169,6 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        // Only one Rubric iDevice per page.
-        if ($('.iDevice_wrapper.rubricIdevice').length > 0) {
-            this.ideviceBody.innerHTML =
-                '<p>' +
-                _('You can only add one Rubric iDevice per page.') +
-                '</p>';
-            return;
-        }
-
         const edition = $exeIDevicesEdition.iDevice,
             contents = `
                 <div id="ri_RubricsEditor"></div>
@@ -446,14 +437,6 @@ var $exeDevice = {
         return data;
     },
 
-    // Re-attach fieldset toggle handlers after a dynamic rebuild of #ri_TableEditor
-    enableFieldsetToggle: function () {
-        $('#ri_TableEditor .exe-fieldset legend a').off('click.rubric').on('click.rubric', function () {
-            $(this).closest('fieldset').toggleClass('exe-fieldset-closed');
-            return false;
-        });
-    },
-
     // Rebuild the top controls in #ri_RubricsEditor (called on init and after loading CEDEC rubrics)
     renderRubricTemplateControls: function () {
         // Get the available rubrics (a list)
@@ -507,7 +490,6 @@ var $exeDevice = {
         $('#ri_CreateNewRubric').click(function () {
             var data = $exeDevice.translateRubric($exeDevice.rubrics[0]);
             $exeDevice.jsonToTable(data, 'edition');
-            $exeDevice.enableFieldsetToggle();
             $exeDevice.setEditionFocus();
             return false;
         });
@@ -526,7 +508,6 @@ var $exeDevice = {
                 data = $exeDevice.translateRubric($exeDevice.rubrics[rubric]);
             }
             $exeDevice.jsonToTable(data, 'edition');
-            $exeDevice.enableFieldsetToggle();
             $exeDevice.setEditionFocus();
         });
 
@@ -694,7 +675,6 @@ var $exeDevice = {
 
         this.clearCurrentRubricEdition();
         this.jsonToTable(parsed, 'edition');
-        this.enableFieldsetToggle();
         this.setEditionFocus();
         this.alert(_('CSV imported successfully.'));
     },
@@ -1561,7 +1541,6 @@ var $exeDevice = {
                             $exeDevice.originalData,
                             'edition'
                         );
-                        $exeDevice.enableFieldsetToggle();
                     } else {
                         $('#ri_TableEditor').html('');
                     }
