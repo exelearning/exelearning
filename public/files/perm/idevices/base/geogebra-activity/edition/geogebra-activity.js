@@ -257,8 +257,14 @@ var $exeDevice = {
                                 : 'https://ggbm.at/' + id;
                     }
                     $('#geogebraActivityAuthorURL').text(author);
+                    // In a new window, as when the activity is reopened: in
+                    // this one, following it would leave the editor.
                     $('#geogebraActivityTitle').html(
-                        '<a href="' + murl + '">' + title + '</a>'
+                        '<a href="' +
+                            murl +
+                            '" target="_blank" rel="noopener noreferrer">' +
+                            title +
+                            '</a>'
                     );
                 } else {
                     this.errorMessage(false);
@@ -346,7 +352,7 @@ var $exeDevice = {
         let langField = $('#geogebraActivityLang');
         langField.val(defaultLang);
 
-        originalHTML = this.idevicePreviousData;
+        const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             let wrapper = $('<div></div>');

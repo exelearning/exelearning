@@ -425,6 +425,16 @@ describe('geogebra-activity iDevice (edition)', () => {
       expect($('#geogebraActivityAuthorURL').text()).toBe('Ada Lovelace');
     });
 
+    it('opens the title of the loaded activity in a new window, not in the editor', () => {
+      $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
+
+      handlers.success(answer);
+
+      const link = document.querySelector('#geogebraActivityTitle a');
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    });
+
     it('aborts the pending lookup when the edition closes', () => {
       $exeDevice.loadData('VgHhQXCC', 'https://www.geogebra.org/m/VgHhQXCC');
 
@@ -575,6 +585,14 @@ describe('geogebra-activity edition: shared form tabs', () => {
         document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
 
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('leaves no global behind when it reopens an activity', () => {
+        delete global.originalHTML;
+
+        open(stored);
+
+        expect('originalHTML' in global).toBe(false);
     });
 
     it('reopens a saved activity, its instructions included, and saves them where they were', () => {
