@@ -39,7 +39,8 @@ var $guess = {
     },
 
     loadGame: function () {
-        $guess.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $guess.options.length = $guess.activities.length;
         $guess.activities.each(function (i) {
             const id = $(this).closest('.idevice_node').attr('id');
             const dl = $('.adivina-DataGame', this);
@@ -62,7 +63,7 @@ var $guess = {
             mOption.main = 'adivinaMainContainer-' + i;
             mOption.idevice = 'adivina-IDevice';
 
-            $guess.options.push(mOption);
+            $guess.options[i] = mOption;
 
             const adivina = $guess.createInterfaceAdivina(i);
             dl.before(adivina).remove();

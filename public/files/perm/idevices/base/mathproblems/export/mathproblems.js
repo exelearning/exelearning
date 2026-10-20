@@ -55,7 +55,8 @@ var $eXeMathProblems = {
     },
 
     loadGame: function () {
-        $eXeMathProblems.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeMathProblems.options.length = $eXeMathProblems.activities.length;
         $eXeMathProblems.activities.each(function (i) {
             const dl = $('.mathproblems-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -74,7 +75,7 @@ var $eXeMathProblems = {
             mOption.idevice = 'mathproblems-IDevice';
             mOption.isScorm = mOption.scorm.isScorm;
 
-            $eXeMathProblems.options.push(mOption);
+            $eXeMathProblems.options[i] = mOption;
 
             const mathp = $eXeMathProblems.createInterfaceMathP(i);
 

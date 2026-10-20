@@ -11,7 +11,7 @@
  */
 
 /* eslint-disable no-undef */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -166,6 +166,50 @@ describe('3dmol iDevice export', () => {
             const html = dmol.createInterface(instance);
             expect(html).toContain(`id="dmolpModelAuthor-${instance}"`);
             expect(html).toContain('class="DMOLP-ModelAuthor"');
+        });
+    });
+
+    describe('loading the game again', () => {
+        beforeEach(() => {
+            Object.assign($exeDevices.iDevice.gamification, {
+                observers: { observeResize: vi.fn() },
+                math: { updateLatex: vi.fn() },
+                report: { showPassScoreNotice: vi.fn() },
+            });
+        });
+
+        it('keeps the viewer of a running activity so its controls still reach it', () => {
+            dmol.options[0] = { msgs: {}, modelStyle: 'stick', itinerary: {} };
+            document.body.innerHTML = `<div class="dmole-IDevice">${dmol.createInterface(0)}</div>`;
+            dmol.addEvents(0);
+            const viewer = { zoom: vi.fn(), render: vi.fn() };
+            dmol.viewers[0] = viewer;
+            dmol.activities = $('.dmole-IDevice');
+
+            dmol.loadGame();
+            $('#dmolpModelSizeUp-0').trigger('click');
+
+            expect(dmol.viewers[0]).toBe(viewer);
+            expect(viewer.zoom).toHaveBeenCalledWith(1.25);
+        });
+
+        it('disposes the old viewer of an activity that is rebuilt', () => {
+            document.body.innerHTML =
+                '<div class="dmole-IDevice"></div><div class="dmole-IDevice"><div class="dmole-DataGame"></div></div>';
+            const running = { clear: vi.fn() };
+            const stale = { clear: vi.fn() };
+            dmol.viewers = { 0: running, 1: stale };
+            dmol.activities = $('.dmole-IDevice');
+            dmol.loadDataGame = vi.fn(() => ({ msgs: { msgPlayStart: '' } }));
+            dmol.createInterface = vi.fn(() => '');
+            dmol.addEvents = vi.fn();
+
+            dmol.loadGame();
+
+            expect(stale.clear).toHaveBeenCalled();
+            expect(dmol.viewers[1]).toBeUndefined();
+            expect(running.clear).not.toHaveBeenCalled();
+            expect(dmol.viewers[0]).toBe(running);
         });
     });
 

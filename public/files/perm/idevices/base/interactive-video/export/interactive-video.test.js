@@ -435,6 +435,24 @@ describe('interactive-video iDevice export', () => {
     });
   });
 
+  // Sentry: "YT.Player is not a constructor". The API script defines YT as a
+  // stub before the player is there.
+  describe('youtubeApiReady', () => {
+    afterEach(() => {
+      delete global.YT;
+    });
+
+    it('waits while YT is only the loading stub', () => {
+      global.YT = { loading: 1, loaded: 0 };
+      expect($interactivevideo.youtubeApiReady()).toBe(false);
+    });
+
+    it('is ready once YT.Player exists', () => {
+      global.YT = { loading: 1, loaded: 1, Player: function () {} };
+      expect($interactivevideo.youtubeApiReady()).toBe(true);
+    });
+  });
+
   describe('showYoutubeFallback', () => {
     let capturedHtml;
     let capturedAfterHtml;

@@ -49,7 +49,8 @@ var $eXeClasifica = {
     },
 
     loadGame: function () {
-        $eXeClasifica.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeClasifica.options.length = $eXeClasifica.activities.length;
 
         $eXeClasifica.activities.each(function (i) {
             const dl = $('.clasifica-DataGame', this);
@@ -74,7 +75,7 @@ var $eXeClasifica = {
             mOption.main = 'clasificaMainContainer-' + i;
             mOption.idevice = 'clasifica-IDevice';
 
-            $eXeClasifica.options.push(mOption);
+            $eXeClasifica.options[i] = mOption;
 
             const clasifica = $eXeClasifica.createInterfaceClasifica(i);
             dl.before(clasifica).remove();

@@ -60,7 +60,8 @@ var $eXeMapa = {
     },
 
     loadGame: function () {
-        $eXeMapa.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeMapa.options.length = $eXeMapa.activities.length;
         $eXeMapa.activities.each(function (i) {
             const dl = $('.mapa-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -96,7 +97,7 @@ var $eXeMapa = {
             mOption.main = 'mapaMainContainer-' + i;
             mOption.idevice = 'mapa-IDevice';
 
-            $eXeMapa.options.push(mOption);
+            $eXeMapa.options[i] = mOption;
 
             const mapa = $eXeMapa.createInterfaceMapa(i);
             dl.before(mapa).remove();

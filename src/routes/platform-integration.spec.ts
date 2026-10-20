@@ -21,6 +21,9 @@ describe('Platform Integration Routes', () => {
     let originalEnv: Record<string, string | undefined>;
     // Store original fetch
     const originalFetch = globalThis.fetch;
+    // Hermetic DNS resolver so safeFetch (now used by the service) never hits
+    // the network for the example returnurl hosts.
+    const publicLookup = async (_host: string) => [{ address: '93.184.216.34' }];
 
     beforeEach(() => {
         originalEnv = {
@@ -40,6 +43,8 @@ describe('Platform Integration Routes', () => {
         // returnurl. Configure a default allow-list matching the happy-path return URLs so the
         // many 200-expecting tests keep passing. Tests that set their own PROVIDER_URLS override this.
         process.env.PROVIDER_URLS = 'https://moodle.example.com';
+        // Default hermetic DNS resolver for outbound platform fetches.
+        configureService({ lookupFn: publicLookup });
     });
 
     afterEach(() => {
@@ -253,6 +258,7 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken();
             const packageBytes = Buffer.from('PK stored package');
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () =>
                     makeProjectRow({
                         uuid: 'bound-uuid',
@@ -283,6 +289,7 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken();
             const packageBytes = Buffer.from('PK changed package');
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () =>
                     makeProjectRow({
                         uuid: 'bound-uuid',
@@ -384,9 +391,7 @@ describe('Platform Integration Routes', () => {
             });
 
             // Configure service with mock that returns null for project
-            configureService({
-                findProjectByUuid: async () => null,
-            });
+            configureService({ lookupFn: publicLookup, findProjectByUuid: async () => null });
 
             const response = await app.handle(
                 new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
@@ -417,6 +422,7 @@ describe('Platform Integration Routes', () => {
 
             // Configure service with mocks
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -464,6 +470,7 @@ describe('Platform Integration Routes', () => {
             });
 
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -505,6 +512,7 @@ describe('Platform Integration Routes', () => {
             });
 
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -551,6 +559,7 @@ describe('Platform Integration Routes', () => {
             let snapshotLookupCalled = false;
             let updateCalled = false;
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => {
                     throw new Error('service.findProjectByUuid must not run when access is denied');
                 },
@@ -606,6 +615,7 @@ describe('Platform Integration Routes', () => {
                 findProjectByUuid: async () => makeProjectRow({ uuid: 'owned-uuid', platform_id: '456' }),
             });
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'owned-uuid',
@@ -667,6 +677,7 @@ describe('Platform Integration Routes', () => {
                     }),
             });
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => makeProjectRow({ uuid: 'bound-uuid' }),
                 findSnapshotByProjectId: async () => createMockSnapshot(),
                 updateProjectByUuid: async () => undefined,
@@ -738,6 +749,7 @@ describe('Platform Integration Routes', () => {
                     }),
             });
             configureService({
+                lookupFn: publicLookup,
                 updateProjectByUuid: async (_db, _uuid, data) => {
                     updates.push(data);
                     return undefined;
@@ -972,6 +984,10 @@ describe('Platform Integration Routes', () => {
                 pkgtype: 'webzip',
             });
 
+            // Server does not yet know this project; the ownership gate defers
+            // (the realistic first-time browser-authored save).
+            configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
+
             let capturedUrl: string | null = null;
             let capturedFormData: FormData | null = null;
             globalThis.fetch = async (url, init) => {
@@ -987,6 +1003,7 @@ describe('Platform Integration Routes', () => {
             // the cmid on a project that is not bound to any activity yet.
             let linkedCmid: string | null = null;
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => makeProjectRow({ uuid: 'project-uuid-123' }),
                 updateProjectByUuid: async (_db, _uuid, updates) => {
                     linkedCmid = (updates.platform_id as string) ?? null;
@@ -1024,9 +1041,17 @@ describe('Platform Integration Routes', () => {
         // saved them (#2550).
         it('records the package only when the browser saved the project with its assets', async () => {
             const token = await createValidToken();
-            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
             const recordedHashes: unknown[] = [];
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'project-uuid-123' }),
+            });
             configureService({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => makeProjectRow({ uuid: 'project-uuid-123' }),
                 updateProjectByUuid: async (_db, _uuid, updates) => {
                     recordedHashes.push(updates.platform_package_hash);
@@ -1052,6 +1077,7 @@ describe('Platform Integration Routes', () => {
 
         it('propagates platform error descriptions back to the client as 500', async () => {
             const token = await createValidToken();
+            configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
             globalThis.fetch = async () =>
                 new Response(JSON.stringify({ status: '1', description: 'Quota exceeded' }), {
                     status: 200,
@@ -1072,6 +1098,7 @@ describe('Platform Integration Routes', () => {
 
         it('returns 500 when the platform replies with a non-OK HTTP status', async () => {
             const token = await createValidToken();
+            configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
             globalThis.fetch = async () => new Response(null, { status: 503 });
 
             const formData = new FormData();
@@ -1103,6 +1130,114 @@ describe('Platform Integration Routes', () => {
             expect(response.status).toBe(401);
             const data = await response.json();
             expect(data.responseMessage).toContain('Invalid token');
+        });
+
+        it('returns 403 and forwards/rebinds nothing when projectUuid is bound to another platform module (IDOR)', async () => {
+            // Attacker holds a valid JWT for their OWN course module (cmid '456')
+            // but supplies a victim project already bound to a DIFFERENT module
+            // (cmid '999'). The ownership gate must deny the rebind/forward.
+            const token = await createValidToken({ cmid: '456' });
+
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'victim-uuid', platform_id: '999' }),
+            });
+
+            // The rebind sink must never run.
+            let updateCalled = false;
+            configureService({
+                lookupFn: publicLookup,
+                updateProjectByUuid: async () => {
+                    updateCalled = true;
+                    return undefined;
+                },
+            });
+
+            // The package must never be forwarded to any platform.
+            let fetchCalled = false;
+            globalThis.fetch = async () => {
+                fetchCalled = true;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'victim-uuid');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(403);
+            const data = await response.json();
+            expect(data.responseMessage).toContain('Forbidden');
+
+            // Critically: nothing forwarded and no platform_id rebind happened.
+            expect(fetchCalled).toBe(false);
+            expect(updateCalled).toBe(false);
+        });
+
+        it('re-saves a project already linked to the module when Moodle signs cmid as an integer', async () => {
+            // mod_exescorm/mod_exeweb put `(int) $cmid` in the JWT, while
+            // projects.platform_id is a varchar read back as '456'. A second
+            // "Save to Moodle" in the same session must not be refused.
+            const token = await createValidToken({ cmid: 456 });
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'owned-uuid', platform_id: '456' }),
+            });
+            configureService({ lookupFn: publicLookup, updateProjectByUuid: async () => undefined });
+            let fetchCalled = false;
+            globalThis.fetch = async () => {
+                fetchCalled = true;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'owned-uuid');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(200);
+            expect((await response.json()).responseMessage).toBe('OK');
+            expect(fetchCalled).toBe(true);
+        });
+
+        it('still denies an integer cmid that differs from the linked module (IDOR)', async () => {
+            const token = await createValidToken({ cmid: 456 });
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'victim-uuid', platform_id: '4567' }),
+            });
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'victim-uuid');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(403);
+        });
+
+        it('denies a linked project when the JWT carries no cmid', async () => {
+            const token = await createValidToken({ cmid: undefined });
+            configurePlatformIntegrationRoutes({
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'victim-uuid', platform_id: '456' }),
+            });
+
+            const formData = new FormData();
+            formData.append('jwt_token', token);
+            formData.append('projectUuid', 'victim-uuid');
+            formData.append('package', new Blob([ZIP_BYTES], { type: 'application/zip' }), 'pkg.zip');
+
+            const response = await app.handle(buildBrowserUploadRequest(formData));
+
+            expect(response.status).toBe(403);
         });
     });
 });
