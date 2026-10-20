@@ -249,4 +249,35 @@ describe('udl-content edition: shared form tabs', () => {
         expect(html).toContain('<h2>Simple</h2></header>Easy');
         expect(html).toContain('<button class="exe-udlContent-alt-content-hide">Shut</button>');
     });
+
+    it('keeps markup, literal angle brackets and quotes through a reopening', () => {
+        open(
+            '<div class="exe-udlContent exe-udlContent-engagement"><section class="exe-udlContent-block js-hidden">' +
+                '<header class="exe-udlContent-header"><h2 style="display:none;">Say "hi"</h2></header>' +
+                '<div class="exe-udlContent-content"><div class="exe-udlContent-content-main">' +
+                '<p>Use the &lt;br&gt; tag</p></div></div></section></div>'
+        );
+
+        // The textarea used to decode the text into a real tag, and the quote
+        // to end the value of the button text.
+        expect(document.getElementById('udlContentFormTxt-0-0').value).toBe('<p>Use the &lt;br&gt; tag</p>');
+        expect(document.getElementById('udlContentFormBlockButtonTxt-0').value).toBe('Say "hi"');
+
+        const html = device.save();
+
+        expect(html).toContain('<div class="exe-udlContent-content-main"><p>Use the &lt;br&gt; tag</p></div>');
+        expect(html).toContain('<h2 style="display:none;">Say "hi"</h2>');
+    });
+
+    it('shows the presentation options as soon as a button text is pasted', () => {
+        open();
+        const input = document.getElementById('udlContentFormBlockButtonTxt-0');
+        const options = document.getElementById('udlContentFormBlockButtonTxtOptions-0');
+        expect(options.style.display).toBe('none');
+
+        input.value = 'Read more';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(options.style.display).not.toBe('none');
+    });
 });

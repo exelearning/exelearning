@@ -272,9 +272,12 @@ var $exeDevice = {
         });
         // Button text field
         e = $("input[type='text']", block);
-        e.unbind('keyup')
+        // On input, not keyup: text pasted or dropped with the mouse used to
+        // show its options only on leaving the field, moving the form under
+        // the pointer.
+        e.unbind('input')
             .unbind('blur')
-            .keyup(function () {
+            .on('input', function () {
                 $exeDevice.toggleBtnOptions(this);
             })
             .on('blur', function () {
@@ -573,10 +576,14 @@ var $exeDevice = {
         else if (btnType == 2) ch2 = ' checked="checked"';
         else if (btnType == 3) ch3 = ' checked="checked"';
         else if (btnType == 4) ch4 = ' checked="checked"';
-        var contMain = block.contMain;
-        var contAlt1 = block.contAlt1;
-        var contAlt2 = block.contAlt2;
-        var contAlt3 = block.contAlt3;
+        // Escaped: a textarea decodes the character references of its source,
+        // so text such as "&lt;br&gt;" came back as a tag, and a quote in the
+        // button text cut its value short.
+        var esc = $exeIDevicesEdition.iDevice.common.escapeHtml;
+        var contMain = esc(block.contMain);
+        var contAlt1 = esc(block.contAlt1);
+        var contAlt2 = esc(block.contAlt2);
+        var contAlt3 = esc(block.contAlt3);
         var html =
             '\
 			<article class="udlContentFormBlock">\
@@ -617,7 +624,7 @@ var $exeDevice = {
             _('Button text') +
             ': </label>\
 						<input type="text" value="' +
-            btnTxt +
+            esc(btnTxt) +
             '" placeholder="' +
             _('Empty = No button') +
             '" />\
@@ -673,11 +680,11 @@ var $exeDevice = {
             ': </strong><span class="sr-only-explanation" title="' +
             _('Accessible hidden content') +
             '">' +
-            txtA +
+            esc(txtA) +
             '</span> <span title="' +
             _('Visible') +
             '">' +
-            txtB +
+            esc(txtB) +
             '</span>\
 					</p>\
 					<div class="udlContentFormBlockTxt udlContentField">\
