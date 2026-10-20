@@ -5936,7 +5936,7 @@
       </trans-unit>
       <trans-unit id="Ly.YCfy" resname="creative commons: attribution - non commercial - share alike 3.0">
         <source>creative commons: attribution - non commercial - share alike 3.0</source>
-        <target>creative commons 3.0 reconeixement - compartir igual</target>
+        <target>~creative commons 3.0 reconeixement - no comercial - compartir igual</target>
       </trans-unit>
       <trans-unit id="GI8YDbw" resname="creative commons: attribution - share alike 3.0">
         <source>creative commons: attribution - share alike 3.0</source>
@@ -5960,7 +5960,7 @@
       </trans-unit>
       <trans-unit id="gKMxyuY" resname="creative commons: attribution - non commercial - share alike 2.5">
         <source>creative commons: attribution - non commercial - share alike 2.5</source>
-        <target>creative commons 2.5 reconeixement - compartir igual</target>
+        <target>~creative commons 2.5 reconeixement - no comercial - compartir igual</target>
       </trans-unit>
       <trans-unit id="Cp5LfAW" resname="creative commons: attribution - share alike 2.5">
         <source>creative commons: attribution - share alike 2.5</source>

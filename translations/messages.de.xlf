@@ -10052,7 +10052,7 @@
       </trans-unit>
       <trans-unit id="swoBCC1" resname="Cell Padding">
         <source>Cell Padding</source>
-        <target>~Zellenabstand</target>
+        <target>~Zellen-Innenabstand</target>
       </trans-unit>
       <trans-unit id="cUQ5slR" resname="Cell Spacing">
         <source>Cell Spacing</source>
