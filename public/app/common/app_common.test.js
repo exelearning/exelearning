@@ -1,3 +1,4 @@
+vi.mock('./app_tooltip.js', () => ({ default: vi.fn((element) => window.bootstrap.Tooltip.getOrCreateInstance(element)) }));
 import Common from './app_common.js';
 
 describe('Common', () => {
@@ -343,6 +344,8 @@ describe('Common', () => {
         expect.any(Function),
         { passive: true }
       );
+      mockElements[0].addEventListener.mock.calls.find(([event]) => event === 'click')[1]();
+      expect(mockTooltipInstance.hide).toHaveBeenCalled();
     });
 
     it('should add mouseleave event listener to hide tooltip', () => {
@@ -352,6 +355,8 @@ describe('Common', () => {
         expect.any(Function),
         { passive: true }
       );
+      mockElements[0].addEventListener.mock.calls.find(([event]) => event === 'mouseleave')[1]();
+      expect(mockTooltipInstance.hide).toHaveBeenCalled();
     });
 
     it('should not create tooltip if one already exists', () => {

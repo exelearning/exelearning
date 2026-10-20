@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { BaseExporter } from './BaseExporter';
+import { BaseExporter, resolveMaterialIconDataUris } from './BaseExporter';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -2100,5 +2100,65 @@ describe('BaseExporter', () => {
             expect(zip.hasFile('content/resources/broken-subtitle.vtt')).toBe(true);
             expect(zip.files.get('content/resources/broken-subtitle.vtt')).toBe('WEBVTT\n');
         });
+    });
+});
+
+describe('resolveMaterialIconDataUris', () => {
+    // Sprite with alarm + help, but deliberately WITHOUT lightbulb.
+    const SPRITE = [
+        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M40-200Z"/></symbol>',
+        '<symbol id="help" viewBox="0 -960 960 960"><path d="M1-1Z"/></symbol>',
+        '</svg>',
+    ].join('\n');
+
+    const pageWithMaterialIcons = (...iconNames: string[]): ExportPage[] => [
+        {
+            id: 'p1',
+            title: 'Page',
+            blocks: iconNames.map((iconName, i) => ({
+                id: `b${i}`,
+                name: 'Block',
+                order: i,
+                components: [],
+                iconName,
+            })),
+        } as ExportPage,
+    ];
+
+    const spriteResources = (): ResourceProvider => {
+        const resources = new MockResourceProvider();
+        resources.setLibraryFiles(new Map([['material-icons/material-icons.svg', Buffer.from(SPRITE)]]));
+        return resources;
+    };
+
+    const decode = (uri: string): string => decodeURIComponent(uri.replace('data:image/svg+xml;utf8,', ''));
+
+    it('resolves a known material icon to its own SVG data URI', async () => {
+        const { dataUris } = await resolveMaterialIconDataUris(spriteResources(), pageWithMaterialIcons('mi-alarm'));
+        expect(decode(dataUris.get('alarm')!)).toContain('<path d="M40-200Z"/>');
+    });
+
+    it('resolves an unknown material icon name to the help glyph (not a dead path)', async () => {
+        const { dataUris } = await resolveMaterialIconDataUris(
+            spriteResources(),
+            pageWithMaterialIcons('mi-lightbulb'),
+        );
+
+        // The unknown name must map to a real, inlined data URI (the help glyph),
+        // never to a missing libs/.../icons/lightbulb.svg file.
+        const uri = dataUris.get('lightbulb');
+        expect(uri).toBeDefined();
+        expect(uri).toStartWith('data:image/svg+xml;utf8,');
+        expect(uri).not.toContain('/icons/');
+        expect(decode(uri!)).toContain('<path d="M1-1Z"/>');
+    });
+
+    it('returns an empty map (no dead paths) when the sprite cannot be fetched', async () => {
+        // No library files registered -> fetchLibraryFiles yields no sprite.
+        const resources = new MockResourceProvider();
+        const { files, dataUris } = await resolveMaterialIconDataUris(resources, pageWithMaterialIcons('mi-lightbulb'));
+        expect(dataUris.size).toBe(0);
+        expect(files.size).toBe(0);
     });
 });

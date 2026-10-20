@@ -30,7 +30,7 @@ var $eXeIdentifica = {
         yellow: '#fcf4d3',
         correct: '#dcffdc',
     },
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
     initialScore: '',
@@ -55,7 +55,8 @@ var $eXeIdentifica = {
     },
 
     loadGame: function () {
-        $eXeIdentifica.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeIdentifica.options.length = $eXeIdentifica.activities.length;
         $eXeIdentifica.activities.each(function (i) {
             const dl = $('.identifica-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -73,10 +74,11 @@ var $eXeIdentifica = {
             mOption.main = 'idfMainContainer-' + i;
             mOption.idevice = 'identifica-IDevice';
 
-            $eXeIdentifica.options.push(mOption);
+            $eXeIdentifica.options[i] = mOption;
 
             const idf = $eXeIdentifica.createInterfaceIndetify(i);
             dl.before(idf).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#idfGameMinimize-' + i).hide();
             $('#idfGameContainer-' + i).hide();
 
@@ -421,15 +423,6 @@ var $eXeIdentifica = {
             $messageClue = $(`#idfMessageClue-${instance}`),
             $startGameButton = $(`#idfStartGame-${instance}`);
 
-        $(window).on(
-            'unload.eXeIdentifica beforeunload.eXeIdentifica',
-            function () {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeIdentifica.mScorm
-                );
-            }
-        );
-
         $linkMaximize.on('click touchstart', function (e) {
             e.preventDefault();
             $gameContainer.show();
@@ -610,8 +603,6 @@ var $eXeIdentifica = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXeIdentifica beforeunload.eXeIdentifica');
-
         $(`#idfLinkMaximize-${instance}`).off('click touchstart');
         $(`#idfLinkMinimize-${instance}`).off('click touchstart');
         $('#idfMainContainer-' + instance)
@@ -850,6 +841,11 @@ var $eXeIdentifica = {
         if (codeInput === requiredCode) {
             $eXeIdentifica.showCubiertaOptions(false, instance);
             $(`#idfLinkMaximize-${instance}`).trigger('click');
+            // A valid code is the learner opening the activity. Nothing needs
+            // starting — startGame ran while the page loaded, behind the cover
+            // — but nothing had told the LMS either: showQuestion holds its
+            // report until initGame, which only a clue or an answer raises.
+            $eXeIdentifica.saveScormScore(instance);
         } else {
             $(`#idfMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
@@ -954,13 +950,23 @@ var $eXeIdentifica = {
     gameOver: function (instance) {
         let mOptions = $eXeIdentifica.options[instance];
         mOptions.gameStarted = false;
+        // The attempt ends here and only here. common.js derives completion
+        // from `gameOver === true || auto !== true`, and the report below is
+        // automatic, so without this flag the page stays `incomplete` in the
+        // LMS however well the learner did. Raised before the report, so the
+        // score and the completion signal cannot disagree.
+        mOptions.gameOver = true;
         $eXeIdentifica.showCluesLinks(0, instance);
         $('#idfLinkAudio-' + instance).hide();
         $exeDevices.iDevice.gamification.media.stopSound();
         $('#idfCursor-' + instance).hide();
 
         let message = mOptions.msgs.msgGameEnd;
-        $eXeIdentifica.showMessage(1, message, instance);
+        $eXeIdentifica.showMessage(
+            $eXeIdentifica.getVerdictColor(instance),
+            message,
+            instance
+        );
         $eXeIdentifica.showScoreGame(instance);
 
         $('#idfPNumber-' + instance).text('0');
@@ -1303,6 +1309,23 @@ var $eXeIdentifica = {
         };
     },
 
+    /**
+     * The colour the end-of-attempt message is painted in: 2 when the learner
+     * passed, 1 when they did not.
+     *
+     * It used to be a fixed 1, the fail colour. A perfect ten closed the
+     * activity in red, and the progress report beside it said the learner had
+     * passed. Judged on the same `score` that is handed to the report as
+     * `scorerp`, so the two cannot disagree.
+     *
+     * @param {number} instance Index of the activity on the page.
+     * @returns {number} An index into the colour table showMessage paints with.
+     */
+    getVerdictColor: function (instance) {
+        const mOptions = $eXeIdentifica.options[instance];
+        return mOptions.score >= $exe.passScore.resolve(mOptions) ? 2 : 1;
+    },
+
     saveEvaluation: function (instance) {
         const mOptions = $eXeIdentifica.options[instance];
         mOptions.scorerp = mOptions.score;
@@ -1310,6 +1333,19 @@ var $eXeIdentifica = {
             mOptions,
             $eXeIdentifica.isInExe
         );
+    },
+
+    /**
+     * Publish the freshly cleared state to the LMS when the learner opens the
+     * activity from an explicit control.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeIdentifica.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeIdentifica.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {

@@ -28,6 +28,9 @@ var $exeDevice = {
     idevicePath: '',
     checkAltImage: true,
     playerAudio: '',
+    screenLocked: false,
+    /** Overlay state recorded by `lockScreen()`, restored when it unlocks. */
+    loadScreenState: null,
     version: 1.5,
     id: false,
     ci18n: {},
@@ -43,6 +46,11 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
+        // The upload overlay covers the whole workarea, not just this form, so
+        // closing the editor mid-upload must never leave it on screen.
+        this.$lifecycle.own(() => {
+            if (this.screenLocked) this.hideLoadScreen();
+        });
     },
     refreshTranslations: function () {
         this.ci18n = {
@@ -118,6 +126,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgPhrases: c_('Phrases'),
             msgTypeGame: c_('Sort'),
         };
@@ -305,7 +314,6 @@ var $exeDevice = {
                         <label class="toggle-label" for="ordenaEWordBorder">${_('Word border')}.</label>
                     </div>
                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                        ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                     </div>
                 </div>
             </fieldset>
@@ -368,7 +376,7 @@ var $exeDevice = {
             ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
         </div>
         ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-        ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+        ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
         ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
     </div>`;
 
@@ -812,11 +820,38 @@ var $exeDevice = {
     },
 
     lockScreen: function () {
-        let $loadScreen = $('#load-screen-node-content');
-        $loadScreen
+        const loadScreen = document.getElementById('load-screen-node-content');
+        if (!loadScreen) return;
+        // The overlay is the workarea's own page loading screen, not part of
+        // this form. Record the state this upload found it in so unlocking can
+        // hand it back untouched, instead of forcing a hidden overlay on
+        // whatever else may be using it by then.
+        if (!this.screenLocked) {
+            this.loadScreenState = {
+                className: loadScreen.className,
+                style: loadScreen.getAttribute('style') || '',
+            };
+        }
+        $(loadScreen)
             .css({ zIndex: 9999, position: 'fixed', top: 0, left: 0 })
             .removeClass('hide hidden')
             .addClass('loading');
+        this.screenLocked = true;
+    },
+
+    /**
+     * Put the shared upload overlay back the way it was found. Extracted so the
+     * fade-out timer and the edition teardown restore exactly the same state.
+     */
+    hideLoadScreen: function () {
+        this.screenLocked = false;
+        const state = this.loadScreenState;
+        this.loadScreenState = null;
+        const loadScreen = document.getElementById('load-screen-node-content');
+        if (!loadScreen || !state) return;
+        loadScreen.className = state.className;
+        if (state.style) loadScreen.setAttribute('style', state.style);
+        else loadScreen.removeAttribute('style');
     },
 
     unlockScreen: function (delay = 1000) {
@@ -824,12 +859,8 @@ var $exeDevice = {
         let $loadScreen = $('#load-screen-node-content');
 
         $loadScreen.removeClass('loading').addClass('hidding');
-        setTimeout(() => {
-            $loadScreen
-                .addClass('hide hidden')
-                .removeClass('hidding')
-                .css({ zIndex: 990, position: 'absolute' })
-                .removeAttr('top left');
+        this.$lifecycle.setTimeout(function () {
+            this.hideLoadScreen();
         }, delay);
     },
 
@@ -1332,6 +1363,8 @@ var $exeDevice = {
             phrasesGame = $exeDevice.phrasesGame,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             type = parseInt($('input.ODNE-EType[name=odntype]:checked').val());
 
@@ -1373,6 +1406,8 @@ var $exeDevice = {
             gameColumns: gameColumns,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             wordBorder: wordBorder,
             id: id,
             type: type,
@@ -1423,6 +1458,8 @@ var $exeDevice = {
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
+        // Closing the editor must silence the preview and drop its stream.
+        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
         $exeDevice.playerAudio
             .play()
             .catch((error) => console.error('Error playing audio:', error));
@@ -1710,6 +1747,8 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+
         const gameColumns = parseInt(
                 $('input.ODNE-EColumns[name=odncolumns]:checked').val()
             ),
@@ -1996,6 +2035,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $("input.ODNE-EType[name='odntype'][value='" + game.type + "']").prop(
             'checked',

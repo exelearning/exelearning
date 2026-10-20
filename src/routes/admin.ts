@@ -4,6 +4,7 @@
  * Requires ROLE_ADMIN for all routes
  */
 import { Elysia, t } from 'elysia';
+import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
@@ -336,6 +337,19 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         enabled_auth_methods: trans('Enabled authentication methods.', {}, locale),
         allows_install_themes_online: trans('Allows installing styles online.', {}, locale),
         allows_install_idevices_online: trans('Allows installing iDevices online.', {}, locale),
+        // Settings — sharing
+        sharing: trans('Sharing', {}, locale),
+        public_view_links: trans('Public read-only links', {}, locale),
+        allows_public_view_links: trans(
+            'Allows project owners to publish a public read-only link to their projects.',
+            {},
+            locale,
+        ),
+        public_view_links_disabled_note: trans(
+            'When disabled, the option is hidden from the Share dialog and existing public links stop working. They work again if the option is re-enabled.',
+            {},
+            locale,
+        ),
         // Settings — storage & quotas
         storage_and_quotas: trans('Storage and quotas', {}, locale),
         quota_mb: trans('Quota (MB)', {}, locale),
@@ -620,6 +634,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     ONLINE_IDEVICES_INSTALL: { value: process.env.ONLINE_IDEVICES_INSTALL ?? '0', type: 'boolean' },
     APP_AUTH_METHODS: { value: process.env.APP_AUTH_METHODS || 'password,cas,openid,guest', type: 'string' },
     VERSION_CONTROL: { value: process.env.VERSION_CONTROL ?? 'true', type: 'boolean' },
+    PUBLIC_VIEW_ENABLED: { value: process.env.PUBLIC_VIEW_ENABLED ?? 'false', type: 'boolean' },
     DEFAULT_PROJECT_VISIBILITY: { value: process.env.DEFAULT_PROJECT_VISIBILITY || 'private', type: 'string' },
     USER_RECENT_ODE_FILES_AMOUNT: { value: process.env.USER_RECENT_ODE_FILES_AMOUNT ?? '3', type: 'number' },
     COLLABORATIVE_BLOCK_LEVEL: { value: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice', type: 'string' },
@@ -960,7 +975,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     };
 
                     const impersonatedToken = await jwtPlugin.sign(impersonatedPayload);
-                    const secure = process.env.NODE_ENV === 'production';
+                    const secure = isProductionEnv();
                     const sevenDays = 7 * 24 * 60 * 60;
 
                     cookie.impersonator_auth.set({

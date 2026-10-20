@@ -328,6 +328,30 @@ describe('scanThemeIcons', () => {
     });
 });
 
+describe('scanThemeIcons ordering', () => {
+    it('returns icons in alphabetical order independently of filesystem order (#2411)', () => {
+        const tmp = makeTempDir('theme-icons-order');
+        try {
+            const icons = path.join(tmp, 'icons');
+            fs.mkdirSync(icons, { recursive: true });
+            // Written out of order: on ext4 Bun's readdirSync would return hash order
+            for (const name of ['udl_rep_informarse.svg', 'udl_exp_grupohomogeneo.svg', 'udl_eng_reto.svg', 'udl_eng_curiosidad.svg']) {
+                fs.writeFileSync(path.join(icons, name), '');
+            }
+
+            const result = scanThemeIcons(tmp, '/themes/x');
+            expect(Object.keys(result)).toEqual([
+                'udl_eng_curiosidad',
+                'udl_eng_reto',
+                'udl_exp_grupohomogeneo',
+                'udl_rep_informarse',
+            ]);
+        } finally {
+            fs.rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
 describe('buildThemesList', () => {
     it('discovers the base themes shipped in the repository', () => {
         const { themes } = buildThemesList();
@@ -445,12 +469,12 @@ describe('compressJsonInDir', () => {
         expect(compressJsonInDir(path.join(os.tmpdir(), 'exe-absent-dir-xyz'))).toEqual({
             count: 0,
             origTotal: 0,
-            gzTotal: 0,
+            compressedTotal: 0,
         });
     });
 
-    it('gzips json files recursively, removes the originals and leaves other files alone', () => {
-        const tmp = makeTempDir('gzip');
+    it('zstd-compresses json files recursively, removes the originals and leaves other files alone', () => {
+        const tmp = makeTempDir('zstd');
         try {
             const payload = JSON.stringify({ data: 'x'.repeat(500) });
             fs.writeFileSync(path.join(tmp, 'a.json'), payload);
@@ -462,14 +486,14 @@ describe('compressJsonInDir', () => {
 
             expect(stats.count).toBe(2);
             expect(stats.origTotal).toBe(payload.length * 2);
-            expect(stats.gzTotal).toBeGreaterThan(0);
-            expect(stats.gzTotal).toBeLessThan(stats.origTotal);
+            expect(stats.compressedTotal).toBeGreaterThan(0);
+            expect(stats.compressedTotal).toBeLessThan(stats.origTotal);
 
             expect(fs.existsSync(path.join(tmp, 'a.json'))).toBe(false);
             expect(fs.existsSync(path.join(tmp, 'nested', 'b.json'))).toBe(false);
             expect(fs.existsSync(path.join(tmp, 'keep.txt'))).toBe(true);
 
-            const roundTripped = zlib.gunzipSync(fs.readFileSync(path.join(tmp, 'a.json.gz'))).toString();
+            const roundTripped = zlib.zstdDecompressSync(fs.readFileSync(path.join(tmp, 'a.json.zst'))).toString();
             expect(roundTripped).toBe(payload);
         } finally {
             fs.rmSync(tmp, { recursive: true, force: true });

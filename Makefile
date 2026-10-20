@@ -175,6 +175,13 @@ deps: check-bun
 css: check-bun
 	@bun run css:node
 
+# Copy gitignored frontend libs from node_modules into public/libs.
+# Needed by host-side Playwright specs that read those files from disk
+# (the DB-matrix E2E targets never run `build:all`).
+.PHONY: vendor-libs
+vendor-libs: check-bun
+	@bun run bundle:vendor
+
 # Build TypeScript + bundle JS
 .PHONY: bundle
 bundle: deps
@@ -321,20 +328,22 @@ tmp-cleanup: check-bun
 
 # Extract new translation keys (does not clean or remove anything)
 # Usage: make translations [LOCALE=es]
+# Depends on vendor-edicuatex: the vendored tree is gitignored and only exists after a
+# build, and the extraction scans it for the equation editor strings.
 .PHONY: translations
-translations: check-bun
+translations: check-bun vendor-edicuatex
 	@$(CLI) translations --extract-only $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Clean and remove obsolete translation strings (destructive: removes trans-units not found in source)
 # Usage: make translations-cleanup [LOCALE=es]
 .PHONY: translations-cleanup
-translations-cleanup: check-bun
+translations-cleanup: check-bun vendor-edicuatex
 	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Reorder trans-units in XLF files to match the order in messages.en.xlf
 # Usage: make translations-sort [LOCALE=es]
 .PHONY: translations-sort
-translations-sort: check-bun
+translations-sort: check-bun vendor-edicuatex
 	@$(CLI) translations:sort $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Add CDATA to <target> elements that need it and normalise indentation
@@ -348,6 +357,14 @@ translations-format: check-bun
 .PHONY: update-licenses
 update-licenses: check-bun
 	@$(CLI) update-licenses $(if $(DRY_RUN),--dry-run,)
+
+# Fail if public/libs/README.md is not what update-licenses would generate.
+# Attribution is legal metadata, so drift is a build failure, not a warning: this
+# target is part of `make lint`, which ci.yml already runs with node_modules
+# installed, the same way `architecture-check` is.
+.PHONY: update-licenses-check
+update-licenses-check: check-bun
+	@$(CLI) update-licenses --check
 
 
 # =============================================================================
@@ -448,10 +465,25 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests architecture-check
+lint: check-bun lint-ts lint-js lint-tests architecture-check update-licenses-check
 
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests
+
+# Regenerate public/app/common/exe_math/ from the pinned `mathjax` npm package.
+# The tree is committed (exports, the static build and Electron all need it on
+# disk), so run this after bumping the dependency. vendor-mathjax.spec.ts fails
+# if the committed tree and the package disagree.
+.PHONY: vendor-mathjax
+vendor-mathjax: check-bun
+	bun run scripts/vendor-mathjax.ts
+
+# Regenerate public/app/common/edicuatex/ from the pinned `edicuatex` package. The
+# tree is gitignored and build:all regenerates it, so this is only needed to refresh
+# it without a full build; `--check` reports a tree left stale by an interrupted one.
+.PHONY: vendor-edicuatex
+vendor-edicuatex: check-bun
+	bun run scripts/vendor-edicuatex.ts
 
 # Print the architecture record index, derived from document frontmatter.
 # Deliberately not a committed file: it would conflict on every concurrent branch.
@@ -524,6 +556,10 @@ endif
 .PHONY: test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
 
+.PHONY: test-scripts
+test-scripts: check-bun ## Run scripts/ unit tests (build & vendor helpers)
+	$(TEST_ENV) bun test:scripts
+
 .PHONY: test-unit
 test-unit: check-bun check-tests check-env bundle ## Run unit tests (src/) with coverage and 90% threshold
 	@echo "Running unit tests with coverage..."
@@ -540,6 +576,9 @@ test-integration: check-bun check-env bundle ## Run integration tests
 .PHONY: test-frontend
 test-frontend: check-bun check-env bundle ## Run frontend tests (with Vitest + happy-dom) with coverage
 	bun test:frontend
+
+.PHONY: test-coverage
+test-coverage: test-unit test-frontend ## Run backend and frontend tests with coverage
 
 .PHONY: test-unit-ci
 test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov coverage for CI/Codecov
@@ -626,14 +665,14 @@ down-e2e:
 
 
 .PHONY: test-e2e-mariadb
-test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB backend
+test-e2e-mariadb: check-docker check-env vendor-libs down-e2e ## Run E2E tests with MariaDB backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with MariaDB"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml up --build -d
+	@docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,mariadb)
@@ -658,14 +697,14 @@ test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB 
 	exit $$test_exit
 
 .PHONY: test-e2e-postgres
-test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with PostgreSQL backend
+test-e2e-postgres: check-docker check-env vendor-libs down-e2e ## Run E2E tests with PostgreSQL backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with PostgreSQL"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml up --build -d
+	@docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,postgres)
@@ -690,14 +729,14 @@ test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with Postgre
 	exit $$test_exit
 
 .PHONY: test-e2e-sqlite
-test-e2e-sqlite: check-docker check-env down-e2e ## Run E2E tests with SQLite backend
+test-e2e-sqlite: check-docker check-env vendor-libs down-e2e ## Run E2E tests with SQLite backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with SQLite"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml up --build -d
+	@docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,sqlite)
@@ -897,6 +936,7 @@ help:
 	@echo "  make translations-sort [LOCALE=es]            Sort trans-units to match messages.en.xlf"
 	@echo "  make translations-format [LOCALE=es]          Add CDATA where needed and normalise indentation"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
+	@echo "  make update-licenses-check                    Fail if license info has drifted"
 	@echo ""
 	@echo "ELPX Processing:"
 	@echo "  make convert-elp INPUT=x OUTPUT=y             Convert ELP v2.x to v3.0 (elpx)"

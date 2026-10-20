@@ -27,6 +27,7 @@ import type {
 
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
 import { getLicenseUrl } from '../constants';
+import { normalizePassScore } from '../metadata-properties';
 
 // Declare the global eXeLearning object for browser context
 declare global {
@@ -109,6 +110,10 @@ export class YjsDocumentAdapter implements ExportDocument {
             addMathJax: this.parseBoolean(meta.get('addMathJax'), false),
             exportSource: this.parseBoolean(meta.get('exportSource'), true), // Default: true
             globalFont: (meta.get('globalFont') as string) || 'default',
+            // Never seeded on project creation (see YjsDocumentManager.initializeDocument),
+            // so the default lives here rather than in the document.
+            passScore: normalizePassScore(meta.get('passScore')),
+            passScoreEveryActivity: this.parseBoolean(meta.get('passScoreEveryActivity'), false),
 
             // Custom content
             extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,
@@ -310,8 +315,15 @@ export class YjsDocumentAdapter implements ExportDocument {
             cssClass: rawProps.cssClass as string | undefined,
         };
 
-        // Extract iconName from block
+        // Extract iconName/icon from block. In Yjs, icon may be stored as a nested Y.Map.
         const iconName = (blockMap.get('iconName') as string) || '';
+        const rawIcon = blockMap.get('icon') as YMap | ExportBlock['icon'] | undefined;
+        const icon =
+            rawIcon && typeof rawIcon === 'object'
+                ? 'toJSON' in rawIcon
+                    ? (rawIcon.toJSON() as ExportBlock['icon'])
+                    : (rawIcon as ExportBlock['icon'])
+                : undefined;
 
         return {
             id: (blockMap.get('id') as string) || (blockMap.get('blockId') as string) || `block-${index}`,
@@ -319,6 +331,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             order: (blockMap.get('order') as number) || index,
             components,
             iconName,
+            icon,
             properties,
         };
     }

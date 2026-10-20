@@ -102,6 +102,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgAtomicNumber: c_('Atomic number'),
             msgNumberClick: c_('Find the element with the number'),
             msgSymbolClick: c_('Click on this chemical element'),
@@ -438,14 +439,13 @@ var $exeDevice = {
                                 <textarea id="ptEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">                                
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>                
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
@@ -658,6 +658,8 @@ var $exeDevice = {
             percentajeFB = parseInt($('#ptEPercentajeFB').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             number = $('#ptEQuestionNumber').val(),
             attempts = $('#ptEAttemptsNumber').val(),
             id = $exeDevice.getIdeviceID(),
@@ -715,6 +717,8 @@ var $exeDevice = {
             version: $exeDevice.version,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             time,
             mode,
             gameType,
@@ -723,6 +727,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         // Inicializar toggles (ARIA y targets) y manejarlos en cambios
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
@@ -742,8 +747,8 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        lifecycle.on(document, 'change', '.toggle-input', event => {
+            initToggle($(event.currentTarget));
         });
 
         $('#ptEHasFeedBack').on('change', function () {
@@ -757,6 +762,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#ptETime')
             .on('keyup', function () {
@@ -832,6 +839,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#ptEAttemptsNumber').val(game.attempts);
 

@@ -59,7 +59,7 @@ Because the package contains both the editable source and the rendered output, `
 
 ### Resources, themes, assets
 
-- **[themes.md](elpx-format/themes.md)** — theme bundle layout, the 6 in-tree themes (`base`, `flux`, `neo`, `nova`, `universal`, `zen`), per-theme `config.xml`, custom user themes.
+- **[themes.md](elpx-format/themes.md)** — theme bundle layout, per-theme `config.xml`, built-in and installed themes, custom user themes.
 - **[libraries.md](elpx-format/libraries.md)** — `libs/` contents and inclusion rules (always-bundled vs conditional, including `common_i18n.js` generation and `elpx-manifest.js`).
 - **[assets.md](elpx-format/assets.md)** — the asset URL lifecycle (`asset://` → `{{context_path}}/content/resources/` → relative path).
 - **[screenshot.md](elpx-format/screenshot.md)** — root `screenshot.png` spec, dimensions, generation hook, base64 round-trip.
@@ -68,7 +68,7 @@ Because the package contains both the editable source and the rendered output, `
 
 - **[export-pipeline.md](elpx-format/export-pipeline.md)** — end-to-end export flow with file:line references to `Html5Exporter` / `ElpxExporter` / `OdeXmlGenerator`.
 - **[import-pipeline.md](elpx-format/import-pipeline.md)** — three-phase import flow, modern vs legacy fallback, ID remapping.
-- **[tracking-emission.md](elpx-format/tracking-emission.md)** — how published packages report scores: SCORM (`cmi.*`) and the always-on xAPI emitter (`exe_xapi.js`, `window.exeXapi`, statement shape, transports).
+- **[tracking-emission.md](elpx-format/tracking-emission.md)** — how published packages report scores to the host LMS via SCORM (`cmi.*`).
 
 ### Validation and AI generation
 

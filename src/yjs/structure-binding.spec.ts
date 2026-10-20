@@ -516,6 +516,19 @@ describe('structure-binding', () => {
                 expect(blocks[0].properties?.visibility).toBe('true');
             });
 
+            it('stores the default icon as a readable Y.Map representation', () => {
+                // createBlock stores the icon via createYjsBlockIcon() (a Y.Map),
+                // matching updateBlock, so the on-doc shape is consistent and reads
+                // resolve back to the structured descriptor.
+                const created = createBlock(ydoc, { pageId });
+
+                const blockMap = findBlockMap(ydoc, created.data!.id);
+                expect(blockMap?.get('icon')).toBeInstanceOf(Y.Map);
+
+                const block = getBlock(ydoc, created.data!.id);
+                expect(block?.icon).toEqual({ source: 'none', value: '' });
+            });
+
             it('should create blocks array if page has none', () => {
                 // Manually create a page without blocks array
                 const navigation = getNavigation(ydoc);
@@ -635,6 +648,41 @@ describe('structure-binding', () => {
 
                 const block = getBlock(ydoc, created.data!.id);
                 expect(block?.iconName).toBe('icon-test');
+            });
+
+            it('should reconstruct asset icon when only asset iconName is provided', () => {
+                const created = createBlock(ydoc, { pageId });
+                updateBlock(ydoc, created.data!.id, { iconName: 'asset://uuid-123/icon.jpg' });
+
+                const block = getBlock(ydoc, created.data!.id);
+                expect(block?.iconName).toBe('asset://uuid-123/icon.jpg');
+                expect(block?.icon).toEqual({ source: 'asset', value: 'asset://uuid-123/icon.jpg' });
+            });
+
+            it('should reconstruct a material icon when only a mi- iconName is provided', () => {
+                const created = createBlock(ydoc, { pageId });
+                updateBlock(ydoc, created.data!.id, { iconName: 'mi-lightbulb' });
+
+                const block = getBlock(ydoc, created.data!.id);
+                expect(block?.iconName).toBe('mi-lightbulb');
+                expect(block?.icon).toEqual({ source: 'material', value: 'lightbulb' });
+            });
+
+            it('keeps the structured icon authoritative when both icon and iconName are provided', () => {
+                // When the structured icon is supplied it is authoritative and is
+                // NOT re-derived from the legacy iconName (the `if (!updates.icon)`
+                // guard), so the descriptor never ends up conflicting with itself.
+                // The explicit iconName is still written verbatim as the legacy
+                // mirror the caller asked for.
+                const created = createBlock(ydoc, { pageId });
+                updateBlock(ydoc, created.data!.id, {
+                    icon: { source: 'material', value: 'lightbulb' },
+                    iconName: 'mi-lightbulb',
+                });
+
+                const block = getBlock(ydoc, created.data!.id);
+                expect(block?.icon).toEqual({ source: 'material', value: 'lightbulb' });
+                expect(block?.iconName).toBe('mi-lightbulb');
             });
 
             it('should update block properties', () => {
@@ -773,6 +821,22 @@ describe('structure-binding', () => {
                 const blocks = getBlocks(ydoc, page2.data!.id);
                 expect(blocks.length).toBe(3);
                 expect(blocks[1].blockName).toBe('Moving Block');
+            });
+
+            it('preserves the Y.Map icon when moving a block (clones nested Y.Maps)', () => {
+                // Regression: the icon is stored as a nested Y.Map. cloneBlockMap()
+                // must deep-clone it (like properties); re-inserting an already
+                // integrated Y.Map throws inside Yjs.
+                const page2 = addPage(ydoc, { name: 'Target Page' });
+                const block = createBlock(ydoc, { pageId, name: 'Icon Block' });
+                updateBlock(ydoc, block.data!.id, { iconName: 'mi-lightbulb' });
+
+                const result = moveBlock(ydoc, block.data!.id, page2.data!.id);
+                expect(result.success).toBe(true);
+
+                const moved = getBlock(ydoc, block.data!.id);
+                expect(moved?.icon).toEqual({ source: 'material', value: 'lightbulb' });
+                expect(moved?.iconName).toBe('mi-lightbulb');
             });
 
             it('should return error for non-existent block', () => {

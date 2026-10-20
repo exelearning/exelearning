@@ -1,89 +1,29 @@
 ---
 name: database-migration
-description: Changing database schema with Kysely migrations across SQLite, PostgreSQL, and MariaDB. Every migration must ship with a colocated `*.spec.ts` exercising `up`/`down` on every supported dialect, keep patch coverage ≥ 90% on changed lines, update affected query tests, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
+description: "Add or change eXeLearning Kysely schema migrations, the migration registry or legacy database upgrades."
 ---
 
-# Skill: Database Migration
+# Database migrations
 
-> Parent: [AGENTS.md](../../../AGENTS.md) | Related: [backend-service](../backend-service/SKILL.md), [backend-route](../backend-route/SKILL.md)
+Start with `src/db/migrations/index.ts`, the latest numbered migration, `src/db/helpers.ts`,
+`src/db/dialect.ts`, `src/db/types.ts`, and affected queries/tests.
 
-## When to Use
+1. Add the next unused ordered migration and register it in the **static registry** in `index.ts`.
+   Adding a file alone does not register it. Preserve previously applied names/order; do not renumber history.
+2. Kysely 0.29 imports `Migrator`, `Migration` and `MigrationProvider` from `kysely/migration`, not the
+   package root. Keep the static provider for bundled/standalone builds; do not replace it with filesystem scanning.
+3. Implement `up` and the corresponding `down` contract, explicitly accounting for irrecoverable data
+   changes rather than promising lossless rollback. Historical migrations must remain independent of
+   evolving application table types; use the established migration typing/helpers.
+4. Use existing auto-increment, binary type, column/table existence and returning helpers. The schema
+   builder does not erase SQLite/PostgreSQL/MySQL differences. Check FK rebuild and nullable-ID patterns
+   in migrations 003–005 before modifying related columns.
+5. Update `src/db/types.ts` and affected queries when the schema contract changes. Preserve legacy Symfony
+   detection and migration-tracking initialization, as well as a fresh install and ordinary upgrade.
 
-Changing database schema — adding tables, columns, indexes, or modifying existing structures.
-
-## Key Files
-
-- `src/db/migrations/*.ts` — numbered migration files (000_, 001_, 002_, etc.)
-- `src/db/migrations/*.spec.ts` — colocated migration tests
-- `src/db/queries/*.ts` — query functions to update after schema changes
-- `src/db/client.ts` — database client
-- `src/db/dialect/` — multi-DB dialect support (SQLite, PostgreSQL, MariaDB)
-
-## Pattern
-
-```typescript
-// src/db/migrations/00N_my_migration.ts
-import { type Kysely } from 'kysely';
-
-export async function up(db: Kysely<any>): Promise<void> {
-    await db.schema.createTable('my_table')
-        .addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
-        .addColumn('name', 'varchar(255)', (col) => col.notNull())
-        .addColumn('created_at', 'timestamp', (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-        .execute();
-}
-
-export async function down(db: Kysely<any>): Promise<void> {
-    await db.schema.dropTable('my_table').execute();
-}
-```
-
-### Test Pattern
-
-Use `DB_PATH=:memory:` for fast, isolated tests:
-
-```typescript
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-
-let db: Kysely<any>;
-beforeEach(async () => {
-    db = createTestDb(); // in-memory SQLite
-    await up(db);
-});
-afterEach(async () => { await db.destroy(); });
-
-it('creates table with expected columns', async () => {
-    const result = await db.selectFrom('my_table').selectAll().execute();
-    expect(result).toEqual([]);
-});
-
-it('down removes the table', async () => {
-    await down(db);
-    // Verify table no longer exists
-});
-```
-
-## Commands
-
-```bash
-bun test src/db/migrations/00N_my_migration.spec.ts     # Run migration test
-make fix                                                 # Lint
-```
-
-## Gotchas
-
-- **Multi-DB compatibility is non-negotiable** — must work on SQLite, PostgreSQL, AND MariaDB. No DB-specific syntax (`AUTOINCREMENT` vs `AUTO_INCREMENT`, `TEXT` vs `VARCHAR`, etc.). Use Kysely's schema builder which abstracts these differences.
-- **Sequential numbering** — check existing files and use the next number. Gaps or duplicates break the migration runner.
-- **Always provide both `up()` and `down()`** — `down()` is needed for rollbacks and testing.
-- **Update query functions** — after adding/modifying columns, update related functions in `src/db/queries/`. A migration without query updates is incomplete.
-- **Never use file-based DBs in tests** — always `DB_PATH=:memory:` for speed and isolation.
-- **Soft deletes** — some tables use soft deletes (`deleted_at` column). Queries must include `WHERE deleted_at IS NULL` or results will include deactivated records.
-
-## Done When
-
-- [ ] Migration numbered correctly (next in sequence)
-- [ ] `up()` and `down()` both implemented
-- [ ] Works across all three DB drivers (no DB-specific syntax)
-- [ ] `.spec.ts` colocated, tests both `up()` and `down()`
-- [ ] Related query files in `src/db/queries/` updated
-- [ ] `make fix` passes clean
+Test `up`, `down`, preservation of existing data, repeat/partial upgrade behavior where relevant, and
+registry ordering. Use `src/db/migrations/kysely-subpath.spec.ts` for import compatibility.
+Use isolated in-memory SQLite where sufficient; disposable file-backed DBs are appropriate for worker,
+locking or persistence behavior. They are not forbidden. Test dialect-sensitive changes against the
+actual supported engines with the existing DB matrix; do not claim three-engine coverage from mocks alone.
+Run `verify-change` final code gates and document a durable schema decision when required.

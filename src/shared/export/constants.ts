@@ -326,13 +326,9 @@ export const BASE_LIBRARIES = [
     'common_i18n.js',
     'common.js',
     'exe_export.js',
-    // Always-on xAPI emitter (every export is xAPI-compatible out of the box)
-    'xapi/exe_xapi.js',
     // Bootstrap (JS bundle includes Popper)
     'bootstrap/bootstrap.bundle.min.js',
-    'bootstrap/bootstrap.bundle.min.js.map',
     'bootstrap/bootstrap.min.css',
-    'bootstrap/bootstrap.min.css.map',
 ] as const;
 
 /**

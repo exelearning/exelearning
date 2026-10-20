@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
-import { resourcesRoutes, configure, resetDependencies } from './resources';
+import { resourcesRoutes, configure, resetDependencies, isScormTestFile } from './resources';
 import * as fs from 'fs';
 
 describe('Resources Routes', () => {
@@ -211,8 +211,8 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        // jQuery exists, but a non-existent bootstrap map doesn't
-                        if (filePath.includes('bootstrap.bundle.min.js.map')) return false;
+                        // jQuery exists, but bootstrap.min.css is simulated as missing
+                        if (filePath.includes('bootstrap.min.css')) return false;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: fs.readdirSync,
@@ -225,9 +225,18 @@ describe('Resources Routes', () => {
             const res = await app.handle(new Request('http://localhost/api/resources/libs/base'));
 
             const body = await res.json();
-            const missingFile = body.find((f: any) => f.path.includes('bootstrap.bundle.min.js.map'));
+            const missingFile = body.find((f: any) => f.path.includes('bootstrap.min.css'));
 
             expect(missingFile).toBeUndefined();
+        });
+
+        it('should not list sourcemaps among base libs (dev-only, kept out of exports and bundles)', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/libs/base'));
+
+            const body = await res.json();
+            const maps = body.filter((f: any) => f.path.endsWith('.map'));
+
+            expect(maps).toEqual([]);
         });
 
         it('should not include content-specific libraries (they are detected via LibraryDetector)', async () => {
@@ -299,6 +308,56 @@ describe('Resources Routes', () => {
             const body = await res.json();
             expect(body.length).toBe(1);
             expect(body[0].path).toBe('SCORM_API.js');
+        });
+
+        it('should not list unit tests or their shared test helpers', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        if (filePath === 'public/app/common/scorm') return true;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        if (typeof dirPath === 'string' && dirPath.includes('common/scorm')) {
+                            return [
+                                'exe-scorm12-client.js',
+                                'exe-scorm12-client.test.js',
+                                'exe-scorm12-client.spec.js',
+                                'fake-scorm12-api.test-util.js',
+                            ].map(name => ({
+                                name,
+                                isFile: () => true,
+                                isDirectory: () => false,
+                            })) as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/libs/scorm'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.map((file: { path: string }) => file.path)).toEqual(['exe-scorm12-client.js']);
+        });
+    });
+
+    describe('isScormTestFile', () => {
+        it('matches unit tests, specs and shared test helpers', () => {
+            expect(isScormTestFile('exe-scorm12-client.test.js')).toBe(true);
+            expect(isScormTestFile('exe-scorm12-client.spec.js')).toBe(true);
+            expect(isScormTestFile('scorm12/fake-scorm12-api.test-util.js')).toBe(true);
+            expect(isScormTestFile('scorm12/scorm12-data-model.test-util.js')).toBe(true);
+        });
+
+        it('keeps runtime sources and vendored files', () => {
+            expect(isScormTestFile('SCOFunctions.js')).toBe(false);
+            expect(isScormTestFile('scorm12/exe-scorm12-client.js')).toBe(false);
+            expect(isScormTestFile('scorm12/vendor/pipwerks/SCORM_API_wrapper.js')).toBe(false);
         });
     });
 
@@ -1034,6 +1093,81 @@ describe('Resources Routes', () => {
                 const body = await res.json();
                 expect(body.error).toBe('Not Found');
             });
+        });
+    });
+
+    describe('path traversal protection (security audit: unauth dir traversal)', () => {
+        // Theme/iDevice/library names are slugs ([A-Za-z0-9_-]). Every endpoint
+        // that joins a route param onto a base directory must reject traversal
+        // segments BEFORE touching the filesystem, otherwise an unauthenticated
+        // attacker can escape the public/ base (Elysia decodes `%2F`/`%2E` to
+        // real separators) and have `scanDirectory` enumerate — or the
+        // `bundle/theme` route exfiltrate — arbitrary directories the process
+        // can read. These encoded forms survive WHATWG URL parsing and reach the
+        // handler with separators intact (a bare `..` segment is collapsed first).
+        const TRAVERSAL_NAMES = ['..%2F..', '..%2F..%2F..%2F..%2Fetc', '%2E%2E%2Fsecret', 'foo%2Fbar'];
+
+        const ENDPOINTS = [
+            (name: string) => `http://localhost/api/resources/theme/${name}`,
+            (name: string) => `http://localhost/api/resources/idevice/${name}`,
+            (name: string) => `http://localhost/api/resources/libs/directory/${name}`,
+            (name: string) => `http://localhost/api/resources/bundle/theme/${name}`,
+        ];
+
+        function spyFs(): { touched: string[] } {
+            const touched: string[] = [];
+            const record = (p: unknown): void => {
+                if (typeof p === 'string') {
+                    touched.push(p);
+                }
+            };
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        record(p);
+                        return fs.existsSync(p);
+                    },
+                    readdirSync: ((p: string, options?: { withFileTypes: boolean }) => {
+                        record(p);
+                        return fs.readdirSync(p, options);
+                    }) as typeof fs.readdirSync,
+                    statSync: ((p: string) => {
+                        record(p);
+                        return fs.statSync(p);
+                    }) as typeof fs.statSync,
+                    readFileSync: ((p: string, encoding?: BufferEncoding) => {
+                        record(p);
+                        return fs.readFileSync(p, encoding);
+                    }) as typeof fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+            return { touched };
+        }
+
+        for (const makeUrl of ENDPOINTS) {
+            for (const name of TRAVERSAL_NAMES) {
+                it(`rejects traversal and reads nothing outside the base for ${makeUrl('<name>')} = ${name}`, async () => {
+                    const { touched } = spyFs();
+                    const res = await app.handle(new Request(makeUrl(name)));
+                    expect(res.status).toBe(404);
+                    const body = await res.json();
+                    if (Array.isArray(body)) {
+                        expect(body).toHaveLength(0);
+                    } else {
+                        expect(body.error).toBe('Not Found');
+                    }
+                    expect(touched).toHaveLength(0);
+                });
+            }
+        }
+
+        it('still resolves a legitimate slug theme name (no false positives)', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/theme/base'));
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(Array.isArray(body)).toBe(true);
+            expect(body.length).toBeGreaterThan(0);
         });
     });
 });

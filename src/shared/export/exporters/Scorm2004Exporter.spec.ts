@@ -42,6 +42,14 @@ class MockDocument implements ExportDocument {
     }
 }
 
+// Document that exposes an editable ODE source, like YjsDocumentAdapter does.
+// Kept separate from MockDocument so existing expectations stay unchanged.
+class MockDocumentWithSource extends MockDocument {
+    async getContentXml(): Promise<string> {
+        return '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE ode SYSTEM "content.dtd">\n<ode/>';
+    }
+}
+
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
@@ -63,7 +71,23 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        if (_files.includes('material-icons/material-icons.svg')) {
+            files.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -428,6 +452,24 @@ describe('Scorm2004Exporter', () => {
             expect(html).toContain('page-counter');
         });
 
+        it('should publish the project pass score for the runtime to read', () => {
+            document = new MockDocument({ passScore: 7.5 }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+        });
+
+        it('should publish the every-activity pass rule only when the project asks for it', () => {
+            const off = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const on = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(off).not.toContain('exe-pass-score-every-activity');
+            expect(on).toContain('<meta name="exe-pass-score-every-activity" content="true">');
+        });
+
         it('should NOT include made-with-eXe link when addExeLink is false', () => {
             document = new MockDocument({ addExeLink: false }, samplePages);
             exporter = new Scorm2004Exporter(document, resources, assets, zip);
@@ -440,6 +482,43 @@ describe('Scorm2004Exporter', () => {
             const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('made-with-eXe');
+        });
+
+        it('should inline material icon SVGs as data URIs in SCORM 2004 HTML', () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            const html = exporter.generateScorm2004PageHtml(
+                pagesWithBootstrapIcon[0],
+                pagesWithBootstrapIcon,
+                document.getMetadata(),
+                true,
+                [],
+                0,
+                null,
+                undefined,
+                undefined,
+                new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            );
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
         });
     });
 
@@ -685,6 +764,52 @@ describe('Scorm2004Exporter', () => {
 
             const indexHtml = zip.files.get('index.html') as string;
             expect(indexHtml).toContain('theme/icons/activity.png');
+        });
+    });
+
+    describe('editable source (exportSource, #2415)', () => {
+        it('includes content.xml and content.dtd by default', async () => {
+            document = new MockDocumentWithSource({}, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('does NOT include content.xml or content.dtd when exportSource is false', async () => {
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(false);
+            expect(zip.files.has('content.dtd')).toBe(false);
+        });
+
+        it('includes content.xml when a host forces the editable source', async () => {
+            // A host that stores the package AS the project and re-opens it
+            // later (Moodle mod_exescorm) must never get a package it cannot
+            // read back, whatever the author chose.
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export({ forceEditableSource: true });
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('does NOT reference content.xml in the manifest when exportSource is false', async () => {
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).not.toContain('<file href="content.xml"/>');
+            expect(manifest).not.toContain('<file href="content.dtd"/>');
         });
     });
 });

@@ -1,3 +1,4 @@
+import createTooltip from '../../../../common/app_tooltip.js';
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
@@ -1311,11 +1312,11 @@ export default class NavbarFile {
         this.initMobileLayout();
 
         // See eXeLearning.app.common.initTooltips
+        this.leftPanelsTogglerButton.setAttribute('data-bs-placement', 'bottom');
+        const tooltip = createTooltip(this.leftPanelsTogglerButton);
         $(this.leftPanelsTogglerButton)
-            .attr('data-bs-placement', 'bottom')
-            .tooltip()
             .on('click', function () {
-                $(this).tooltip('hide');
+                tooltip.hide();
                 $('body').toggleClass('left-column-hidden');
             });
 

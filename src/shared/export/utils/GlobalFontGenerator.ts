@@ -32,10 +32,10 @@ export const GLOBAL_FONTS: Record<string, GlobalFontConfig> = {
         fontFamily: 'OpenDyslexic',
         fallback: 'serif',
         files: [
-            { weight: 400, style: 'normal', filename: 'OpenDyslexic-Regular.woff', format: 'woff' },
-            { weight: 400, style: 'italic', filename: 'OpenDyslexic-Italic.woff', format: 'woff' },
-            { weight: 700, style: 'normal', filename: 'OpenDyslexic-Bold.woff', format: 'woff' },
-            { weight: 700, style: 'italic', filename: 'OpenDyslexic-BoldItalic.woff', format: 'woff' },
+            { weight: 400, style: 'normal', filename: 'OpenDyslexic-Regular.woff2', format: 'woff2' },
+            { weight: 400, style: 'italic', filename: 'OpenDyslexic-Italic.woff2', format: 'woff2' },
+            { weight: 700, style: 'normal', filename: 'OpenDyslexic-Bold.woff2', format: 'woff2' },
+            { weight: 700, style: 'italic', filename: 'OpenDyslexic-BoldItalic.woff2', format: 'woff2' },
         ],
     },
     andika: {

@@ -860,6 +860,64 @@ describe('Themes Routes', () => {
             // The key is baseName, so there's only one entry for 'download' (PNG prioritized)
         });
 
+        it('should return icons in alphabetical order regardless of readdir order (#2411)', async () => {
+            const iconsDir = path.join('sorted-theme', 'icons');
+            const configPath = path.join('sorted-theme', 'config.xml');
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('sorted-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes(configPath)) {
+                            return '<theme><name>Sorted Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'sorted-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes(iconsDir)) {
+                            // Simulates Bun's readdirSync on ext4: raw hash order, not alphabetical
+                            return [
+                                { name: 'udl_rep_informarse.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'udl_exp_grupohomogeneo.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'udl_eng_reto.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'udl_sup_escribe.png', isDirectory: () => false, isFile: () => true },
+                                { name: 'udl_eng_curiosidad.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'udl_eng_reto.png', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('sorted-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            expect(res.status).toBe(200);
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'sorted-theme');
+            expect(theme).toBeDefined();
+            expect(Object.keys(theme.icons)).toEqual([
+                'udl_eng_curiosidad',
+                'udl_eng_reto',
+                'udl_exp_grupohomogeneo',
+                'udl_rep_informarse',
+                'udl_sup_escribe',
+            ]);
+            // Format priority is preserved by the sort
+            expect(theme.icons.udl_eng_reto.value).toContain('udl_eng_reto.svg');
+        });
+
         it('should ignore unsupported file formats in icons directory', async () => {
             configure({
                 fs: {

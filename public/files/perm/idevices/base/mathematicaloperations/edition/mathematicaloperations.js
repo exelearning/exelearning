@@ -124,6 +124,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Math operations'),
         };
     },
@@ -351,14 +352,13 @@ var $exeDevice = {
                                 <textarea id="eRMQFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                             </div>
                         </div>
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
@@ -399,6 +399,8 @@ var $exeDevice = {
             mode = $('#eRMQFractions').is(':checked') ? 1 : 0,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!progressBar) return false;
@@ -497,6 +499,8 @@ var $exeDevice = {
             solution: solution,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
     },
@@ -625,6 +629,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         // Inicialización de toggles (estado aria y targets)
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
@@ -644,8 +649,8 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        lifecycle.on(document, 'change', '.toggle-input', event => {
+            initToggle($(event.currentTarget));
         });
         if (
             window.File &&
@@ -659,10 +664,11 @@ var $exeDevice = {
                 if (!file) {
                     return;
                 }
-                let reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result);
-                };
+                const reader = new FileReader();
+                lifecycle.ownFileReader(reader);
+                reader.onload = lifecycle.bind(function (e) {
+                    this.importGame(e.target.result);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {
@@ -685,7 +691,7 @@ var $exeDevice = {
         $('#eRMQTime').on('keyup', function () {
             let v = this.value;
             v = v.replace(/\D/g, '');
-            v = v.substring(0, 1);
+            v = v.substring(0, 2);
             this.value = v;
         });
 
@@ -749,6 +755,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
     },
 
     setErrorType: function (type) {
@@ -816,6 +824,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevice.setErrorType(game.errorType);

@@ -1347,6 +1347,39 @@ describe('TrueFalseHandler', () => {
             expect(msgs.msgFalse).toBe('False');
         });
 
+        // Issue #2252: a legacy package authored in Spanish must not come back
+        // with English interface texts.
+        it('should localize default messages to the project language', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <list>
+                        <instance class="TrueFalseQuestion">
+                            <dictionary>
+                                <string role="key" value="questionTextArea"/>
+                                <instance class="TextAreaField">
+                                    <dictionary>
+                                        <string role="key" value="content"/>
+                                        <unicode value="Q"/>
+                                    </dictionary>
+                                </instance>
+                                <string role="key" value="isCorrect"/>
+                                <bool value="1"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict, 'idev-1', {
+                language: 'es',
+                ideviceId: 'idev-1',
+                className: 'exe.engine.truefalseidevice.TrueFalseIdevice',
+            });
+            const msgs = props.msgs as { msgTrue: string; msgFalse: string; msgSuggestion: string };
+            expect(msgs.msgTrue).toBe('Verdadero');
+            expect(msgs.msgFalse).toBe('Falso');
+            expect(msgs.msgSuggestion).toBe('Sugerencia');
+        });
+
         it('should include eXeGameInstructions when present', () => {
             const dict = createDomElement(`
                 <dictionary>
@@ -2097,11 +2130,10 @@ describe('ScormTestHandler', () => {
             expect(questions[0].selectionType).toBe('multiple');
         });
 
-        it('should extract passRate as dropdownPassRate', () => {
-            const dict = createDomElement(`
+        const quizWithPassRate = (passRate?: string, tag = 'string') =>
+            createDomElement(`
                 <dictionary>
-                    <string role="key" value="passRate"/>
-                    <string value="70"/>
+                    ${passRate === undefined ? '' : `<string role="key" value="passRate"/><${tag} value="${passRate}"/>`}
                     <string role="key" value="questions"/>
                     <list>
                         <instance class="TestQuestion">
@@ -2120,8 +2152,33 @@ describe('ScormTestHandler', () => {
                     </list>
                 </dictionary>
             `);
-            const props = handler.extractProperties(dict);
-            expect(props.dropdownPassRate).toBe('70');
+
+        it.each([
+            ['70', 'string', 7],
+            ['75', 'unicode', 7.5],
+            ['33.3', 'string', 3.3],
+            ['0', 'unicode', 0],
+            ['100', 'string', 10],
+        ])('should import passRate %s (<%s>) as the activity own mark %s', (passRate, tag, mark) => {
+            const props = handler.extractProperties(quizWithPassRate(passRate, tag));
+            expect(props.passScoreMode).toBe('custom');
+            expect(props.passScoreCustom).toBe(mark);
+            expect(props).not.toHaveProperty('dropdownPassRate');
+        });
+
+        it.each([
+            ['the legacy default 50', '50'],
+            ['no passRate', undefined],
+            ['an empty passRate', ''],
+            ['an invalid passRate', 'abc'],
+            ['a passRate above 100', '150'],
+            ['a negative passRate', '-10'],
+        ])('should leave %s to inherit the project mark', (_label, passRate) => {
+            const props = handler.extractProperties(quizWithPassRate(passRate));
+            expect(props.questionsData).toHaveLength(1);
+            expect(props).not.toHaveProperty('passScoreMode');
+            expect(props).not.toHaveProperty('passScoreCustom');
+            expect(props).not.toHaveProperty('dropdownPassRate');
         });
 
         it('should include userTranslations', () => {

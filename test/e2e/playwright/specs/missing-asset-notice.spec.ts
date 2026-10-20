@@ -1,5 +1,5 @@
 /**
- * Regression coverage for #2223.
+ * Regression coverage for #2223 and #2242.
  *
  * `missing-asset-refs.elpx` is a Classify activity whose package carries no
  * `content/resources/` at all, so its eight references have nothing to resolve
@@ -28,7 +28,11 @@ test.describe('Missing asset notice', () => {
 
         const modal = page.locator('#modalAlert');
         await expect(modal).toBeVisible({ timeout: 30000 });
-        await expect(modal).toContainText('classify');
+        const title = await page.evaluate(
+            () => (window as any).eXeLearning.app.idevices.getIdeviceInstalled('classify').title,
+        );
+        await expect(modal).toContainText(`iDevice 1 (${title}) on page "Classify content"`);
+        await expect(modal.locator('li strong')).not.toHaveText('classify');
         await expect(modal).toContainText('rabbit.svg');
     });
 });

@@ -1499,8 +1499,11 @@ export class LegacyXmlParser {
                     resolveReference: (key: string) => this.getInstanceByReference(key),
                 };
 
-                // Extract properties using handler
-                const handlerProps = handler.extractProperties(dict, idevice.id);
+                // Extract properties using handler.
+                // The context carries the package language, which handlers need to
+                // localize the default texts the legacy format does not store
+                // (issue #2252).
+                const handlerProps = handler.extractProperties(dict, idevice.id, handlerContext);
                 if (handlerProps && Object.keys(handlerProps).length > 0) {
                     idevice.properties = handlerProps;
                     this.logger.log(

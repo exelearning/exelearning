@@ -1,91 +1,42 @@
 ---
 name: websocket-yjs
-description: Modifying real-time collaboration features including WebSocket handlers, Yjs documents, and room lifecycle. Every change must ship with colocated tests (`*.spec.ts` server-side, `*.test.js` client-side), keep patch coverage ≥ 90% on changed lines, include or update a multi-user Playwright spec using the `collaboration.fixture`, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
+description: "Change eXeLearning shared document mutations, WebSocket rooms, snapshots, reconnects or concurrent editing behavior."
 ---
 
-# Skill: WebSocket & Yjs Collaboration
+# Yjs collaboration
 
-> Parent: [AGENTS.md](../../../AGENTS.md) | Related: [frontend-module](../frontend-module/SKILL.md), [backend-service](../backend-service/SKILL.md)
+Read `src/websocket/{room-manager,yjs-websocket,yjs-persistence}.ts`, `src/yjs/`,
+`public/app/yjs/`, and [real-time documentation](../../../doc/development/real-time.md).
+Use [Yjs shared types](https://docs.yjs.dev/getting-started/working-with-shared-types) and
+[document updates](https://docs.yjs.dev/api/document-updates) for API semantics.
 
-## When to Use
+## State and transport boundaries
 
-Modifying real-time collaboration, WebSocket handling, or Yjs document management.
+- Browser `YjsDocumentManager` owns the live editing document. WebSocket rooms retain connections and
+  lightweight coordination state; they do not keep a long-lived authoritative Y.Doc per room.
+- Server reconstruction, snapshot processing and CLI/API export **do** create temporary Y.Docs.
+  Preserve those legitimate operations and their cleanup; do not turn the relay rule into a server-wide ban.
+- Binary Yjs sync/awareness and JSON asset coordination share a socket but are different protocols.
+  Preserve authentication, project access, message limits, heartbeat, disconnect and room cleanup.
+- Awareness is ephemeral presence, not persistent content. Respect the existing late-join/resync protocol
+  and `connectWebSocket()`/provider reconnect lifecycle rather than adding a second sync loop.
 
-## Key Files
+## Mutations and concurrent editors
 
-**Server-side:**
-- `src/websocket/*.ts` — WebSocket handlers (room management, persistence, asset coordination)
-- `src/websocket/room-manager.ts` — room lifecycle management
-- `src/websocket/yjs-websocket.ts` — WebSocket route creation
-- `src/websocket/yjs-persistence.ts` — Yjs document persistence
-- `src/yjs/*.ts` — Yjs document helpers
+- Use existing Y.Map/Y.Array/Y.Text shapes and transaction origins. Group related mutations in a transaction;
+  preserve observer/undo origin filtering and avoid reflecting a remote update back as a fresh local edit.
+- A shared type can be integrated only once. Reordering/copying must follow the project's clone/rebuild
+  helpers; deleting and reinserting the same integrated object is not an ordinary array move.
+- Do not replace shared structures with plain JSON mutations or apply whole-document replacement to a
+  local edit. Concurrent peer updates and legacy import normalization must remain distinct.
+- Preserve the deferred-page-reload behavior when another user adds an iDevice while an editor is active.
+  Resolve it through the existing bridge on leaving edition; never discard the active user's work.
+- Preserve installed Yjs identity and V1/V2 encoding contracts across browser bundles, persistence and
+  server tools. A generic skill is not authorization to add Liveblocks, YKeyValue or a schema migration.
+- Unobserve listeners and destroy temporary documents/providers when their owner is disposed. Avoid retaining
+  document references after cleanup; test reconnect without duplicate listeners or orphan awareness.
 
-**Client-side:**
-- `public/app/yjs/YjsDocumentManager.js` — Y.Doc management (source of truth)
-- `public/app/yjs/YjsStructureBinding.js` — binds Yjs state to UI
-- `public/app/yjs/YjsProviderFactory.js` — WebSocket provider creation
-- `public/app/yjs/AssetManager.js` — Cache API asset management
-- `public/app/yjs/ResourceCache.js` — theme/library cache
-- `public/app/yjs/*.test.js` — colocated tests
-
-**Documentation:** [doc/development/real-time.md](../../../doc/development/real-time.md)
-
-## Architecture
-
-```
-CLIENT owns Y.Doc (source of truth)
-  ↕ WebSocket (stateless relay)
-SERVER: lightweight metadata only
-  - Does NOT store Y.Doc in memory
-  - Persists snapshots to yjs_documents table
-  - Forwards messages between clients
-```
-
-The server is a **stateless relay**. All document state lives in the browser's Y.Doc.
-
-## Concurrency Patterns
-
-### Deferred Page Reload
-
-When User B creates an iDevice while User A is editing, User A's editor must not be force-closed. Instead, defer the reload:
-
-```javascript
-// In YjsProjectBridge: defer reload when editor is active
-const hasActiveEditor = document.querySelector('#node-content div.idevice_node[mode="edition"]');
-if (hasActiveEditor) {
-    this._deferredPageReload = pageId;
-    return;
-}
-// In idevicesEngine: execute deferred reload when exiting edition
-this.project._yjsBridge?.executeDeferredPageReload?.();
-```
-
-### Late Joiner Resync
-
-When a new user joins, the y-websocket handshake may be incomplete. Use awareness-triggered resync plus server `trigger-resync` as belt-and-suspenders.
-
-## Commands
-
-```bash
-bun test src/websocket/room-manager.spec.ts                    # Server tests
-npx vitest run public/app/yjs/YjsDocumentManager.test.js       # Client tests
-make fix                                                        # Lint
-```
-
-## Gotchas
-
-- **Server must NEVER store Y.Doc in memory** — it's a stateless relay. Violations break the architecture.
-- **`connectWebSocket()`** — `YjsDocumentManager` uses this method, NOT `setupWebSocketProvider`. Using the wrong method name will silently fail.
-- **`MockWebsocketProvider` needs `connect()` and `disconnect()`** — tests that test resync behavior will fail without these methods on the mock.
-- **UUIDs in test data must be hex** — `extractProjectUuid` rejects non-hex characters. Use `[0-9a-f-]{36}` format.
-- **Concurrent editing data loss** — the most dangerous class of bug. When two users edit the same page, ensure neither loses work. Always test: User A editing + User B creates iDevice on same page → User A's editor must survive. _Example: PR #1540._
-- **Asset coordination uses separate JSON protocol** — over the same WebSocket connection, but distinct from Yjs binary messages.
-- **Reconnection safety** — `AssetWebSocketHandler._handleStatus` already re-sets up the message handler on reconnect. It's safe to disconnect/connect.
-
-## Done When
-
-- [ ] Server changes: `.spec.ts` at 90%+ coverage
-- [ ] Client changes: `.test.js` at 80%+ coverage
-- [ ] Server remains stateless relay (no Y.Doc storage)
-- [ ] Concurrent editing scenarios tested (two-user interactions)
-- [ ] `make fix` passes clean
+Run focused Bun server specs and Vitest client specs, then final gates in `verify-change`.
+Use the collaboration fixture with separate users for simultaneous edits, late join, disconnect/reconnect,
+and an active editor while a peer changes the page. Check persisted content after reload, not only DOM text.
+Use valid hex project UUIDs in fixtures; test asset JSON messages separately from binary sync.

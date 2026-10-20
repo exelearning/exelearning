@@ -7,6 +7,14 @@
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
+// MIME types for resources inlined as data: URIs in blob URL mode (images and CSS assets)
+const DATA_URI_MIME_TYPES = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml',
+    webp: 'image/webp', avif: 'image/avif', ico: 'image/x-icon', bmp: 'image/bmp',
+    woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf',
+    eot: 'application/vnd.ms-fontobject', css: 'text/css',
+};
+
 export default class PreviewPanelManager {
     /** Timeout for Service Worker status check (ms) */
     static SW_STATUS_TIMEOUT = 2000;
@@ -457,7 +465,7 @@ export default class PreviewPanelManager {
                             'try{' +
                             'var m=await import("' + bp + 'libs/pdfjs/pdf.min.js");' +
                             'm.GlobalWorkerOptions.workerSrc="' + bp + 'libs/pdfjs/pdf.worker.min.js";' +
-                            'var pdf=await m.getDocument("' + pdfBlobUrl + '").promise;' +
+                            'var pdf=await m.getDocument({ url: "' + pdfBlobUrl + '" }).promise;' +
                             'document.getElementById("loading").style.display="none";' +
                             'var tb=document.getElementById("tb");tb.style.display="flex";' +
                             'document.getElementById("pc").textContent=pdf.numPages;' +
@@ -760,26 +768,46 @@ export default class PreviewPanelManager {
      */
     async refreshWithServiceWorker() {
         Logger.log('[PreviewPanel] Generating preview files for SW...');
-        const result = await this._generatePreviewFiles();
+        const files = await this._generatePreviewFilesOrThrow();
 
-        if (!result.success || !result.files) {
-            throw new Error(result.error || 'Failed to generate preview files');
-        }
+        Logger.log(`[PreviewPanel] Generated ${Object.keys(files).length} files, sending to SW...`);
 
-        Logger.log(
-            `[PreviewPanel] Generated ${Object.keys(result.files).length} files, sending to SW...`
-        );
-
-        // Send files to Service Worker
+        // Send files to Service Worker. The buffers are transferred, so a resend after the
+        // app re-registers a dead worker needs freshly generated files.
         const app = eXeLearning.app;
-        await app.sendContentToPreviewSW(result.files, {
-            openExternalLinksInNewWindow: true,
-        });
+        try {
+            await app.sendContentToPreviewSW(
+                files,
+                { openExternalLinksInNewWindow: true },
+                { regenerateFiles: () => this._generatePreviewFilesOrThrow() }
+            );
+        } catch (error) {
+            if (this.isServiceWorkerPreviewAvailable()) {
+                throw error;
+            }
+            // The app gave up on the Service Worker (recovery failed): degrade instead of erroring.
+            Logger.warn('[PreviewPanel] Preview Service Worker unavailable, using blob URL fallback:', error);
+            await this.refreshWithBlobUrl();
+            return;
+        }
 
         // Load preview from Service Worker
         this.loadPreviewFromServiceWorker();
 
         Logger.log('[PreviewPanel] Preview loaded via Service Worker');
+    }
+
+    /**
+     * Generate the preview files, turning a failed result into an exception.
+     * @returns {Promise<Object>} Map of file paths to content
+     * @private
+     */
+    async _generatePreviewFilesOrThrow() {
+        const result = await this._generatePreviewFiles();
+        if (!result.success || !result.files) {
+            throw new Error(result.error || 'Failed to generate preview files');
+        }
+        return result.files;
     }
 
     /**
@@ -960,7 +988,7 @@ export default class PreviewPanelManager {
         loading.style.cssText = 'color:#ccc;font-family:system-ui;text-align:center;padding:1rem';
         pages.appendChild(loading);
         el.parentNode.replaceChild(container, el);
-        pdfjsLib.getDocument(src).promise.then(function(pdf) {
+        pdfjsLib.getDocument({ url: src }).promise.then(function(pdf) {
             loading.remove();
             tb.style.display = 'flex';
             tb.querySelector('.epc').textContent = pdf.numPages;
@@ -1134,7 +1162,8 @@ export default class PreviewPanelManager {
      * Inline CSS and JS resources into HTML.
      * Replaces <link rel="stylesheet" href="..."> with <style> blocks
      * and <script src="..."> with inline <script> blocks.
-     * Also converts <img src="..."> to data URIs when the file is available.
+     * Also converts <img src="..."> and url(...) references inside the inlined CSS
+     * to data URIs when the file is available.
      * @param {string} html - The HTML content
      * @param {Object} files - Map of file paths to content
      * @returns {string} HTML with inlined resources
@@ -1144,8 +1173,9 @@ export default class PreviewPanelManager {
         html = html.replace(
             /<link\s+(?=[^>]*rel=["']stylesheet["'])(?=[^>]*href=["']([^"']+)["'])[^>]*\/?>/gi,
             (match, href) => {
-                const content = this._decodeFileContent(this._findFileContent(files, href));
+                let content = this._decodeFileContent(this._findFileContent(files, href));
                 if (content) {
+                    content = this._inlineCssUrls(content, this._resolveRelativePath(href.split(/[?#]/)[0]), files);
                     const escaped = content.replace(/<\/style/gi, '<\\/style');
                     const safeHref = href.replace(/\*\//g, '* /');
                     return `<style>/* ${safeHref} */\n${escaped}</style>`;
@@ -1177,24 +1207,52 @@ export default class PreviewPanelManager {
                 if (src.startsWith('data:') || src.startsWith('blob:')) return match;
                 const content = this._findFileContent(files, src);
                 if (content && (content instanceof ArrayBuffer || content instanceof Uint8Array)) {
-                    const bytes = content instanceof ArrayBuffer ? new Uint8Array(content) : content;
-                    const ext = src.split('.').pop()?.toLowerCase() || 'png';
-                    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp' };
-                    const mime = mimeMap[ext] || 'application/octet-stream';
-                    const chunks = [];
-                    const chunkSize = 8192;
-                    for (let i = 0; i < bytes.length; i += chunkSize) {
-                        chunks.push(String.fromCharCode(...bytes.subarray(i, i + chunkSize)));
-                    }
-                    const binary = chunks.join('');
-                    const dataUri = `data:${mime};base64,${btoa(binary)}`;
-                    return `${prefix}${dataUri}${suffix}`;
+                    return `${prefix}${this._toDataUri(content, src)}${suffix}`;
                 }
                 return match;
             },
         );
 
         return html;
+    }
+
+    /**
+     * Rewrite relative url(...) references in an inlined stylesheet to data URIs.
+     * Once the CSS sits inside a blob: document, a reference such as the theme's
+     * url(img/icons.png) can no longer resolve against the stylesheet's folder.
+     * Absolute, external, data:, blob: and fragment references, and files missing
+     * from the map, are left untouched.
+     * @param {string} css - Stylesheet content
+     * @param {string} cssPath - Stylesheet path inside the export (e.g. 'theme/style.css')
+     * @param {Object} files - Map of file paths to content
+     * @returns {string} CSS with resolvable references replaced by data URIs
+     */
+    _inlineCssUrls(css, cssPath, files) {
+        const baseDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
+        return css.replace(/url\(\s*(["']?)([^"')]+?)\1\s*\)/gi, (match, _quote, ref) => {
+            if (/^([a-z][a-z0-9+.-]*:|\/|#)/i.test(ref)) return match;
+            const path = this._resolveRelativePath(baseDir + ref.split(/[?#]/)[0]);
+            const content = this._findFileContent(files, path);
+            return content ? `url("${this._toDataUri(content, path)}")` : match;
+        });
+    }
+
+    /**
+     * Encode file content as a base64 data URI, choosing the MIME type from the path extension.
+     * @param {ArrayBuffer|Uint8Array|string} content - File content
+     * @param {string} path - File path or URL used to pick the MIME type
+     * @returns {string} The data URI
+     */
+    _toDataUri(content, path) {
+        const bytes = content instanceof ArrayBuffer ? new Uint8Array(content)
+            : content instanceof Uint8Array ? content : new TextEncoder().encode(content);
+        const mime = DATA_URI_MIME_TYPES[path.split('.').pop().toLowerCase()] || 'application/octet-stream';
+        const chunks = [];
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            chunks.push(String.fromCharCode(...bytes.subarray(i, i + chunkSize)));
+        }
+        return `data:${mime};base64,${btoa(chunks.join(''))}`;
     }
 
     /**

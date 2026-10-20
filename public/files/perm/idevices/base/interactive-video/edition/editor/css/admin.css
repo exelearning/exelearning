@@ -2,14 +2,14 @@
     font-family: 'Open Sans';
     font-style: normal;
     font-weight: 400;
-    src: local('Open Sans'), local('OpenSans'), url(../fonts/open-sans.woff2) format('woff2'), url(../fonts/open-sans.woff) format('woff');
+    src: local('Open Sans'), local('OpenSans'), url(../fonts/open-sans.woff2) format('woff2');
 }
 
 @font-face {
     font-family: 'Open Sans';
     font-style: normal;
     font-weight: 700;
-    src: local('Open Sans Bold'), local('OpenSans-Bold'), url(../fonts/open-sans-bold.woff2) format('woff2'), url(../fonts/open-sans-bold.woff) format('woff');
+    src: local('Open Sans Bold'), local('OpenSans-Bold'), url(../fonts/open-sans-bold.woff2) format('woff2');
 }
 
 html {

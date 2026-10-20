@@ -108,6 +108,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgShowImage: c_('Show/Hide image'),
             msgShowNumbers: c_('Show/Hide numbers'),
             msgAttempsNumbers: c_('Number of attempts'),
@@ -203,7 +204,6 @@ var $exeDevice = {
                                 <input id="puzzleEAuthor" type="text" class="form-control" />
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -338,7 +338,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>`;
 
@@ -750,6 +750,8 @@ var $exeDevice = {
             puzzlesGame = $exeDevice.puzzlesGame,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -782,6 +784,8 @@ var $exeDevice = {
             version: $exeDevice.version,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
         return data;
@@ -847,12 +851,12 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio
-            .play()
-            .catch((error) => console.error('Error playing audio:', error));
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player, 'previewAudio');
+        player.play().catch(error => console.error('Error playing audio:', error));
     },
 
     stopSound: function () {
@@ -929,15 +933,19 @@ var $exeDevice = {
             window.Blob
         ) {
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                let file = e.target.files[0];
+
+            $('#eXeGameImportGame').on('change', e => {
+                const file = e.target.files[0];
                 if (!file) {
                     return;
                 }
-                let reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result);
-                };
+                const reader = new FileReader();
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (event) {
+                    this.importGame(event.target.result);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {
@@ -1024,6 +1032,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#puzzleEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
@@ -1267,6 +1277,14 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+
+            passScoreMode: game.passScoreMode,
+
+            passScoreCustom: game.passScoreCustom,
+
         });
     },
 

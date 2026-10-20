@@ -123,6 +123,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Identify'),
         };
     },
@@ -149,11 +150,13 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player, 'previewAudio');
+        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
+            player.play();
         });
     },
 
@@ -509,7 +512,6 @@ var $exeDevice = {
                                 <span id="idfENumeroPercentaje">1/1</span>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -648,7 +650,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>                
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 4)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(4)}
@@ -815,6 +817,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevice.updateGameMode(game.feedBack);
@@ -1223,6 +1229,8 @@ var $exeDevice = {
             ),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1282,12 +1290,17 @@ var $exeDevice = {
             avancedMode: avancedMode,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
     },
 
     addEvents: function () {
-        const initToggle = function ($input) {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
+        const initToggle = $input => {
             const checked = $input.is(':checked');
             $input
                 .closest('.toggle-item[role="switch"]')
@@ -1305,8 +1318,10 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on document, so the edition lifecycle owns it: the handler
+        // is removed when the editor closes.
+        this.$lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
         $('#idfEPaste, #idfEAuthorAlt').hide();
         $('#idfEAuthorAlt').removeClass('d-flex').addClass('d-none');
@@ -1400,6 +1415,7 @@ var $exeDevice = {
                 .eq(0)
                 .text(`${_('Supported formats')}: txt`);
             $('#eXeGameExportImport').show();
+
             $('#eXeGameImportGame')
                 .attr('accept', '.txt')
                 .on('change', function (e) {
@@ -1419,8 +1435,12 @@ var $exeDevice = {
                         return;
                     }
                     const reader = new FileReader();
-                    reader.onload = (e) =>
-                        $exeDevice.importGame(e.target.result, file.type);
+                    // The read is aborted and its result discarded if the
+                    // editor closes before it completes.
+                    self.$lifecycle.ownFileReader(reader);
+                    reader.onload = self.$lifecycle.bind(function (event) {
+                        this.importGame(event.target.result, file.type);
+                    });
                     reader.readAsText(file);
                 });
             $('#eXeGameExportQuestions').on('click', () => {
@@ -1528,6 +1548,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(

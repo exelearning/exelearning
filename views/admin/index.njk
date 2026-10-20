@@ -575,6 +575,16 @@
             color: #155724;
         }
 
+        .badge-primary {
+            background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+            color: #2563eb;
+        }
+
+        .badge-secondary {
+            background: var(--gray-100, #f3f4f6);
+            color: var(--gray-600, #4b5563);
+        }
+
         /* Spin animation */
         @keyframes mi-spin {
             from { transform: rotate(0deg); }
@@ -1301,6 +1311,10 @@
                 <span class="mi">tune</span>
                 {{ t.settings or 'Settings' }}
             </a>
+            <a href="#sharing" class="admin-nav-link" data-section="sharing">
+                <span class="mi">share</span>
+                {{ t.sharing or 'Sharing' }}
+            </a>
             <a href="#presentation" class="admin-nav-link" data-section="presentation">
                 <span class="mi">tune</span>
                 {{ t.customization or 'Customization' }}
@@ -1896,6 +1910,41 @@
                 </div>
             </section>
 
+            <section id="sharing" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">share</span>
+                            {{ t.sharing or 'Sharing' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="admin-settings-actions">
+                            <button id="sharingSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <span id="sharingSaveStatus" class="admin-settings-status"></span>
+                        </div>
+
+                        <div class="admin-settings-group">
+                            <h6>{{ t.public_view_links or 'Public read-only links' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label for="publicViewToggle">PUBLIC_VIEW_ENABLED</label>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" id="publicViewToggle" data-setting-key="PUBLIC_VIEW_ENABLED" data-setting-type="boolean" {% if adminSettings.general.public_view_enabled %}checked{% endif %}>
+                                        <span>{{ t.active or 'Active' }}</span>
+                                    </div>
+                                    <small>{{ t.allows_public_view_links or 'Allows project owners to publish a public read-only link to their projects.' }}</small>
+                                    <small>{{ t.public_view_links_disabled_note or 'When disabled, the option is hidden from the Share dialog and existing public links stop working. They work again if the option is re-enabled.' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section id="presentation" class="admin-section">
                 <div class="admin-card">
                     <div class="admin-card-header">
@@ -2255,6 +2304,7 @@ window.$eXeLearningCustom = {
             projects: '{{ t.projects or "Projects" }}',
             extensions: '{{ t.extensions or "Extensions" }}',
             settings: '{{ t.settings or "Settings" }}',
+            sharing: '{{ t.sharing or "Sharing" }}',
             active: '{{ t.active or "Active" }}',
             inactive: '{{ t.inactive or "Inactive" }}',
             error_loading: '{{ t.error_loading or "Error loading data" }}',
@@ -2330,6 +2380,7 @@ window.$eXeLearningCustom = {
                 projects: T.projects,
                 extensions: T.extensions,
                 settings: T.settings,
+                sharing: T.sharing,
                 presentation: T.customization,
                 maintenance: T.maintenance
             };
@@ -2435,6 +2486,50 @@ window.$eXeLearningCustom = {
                     }
                 } finally {
                     presentationSaveBtn.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // Sharing save
+        const sharingSaveBtn = document.getElementById('sharingSaveBtn');
+        const sharingSaveStatus = document.getElementById('sharingSaveStatus');
+
+        if (sharingSaveBtn) {
+            sharingSaveBtn.addEventListener('click', async () => {
+                sharingSaveBtn.setAttribute('disabled', 'disabled');
+                if (sharingSaveStatus) {
+                    sharingSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
+                    sharingSaveStatus.classList.remove('success', 'error');
+                }
+
+                try {
+                    const toggle = document.getElementById('publicViewToggle');
+                    const settings = [
+                        { key: 'PUBLIC_VIEW_ENABLED', value: toggle && toggle.checked ? 'true' : 'false', type: 'boolean' },
+                    ];
+                    const res = await fetch(`${API_BASE}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ settings }),
+                    });
+                    if (!res.ok) throw new Error('Failed to save');
+
+                    if (sharingSaveStatus) {
+                        sharingSaveStatus.textContent = '{{ t.saved or "Saved" }}';
+                        sharingSaveStatus.classList.add('success');
+                        setTimeout(() => {
+                            sharingSaveStatus.textContent = '';
+                            sharingSaveStatus.classList.remove('success');
+                        }, 3000);
+                    }
+                } catch (err) {
+                    if (sharingSaveStatus) {
+                        sharingSaveStatus.textContent = '{{ t.error_saving or "Error saving" }}';
+                        sharingSaveStatus.classList.add('error');
+                    }
+                } finally {
+                    sharingSaveBtn.removeAttribute('disabled');
                 }
             });
         }
@@ -2592,12 +2687,18 @@ window.$eXeLearningCustom = {
         // =============================================
         // Custom Assets management
         // =============================================
-        function escapeHtml(str) {
-            return String(str)
+        // Single HTML escaper for this panel. Escapes & < > " ' so it is safe for
+        // BOTH element-content and quoted-attribute sinks (a maintainer can rely on
+        // quotes being escaped). Keeps the falsy-returns-'' behavior of the previous
+        // implementation.
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function copyToClipboard(text) {
@@ -2937,8 +3038,13 @@ window.$eXeLearningCustom = {
                         ? T.cannot_impersonate_admin
                         : (isSelfUser ? T.cannot_impersonate_self : T.log_in_as);
                     const safeImpersonateTitle = String(impersonateButtonTitle || '').replace(/"/g, '&quot;');
+                    // HTML-encode & and ' so an email containing a single quote (e.g. from
+                    // SSO auto-provisioning) cannot break out of the single-quoted onclick
+                    // attribute. JSON.stringify does NOT escape ', so the raw value would
+                    // close the attribute and inject markup (stored XSS in the admin panel).
+                    const safeEmailArg = JSON.stringify(user.email || '').replace(/&/g, '&amp;').replace(/'/g, '&#39;');
                     const impersonateItem = canImpersonate
-                        ? `<li><button type="button" class="dropdown-item" data-action="impersonate" onclick='impersonateUser(${user.id}, ${JSON.stringify(user.email || '')})'>
+                        ? `<li><button type="button" class="dropdown-item" data-action="impersonate" onclick='impersonateUser(${user.id}, ${safeEmailArg})'>
                                 <span class="mi mi-sm">login</span> ${T.log_in_as}
                            </button></li>`
                         : `<li><button type="button" class="dropdown-item" data-action="impersonate" disabled title="${safeImpersonateTitle}">
@@ -2948,7 +3054,7 @@ window.$eXeLearningCustom = {
                     // Reset password only exists for eXeLearning password accounts:
                     // CAS/OIDC/SAML/guest users have no password we manage.
                     const resetPasswordItem = user.can_reset_password
-                        ? `<li><button type="button" class="dropdown-item" data-action="reset-password" onclick='openResetPasswordModal(${user.id}, ${JSON.stringify(user.email || '')})'>
+                        ? `<li><button type="button" class="dropdown-item" data-action="reset-password" onclick='openResetPasswordModal(${user.id}, ${safeEmailArg})'>
                                 <span class="mi mi-sm">key</span> ${T.reset_password}
                            </button></li>`
                         : '';
@@ -2992,8 +3098,8 @@ window.$eXeLearningCustom = {
                         <td style="font-weight: 600; color: var(--admin-text-muted);">#${user.id}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <div class="user-avatar user-avatar-sm">${(user.email[0] || 'U').toUpperCase()}</div>
-                                <span style="font-weight: 500;">${user.email}</span>
+                                <div class="user-avatar user-avatar-sm">${escapeHtml((user.email[0] || 'U').toUpperCase())}</div>
+                                <span style="font-weight: 500;">${escapeHtml(user.email)}</span>
                             </div>
                         </td>
                         <td>${roles}</td>
@@ -3271,9 +3377,9 @@ window.$eXeLearningCustom = {
                         <td>
                             <input type="checkbox" class="bulk-checkbox project-checkbox" data-project-id="${project.id}" ${isChecked}>
                         </td>
-                        <td style="font-weight: 600; color: var(--admin-text-muted);" title="${project.uuid}">#${project.id}</td>
-                        <td>${project.title || '-'}</td>
-                        <td>${ownerLabel}</td>
+                        <td style="font-weight: 600; color: var(--admin-text-muted);" title="${escapeHtml(project.uuid)}">#${project.id}</td>
+                        <td>${escapeHtml(project.title || '-')}</td>
+                        <td>${escapeHtml(ownerLabel)}</td>
                         <td><span class="badge-role ${statusClass}">${project.status}</span></td>
                         <td><span class="badge-role ${visibilityClass}">${project.visibility}</span></td>
                         <td>${createdAt}</td>
@@ -3282,7 +3388,7 @@ window.$eXeLearningCustom = {
                             <a class="btn-admin-outline" href="/workarea?project=${project.uuid}" target="_blank" title="{{ t.view_project or 'View Project' }}">
                                 <span class="mi mi-sm">open_in_new</span>
                             </a>
-                            <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id}, '${(project.title || '').replace(/'/g, "\\'")}')" title="{{ t.download_elpx or 'Download .elpx' }}">
+                            <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id})" title="{{ t.download_elpx or 'Download .elpx' }}">
                                 <span class="mi mi-sm">download</span>
                             </button>
                             ` : ''}
@@ -3623,7 +3729,7 @@ window.$eXeLearningCustom = {
             }
         }
 
-        async function downloadProjectElpx(projectId, projectTitle) {
+        async function downloadProjectElpx(projectId) {
             try {
                 const res = await fetch(`${API_BASE}/projects/${projectId}/download`, { credentials: 'include' });
                 if (!res.ok) {
@@ -4261,14 +4367,6 @@ window.$eXeLearningCustom = {
                 e.target.value = '';
             }
         });
-
-        // Utility function for escaping HTML
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
 
         // Notification helper
         function showNotification(message, type = 'info') {

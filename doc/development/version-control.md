@@ -66,6 +66,14 @@ This strategy provides clarity, simplicity, and traceability for contributors an
 
 ---
 
+## Publishing a release
+
+Releases are created on GitHub as a **pre-release** first, using the final tag name (`vX.Y.Z`). The tag push builds and pushes the versioned Docker images (`vX.Y.Z`, `vX.Y.Z-static`), the desktop installers and the static ZIP. Nothing touches `latest` at this point, so users of `exelearning/exelearning:latest` keep the previous release while the pre-release is being tested.
+
+When the pre-release is edited and published as a release, the `released` event runs `promote-latest.yml`, which re-tags the already built `vX.Y.Z` / `vX.Y.Z-static` manifests as `latest` / `latest-static` on Docker Hub and GHCR (same digest, no rebuild), and `docs-and-repos.yml` publishes the docs, the APT/RPM repositories and the Chocolatey and winget packages. To roll `latest` back, run the "Promote release to latest" workflow manually with the previous tag.
+
+---
+
 ## Generating the CHANGELOG
 
 Use `.agents/skills/changelog/SKILL.md` as a prompt for an AI agent to draft the next changelog entry from merged pull requests. The skill will ask for the target version, fetch all PRs merged since the last published release, and insert a draft block at the top of `public/CHANGELOG.md`. **Always review and edit the draft before committing.**

@@ -46,6 +46,9 @@ var $rubric = {
 
     init: function () {
         if (this.initialized) return;
+        this.idevicePath = eXe.app.isInExe()
+            ? eXe.app.getIdeviceInstalledExportPath('rubric')
+            : $('.idevice_node.rubric').first().attr('data-idevice-path');
         this.initialized = true;
         this.loadGame();
     },
@@ -72,6 +75,8 @@ var $rubric = {
             self.initializeInteractiveState(data.table);
             self.addEvents(data.table, data.strings);
             self.initScorm(data);
+            self.initProgressReport(data);
+            self.showPassScoreNotice(data);
         });
     },
 
@@ -138,8 +143,15 @@ var $rubric = {
             raw: stored,
             isScorm: parseInt(stored.isScorm) || 0,
             textButtonScorm: stored.textButtonScorm || '',
-            repeatActivity: stored.repeatActivity !== false,
-            weighted: stored.weighted || 100,
+            repeatActivity: true,
+            weighted: $rubric.normalizeWeight(stored.weighted),
+            // Listed here because this object is built field by field rather
+            // than spread from `stored`, so anything unlisted never reaches the
+            // runtime.
+            passScoreMode: stored.passScoreMode,
+            passScoreCustom: stored.passScoreCustom,
+            evaluation: !!stored.evaluation,
+            evaluationID: stored.evaluationID || '',
         };
     },
 
@@ -350,13 +362,36 @@ var $rubric = {
         var strings = $.extend({}, this.ci18n);
         if (!data || typeof data !== 'object' || !data.i18n || typeof data.i18n !== 'object') return strings;
 
+        // Texts the saved data may carry with no English default above. Without
+        // one, the shared runtime uses the page's text in the content language,
+        // which a literal here would hide.
+        var withoutDefault = ['msgPassScore'];
         Object.keys(data.i18n).forEach(function (key) {
-            if (Object.prototype.hasOwnProperty.call(strings, key) && typeof data.i18n[key] === 'string') {
+            var known = Object.prototype.hasOwnProperty.call(strings, key) || withoutDefault.indexOf(key) !== -1;
+            if (known && typeof data.i18n[key] === 'string') {
                 strings[key] = data.i18n[key];
             }
         });
 
         return strings;
+    },
+
+    /**
+     * The SCORM weight, held to the 1-100 range the editor offers.
+     *
+     * Anything outside it, or unreadable, is the 100 default — the same rule
+     * common.js applies to an activity with no usable weight. The previous
+     * `value || 100` did not enforce the range at all: 0 and NaN fell back
+     * because they are falsy, but -1 and 150 are truthy and travelled
+     * straight into the page's weighted average.
+     *
+     * @param {number|string} value - Stored weight.
+     * @returns {number} A weight between 1 and 100.
+     */
+    normalizeWeight: function (value) {
+        var weight = parseFloat(value);
+        if (Number.isNaN(weight) || weight < 1 || weight > 100) return 100;
+        return weight;
     },
 
     stripTags: function (value) {
@@ -589,6 +624,11 @@ var $rubric = {
             var data = $rubric.getDataForTable($table);
             if (data && data.isScorm === 1) {
                 $rubric.sendRubricScore(true, data);
+            } else {
+                // The progress report does not depend on SCORM: it has to keep
+                // working when the author chose not to send the score anywhere,
+                // and when the learner saves by hand rather than automatically.
+                $rubric.updateProgressReport(data, $table);
             }
         });
     },
@@ -621,12 +661,19 @@ var $rubric = {
             $rubric.saveAsPdf($table);
         });
 
-        this.bindScopedEvent($actions.find('.exe-rubrics-scorm-save'), 'click.rubric', function () {
-            var data = $rubric.getDataForTable($table);
-            if (data) {
-                $rubric.sendRubricScore(false, data);
+        // The button lives in the shared container now, not in this row, so it
+        // is looked up from the activity's scope and matched by the class every
+        // iDevice's save button carries.
+        this.bindScopedEvent(
+            this.getDataScope($table).find('.Games-SendScore'),
+            'click.rubric',
+            function () {
+                var data = $rubric.getDataForTable($table);
+                if (data) {
+                    $rubric.sendRubricScore(false, data);
+                }
             }
-        });
+        );
     },
 
     getLicenseLabel: function (license) {
@@ -717,6 +764,13 @@ var $rubric = {
         var dateId = 'rubric-date-' + safeScopeId;
         var notesId = 'rubric-notes-' + safeScopeId;
         var authorshipFooter = this.resolveAuthorshipFooter(root, data.raw);
+        // The shared container: the save button, when the activity has one, and
+        // the runtime's message, in the same place and with the same look as in
+        // every other iDevice. This used to be a bare span here, with the button
+        // injected afterwards into the rubric's own row of actions — so it sat
+        // between Download and Reset instead of where the learner finds it
+        // everywhere else.
+        var scormArea = this.getScormAreaHtml(data, strings);
 
         var html = `
             <div class="exe-rubrics-wrapper" data-rubric-interface="${safeScopeId}">
@@ -751,9 +805,7 @@ var $rubric = {
                         <button type="button" class="exe-rubrics-reset btn btn-primary btn-sm">${safeStrings.reset}</button>
                     </p>
                     ${authorshipFooter}
-                    <div class="Games-GetScore mb-2 d-flex align-items-center justify-content-center w-100 mt-3">
-                        <span class="Games-RepeatActivity"></span>
-                    </div>
+                    ${scormArea}
                 </div>
             </div>
         `;
@@ -1445,8 +1497,19 @@ var $rubric = {
             mainElement: $node.length === 1 ? $node : $scope,
             isScorm: data.isScorm || 0,
             textButtonScorm: data.textButtonScorm || '',
-            repeatActivity: data.repeatActivity !== false,
-            weighted: data.weighted || 100,
+            repeatActivity: true,
+            weighted: $rubric.normalizeWeight(data.weighted),
+            evaluation: !!data.evaluation,
+            evaluationID: data.evaluationID || '',
+            // The author's choice, on the same 0-10 scale as every other
+            // activity, so a page mixing rubrics with other iDevices judges
+            // them all alike.
+            passScoreMode: data.passScoreMode,
+            passScoreCustom: data.passScoreCustom,
+            // The report needs to know which iDevice type it is listing, and
+            // where to put the verdict icon.
+            idevice: 'rubric',
+            idevicePath: $rubric.idevicePath,
             scorerp: 0,
             gameStarted: false,
             gameOver: false,
@@ -1465,10 +1528,77 @@ var $rubric = {
                 msgSaveAuto: strings.msgSaveAuto || 'Your score will be automatically saved after each change.',
                 msgSeveralScore: strings.msgSeveralScore || 'You can save the score as many times as you want',
                 msgYouLastScore: strings.msgYouLastScore || 'The last score saved is',
+                // Progress report: the type it is listed under, and the three
+                // verdicts showEvaluationIcon can display.
+                msgTypeGame: strings.msgTypeGame || 'Rubric',
+                msgUncompletedActivity: strings.msgUncompletedActivity || 'Incomplete activity',
+                msgSuccessfulActivity: strings.msgSuccessfulActivity || 'Activity: Passed. Score: %s',
+                msgUnsuccessfulActivity: strings.msgUnsuccessfulActivity || 'Activity: Not passed. Score: %s',
                 msgActityComply: strings.msgActityComply || 'You have already done this activity.',
                 msgPlaySeveralTimes: strings.msgPlaySeveralTimes || 'You can do this activity as many times as you want',
+                // No literal: without the author's text the shared runtime
+                // uses the page's own, in the content language.
+                msgPassScore: strings.msgPassScore,
             },
         };
+    },
+
+    /**
+     * Tell the learner the minimum score, right above the table.
+     *
+     * The rubric has no main container of its own above its activity, so the
+     * notice goes before the table's slot: below the instructions and the
+     * learner's details, above the criteria. `scormGame` exists only when SCORM
+     * or the progress report is on, which is when anything judges the mark.
+     *
+     * @param {Object} data The activity options.
+     * @returns {jQuery|null} The notice, or null when none is shown.
+     */
+    showPassScoreNotice: function (data) {
+        if (!data || !data.scormGame) return null;
+        var $slot = $(data.table).closest('.exe-rubrics-table-slot');
+        if ($slot.length !== 1) return null;
+        return $exeDevices.iDevice.gamification.report.showPassScoreNotice(data.scormGame, $slot);
+    },
+
+    /**
+     * Record the rubric in the learner's progress report.
+     *
+     * The rubric used to be the one scoring iDevice that never registered, so a
+     * course mixing rubrics with other activities produced a report the rubrics
+     * were simply missing from -- and its pass mark had nowhere to show a
+     * verdict. The report decides Passed / Not passed from the mark and the
+     * threshold the options carry, which is why this runs after the threshold
+     * has been put on `game`.
+     *
+     * @param {Object} game The SCORM options, already carrying scorerp and the
+     * pass mark.
+     */
+    saveEvaluation: function (game) {
+        if (!game || !game.evaluation || !game.evaluationID) return;
+        $exeDevices.iDevice.gamification.report.saveEvaluation(game);
+    },
+
+    /**
+     * Record the current marks in the progress report, outside the SCORM path.
+     *
+     * Used when the activity does not report automatically, so the learner's
+     * report still reflects what they have done.
+     *
+     * @param {Object} data The activity options.
+     * @param {jQuery} $table The rendered rubric.
+     */
+    updateProgressReport: function (data, $table) {
+        if (!data || !data.evaluation || !data.evaluationID) return;
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return;
+        }
+
+        var game = data.scormGame || this.buildScormGame(data);
+        data.scormGame = game;
+        game.scorerp = this.calculateScormScore($table);
+
+        this.saveEvaluation(game);
     },
 
     calculateScormScore: function (table) {
@@ -1515,21 +1645,114 @@ var $rubric = {
         $exeDevices.iDevice.gamification.scorm.registerActivity(scormGame);
 
         this.restoreVisibleScoreFromLms(data);
-
-        if (data.isScorm === 2) {
-            this.addScormSaveButton(data);
-        }
     },
 
-    addScormSaveButton: function (data) {
-        var $table = $(data.table);
-        var $actions = this.getDataScope($table).find('.exe-rubrics-actions').first();
-        if ($actions.length !== 1) return;
+    /**
+     * Show the verdict this learner already earned, if any.
+     *
+     * Deliberately not part of initScorm: that one returns early when the
+     * author chose not to save the score, and the progress report does not
+     * depend on SCORM at all -- it is kept in the learner's own browser. Tying
+     * the two together is what would make "do not save the score" silently
+     * switch the report off as well.
+     *
+     * Deferred like every other iDevice does it: the icon is placed relative to
+     * markup the rest of the initialisation is still assembling.
+     *
+     * @param {Object} data The activity options.
+     */
+    initProgressReport: function (data) {
+        if (!data || !data.evaluation || !data.evaluationID) return;
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return;
+        }
 
-        var buttonText = data.textButtonScorm || data.strings.msgScore || 'Save score';
-        var $btn = $('<button type="button" class="exe-rubrics-scorm-save Games-SendScore btn btn-primary btn-sm"></button>');
-        $btn.text(buttonText);
-        $actions.prepend($btn).prepend(' ');
+        var game = data.scormGame || this.buildScormGame(data);
+        data.scormGame = game;
+
+        setTimeout(function () {
+            $exeDevices.iDevice.gamification.report.updateEvaluationIcon(game);
+        }, 500);
+    },
+
+    /**
+     * The shared save-button container for this activity.
+     *
+     * addButtonScoreNew emits the button for manual mode alone and the message
+     * span in both tracked modes, so this iDevice's control is the same one,
+     * in the same place, as everywhere else. Falls back to the bare span when
+     * the gamification bridge is absent, which is how the rest of this file
+     * treats it.
+     *
+     * @param {object} data the activity's options
+     * @param {object} strings the activity's captions
+     * @returns {string} the container's HTML
+     */
+    getScormAreaHtml: function (data, strings) {
+        var bare =
+            '<div class="Games-GetScore mb-2 d-flex align-items-center justify-content-center w-100 mt-3">' +
+            '<span class="Games-RepeatActivity"></span></div>';
+
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return bare;
+        }
+
+        var caption = data.textButtonScorm || (strings && strings.msgScore) || 'Save score';
+        return (
+            $exeDevices.iDevice.gamification.scorm.addButtonScoreNew({
+                isScorm: data.isScorm,
+                textButtonScorm: this.escapeAttribute(caption),
+            }) || bare
+        );
+    },
+
+    /**
+     * Has the learner scored every criterion?
+     *
+     * A criterion is a `tbody` row carrying cells; it is scored once any one
+     * of them is ticked, since ticking one unticks the rest of that row. Rows
+     * without cells — a spacer, a heading — are not criteria and do not hold
+     * the rubric open.
+     *
+     * @param {HTMLElement|jQuery} table the rubric table
+     * @returns {boolean} true when every criterion has a ticked cell
+     */
+    isRubricComplete: function (table) {
+        var criteria = 0;
+        var scored = 0;
+
+        $(table)
+            .find('tbody tr')
+            .each(function () {
+                var $cells = $(this).find('input[type="checkbox"]');
+                if ($cells.length === 0) return;
+                criteria += 1;
+                if ($cells.filter(':checked').length > 0) scored += 1;
+            });
+
+        return criteria > 0 && scored === criteria;
+    },
+
+    /**
+     * Tell the learner why their score was not saved.
+     *
+     * Uses the shared score node the SCORM markup renders next to the button,
+     * which is where every other message about the score appears; an alert is
+     * the fallback for markup that does not carry it.
+     *
+     * @param {object} game the registered SCORM game object
+     * @param {string} message what to say
+     */
+    showScormMessage: function (game, message) {
+        if (!message) return;
+
+        var $node = game && game.mainElement ? $(game.mainElement).find('.Games-RepeatActivity') : $();
+        if ($node.length > 0) {
+            $node.text(message).show();
+            return;
+        }
+
+        if (typeof alert === 'function') alert(message);
     },
 
     sendRubricScore: function (auto, data) {
@@ -1538,12 +1761,28 @@ var $rubric = {
         var $table = $(data.table);
         var score = this.calculateScormScore($table);
         var game = data.scormGame;
+        var complete = this.isRubricComplete($table);
+
+        // No refusal. This used to turn a manual save away while the rubric was
+        // unfinished, because sendScoreNew counted any hand-sent score as
+        // completion and there was no other way to stop an unfinished rubric
+        // being closed. It no longer does: completion is decided from gameOver
+        // alone, which the line below sets to what the rubric actually is. So
+        // the button does here what it does everywhere else — it publishes the
+        // marks so far and leaves the attempt open.
         game.scorerp = score;
         game.gameStarted = true;
-        game.gameOver = false;
+        // The rubric is finished exactly while every criterion is scored, and
+        // it stops being finished the moment one is cleared. This used to be
+        // hardcoded false, so a fully filled rubric never took its page out of
+        // `incomplete`. Both directions matter: unticking a cell reopens the
+        // attempt, which the completion policy allows because the verdict it is
+        // taking back is one it wrote itself.
+        game.gameOver = complete;
 
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
+            this.saveEvaluation(game);
             return;
         }
     },
@@ -1553,7 +1792,10 @@ var $rubric = {
         var game = data.scormGame;
         game.scorerp = 0;
         game.gameStarted = true;
-        game.gameOver = true;
+        // Clearing the rubric leaves every criterion unscored, so the attempt
+        // is open again — not finished. Reporting it as finished told the LMS
+        // the learner had completed the rubric and scored nothing.
+        game.gameOver = false;
 
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, game);

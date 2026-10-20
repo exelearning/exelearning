@@ -1,21 +1,21 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Fredoka";
-    src: url(fonts/Fredoka-Regular.woff) format("woff");
+    src: url(fonts/Fredoka-Regular.woff2) format("woff2");
     font-weight: 400;
     font-style: normal;
 }
 
 @font-face {
     font-family: "Fredoka";
-    src: url(fonts/Fredoka-SemiBold.woff) format("woff");
+    src: url(fonts/Fredoka-SemiBold.woff2) format("woff2");
     font-weight: 600;
     font-style: normal;
 }
 
 @font-face {
     font-family: "Fredoka";
-    src: url(fonts/Fredoka-Bold.woff) format("woff");
+    src: url(fonts/Fredoka-Bold.woff2) format("woff2");
     font-weight: 700;
     font-style: normal;
 }
@@ -384,6 +384,15 @@ body#tinymce {
     font-weight: 400;
 }
 
+/* General icons (Material Symbols) */
+.exe-content {
+    --exe-icon-color: #eda900;
+}
+
+.exe-content .box-head .box-icon {
+    color: var(--exe-icon-color);
+}
+
 /* Teacher mode visual indicator */
 .exe-content article.box.teacher-only {
     border: 3px solid #FC0;
@@ -459,7 +468,6 @@ body.exe-export.exe-epub .exe-content {
 
 /* siteNav */
 #siteNav {
-    float: left;
     padding: 100px 16px 48px 16px;
     background-color: #2c2977;
     height: calc(100vh - 100px);
@@ -799,6 +807,26 @@ button#siteNavToggler {
     height: auto;
 }
 
+/* General icons (Material Symbols) */
+.exe-export .box-icon .exe-material-icon {
+    display: block;
+    float: left;
+    margin-right: 10px;
+    width: 40px;
+    height: 40px;
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-material-icon-url);
+    mask-image: var(--exe-material-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons */
+    transform: scale(1.2);
+}
+
 .exe-export .box-title {
     padding-top: 5px;
 }
@@ -935,8 +963,8 @@ body.exe-teacher-mode-toggler.exe-web-site .page-counter {
 }
 
 /* Search bar */
-body.siteNav-off.exe-search-on:has(#exe-client-search) button#searchBarTogger,
-body.exe-search-on:has(#exe-client-search) button#searchBarTogger {
+body.siteNav-off.exe-search-on:has(#exe-client-search) button#searchBarToggler,
+body.exe-search-on:has(#exe-client-search) button#searchBarToggler {
     display: inline-block;
 }
 #exe-client-search-form p {
@@ -950,7 +978,7 @@ body.exe-search-on:has(#exe-client-search) button#searchBarTogger {
     gap: 6px;
 }
 
-button#searchBarTogger {
+button#searchBarToggler {
     right: auto;
     left: 260px;
     top: 136px;
@@ -959,7 +987,7 @@ button#searchBarTogger {
     height: 48px;
     display: none;
 }
-.siteNav-off button#searchBarTogger {
+.siteNav-off button#searchBarToggler {
     top: 220px;
     left: 0px;
     padding-left: 50px;
@@ -1151,7 +1179,6 @@ button#searchBarTogger {
         padding: 0 20px;
     }
     #siteNav {
-        float: none;
         border-right: 0;
         width: 100%;
         background-color: #282573;
@@ -1243,8 +1270,8 @@ button#searchBarTogger {
         right: 92px;
         height: 60px;
     }
-    .siteNav-off button#searchBarTogger,
-    body button#searchBarTogger {
+    .siteNav-off button#searchBarToggler,
+    body button#searchBarToggler {
         left: auto;
         right: 16px;
         top: 120px;

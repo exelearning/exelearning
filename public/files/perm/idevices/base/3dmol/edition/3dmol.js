@@ -64,14 +64,24 @@ var $exeDevice = {
     },
 
     enableForm: async function () {
-        await $exeDevice.initQuestions();
-        $exeDevice.loadPreviousValues();
-        $exeDevice.addEvents();
+        // The default model can still be loading when the editor closes, and
+        // teardown releases `$exeDevice`: work on this instance, and stop if
+        // the edition is gone once the load settles.
+        const lifecycle = this.$lifecycle;
+        try {
+            await this.initQuestions();
+        } catch (error) {
+            if (lifecycle.isAbortError(error)) return;
+            throw error;
+        }
+        if (!lifecycle.isActive()) return;
+        this.loadPreviousValues();
+        this.addEvents();
         // Ensure correct layout for current mode
         var currentMode = $('input[name="slcactivitymode"]:checked').val() || 'test';
-        $exeDevice.toggleActivityMode(currentMode);
+        this.toggleActivityMode(currentMode);
         // Show first question and render model preview
-        $exeDevice.showQuestion($exeDevice.active);
+        this.showQuestion(this.active);
     },
 
     toggleActivityMode: function (mode) {
@@ -131,14 +141,11 @@ var $exeDevice = {
             msgMinimize: c_('Minimize'),
             msgMaximize: c_('Maximize'),
             msgTime: c_('Time per question'),
-            msgLive: c_('Life'),
             msgFullScreen: c_('Full Screen'),
             msgNumQuestions: c_('Number of questions'),
             msgNoImage: c_('No 3D model'),
             msgResetCamera: c_('Reset camera view'),
             msgCool: c_('Cool!'),
-            msgLoseLive: c_('You lost one life'),
-            msgLostLives: c_('You lost all your lives!'),
             msgAllQuestions: c_('You answered all the questions.'),
             msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
             msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
@@ -182,6 +189,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('3D Model Quiz'),
             msgComposition: c_('Chemical composition'),
         };
@@ -472,28 +480,37 @@ var $exeDevice = {
             return;
         }
 
-        $exeDevice.modelLibraryCallbacks.push(callback);
-        if ($exeDevice.modelLibraryLoading) return;
+        const self = this;
+        const lifecycle = this.$lifecycle;
 
-        $exeDevice.modelLibraryLoading = true;
+        self.modelLibraryCallbacks.push(callback);
+        if (self.modelLibraryLoading) return;
+
+        self.modelLibraryLoading = true;
         const script = document.createElement('script');
-        script.src = $exeDevice.get3DmolScriptPath();
-        script.onload = function () {
-            $exeDevice.modelLibraryLoading = false;
-            const callbacks = $exeDevice.modelLibraryCallbacks.slice();
-            $exeDevice.modelLibraryCallbacks = [];
+        script.src = self.get3DmolScriptPath();
+        // The script lives in <head>, so it outlives the edition form. Its
+        // callbacks are bound to this edition and the tag is dropped on close,
+        // so a load that finishes late cannot drive the next iDevice.
+        const notify = function (ok) {
+            self.modelLibraryLoading = false;
+            const callbacks = self.modelLibraryCallbacks.slice();
+            self.modelLibraryCallbacks = [];
             callbacks.forEach(function (cb) {
-                cb(true);
+                cb(ok);
             });
         };
-        script.onerror = function () {
-            $exeDevice.modelLibraryLoading = false;
-            const callbacks = $exeDevice.modelLibraryCallbacks.slice();
-            $exeDevice.modelLibraryCallbacks = [];
-            callbacks.forEach(function (cb) {
-                cb(false);
-            });
-        };
+        script.onload = lifecycle.bind(function () {
+            notify(true);
+        });
+        script.onerror = lifecycle.bind(function () {
+            notify(false);
+        });
+        lifecycle.own(function () {
+            script.onload = null;
+            script.onerror = null;
+            script.remove();
+        });
         document.head.appendChild(script);
     },
 
@@ -541,30 +558,17 @@ var $exeDevice = {
         );
     },
 
+    // The read is owned by the edition: closing the editor aborts it and
+    // rejects the promise, so a caller awaiting a model file is never left
+    // hanging on a form that no longer exists.
     readFileAsText: function (file) {
-        return new Promise(function (resolve, reject) {
-            const reader = new FileReader();
-            reader.onload = function (ev) {
-                resolve((ev.target.result || '').toString());
-            };
-            reader.onerror = function () {
-                reject(new Error('Could not read model file as text'));
-            };
-            reader.readAsText(file);
-        });
+        return this.$lifecycle
+            .readFile(file, 'readAsText')
+            .then((result) => (result || '').toString());
     },
 
     readFileAsArrayBuffer: function (file) {
-        return new Promise(function (resolve, reject) {
-            const reader = new FileReader();
-            reader.onload = function (ev) {
-                resolve(ev.target.result);
-            };
-            reader.onerror = function () {
-                reject(new Error('Could not read model file as binary'));
-            };
-            reader.readAsArrayBuffer(file);
-        });
+        return this.$lifecycle.readFile(file, 'readAsArrayBuffer');
     },
 
     decodeBytesAsText: function (bytes) {
@@ -853,7 +857,11 @@ var $exeDevice = {
             throw new Error('Could not determine model source');
         }
 
-        const response = await fetch(sourceUrl);
+        // Aborted with the edition, so a model download cannot keep running
+        // against an editor that no longer exists.
+        const response = await fetch(sourceUrl, {
+            signal: this.$lifecycle.signal,
+        });
         if (!response.ok) {
             throw new Error(`Could not load model file (${response.status})`);
         }
@@ -1080,6 +1088,7 @@ var $exeDevice = {
      * p.modelData still present in older projects.
      */
     ensureModelDataAndRender: function (p) {
+        const lifecycle = this.$lifecycle;
         const inline = $('#dmoleModelData').val() || '';
         if (inline.trim()) {
             // Legacy inline data (or freshly loaded by the change handler).
@@ -1093,25 +1102,52 @@ var $exeDevice = {
             $exeDevice.renderModelPreview();
             return;
         }
+        // The continuations write into the edition form, so they are bound to
+        // this edition and no-op once it is closed.
         $exeDevice
             .loadModelFromPath(modelPath, $exeDevice.getModelBlobUrl())
-            .then((modelFile) => {
-                $('#dmoleModelData').val(modelFile.modelData || '');
-                if (modelFile.modelFormat) {
-                    $('#dmoleModelFormat').val(modelFile.modelFormat);
-                }
-                if (!$('#dmoleModelFileName').text().trim() && modelFile.modelName) {
-                    $('#dmoleModelFileName').text(modelFile.modelName);
-                }
-                $exeDevice.renderModelPreview();
-            })
-            .catch((error) => {
-                console.error(error);
-                $exeDevice.renderModelPreview();
-            });
+            .then(
+                lifecycle.bind(function (modelFile) {
+                    $('#dmoleModelData').val(modelFile.modelData || '');
+                    if (modelFile.modelFormat) {
+                        $('#dmoleModelFormat').val(modelFile.modelFormat);
+                    }
+                    if (!$('#dmoleModelFileName').text().trim() && modelFile.modelName) {
+                        $('#dmoleModelFileName').text(modelFile.modelName);
+                    }
+                    this.renderModelPreview();
+                }),
+            )
+            .catch(
+                lifecycle.bind(function (error) {
+                    console.error(error);
+                    this.renderModelPreview();
+                }),
+            );
+    },
+
+    /**
+     * Release the WebGL viewer created for the editor preview. The sequence
+     * mirrors `$eXe3Dmol.destroyViewer()` in the export runtime, which is the
+     * teardown this project already uses for a 3Dmol `GLViewer`.
+     *
+     * @param {Object} viewer
+     */
+    ownModelViewer: function (viewer) {
+        if (!viewer) return;
+        const self = this;
+        this.$lifecycle.own(function () {
+            if (viewer.removeAllSurfaces) viewer.removeAllSurfaces();
+            if (viewer.removeAllModels) viewer.removeAllModels();
+            if (viewer.removeAllShapes) viewer.removeAllShapes();
+            if (viewer.removeAllLabels) viewer.removeAllLabels();
+            if (viewer.clear) viewer.clear();
+            if (self.modelViewer === viewer) self.modelViewer = null;
+        });
     },
 
     renderModelPreview: function () {
+        const self = this;
         // Keep the model data raw: MDL molfiles (SDF/MOL) are line-position
         // sensitive (line 1 is the title, which may be empty), so trimming the
         // leading blank line shifts the counts line and breaks parsing. Trim
@@ -1161,6 +1197,7 @@ var $exeDevice = {
                     $exeDevice.modelViewer = $3Dmol.createViewer(preview, {
                         backgroundColor: bgColor,
                     });
+                    self.ownModelViewer($exeDevice.modelViewer);
                 } else if ($exeDevice.modelViewer.setBackgroundColor) {
                     $exeDevice.modelViewer.setBackgroundColor(bgColor);
                 }
@@ -1347,25 +1384,6 @@ var $exeDevice = {
                                 </select>
                                 <button id="dmoleGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item" data-target="dmoleEvaluation">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="dmoleEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="dmoleEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center flex-nowrap gap-2 ms-2 DMOLE-EEvaluationFields">
-                                    <label for="dmoleEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" class="form-control" id="dmoleEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                                    <a href="#dmoleEvaluationHelp" id="dmoleEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </div>
-                            </div>
-                            <p id="dmoleEvaluationHelp" class="exe-block-info DMOLE-TypeGameHelp">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1555,7 +1573,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
 
             </div>`;
@@ -1564,19 +1582,23 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.tabs.init('dMoleIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
 
-        $exeDevice.enableForm();
+        // Nothing awaits createForm(), so a failure must be reported here
+        // rather than surface as an unhandled rejection.
+        this.enableForm().catch((error) => {
+            console.error('[3dmol] Could not initialise the edition form:', error);
+        });
     },
 
     initQuestions: async function () {
 
-        if ($exeDevice.selectsGame.length == 0) {
-            const defaultModel = await $exeDevice.ensureDefaultModelLoaded();
-            const question = $exeDevice.getCuestionDefault(defaultModel);
-            $exeDevice.selectsGame.push(question);
+        if (this.selectsGame.length == 0) {
+            const defaultModel = await this.ensureDefaultModelLoaded();
+            const question = this.getCuestionDefault(defaultModel);
+            this.selectsGame.push(question);
             this.showOptions(4);
             this.showSolution('');
         }
-        $exeDevice.showTypeQuestion(0);
+        this.showTypeQuestion(0);
         this.active = 0;
     },
 
@@ -1588,54 +1610,55 @@ var $exeDevice = {
 
     ensureDefaultModelLoaded: async function () {
         if (
-            $exeDevice.defaultModelDataCache &&
-            $exeDevice.defaultModelDataCache.modelData &&
-            $exeDevice.defaultModelDataCache.modelFormat
+            this.defaultModelDataCache &&
+            this.defaultModelDataCache.modelData &&
+            this.defaultModelDataCache.modelFormat
         ) {
-            return $exeDevice.defaultModelDataCache;
+            return this.defaultModelDataCache;
         }
 
-        if ($exeDevice.defaultModelDataPromise) {
-            return $exeDevice.defaultModelDataPromise;
+        if (!this.defaultModelDataPromise) {
+            this.defaultModelDataPromise = this.loadDefaultModel();
         }
 
-        const sourcePath = $exeDevice.getDefaultModelSourcePath();
-        $exeDevice.defaultModelDataPromise = $exeDevice
-            .loadModelFromPath(sourcePath)
+        // Settles with an AbortError as soon as the edition closes, whatever
+        // the load is doing, so callers never mistake teardown for a result.
+        const pending = this.defaultModelDataPromise;
+        return this.$lifecycle.promise((resolve, reject) => pending.then(resolve, reject));
+    },
+
+    loadDefaultModel: function () {
+        const sourcePath = this.getDefaultModelSourcePath();
+        return this.loadModelFromPath(sourcePath)
             .then(async (modelFile) => {
                 const modelData = modelFile.modelData || '';
-                const modelName =
-                    modelFile.modelName ||
-                    $exeDevice.getModelFileNameFromPath(sourcePath);
+                const modelName = modelFile.modelName || this.getModelFileNameFromPath(sourcePath);
                 // Persist the bundled default model as a project asset so it
                 // follows the same asset:// discipline as uploaded models.
-                const assetUrl = await $exeDevice.createAssetFromModel(
-                    modelData,
-                    modelName
-                );
-                $exeDevice.defaultModelDataCache = {
+                const assetUrl = await this.createAssetFromModel(modelData, modelName);
+                this.defaultModelDataCache = {
                     modelData: modelData,
                     modelFormat: (modelFile.modelFormat || '').toLowerCase(),
                     modelName: modelName,
                     modelPath: assetUrl || sourcePath,
                 };
-                return $exeDevice.defaultModelDataCache;
+                return this.defaultModelDataCache;
             })
             .catch((error) => {
+                // An interrupted load is not a missing model: cache nothing.
+                if (this.$lifecycle.isAbortError(error)) throw error;
                 console.error(error);
-                $exeDevice.defaultModelDataCache = {
+                this.defaultModelDataCache = {
                     modelData: '',
                     modelFormat: '',
                     modelName: '',
                     modelPath: sourcePath,
                 };
-                return $exeDevice.defaultModelDataCache;
+                return this.defaultModelDataCache;
             })
             .finally(() => {
-                $exeDevice.defaultModelDataPromise = null;
+                this.defaultModelDataPromise = null;
             });
-
-        return $exeDevice.defaultModelDataPromise;
     },
 
     getCuestionDefault: function (defaultModel) {
@@ -1747,11 +1770,16 @@ var $exeDevice = {
         $('#dmoleHasFeedBack').prop('checked', game.feedBack);
         $('#dmolePercentajeFB').val(game.percentajeFB);
         $('#dmolePercentajeQuestionsValue').val(game.percentajeQuestions);
-        $('#dmoleEvaluation').prop('checked', game.evaluation);
-        $('#dmoleEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#dmoleGlobalTimes').val(game.globalTime);
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
 
-        $('#dmoleEvaluationID').prop('disabled', !game.evaluation);
 
         for (let i = 0; i < game.selectsGame.length; i++) {
             game.selectsGame[i].typeSelect =
@@ -2011,12 +2039,23 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#dmolePercentajeQuestionsValue').val())
             ),
-            evaluation = $('#dmoleEvaluation').is(':checked'),
-            evaluationID = $('#dmoleEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            evaluation = progressBar.evaluation,
+            evaluationID = progressBar.evaluationID,
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#dmoleGlobalTimes').val(), 10);
 
         if (!itinerary) return false;
+        // getValues() warns and returns false on a report identifier that is
+        // too short. Without this the form carried on and saved the activity
+        // with the report silently switched off, because reading `.evaluation`
+        // off `false` yields undefined rather than throwing. The check this
+        // replaces only ran in test mode, so a bad identifier went through
+        // unchallenged in every other one.
+        if (!progressBar) return false;
 
         if (activityMode === 'test') {
             if (feedBack && textFeedBack.trim().length == 0) {
@@ -2025,10 +2064,6 @@ var $exeDevice = {
             }
             if (showSolution && timeShowSolution.length == 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-                return false;
-            }
-            if (evaluation && evaluationID.length < 5) {
-                eXe.app.alert($exeDevice.msgs.msgIDLenght);
                 return false;
             }
         }
@@ -2089,8 +2124,6 @@ var $exeDevice = {
             // disableCamera is now per-question (stored in selectsGame[i].disableCamera)
             showSolution: showSolution,
             timeShowSolution: timeShowSolution,
-            useLives: false,
-            numberLives: 3,
             itinerary: itinerary,
             selectsGame: selectsGame,
             isScorm: scorm.isScorm,
@@ -2109,6 +2142,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
             globalTime: globalTime,
             modelStyle: $exeDevice.normalizeModelStyle($exeDevice.modelStyle),
@@ -2183,6 +2218,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         const $dmolePaste = $('#dmolePaste'),
             $dmoleTimeShowSolution = $('#dmoleTimeShowSolution'),
             $dmoleShowSolution = $('#dmoleShowSolution'),
@@ -2211,8 +2247,8 @@ var $exeDevice = {
                 )
                     return;
                 if (
-                    $(e.target).is('#dmoleEvaluationID') ||
-                    $(e.target).closest('#dmoleEvaluationHelpLnk').length
+                    $(e.target).is('#eXeProgressReportID') ||
+                    $(e.target).closest('#eXeProgressReportHelpLnk').length
                 )
                     return;
                 const $input = $(this).find('input.toggle-input').first();
@@ -2225,14 +2261,7 @@ var $exeDevice = {
 
         $dmoleForm.on(
             'click',
-            '#dmoleEvaluationID',
-            function (e) {
-                e.stopPropagation();
-            }
-        );
-        $dmoleForm.on(
-            'click',
-            '#dmoleEvaluationHelpLnk, #dmoleEvaluationHelpLnk *',
+            '#eXeProgressReportID',
             function (e) {
                 e.stopPropagation();
             }
@@ -2439,13 +2468,11 @@ var $exeDevice = {
             try {
                 // Read the blob URL from the native dataset (fresh per select);
                 // jQuery .data() would return a stale blob when switching models.
-                const blobUrl = selectedFile.startsWith('asset://')
-                    ? $exeDevice.getModelBlobUrl()
-                    : '';
-                const modelFile = await $exeDevice.loadModelFromPath(
-                    selectedFile,
-                    blobUrl
-                );
+                const blobUrl = selectedFile.startsWith('asset://') ? $exeDevice.getModelBlobUrl() : '';
+                const modelFile = await $exeDevice.loadModelFromPath(selectedFile, blobUrl);
+                // The download is aborted when the editor closes; nothing past
+                // this point may touch a form that no longer belongs to it.
+                if (!lifecycle.isActive()) return;
                 $('#dmoleModelData').val(modelFile.modelData || '');
                 $('#dmoleModelFormat').val(modelFile.modelFormat || '');
                 $('#dmoleModelFileName').text(
@@ -2463,6 +2490,7 @@ var $exeDevice = {
                 }
                 $exeDevice.renderModelPreview();
             } catch (error) {
+                if (!lifecycle.isActive()) return;
                 console.error(error);
                 $('#dmoleModelData').val('');
                 $('#dmoleModelFormat').val('');
@@ -2562,17 +2590,9 @@ var $exeDevice = {
             }
         });
 
-        $('#dmoleEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#dmoleEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#dmoleEvaluationHelpLnk').on('click', function () {
-            $('#dmoleEvaluationHelp').toggle();
-            return false;
-        });
-
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(2);
 
         //eXe 3.0 Dismissible messages

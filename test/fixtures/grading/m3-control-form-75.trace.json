@@ -1,0 +1,1396 @@
+{
+  "traceVersion": 1,
+  "scenario": "m3-control-form-75",
+  "recordedFrom": {
+    "repo": "exelearning",
+    "ref": "64df99f22685b9e0ec1b72e61c223416960f59c8",
+    "exportFormat": "html5"
+  },
+  "fixtureRepairs": {
+    "isTest": true
+  },
+  "servingModel": {
+    "scormInjector": true,
+    "idevicePatch": [
+      "idevices/scrambled-list/scrambled-list.js",
+      "idevices/form/form.js"
+    ]
+  },
+  "package": {
+    "odeId": "GRADING-FIXTURE-M3",
+    "pageCount": 2
+  },
+  "pages": [
+    {
+      "index": 0,
+      "url": "index.html",
+      "ideviceNodes": [
+        "m3-p1-tof",
+        "m3-p1-sl"
+      ]
+    },
+    {
+      "index": 1,
+      "url": "html/m3-page-two.html",
+      "ideviceNodes": [
+        "m3-p2-dnd",
+        "m3-p2-frm"
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "page": 0,
+      "idevice": "m3-p1-tof",
+      "type": "trueorfalse",
+      "clicked": [
+        1,
+        0,
+        1,
+        1
+      ],
+      "hits": 3,
+      "of": 4
+    },
+    {
+      "page": 0,
+      "idevice": "m3-p1-sl",
+      "type": "scrambled-list",
+      "shuffled": [
+        3,
+        0,
+        1,
+        2
+      ],
+      "submitted": [
+        0,
+        1,
+        3,
+        2
+      ],
+      "hits": 2,
+      "of": 4
+    },
+    {
+      "page": 1,
+      "idevice": "m3-p2-dnd",
+      "type": "dragdrop",
+      "drops": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          1
+        ]
+      ],
+      "states": {
+        "0": "0",
+        "1": "1",
+        "2": "1",
+        "3": "1"
+      },
+      "hits": 1,
+      "of": 4
+    },
+    {
+      "page": 1,
+      "idevice": "m3-p2-frm",
+      "type": "form",
+      "clicked": [
+        1,
+        0,
+        1,
+        1
+      ],
+      "hits": 3,
+      "of": 4
+    }
+  ],
+  "scorm": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSInitialize",
+      "args": [
+        ""
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.lesson_status"
+      ],
+      "ret": "",
+      "navPage": 0
+    },
+    {
+      "seq": 2,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "",
+      "navPage": 0
+    },
+    {
+      "seq": 3,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "",
+      "navPage": 0
+    },
+    {
+      "seq": 4,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "",
+      "navPage": 0
+    },
+    {
+      "seq": 5,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "2. \"M3 P1 B\"; Puntuación: 0%; Peso: 100%"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 6,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 7,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 8,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "0",
+      "navPage": 0
+    },
+    {
+      "seq": 9,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "2. \"M3 P1 B\"; Puntuación: 0%; Peso: 100%",
+      "navPage": 0
+    },
+    {
+      "seq": 10,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "2. \"M3 P1 B\"; Puntuación: 0%; Peso: 100%",
+      "navPage": 0
+    },
+    {
+      "seq": 11,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M3 P1 A\"; Puntuación: 0%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 0%; Peso: 100%"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 12,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 13,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 14,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M3 P1 A\"; Puntuación: 0%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 0%; Peso: 100%",
+      "navPage": 0
+    },
+    {
+      "seq": 15,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 0%; Peso: 100%"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 16,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "37.5"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 17,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 18,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 0%; Peso: 100%",
+      "navPage": 0
+    },
+    {
+      "seq": 19,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 20,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "62.5"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 21,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 0
+    },
+    {
+      "seq": 22,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%",
+      "navPage": 1
+    },
+    {
+      "seq": 23,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 24,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "62.5"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 25,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 26,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%",
+      "navPage": 1
+    },
+    {
+      "seq": 27,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 28,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "62.5"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 29,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 30,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSInitialize",
+      "args": [
+        ""
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 31,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.lesson_status"
+      ],
+      "ret": "passed",
+      "navPage": 1
+    },
+    {
+      "seq": 32,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "62.5",
+      "navPage": 1
+    },
+    {
+      "seq": 33,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%",
+      "navPage": 1
+    },
+    {
+      "seq": 34,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "62.5"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 35,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 36,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M3 P1 A\"; Puntuación: 75%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%",
+      "navPage": 1
+    },
+    {
+      "seq": 37,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M3 P2 A\"; Puntuación: 25%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 38,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "37.5"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 39,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 40,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"M3 P2 A\"; Puntuación: 25%; Peso: 100%.\t2. \"M3 P1 B\"; Puntuación: 50%; Peso: 100%",
+      "navPage": 1
+    },
+    {
+      "seq": 41,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"M3 P2 A\"; Puntuación: 25%; Weight: 100%.\t2. \"M3 P2 B\"; Puntuación: 75%; Weight: 100%"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 42,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "50"
+      ],
+      "ret": "true",
+      "navPage": 1
+    },
+    {
+      "seq": 43,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "passed"
+      ],
+      "ret": "true",
+      "navPage": 1
+    }
+  ],
+  "xapi": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "statement": {
+        "id": "785d6da5-9c4d-47ac-bf06-9a8638507ec6",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/initialized",
+          "display": {
+            "en-US": "initialized"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:52.246Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "statement": {
+        "id": "4596bf94-e7de-4def-a040-0549283fec32",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3/idevice/m3-p1-tof",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "M3 P1 A"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:52.501Z",
+        "result": {
+          "score": {
+            "scaled": 0.75,
+            "raw": 7.5,
+            "min": 0,
+            "max": 10
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3",
+            "https://exelearning.net/xapi/extensions/idevice-id": "m3-p1-tof",
+            "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 2,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "statement": {
+        "id": "0d33350f-d872-4b8b-b080-1a17861cf92a",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/completed",
+          "display": {
+            "en-US": "completed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:52.502Z",
+        "result": {
+          "score": {
+            "scaled": 0.75,
+            "raw": 75,
+            "min": 0,
+            "max": 100
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 3,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "statement": {
+        "id": "300dc2e7-4f7b-4349-87c7-2e429e7a9f86",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/passed",
+          "display": {
+            "en-US": "passed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:52.502Z",
+        "result": {
+          "score": {
+            "scaled": 0.75,
+            "raw": 75,
+            "min": 0,
+            "max": 100
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 4,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "statement": {
+        "id": "d1c9e683-161b-4b39-91d5-0f952a7504a2",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3/idevice/m3-p1-sl",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "M3 P1 B"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "scrambled-listIdevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:53.086Z",
+        "result": {
+          "score": {
+            "scaled": 0.5,
+            "raw": 5,
+            "min": 0,
+            "max": 10
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3",
+            "https://exelearning.net/xapi/extensions/idevice-id": "m3-p1-sl",
+            "https://exelearning.net/xapi/extensions/idevice-type": "scrambled-listIdevice"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 5,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "statement": {
+        "id": "8e3d16e8-d935-438b-b851-9105e2a1662a",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/completed",
+          "display": {
+            "en-US": "completed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:53.086Z",
+        "result": {
+          "score": {
+            "scaled": 0.625,
+            "raw": 62.5,
+            "min": 0,
+            "max": 100
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 6,
+      "page": 0,
+      "href": "http://exe-matrix-m3c.local/index.html",
+      "statement": {
+        "id": "25d384a9-57ba-47f5-9d6f-7e9e21fc2d98",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/passed",
+          "display": {
+            "en-US": "passed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:53.086Z",
+        "result": {
+          "score": {
+            "scaled": 0.625,
+            "raw": 62.5,
+            "min": 0,
+            "max": 100
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 0
+    },
+    {
+      "seq": 7,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "statement": {
+        "id": "561656d3-9d0c-411e-96c3-a3fc933473c5",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/terminated",
+          "display": {
+            "en-US": "terminated"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:53.511Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 8,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "statement": {
+        "id": "b1e2d963-6175-4dea-88b7-3570aa28dee1",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/initialized",
+          "display": {
+            "en-US": "initialized"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:53.534Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 9,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "statement": {
+        "id": "cf099fc5-d829-4a9f-84af-2ccbc1e198cf",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3/idevice/m3-p2-dnd",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "M3 P2 A"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "dragdrop-IDevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:54.470Z",
+        "result": {
+          "score": {
+            "scaled": 0.25,
+            "raw": 2.5,
+            "min": 0,
+            "max": 10
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3",
+            "https://exelearning.net/xapi/extensions/idevice-id": "m3-p2-dnd",
+            "https://exelearning.net/xapi/extensions/idevice-type": "dragdrop-IDevice"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 10,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "statement": {
+        "id": "5f6d5fac-5082-4fd7-a60a-111d99da7d5c",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/completed",
+          "display": {
+            "en-US": "completed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:54.470Z",
+        "result": {
+          "score": {
+            "scaled": 0.25,
+            "raw": 25,
+            "min": 0,
+            "max": 100
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 11,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "statement": {
+        "id": "5eff3032-04fb-45e9-b3cb-b9f9d3e58150",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/failed",
+          "display": {
+            "en-US": "failed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:54.470Z",
+        "result": {
+          "score": {
+            "scaled": 0.25,
+            "raw": 25,
+            "min": 0,
+            "max": 100
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 12,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "statement": {
+        "id": "633dc840-1d89-460b-b96a-0597672e2870",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3/idevice/m3-p2-frm",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "M3 P2 B"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "form-IDevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:55.153Z",
+        "result": {
+          "score": {
+            "scaled": 0.75,
+            "raw": 7.5,
+            "min": 0,
+            "max": 10
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3",
+            "https://exelearning.net/xapi/extensions/idevice-id": "m3-p2-frm",
+            "https://exelearning.net/xapi/extensions/idevice-type": "form-IDevice"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 13,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "statement": {
+        "id": "2402e431-38be-436f-b333-0b3db182ab06",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/completed",
+          "display": {
+            "en-US": "completed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:55.153Z",
+        "result": {
+          "score": {
+            "scaled": 0.5,
+            "raw": 50,
+            "min": 0,
+            "max": 100
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 1
+    },
+    {
+      "seq": 14,
+      "page": 1,
+      "href": "http://exe-matrix-m3c.local/html/m3-page-two.html",
+      "statement": {
+        "id": "195630b5-0359-46b0-af34-023091f1d787",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/passed",
+          "display": {
+            "en-US": "passed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/GRADING-FIXTURE-M3",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "M3 two pages, two gradable each"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T19:24:55.153Z",
+        "result": {
+          "score": {
+            "scaled": 0.5,
+            "raw": 50,
+            "min": 0,
+            "max": 100
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "GRADING-FIXTURE-M3"
+          }
+        }
+      },
+      "navPage": 1
+    }
+  ],
+  "finalCmi": {
+    "cmi.suspend_data": "1. \"M3 P2 A\"; Puntuación: 25%; Weight: 100%.\t2. \"M3 P2 B\"; Puntuación: 75%; Weight: 100%",
+    "cmi.core.score.raw": "50",
+    "cmi.core.lesson_status": "passed"
+  },
+  "consoleErrors": [
+    "pageerror: $exe_i18n is not defined",
+    "pageerror: $exe_i18n is not defined"
+  ],
+  "expected": {
+    "perItem": {
+      "m3-p1-tof": 75,
+      "m3-p1-sl": 50,
+      "m3-p2-dnd": 25,
+      "m3-p2-frm": 75
+    },
+    "weights": {
+      "m3-p1-tof": 100,
+      "m3-p1-sl": 100,
+      "m3-p2-dnd": 100,
+      "m3-p2-frm": 100
+    },
+    "overall": 56.25,
+    "note": "By hand: tof 3/4 = 75, scrambled-list 2 of 4 in position = 50, dragdrop 1 of 4 = 25, form 3/4 = 75. All weights 100: (75 + 50 + 25 + 75)/4 = 56.25."
+  }
+}

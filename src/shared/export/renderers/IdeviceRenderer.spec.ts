@@ -966,6 +966,68 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('renderBlock with icon', () => {
+        it('falls back to the inlined help data URI when no icon data URI is provided', () => {
+            // The loose per-icon SVG files were removed; the renderer must NOT
+            // emit a dead libs/material-icons/icons/{name}.svg path. With no
+            // materialIconDataUris map (e.g. total sprite-fetch failure) it must
+            // still emit a self-contained help data: URI.
+            const block: ExportBlock = {
+                id: 'block-material',
+                name: 'Material Block',
+                order: 0,
+                components: [],
+                iconName: 'mi-lightbulb',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('libs/material-icons/icons/');
+            expect(html).not.toContain('theme/icons/');
+            expect(html).toContain('--exe-material-icon-url:url(');
+            expect(html).toContain('data:image/svg+xml;utf8,');
+        });
+
+        it('falls back to the help data URI for an unknown material icon name', () => {
+            // The requested icon ("does-not-exist") is absent from the provided
+            // map, so the renderer must reuse the map's "help" entry rather than
+            // point at a missing file.
+            const block: ExportBlock = {
+                id: 'block-material-unknown',
+                name: 'Material Block Unknown',
+                order: 0,
+                components: [],
+                iconName: 'mi-does-not-exist',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                materialIconDataUris: new Map([['help', 'data:image/svg+xml;utf8,%3Chelp%2F%3E']]),
+            });
+
+            expect(html).not.toContain('libs/material-icons/icons/');
+            expect(html).toContain('data:image/svg+xml;utf8,%3Chelp%2F%3E');
+        });
+
+        it('should inline material icon mask as data URI when provided', () => {
+            const block: ExportBlock = {
+                id: 'block-material-inline',
+                name: 'Material Block Inline',
+                order: 0,
+                components: [],
+                iconName: 'mi-lightbulb',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                materialIconDataUris: new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            });
+
+            expect(html).toContain('data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
+        });
+
         it('should render block header with icon when iconName is provided', () => {
             const block: ExportBlock = {
                 id: 'block-1',
@@ -979,6 +1041,29 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('box-icon');
             expect(html).toContain('theme/icons/lightbulb.png');
+        });
+
+        it('should resolve custom asset icons to exported resources path', () => {
+            const block: ExportBlock = {
+                id: 'block-asset',
+                name: 'Asset Block',
+                order: 0,
+                components: [],
+                icon: {
+                    source: 'asset',
+                    value: 'asset://12345678-1234-1234-1234-123456789012/dogs/black-dog.jpg',
+                } as any,
+                iconName: 'asset://12345678-1234-1234-1234-123456789012/dogs/black-dog.jpg',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                assetExportPathMap: new Map([['12345678-1234-1234-1234-123456789012', 'dogs/black-dog.jpg']]),
+            });
+
+            expect(html).toContain('content/resources/dogs/black-dog.jpg');
+            expect(html).not.toContain('asset://12345678-1234-1234-1234-123456789012');
         });
 
         it('should use themeIconBasePath when provided for icon (preview mode)', () => {
@@ -1188,6 +1273,90 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('theme/icons/activity.svg');
             // Should not have just the baseName without extension
             expect(html).not.toMatch(/theme\/icons\/activity["']/);
+        });
+
+        it('should resolve a stored icon name the style has since renamed', () => {
+            // `objetives` is what neo shipped from v4.0.0 to v4.0.3, so projects saved then
+            // store that name. Without the rename table the export emits
+            // theme/icons/objetives.png, which 404s in preview and in every package.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'objetives',
+            };
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/objectives.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+            expect(html).not.toContain('theme/icons/objetives.png');
+        });
+
+        it('should resolve a renamed icon held in an already-structured descriptor', () => {
+            // A block saved back then carries the old name in `icon`, not only in `iconName`,
+            // so it never passes through deriveBlockIcon.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                icon: { source: 'theme', value: 'think-alt' },
+            } as ExportBlock;
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/think_alt.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/think_alt.svg');
+        });
+
+        it('should fall back on the current spelling when the style ships neither', () => {
+            // The name is mapped before it reaches the theme's file list, so a style that
+            // ships neither spelling falls back to <current name>.png -- not to the stored
+            // one. That is what the other styles would have on disk if they had the icon.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'objetives',
+            };
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+        });
+
+        it('should fall back on the current spelling for a structured descriptor with no theme files', () => {
+            // `PrintPreviewExporter` and `Html5Exporter` swallow a failed `fetchTheme` and
+            // carry on with an empty resolution map, so the `.png` fallback is the only branch
+            // that runs. A descriptor never passes through `deriveBlockIcon`, which makes this
+            // the one path where the old spelling could still reach the output.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                icon: { source: 'theme', value: 'objetives' },
+            } as ExportBlock;
+
+            renderer.setThemeIconFiles(new Map<string, unknown>());
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+            expect(html).not.toContain('theme/icons/objetives.png');
         });
 
         it('should fall back to iconName when theme does not contain the icon', () => {

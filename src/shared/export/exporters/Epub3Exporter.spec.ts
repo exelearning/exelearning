@@ -71,7 +71,23 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        if (_files.includes('material-icons/material-icons.svg')) {
+            files.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -337,6 +353,29 @@ describe('Epub3Exporter', () => {
         });
     });
 
+    describe('Pass score', () => {
+        it('publishes the project value in the page head', async () => {
+            document = new MockDocument({ passScore: 7.5 }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // EPUB output is XHTML, so the tag is self-closed on the way out.
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('name="exe-pass-score"');
+            expect(indexXhtml).toContain('content="7.5"');
+        });
+
+        it('publishes the every-activity rule only when the project asks for it', async () => {
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.get('EPUB/index.xhtml') as string).toContain('name="exe-pass-score-every-activity"');
+        });
+    });
+
     describe('Basic Properties', () => {
         it('should return correct file extension', () => {
             expect(exporter.getFileExtension()).toBe('.epub');
@@ -428,6 +467,37 @@ describe('Epub3Exporter', () => {
 
             expect(result.filename).toContain('test-epub-project');
             expect(result.filename).toContain('.epub');
+        });
+
+        it('should inline material icon SVGs in EPUB XHTML output', async () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithBootstrapIcon);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('data:image/svg+xml;utf8,');
+            expect(indexXhtml).not.toContain('libs/material-icons/icons/lightbulb.svg');
         });
     });
 

@@ -101,6 +101,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Drag and drop'),
             msgCheck: c_('Check'),
             msgRestart: c_('Restart'),
@@ -202,7 +203,6 @@ var $exeDevice = {
                                 <input id="dadEAuthory" type="text" class="form-control" />
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -294,7 +294,7 @@ var $exeDevice = {
                     ${$exeDevice.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
@@ -818,6 +818,8 @@ var $exeDevice = {
             time = parseInt($('#dadETime').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -858,6 +860,8 @@ var $exeDevice = {
             time,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
     },
@@ -898,10 +902,13 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const lifecycle = this.$lifecycle;
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', () => {
+        // The element is never inserted in the form, so closing the editor
+        // would otherwise leave it playing and downloading.
+        lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
+        lifecycle.addEventListener($exeDevice.playerAudio, 'canplaythrough', () => {
             $exeDevice?.playerAudio.play();
         });
     },
@@ -944,6 +951,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         $('#dadEPasteC').hide();
         // Inicializar toggles (sin afectar lógica existente)
         const initToggle = function ($input) {
@@ -965,8 +973,11 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on `document`, which outlives the form: the lifecycle
+        // removes it, and only it, when the editor closes. Handlers it owns run
+        // bound to the edition, so the changed toggle comes from the event.
+        lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
 
         $('#dadEAddC').on('click', (e) => {
@@ -1038,9 +1049,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice?.importGame(e.target.result, file.type);
-                };
+                // A read still in flight is aborted on teardown, and a read
+                // that lands first cannot import into a later iDevice.
+                lifecycle.ownFileReader(reader);
+                reader.onload = lifecycle.bind(event => {
+                    $exeDevice?.importGame(event.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {
@@ -1118,6 +1132,7 @@ var $exeDevice = {
                 .toggleClass('d-flex', $(this).val() === '2');
         });
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
@@ -1243,6 +1258,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         if (game.type == 2) {
             $('#dadETimeDiv').removeClass('d-none').addClass('d-flex');

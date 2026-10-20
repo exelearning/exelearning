@@ -52,6 +52,8 @@ export class PageExporter extends Html5Exporter {
 
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
             const includeMathJax = meta.addMathJax === true;
             let latexWasRendered = false;
 
@@ -113,6 +115,7 @@ export class PageExporter extends Html5Exporter {
                 [],
                 includeMathJax,
                 navLabels,
+                materialIconDataUris,
             );
             this.zip.addFile('index.html', html);
 
@@ -126,7 +129,7 @@ export class PageExporter extends Html5Exporter {
             this.zip.addFile('content/css/single-page.css', this.getSinglePageCss());
 
             // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
-            if (meta.exportSource !== false) {
+            if (this.shipsEditableSource(meta, options)) {
                 const contentXml = this.generateContentXml(pages);
                 this.zip.addFile('content.xml', contentXml);
             }
@@ -152,6 +155,10 @@ export class PageExporter extends Html5Exporter {
             } catch {
                 // No base libraries available
             }
+
+            this.addPrefixedFiles(materialIconFiles, 'libs/', (path, content) => {
+                this.zip.addFile(path, content);
+            });
 
             // 5.b Detect and fetch additional required libraries based on content
             // This is crucial for things like MathJax, Tooltips, etc.
@@ -191,6 +198,7 @@ export class PageExporter extends Html5Exporter {
                 patterns.map(p => p.name),
                 includeMathJax,
                 navLabels,
+                materialIconDataUris,
             );
 
             // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
@@ -257,6 +265,7 @@ export class PageExporter extends Html5Exporter {
         detectedLibraries: string[] = [],
         addMathJax = false,
         navLabels?: { previous: string; next: string; page: string; license?: string },
+        materialIconDataUris?: Map<string, string>,
     ): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
@@ -271,14 +280,17 @@ export class PageExporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
-            xapi: { odeId: meta.odeIdentifier || '', packageTitle: meta.title || '', language: meta.language || 'en' },
             detectedLibraries,
             linkToElp: meta.exportSource !== false,
             addMathJax,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
             addExeLink: meta.addExeLink ?? true,
             // Pre-translated nav labels (resolved from XLF at export time)
             navLabels,
+            materialIconDataUris,
         });
     }
 

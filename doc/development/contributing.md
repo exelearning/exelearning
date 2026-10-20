@@ -10,6 +10,14 @@ Thank you for considering contributing to eXeLearning! This page explains how to
 
 > New to the codebase? Start with docs or small issues labeled “good first issue”.
 
+## Generative AI and First-Time Contributors
+
+For a contributor's first pull request to eXeLearning, the implementation must be their own work. We do not accept first-time contributions generated or substantially produced with generative AI tools.
+
+The purpose of a first contribution, especially a `good first issue`, is to help the contributor become familiar with the codebase and to let maintainers evaluate their understanding of the problem and the proposed solution. First-time contributors must therefore not use generative AI to produce the implementation, tests, pull request description, or responses to review feedback on their behalf.
+
+Contributors must understand and be able to explain every change they submit. A first-time pull request that does not comply with this policy will be closed.
+
 ## Prerequisites
 
 - Docker (or Docker Desktop)

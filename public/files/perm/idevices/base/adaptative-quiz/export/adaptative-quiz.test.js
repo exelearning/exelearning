@@ -545,12 +545,43 @@ describe('adaptative-quiz export', () => {
 
             adq.checkAnswer(id);
 
-            expect(sendScoreSpy).toHaveBeenCalledOnce();
+            // Two reports, not one: the answer itself, and then the completion
+            // that endGame triggers. They used to collapse into the first,
+            // because the marker could not tell the two states apart — so the
+            // LMS only ever heard the answer, with the activity unfinished.
+            expect(sendScoreSpy).toHaveBeenCalledTimes(2);
             expect(sendScoreSpy).toHaveBeenCalledWith(true, id);
-            expect(saveEvaluationSpy).toHaveBeenCalledOnce();
+            expect(saveEvaluationSpy).toHaveBeenCalledTimes(2);
             expect(saveEvaluationSpy).toHaveBeenCalledWith(id);
             expect(adq.options[id].hits).toBe(1);
-            expect(adq.options[id].progressSaveMarker).toBe('1:1:0');
+            expect(adq.options[id].gameOver).toBe(true);
+            expect(adq.options[id].progressSaveMarker).toBe('1:1:0:1');
+        });
+
+        // The counters do not move between the last answer and endGame, so the
+        // finished state is the only thing that distinguishes the two reports.
+        it('reports the completion even though the counts did not change', () => {
+            const id = 'progress-completion';
+            adq.options[id] = {
+                id,
+                roundCount: 1,
+                hits: 1,
+                errors: 0,
+                gameOver: false,
+                isScorm: 1,
+            };
+            const sendScoreSpy = vi
+                .spyOn(adq, 'sendScore')
+                .mockImplementation(() => {});
+            vi.spyOn(adq, 'saveEvaluation').mockImplementation(() => {});
+
+            adq.saveProgress(id);
+            const afterAnswer = sendScoreSpy.mock.calls.length;
+            adq.options[id].gameOver = true;
+            adq.saveProgress(id);
+
+            expect(afterAnswer).toBe(1);
+            expect(sendScoreSpy).toHaveBeenCalledTimes(2);
         });
 
         it('does not duplicate progress persistence for the same answered state', () => {
@@ -1202,10 +1233,14 @@ describe('adaptative-quiz export', () => {
                 itinerary: { showCodeAccess: true },
             };
             const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+            // A coded game starts through startGame, so watching beginActivity
+            // alone would let the gate break without failing.
+            const startSpy = vi.spyOn(adq, 'startGame').mockImplementation(() => {});
 
             adq.maybeStartAfterScorm(id);
 
             expect(beginSpy).not.toHaveBeenCalled();
+            expect(startSpy).not.toHaveBeenCalled();
         });
 
         it('does not restart a game that is already running', () => {
@@ -1235,18 +1270,98 @@ describe('adaptative-quiz export', () => {
                 questions: [{ difficulty: 1 }],
                 itinerary: { showCodeAccess: true, codeAccess: 'open' },
             };
-            const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+            // A code already accepted is the learner's explicit start, so both
+            // the code and the deferred path go straight to startGame — the
+            // gating this pins is unchanged.
+            const startSpy = vi.spyOn(adq, 'startGame').mockImplementation(() => {});
 
             adq.enterCodeAccess(id);
             adq.maybeStartAfterScorm(id);
 
             expect(adq.options[id].accessUnlocked).toBe(true);
-            expect(beginSpy).not.toHaveBeenCalled();
+            expect(startSpy).not.toHaveBeenCalled();
 
             adq.options[id].scormReady = true;
             adq.maybeStartAfterScorm(id);
 
-            expect(beginSpy).toHaveBeenCalledWith(id);
+            // `true`: the accepted code is the learner's explicit start, so this
+            // path is one of the few that may publish the opening zero.
+            expect(startSpy).toHaveBeenCalledWith(id, true);
+        });
+    });
+
+    describe('the opening zero is tied to an explicit start', () => {
+        /**
+         * Build a SCORM-enabled quiz with neither a timer nor an access code —
+         * the configuration that reaches startGame unattended — and return the
+         * spy that says whether the opening zero was published.
+         */
+        const buildGame = (id, extra = {}) => {
+            document.body.classList.add('exe-scorm');
+            document.body.innerHTML = `
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizShowClue-${id}"></div>
+                <div id="adaptativeQuizShowClueText-${id}"></div>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+                <div id="adaptativeQuizStartGameDiv-${id}"></div>
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <div id="adaptativeQuizButtonsContainer-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                isScorm: 1,
+                scormReady: true,
+                time: 0,
+                gameStarted: false,
+                questions: [{ difficulty: 1 }],
+                itinerary: {},
+                initialLevel: 1,
+                answeredIndexes: [],
+                ...extra,
+            };
+            vi.spyOn(adq, 'pickNextQuestionIndex').mockReturnValue(0);
+            vi.spyOn(adq, 'renderCurrentQuestion').mockImplementation(() => {});
+            return vi.spyOn(adq, 'saveScormScore').mockImplementation(() => {});
+        };
+
+        afterEach(() => {
+            document.body.className = '';
+            document.body.innerHTML = '';
+        });
+
+        it('publishes nothing when the page starts the game on its own', () => {
+            const id = 'auto-start';
+            const saveSpy = buildGame(id);
+
+            // The reported defect: with no timer and no access code the
+            // deferred path runs startGame with no learner input at all, and
+            // the zero it published wiped the grade of someone who had merely
+            // reopened the page.
+            adq.maybeStartAfterScorm(id);
+
+            expect(adq.options[id].gameStarted).toBe(true);
+            expect(saveSpy).not.toHaveBeenCalled();
+        });
+
+        it('publishes the zero when the learner presses the play button', () => {
+            const id = 'play-button';
+            const saveSpy = buildGame(id);
+
+            adq.startGame(id, true);
+
+            expect(saveSpy).toHaveBeenCalledWith(id);
+        });
+
+        it('publishes the zero when the learner asks for a new game', () => {
+            const id = 'new-game';
+            const saveSpy = buildGame(id);
+
+            adq.beginActivity(id, true);
+
+            expect(saveSpy).toHaveBeenCalledWith(id);
         });
     });
 
@@ -1416,6 +1531,12 @@ describe('adaptative-quiz export', () => {
             adq.options[id].roundCount = 2;
             adq.saveProgress(id);
             expect(parseFloat(store['cmi.core.score.raw'])).toBe(100);
+            // A score is not the end of the game: the page waits for it.
+            expect(store['cmi.core.lesson_status']).toBe('incomplete');
+
+            // endGame() reports again once the game is over.
+            adq.options[id].gameOver = true;
+            adq.saveProgress(id);
             expect(store['cmi.core.lesson_status']).toBe('passed');
 
             // The "below the activity" element shows the latest score (0-10 scale).
@@ -1751,5 +1872,187 @@ describe('adaptative-quiz export', () => {
             expect(q.solutionOrder).toEqual([2, 1, 4, 3]);
             expect(q.solutionWord).toBe('hello');
         });
+    });
+
+    // Nothing published the opening zero — not the play button, not the access
+    // code — so the LMS kept the previous attempt's grade and status until the
+    // learner answered a question.
+    describe('the opening zero', () => {
+        const id = 'opening-zero';
+
+        function setupStart(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizShowClue-${id}"></div>
+                <div id="adaptativeQuizShowClueText-${id}"></div>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+                <div id="adaptativeQuizStartGameDiv-${id}"></div>
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <div id="adaptativeQuizButtonsContainer-${id}"></div>
+                <div id="adaptativeQuizCodeAccessDiv-${id}"></div>
+                <div id="adaptativeQuizCubierta-${id}"></div>
+                <div id="adaptativeQuizMessageCodeAccess-${id}"></div>
+                <input id="adaptativeQuizCodeAccessInput-${id}" value="" />`;
+            adq.options[id] = Object.assign(
+                {
+                    id,
+                    questions: [{ typeSelect: 0, options: [{ text: 'A' }], solutionMulti: [0], difficulty: 1 }],
+                    // A finished attempt, so the reset is visible in the report.
+                    hits: 2,
+                    errors: 1,
+                    score: 40,
+                    scorerp: 4,
+                    numRound: 1,
+                    minQuestionsShown: 0,
+                    roundCount: 3,
+                    answeredIndexes: [],
+                    currentLevel: 1,
+                    initialLevel: 1,
+                    maxLevel: 3,
+                    maxLevelReached: 1,
+                    consecutiveCorrect: 0,
+                    consecutiveWrong: 0,
+                    gameStarted: false,
+                    gameOver: true,
+                    isScorm: 1,
+                    time: 0,
+                    progressSaveMarker: '3:2:1:1',
+                    itinerary: {},
+                    msgs: adq.msgs,
+                },
+                overrides
+            );
+            vi.spyOn(adq, 'pickNextQuestionIndex').mockReturnValue(0);
+            vi.spyOn(adq, 'renderCurrentQuestion').mockImplementation(() => {});
+            vi.spyOn(adq, 'setupTimer').mockImplementation(() => {});
+        }
+
+        function typeCode(typed) {
+            document.getElementById(`adaptativeQuizCodeAccessInput-${id}`).value = typed;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports the cleared state when the game starts', () => {
+            setupStart();
+            let stateWhenReported;
+            vi.spyOn(adq, 'sendScore').mockImplementation(() => {
+                const { hits, errors, gameOver, gameStarted } = adq.options[id];
+                stateWhenReported = { hits, errors, gameOver, gameStarted };
+            });
+
+            adq.startGame(id, true);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                gameOver: false,
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over.
+                gameStarted: true,
+            });
+        });
+
+        it('does not auto-report in manual SCORM mode', () => {
+            setupStart({ isScorm: 2 });
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.startGame(id);
+
+            expect(sendScore).not.toHaveBeenCalled();
+        });
+
+        // With a clock the code used to leave the learner on the start screen,
+        // with nothing reported at all.
+        it('starts a timed quiz straight from the access code', () => {
+            setupStart({ time: 5, itinerary: { showCodeAccess: true, codeAccess: 'abre' } });
+            typeCode('AbrE');
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.enterCodeAccess(id);
+
+            expect(adq.options[id].gameStarted).toBe(true);
+            expect(sendScore).toHaveBeenCalledWith(true, id);
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            setupStart({ time: 5, itinerary: { showCodeAccess: true, codeAccess: 'abre' } });
+            typeCode('nope');
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.enterCodeAccess(id);
+
+            expect(adq.options[id].gameStarted).toBe(false);
+            expect(sendScore).not.toHaveBeenCalled();
+        });
+    });
+});
+
+describe('adaptative-quiz minimum score notice', () => {
+    let adq;
+    const data = (overrides = {}) =>
+        Object.assign(
+            {
+                eXeFormInstructions: '<p>Instructions</p>',
+                questionsGame: [
+                    {
+                        type: 0,
+                        typeSelect: 0,
+                        question: 'Question',
+                        options: [{ text: '1' }, { text: '2' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                    },
+                ],
+                numRound: 1,
+                initialLevel: 1,
+                // The progress report alone, so no SCORM session is involved.
+                isScorm: 0,
+                evaluation: true,
+                evaluationID: 'report-1',
+                passScoreMode: 'custom',
+                passScoreCustom: 7,
+                msgs: { msgPassScore: 'Pass at %s' },
+            },
+            overrides,
+        );
+
+    function render(id, options) {
+        const template = readFileSync(join(__dirname, 'adaptative-quiz.html'), 'utf-8');
+        document.body.innerHTML = adq.renderView(options, false, template, id);
+        adq.renderBehaviour(options, false, id);
+    }
+
+    beforeEach(() => {
+        if (global.eXe && global.eXe.app && !global.eXe.app.isInExe) {
+            global.eXe.app.isInExe = () => false;
+        }
+        global.$exeDevices = realExeDevices;
+        adq = loadExport();
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('shows its own mark between the instructions and the main container', () => {
+        render('aq-notice', data());
+
+        const notice = document.querySelector('.exe-pass-score-notice');
+        expect(notice.textContent).toBe('Pass at 7');
+        expect(notice.nextElementSibling.id).toBe('adaptativeQuizMainContainer-aq-notice');
+        expect(notice.previousElementSibling.className).toBe('adaptative-quiz-instructions');
+    });
+
+    it('shows nothing at the 5 a learner takes for granted', () => {
+        render('aq-five', data({ passScoreCustom: 5 }));
+
+        expect(document.querySelector('.exe-pass-score-notice')).toBeNull();
     });
 });

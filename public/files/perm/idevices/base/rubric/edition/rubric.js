@@ -45,6 +45,13 @@ var $exeDevice = {
             'You can save the score as many times as you want'
         ),
         msgYouLastScore: c_('The last score saved is'),
+        // Progress report: the type it is listed under, and the three verdicts
+        // its icon can show.
+        msgTypeGame: c_('Rubric'),
+        msgUncompletedActivity: c_('Incomplete activity'),
+        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+        msgPassScore: c_('Minimum score needed to pass this activity: %s'),
         msgActityComply: c_('You have already done this activity.'),
         msgPlaySeveralTimes: c_(
             'You can do this activity as many times as you want'
@@ -217,13 +224,15 @@ var $exeDevice = {
                         </div>
                     </fieldset>
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         this.renderRubricTemplateControls();
         this.loadPreviousValues();
@@ -334,7 +343,35 @@ var $exeDevice = {
             data.weighted
         );
 
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: data.passScoreMode,
+            passScoreCustom: data.passScoreCustom,
+        });
+
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: data.evaluation,
+            evaluationID: data.evaluationID,
+        });
+
         this.originalData = data;
+    },
+
+    /**
+     * The SCORM weight, held to the 1-100 range the form offers.
+     *
+     * Anything outside it, or unreadable, is the 100 default. The previous
+     * `value || 100` did not enforce the range: 0 and NaN fell back because
+     * they are falsy, but -1 — which getValues() returns for an emptied field
+     * — and any number above 100 are truthy and were stored as they came.
+     * Mirrors normalizeWeight() in the export runtime.
+     *
+     * @param {number|string} value - Weight read from the SCORM tab.
+     * @returns {number} A weight between 1 and 100.
+     */
+    normalizeWeight: function (value) {
+        var weight = parseFloat(value);
+        if (Number.isNaN(weight) || weight < 1 || weight > 100) return 100;
+        return weight;
     },
 
     getStoredRubricData: function (container) {
@@ -501,24 +538,28 @@ var $exeDevice = {
                     try {
                         timestamp = Date.now();
                     } catch (e) {}
-                    $.ajax({
+                    // The download can answer long after the editor is gone:
+                    // it is aborted with the edition and both callbacks are
+                    // bound to it, so a late answer never fills another
+                    // iDevice's rubric editor.
+                    var lifecycle = $exeDevice.$lifecycle;
+                    var request = $.ajax({
                         url:
                             $exeDevice.idevicePath +
                             'cedec.json?version' +
                             timestamp,
                         dataType: 'json',
-                        success: function (res) {
+                        success: lifecycle.bind(function (res) {
                             $('#ri_RubricsEditor').removeClass('loading');
-                            $exeDevice.cedecRubrics = res;
-                            $exeDevice.completeRubricModels();
-                        },
-                        error: function () {
-                            $exeDevice.alert(
-                                _('Could not retrieve data (Core error)')
-                            );
+                            this.cedecRubrics = res;
+                            this.completeRubricModels();
+                        }),
+                        error: lifecycle.bind(function () {
+                            this.alert(_('Could not retrieve data (Core error)'));
                             $('#ri_RubricsEditor').removeClass('loading');
-                        },
+                        }),
                     });
+                    lifecycle.ownInstance(request, 'abort');
                     return false;
                 })
                 .show();
@@ -608,15 +649,20 @@ var $exeDevice = {
             this.alert(_('Only CSV files are allowed.'));
             return;
         }
+        // A read still in flight is aborted when the editor closes, and the
+        // callbacks are bound to this edition, so a CSV that arrives late is
+        // never imported into another iDevice.
+        var lifecycle = this.$lifecycle;
         var reader = new FileReader();
-        reader.onload = function (ev) {
+        lifecycle.ownFileReader(reader);
+        reader.onload = lifecycle.bind(function (ev) {
             var csv = ev && ev.target ? ev.target.result : '';
             if (typeof csv !== 'string') csv = '';
-            $exeDevice.importCSV(csv);
-        };
-        reader.onerror = function () {
-            $exeDevice.alert(_('Could not read the selected CSV file.'));
-        };
+            this.importCSV(csv);
+        });
+        reader.onerror = lifecycle.bind(function () {
+            this.alert(_('Could not read the selected CSV file.'));
+        });
         reader.readAsText(file, 'utf-8');
     },
 
@@ -1328,9 +1374,14 @@ var $exeDevice = {
             : '';
 
         var dataPayload = this.encodeEscapedHTML(JSON.stringify(data));
+        // The course map reads these attributes without decoding the rubric payload.
+        var evaluationAttributes =
+            ' data-id="' + this.escapeAttribute(data.id || '') +
+            '" data-evaluationid="' + this.escapeAttribute(data.evaluationID || '') +
+            '" data-evaluationb="' + (!!data.evaluation) + '"';
         var dataBlock =
             '<div class="rubric">' +
-                '<div class="exe-rubrics-DataGame js-hidden">' + dataPayload + '</div>' +
+                '<div class="exe-rubrics-DataGame js-hidden"' + evaluationAttributes + '>' + dataPayload + '</div>' +
                 this.buildRubricAuthorshipHTML(data) +
                 this.buildRubricStringsHTML(data.i18n) +
             '</div>';
@@ -1722,7 +1773,15 @@ var $exeDevice = {
         data.isScorm = scorm.isScorm;
         data.textButtonScorm = scorm.textButtonScorm;
         data.repeatActivity = scorm.repeatActivity;
-        data.weighted = scorm.weighted || 100;
+        data.weighted = $exeDevice.normalizeWeight(scorm.weighted);
+        var passScore = $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        data.passScoreMode = passScore.passScoreMode;
+        data.passScoreCustom = passScore.passScoreCustom;
+
+        var progressBar = $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBar) return false;
+        data.evaluation = progressBar.evaluation;
+        data.evaluationID = progressBar.evaluationID;
 
         var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
         var textAfter = textAfterEditor

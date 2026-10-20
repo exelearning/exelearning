@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const EDITION_SRC = 'public/files/perm/idevices/base/adaptative-quiz/edition/adaptative-quiz.js';
 const EDITION_CSS = 'public/files/perm/idevices/base/adaptative-quiz/edition/adaptative-quiz.css';
@@ -610,6 +610,11 @@ describe('adaptative-quiz edition', () => {
                             setValues: () => {},
                             addEvents: () => {},
                         },
+                        passScore: {
+                            getValues: () => ({ passScoreMode: 'global', passScoreCustom: 5 }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
                     },
                 },
             };
@@ -651,6 +656,11 @@ describe('adaptative-quiz edition', () => {
                         },
                         progressBar: {
                             getValues: () => ({ evaluation: false, evaluationID: '' }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
+                        passScore: {
+                            getValues: () => ({ passScoreMode: 'global', passScoreCustom: 5 }),
                             setValues: () => {},
                             addEvents: () => {},
                         },
@@ -701,6 +711,7 @@ describe('adaptative-quiz edition', () => {
                         common: { setLanguageTabValues: () => {} },
                         share: { refreshIAPrompt: () => {} },
                         progressBar: { setValues: () => {} },
+                        passScore: { setValues: () => {} },
                     },
                 },
             };
@@ -755,6 +766,11 @@ describe('adaptative-quiz edition', () => {
                             setValues: () => {},
                             addEvents: () => {},
                         },
+                        passScore: {
+                            getValues: () => ({ passScoreMode: 'global', passScoreCustom: 5 }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
                     },
                 },
             };
@@ -802,6 +818,11 @@ describe('adaptative-quiz edition', () => {
                         },
                         progressBar: {
                             getValues: () => ({ evaluation: false, evaluationID: '' }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
+                        passScore: {
+                            getValues: () => ({ passScoreMode: 'global', passScoreCustom: 5 }),
                             setValues: () => {},
                             addEvents: () => {},
                         },
@@ -861,6 +882,11 @@ describe('adaptative-quiz edition', () => {
                             setValues: () => {},
                             addEvents: () => {},
                         },
+                        passScore: {
+                            getValues: () => ({ passScoreMode: 'global', passScoreCustom: 5 }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
                     },
                 },
             };
@@ -914,6 +940,11 @@ describe('adaptative-quiz edition', () => {
                         },
                         progressBar: {
                             getValues: () => ({ evaluation: false, evaluationID: '' }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
+                        passScore: {
+                            getValues: () => ({ passScoreMode: 'global', passScoreCustom: 5 }),
                             setValues: () => {},
                             addEvents: () => {},
                         },
@@ -1013,6 +1044,11 @@ describe('adaptative-quiz edition', () => {
                             setValues: () => {},
                             addEvents: () => {},
                         },
+                        passScore: {
+                            getValues: () => ({ passScoreMode: 'global', passScoreCustom: 5 }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
                     },
                 },
             };
@@ -1070,6 +1106,7 @@ describe('adaptative-quiz edition', () => {
                         common: { setLanguageTabValues: () => {} },
                         share: { refreshIAPrompt: () => {} },
                         progressBar: { setValues: () => {} },
+                        passScore: { setValues: () => {} },
                     },
                 },
             };
@@ -1935,5 +1972,153 @@ describe('adaptative-quiz edition', () => {
             expect(idevice.levelFilter).toBe(3);
             expect(validateCalls).toBe(0);
         });
+    });
+
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(EDITION_SRC, 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            expect(source).toContain('passScoreMode: dataGame.passScoreMode');
+            expect(source).toContain('passScoreCustom: dataGame.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            expect(source).toContain('passScoreMode: passScore.passScoreMode');
+            expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
+
+    describe('edition lifecycle', () => {
+        let savedGamification;
+
+        beforeEach(() => {
+            savedGamification = global.$exeDevicesEdition.iDevice.gamification;
+            global.$exeDevicesEdition.iDevice.gamification = {
+                ...savedGamification,
+                progressBar: { addEvents: vi.fn() },
+                passScore: { addEvents: vi.fn() },
+                itinerary: { addEvents: vi.fn() },
+                share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
+                helpers: { stopSound: vi.fn(), playSound: vi.fn() },
+            };
+
+            document.body.innerHTML = `
+                <div id="adaptativeQuizIdeviceForm">
+                    <input id="eXeGameImportGame" type="file">
+                </div>
+            `;
+
+            idevice.addEvents();
+        });
+
+        afterEach(() => {
+            // Close the edition the test opened, so nothing it registered
+            // leaks into the next one.
+            idevice.$lifecycle.destroy();
+            document.body.innerHTML = '';
+            global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+        });
+
+        /**
+         * Drive the file input the way a user picking a file does, and hand
+         * back the FileReader the edition created for it.
+         *
+         * @returns {FileReader}
+         */
+        function pickFile() {
+            const readers = [];
+            const RealFileReader = global.FileReader;
+            class TrackedFileReader extends RealFileReader {
+                constructor() {
+                    super();
+                    readers.push(this);
+                }
+            }
+            global.FileReader = TrackedFileReader;
+            try {
+                const input = document.getElementById('eXeGameImportGame');
+                Object.defineProperty(input, 'files', {
+                    configurable: true,
+                    value: [new File(['line'], 'game.txt', { type: 'text/plain' })],
+                });
+                $(input).trigger('change');
+            } finally {
+                global.FileReader = RealFileReader;
+            }
+            return readers[0];
+        }
+
+        it('aborts an import read that is still in flight when the edition closes', () => {
+            const reader = pickFile();
+            expect(reader).toBeDefined();
+            const abort = vi.spyOn(reader, 'abort');
+
+            expect(reader.readyState).toBe(1);
+            idevice.$lifecycle.destroy();
+
+            expect(abort).toHaveBeenCalledTimes(1);
+            abort.mockRestore();
+        });
+
+        it('discards an import that resolves after the edition closed', () => {
+            const reader = pickFile();
+            const importGame = vi.fn();
+            idevice.importGame = importGame;
+
+            idevice.$lifecycle.destroy();
+            reader.onload({ target: { result: 'line' } });
+
+            expect(importGame).not.toHaveBeenCalled();
+        });
+
+        it('imports a read that resolves while the edition is open', () => {
+            const reader = pickFile();
+            const importGame = vi.fn();
+            idevice.importGame = importGame;
+
+            reader.onload({ target: { result: 'line' } });
+
+            expect(importGame).toHaveBeenCalledWith('line', 'text/plain');
+        });
+    });
+});
+
+describe('adaptative-quiz minimum score text', () => {
+    it('offers the notice of the minimum score among the custom texts', () => {
+        global.$exeDevice = undefined;
+        const device = global.loadIdevice(EDITION_SRC);
+        device.refreshTranslations();
+
+        expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
     });
 });

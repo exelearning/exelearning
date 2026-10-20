@@ -7,6 +7,8 @@
 
 import {
     SW_VERSION,
+    SW_APP_VERSION,
+    resolveServiceWorkerVersion,
     MIME_TYPES,
     EXTERNAL_LINK_HANDLER_SCRIPT,
     PREVIEW_REFRESH_SCRIPT,
@@ -38,7 +40,21 @@ describe('Preview Service Worker', () => {
 
     describe('Constants', () => {
         it('should have SW_VERSION defined', () => {
-            expect(SW_VERSION).toBe('1.0.0');
+            expect(SW_VERSION).toBe('1.2.1');
+        });
+
+        it('should report the app version as unversioned when no version query is present', () => {
+            // The test environment loads the script without ?v=, like a build that does
+            // not expose eXeLearning.version.
+            expect(SW_APP_VERSION).toBe('unversioned');
+        });
+
+        it('should derive the app version from the registration URL query', () => {
+            expect(resolveServiceWorkerVersion('?v=4.0.5')).toBe('4.0.5');
+            expect(resolveServiceWorkerVersion('?x=1&v=v4.0.5-em')).toBe('v4.0.5-em');
+            expect(resolveServiceWorkerVersion('')).toBe('unversioned');
+            expect(resolveServiceWorkerVersion('?v=')).toBe('unversioned');
+            expect(resolveServiceWorkerVersion(undefined)).toBe('unversioned');
         });
 
         it('should have MIME_TYPES with common file types', () => {
@@ -138,7 +154,9 @@ describe('Preview Service Worker', () => {
             // Should render to canvas
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain("createElement('canvas')");
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain("getContext('2d')");
-            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('getDocument(src)');
+            // pdf.js 6 rejects a plain string; the parameter object is required.
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('getDocument({ url: src })');
+            expect(PDF_EMBED_HANDLER_SCRIPT).not.toContain('getDocument(src)');
             // Should have toolbar with navigation, zoom, and download
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain('exe-pdf-tb');
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain('class="ep"');
@@ -580,7 +598,8 @@ describe('Preview Service Worker', () => {
         it('should use window.location.href as PDF source', async () => {
             const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
             const text = await response.text();
-            expect(text).toContain('getDocument(window.location.href)');
+            expect(text).toContain('getDocument({ url: window.location.href })');
+            expect(text).not.toContain('getDocument(window.location.href)');
         });
 
         it('should contain canvas-based rendering elements', async () => {

@@ -25,6 +25,9 @@ function loadIdevice(code) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  // The edition scripts register their timers, handlers and disposers through
+  // `this.$lifecycle`, exactly as IdeviceNode provides it in the workarea.
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -188,5 +191,194 @@ describe('mathematicaloperations iDevice', () => {
       expect($exeDevice.i18n.category).toBeDefined();
       expect($exeDevice.i18n.name).toBeDefined();
     });
+  });
+
+  // The editor truncates its numeric fields on keyup. Capping them at one digit
+  // made ordinary values impossible to enter: the second keystroke was dropped,
+  // so an author aiming for 10 silently ended up with 1.
+  describe('numeric field limits', () => {
+    let previousItinerary;
+
+    beforeEach(() => {
+      previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+      // addEvents wires the whole editor. The itinerary component lives outside
+      // this iDevice's source, so it is stubbed rather than exercised here.
+      $exeDevicesEdition.iDevice.gamification.itinerary = {
+        addEvents: () => {},
+        getTab: () => '',
+        init: () => {},
+        setValues: () => {},
+      };
+      document.body.innerHTML = `
+        <script></script>
+        <form id="gameQEIdeviceForm">
+          <input id="eRMQTime" />
+        </form>`;
+      $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+      $exeDevice.$lifecycle.destroy();
+      $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      document.body.innerHTML = '';
+    });
+
+    it('keeps a 2-digit time', () => {
+      $('#eRMQTime').val('45').trigger('keyup');
+
+      expect($('#eRMQTime').val()).toBe('45');
+    });
+
+    it('truncates the time beyond 2 digits and drops non-digits', () => {
+      $('#eRMQTime').val('1a234').trigger('keyup');
+
+      expect($('#eRMQTime').val()).toBe('12');
+    });
+  });
+
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(join(__dirname, 'mathematicaloperations.js'), 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            expect(source).toContain('passScoreMode: game.passScoreMode');
+            expect(source).toContain('passScoreCustom: game.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            expect(source).toContain('passScoreMode: passScore.passScoreMode');
+            expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
+
+  describe('edition lifecycle teardown', () => {
+    let itinerary;
+
+    beforeEach(() => {
+      // The edition is loaded through the shared helper so it gets the same
+      // real lifecycle IdeviceNode hands it in the workarea.
+      global.$exeDevice = undefined;
+      $exeDevice = global.loadIdevice(join(__dirname, 'mathematicaloperations.js'));
+
+      itinerary = { addEvents: vi.fn() };
+      global.$exeDevicesEdition.iDevice.gamification.itinerary = itinerary;
+
+      document.body.innerHTML = `
+        <form id="mathematicaloperationsQEIdeviceForm">
+          <div class="toggle-item" role="switch">
+            <input type="checkbox" class="toggle-input" data-target="#mopToggleTarget" />
+          </div>
+          <div id="mopToggleTarget"></div>
+          <div id="eXeGameExportImport">
+            <input type="file" id="eXeGameImportGame" />
+            <button id="eXeGameExportQuestions"></button>
+          </div>
+        </form>`;
+    });
+
+    afterEach(() => {
+      if (!$exeDevice.$lifecycle.isDestroyed()) $exeDevice.$lifecycle.destroy();
+      delete global.$exeDevicesEdition.iDevice.gamification.itinerary;
+      document.body.innerHTML = '';
+    });
+
+    it('keeps the toggles in sync through the delegated document handler', () => {
+      $exeDevice.addEvents();
+
+      $('.toggle-input').prop('checked', true).trigger('change');
+
+      expect($('.toggle-item').attr('aria-checked')).toBe('true');
+      expect($('#mopToggleTarget').css('display')).toBe('flex');
+    });
+
+    it('stops handling toggle changes on document once the edition is closed', () => {
+      $exeDevice.addEvents();
+
+      $exeDevice.$lifecycle.destroy();
+      $('.toggle-input').prop('checked', true).trigger('change');
+
+      expect($('.toggle-item').attr('aria-checked')).toBe('false');
+    });
+
+    it('leaves unrelated document handlers in place after teardown', () => {
+      const unrelated = vi.fn();
+      $(document).on('change.mopUnrelated', '.toggle-input', unrelated);
+      $exeDevice.addEvents();
+
+      $exeDevice.$lifecycle.destroy();
+      $('.toggle-input').trigger('change');
+
+      expect(unrelated).toHaveBeenCalledTimes(1);
+      $(document).off('change.mopUnrelated');
+    });
+
+    it('imports a game file read by the edition', async () => {
+      const importGame = vi.fn();
+      $exeDevice.importGame = importGame;
+      $exeDevice.addEvents();
+
+      const event = $.Event('change');
+      event.target = { files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })] };
+      $('#eXeGameImportGame').trigger(event);
+
+      await vi.waitFor(() => expect(importGame).toHaveBeenCalledWith('{"a":1}'));
+    });
+
+    it('aborts an in-flight import read and never imports into a closed edition', async () => {
+      const abortSpy = vi.spyOn(window.FileReader.prototype, 'abort');
+      const importGame = vi.fn();
+      $exeDevice.importGame = importGame;
+      $exeDevice.addEvents();
+
+      const event = $.Event('change');
+      event.target = { files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })] };
+      $('#eXeGameImportGame').trigger(event);
+
+      $exeDevice.$lifecycle.destroy();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(abortSpy).toHaveBeenCalledTimes(1);
+      expect(importGame).not.toHaveBeenCalled();
+      abortSpy.mockRestore();
+    });
+  });
+});
+
+describe('mathematicaloperations minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'mathematicaloperations.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });

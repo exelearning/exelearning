@@ -134,6 +134,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgNext: c_('Next'),
             msgTypeGame: c_('TriviExt'),
             msgRestart: c_('Restart'),
@@ -202,7 +203,20 @@ var $exeDevice = {
 
     loadYoutubeApi: function () {
         if (typeof YT == 'undefined') {
-            onYouTubeIframeAPIReady = $exeDevice.youTubeReady;
+            // The YouTube API script calls this global whenever it finishes
+            // loading, which can be long after this edition was closed. Binding
+            // it keeps the callback tied to this instance and inert afterwards,
+            // and teardown puts back whatever was there before — unless a later
+            // edition has already claimed the global, which must not be undone.
+            const lifecycle = this.$lifecycle;
+            const previousReady = window.onYouTubeIframeAPIReady;
+            const onApiReady = lifecycle.bind(this.youTubeReady);
+            window.onYouTubeIframeAPIReady = onApiReady;
+            lifecycle.own(() => {
+                if (window.onYouTubeIframeAPIReady === onApiReady) {
+                    window.onYouTubeIframeAPIReady = previousReady;
+                }
+            });
             let tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
@@ -214,7 +228,7 @@ var $exeDevice = {
     },
     youTubeReady: function () {
         $('#trivialMediaVideo').prop('disabled', false);
-        $exeDevice.player = new YT.Player('trivialEVideo', {
+        this.player = new YT.Player('trivialEVideo', {
             width: '100%',
             height: '100%',
             videoId: '',
@@ -224,15 +238,16 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.onPlayerReady,
-                onError: $exeDevice.onPlayerError,
+                onReady: this.$lifecycle.bind(this.onPlayerReady),
+                onError: this.$lifecycle.bind(this.onPlayerError),
             },
         });
+        this.$lifecycle.ownInstance(this.player, 'destroy');
     },
 
     loadPlayerYoutube: function () {
         $('#trivialMediaVideo').prop('disabled', false);
-        $exeDevice.player = new YT.Player('trivialEVideo', {
+        this.player = new YT.Player('trivialEVideo', {
             width: '100%',
             height: '100%',
             videoId: '',
@@ -242,10 +257,11 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.clickPlay,
-                onError: $exeDevice.onPlayerError,
+                onReady: this.$lifecycle.bind(this.clickPlay),
+                onError: this.$lifecycle.bind(this.onPlayerError),
             },
         });
+        this.$lifecycle.ownInstance(this.player, 'destroy');
     },
 
     clickPlay: function () {
@@ -348,9 +364,9 @@ var $exeDevice = {
                 $exeDevice.localPlayer.currentTime = parseFloat(mstart);
                 $exeDevice.localPlayer.play();
             }
-            clearInterval($exeDevice.timeUpdateInterval);
-            $exeDevice.timeUpdateInterval = setInterval(function () {
-                $exeDevice.updateTimerDisplayLocal();
+            this.$lifecycle.clearInterval(this.timeUpdateInterval);
+            this.timeUpdateInterval = this.$lifecycle.setInterval(function () {
+                this.updateTimerDisplayLocal();
             }, 1000);
             return;
         }
@@ -362,28 +378,28 @@ var $exeDevice = {
                     endSeconds: end,
                 });
             }
-            clearInterval($exeDevice.timeUpdateInterval);
-            $exeDevice.timeUpdateInterval = setInterval(function () {
-                $exeDevice.updateTimerDisplay();
+            this.$lifecycle.clearInterval(this.timeUpdateInterval);
+            this.timeUpdateInterval = this.$lifecycle.setInterval(function () {
+                this.updateTimerDisplay();
             }, 1000);
         }
     },
 
     playVideo: function () {
         if ($exeDevice.player) {
-            clearInterval($exeDevice.timeUpdateInterval);
+            this.$lifecycle.clearInterval(this.timeUpdateInterval);
             if (typeof $exeDevice.player.playVideo === 'function') {
                 $exeDevice.player.playVideo();
             }
-            $exeDevice.timeUpdateInterval = setInterval(function () {
-                $exeDevice.updateTimerDisplay();
+            this.timeUpdateInterval = this.$lifecycle.setInterval(function () {
+                this.updateTimerDisplay();
             }, 1000);
         }
     },
 
     stopVideo: function () {
         if ($exeDevice.player) {
-            clearInterval($exeDevice.timeUpdateInterval);
+            this.$lifecycle.clearInterval(this.timeUpdateInterval);
             if (typeof $exeDevice.player.pauseVideo === 'function') {
                 $exeDevice.player.pauseVideo();
             }
@@ -1057,7 +1073,6 @@ var $exeDevice = {
                                 <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center flex-nowrap gap-2 mb-3 flex-wrap">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -1340,7 +1355,7 @@ var $exeDevice = {
                         ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                     <p class="exe-block-warning exe-block-dismissible" style="position:relative">
                         ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
@@ -1414,6 +1429,7 @@ var $exeDevice = {
         $exeDevice.showSolution('');
         $exeDevice.showTypeQuestion(0);
         this.localPlayer = document.getElementById('trivialEVideoLocal');
+        this.$lifecycle.ownMedia(this.localPlayer);
     },
 
     getCuestionDefault: function () {
@@ -1680,6 +1696,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#trivialEGlobalTimes').val(game.globalTime);
 
@@ -2407,6 +2427,8 @@ var $exeDevice = {
             temas = [],
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#trivialEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
@@ -2530,6 +2552,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             globalTime: globalTime,
             id: id,
         };
@@ -2576,6 +2600,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callbacks below stay
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         $exeDevice.hideFlex($('#trivialEPaste'));
 
         $('#trivialEInitVideo,#trivialEEndVideo,#trivialESilenceVideo').on(
@@ -2705,7 +2732,7 @@ var $exeDevice = {
         $('#trivialETimeSilence').on('keyup', function () {
             let v = this.value;
             v = v.replace(/\D/g, '');
-            v = v.substring(0, 1);
+            v = v.substring(0, 3);
             this.value = v;
         });
 
@@ -2755,9 +2782,10 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result);
+                });
                 reader.readAsText(file);
             });
 
@@ -2781,9 +2809,10 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.gameAdd(e.target.result, file.type);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.gameAdd(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {
@@ -2943,6 +2972,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#trivialGlobalTimeButton').on('click', function (e) {
             e.preventDefault();

@@ -32,6 +32,21 @@
 *   Package: @elysiajs/swagger
     *   Copyright: saltyAom
     *   License: MIT
+*   Package: @material-symbols/svg-400
+    *   Copyright: Google LLC
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-dsfont-font-extension
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-mhchem-font-extension
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-newcm-font
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/src
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
 *   Package: @playwright/test
     *   Copyright: Microsoft Corporation
     *   License: Apache-2.0
@@ -57,14 +72,20 @@
     *   Copyright: Anthony Fu
     *   License: MIT
 *   Package: @vitest/ui
-    *   Copyright: 2021-Present VoidZero Inc. and Vitest contributors
+    *   Copyright: VoidZero Inc. and Vitest contributors
     *   License: MIT
 *   Package: @xmldom/xmldom
-    *   Copyright: - present Christopher J. Brody and other contributors, as listed in: https://github.com/xmldom/xmldom/graphs/contributors
+    *   Copyright: Christopher J. Brody and other contributors
+    *   License: MIT
+*   Package: abcjs
+    *   Copyright: Paul Rosen
     *   License: MIT
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
+*   Package: bootstrap
+    *   Copyright: The Bootstrap Authors
+    *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT
@@ -72,8 +93,11 @@
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
     *   License: (MPL-2.0 OR Apache-2.0)
 *   Package: dotenv
-    *   Copyright: 2015, Scott Motte
+    *   Copyright: Scott Motte
     *   License: BSD-2-Clause
+*   Package: edicuatex
+    *   Copyright: Juan José de Haro
+    *   License: AGPL-3.0-or-later
 *   Package: electron
     *   Copyright: Electron Community
     *   License: MIT
@@ -92,11 +116,20 @@
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
     *   License: MIT
+*   Package: fflate
+    *   Copyright: Arjun Barrett
+    *   License: MIT
 *   Package: fs-extra
     *   Copyright: JP Richardson
     *   License: MIT
+*   Package: fzstd
+    *   Copyright: Arjun Barrett
+    *   License: MIT
 *   Package: happy-dom
     *   Copyright: David Ortner
+    *   License: MIT
+*   Package: html2canvas
+    *   Copyright: Niklas von Hertzen
     *   License: MIT
 *   Package: http-proxy-middleware
     *   Copyright: Steven Chim
@@ -104,11 +137,20 @@
 *   Package: i18n
     *   Copyright: Marcus Spiegel
     *   License: MIT
+*   Package: interactjs
+    *   Copyright: Taye Adeyemi
+    *   License: MIT
 *   Package: ioredis
     *   Copyright: Zihua Li
     *   License: MIT
 *   Package: jose
     *   Copyright: Filip Skokan
+    *   License: MIT
+*   Package: jquery
+    *   Copyright: OpenJS Foundation and other contributors
+    *   License: MIT
+*   Package: jquery-ui
+    *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
 *   Package: jsdom
     *   Copyright: Elijah Insua, Domenic Denicola, Sebastian Mayr
@@ -125,8 +167,8 @@
 *   Package: lib0
     *   Copyright: Kevin Jahns
     *   License: MIT
-*   Package: mathjax-full
-    *   Copyright: owner or entity authorized by
+*   Package: mathjax
+    *   Copyright: MathJax Consortium
     *   License: Apache-2.0
 *   Package: mermaid
     *   Copyright: Knut Sveidqvist
@@ -141,10 +183,16 @@
     *   Copyright: James Long
     *   License: BSD-2-Clause
 *   Package: pdfjs-dist
-    *   Copyright: owner or entity authorized by
+    *   Copyright: Mozilla Foundation
     *   License: Apache-2.0
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
+    *   License: MIT
+*   Package: scorm-again
+    *   Copyright: Jonathan Putney
+    *   License: MIT
+*   Package: showdown
+    *   Copyright: Estevão Santos
     *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
@@ -173,9 +221,6 @@
 
 ## Client-side libraries
 
-*   Files: /public/app/common/edicuatex/\* (except js/DOMPurify/*)
-    *   Copyright: Juan José de Haro
-    *   License: CC-BY-SA-4.0
 *   Files: /public/app/common/edicuatex/js/DOMPurify\*
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
     *   License: Apache License 2.0 / Mozilla Public License Version 2.0
@@ -214,6 +259,9 @@
 *   Files: /public/app/common/mindmaps/\*
     *   Copyright: David Richard
     *   License: AGPL V3
+    *   Note: [mindmaps](https://www.mindmaps.app/) is included in eXeLearning
+        with the developer's consent. For a different use of mindmaps, read
+        its LICENSE file or contact its author.
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
@@ -234,6 +282,10 @@
 *   Files: /public/files/perm/idevices/\*/export/html2canvas.js
     *   Copyright: Niklas von Hertzen
     *   License: MIT
+*   Files: /public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
+    *   Copyright: Andre Rinas
+    *   License: MIT
+    *   Note: eXeLearning-patched fork of SimpleLightbox 2.10.3 (array `captionsData`, title/author/license caption links, SDWEB CSS block). Kept in git, outside the npm vendor pipeline, until the patch is ported to an upstream release.
 *   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
@@ -306,6 +358,11 @@
 *   Files: /public/libs/fflate/\*
     *   Copyright: 101arrowz
     *   License: MIT
+*   Files: /public/libs/fzstd/\*
+    *   Copyright: 101arrowz
+    *   License: MIT
+    *   Note: also vendored (byte-identical) by the LOMLOE/DigCompEdu dataset
+        compression work; the static build uses it to decode zstd payloads.
 *   File: /public/libs/interact/\*
     *   Copyright: Taye Adeyemi
     *   License: MIT
@@ -323,9 +380,6 @@
     *   License: MIT
 *   Files: /public/libs/showdown/* (Showdown v2)
     *   Copyright: ShowdownJS
-    *   License: MIT
-*   Files: /public/libs/simplelightbox/\*
-    *   Copyright: Andre Rinas
     *   License: MIT
 *   Files: /public/libs/tinymce\_5/\*
     *   Copyright: Tiny Technologies Inc.

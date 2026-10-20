@@ -1,3 +1,39 @@
+
+const blockIconRuntime = window.eXeBlockIconRuntime
+  || (typeof require === 'function' ? require('../common/blockIconRuntime.js') : null);
+
+function normalizeBlockIcon(icon, iconName = '') {
+  // A structured icon descriptor wins (it may carry extra fields), but a theme icon name
+  // a style has since renamed still has to be mapped: _syncBlockIcon() and
+  // _applyBlockUpdate() look this value up in getThemeIcons(), and the raw old name misses.
+  if (icon && typeof icon === 'object' && icon.source) {
+    if (icon.source !== 'theme') return icon;
+    // `icon.value || ''` on both sides: a descriptor that omits `value` normalises to '',
+    // and comparing the mapped '' against an absent one would rewrite it for no reason.
+    const stored = icon.value || '';
+    const value = blockIconRuntime.resolveRenamedThemeIcon(stored);
+    if (value === stored) return icon;
+    return { ...icon, value, name: value };
+  }
+  // Otherwise derive from the legacy iconName via the shared derivation
+  // (JS twin of src/shared/block-icon.ts).
+  return blockIconRuntime.deriveBlockIcon(iconName);
+}
+
+function resolveAppAssetUrl(path) {
+  return blockIconRuntime.resolveAppAssetUrl(path, {
+    app: window.eXeLearning?.app,
+    config: window.eXeLearning?.config,
+  });
+}
+
+function renderMaterialMaskIcon(iconName) {
+  return blockIconRuntime.renderMaterialMaskIcon(iconName, {
+    app: window.eXeLearning?.app,
+    config: window.eXeLearning?.config,
+  });
+}
+
 /**
  * YjsProjectBridge
  * Bridges the legacy projectManager with the new Yjs-based system.
@@ -429,6 +465,33 @@ class YjsProjectBridge {
         this.app.resourceFetcher = this.resourceFetcher;
       }
       Logger.log('[YjsProjectBridge] ResourceFetcher initialized with bundle support');
+    }
+
+    // Preload the single Material icon sprite into the shared block-icon runtime
+    // so applied block icons render as self-contained data: URIs. The loose
+    // per-icon SVG files were removed in favour of this one sprite.
+    try {
+      if (
+        blockIconRuntime
+        && typeof blockIconRuntime.loadMaterialSprite === 'function'
+        && !blockIconRuntime.isMaterialSpriteLoaded?.()
+      ) {
+        let spriteText = null;
+        if (this.resourceFetcher?.fetchLibraryFile) {
+          const spriteBlob = await this.resourceFetcher.fetchLibraryFile('material-icons/material-icons.svg');
+          if (spriteBlob) spriteText = await spriteBlob.text();
+        }
+        if (!spriteText) {
+          const spriteResp = await fetch(resolveAppAssetUrl('/libs/material-icons/material-icons.svg'));
+          if (spriteResp.ok) spriteText = await spriteResp.text();
+        }
+        if (spriteText) {
+          const iconCount = blockIconRuntime.loadMaterialSprite(spriteText, { root: document });
+          Logger.log(`[YjsProjectBridge] Material icon sprite loaded (${iconCount} icons)`);
+        }
+      }
+    } catch (e) {
+      console.warn('[YjsProjectBridge] Failed to preload Material icon sprite:', e?.message || e);
     }
 
     // Create AssetWebSocketHandler for peer-to-peer asset synchronization
@@ -1051,7 +1114,7 @@ class YjsProjectBridge {
             path.length >= 3 && path[1] === 'blocks' && typeof path[2] === 'number' && path.length === 3) {
 
           const changedKeys = Array.from(event.changes.keys.keys());
-          const relevantKeys = ['blockName', 'iconName', 'properties'];
+          const relevantKeys = ['blockName', 'iconName', 'icon', 'properties'];
 
           if (changedKeys.some(key => relevantKeys.includes(key))) {
             const pageIndex = path[0];
@@ -1073,6 +1136,7 @@ class YjsProjectBridge {
               blockId: blockMap.get('blockId'),
               blockName: blockMap.get('blockName'),
               iconName: blockMap.get('iconName'),
+              icon: normalizeBlockIcon(blockMap.get('icon'), blockMap.get('iconName')),
             };
 
             // Get properties if present
@@ -1161,25 +1225,60 @@ class YjsProjectBridge {
   schedulePageReloadIfCurrent(pageId) {
     // Get current page ID
     const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+    if (currentPageId !== pageId) return;
 
-    if (currentPageId === pageId) {
-      // Debounce to avoid multiple reloads
-      if (this._pageReloadTimer) {
-        clearTimeout(this._pageReloadTimer);
-      }
-
-      this._pageReloadTimer = setTimeout(async () => {
-        Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
-        const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
-          `.nav-element[nav-id="${pageId}"]`
-        );
-        if (pageElement) {
-          await this.app?.project?.idevices?.loadApiIdevicesInPage(false, pageElement);
-          // Check if the page is now empty and show empty_articles message
-          this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
-        }
-      }, 100); // Small debounce
+    // A full reload tears down every iDevice on the page, including the one this
+    // user is editing, and its unsaved changes with it (#2427). Keep the reload
+    // pending until the edition ends; IdevicesEngine.updateMode() flushes it.
+    if (this.hasLocalIdeviceInEdition()) {
+      this._deferredPageReloadId = pageId;
+      Logger.log('[YjsProjectBridge] Page reload deferred until the local iDevice edition ends');
+      return;
     }
+
+    // Debounce to avoid multiple reloads
+    if (this._pageReloadTimer) {
+      clearTimeout(this._pageReloadTimer);
+    }
+
+    this._pageReloadTimer = setTimeout(async () => {
+      // Check again: the user may have opened an editor during the debounce, and
+      // the reload would then save that half-initialised edition (#2434).
+      if (this.hasLocalIdeviceInEdition()) {
+        this._deferredPageReloadId = pageId;
+        Logger.log('[YjsProjectBridge] Page reload deferred until the local iDevice edition ends');
+        return;
+      }
+      Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
+      const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
+        `.nav-element[nav-id="${pageId}"]`
+      );
+      if (pageElement) {
+        await this.app?.project?.idevices?.loadApiIdevicesInPage(false, pageElement);
+        // Check if the page is now empty and show empty_articles message
+        this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
+      }
+    }, 100); // Small debounce
+  }
+
+  /**
+   * Whether this client has an iDevice open for editing on the current page.
+   * @returns {boolean}
+   */
+  hasLocalIdeviceInEdition() {
+    return Boolean(this.app?.project?.idevices?.isIdeviceInEdition?.());
+  }
+
+  /**
+   * Run the page reload that was deferred while an iDevice was being edited.
+   * Called by IdevicesEngine.updateMode() once no iDevice is in edition; the
+   * reload is skipped if the user has meanwhile moved to another page.
+   */
+  flushDeferredPageReload() {
+    const pageId = this._deferredPageReloadId;
+    if (!pageId) return;
+    this._deferredPageReloadId = null;
+    this.schedulePageReloadIfCurrent(pageId);
   }
 
   /**
@@ -1227,6 +1326,14 @@ class YjsProjectBridge {
         `.nav-element[nav-id="${currentPageId}"]`
       );
       if (!pageElement) return;
+
+      // Same rule as schedulePageReloadIfCurrent (#2427). The deferred reload
+      // renders with the asset already cached, so no patch pass is needed.
+      if (this.hasLocalIdeviceInEdition()) {
+        this._deferredPageReloadId = currentPageId;
+        Logger.log('[YjsProjectBridge] Late asset page reload deferred until the local iDevice edition ends');
+        return;
+      }
 
       Logger.log('[YjsProjectBridge] Reloading current page after late asset arrival');
       await idevicesEngine.loadApiIdevicesInPage(false, pageElement);
@@ -1420,7 +1527,7 @@ class YjsProjectBridge {
         return;
       }
 
-      await idevicesEngine.updateRemoteIdeviceContent(componentData);
+      await idevicesEngine.updateRemoteIdeviceContent(componentData, pageId);
     } catch (e) {
       console.error('[YjsProjectBridge] Error updating remote component:', e);
     }
@@ -1471,9 +1578,18 @@ class YjsProjectBridge {
         this._syncBlockTitle(blockNode.blockNameElementText, blockData.blockName, blockNode);
       }
 
-      // Update icon if changed
-      if (blockData.iconName !== undefined && blockNode.iconName !== blockData.iconName) {
-        blockNode.iconName = blockData.iconName;
+      // Update icon if changed. Both sides go through normalizeBlockIcon() first: the
+      // descriptors are what the block actually renders, and a renamed name arrives raw
+      // (`objetives`) while the node already holds the mapped one (`objectives`). Comparing
+      // the raw `blockData.iconName` against the normalised `blockNode.iconName` reported a
+      // change on every remote update of such a block, re-running makeIconNameElement()
+      // without end until someone re-saved it.
+      const nextIcon = normalizeBlockIcon(blockData.icon, blockData.iconName);
+      const currentIcon = normalizeBlockIcon(blockNode.icon, blockNode.iconName);
+      const iconChanged = currentIcon.source !== nextIcon.source || currentIcon.value !== nextIcon.value;
+      if (iconChanged) {
+        blockNode.icon = nextIcon;
+        blockNode.iconName = nextIcon.source === 'material' ? `mi-${nextIcon.value}` : (nextIcon.value || '');
         blockNode.makeIconNameElement();
       }
 
@@ -1503,6 +1619,17 @@ class YjsProjectBridge {
     metadata.observe((event, transaction) => {
       const isRemote = transaction.origin === 'remote';
       Logger.log('[YjsProjectBridge] Metadata changed, remote:', isRemote);
+
+      // This only refreshes notices, so it is safe during editing and undo/redo:
+      // the activity DOM, answers and scores must not be rebuilt or reset.
+      if (event.keysChanged.has('passScore')) {
+        try {
+          window.$exeDevices?.iDevice?.gamification?.report?.refreshPassScoreNotices?.();
+        } catch (error) {
+          // A notice that fails to refresh must not stop the metadata sync below.
+          console.error('[YjsProjectBridge] Error refreshing pass score notices:', error);
+        }
+      }
 
       // During undo/redo, skip structure updates to prevent form recreation cascade
       // The undo/redo methods handle UI sync directly via forceTitleSync()
@@ -1962,6 +2089,8 @@ class YjsProjectBridge {
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
       'pp_globalFont': 'globalFont',
+      'pp_passScore': 'passScore',
+      'pp_passScoreEveryActivity': 'passScoreEveryActivity',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
@@ -2047,11 +2176,11 @@ class YjsProjectBridge {
             }
 
             // Sync icon - update both DOM and blockNode state
-            const iconName = blockMap.get('iconName');
+            const icon = normalizeBlockIcon(blockMap.get('icon'), blockMap.get('iconName'));
 
             // Update DOM directly using _syncBlockIcon (handles icon.id vs key mismatch)
             if (iconEl) {
-              this._syncBlockIcon(iconEl, iconName, blockId);
+              this._syncBlockIcon(iconEl, icon, blockId);
             }
 
             // Also update blockNode instance properties so internal state matches Yjs
@@ -2065,9 +2194,11 @@ class YjsProjectBridge {
               }
 
               // Update blockNode.iconName to match Yjs
-              if (iconName !== undefined && blockNode.iconName !== iconName) {
-                blockNode.iconName = iconName;
-                Logger.log(`[YjsProjectBridge] Synced blockNode.iconName: ${blockId} -> '${iconName}'`);
+              const normalizedIconName = icon.source === 'material' ? `mi-${icon.value}` : (icon.value || '');
+              if (normalizedIconName !== undefined && blockNode.iconName !== normalizedIconName) {
+                blockNode.icon = icon;
+                blockNode.iconName = normalizedIconName;
+                Logger.log(`[YjsProjectBridge] Synced blockNode.iconName: ${blockId} -> '${normalizedIconName}'`);
               }
 
               // Update blockNode.iconElement reference if needed
@@ -2122,14 +2253,15 @@ class YjsProjectBridge {
    * @param {string} iconName - The icon name/id from Yjs
    * @param {string} blockId - The block ID for logging
    */
-  _syncBlockIcon(iconEl, iconName, blockId) {
+  _syncBlockIcon(iconEl, iconData, blockId) {
     const imgEl = iconEl.querySelector('img');
     const currentIconSrc = imgEl?.getAttribute('src') || '';
 
     // Get theme icons to find the icon URL
+    const icon = normalizeBlockIcon(iconData, typeof iconData === 'string' ? iconData : '');
     const themeIcons = window.eXeLearning?.app?.themes?.getThemeIcons?.() || {};
 
-    if (!iconName || iconName === '') {
+    if (!icon.value || icon.source === 'none') {
       // No icon - check if we need to clear it
       // Only clear if there's currently an img (not already showing empty SVG)
       if (imgEl || !iconEl.classList.contains('exe-no-icon')) {
@@ -2141,30 +2273,39 @@ class YjsProjectBridge {
         Logger.log(`[YjsProjectBridge] Synced block icon to empty: ${blockId}`);
       }
     } else {
-      // Has icon - find it in theme icons
-      // First try direct lookup (iconName is the key in themeIcons)
-      let iconData = themeIcons[iconName];
+      if (icon.source === 'material') {
+        iconEl.innerHTML = renderMaterialMaskIcon(icon.value);
+        iconEl.classList.remove('exe-no-icon');
+        iconEl.style.removeProperty('color');
+        return;
+      }
 
-      // If not found, search by icon.id or icon.value
-      if (!iconData) {
-        for (const [, icon] of Object.entries(themeIcons)) {
-          if (icon.id === iconName || icon.value === iconName) {
-            iconData = icon;
+      if (icon.source === 'asset') {
+        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        const resolvedAssetUrl = assetManager?.resolveAssetURLSync?.(icon.value) || icon.value;
+        iconEl.innerHTML = `<img src="${resolvedAssetUrl}" alt="${icon.value}">`;
+        iconEl.classList.remove('exe-no-icon');
+        return;
+      }
+
+      let themeIcon = themeIcons[icon.value];
+      if (!themeIcon) {
+        for (const [, candidate] of Object.entries(themeIcons)) {
+          if (candidate.id === icon.value || candidate.value === icon.value) {
+            themeIcon = candidate;
             break;
           }
         }
       }
 
-      if (iconData && iconData.value) {
-        // Always set the icon if we have valid icon data
-        // Check if we actually need to change (avoid unnecessary DOM updates)
-        if (currentIconSrc !== iconData.value || iconEl.classList.contains('exe-no-icon')) {
-          iconEl.innerHTML = `<img src="${iconData.value}" alt="${iconData.title || iconName}">`;
+      if (themeIcon && themeIcon.value) {
+        if (currentIconSrc !== themeIcon.value || iconEl.classList.contains('exe-no-icon')) {
+          iconEl.innerHTML = `<img src="${themeIcon.value}" alt="${themeIcon.title || icon.value}">`;
           iconEl.classList.remove('exe-no-icon');
-          Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${iconName}`);
+          Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${icon.value}`);
         }
       } else {
-        Logger.log(`[YjsProjectBridge] Icon data not found for: ${iconName}`);
+        Logger.log(`[YjsProjectBridge] Icon data not found for: ${icon.value}`);
       }
     }
   }
@@ -3393,11 +3534,13 @@ class YjsProjectBridge {
             const saveBufferStartElapsed = trace
               ? Math.round(this.getElpxExportDebugNow() - trace.startedMs)
               : 0;
-            this.logElpxExportPhase('bridge:electron:save-buffer:start', {
+            // The Electron phases below are derived from this one reading, so the starts
+            // use it too: a second read could be a millisecond later and shorten them.
+            this.appendElpxExportPhaseEntry('bridge:electron:save-buffer:start', saveBufferStartElapsed, {
               filename: exportFilename,
               bytes: uint8Array.byteLength,
             }, trace);
-            this.logElpxExportPhase('bridge:electron:dialog:start', {
+            this.appendElpxExportPhaseEntry('bridge:electron:dialog:start', saveBufferStartElapsed, {
               filename: exportFilename,
             }, trace);
             // saveBuffer returns false when the user cancels the OS save dialog
@@ -3822,6 +3965,11 @@ class YjsProjectBridge {
     }
 
     if (clearExisting) {
+      // Without server storage (Electron, static) assets are never uploaded:
+      // the file just opened already holds them, so they are not unsaved (#2540).
+      if (window.eXeLearning?.app?.capabilities?.storage?.remote === false) {
+        this.assetManager?.markAssetsSavedLocally?.();
+      }
       if (typeof this.documentManager?.markClean === 'function') {
         this.documentManager.markClean();
       }

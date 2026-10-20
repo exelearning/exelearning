@@ -150,6 +150,7 @@ global.eXeLearning = {
 
 // Import after setting up mocks
 import IdevicesEngine from './idevicesEngine.js';
+import IdeviceNode from './content/ideviceNode.js';
 
 describe('IdevicesEngine', () => {
     let engine;
@@ -376,6 +377,27 @@ describe('IdevicesEngine', () => {
             expect(engine.nodeContentElement.getAttribute('mode')).toBe('edition');
         });
 
+        it('flushes a deferred remote page reload once no iDevice is in edition (#2427)', () => {
+            const bridge = { flushDeferredPageReload: vi.fn() };
+            engine.project._yjsBridge = bridge;
+            engine.components.idevices = [{ mode: 'export' }];
+
+            engine.updateMode();
+
+            expect(bridge.flushDeferredPageReload).toHaveBeenCalledTimes(1);
+            delete engine.project._yjsBridge;
+        });
+
+        it('does not flush a deferred remote page reload while an iDevice is in edition', () => {
+            const bridge = { flushDeferredPageReload: vi.fn() };
+            engine.project._yjsBridge = bridge;
+            engine.components.idevices = [{ mode: 'edition' }];
+
+            engine.updateMode();
+
+            expect(bridge.flushDeferredPageReload).not.toHaveBeenCalled();
+            delete engine.project._yjsBridge;
+        });
     });
 
     describe('isIdeviceInEdition', () => {
@@ -1966,6 +1988,14 @@ describe('IdevicesEngine', () => {
             expect(engine.enableInternalLinks).toHaveBeenCalled();
         });
 
+        it('reloads the export runtime through the shared helper', async () => {
+            vi.spyOn(engine, 'reloadExportRuntime');
+
+            await engine.resetCurrentIdevicesExportView([]);
+
+            expect(engine.reloadExportRuntime).toHaveBeenCalledTimes(1);
+        });
+
         it('regenerates HTML content before reloading scripts', async () => {
             const callOrder = [];
             const mockIdevice = {
@@ -2007,6 +2037,49 @@ describe('IdevicesEngine', () => {
 
             expect(mockIdevice1.generateContentExportView).not.toHaveBeenCalled();
             expect(mockIdevice2.generateContentExportView).toHaveBeenCalled();
+        });
+    });
+
+    describe('reloadExportRuntime', () => {
+        it('re-inserts export scripts, runs legacy functionalities and wires internal links, in order', () => {
+            const callOrder = [];
+            vi.spyOn(engine, 'clearNeedlessScripts').mockImplementation(() => callOrder.push('clear'));
+            vi.spyOn(engine, 'loadIdevicesExportScripts').mockImplementation(() => callOrder.push('scripts'));
+            vi.spyOn(engine, 'loadLegacyExeFunctionalitiesExport').mockImplementation(() => callOrder.push('legacy'));
+            vi.spyOn(engine, 'enableInternalLinks').mockImplementation(() => callOrder.push('links'));
+
+            engine.reloadExportRuntime();
+
+            expect(callOrder).toEqual(['clear', 'scripts', 'legacy', 'links']);
+        });
+    });
+
+    describe('scheduleRemoteExportRuntimeReload', () => {
+        it('reloads the page through the bridge, which debounces and defers while editing', () => {
+            const schedulePageReloadIfCurrent = vi.fn();
+            engine.project._yjsBridge = { schedulePageReloadIfCurrent };
+
+            engine.scheduleRemoteExportRuntimeReload('page-1');
+
+            expect(schedulePageReloadIfCurrent).toHaveBeenCalledWith('page-1');
+        });
+
+        it('never re-executes export scripts piecemeal (#2434)', () => {
+            engine.project._yjsBridge = { schedulePageReloadIfCurrent: vi.fn() };
+            vi.spyOn(engine, 'clearNeedlessScripts');
+            vi.spyOn(engine, 'loadIdevicesExportScripts');
+            vi.spyOn(engine, 'loadLegacyExeFunctionalitiesExport');
+
+            engine.scheduleRemoteExportRuntimeReload('page-1');
+
+            expect(engine.clearNeedlessScripts).not.toHaveBeenCalled();
+            expect(engine.loadIdevicesExportScripts).not.toHaveBeenCalled();
+            expect(engine.loadLegacyExeFunctionalitiesExport).not.toHaveBeenCalled();
+        });
+
+        it('survives a project without a Yjs bridge', () => {
+            delete engine.project._yjsBridge;
+            expect(() => engine.scheduleRemoteExportRuntimeReload('page-1')).not.toThrow();
         });
     });
 
@@ -2369,6 +2442,7 @@ describe('IdevicesEngine', () => {
         });
 
         it('does not wipe saved htmlView on lock-only remote updates', async () => {
+            const reloadSpy = vi.spyOn(engine, 'scheduleRemoteExportRuntimeReload').mockImplementation(() => {});
             const mockIdevice = {
                 odeIdeviceId: 'comp-1',
                 htmlView: '<p>Original content</p>',
@@ -2394,6 +2468,7 @@ describe('IdevicesEngine', () => {
             expect(mockIdevice.htmlView).toBe('<p>Original content</p>');
             expect(mockIdevice.ideviceBody.innerHTML).toBe('<p>Original content</p>');
             expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(reloadSpy).not.toHaveBeenCalled();
             expect(mockIdevice.lockedByRemote).toBe(true);
             expect(mockIdevice.lockUserName).toBe('Remote User');
             expect(mockIdevice.updateLockIndicator).toHaveBeenCalled();
@@ -3349,6 +3424,7 @@ describe('IdevicesEngine', () => {
                 blockId: 'new-block',
             });
             vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
+            vi.spyOn(engine, 'scheduleRemoteExportRuntimeReload').mockImplementation(() => {});
         });
 
         it('creates new block when block container not found', async () => {
@@ -3360,9 +3436,76 @@ describe('IdevicesEngine', () => {
 
             expect(engine.newBlockNode).toHaveBeenCalled();
         });
+
+        it('reloads the export runtime once the remote iDevice is in the DOM (#2428)', async () => {
+            const callOrder = [];
+            engine.scheduleRemoteExportRuntimeReload.mockImplementation(() => callOrder.push('runtime'));
+            vi.spyOn(IdeviceNode.prototype, 'loadInitScriptIdevice').mockImplementation(async () => {
+                callOrder.push('init');
+            });
+
+            await engine.renderRemoteIdevice(
+                { id: 'comp-1', ideviceType: 'text', htmlContent: '<p>Test</p>' },
+                'page-1',
+                'nonexistent-block'
+            );
+
+            expect(callOrder).toEqual(['init', 'runtime']);
+            expect(engine.scheduleRemoteExportRuntimeReload).toHaveBeenCalledWith('page-1');
+        });
     });
 
     describe('updateRemoteIdeviceContent with ideviceBody', () => {
+        beforeEach(() => {
+            vi.spyOn(engine, 'scheduleRemoteExportRuntimeReload').mockImplementation(() => {});
+        });
+
+        it('reloads the export runtime after applying remote content (#2428)', async () => {
+            const callOrder = [];
+            engine.scheduleRemoteExportRuntimeReload.mockImplementation(() => callOrder.push('runtime'));
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: 'old',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockImplementation(async () => {
+                    callOrder.push('init');
+                }),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent(
+                {
+                    id: 'comp-1',
+                    htmlContent: '<pre class="abc-music">X:1</pre>',
+                },
+                'page-1'
+            );
+
+            expect(callOrder).toEqual(['init', 'runtime']);
+            expect(engine.scheduleRemoteExportRuntimeReload).toHaveBeenCalledWith('page-1');
+        });
+
+        it('does not reload the export runtime while the iDevice is being edited locally', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: 'old',
+                mode: 'edition',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({ id: 'comp-1', htmlContent: '<p>New</p>' });
+
+            expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(engine.scheduleRemoteExportRuntimeReload).not.toHaveBeenCalled();
+        });
+
         it('updates idevice body innerHTML', async () => {
             const mockIdevice = {
                 odeIdeviceId: 'comp-1',
@@ -3991,6 +4134,166 @@ describe('IdevicesEngine', () => {
         });
     });
 
+    describe('addIdeviceNodeToContainer with stale drag reference (#2274)', () => {
+        let mockIdeviceNode;
+        let container;
+        let blockContent;
+
+        beforeEach(() => {
+            mockIdeviceNode = {
+                idevice: { title: 'Test iDevice' },
+                ideviceContent: null,
+                makeIdeviceContentNode: vi.fn(() => {
+                    const div = document.createElement('div');
+                    div.classList.add('idevice_node');
+                    return div;
+                }),
+                mode: 'view',
+            };
+
+            container = document.createElement('article');
+            container.id = 'node-content';
+            document.body.appendChild(container);
+
+            blockContent = document.createElement('article');
+            vi.spyOn(engine, 'newBlockNode').mockImplementation(() => ({
+                blockId: 'local-block-id',
+                blockContent: blockContent,
+                boxContent: document.createElement('div'),
+            }));
+            vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
+            vi.spyOn(engine, 'syncNewIdeviceToYjs').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            document.body.removeChild(container);
+        });
+
+        it('appends at the end when draggedElement is no longer a child of container', () => {
+            const existingChild = document.createElement('div');
+            container.appendChild(existingChild);
+
+            // Simulate a drop race / Yjs re-render detaching the dragged element
+            engine.draggedElement = document.createElement('div');
+
+            expect(() => {
+                engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+            }).not.toThrow();
+
+            expect(container.lastChild).toBe(blockContent);
+        });
+
+        it('inserts before draggedElement when it is still a child of container', () => {
+            engine.draggedElement = document.createElement('div');
+            container.appendChild(engine.draggedElement);
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            expect(blockContent.parentNode).toBe(container);
+            expect(blockContent.nextSibling).toBe(engine.draggedElement);
+        });
+
+        it('keeps the Yjs block order aligned with the DOM when draggedElement is stale', () => {
+            const existingBlock = document.createElement('article');
+            existingBlock.classList.add('box');
+            existingBlock.getBoundingClientRect = () => ({
+                top: 100,
+                height: 50,
+                bottom: 150,
+                left: 0,
+                right: 0,
+                width: 0,
+            });
+            container.appendChild(existingBlock);
+
+            const addBlock = vi.fn(() => 'yjs-block-id');
+            engine.project._yjsBridge = { addBlock };
+
+            // A detached element reports an all-zero rect, which used to place
+            // the block first in Yjs while the DOM fallback appended it last
+            engine.draggedElement = document.createElement('div');
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            expect(addBlock).toHaveBeenCalledWith(expect.any(String), 'Test iDevice', null, 1);
+            expect(container.lastChild).toBe(blockContent);
+        });
+
+        it('still computes the drop order from the rect when draggedElement is attached', () => {
+            const existingBlock = document.createElement('article');
+            existingBlock.classList.add('box');
+            existingBlock.getBoundingClientRect = () => ({
+                top: 100,
+                height: 50,
+                bottom: 150,
+                left: 0,
+                right: 0,
+                width: 0,
+            });
+            container.appendChild(existingBlock);
+
+            const addBlock = vi.fn(() => 'yjs-block-id');
+            engine.project._yjsBridge = { addBlock };
+
+            // Attached placeholder sitting above the existing block
+            engine.draggedElement = document.createElement('div');
+            container.insertBefore(engine.draggedElement, existingBlock);
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            expect(addBlock).toHaveBeenCalledWith(expect.any(String), 'Test iDevice', null, 0);
+            expect(blockContent.nextSibling).toBe(engine.draggedElement);
+        });
+
+        it('appends at the end when draggedElement is null', () => {
+            const existingChild = document.createElement('div');
+            container.appendChild(existingChild);
+
+            engine.draggedElement = null;
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            expect(container.lastChild).toBe(blockContent);
+        });
+
+        it('appends into an existing block when draggedElement is stale', () => {
+            container.id = 'block-container-123';
+            const boxContent = document.createElement('div');
+            container.appendChild(boxContent);
+            const existingIdevice = document.createElement('div');
+            boxContent.appendChild(existingIdevice);
+            engine.components.blocks = [
+                { blockId: 'block-container-123', boxContent, toggleOn: vi.fn() },
+            ];
+
+            // Dragged element detached from the block's box-content
+            engine.draggedElement = document.createElement('div');
+
+            expect(() => {
+                engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+            }).not.toThrow();
+
+            expect(boxContent.lastChild).not.toBe(existingIdevice);
+            expect(boxContent.lastChild.classList.contains('idevice_node')).toBe(true);
+        });
+
+        it('inserts into an existing block before draggedElement when still attached', () => {
+            container.id = 'block-container-123';
+            const boxContent = document.createElement('div');
+            container.appendChild(boxContent);
+            engine.components.blocks = [
+                { blockId: 'block-container-123', boxContent, toggleOn: vi.fn() },
+            ];
+
+            engine.draggedElement = document.createElement('div');
+            boxContent.appendChild(engine.draggedElement);
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            expect(engine.draggedElement.previousSibling.classList.contains('idevice_node')).toBe(true);
+        });
+    });
+
     describe('dropIdeviceContentInContent order sync to Yjs', () => {
         it('calls apiUpdateOrder for same-block reorder instead of apiUpdateBlock', async () => {
             const sourceBlock = {
@@ -4509,6 +4812,42 @@ describe('IdevicesEngine', () => {
             engine.applyPageTitleText(titleEl, '\\(a+b\\)');
             expect(global.MathJax.typesetPromise).toHaveBeenCalledWith([titleEl]);
             global.MathJax = original;
+        });
+    });
+
+    describe('destroyEditionIdevices', () => {
+        it('disposes the owner wherever it sits in the list', () => {
+            // Only one iDevice is ever in edition, and it is not necessarily the
+            // first node the engine tracks.
+            const idle1 = { destroyEditionInstance: vi.fn() };
+            const owner = { destroyEditionInstance: vi.fn() };
+            const idle2 = { destroyEditionInstance: vi.fn() };
+            engine.components.idevices = [idle1, owner, idle2];
+
+            engine.destroyEditionIdevices();
+
+            expect(idle1.destroyEditionInstance).toHaveBeenCalledTimes(1);
+            expect(owner.destroyEditionInstance).toHaveBeenCalledTimes(1);
+            expect(idle2.destroyEditionInstance).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps releasing the rest when one node fails', () => {
+            const failing = {
+                destroyEditionInstance: vi.fn(() => {
+                    throw new Error('teardown exploded');
+                }),
+            };
+            const healthy = { destroyEditionInstance: vi.fn() };
+            engine.components.idevices = [failing, healthy];
+
+            expect(() => engine.destroyEditionIdevices()).not.toThrow();
+
+            expect(healthy.destroyEditionInstance).toHaveBeenCalledTimes(1);
+        });
+
+        it('skips components that never had an edition', () => {
+            engine.components.idevices = [{}, { destroyEditionInstance: vi.fn() }];
+            expect(() => engine.destroyEditionIdevices()).not.toThrow();
         });
     });
 

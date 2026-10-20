@@ -143,8 +143,8 @@ export default class MenuStructureBehaviour {
                     navElement.getAttribute('nav-id') === this.nodeSelected.getAttribute('nav-id');
 
                 this.selectNode(navElement).then((nodeElement) => {
-                    if (eXeLearning.app.project.checkOpenIdevice()) return;
                     if (wasAlreadySelected && nodeElement) {
+                        if (eXeLearning.app.project.checkOpenIdevice()) return;
                         this.startInlinePageRename(nodeElement);
                     }
                 });

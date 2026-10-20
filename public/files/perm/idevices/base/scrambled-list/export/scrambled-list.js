@@ -58,7 +58,11 @@ var $scrambledlist = {
         } else {
             html = html.replace('{scorm}', false);
         }
-        html = html.replace('{idList}', ideviceId);
+        // ldata.id, not the ideviceId argument: the export runtime renders an
+        // activity without saved HTML with no argument at all (exe_export), and
+        // the list then became #slundefined while updateConfig, which falls
+        // back to the stored ideviceId, looked for the activity elsewhere.
+        html = html.replace('{idList}', ldata.id);
         html = html.replace('{instructions}', ldata.instructions);
         html = html.replace('{optionsText}', optionsText);
         if (
@@ -95,7 +99,7 @@ var $scrambledlist = {
         );
         html = html.replace('{afterElement}', ldata.afterElement);
         html = html.replace('{evaluationID}', ldata.evaluationID);
-        html = html.replace('{ideviceID}', ideviceId);
+        html = html.replace('{ideviceID}', ldata.id);
         html = html.replace('{evaluation}', ldata.evaluation);
         return html;
     },
@@ -152,12 +156,23 @@ var $scrambledlist = {
         const index = $idevices.index($('#' + data.id)) + 1;
         data.ideviceNumber = index;
         data.title = title;
-        data.gameStarted = true;
+        // Not started until the learner checks the list. This used to be set
+        // true here, at load, which was invisible while nothing could report
+        // before a check — but the save button can, and it would have published
+        // a zero for a list nobody had answered instead of telling the learner
+        // to do the activity first. check(), retryGame() and sendScore() each
+        // set it at the moment they mean it.
+        data.gameStarted = false;
         data.options = this.normalizeOptions(data.options);
         data.scorerp = 0;
         data.main = 'sl' + data.id;
 
-        data.idevice = 'scrambled-listIdevice';
+        // The container the progress report icon and its anchor go into, found
+        // with closest() from `main`. It was 'scrambled-listIdevice', a class
+        // only the editor adds to the iDevice body: in an exported package
+        // nothing carried it, so the learner never saw their score there.
+        // The activity's own wrapper is `main` itself, in both places.
+        data.idevice = 'exe-sortableList';
 
         return data;
     },
@@ -180,6 +195,8 @@ var $scrambledlist = {
             $node.attr('data-idevice-json-data', JSON.stringify(ldata));
         }
 
+        $scrambledlist.setBehaviourButtonSendScore(ldata);
+
         $('.exe-sortableList').each(function (instance) {
             if ($('body').hasClass('exe-epub3')) {
                 $(this).prepend(
@@ -193,6 +210,16 @@ var $scrambledlist = {
                 $scrambledlist.enableList(this, instance);
             }
         });
+
+        // The instructions are inside the main container, so the notice goes
+        // before whatever follows them: the playable list enableList() builds
+        // in front of the original one. Below the instructions, above the list.
+        $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+            ldata,
+            $('#sl' + ldata.id + ' > .exe-sortableList-instructions')
+                .nextAll(':not(.exe-pass-score-notice)')
+                .first()
+        );
 
         if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
@@ -412,14 +439,13 @@ var $scrambledlist = {
     },
 
     getScormHtml: function (data) {
-        const mOptions = data;
-        const instance = mOptions.id;
-        return mOptions.isScorm > 0
-            ? `<div class="Games-BottonContainer">
-            <div class="Games-GetScore">
-                <input id="tofPSendScore-${instance}" type="button" value="${mOptions.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:none"/> <span class="Games-RepeatActivity">${mOptions.msgScoreScorm}</span>
-            </div>
-        </div>`
+        // The shared markup, so this iDevice's button is the same control as
+        // every other one's. The hand-rolled copy this replaced carried
+        // `display:none` and relied on updateScormNew to reveal it, which only
+        // happens inside a SCORM package — so the button was missing from the
+        // editor and from every other export format, where the rest show it.
+        return data.isScorm > 0
+            ? $exeDevices.iDevice.gamification.scorm.addButtonScoreNew(data)
             : '';
     },
 
@@ -496,13 +522,35 @@ var $scrambledlist = {
             this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1)
         );
         data.pendingAttempts = Math.max(data.pendingAttempts - 1, 0);
+
+        this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
+
+        // Store the state only once the mark exists. This used to be written
+        // above, before saveEvaluation computed it, so the node kept the
+        // previous attempt's score — and when the list is wrong with attempts
+        // left this function returns at the retry prompt without ever reaching
+        // sendScore, so nothing corrected it. The save button reads the node, so
+        // a learner pressing it while the prompt was up published a stale mark.
+        // The attempt is open here whatever the outcome: either the retry
+        // decision is still pending, or sendScore is about to close it.
+        data.gameStarted = true;
+        data.gameOver = false;
         $(e)
             .closest('.idevice_node')
             .attr('data-idevice-json-data', JSON.stringify(data));
 
-        this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
+        // Computed here rather than above, because it needs the options the node
+        // carries and those are only parsed a few lines up.
+        const passed = this.hasPassed(
+            nRightAnswers,
+            userList[0].children.length,
+            data
+        );
 
         const errors = userList[0].children.length - nRightAnswers;
+        // The retry still goes by the perfect order, not by the verdict. It is
+        // the author's offer to put the list right, and a learner who passed
+        // with two items swapped has as much use for it as one who did not.
         if (!right && data.pendingAttempts > 0) {
             const retryQuestion = this.getRetryMessage(data, errors);
             this.setListActiveState(listOrder, false);
@@ -512,17 +560,18 @@ var $scrambledlist = {
                 data,
                 () => {
                     // Re-enable game with randomized cards for the next attempt.
-                    this.retryGame(listOrder);
+                    this.retryGame(listOrder, data);
                 },
                 () => {
                     this.showResultFeedback(
                         activity,
                         feedback,
-                        right,
+                        passed,
                         rightAnswers,
                         data,
                         nRightAnswers,
-                        userList[0].children.length
+                        userList[0].children.length,
+                        right
                     );
                 }
             );
@@ -532,11 +581,12 @@ var $scrambledlist = {
         this.showResultFeedback(
             activity,
             feedback,
-            right,
+            passed,
             rightAnswers,
             data,
             nRightAnswers,
-            userList[0].children.length
+            userList[0].children.length,
+            right
         );
         const listHtml = $('#sl' + data.id).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(listHtml)) {
@@ -544,26 +594,55 @@ var $scrambledlist = {
         }
     },
 
+    /**
+     * Tell the learner how the attempt went.
+     *
+     * Two questions used to be answered by one flag. The verdict -- the
+     * author's "right" or "wrong" text, and the colour that goes with it -- is
+     * the pass mark's to give. Whether every item landed in its place is a
+     * separate matter, and the one the solution list answers: a learner who
+     * passed with two items swapped has passed, and still wants to see which
+     * two. Reporting them as having failed contradicted the progress report
+     * printed beside them.
+     *
+     * @param {jQuery} activity The activity node, holding the author's texts.
+     * @param {jQuery} feedback Where the verdict is written.
+     * @param {boolean} passed Whether the mark reached the threshold.
+     * @param {jQuery} rightAnswers The list in its correct order.
+     * @param {Object} data The activity options.
+     * @param {number} nRightAnswers Items left in their place.
+     * @param {number} totalOptions Items in the list.
+     * @param {boolean} isPerfect Whether every item landed in its place.
+     */
     showResultFeedback: function (
         activity,
         feedback,
-        right,
+        passed,
         rightAnswers,
         data,
         nRightAnswers,
-        totalOptions
+        totalOptions,
+        isPerfect
     ) {
         if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
             this.sendScore(nRightAnswers, totalOptions, data);
             return;
         }
 
-        if (right) {
+        // Nothing to correct on a list that is already in order, so a perfect
+        // attempt still gets the bare congratulation it always got.
+        const solutions =
+            data.showSolutions && !isPerfect
+                ? '<ul>' + rightAnswers.html() + '</ul>'
+                : '';
+
+        if (passed) {
             feedback
                 .html(
                     '<p>' +
                         $('.exe-sortableList-rightText', activity).html() +
-                        '</p>'
+                        '</p>' +
+                        solutions
                 )
                 .hide()
                 .attr('class', 'feedback feedback-right')
@@ -584,9 +663,8 @@ var $scrambledlist = {
             .html(
                 '<p>' +
                     $('.exe-sortableList-wrongText', activity).html() +
-                    '</p><ul>' +
-                    rightAnswers.html() +
-                    '</ul>'
+                    '</p>' +
+                    solutions
             )
             .hide()
             .attr('class', 'feedback feedback-wrong')
@@ -666,7 +744,7 @@ var $scrambledlist = {
             .attr('aria-disabled', 'true');
     },
 
-    retryGame: function (listOrder) {
+    retryGame: function (listOrder, data) {
         const $userList = $('#exe-sortableList-' + listOrder);
         const $rightAnswers = $('#exe-sortableListResults-' + listOrder);
         const $feedback = $('#exe-sortableList-' + listOrder + '-feedback');
@@ -703,10 +781,59 @@ var $scrambledlist = {
         $feedback.empty().removeClass('feedback-right feedback-wrong');
         $retry.empty().removeClass('d-block').addClass('d-none');
         $button.show();
+
+        // Accepting the retry reshuffles the list and clears the feedback, so
+        // the mark the LMS holds from the check that failed no longer describes
+        // anything on screen. Report the zero, and as an attempt still open:
+        // sendScore() cannot serve here because it declares the activity over,
+        // which is right for a check and wrong for the retry that follows one.
+        if (
+            data &&
+            document.body.classList.contains('exe-scorm') &&
+            data.isScorm > 0
+        ) {
+            data.scorerp = 0;
+            data.gameStarted = true;
+            data.gameOver = false;
+            $scrambledlist.persistState(data);
+            $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
+        }
+    },
+
+    /**
+     * The mark out of 10, the one number the report and the LMS both receive.
+     *
+     * @param {number} nRightAnswers Items left in their place.
+     * @param {number} total Items in the list.
+     * @returns {number} The mark in [0, 10].
+     */
+    getScore: function (nRightAnswers, total) {
+        return total > 0 ? (nRightAnswers * 10) / total : 0;
+    },
+
+    /**
+     * Whether the learner passed.
+     *
+     * The activity used to have no notion of passing: it asked only whether
+     * every item had landed in its place, and told a learner who got eight of
+     * ten "wrong" while the progress report beside it said they had passed.
+     * Ordering the list perfectly and reaching the pass mark are two different
+     * achievements, and only the second one is a verdict.
+     *
+     * @param {number} nRightAnswers Items left in their place.
+     * @param {number} total Items in the list.
+     * @param {Object} data The activity options, carrying the author's choice.
+     * @returns {boolean} True when the mark reaches the threshold in force.
+     */
+    hasPassed: function (nRightAnswers, total, data) {
+        return (
+            $scrambledlist.getScore(nRightAnswers, total) >=
+            $exe.passScore.resolve(data)
+        );
     },
 
     saveEvaluation: function (nRightAnswers, total, data) {
-        data.scorerp = (nRightAnswers * 10) / total;
+        data.scorerp = $scrambledlist.getScore(nRightAnswers, total);
         $exeDevices.iDevice.gamification.report.saveEvaluation(data);
     },
 
@@ -873,9 +1000,77 @@ var $scrambledlist = {
      *
      */
     sendScore: function (rightAnswers, totalOptions, data) {
-        data.scorerp = (rightAnswers * 10) / totalOptions;
+        data.scorerp = $scrambledlist.getScore(rightAnswers, totalOptions);
         data.gameStarted = true;
+        // The learner pressed Check and the list has been graded, so the activity is
+        // finished. common.js derives completion from `gameOver` alone, so without this
+        // flag the activity never completes and any page carrying a scrambled-list stays
+        // `incomplete` in the LMS even at 100%. Every other gradable iDevice sets it at
+        // the same point.
+        data.gameOver = true;
+        $scrambledlist.persistState(data);
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
+    },
+
+    /**
+     * Write the activity's state back onto its node.
+     *
+     * check() re-reads `data-idevice-json-data` on every grading and works on
+     * that copy, so anything it sets is gone by the next click unless it is
+     * stored. `pendingAttempts` already survived this way; the report state has
+     * to as well, or the save button would have nothing to publish.
+     *
+     * @param {Object} data The activity's options.
+     */
+    persistState: function (data) {
+        if (!data || !data.id) return;
+        const $node = $('#' + data.id);
+        if ($node.length !== 1) return;
+        $node.attr('data-idevice-json-data', JSON.stringify(data));
+    },
+
+    /**
+     * The state the node holds, which is what the learner has actually done.
+     *
+     * @param {Object} ldata The options built at render time, used as the base
+     * and as the fallback when the node holds nothing readable.
+     * @returns {Object} the activity's current options
+     */
+    readState: function (ldata) {
+        const stored = $('#' + ldata.id).attr('data-idevice-json-data');
+        if (!stored) return ldata;
+        try {
+            return Object.assign({}, ldata, JSON.parse(stored));
+        } catch (error) {
+            return ldata;
+        }
+    },
+
+    /**
+     * Wire the save button the learner owns in manual mode.
+     *
+     * The shared addButtonScoreNew emits it for isScorm 2 alone, so there is
+     * nothing to bind in the other modes and binding unconditionally costs
+     * nothing. Delegated from the iDevice node and bound by class, the way
+     * every other iDevice with this button does it.
+     *
+     * Pressing it publishes the state as it stands and changes nothing: a list
+     * the learner has not checked yet is not finished, and it is check() that
+     * decides what the state says.
+     *
+     * @param {Object} ldata The options built at render time.
+     */
+    setBehaviourButtonSendScore: function (ldata) {
+        $('#' + ldata.id)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $exeDevices.iDevice.gamification.scorm.sendScoreNew(
+                    false,
+                    $scrambledlist.readState(ldata)
+                );
+            });
     },
     /**
      * Set up native touch drag-and-drop for a sortable list instance.
@@ -999,31 +1194,41 @@ var $scrambledlist = {
         delete $scrambledlist._touchHandlers[listOrder];
     },
 
+    /**
+     * Fallback texts, used when the saved content carries no `msgs` at all.
+     *
+     * English, and word for word the source strings the edition passes through
+     * c_() (edition/scrambled-list.js refreshTranslations). Literals because
+     * this file runs inside the exported package, where c_() does not exist, so
+     * the source language is the only honest fallback. They used to be Spanish,
+     * which imposed Spanish on every project whose content missed them.
+     *
+     * @returns {object} The default message set.
+     */
     getMessages: function () {
         let msgs = {
             msgScoreScorm:
-                'La puntuación no se puede guardar porque esta página no forma parte de un paquete SCORM.',
-            msgYouLastScore: 'La última puntuación guardada es',
-            msgOnlySaveScore: '¡Solo puedes guardar la puntuación una vez!',
-            msgOnlySave: 'Solo puedes guardar una vez',
+                "The score can't be saved because this page is not part of a SCORM package.",
+            msgYouLastScore: 'The last score saved is',
+            msgOnlySaveScore: 'You can only save the score once!',
+            msgOnlySave: 'You can only save once',
             msgOnlySaveAuto:
-                'Tu puntuación se guardará después de cada pregunta. Solo puedes jugar una vez.',
+                'Your score will be saved after each question. You can only play once.',
             msgSaveAuto:
-                'Tu puntuación se guardará automáticamente después de cada pregunta.',
-            msgSeveralScore:
-                'Puedes guardar la puntuación tantas veces como quieras',
+                'Your score will be automatically saved after each question.',
+            msgSeveralScore: 'You can save the score as many times as you want',
             msgPlaySeveralTimes:
-                'Puedes realizar esta actividad tantas veces como quieras',
-            msgActityComply: 'Ya has realizado esta actividad.',
-            msgUncompletedActivity: 'Actividad no completada',
-            msgSuccessfulActivity: 'Actividad: Superada. Puntuación: %s',
-            msgUnsuccessfulActivity: 'Actividad: No superada. Puntuación: %s',
-            msgStartGame: 'Haz clic aquí para comenzar',
-            msgSaveScore: 'Guardar puntuación',
-            msgSubmit: 'Enviar',
-            msgTime: 'Tiempo',
-            msgCheck: 'Comprobar',
-            msgTestFailed: 'No has superado la prueba. Inténtalo de nuevo.',
+                'You can do this activity as many times as you want',
+            msgActityComply: 'You have already done this activity.',
+            msgUncompletedActivity: 'Incomplete activity',
+            msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+            msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+            msgStartGame: 'Click here to start',
+            msgSaveScore: 'Save score',
+            msgSubmit: 'Submit',
+            msgTime: 'Time per question',
+            msgCheck: 'Check',
+            msgTestFailed: "You didn't pass the test. Please try again",
         };
         return msgs;
     },

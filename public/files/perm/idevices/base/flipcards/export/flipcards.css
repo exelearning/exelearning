@@ -271,10 +271,21 @@
 
 }
 
+/* Breaks like the editor's preview (.FLCRDS-ETextDiv): a word too long for the
+   card has to wrap, or it runs past the edge and the overflow: hidden above
+   cuts it off.
+
+   min-width is what makes that work here. This is a flex item, so its
+   automatic minimum is its min-content width — the whole unbroken word — and
+   that floor beats the width below, pushing the item out of the card however
+   the text is allowed to break. The editor's preview never hit this: its box
+   is a column flex container, where the automatic minimum applies down the
+   block axis instead. */
 .FLCDSP-ETextDinamyc {
-    overflow-wrap: normal;
+    overflow-wrap: break-word;
     word-break: normal;
-    hyphens: none;
+    hyphens: auto;
+    min-width: 0;
     width: 100%;
 }
 

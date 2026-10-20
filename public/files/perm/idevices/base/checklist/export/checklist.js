@@ -46,8 +46,28 @@ var $eXeListaCotejo = {
         $eXeListaCotejo.loadGame();
     },
 
+    /**
+     * Where a checklist keeps what the learner ticked: under its own
+     * component's id.
+     *
+     * The key used to come from the id in the checklist's data, which the
+     * editor fills with the component's id and which travels with it when the
+     * iDevice is duplicated: until the copy was edited, both checklists read
+     * and wrote the same list, and one saved without an id kept nothing. The
+     * component's id is the checklist's own, in the editor and once exported.
+     * Without one there is nowhere safe to keep the list, and nothing is.
+     *
+     * @param {Element} activity - The checklist's element
+     * @returns {string} The key, or '' when the checklist belongs to no component
+     */
+    storageKeyOf: function (activity) {
+        const nodeId = $(activity).closest('.idevice_node').attr('id');
+        return nodeId ? 'dataCotejo-' + nodeId : '';
+    },
+
     loadGame: function () {
-        $eXeListaCotejo.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeListaCotejo.options.length = $eXeListaCotejo.activities.length;
 
         $eXeListaCotejo.activities.each(function (i) {
             const dl = $('.listacotejo-DataGame', this);
@@ -75,7 +95,8 @@ var $eXeListaCotejo = {
             }
 
             const mOption = $eXeListaCotejo.loadDataGame(dl, img, img1, img2);
-            $eXeListaCotejo.options.push(mOption);
+            mOption.storageKey = $eXeListaCotejo.storageKeyOf(this);
+            $eXeListaCotejo.options[i] = mOption;
 
             const ctj = $eXeListaCotejo.createInterfaceListaCotejo(i);
             dl.before(ctj).remove();
@@ -135,7 +156,7 @@ var $eXeListaCotejo = {
     saveCotejo: function (instance) {
         const mOptions = $eXeListaCotejo.options[instance];
 
-        if (mOptions.id && mOptions.saveData && mOptions.save) {
+        if (mOptions.storageKey && mOptions.saveData && mOptions.save) {
             const name = $('#ctjUserName-' + instance).val() || '',
                 date = $('#ctjUserDate-' + instance).val() || '';
             let data = {
@@ -174,11 +195,11 @@ var $eXeListaCotejo = {
 
             data.items = arr;
             data = JSON.stringify(data);
-            localStorage.setItem('dataCotejo-' + mOptions.id, data);
+            localStorage.setItem(mOptions.storageKey, data);
         }
     },
-    updateItems: function (id, instance) {
-        const data = $eXeListaCotejo.getDataStorage(id);
+    updateItems: function (key, instance) {
+        const data = $eXeListaCotejo.getDataStorage(key);
 
         if (!data) return;
 
@@ -218,9 +239,9 @@ var $eXeListaCotejo = {
             });
     },
 
-    getDataStorage: function (id) {
+    getDataStorage: function (key) {
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataCotejo-' + id)
+            localStorage.getItem(key)
         );
     },
 
@@ -322,8 +343,8 @@ var $eXeListaCotejo = {
 
         mOptions.save = false;
 
-        if (mOptions.saveData && mOptions.id) {
-            $eXeListaCotejo.updateItems(mOptions.id, instance);
+        if (mOptions.saveData && mOptions.storageKey) {
+            $eXeListaCotejo.updateItems(mOptions.storageKey, instance);
             mOptions.save = true;
         }
 
@@ -339,7 +360,9 @@ var $eXeListaCotejo = {
         $('#ctjReboot-' + instance).on('click', function (e) {
             e.preventDefault();
             if (confirm(mOptions.msgs.msgDelete)) {
-                localStorage.removeItem('dataCotejo-' + mOptions.id);
+                if (mOptions.storageKey) {
+                    localStorage.removeItem(mOptions.storageKey);
+                }
                 mOptions.points = 0;
                 mOptions.totalPoints = 0;
                 $('#ctjUserName-' + instance).val('');

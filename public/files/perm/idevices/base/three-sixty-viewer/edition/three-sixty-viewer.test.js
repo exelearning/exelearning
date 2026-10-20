@@ -1063,4 +1063,207 @@ describe('three-sixty-viewer iDevice (edition)', () => {
             });
         });
     });
+
+    /**
+     * Closing the editor must release the WebGL context, the render loop and
+     * the window-level drag listeners. Before the edition lifecycle, only
+     * `save()` did that, so cancelling the editor leaked a live renderer and an
+     * animation frame that kept calling into a dead form.
+     */
+    describe('edition lifecycle teardown', () => {
+        it('disposes the three.js preview when the edition closes without saving', () => {
+            $exeDevice.init(container, {}, '');
+            const disposed = [];
+            $exeDevice._preview = {
+                stop: () => disposed.push('stop'),
+                controls: { dispose: () => disposed.push('controls') },
+                geometry: { dispose: () => disposed.push('geometry') },
+                material: { dispose: () => disposed.push('material') },
+                texture: { dispose: () => disposed.push('texture') },
+                renderer: {
+                    dispose: () => disposed.push('renderer'),
+                    domElement: document.createElement('canvas'),
+                },
+            };
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(disposed).toEqual(
+                expect.arrayContaining(['stop', 'controls', 'geometry', 'material', 'texture', 'renderer']),
+            );
+            expect($exeDevice._preview).toBeNull();
+        });
+
+        it('disposes each three.js resource exactly once even after save', () => {
+            $exeDevice.init(container, {}, '');
+            const renderer = {
+                dispose: vi.fn(),
+                domElement: document.createElement('canvas'),
+            };
+            $exeDevice._preview = { stop: vi.fn(), renderer };
+
+            $exeDevice.save();
+            $exeDevice.$lifecycle.destroy();
+
+            expect(renderer.dispose).toHaveBeenCalledTimes(1);
+        });
+
+        it('cancels the queued preview refresh when the edition closes', () => {
+            vi.useFakeTimers();
+            try {
+                const frames = [];
+                const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => {
+                    frames.push(cb);
+                    return frames.length;
+                });
+                const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+                $exeDevice.init(container, {}, '');
+                const render = vi.spyOn($exeDevice, 'renderPreview').mockImplementation(() => {});
+                $exeDevice._updateQueued = false;
+                $exeDevice.updatePreviewSoon();
+                expect(frames.length).toBeGreaterThan(0);
+
+                $exeDevice.$lifecycle.destroy();
+                frames.forEach(cb => cb(0));
+
+                expect(render).not.toHaveBeenCalled();
+                expect(cancelSpy).toHaveBeenCalled();
+                render.mockRestore();
+                rafSpy.mockRestore();
+                cancelSpy.mockRestore();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('never lets a queued refresh drive a later iDevice', () => {
+            const frames = [];
+            const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => {
+                frames.push(cb);
+                return frames.length;
+            });
+            try {
+                $exeDevice.init(container, {}, '');
+                const first = $exeDevice;
+                first.$lifecycle.destroy();
+
+                const second = { renderPreview: vi.fn(), _updateQueued: false };
+                global.$exeDevice = second;
+                frames.forEach(cb => cb(0));
+
+                expect(second.renderPreview).not.toHaveBeenCalled();
+                global.$exeDevice = first;
+            } finally {
+                rafSpy.mockRestore();
+            }
+        });
+
+        it('removes the window drag listeners left by an unfinished hotspot drag', () => {
+            $exeDevice.init(container, {}, '');
+            const scene = $exeDevice.getActiveScene();
+            scene.projection = 'flat';
+            scene.src = 'asset://flat.jpg';
+            const stage = container.querySelector('#threeSixtyPreview');
+            stage.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 200 });
+            $exeDevice.addHotspotFlat(10, 10);
+            $exeDevice.renderPreview();
+
+            const preview = $exeDevice._preview;
+            preview.overlay.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 200 });
+            const btn = preview.hotspotButtons[0].button;
+
+            const down = new Event('pointerdown');
+            down.clientX = 0;
+            down.clientY = 0;
+            btn.dispatchEvent(down);
+
+            // The drag never ends: the author closes the editor mid-gesture.
+            $exeDevice.$lifecycle.destroy();
+
+            const move = new Event('pointermove');
+            move.clientX = 200;
+            move.clientY = 100;
+            window.dispatchEvent(move);
+
+            expect(scene.hotspots[0].x).toBe(10);
+            expect(scene.hotspots[0].y).toBe(10);
+        });
+
+        it('leaves unrelated window listeners untouched on teardown', () => {
+            $exeDevice.init(container, {}, '');
+            const other = vi.fn();
+            window.addEventListener('pointermove', other);
+
+            try {
+                $exeDevice.$lifecycle.destroy();
+                window.dispatchEvent(new Event('pointermove'));
+                expect(other).toHaveBeenCalledTimes(1);
+            } finally {
+                window.removeEventListener('pointermove', other);
+            }
+        });
+
+        it('aborts an in-flight image read and ignores its late callback', () => {
+            $exeDevice.init(container, {}, '');
+            const reads = [];
+            class FakeReader {
+                constructor() {
+                    reads.push(this);
+                    this.readyState = 0;
+                    this.result = 'data:image/jpeg;base64,AAA';
+                    this.onload = null;
+                    this.abort = vi.fn(() => {
+                        this.readyState = 2;
+                    });
+                }
+                readAsDataURL() {
+                    this.readyState = 1;
+                }
+            }
+            const originalFileReader = global.FileReader;
+            global.FileReader = FakeReader;
+            window.FileReader = FakeReader;
+
+            try {
+                $exeDevice.handleFileFallback({ name: 'pano.jpg' });
+                const reader = reads[0];
+                expect(reader.readyState).toBe(1);
+
+                $exeDevice.$lifecycle.destroy();
+                expect(reader.abort).toHaveBeenCalledTimes(1);
+
+                reader.onload();
+                expect($exeDevice.getActiveScene().src).toBe('');
+            } finally {
+                global.FileReader = originalFileReader;
+                window.FileReader = originalFileReader;
+            }
+        });
+
+        it('does not render the preview when three.js arrives after the edition closed', () => {
+            $exeDevice.init(container, {}, '');
+            const scene = $exeDevice.getActiveScene();
+            scene.src = 'asset://pano.jpg';
+            delete global.THREE;
+            if (typeof window !== 'undefined') delete window.THREE;
+
+            let deferred = null;
+            const ensure = vi.spyOn($exeDevice, 'ensureThreeLoaded').mockImplementation(cb => {
+                deferred = cb;
+            });
+            $exeDevice.renderPreview();
+            ensure.mockRestore();
+            expect(typeof deferred).toBe('function');
+
+            const render = vi.spyOn($exeDevice, 'renderPreview').mockImplementation(() => {});
+            $exeDevice.$lifecycle.destroy();
+            global.THREE = { Scene: function () {} };
+            deferred();
+
+            expect(render).not.toHaveBeenCalled();
+            render.mockRestore();
+            delete global.THREE;
+        });
+    });
 });

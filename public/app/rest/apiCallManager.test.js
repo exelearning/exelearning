@@ -1250,6 +1250,61 @@ describe('ApiCallManager', () => {
       expect(updateBlock).not.toHaveBeenCalled();
       expect(result.responseMessage).toBe('OK');
     });
+
+    it('should sync structured icon updates via Yjs and include icon in response payload', async () => {
+      const updateBlock = vi.fn();
+      const getBlock = vi.fn().mockReturnValue({
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock, getBlock } },
+      };
+
+      const result = await apiManager.putSaveBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Title',
+        iconName: 'asset://uuid-123/icon.jpg',
+        icon: { source: 'asset', value: 'asset://uuid-123/icon.jpg' },
+        order: 2,
+      });
+
+      expect(updateBlock).toHaveBeenCalledWith('block-1', {
+        icon: { source: 'asset', value: 'asset://uuid-123/icon.jpg' },
+        iconName: 'asset://uuid-123/icon.jpg',
+      });
+      expect(result.odePagStructureSync.icon).toEqual({
+        source: 'asset',
+        value: 'asset://uuid-123/icon.jpg',
+      });
+    });
+
+    it('should skip structured icon sync when icon object is unchanged', async () => {
+      const updateBlock = vi.fn();
+      const getBlock = vi.fn().mockReturnValue({
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock, getBlock } },
+      };
+
+      await apiManager.putSaveBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+
+      expect(updateBlock).not.toHaveBeenCalled();
+    });
   });
 
   describe('putSavePropertiesBlock', () => {
@@ -1535,6 +1590,236 @@ describe('ApiCallManager', () => {
       expect(result.responseMessage).toBe('ERROR');
     });
 
+    it('surfaces the server error detail on a failed public-view request', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: vi.fn().mockResolvedValue({
+          responseMessage: 'FORBIDDEN',
+          detail: 'Only the project owner can change this',
+        }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result).toEqual({ responseMessage: 'ERROR', detail: 'Only the project owner can change this' });
+    });
+
+    it('should enable the public read-only link via PATCH /public-view', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ responseMessage: 'OK', publicViewEnabled: true, publicViewId: 'pv-1' }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      const [url, options] = global.fetch.mock.calls[0];
+      expect(url).toContain('/api/projects/1/public-view');
+      expect(options.method).toBe('PATCH');
+      expect(JSON.parse(options.body)).toEqual({ enabled: true });
+      expect(result.publicViewId).toBe('pv-1');
+    });
+
+    it('should return error when updatePublicViewAccess fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: vi.fn().mockResolvedValue({ message: 'forbidden' }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, false);
+
+      expect(result.responseMessage).toBe('ERROR');
+    });
+
+    it('should regenerate the public link via POST /public-view/regenerate', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ responseMessage: 'OK', publicViewId: 'pv-new' }),
+      });
+
+      const result = await apiManager.regeneratePublicViewId('uuid-abc-123');
+
+      const [url, options] = global.fetch.mock.calls[0];
+      expect(url).toContain('/api/projects/uuid/uuid-abc-123/public-view/regenerate');
+      expect(options.method).toBe('POST');
+      expect(result.publicViewId).toBe('pv-new');
+    });
+
+    it('should fall back to HTTP status when updatePublicViewAccess error body is empty', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: vi.fn().mockRejectedValue(new Error('no body')),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('HTTP 401');
+    });
+
+    it('should return error when updatePublicViewAccess throws (network error)', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('network down'));
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('network down');
+    });
+
+    it('should return error when regeneratePublicViewId fails (non-ok response)', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn().mockResolvedValue({ message: 'not found' }),
+      });
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('not found');
+    });
+
+    it('should fall back to HTTP status when regeneratePublicViewId error body is empty', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: vi.fn().mockRejectedValue(new Error('no body')),
+      });
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('HTTP 500');
+    });
+
+    it('should return error when regeneratePublicViewId throws (network error)', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('offline'));
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('offline');
+    });
+
+    describe('_resolveAuthToken (shared token resolution)', () => {
+      it('prefers the Yjs bridge token over all other sources', () => {
+        eXeLearning.app.project = { _yjsBridge: { authToken: 'bridge-token' } };
+        eXeLearning.app.auth = { getToken: () => 'auth-token' };
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('bridge-token');
+      });
+
+      it('falls back to the auth service token when no bridge token', () => {
+        eXeLearning.app.project = { _yjsBridge: {} };
+        eXeLearning.app.auth = { getToken: () => 'auth-token' };
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('auth-token');
+      });
+
+      it('falls back to localStorage when no bridge or auth token', () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.setItem('authToken', 'ls-token');
+
+        expect(apiManager._resolveAuthToken()).toBe('ls-token');
+      });
+
+      it('returns null when no token is available anywhere', () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.removeItem('authToken');
+
+        expect(apiManager._resolveAuthToken()).toBeNull();
+      });
+    });
+
+    describe('_jsonRequest (shared fetch wrapper)', () => {
+      it('sends a JSON body and an Authorization header when a token exists', async () => {
+        localStorage.setItem('authToken', 'tok-123');
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ ok: 1 }),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', {
+          method: 'PATCH',
+          body: { enabled: true },
+          label: 'test',
+        });
+
+        const [url, options] = global.fetch.mock.calls[0];
+        expect(url).toBe('http://x/y');
+        expect(options.method).toBe('PATCH');
+        expect(options.credentials).toBe('include');
+        expect(options.headers['Content-Type']).toBe('application/json');
+        expect(options.headers.Authorization).toBe('Bearer tok-123');
+        expect(JSON.parse(options.body)).toEqual({ enabled: true });
+        expect(result).toEqual({ ok: 1 });
+      });
+
+      it('omits the body and the Authorization header when there is no body or token', async () => {
+        eXeLearning.app.project = undefined;
+        eXeLearning.app.auth = undefined;
+        localStorage.removeItem('authToken');
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ ok: 1 }),
+        });
+
+        await apiManager._jsonRequest('http://x/y', { method: 'POST' });
+
+        const [, options] = global.fetch.mock.calls[0];
+        expect(options.method).toBe('POST');
+        expect(options.body).toBeUndefined();
+        expect('Authorization' in options.headers).toBe(false);
+      });
+
+      it('defaults to a GET request', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({}),
+        });
+
+        await apiManager._jsonRequest('http://x/y');
+
+        const [, options] = global.fetch.mock.calls[0];
+        expect(options.method).toBe('GET');
+      });
+
+      it('returns an error envelope with the server message on a non-ok response', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 403,
+          json: vi.fn().mockResolvedValue({ message: 'denied' }),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'denied' });
+      });
+
+      it('falls back to the HTTP status when the error body cannot be parsed', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 500,
+          json: vi.fn().mockRejectedValue(new Error('no body')),
+        });
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'HTTP 500' });
+      });
+
+      it('returns an error envelope on a network error', async () => {
+        global.fetch = vi.fn().mockRejectedValue(new Error('boom'));
+
+        const result = await apiManager._jsonRequest('http://x/y', { label: 'test' });
+        expect(result).toEqual({ responseMessage: 'ERROR', detail: 'boom' });
+      });
+    });
+
     it('should map collaborator errors', async () => {
       global.fetch = vi.fn()
         .mockResolvedValueOnce({
@@ -1648,6 +1933,15 @@ describe('ApiCallManager', () => {
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/lopd');
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/prefs');
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
+    });
+
+    it('should not call post when the idevice upload endpoint is missing', async () => {
+      delete apiManager.endpoints.api_idevices_upload;
+
+      const response = await apiManager.postUploadIdevice({ data: 'idevice' });
+
+      expect(response.responseMessage).toBe('Error');
+      expect(mockFunc.post).not.toHaveBeenCalledWith(undefined, { data: 'idevice' });
     });
 
     it('should call structure and diagnostics endpoints', async () => {
@@ -1979,6 +2273,58 @@ describe('ApiCallManager', () => {
         expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('window.__EXE_STATIC_DATA__'));
 
         delete window.__EXE_STATIC_DATA__;
+        logSpy.mockRestore();
+      });
+
+      it('should prefer bundle.json.zst when window.fzstd is available', async () => {
+        const mockBundleData = {
+          parameters: { routes: { api_test: { path: '/api/test' } } },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        };
+        const jsonBytes = new TextEncoder().encode(JSON.stringify(mockBundleData));
+        // Pretend-compressed payload; the mocked decompressor returns the JSON bytes.
+        const compressed = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd, 1, 2, 3]);
+        window.fzstd = { decompress: vi.fn(() => jsonBytes) };
+        global.fetch = vi.fn().mockResolvedValueOnce({
+          ok: true,
+          arrayBuffer: () => Promise.resolve(compressed.buffer),
+        });
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(global.fetch).toHaveBeenCalledWith('./data/bundle.json.zst');
+        expect(window.fzstd.decompress).toHaveBeenCalled();
+        expect(apiManager.staticData).toEqual(mockBundleData);
+
+        delete window.fzstd;
+        logSpy.mockRestore();
+      });
+
+      it('should fall back to plain bundle.json when the .zst tier is unavailable', async () => {
+        const mockBundleData = {
+          parameters: { routes: {} },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        };
+        window.fzstd = { decompress: vi.fn() };
+        global.fetch = vi
+          .fn()
+          .mockResolvedValueOnce({ ok: false, status: 404 }) // bundle.json.zst missing
+          .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockBundleData) });
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(global.fetch).toHaveBeenNthCalledWith(1, './data/bundle.json.zst');
+        expect(global.fetch).toHaveBeenNthCalledWith(2, './data/bundle.json');
+        expect(window.fzstd.decompress).not.toHaveBeenCalled();
+        expect(apiManager.staticData).toEqual(mockBundleData);
+
+        delete window.fzstd;
         logSpy.mockRestore();
       });
 

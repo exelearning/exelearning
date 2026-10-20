@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeAll } from 'bun:test';
 import { Html5Exporter } from '../../../src/shared/export/exporters/Html5Exporter';
 import { Scorm12Exporter } from '../../../src/shared/export/exporters/Scorm12Exporter';
+import { SCORM12_RUNTIME_SOURCE_PATHS } from '../../../src/shared/export/utils/Scorm12Runtime';
 import { Scorm2004Exporter } from '../../../src/shared/export/exporters/Scorm2004Exporter';
 import { ImsExporter } from '../../../src/shared/export/exporters/ImsExporter';
 import type {
@@ -130,8 +131,16 @@ class FileResourceProvider implements ResourceProvider {
         return result;
     }
 
-    async fetchScormFiles(): Promise<Map<string, Buffer>> {
-        return new Map();
+    async fetchScormFiles(version: '1.2' | '2004' = '1.2'): Promise<Map<string, Buffer>> {
+        const files = new Map<string, Buffer>();
+        if (version === '1.2') {
+            // The 1.2 exporter fails loudly when the runtime source files are
+            // missing (see Scorm12Runtime.ts), so provide stand-ins.
+            for (const sourcePath of SCORM12_RUNTIME_SOURCE_PATHS) {
+                files.set(sourcePath, Buffer.from(`/* ${sourcePath} */`));
+            }
+        }
+        return files;
     }
 
     async fetchContentCss(): Promise<Map<string, Buffer>> {

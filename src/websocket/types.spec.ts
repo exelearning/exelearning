@@ -5,7 +5,6 @@
 import { describe, it, expect } from 'bun:test';
 import type {
     ClientMeta,
-    Room,
     AssetMessageType,
     AssetMessage,
     AwarenessUpdateData,
@@ -39,19 +38,6 @@ describe('WebSocket types', () => {
             expect(meta.projectUuid).toBe('abc-123');
             expect(meta.clientId).toBe('client-1');
             expect(meta.connectedAt).toBeInstanceOf(Date);
-        });
-    });
-
-    describe('Room', () => {
-        it('should define room structure', () => {
-            const room: Room = {
-                name: 'project-abc',
-                conns: new Set(),
-                projectUuid: 'abc-123',
-            };
-            expect(room.name).toBe('project-abc');
-            expect(room.conns).toBeInstanceOf(Set);
-            expect(room.projectUuid).toBe('abc-123');
         });
     });
 

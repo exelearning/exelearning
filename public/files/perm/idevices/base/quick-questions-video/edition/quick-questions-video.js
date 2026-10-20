@@ -151,6 +151,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Video test'),
         };
     },
@@ -229,8 +230,16 @@ var $exeDevice = {
 
     loadYoutubeApi: function () {
         if (typeof YT == 'undefined') {
-            onYouTubeIframeAPIReady = $exeDevice.youTubeReady;
-            let tag = document.createElement('script');
+            // The YouTube API calls this global whenever it finishes loading,
+            // which can be long after this edition closed. Bind it to this
+            // edition and restore the previous value on teardown.
+            const ready = $exeDevice.youTubeReady;
+            const previousReady = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = typeof ready === 'function' ? $exeDevice.$lifecycle.bind(ready) : ready;
+            $exeDevice.$lifecycle.own(() => {
+                window.onYouTubeIframeAPIReady = previousReady;
+            });
+            const tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
             let firstScriptTag = document.getElementsByTagName('script')[0];
@@ -241,6 +250,7 @@ var $exeDevice = {
     },
 
     loadPlayerYoutube: function () {
+        const lifecycle = $exeDevice.$lifecycle;
         $exeDevice.player = new YT.Player('vquextEVideo', {
             width: '100%',
             height: '100%',
@@ -251,10 +261,11 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.clickPlay,
-                onError: $exeDevice.onPlayerError,
+                onReady: lifecycle.bind($exeDevice.clickPlay),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
             },
         });
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
     },
 
     clickPlay: function () {
@@ -267,6 +278,7 @@ var $exeDevice = {
 
     youTubeReady: function () {
         if (typeof YT == 'undefined' || !$exeDevice) return false;
+        const lifecycle = $exeDevice.$lifecycle;
         $('#vquextMediaVideo').prop('disabled', false);
         $exeDevice.player = new YT.Player('vquextEVideo', {
             width: '100%',
@@ -278,11 +290,12 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.onPlayerReady,
-                onError: $exeDevice.onPlayerError,
-                onStateChange: $exeDevice.onPlayerStateChange,
+                onReady: lifecycle.bind($exeDevice.onPlayerReady),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
+                onStateChange: lifecycle.bind($exeDevice.onPlayerStateChange),
             },
         });
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
     },
 
     onPlayerStateChange() {
@@ -467,6 +480,7 @@ var $exeDevice = {
     startVideoLocal: function (url, start, end) {
         if ($exeDevice.localPlayer) {
             $exeDevice.pointEnd = end;
+            const lifecycle = $exeDevice.$lifecycle;
             const player = $exeDevice.localPlayer;
             const startTime = parseFloat(start);
 
@@ -478,19 +492,28 @@ var $exeDevice = {
                 // Use the global asset resolver if available
                 const resolver = window.eXeLearningAssetResolver;
                 if (resolver && typeof resolver.resolve === 'function') {
-                    resolver.resolve(url).then(blobUrl => {
-                        if (blobUrl) {
-                            // Set src directly without going through interceptor
-                            player.src = blobUrl;
-                            // Wait for canplay event to set time and play
-                            // This works better with the existing loadedmetadata listener from initClock
-                            player.addEventListener('canplay', function onCanPlay() {
-                                player.removeEventListener('canplay', onCanPlay);
-                                player.currentTime = startTime;
-                                player.play().catch(() => {});
-                            }, { once: true });
-                        }
-                    });
+                    // The resolution can land after the editor closed, so the
+                    // continuation is bound to this edition and the canplay
+                    // listener is owned by it.
+                    resolver.resolve(url).then(
+                        lifecycle.bind(blobUrl => {
+                            if (blobUrl) {
+                                // Set src directly without going through interceptor
+                                player.src = blobUrl;
+                                // Wait for canplay event to set time and play
+                                // This works better with the existing loadedmetadata listener from initClock
+                                lifecycle.addEventListener(
+                                    player,
+                                    'canplay',
+                                    () => {
+                                        player.currentTime = startTime;
+                                        player.play().catch(() => {});
+                                    },
+                                    { once: true },
+                                );
+                            }
+                        }),
+                    );
                 } else {
                     console.warn('[quick-questions-video] Asset resolver not available for:', url);
                 }
@@ -987,7 +1010,6 @@ var $exeDevice = {
                                     <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                                 </div>
                                 <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
-                                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                                 </div>
                             </div>
                         </fieldset>
@@ -1170,7 +1192,7 @@ var $exeDevice = {
                          ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                     </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 </div>
             `;
@@ -1197,6 +1219,7 @@ var $exeDevice = {
             this.showSolution(0);
         }
         $exeDevice.localPlayer = document.getElementById('vquextEVideoLocal');
+        $exeDevice.$lifecycle.ownMedia($exeDevice.localPlayer);
         $exeDevice.showTypeQuestion(0);
         this.active = 0;
     },
@@ -1378,14 +1401,23 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#vquextEGlobalTimes').val(game.globalTime);
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
+        // The weight too: setValues defaults it to 100 when the argument is
+        // missing, so the stored value never reached the field — and the next
+        // save read that 100 back out of the form and overwrote it. Every
+        // other iDevice passes four arguments here.
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
-            game.repeatActivity
+            game.repeatActivity,
+            game.weighted
         );
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.videoType =
@@ -1473,17 +1505,7 @@ var $exeDevice = {
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
-        clearInterval($exeDevice.timeUpdateInterval);
-        $exeDevice.timeUpdateInterval = null;
-        $exeDevice.localPlayer.removeEventListener(
-            'timeupdate',
-            $exeDevice.timeUpdateVideoLocal,
-            false
-        );
-        $exeDevice.localPlayer.removeEventListener(
-            'loadedmetadata',
-            $exeDevice.getDataVideoLocal
-        );
+        $exeDevice.releaseClock();
 
         $exeDevice.changesSaved = true;
 
@@ -1721,6 +1743,8 @@ var $exeDevice = {
             modeBoard = $('#vquextEModeBoard').is(':checked'),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#vquextEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
@@ -1826,6 +1850,8 @@ var $exeDevice = {
             modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             globalTime,
             id,
         };
@@ -2132,6 +2158,7 @@ var $exeDevice = {
             }
         });
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#vquextGlobalTimeButton').on('click', function (e) {
             if (!$exeDevice) return;
@@ -2156,31 +2183,42 @@ var $exeDevice = {
         });
     },
 
+    /**
+     * Stop the clock: cancel the polling timer and detach the local player
+     * listeners this edition attached. Safe to call when nothing is running.
+     */
+    releaseClock: function () {
+        const lifecycle = $exeDevice.$lifecycle;
+        lifecycle.clearInterval($exeDevice.timeUpdateInterval);
+        $exeDevice.timeUpdateInterval = null;
+        if (typeof $exeDevice.removeLocalPlayerListeners === 'function') {
+            $exeDevice.removeLocalPlayerListeners();
+            $exeDevice.removeLocalPlayerListeners = null;
+        }
+    },
+
     initClock: function (type) {
         $exeDevice.endVideoQuExt = 0;
-        const { localPlayer, timeUpdateVideoLocal, getDataVideoLocal } =
-            $exeDevice;
+        const lifecycle = $exeDevice.$lifecycle;
+        const { localPlayer, timeUpdateVideoLocal, getDataVideoLocal } = $exeDevice;
 
-        localPlayer.removeEventListener(
-            'timeupdate',
-            timeUpdateVideoLocal,
-            false
-        );
-        localPlayer.removeEventListener('loadedmetadata', getDataVideoLocal);
-
-        clearInterval($exeDevice.timeUpdateInterval);
+        $exeDevice.releaseClock();
 
         if (type > 0) {
-            localPlayer.addEventListener('loadedmetadata', getDataVideoLocal);
-            localPlayer.addEventListener(
-                'timeupdate',
-                timeUpdateVideoLocal,
-                false
-            );
+            // `getDataVideoLocal` reads `this.duration`, so it must keep
+            // running with the media element as `this`.
+            const removeMetadata = lifecycle.addEventListener(localPlayer, 'loadedmetadata', event => {
+                getDataVideoLocal.call(event.currentTarget, event);
+            });
+            const removeTimeUpdate = lifecycle.addEventListener(localPlayer, 'timeupdate', timeUpdateVideoLocal);
+            $exeDevice.removeLocalPlayerListeners = () => {
+                removeMetadata();
+                removeTimeUpdate();
+            };
         } else {
-            $exeDevice.timeUpdateInterval = setInterval(() => {
-                if ($exeDevice?.videoType === 0) {
-                    $exeDevice.updateTimerDisplayYT();
+            $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
+                if (this.videoType === 0) {
+                    this.updateTimerDisplayYT();
                 }
             }, 1000);
         }

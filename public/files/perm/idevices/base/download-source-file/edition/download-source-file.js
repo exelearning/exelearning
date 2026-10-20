@@ -209,7 +209,7 @@ var $exeDevice = {
         var str6 = c_(
             'This content was created with eXeLearning, your free and open source editor to create educational resources.'
         );
-        var str7 = c_('Download .elp file');
+        var str7 = c_('Download .elpx file');
 
         // Note: The td wraps the span with mceNonEditable so the entire cell is immutable to the user
         // Styling is handled by global tinymce_5_extra.css to prevent inline styles from cloning to new rows
@@ -272,7 +272,7 @@ var $exeDevice = {
 			<div id="eXeDownloadPackageForm">\
 				<p><label for="dpiDescription">' +
             _(
-                'This block will create a link to download the elp file. Write some use instructions and customize your download link.'
+                'This block will create a link to download the .elpx file. Write some use instructions and customize your download link.'
             ) +
             '</label></p>\
 				<p><textarea id="dpiDescription" class="exe-html-editor">' +
@@ -319,24 +319,26 @@ var $exeDevice = {
         // Populate values initially
         this.updateProperties();
 
-        // Listen to focus changes
-        $(window).off('focus.dlSourceFile').on('focus.dlSourceFile', function () {
+        // Listen to focus changes. The lifecycle owns the handler so it is
+        // removed from `window` when this edition closes.
+        var lifecycle = this.$lifecycle;
+        var removeFocusHandler = lifecycle.on(window, 'focus', function () {
             if ($('#eXeDownloadPackageForm').length > 0) {
-                $exeDevice.updateProperties();
+                this.updateProperties();
             } else {
-                $(window).off('focus.dlSourceFile');
+                removeFocusHandler();
             }
         });
 
         // Update when TinyMCE is ready
-        var updateInterval = setInterval(function() {
+        var updateInterval = lifecycle.setInterval(function () {
             if (tinymce.editors.length > 0 && tinymce.editors[0] && tinymce.editors[0].getDoc()) {
-                $exeDevice.updateProperties();
-                clearInterval(updateInterval);
+                this.updateProperties();
+                lifecycle.clearInterval(updateInterval);
             }
         }, 500);
-        setTimeout(function() {
-            clearInterval(updateInterval);
+        lifecycle.setTimeout(() => {
+            lifecycle.clearInterval(updateInterval);
         }, 5000);
     },
 

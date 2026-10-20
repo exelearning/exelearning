@@ -90,6 +90,12 @@ export { getIdeviceConfig as getIdeviceConfigFromService, isJsonIdevice } from '
 
 // Utils
 export { LibraryDetector } from './utils/LibraryDetector';
+export {
+    SCORM12_VENDOR_WRAPPER_PATH,
+    SCORM12_RUNTIME_LAYER_PATHS,
+    SCORM12_RUNTIME_SOURCE_PATHS,
+    buildScorm12RuntimeFiles,
+} from './utils/Scorm12Runtime';
 
 // Renderers
 export { IdeviceRenderer } from './renderers/IdeviceRenderer';

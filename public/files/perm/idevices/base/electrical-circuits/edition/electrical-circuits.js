@@ -129,13 +129,10 @@ var $exeDevice = {
             msgMinimize: c_('Minimize'),
             msgMaximize: c_('Maximize'),
             msgTime: c_('Time per question'),
-            msgLive: c_('Life'),
             msgFullScreen: c_('Full Screen'),
             msgNumQuestions: c_('Number of questions'),
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
-            msgLoseLive: c_('You lost one life'),
-            msgLostLives: c_('You lost all your lives!'),
             msgAllQuestions: c_('You answered all the questions.'),
             msgSuccesses: c_(
                 'Right! | Excellent! | Great! | Very good! | Perfect!'
@@ -172,6 +169,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Electrical Circuits Quiz'),
         };
     },
@@ -774,6 +772,7 @@ var $exeDevice = {
 
     // Parsed Computer Modern fonts, keyed by font-family, reused across renders.
     tikzFontCache: {},
+    tikzFontPackPromise: null,
 
     // TikZJax emits one Unicode code point per glyph from its own font-encoding
     // table. That mapping for the operators-font uppercase Omega is off by one:
@@ -1047,19 +1046,78 @@ var $exeDevice = {
         return data;
     },
 
+    // The static build packs the whole fonts/ directory into one
+    // zstd-compressed sidecar (fonts.pack.zst) so 140 loose TTFs are not
+    // shipped twice-compressible. Fetch and decode it once, lazily; resolve
+    // to null when the pack (or the fzstd decoder) is unavailable — the
+    // server runtime keeps serving the loose files.
+    // Format: u32le header length + JSON {family: [offset, length]} + payload.
+    loadTikzFontPack: function () {
+        // Both caches belong to the edition that fills them; the async work
+        // below must never read or reset the `$exeDevice` that replaced it.
+        const self = this;
+        if (!self.tikzFontPackPromise) {
+            self.tikzFontPackPromise = (async () => {
+                if (!window.fzstd) return null;
+                const url = (self.idevicePath || '') + 'fonts.pack.zst';
+                const response = await fetch(url);
+                // A missing pack (server mode serves the loose TTFs instead)
+                // is a stable answer worth caching for the session.
+                if (!response.ok) return null;
+                const packed = new Uint8Array(await response.arrayBuffer());
+                const bytes = window.fzstd.decompress(packed);
+                const headerLength = new DataView(
+                    bytes.buffer,
+                    bytes.byteOffset,
+                    4
+                ).getUint32(0, true);
+                const header = JSON.parse(
+                    new TextDecoder().decode(bytes.subarray(4, 4 + headerLength))
+                );
+                return { header, payload: bytes.subarray(4 + headerLength) };
+            })().catch(() => {
+                // Transient failure (network blip): let a later call retry
+                // instead of degrading fonts for the whole session.
+                self.tikzFontPackPromise = null;
+                return null;
+            });
+        }
+        return self.tikzFontPackPromise;
+    },
+
     // Fetch and parse a Computer Modern font shipped next to this iDevice,
     // caching the (promise of the) result. Overridable in tests.
     loadTikzFont: function (family) {
-        if (!$exeDevice.tikzFontCache[family]) {
-            const url = ($exeDevice.idevicePath || '') + 'fonts/' + family + '.ttf';
-            $exeDevice.tikzFontCache[family] = fetch(url)
-                .then((response) => (response.ok ? response.arrayBuffer() : null))
-                .then((buffer) =>
-                    buffer ? $exeDevice.parseTikzFont(buffer) : null
-                )
+        const self = this;
+        if (!self.tikzFontCache[family]) {
+            // Capture the edition's signal now: the pack lookup is async, and
+            // a later edition must not own this fallback fetch.
+            const signal = this.$lifecycle && this.$lifecycle.signal;
+            self.tikzFontCache[family] = self
+                .loadTikzFontPack()
+                .then((pack) => {
+                    const entry = pack && pack.header[family];
+                    if (entry) {
+                        // .slice() copies into a fresh buffer, matching the
+                        // ArrayBuffer shape parseTikzFont expects.
+                        const bytes = pack.payload.slice(entry[0], entry[0] + entry[1]);
+                        return self.parseTikzFont(bytes.buffer);
+                    }
+                    const url =
+                        (self.idevicePath || '') + 'fonts/' + family + '.ttf';
+                    // Loose-file fallback is aborted with the edition. The zstd
+                    // pack is session-wide and must not be cancelled here.
+                    return fetch(url, { signal })
+                        .then((response) =>
+                            response.ok ? response.arrayBuffer() : null
+                        )
+                        .then((buffer) =>
+                            buffer ? self.parseTikzFont(buffer) : null
+                        );
+                })
                 .catch(() => null);
         }
-        return $exeDevice.tikzFontCache[family];
+        return self.tikzFontCache[family];
     },
 
     /**
@@ -1081,9 +1139,12 @@ var $exeDevice = {
             ),
         ];
 
+        // Font loading is async: the continuation must keep using the edition
+        // that started it, never whatever `$exeDevice` holds by then.
+        const self = this;
         return Promise.all(
             families.map((family) =>
-                $exeDevice
+                self
                     .loadTikzFont(family)
                     .then((font) => [family, font])
             )
@@ -1096,7 +1157,7 @@ var $exeDevice = {
                 const x = parseFloat(text.getAttribute('x')) || 0;
                 const y = parseFloat(text.getAttribute('y')) || 0;
                 const fontSize = parseFloat(text.getAttribute('font-size')) || 10;
-                const data = $exeDevice.tikzGlyphStringToPath(
+                const data = self.tikzGlyphStringToPath(
                     font,
                     text.textContent,
                     x,
@@ -1183,22 +1244,37 @@ var $exeDevice = {
         // (both for cached and freshly compiled results). Grabbing any <svg>
         // captured the spinner by mistake and required a second click, so wait
         // for that event and then capture the real circuit.
-        const onFinished = () => {
+        // TikZJax answers long after the render was requested and keeps the
+        // <script> node alive even once the form is detached, so the handler is
+        // bound to this edition and its registration is dropped on teardown.
+        const lifecycle = this.$lifecycle;
+        const onFinished = lifecycle.bind(function () {
             preview.removeEventListener('tikzjax-load-finished', onFinished);
             $exeDevice.tikzFinishedHandler = null;
             // TikZJax renders glyphs as <text> referencing Computer Modern fonts
             // that are never registered, so convert them to self-contained
             // <path>s before capturing. Conversion is async (it fetches fonts);
             // expose the promise so the rest of the flow (and tests) can await.
+            // bind() guards only this callback's entry: the conversion it
+            // starts can finish after the edition closed, so its continuation
+            // is bound too and runs on this instance (`this`), never on the
+            // `$exeDevice` that replaced it.
             const renderedSvg = preview.querySelector('svg');
-            $exeDevice.tikzCapturePromise = Promise.resolve(
-                renderedSvg ? $exeDevice.convertTikzTextToPaths(renderedSvg) : null
+            this.tikzCapturePromise = Promise.resolve(
+                renderedSvg ? this.convertTikzTextToPaths(renderedSvg) : null
             )
                 .catch(() => {})
-                .then(() => $exeDevice.captureRenderedTikzPreview(code, preview));
-        };
+                .then(
+                    lifecycle.bind(function () {
+                        return this.captureRenderedTikzPreview(code, preview);
+                    })
+                );
+        });
         $exeDevice.tikzFinishedHandler = onFinished;
         preview.addEventListener('tikzjax-load-finished', onFinished);
+        lifecycle.own(() =>
+            preview.removeEventListener('tikzjax-load-finished', onFinished)
+        );
 
         preview.appendChild(tikzScript);
     },
@@ -1236,36 +1312,45 @@ var $exeDevice = {
             $exeDevice.tikzFinishedHandler = null;
         }
 
-        return new Promise((resolve) => {
+        // Same ownership as the manual preview: the timeout and the TikZJax
+        // answer both outlive the render request, so they belong to this
+        // edition and stop with it.
+        // `lifecycle.promise()` rejects with an AbortError on teardown, which
+        // cancels the timeout and the listener that would otherwise settle it.
+        const lifecycle = this.$lifecycle;
+        return lifecycle.promise((resolve) => {
             let settled = false;
             const finish = (svg) => {
                 if (settled) return;
                 settled = true;
-                clearTimeout(timer);
+                lifecycle.clearTimeout(timer);
                 preview.removeEventListener('tikzjax-load-finished', onFinished);
                 resolve(svg || '');
             };
 
-            const timer = setTimeout(() => finish(''), timeoutMs);
+            const timer = lifecycle.setTimeout(() => finish(''), timeoutMs);
 
-            const onFinished = () => {
+            const onFinished = lifecycle.bind(function () {
                 const renderedSvg = preview.querySelector('svg');
                 Promise.resolve(
-                    renderedSvg
-                        ? $exeDevice.convertTikzTextToPaths(renderedSvg)
-                        : null
+                    renderedSvg ? this.convertTikzTextToPaths(renderedSvg) : null
                 )
                     .catch(() => {})
-                    .then(() => {
-                        const finalSvg = preview.querySelector('svg');
-                        finish(
-                            finalSvg ? $exeDevice.sanitizeTikzSvg(finalSvg) : ''
-                        );
-                    });
-            };
+                    .then(
+                        lifecycle.bind(function () {
+                            const finalSvg = preview.querySelector('svg');
+                            finish(
+                                finalSvg ? this.sanitizeTikzSvg(finalSvg) : ''
+                            );
+                        })
+                    );
+            });
 
             preview.innerHTML = '';
             preview.addEventListener('tikzjax-load-finished', onFinished);
+            lifecycle.own(() =>
+                preview.removeEventListener('tikzjax-load-finished', onFinished)
+            );
 
             const tikzScript = document.createElement('script');
             tikzScript.type = 'text/tikz';
@@ -1429,25 +1514,6 @@ var $exeDevice = {
                                 </select>
                                 <button id="elceGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item" data-target="elceEvaluation">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="elceEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="elceEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center flex-nowrap gap-2 ms-2 ELCE-EEvaluationFields">
-                                    <label for="elceEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" class="form-control" id="elceEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                                    <a href="#elceEvaluationHelp" id="elceEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </div>
-                            </div>
-                            <p id="elceEvaluationHelp" class="exe-block-info ELCE-TypeGameHelp">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1606,7 +1672,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(11)}
 
@@ -1729,11 +1795,16 @@ var $exeDevice = {
         $('#elceHasFeedBack').prop('checked', game.feedBack);
         $('#elcePercentajeFB').val(game.percentajeFB);
         $('#elcePercentajeQuestionsValue').val(game.percentajeQuestions);
-        $('#elceEvaluation').prop('checked', game.evaluation);
-        $('#elceEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#elceGlobalTimes').val(game.globalTime);
 
-        $('#elceEvaluationID').prop('disabled', !game.evaluation);
 
         for (let i = 0; i < game.selectsGame.length; i++) {
             game.selectsGame[i].typeSelect =
@@ -1926,13 +1997,16 @@ var $exeDevice = {
             return;
         }
         const data = window.URL.createObjectURL(newBlob);
+        // Owned by the edition, so the blob is released even when the editor
+        // closes before the cleanup timer runs.
+        this.$lifecycle.own(() => window.URL.revokeObjectURL(data));
         const link = document.createElement('a');
         link.href = data;
         link.download = `${_('test')}.txt`;
 
         document.getElementById('electricalCircuitsIdeviceForm').appendChild(link);
         link.click();
-        setTimeout(() => {
+        this.$lifecycle.setTimeout(() => {
             document
                 .getElementById('electricalCircuitsIdeviceForm')
                 .removeChild(link);
@@ -1987,12 +2061,23 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#elcePercentajeQuestionsValue').val())
             ),
-            evaluation = $('#elceEvaluation').is(':checked'),
-            evaluationID = $('#elceEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            evaluation = progressBar.evaluation,
+            evaluationID = progressBar.evaluationID,
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#elceGlobalTimes').val(), 10);
 
         if (!itinerary) return false;
+        // getValues() warns and returns false on a report identifier that is
+        // too short. Without this the form carried on and saved the activity
+        // with the report silently switched off, because reading `.evaluation`
+        // off `false` yields undefined rather than throwing. The check this
+        // replaces only ran in test mode, so a bad identifier went through
+        // unchallenged in every other one.
+        if (!progressBar) return false;
 
         if (activityMode === 'test') {
             if (feedBack && textFeedBack.trim().length == 0) {
@@ -2001,10 +2086,6 @@ var $exeDevice = {
             }
             if (showSolution && timeShowSolution.length == 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-                return false;
-            }
-            if (evaluation && evaluationID.length < 5) {
-                eXe.app.alert($exeDevice.msgs.msgIDLenght);
                 return false;
             }
         }
@@ -2067,8 +2148,6 @@ var $exeDevice = {
             questionsRandom: questionsRandom,
             showSolution: showSolution,
             timeShowSolution: timeShowSolution,
-            useLives: false,
-            numberLives: 3,
             itinerary: itinerary,
             selectsGame: selectsGame,
             isScorm: scorm.isScorm,
@@ -2087,6 +2166,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
             globalTime: globalTime,
         };
@@ -2135,6 +2216,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         const $elcePaste = $('#elcePaste'),
             $elceTimeShowSolution = $('#elceTimeShowSolution'),
             $elceShowSolution = $('#elceShowSolution'),
@@ -2163,8 +2245,8 @@ var $exeDevice = {
                 )
                     return;
                 if (
-                    $(e.target).is('#elceEvaluationID') ||
-                    $(e.target).closest('#elceEvaluationHelpLnk').length
+                    $(e.target).is('#eXeProgressReportID') ||
+                    $(e.target).closest('#eXeProgressReportHelpLnk').length
                 )
                     return;
                 const $input = $(this).find('input.toggle-input').first();
@@ -2177,14 +2259,7 @@ var $exeDevice = {
 
         $electricalCircuitsForm.on(
             'click',
-            '#elceEvaluationID',
-            function (e) {
-                e.stopPropagation();
-            }
-        );
-        $electricalCircuitsForm.on(
-            'click',
-            '#elceEvaluationHelpLnk, #elceEvaluationHelpLnk *',
+            '#eXeProgressReportID',
             function (e) {
                 e.stopPropagation();
             }
@@ -2338,10 +2413,15 @@ var $exeDevice = {
                         );
                         return;
                     }
+                    // A read still in flight is aborted when the editor
+                    // closes, and the callback is bound to this edition, so an
+                    // import that completes late never lands in another
+                    // iDevice.
                     const reader = new FileReader();
-                    reader.onload = function (e) {
-                        $exeDevice.importGame(e.target.result, file.type);
-                    };
+                    lifecycle.ownFileReader(reader);
+                    reader.onload = lifecycle.bind(function (e) {
+                        this.importGame(e.target.result, file.type);
+                    });
                     reader.readAsText(file);
                 });
             $('#eXeGameExportQuestions').on('click', () => {
@@ -2406,17 +2486,9 @@ var $exeDevice = {
             }
         });
 
-        $('#elceEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#elceEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#elceEvaluationHelpLnk').on('click', function () {
-            $('#elceEvaluationHelp').toggle();
-            return false;
-        });
-
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             11,
             $exeDevice.insertAIQuestions
@@ -2753,10 +2825,13 @@ var $exeDevice = {
     // for the user to fix and try again. Returns { handledMessaging: true } so
     // the shared handler skips its generic alert.
     insertAIQuestions: async function (validLines, invalidLines = []) {
-        const parsed = $exeDevice.parseAIQuestions(validLines);
+        // Passed as a bare callback, so `this` is not the device. Capture the
+        // edition that asked now: every await below can outlive it.
+        const self = $exeDevice;
+        const parsed = self.parseAIQuestions(validLines);
         const remainingLines = [...(invalidLines || []), ...parsed.invalidLines];
 
-        $exeDevice.showCircuitGenerationModal();
+        self.showCircuitGenerationModal();
         try {
             const validQuestions = [];
             let isFirstRender = true;
@@ -2772,10 +2847,21 @@ var $exeDevice = {
                 // circuit so a valid circuit is not wrongly discarded on a slow
                 // browser; the engine is warm for the rest.
                 const timeoutMs = isFirstRender
-                    ? $exeDevice.tikzColdStartTimeoutMs
-                    : $exeDevice.tikzRenderTimeoutMs;
+                    ? self.tikzColdStartTimeoutMs
+                    : self.tikzRenderTimeoutMs;
                 isFirstRender = false;
-                const svg = await $exeDevice.renderTikzCodeToSvg(code, timeoutMs);
+                let svg;
+                try {
+                    svg = await self.renderTikzCodeToSvg(code, timeoutMs);
+                } catch (error) {
+                    // The editor closed mid-render: nothing is left to add the
+                    // questions to or to report into. `finally` still closes
+                    // the app-level modal.
+                    if (self.$lifecycle.isAbortError(error)) {
+                        return { handledMessaging: true };
+                    }
+                    throw error;
+                }
                 if (svg) {
                     question.tikzSvg = svg;
                     validQuestions.push(question);
@@ -2785,16 +2871,16 @@ var $exeDevice = {
             }
 
             if (validQuestions.length > 0) {
-                $exeDevice.addQuestions(validQuestions);
+                self.addQuestions(validQuestions);
             }
         } finally {
-            $exeDevice.hideCircuitGenerationModal();
+            self.hideCircuitGenerationModal();
         }
 
         if (remainingLines.length > 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEQuestionsNotAdded);
+            self.showMessage(self.msgs.msgEQuestionsNotAdded);
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgQuestionsAdded);
+            self.showMessage(self.msgs.msgQuestionsAdded);
         }
 
         return { handledMessaging: true, remainingLines };

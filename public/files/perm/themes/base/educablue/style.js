@@ -38,7 +38,7 @@ var myTheme = {
         // Add menu and search bar togglers
         togglers +=
             '\
-            <button type="button" id="siteNavToggler" class="toggler" title="' +
+            <button type="button" id="siteNavToggler" class="toggler" aria-expanded="true" aria-controls="siteNav" title="' +
             $exe_i18n.menu +
             '">\
                 <span>' +
@@ -48,13 +48,10 @@ var myTheme = {
         ';
         $('#siteNav').before(togglers);
         // Check the current NAV status
-        var url = window.location.href;
-        url = url.split('?');
-        if (url.length > 1) {
-            if (url[1].indexOf('nav=false') != -1) {
-                $('body').addClass('siteNav-off');
-                myTheme.params('add');
-            }
+        if (new URLSearchParams(window.location.search).get('nav') === 'false') {
+            $('body').addClass('siteNav-off');
+            myTheme.navExpanded(false);
+            myTheme.params('add');
         }
         // Dark mode
         this.darkMode.init();
@@ -77,14 +74,14 @@ var myTheme = {
                     $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
+            myTheme.navExpanded(!$('body').hasClass('siteNav-off'));
         });  
         // Allways close the menu in low resolution
         $("#siteNav a").on('click', function(event){
             if (event.target.nodeName == 'A') {
                 if (myTheme.isLowRes()) {
                     event.preventDefault();
-                    myTheme.param(this, 'add');
-                    window.location = this.href;
+                    window.location = $exeExport.setUrlParam(this.href, 'nav', 'false');
                 }
             }
         });      
@@ -186,32 +183,18 @@ var myTheme = {
             });
         });
     },
-    param: function (e, act) {
-        var ref = e.href;
-        var hash = '';
-        var h = ref.indexOf('#');
-        if (h != -1) {
-            hash = ref.slice(h);
-            ref = ref.slice(0, h);
-        }
-        var q = ref.indexOf('?');
-        var base = q == -1 ? ref : ref.slice(0, q);
-        // Keep every other param
-        var kept =
-            q == -1
-                ? []
-                : ref
-                      .slice(q + 1)
-                      .split('&')
-                      .filter(function (p) {
-                          return p !== '' && p != 'nav=false';
-                      });
-        if (act == 'add') kept.push('nav=false');
-        e.href = base + (kept.length ? '?' + kept.join('&') : '') + hash;
+    navExpanded: function (visible) {
+        $('#siteNavToggler').attr('aria-expanded', visible ? 'true' : 'false');
+        $('#siteNav').prop('inert', !visible);
     },
+    // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
+        var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
-            myTheme.param(this, act);
+            this.setAttribute(
+                'href',
+                $exeExport.setUrlParam(this.getAttribute('href'), 'nav', value)
+            );
         });
     },
 };

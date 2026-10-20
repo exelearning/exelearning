@@ -92,6 +92,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Complete'),
         };
     },
@@ -259,7 +260,7 @@ var $exeDevice = {
                              </div>
                             <div id="cmptbackground" class="CMPT-Back mb-3">
                                 <img class="CMPT-EMedia1" src="" id="cmptEImageBack" alt="${_('Image')}" />
-                                <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath}cmptbackground.png" id="cmptEImageNoBack" alt="${_('No image')}" />
+                                <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath.replace(/\/edition\/?$/, '/export/')}cmptbackground.webp" id="cmptEImageNoBack" alt="${_('No image')}" />
                             </div>
                             <div id="cmptFontColorDiv" class="CMPT-FontColor d-none align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="cmptEFontColor" class="mb-0">${_('Font color')}: </label>
@@ -270,7 +271,6 @@ var $exeDevice = {
                                 <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                             </div>
                         </div>
                     </fieldset>
@@ -286,7 +286,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
@@ -379,6 +379,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#cmptBack0').prop('checked', game.hasBack);
         $('#cmptEURLBack').val(game.urlBack);
@@ -566,6 +570,8 @@ var $exeDevice = {
             attempsNumber = parseInt($('#cmptAttemptsNumber').val(), 10),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             hasBack = $('#cmptBack0').is(':checked'),
             urlBack = $('#cmptEURLBack').val().trim(),
             authorBackImage = $('#cmptAuthorBack').val(),
@@ -618,6 +624,8 @@ var $exeDevice = {
             wordsLimit: wordsLimit,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             hasBack: hasBack,
             urlBack: urlBack,
             authorBackImage: authorBackImage,
@@ -680,7 +688,7 @@ var $exeDevice = {
 
         $('#cmptETime')
             .on('keyup', function () {
-                let v = this.value.replace(/\D/g, '').substring(0, 1);
+                let v = this.value.replace(/\D/g, '').substring(0, 2);
                 this.value = v;
             })
             .on('focusout', function () {
@@ -704,7 +712,7 @@ var $exeDevice = {
 
         $('#cmptEPercentajeError')
             .on('keyup', function () {
-                let v = this.value.replace(/\D/g, '').substring(0, 1);
+                let v = this.value.replace(/\D/g, '').substring(0, 3);
                 this.value = v;
             })
             .on('focusout', function () {
@@ -715,6 +723,7 @@ var $exeDevice = {
             });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#cmptBack0').on('change', function () {
             if ($(this).is(':checked')) {

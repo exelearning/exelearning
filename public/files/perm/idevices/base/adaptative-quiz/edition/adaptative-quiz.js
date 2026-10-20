@@ -111,6 +111,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Adaptative Quiz'),
             msgCorrect: c_('Correct'),
             msgIncorrect: c_('Incorrect'),
@@ -310,7 +311,6 @@ var $exeDevice = {
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -482,7 +482,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 10, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(10, { numLevels: this.numLevels })}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
@@ -1365,6 +1365,10 @@ var $exeDevice = {
             evaluation: dataGame.evaluation,
             evaluationID: dataGame.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: dataGame.passScoreMode,
+            passScoreCustom: dataGame.passScoreCustom,
+        });
 
         const loaded = Array.isArray(dataGame.questionsGame)
             ? dataGame.questionsGame
@@ -1558,6 +1562,7 @@ var $exeDevice = {
         if (!progressBar) return false;
         const evaluation = progressBar.evaluation;
         const evaluationID = progressBar.evaluationID;
+        const passScore = $exeDevicesEdition.iDevice.gamification.passScore.getValues();
 
         const id = this.getIdeviceID();
         const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
@@ -1594,6 +1599,8 @@ var $exeDevice = {
             minQuestionsShown: this.DEFAULT_MIN_PLAY,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             itinerary: itinerary,
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
@@ -2005,6 +2012,7 @@ var $exeDevice = {
 
     addEvents: function () {
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#adaptativeQuizECustomMessages').on('change', function () {
             const showSolution = $('#adaptativeQuizShowSolution').is(':checked');
@@ -2148,7 +2156,8 @@ var $exeDevice = {
             $('#eXeGameExportImport .exe-field-instructions').eq(0).text(_('Supported formats') + ': txt');
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame').attr('accept', '.txt');
-            $('#eXeGameImportGame').on('change', function (e) {
+
+            $('#eXeGameImportGame').on('change', e => {
                 const file = e.target.files && e.target.files[0];
                 if (!file) {
                     eXe.app.alert(_('Please select a text file (.txt)'));
@@ -2159,9 +2168,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (ev) {
-                    $exeDevice.importGame(ev.target.result, file.type);
-                };
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (ev) {
+                    this.importGame(ev.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {

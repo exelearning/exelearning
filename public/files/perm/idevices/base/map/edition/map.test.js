@@ -8,6 +8,7 @@
 
 /* eslint-disable no-undef */
 
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -206,6 +207,7 @@ function buildForm() {
             <input id="mapaNumberPoint1" type="text" value="2" />
             <img id="mapaPImage" alt="" />
             <div id="mapaPNoImage"></div>
+            <video id="mapaEVideoLocal"></video>
         </div>`;
 }
 
@@ -235,6 +237,9 @@ describe('map edition: $exeDevice guards (#2271)', () => {
     });
 
     afterEach(() => {
+        // Close the edition as the workarea does, so nothing this test owns
+        // (timers, players, media) survives into the next one.
+        $exeDevice.$lifecycle.destroy();
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
@@ -363,5 +368,194 @@ describe('map edition: $exeDevice guards (#2271)', () => {
             $(img).trigger('load');
             expect(spy).toHaveBeenCalledWith(img, 100, 50);
         });
+    });
+
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(join(__dirname, 'map.js'), 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            expect(source).toContain('passScoreMode: game.passScoreMode');
+            expect(source).toContain('passScoreCustom: game.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            expect(source).toContain('passScoreMode: passScore.passScoreMode');
+            expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
+
+    describe('edition lifecycle teardown (#2293)', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            delete global.YT;
+            window.onYouTubeIframeAPIReady = undefined;
+        });
+
+        it('stops the local video timer when the edition closes', () => {
+            const player = document.getElementById('mapaEVideoLocal');
+            vi.spyOn(player, 'play').mockImplementation(() => {});
+            const tick = vi.spyOn($exeDevice, 'updateTimerDisplayLocal').mockImplementation(() => {});
+
+            $exeDevice.startVideo('video.mp4', 0, 10, 1);
+            vi.advanceTimersByTime(1000);
+            expect(tick).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            vi.advanceTimersByTime(5000);
+            expect(tick).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops the YouTube timer when the edition closes', () => {
+            $exeDevice.player = { loadVideoById: vi.fn() };
+            const tick = vi.spyOn($exeDevice, 'updateTimerDisplay').mockImplementation(() => {});
+
+            $exeDevice.startVideo('abc123', 0, 10, 0);
+            vi.advanceTimersByTime(2000);
+            expect(tick).toHaveBeenCalledTimes(2);
+
+            $exeDevice.$lifecycle.destroy();
+            vi.advanceTimersByTime(5000);
+            expect(tick).toHaveBeenCalledTimes(2);
+        });
+
+        it('stops the local video element when the edition closes', () => {
+            const player = document.getElementById('mapaEVideoLocal');
+            const pause = vi.spyOn(player, 'pause').mockImplementation(() => {});
+            const load = vi.spyOn(player, 'load').mockImplementation(() => {});
+            player.setAttribute('src', 'video.mp4');
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(pause).toHaveBeenCalledTimes(1);
+            expect(player.hasAttribute('src')).toBe(false);
+            expect(load).toHaveBeenCalledTimes(1);
+        });
+
+        it('destroys the YouTube player when the edition closes', () => {
+            const destroy = vi.fn();
+            global.YT = {
+                Player: vi.fn(function () {
+                    return { destroy };
+                }),
+            };
+
+            $exeDevice.loadPlayerYoutube();
+            expect(destroy).not.toHaveBeenCalled();
+
+            $exeDevice.$lifecycle.destroy();
+            expect(destroy).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not run YouTube player events after the edition closes', () => {
+            let options = null;
+            global.YT = {
+                Player: vi.fn(function (id, opts) {
+                    options = opts;
+                    return { destroy: vi.fn() };
+                }),
+            };
+            const clickPlay = vi.spyOn($exeDevice, 'clickPlay').mockImplementation(() => {});
+
+            $exeDevice.loadPlayerYoutube();
+            options.events.onReady();
+            expect(clickPlay).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            options.events.onReady();
+            expect(clickPlay).toHaveBeenCalledTimes(1);
+        });
+
+        it('drops the YouTube API callback when the edition closes', () => {
+            document.body.insertAdjacentHTML('afterbegin', '<script data-test="yt"></script>');
+            const youTubeReady = vi.spyOn($exeDevice, 'youTubeReady').mockImplementation(() => {});
+
+            $exeDevice.loadYoutubeApi();
+            const onApiReady = window.onYouTubeIframeAPIReady;
+            expect(typeof onApiReady).toBe('function');
+
+            onApiReady();
+            expect(youTubeReady).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            expect(window.onYouTubeIframeAPIReady).toBe(null);
+            onApiReady();
+            expect(youTubeReady).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops the preview audio when the edition closes', () => {
+            const audio = {
+                play: vi.fn(),
+                pause: vi.fn(),
+                load: vi.fn(),
+                removeAttribute: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            };
+            const audioSpy = vi.spyOn(global, 'Audio').mockImplementation(function () {
+                return audio;
+            });
+
+            try {
+                $exeDevice.playSound('sound.mp3');
+                const [type, handler] = audio.addEventListener.mock.calls[0];
+                expect(type).toBe('canplaythrough');
+
+                handler();
+                expect(audio.play).toHaveBeenCalledTimes(1);
+
+                $exeDevice.$lifecycle.destroy();
+                expect(audio.pause).toHaveBeenCalledTimes(1);
+                expect(audio.removeAttribute).toHaveBeenCalledWith('src');
+
+                handler();
+                expect(audio.play).toHaveBeenCalledTimes(1);
+            } finally {
+                audioSpy.mockRestore();
+            }
+        });
+    });
+});
+
+describe('map minimum score text', () => {
+    it('offers the notice of the minimum score among the custom texts', () => {
+        global.$exeDevice = undefined;
+        const device = global.loadIdevice(join(__dirname, 'map.js'));
+        device.refreshTranslations();
+
+        expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
     });
 });

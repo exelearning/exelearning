@@ -4,6 +4,7 @@
 
 /* eslint-disable no-undef */
 
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -99,6 +100,10 @@ function buildEditionForm() {
             <img id="dadEImage" alt="" />
             <img id="dadEImageBack" alt="" />
             <input id="dadENumberCard" type="text" value="2" />
+            <span class="toggle-item" role="switch">
+                <input class="toggle-input" type="checkbox" data-target="#dadEToggleTarget" />
+            </span>
+            <div id="dadEToggleTarget"></div>
         </div>`;
 }
 
@@ -120,6 +125,9 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
     });
 
     afterEach(() => {
+        // Close the edition as the workarea does, so handlers this test bound
+        // on shared targets such as `document` cannot reach the next one.
+        $exeDevice.$lifecycle.destroy();
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
@@ -175,5 +183,155 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
             $('#dadENumberCard').trigger($.Event('keyup', { keyCode: 13 }));
             expect(showCard).toHaveBeenCalledWith(1);
         });
+    });
+
+    /**
+     * The pass-score control is a shared block in common_edition.js, exercised
+     * by its own tests. What is specific to this iDevice -- and what silently
+     * breaks if someone edits the form -- is the wiring: all four call sites
+     * have to be present, and the two saved fields have to reach the stored
+     * data. Reading the source is how that is checked without standing up the
+     * whole edition form.
+     */
+    describe('pass score wiring', () => {
+        let source;
+
+        beforeEach(() => {
+            source = readFileSync(join(__dirname, 'dragdrop.js'), 'utf-8');
+        });
+
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Grading tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
+        });
+
+        it('restores the control when the iDevice is reopened', () => {
+            expect(source).toContain('gamification.passScore.setValues(');
+            expect(source).toContain('passScoreMode: game.passScoreMode');
+            expect(source).toContain('passScoreCustom: game.passScoreCustom');
+        });
+
+        it('saves the mode and the customised mark, and nothing else', () => {
+            expect(source).toContain('gamification.passScore.getValues()');
+            expect(source).toContain('passScoreMode: passScore.passScoreMode');
+            expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+            // The project value is never copied into the iDevice: it is read
+            // live, so an iDevice on the global mode follows the project.
+            expect(source).not.toContain('passScoreGlobal');
+        });
+
+        it('wires the radio and input handlers', () => {
+            expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
+
+    describe('edition lifecycle teardown (#2293)', () => {
+        it('releases the toggle handler delegated on document', () => {
+            const item = document.querySelector('.toggle-item');
+            const input = document.querySelector('.toggle-input');
+            const unrelated = vi.fn();
+            $(document).on('change.dragdropUnrelated', '.toggle-input', unrelated);
+
+            try {
+                input.checked = true;
+                $(input).trigger('change');
+                expect(item.getAttribute('aria-checked')).toBe('true');
+                expect(unrelated).toHaveBeenCalledTimes(1);
+
+                item.setAttribute('aria-checked', 'untouched');
+                $exeDevice.$lifecycle.destroy();
+                $(input).trigger('change');
+
+                expect(item.getAttribute('aria-checked')).toBe('untouched');
+                expect(unrelated).toHaveBeenCalledTimes(2);
+            } finally {
+                $(document).off('change.dragdropUnrelated');
+            }
+        });
+
+        it('aborts an in-flight game import when the edition closes', () => {
+            const reader = {
+                readyState: 1,
+                abort: vi.fn(),
+                readAsText: vi.fn(),
+                onload: null,
+            };
+            const readerSpy = vi.spyOn(global, 'FileReader').mockImplementation(function () {
+                return reader;
+            });
+
+            try {
+                const file = new File(['{}'], 'game.json', {
+                    type: 'application/json',
+                });
+                const input = document.getElementById('eXeGameImportGame');
+                Object.defineProperty(input, 'files', { value: [file] });
+
+                $(input).trigger('change');
+                expect(reader.readAsText).toHaveBeenCalledWith(file);
+
+                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+                reader.onload({ target: { result: '{}' } });
+                expect(importGame).toHaveBeenCalledTimes(1);
+
+                $exeDevice.$lifecycle.destroy();
+                expect(reader.abort).toHaveBeenCalledTimes(1);
+
+                reader.onload({ target: { result: '{}' } });
+                expect(importGame).toHaveBeenCalledTimes(1);
+            } finally {
+                readerSpy.mockRestore();
+            }
+        });
+
+        it('stops the preview audio when the edition closes', () => {
+            const audio = {
+                play: vi.fn(),
+                pause: vi.fn(),
+                load: vi.fn(),
+                removeAttribute: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            };
+            const audioSpy = vi.spyOn(global, 'Audio').mockImplementation(function () {
+                return audio;
+            });
+            global.$exeDevices.iDevice.gamification.media = {
+                ...global.$exeDevices.iDevice.gamification.media,
+                extractURLGD: vi.fn(url => url),
+            };
+
+            try {
+                $exeDevice.playSound('sound.mp3');
+                const [type, handler] = audio.addEventListener.mock.calls[0];
+                expect(type).toBe('canplaythrough');
+
+                handler();
+                expect(audio.play).toHaveBeenCalledTimes(1);
+
+                $exeDevice.$lifecycle.destroy();
+                expect(audio.pause).toHaveBeenCalledTimes(1);
+                expect(audio.removeAttribute).toHaveBeenCalledWith('src');
+
+                handler();
+                expect(audio.play).toHaveBeenCalledTimes(1);
+            } finally {
+                audioSpy.mockRestore();
+            }
+        });
+    });
+});
+
+describe('dragdrop minimum score text', () => {
+    it('offers the notice of the minimum score among the custom texts', () => {
+        global.$exeDevice = undefined;
+        const device = global.loadIdevice(join(__dirname, 'dragdrop.js'));
+        device.refreshTranslations();
+
+        expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
     });
 });

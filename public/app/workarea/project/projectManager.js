@@ -163,7 +163,7 @@ export default class projectManager {
             Logger.log('[ProjectManager] Found pending import file, importing...');
             const file = window.__pendingImportFile;
             window.__pendingImportFile = null; // Clear it
-            this.importElp(file).catch(err => {
+            this.app.openStaticFile(file).catch(err => {
                 console.error('[ProjectManager] Failed to import pending file:', err);
             });
         }
@@ -330,7 +330,11 @@ export default class projectManager {
         const notices = [];
         const damaged = buildDamagedPropertiesNotice(stats?.malformedProperties);
         if (damaged) notices.push({ ...damaged, contentId: 'damaged-activities' });
-        const missing = buildMissingAssetsNotice(stats?.missingAssets);
+        const missing = buildMissingAssetsNotice(
+            stats?.missingAssets,
+            this._yjsBridge?.documentManager?.getNavigation(),
+            (type) => this.app.idevices?.getIdeviceInstalled(type)?.title
+        );
         if (missing) notices.push({ ...missing, contentId: 'missing-assets' });
         if (notices.length === 0) return;
 
@@ -624,7 +628,8 @@ export default class projectManager {
                 // Cleanup: Request server to delete temp file (URL-import workflow only)
                 try {
                     await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        credentials: 'include'
                     });
                 } catch (cleanupError) {
                     console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);

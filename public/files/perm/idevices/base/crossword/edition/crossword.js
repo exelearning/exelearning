@@ -118,6 +118,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Crossword'),
             msgCheck: c_('Check'),
             msgShowSolution: c_('Show solutions'),
@@ -247,7 +248,7 @@ var $exeDevice = {
                          </div>
                         <div id="ccgmbackground" class="CCGM-Back mb-3">
                             <img class="CCGM-EMedia1" src="" id="ccgmEImageBack" alt="${_('Image')}" />
-                            <img class="CCGM-EMedia1" src="${path}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
+                            <img class="CCGM-EMedia1" src="${path.replace(/\/edition\/?$/, '/export/')}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
                         </div>
                         <div id="ccgmAuthorBackDiv" class="CCGM-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
                             <label for="ccgmAuthorBack" class="mb-0">${_('Authorship')}: </label>
@@ -258,7 +259,6 @@ var $exeDevice = {
                             <button id="eXeQuickEditButton" class="btn btn-primary">${_('Show')}</button>
                         </div>
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                      </div>
                 </fieldset>
@@ -362,7 +362,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             </div>
             ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 9, true)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(9)}
@@ -723,6 +723,8 @@ var $exeDevice = {
             percentajeFB = parseInt(clear($('#ccgmEPercentajeFB').val())),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             percentajeQuestions = $('#ccgmEPercentajeQuestions').val(),
             authorBackImage = $('#ccgmAuthorBack').val(),
             id = $exeDevice.getIdeviceID(),
@@ -789,6 +791,8 @@ var $exeDevice = {
             version: 2,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             percentajeQuestions,
             difficulty,
             time,
@@ -850,12 +854,12 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio
-            .play()
-            .catch((error) => console.error('Error playing audio:', error));
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player, 'previewAudio');
+        player.play().catch(error => console.error('Error playing audio:', error));
     },
 
     stopSound: function () {
@@ -915,8 +919,10 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on document, so the edition lifecycle owns it: the handler
+        // is removed when the editor closes.
+        this.$lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
 
         $('#ccgmEAdd').on('click', (e) => {
@@ -1010,9 +1016,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (event) {
+                    this.importGame(event.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
 
@@ -1113,6 +1122,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#ccgmEShowMore').on('click', (e) => {
             e.preventDefault();
@@ -1349,6 +1359,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#ccgmBack0').prop('checked', game.hasBack);
         $('#ccgmAuthorBack').val(game.authorBackImage);

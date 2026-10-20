@@ -86,16 +86,23 @@ var $exeDevice = (function () {
                 window.eXe3DViewer.destroy(this.previewContainer);
             }
             this.previewBlobUrl = null;
+            // Closing the editor must release the same WebGL context and RAF
+            // loop that a re-init tears down above; hand that teardown to the
+            // lifecycle so cancelling the form is as clean as re-opening it.
+            this.$lifecycle.own(() => this.disposeThreeJSScene());
             this.ideviceBody = element;
             this.renderEditor();
             this.collectFormElements();
             this.set3DViewerJSON(previousData || {});
             this.applyStateToForm();
             await this.createModelViewer();
+            // Each await can outlive the editor; a closed edition stops here.
+            if (!this.$lifecycle.isActive()) return;
 
             // Pre-resolve asset:// URL if present (load blob into cache)
             if (this.state.src && this.state.src.startsWith('asset://')) {
                 await this.preResolveAssetUrl(this.state.src);
+                if (!this.$lifecycle.isActive()) return;
             }
 
             this.updatePreview();
@@ -126,8 +133,9 @@ var $exeDevice = (function () {
                     fsBtn.setAttribute('aria-label', label);
                     fsBtn.setAttribute('title', label);
                 };
-                document.addEventListener('fullscreenchange', sync);
-                document.addEventListener('webkitfullscreenchange', sync);
+                // `document` outlives the form, so these two must be owned.
+                this.$lifecycle.addEventListener(document, 'fullscreenchange', sync);
+                this.$lifecycle.addEventListener(document, 'webkitfullscreenchange', sync);
             }
 
             // Arrow direction matches user expectation: pressing → makes the
@@ -576,19 +584,24 @@ var $exeDevice = (function () {
 
         createModelViewer: async function () {
             await this.ensureModelViewerLoaded();
+            // The loader is shared and may legitimately outlive this edition;
+            // the element it was awaited for must not.
+            if (!this.$lifecycle.isActive()) return;
             this.modelViewer = document.createElement('model-viewer');
             this.modelViewer.setAttribute('shadow-intensity', '1');
             this.modelViewer.setAttribute('tone-mapping', 'pbr-neutral');
             this.modelViewer.setAttribute('reveal', 'auto');
             this.modelViewer.style.width = '100%';
             this.modelViewer.style.height = '100%';
-            this.modelViewer.addEventListener('load', () => {
+            // Model loading is asynchronous and can finish long after the form
+            // is gone, so both events and the retry timer belong to the edition.
+            this.$lifecycle.addEventListener(this.modelViewer, 'load', () => {
                 this.updateAnimationOptions();
                 this.applyAnimationState();
                 this.toggleEmptyState();
                 this.previewRetryCount = 0;
             });
-            this.modelViewer.addEventListener('error', () => {
+            this.$lifecycle.addEventListener(this.modelViewer, 'error', () => {
                 if (!this.state?.src) {
                     return;
                 }
@@ -596,7 +609,7 @@ var $exeDevice = (function () {
                     return;
                 }
                 this.previewRetryCount += 1;
-                window.setTimeout(() => this.updatePreview(true), 150 * this.previewRetryCount);
+                this.$lifecycle.setTimeout(() => this.updatePreview(true), 150 * this.previewRetryCount);
             });
             this.previewContainer.prepend(this.modelViewer);
         },
@@ -665,6 +678,7 @@ var $exeDevice = (function () {
             // state.
             if (!blobUrl && state.src && state.src.startsWith('asset://')) {
                 const assetManager = await this.waitForAssetManager(5000);
+                if (!this.$lifecycle.isActive()) return;
                 if (assetManager) {
                     try {
                         blobUrl = await assetManager.resolveAssetURL(state.src);
@@ -675,6 +689,7 @@ var $exeDevice = (function () {
                 } else {
                     console.warn('[3D Viewer] STL: AssetManager not available after waiting');
                 }
+                if (!this.$lifecycle.isActive()) return;
             }
 
             if (!blobUrl) {
@@ -707,6 +722,12 @@ var $exeDevice = (function () {
 
             await this.ensureThreeJSLoaded();
             await this.ensureRuntimeLoaded();
+
+            // Both loaders are shared, cross-edition promises, so the editor may
+            // already be gone by the time they settle. Building a viewer now
+            // would attach a WebGL context to a detached container that nothing
+            // would ever tear down.
+            if (!this.$lifecycle.isActive()) return;
 
             // Tear down any previous instance bound to this wrapper so
             // we don't accumulate canvases or WebGL contexts.
@@ -863,6 +884,7 @@ var $exeDevice = (function () {
                         } catch (err) {
                             console.error('[3D Viewer] Failed to load asset:', err);
                         }
+                        if (!this.$lifecycle.isActive()) return;
                     }
                 }
             }
@@ -1062,7 +1084,7 @@ var $exeDevice = (function () {
 
             try {
                 const blobUrl = await assetManager.resolveAssetURL(assetUrl);
-                if (blobUrl) {
+                if (blobUrl && this.$lifecycle.isActive()) {
                     this.previewBlobUrl = blobUrl;
                     this.updatePreview(true); // Force update with new blob URL
                 }
@@ -1097,7 +1119,15 @@ var $exeDevice = (function () {
                 if (assetManager) {
                     return assetManager;
                 }
-                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                // Stop polling as soon as the editor closes: the caller has
+                // nothing left to render into. The owned delay settles on
+                // teardown, so the wait never hangs on a cancelled timer.
+                try {
+                    await this.$lifecycle.delay(pollInterval);
+                } catch (error) {
+                    if (this.$lifecycle.isAbortError(error)) return null;
+                    throw error;
+                }
             }
 
             return null;

@@ -12,7 +12,7 @@
   "dependencies": {
     "electron-updater": "^6.8.3",
     "electron-log": "^5.4.3",
-    "electron-context-menu": "^4.1.1",
+    "electron-context-menu": "^5.0.0",
     "fflate": "^0.8.2"
   }
 }

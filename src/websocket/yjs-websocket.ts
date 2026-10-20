@@ -214,27 +214,41 @@ export async function checkWebSocketProjectAccess(
     projectUuid: string,
     userId: number,
 ): Promise<{ hasAccess: boolean; reason?: string }> {
-    // First, check if it's an in-memory session
-    // In-memory sessions are created for new projects before they're saved to DB
+    // Resolve the persisted project first. When a project record exists it is
+    // authoritative: run the centralized owner/collaborator/public access check.
+    // The mere existence of an in-memory session must NEVER substitute for
+    // authorization, otherwise any authenticated user could join any private
+    // room that happens to have a live session (cross-tenant read AND write of
+    // the relayed Y.Doc). This mirrors the access-control flow already used by
+    // the workarea page handler in src/routes/pages.ts.
+    const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
+    if (project) {
+        return deps.queries.checkProjectAccess(deps.db, project, userId);
+    }
+
+    // No persisted project. An in-memory session can still legitimately exist for
+    // a brand-new project that has not been written to the database yet (offline
+    // / not-yet-saved flow). Only the user who created that session may join it.
     const session = deps.sessionManager.getSession(projectUuid);
     if (session) {
-        // Session exists in memory - allow access
+        // Fail closed: only the user who created the session may join it. An
+        // ownerless session (userId undefined) must NOT admit an arbitrary
+        // authenticated user — authorization never falls open on optional data.
+        if (!session.userId || session.userId !== userId) {
+            if (DEBUG)
+                console.log(
+                    `[YjsWebSocket] Access denied to in-memory session ${projectUuid}: ` +
+                        `created by user ${session.userId ?? '(none)'}, requested by ${userId}`,
+                );
+            return { hasAccess: false, reason: 'ACCESS_DENIED' };
+        }
         if (DEBUG) console.log(`[YjsWebSocket] Access granted via in-memory session: ${projectUuid}`);
         return { hasAccess: true };
     }
 
-    // Fall back to database check for persisted projects using centralized function
-    const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
-
-    if (!project) {
-        // Neither in session nor in database - deny access
-        if (DEBUG)
-            console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
-        return { hasAccess: false, reason: 'Project not found' };
-    }
-
-    // Use centralized access check
-    return deps.queries.checkProjectAccess(deps.db, project, userId);
+    // Neither in database nor in session - deny access
+    if (DEBUG) console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
+    return { hasAccess: false, reason: 'Project not found' };
 }
 
 /**
@@ -273,6 +287,20 @@ export async function handleWebSocketOpen(
     if (!access.hasAccess) {
         console.error(`[YjsWebSocket] Access denied: ${access.reason}`);
         return { success: false, error: { code: 4003, reason: access.reason || 'Access denied' } };
+    }
+
+    // The token/access checks above both await (JWT verification, a DB
+    // lookup), and Bun does not wait for this async `open` handler before
+    // considering the socket live: the `close` handler can run concurrently
+    // during those awaits. If it did, `ws.data.docName` was still unset at
+    // that point, so `handleWebSocketClose` treated it as 'unknown' and
+    // skipped `roomManager.removeConnection` — no future `close` event will
+    // fire to clean up otherwise, so registering this now-dead socket would
+    // leak it in the room forever (issue #2255 C10k benchmark: this was
+    // measured accumulating thousands of permanently "connected" ghost
+    // entries under concurrent load).
+    if (ws.readyState !== 1) {
+        return { success: false };
     }
 
     const userId = user.sub;
@@ -320,7 +348,7 @@ export async function handleWebSocketOpen(
                     );
 
                     // Find the first (oldest) client in the room to request state
-                    const firstClient = Array.from(room.conns)[0];
+                    const firstClient = Array.from(room.conns.values())[0];
                     if (firstClient) {
                         // Send JSON message to request sync-state
                         const syncRequestMsg = JSON.stringify({
@@ -339,7 +367,7 @@ export async function handleWebSocketOpen(
 
         // Ask existing clients to re-broadcast awareness when a new client joins.
         // This keeps presence UI in sync without forcing reconnects.
-        for (const existingConn of room.conns) {
+        for (const existingConn of room.conns.values()) {
             if (existingConn.readyState === 1) {
                 try {
                     existingConn.send(

@@ -126,6 +126,7 @@ export class Epub3Exporter extends BaseExporter {
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
+            const { dataUris: materialIconDataUris } = await this.resolveMaterialIconDataUris(pages);
 
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
@@ -167,6 +168,7 @@ export class Epub3Exporter extends BaseExporter {
                     themeRootFiles,
                     faviconInfo,
                     navLabels,
+                    materialIconDataUris,
                     internalPageTargets,
                 );
 
@@ -386,7 +388,7 @@ export class Epub3Exporter extends BaseExporter {
             const _assetsAdded = await this.addEpubAssets();
 
             // 9.5. Add content.xml (ODE format for re-import) - only if exportSource is enabled
-            if (meta.exportSource !== false) {
+            if (this.shipsEditableSource(meta, options)) {
                 try {
                     const contentXml = await this.getContentXml();
                     if (contentXml) {
@@ -647,6 +649,7 @@ export class Epub3Exporter extends BaseExporter {
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
         navLabels?: { license?: string },
+        materialIconDataUris?: Map<string, string>,
         internalPageTargets?: Set<string>,
     ): string {
         const lang = meta.language || 'en';
@@ -696,6 +699,10 @@ export class Epub3Exporter extends BaseExporter {
             hideNavButtons: true,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination === true,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
             // Accessibility toolbar (exe_atools) when enabled in project properties (#1978)
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             totalPages: allPages.length,
@@ -706,6 +713,7 @@ export class Epub3Exporter extends BaseExporter {
             version: meta.exelearningVersion,
             // EPUB-specific: load guard script for duplicate execution protection
             isEpub: true,
+            materialIconDataUris,
         });
 
         // Convert HTML to XHTML

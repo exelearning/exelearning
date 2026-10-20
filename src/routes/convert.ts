@@ -18,6 +18,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { buildContentDisposition } from '../shared/http/headers';
+import { safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 import type { Kysely } from 'kysely';
 
 import { db as defaultDb } from '../db/client';
@@ -45,6 +46,7 @@ import {
 // Import system (ELP → Y.Doc)
 import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
 import * as Y from 'yjs';
+import { getAppVersion } from '../utils/version';
 
 // =============================================================================
 // Types and Interfaces
@@ -178,11 +180,17 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     }
 
     /**
-     * Write uploaded file to disk
+     * Write an uploaded file into the per-conversion temp dir under a
+     * server-generated name, so the client-supplied filename can never traverse
+     * out of it. safeJoin validates the segment and asserts containment. Returns
+     * the on-disk path the export pipeline should read.
      */
-    async function writeUploadedFile(file: File | Blob, destPath: string): Promise<void> {
+    async function writeUploadedFile(file: File | Blob, tempDirPath: string): Promise<string> {
+        const ext = sanitizeFileExtension((file as FileWithName).name) || '.elp';
+        const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
         const buffer = Buffer.from(await file.arrayBuffer());
-        await fs.writeFile(destPath, buffer);
+        await fs.writeFile(uploadPath, buffer);
+        return uploadPath;
     }
 
     /**
@@ -249,8 +257,9 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                     return { success: false, error: `Unsupported export format: ${exportType}` };
             }
 
-            // Run export
-            const result = await exporter.export(options);
+            // Run export. runtimeVersion stamps the SCORM 1.2 runtime with the release
+            // doing the exporting; a caller-supplied value wins.
+            const result = await exporter.export({ runtimeVersion: getAppVersion(), ...options });
             return result;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -352,10 +361,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         // Create temp directory
                         tempDirPath = await createTempDir();
 
-                        // Write uploaded file
-                        const filename = (data.file as FileWithName).name || 'upload.elp';
-                        const uploadPath = path.join(tempDirPath, filename);
-                        await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file under a server-generated, contained name.
+                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
 
                         // Run ELPX export (conversion)
                         const result = await runExport(uploadPath, 'elpx');
@@ -445,10 +452,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         // Create temp directory
                         tempDirPath = await createTempDir();
 
-                        // Write uploaded file
-                        const filename = (data.file as FileWithName).name || 'upload.elp';
-                        const uploadPath = path.join(tempDirPath, filename);
-                        await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file under a server-generated, contained name.
+                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
 
                         // Run export
                         const result = await runExport(uploadPath, format, { baseUrl, theme });

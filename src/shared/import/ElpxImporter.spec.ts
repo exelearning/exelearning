@@ -375,6 +375,123 @@ describe('ElpxImporter', () => {
             ydoc.destroy();
         });
 
+        /**
+         * #2376. eXe 3 stamped the text iDevice's form fields on every activity
+         * it converted from a 2.x package, HTML copy included. On an html-type
+         * activity nothing reads that payload and saving never rewrites it, so
+         * it is a frozen older generation of the activity. Its references must
+         * not be reported, and it must not travel into the next export.
+         */
+        const buildSingleComponentPackage = (ideviceType: string, htmlView: string, jsonProperties: string) =>
+            new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<userPreferences></userPreferences>
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Stale template</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId><odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName><odeNavStructureOrder>0</odeNavStructureOrder>
+    <odeNavStructureProperties></odeNavStructureProperties>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page-1</odePageId><odeBlockId>block-1</odeBlockId>
+        <blockName>Block</blockName><iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odePagStructureProperties></odePagStructureProperties>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page-1</odePageId><odeBlockId>block-1</odeBlockId>
+            <odeIdeviceId>component-1</odeIdeviceId>
+            <odeIdeviceTypeName>${ideviceType}</odeIdeviceTypeName>
+            <htmlView><![CDATA[${htmlView}]]></htmlView>
+            <jsonProperties><![CDATA[${jsonProperties}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+            <odeComponentsProperties></odeComponentsProperties>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`);
+
+        const STALE_TEXT_TEMPLATE = JSON.stringify({
+            ideviceId: 'component-1',
+            textInfoDurationInput: '',
+            textInfoParticipantsInput: '',
+            textInfoDurationTextInput: 'Duration:',
+            textInfoParticipantsTextInput: 'Grouping:',
+            textTextarea:
+                '<div class="mapa-IDevice"><audio src="{{context_path}}/20250605150704XBOPVK/do.mp3"></audio></div>',
+            textFeedbackInput: 'Show Feedback',
+            textFeedbackTextarea: '',
+        });
+
+        const importSingleComponent = async (ideviceType: string, htmlView: string, jsonProperties: string) => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromZipContents({
+                'content.xml': buildSingleComponentPackage(ideviceType, htmlView, jsonProperties),
+            });
+            const page = ydoc.getArray('navigation').get(0) as Y.Map<unknown>;
+            const block = (page.get('blocks') as Y.Array<unknown>).get(0) as Y.Map<unknown>;
+            const component = (block.get('components') as Y.Array<unknown>).get(0) as Y.Map<unknown>;
+            return { result, jsonProperties: component.get('jsonProperties') as string | undefined, ydoc };
+        };
+
+        it('drops the eXe 3 text template stranded on an html-type activity and does not report its references', async () => {
+            const { result, jsonProperties, ydoc } = await importSingleComponent(
+                'map',
+                '<div class="mapa-IDevice"><p>Piano with no audio any more</p></div>',
+                STALE_TEXT_TEMPLATE,
+            );
+
+            expect(result.missingAssets).toEqual([]);
+            expect(jsonProperties).toBe('{}');
+
+            ydoc.destroy();
+        });
+
+        it('still reports references that survive in the html-type activity itself', async () => {
+            const { result, ydoc } = await importSingleComponent(
+                'map',
+                '<div class="mapa-IDevice"><img src="{{context_path}}/20250605150704XBOPVK/piano.png"></div>',
+                STALE_TEXT_TEMPLATE,
+            );
+
+            expect(result.missingAssets).toEqual([
+                { componentId: 'component-1', ideviceType: 'map', paths: ['20250605150704XBOPVK/piano.png'] },
+            ]);
+
+            ydoc.destroy();
+        });
+
+        it('keeps the template on a text activity, whose editor reads textTextarea', async () => {
+            const { result, jsonProperties, ydoc } = await importSingleComponent(
+                'FreeTextIdevice',
+                '<div class="exe-text"><audio src="{{context_path}}/20250605150704XBOPVK/do.mp3"></audio></div>',
+                STALE_TEXT_TEMPLATE,
+            );
+
+            expect(JSON.parse(jsonProperties as string).textTextarea).toContain('do.mp3');
+            expect(result.missingAssets).toEqual([
+                { componentId: 'component-1', ideviceType: 'FreeTextIdevice', paths: ['20250605150704XBOPVK/do.mp3'] },
+            ]);
+
+            ydoc.destroy();
+        });
+
+        it('keeps the template when the activity has no htmlView to fall back on', async () => {
+            const { jsonProperties, ydoc } = await importSingleComponent('map', '', STALE_TEXT_TEMPLATE);
+
+            expect(JSON.parse(jsonProperties as string).textTextarea).toContain('do.mp3');
+
+            ydoc.destroy();
+        });
+
         it('should leave the report empty when every asset reference resolves', async () => {
             const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
             const elpBuffer = await fs.readFile(elpPath);
@@ -1348,9 +1465,11 @@ describe('ElpxImporter - Legacy Format', () => {
             await importer.importFromBuffer(new Uint8Array(elpBuffer));
 
             const metadata = ydoc.getMap('metadata');
-            // Legacy files should have default addMathJax and globalFont
+            // Legacy files should have default addMathJax, globalFont and pass score options
             expect(metadata.get('addMathJax')).toBe(false);
             expect(metadata.get('globalFont')).toBe('default');
+            expect(metadata.get('passScore')).toBe(5);
+            expect(metadata.get('passScoreEveryActivity')).toBe(false);
             // Should have language
             expect(metadata.get('language')).toBeTruthy();
 
@@ -1719,6 +1838,7 @@ describe('ElpxImporter - Legacy Format', () => {
             // Legacy files use defaults for new fields
             expect(metadata.get('addMathJax')).toBe(false);
             expect(metadata.get('globalFont')).toBe('default');
+            expect(metadata.get('passScore')).toBe(5);
 
             ydoc.destroy();
         });
@@ -3811,5 +3931,78 @@ describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => 
 
             ydoc.destroy();
         });
+    });
+});
+
+describe('ElpxImporter - pass score', () => {
+    const buildContentXml = (passScoreProperty: string): string => `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Pass Score Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+${passScoreProperty}
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures></odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+    const importMetadata = async (property: string, key: string): Promise<unknown> => {
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        await importer.importFromZipContents(
+            { 'content.xml': new TextEncoder().encode(buildContentXml(property)) },
+            { clearExisting: true },
+        );
+
+        const value = ydoc.getMap('metadata').get(key);
+        ydoc.destroy();
+        return value;
+    };
+    const importPassScore = (property: string) => importMetadata(property, 'passScore');
+    const importEveryActivity = (property: string) => importMetadata(property, 'passScoreEveryActivity');
+
+    it('reads pp_passScore as a number', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>7.5</value></odeProperty>')).toBe(
+            7.5,
+        );
+    });
+
+    it('keeps a stored zero rather than treating it as unset', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>0</value></odeProperty>')).toBe(0);
+    });
+
+    it('clamps a value outside the 0-10 domain', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>42</value></odeProperty>')).toBe(10);
+    });
+
+    it('falls back to the default when the file predates the property', async () => {
+        expect(await importPassScore('')).toBe(5);
+    });
+
+    it('falls back to the default when the stored value is not a number', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>abc</value></odeProperty>')).toBe(5);
+    });
+
+    it.each([
+        ['true', true],
+        ['false', false],
+    ])('reads pp_passScoreEveryActivity "%s"', async (stored, expected) => {
+        expect(
+            await importEveryActivity(
+                `  <odeProperty><key>pp_passScoreEveryActivity</key><value>${stored}</value></odeProperty>`,
+            ),
+        ).toBe(expected);
+    });
+
+    it('leaves the every-activity rule off when the file predates it', async () => {
+        expect(await importEveryActivity('')).toBe(false);
     });
 });

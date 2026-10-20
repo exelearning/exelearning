@@ -1156,8 +1156,9 @@ describe('Yjs WebSocket Service', () => {
     });
 
     describe('checkWebSocketProjectAccess', () => {
-        it('should grant access when session exists in memory', async () => {
-            // Session is already set up in beforeEach
+        it('should grant the session creator access to an unsaved in-memory session', async () => {
+            // Fail-closed: only the session's own creator may join it.
+            mockSessions.set('session-uuid', { sessionId: 'session-uuid', userId: 999 });
             const result = await checkWebSocketProjectAccess('session-uuid', 999);
 
             expect(result.hasAccess).toBe(true);
@@ -1190,6 +1191,68 @@ describe('Yjs WebSocket Service', () => {
 
             expect(result.hasAccess).toBe(false);
             expect(result.reason).toBe('Project not found');
+        });
+
+        // Regression: ws-inmemory-session-authz-bypass (security audit)
+        // The presence of an in-memory session must never short-circuit the
+        // authorization check for a persisted private project.
+        it('should deny a non-owner even when an in-memory session exists for a persisted private project', async () => {
+            mockProjects.set('inmemory-uuid', {
+                id: 99,
+                uuid: 'inmemory-uuid',
+                owner_id: 1,
+                visibility: 'private',
+            });
+            mockSessions.set('inmemory-uuid', {
+                sessionId: 'inmemory-uuid',
+                fileName: 'Victim.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('inmemory-uuid', 2);
+
+            expect(result.hasAccess).toBe(false);
+            expect(result.reason).toBe('Access denied');
+        });
+
+        it('should deny a non-creator for an unsaved in-memory session with no DB record', async () => {
+            mockSessions.set('unsaved-uuid', {
+                sessionId: 'unsaved-uuid',
+                fileName: 'Unsaved.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('unsaved-uuid', 2);
+
+            expect(result.hasAccess).toBe(false);
+            expect(result.reason).toBe('ACCESS_DENIED');
+        });
+
+        it('should still grant the creator access to their unsaved in-memory session', async () => {
+            mockSessions.set('unsaved-uuid', {
+                sessionId: 'unsaved-uuid',
+                fileName: 'Unsaved.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('unsaved-uuid', 1);
+
+            expect(result.hasAccess).toBe(true);
+        });
+
+        it('fails closed for an in-memory session that carries no owner userId', async () => {
+            // Authorization must default to denied for an ownerless session rather
+            // than admit any authenticated user (the access check should never fall
+            // open on optional data).
+            mockSessions.set('ownerless-uuid', {
+                sessionId: 'ownerless-uuid',
+                fileName: 'Ownerless.elp',
+            });
+
+            const result = await checkWebSocketProjectAccess('ownerless-uuid', 2);
+
+            expect(result.hasAccess).toBe(false);
+            expect(result.reason).toBe('ACCESS_DENIED');
         });
     });
 
@@ -1253,10 +1316,11 @@ describe('Yjs WebSocket Service', () => {
         it('should succeed for valid connection', async () => {
             const ws = createMockWebSocket() as any;
 
-            // Need to add the session-uuid to the sessions
+            // Unsaved in-memory session owned by the connecting user (fail-closed).
             mockSessions.set('a1b2c3d4-e5f6-7890-abcd-ef1234567890', {
                 sessionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 fileName: 'Test.elp',
+                userId: 1,
             });
 
             const result = await handleWebSocketOpen(
@@ -1267,6 +1331,62 @@ describe('Yjs WebSocket Service', () => {
 
             expect(result.success).toBe(true);
             expect(result.error).toBeUndefined();
+        });
+
+        it('does not register a room connection if the socket closed while awaiting token verification', async () => {
+            // Reproduces the issue #2255 benchmark finding: `open(ws)` awaits
+            // verifyToken/checkProjectAccess, but Bun fires `close(ws)`
+            // independently of that pending promise. If the socket closes
+            // during the await, handleWebSocketClose runs first (a no-op,
+            // since ws.data.docName isn't set yet) and no further `close`
+            // event will ever fire for this connection.
+            let resolveVerify!: (user: { sub: number; email: string; roles: string[] } | null) => void;
+            const mockAuth: YjsWebSocketAuth = {
+                verifyToken: () =>
+                    new Promise(resolve => {
+                        resolveVerify = resolve;
+                    }),
+            };
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: mockAuth,
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            // Before `open` populates it, real Elysia/Bun ws.data only has
+            // {params, query} — none of the WsData fields the default mock
+            // pre-fills. Override them to undefined so handleWebSocketClose
+            // sees the same "not populated yet" state it would in production.
+            const ws = createMockWebSocket({
+                clientId: undefined,
+                userId: undefined,
+                projectUuid: undefined,
+                docName: undefined,
+            } as unknown as Partial<WsData>) as any;
+            const docName = 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            // In-memory session so checkWebSocketProjectAccess grants access
+            // without touching the (unmocked-here) DB path, isolating the
+            // scenario to the verifyToken await specifically.
+            mockSessions.set('a1b2c3d4-e5f6-7890-abcd-ef1234567890', {
+                sessionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                fileName: 'Test.elp',
+            });
+
+            const openPromise = handleWebSocketOpen(ws, docName, 'valid-token-user-1');
+
+            // Client disconnects while verifyToken is still pending: Bun's
+            // close handler fires with ws.data still unpopulated.
+            ws.readyState = 3; // CLOSED
+            handleWebSocketClose(ws, ws.data);
+
+            // The awaited verification now resolves successfully.
+            resolveVerify({ sub: 1, email: 'user1@test.com', roles: ['ROLE_USER'] });
+            const result = await openPromise;
+
+            expect(result.success).toBe(false);
+            expect(roomManager.getRoom(docName)).toBeUndefined();
         });
 
         it('should register client with asset coordinator on success', async () => {
@@ -1285,6 +1405,7 @@ describe('Yjs WebSocket Service', () => {
             const ws = createMockWebSocket() as any;
             mockSessions.set('b1b2c3d4-e5f6-7890-abcd-ef1234567890', {
                 sessionId: 'b1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                userId: 1,
             });
 
             await handleWebSocketOpen(ws, 'project-b1b2c3d4-e5f6-7890-abcd-ef1234567890', 'valid-token-user-1');
@@ -1308,7 +1429,9 @@ describe('Yjs WebSocket Service', () => {
             const projectUuid = 'd1d2d3d4-e5f6-7890-abcd-ef1234567890';
             const docName = `project-${projectUuid}`;
 
-            // Add session for the project
+            // Public project so both collaborators (users 1 and 2) are authorized
+            // under the hardened WS access check; a session is still present.
+            mockProjects.set(projectUuid, { id: 704, uuid: projectUuid, owner_id: 1, visibility: 'public' });
             mockSessions.set(projectUuid, { sessionId: projectUuid });
 
             // First client connects - no collaboration yet
@@ -1344,6 +1467,8 @@ describe('Yjs WebSocket Service', () => {
             const projectUuid = 'e1e2e3e4-e5f6-7890-abcd-ef1234567890';
             const docName = `project-${projectUuid}`;
 
+            // Public project so both collaborators are authorized (fail-closed WS check).
+            mockProjects.set(projectUuid, { id: 705, uuid: projectUuid, owner_id: 1, visibility: 'public' });
             mockSessions.set(projectUuid, { sessionId: projectUuid });
 
             // First client
@@ -1368,7 +1493,10 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so the second collaborator (user 2) is legitimately
+                // authorized under the hardened WS access check (the old test
+                // relied on the now-closed in-memory-session authz bypass).
+                visibility: 'public',
                 saved_once: 0, // Not saved yet
             });
 
@@ -1426,7 +1554,8 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so user 2 is authorized under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 1, // Already saved
             });
 
@@ -1477,8 +1606,11 @@ describe('Yjs WebSocket Service', () => {
             let callCount = 0;
             mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
                 callCount++;
-                // First call succeeds (for access check), subsequent calls throw
-                if (callCount > 1 && uuid === projectUuid) {
+                // The hardened access check does one lookup per connecting client
+                // (calls #1 and #2). The injected DB error must therefore fire on
+                // the later save-status lookup (#3) so we still exercise the
+                // error-swallowing path during collaboration.
+                if (callCount > 2 && uuid === projectUuid) {
                     throw new Error('Database error');
                 }
                 return mockProjects.get(uuid);
@@ -1489,7 +1621,8 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so user 2 is authorized under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 0,
             });
 
@@ -1520,15 +1653,21 @@ describe('Yjs WebSocket Service', () => {
             const projectUuid = 'f4e5d6c7-b8a9-0123-def4-567890123456';
             const docName = `project-${projectUuid}`;
 
+            // Public project so both collaborators are authorized (fail-closed WS
+            // check); the access lookups (#1 and #2) succeed, the save-status lookup
+            // during collaboration (#3) throws and must be swallowed.
+            mockProjects.set(projectUuid, { id: 706, uuid: projectUuid, owner_id: 1, visibility: 'public' });
+
             const mockQueries = createMockQueries();
+            let callCount = 0;
             mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
-                if (uuid === projectUuid) {
+                callCount++;
+                if (callCount > 2 && uuid === projectUuid) {
                     throw new Error('Database error');
                 }
                 return mockProjects.get(uuid);
             };
 
-            // Add session so access check bypasses DB
             mockSessions.set(projectUuid, { sessionId: projectUuid });
 
             configure({
@@ -1563,7 +1702,9 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so the joining second client (user 2) is authorized
+                // under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 1,
             });
 

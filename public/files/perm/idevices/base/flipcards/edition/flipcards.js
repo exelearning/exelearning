@@ -118,6 +118,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Memory cards'),
         };
     },
@@ -232,7 +233,6 @@ var $exeDevice = {
                                 </p>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -379,7 +379,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
@@ -1016,6 +1016,8 @@ var $exeDevice = {
             time = parseInt($('#flipcardsETime').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             imgCard = $('#flipcardsEURLImgCard').val();
 
@@ -1043,6 +1045,8 @@ var $exeDevice = {
             time: time,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             imgCard: imgCard,
             id: id,
         };
@@ -1132,11 +1136,13 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player, 'previewAudio');
+        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
+            player.play();
         });
     },
 
@@ -1222,8 +1228,10 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on document, so the edition lifecycle owns it: the handler
+        // is removed when the editor closes.
+        this.$lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
         $('#flipcardsEAddC').on('click', function (e) {
             e.preventDefault();
@@ -1330,9 +1338,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (event) {
+                    this.importGame(event.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {
@@ -1389,7 +1400,7 @@ var $exeDevice = {
         $('#flipcardsETime').on('keyup', function () {
             let v = this.value;
             v = v.replace(/\D/g, '');
-            v = v.substring(0, 1);
+            v = v.substring(0, 2);
             this.value = v;
         });
 
@@ -1432,6 +1443,8 @@ var $exeDevice = {
         );
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
@@ -1587,6 +1600,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#flipcardsEURLImgCard').val(game.imgCard);
         $exeDevice.showImageCard(game.imgCard);

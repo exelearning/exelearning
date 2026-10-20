@@ -2209,6 +2209,57 @@ describe('YjsProjectBridge', () => {
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
 
+    it('defers the reload while an iDevice is being edited locally (#2427)', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+
+      bridge.schedulePageReloadIfCurrent('current-page');
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('current-page');
+    });
+
+    it('defers the reload when an iDevice is opened for editing during the debounce (#2434)', async () => {
+      bridge.schedulePageReloadIfCurrent('current-page');
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('current-page');
+    });
+
+    it('flushDeferredPageReload runs the deferred reload once the edition ends', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      bridge.schedulePageReloadIfCurrent('current-page');
+
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => false);
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledTimes(1);
+      expect(bridge._deferredPageReloadId).toBeNull();
+    });
+
+    it('flushDeferredPageReload skips the reload when the user left the page', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      bridge.schedulePageReloadIfCurrent('current-page');
+
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => false);
+      bridge.app.project.structure.menuStructureBehaviour.nodeSelected.getAttribute = mock(() => 'another-page');
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBeNull();
+    });
+
+    it('flushDeferredPageReload is a no-op without a deferred reload', async () => {
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+
   });
 
   describe('asset refresh on late asset arrival', () => {
@@ -2280,6 +2331,17 @@ describe('YjsProjectBridge', () => {
         { id: 'page-element' },
       );
       expect(bridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('defers the late-asset reload while an iDevice is being edited locally (#2427)', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('page-1');
     });
 
     it('does not reload when current page does not reference late asset', async () => {
@@ -3267,7 +3329,7 @@ describe('YjsProjectBridge', () => {
 
       await bridge.updateRemoteComponent({ id: 'comp-1' }, 'page-1');
 
-      expect(mockEngine.updateRemoteIdeviceContent).toHaveBeenCalled();
+      expect(mockEngine.updateRemoteIdeviceContent).toHaveBeenCalledWith({ id: 'comp-1' }, 'page-1');
     });
 
     it('skips update when on different page', async () => {
@@ -3407,6 +3469,7 @@ describe('YjsProjectBridge', () => {
       const mockBlockNode = {
         blockName: 'Old Name',
         iconName: 'edit',
+        icon: { source: 'theme', value: 'edit' },
         blockNameElementText: { innerHTML: '' },
         renderBlockTitle: mock(() => {}),
         makeIconNameElement: mock(() => {}),
@@ -3432,7 +3495,145 @@ describe('YjsProjectBridge', () => {
 
       expect(mockBlockNode.blockName).toBe('New Name');
       expect(mockBlockNode.iconName).toBe('star');
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'star' });
       expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
+    });
+
+    it('maps a renamed theme icon name arriving in a structured descriptor', async () => {
+      // A collaborator on a project saved before neo renamed objetives.png sends the old
+      // name. Left as-is it misses getThemeIcons() and the block renders without an icon.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'objectives', name: 'objectives' });
+    });
+
+    it('leaves a theme icon name that was never renamed untouched', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'activity', icon: { source: 'theme', value: 'activity' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'activity' });
+    });
+
+    it('does not re-render a block whose stored icon name was renamed', async () => {
+      // The node already holds the mapped name; the update carries the raw one. Comparing
+      // those two strings reported a change on every remote update of that block, so
+      // makeIconNameElement() ran again each time until someone re-saved the project.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: 'objectives',
+        icon: { source: 'theme', value: 'objectives', name: 'objectives' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.makeIconNameElement).not.toHaveBeenCalled();
+      expect(mockBlockNode.iconName).toBe('objectives');
+    });
+
+    it('leaves a theme descriptor without a value alone', async () => {
+      // `icon.value` absent normalises to '', and comparing the mapped '' against an absent
+      // one would rewrite the descriptor and re-render for nothing.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'theme' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock({ id: 'block-1', icon: { source: 'theme' } }, 'page-1');
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme' });
+      expect(mockBlockNode.makeIconNameElement).not.toHaveBeenCalled();
+    });
+
+    it('updates block icon from structured icon data for remote collaborators', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+          structure: {
+            nodeSelected: { getAttribute: () => 'page-1' },
+          },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'mi-alarm', icon: { source: 'material', value: 'alarm' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'material', value: 'alarm' });
+      expect(mockBlockNode.iconName).toBe('mi-alarm');
+      expect(mockBlockNode.makeIconNameElement).toHaveBeenCalled();
     });
 
     it('updates block with properties object', async () => {
@@ -3679,6 +3880,65 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('pass score notice metadata updates', () => {
+    let metadata;
+    let refreshNotices;
+    let originalDevices;
+
+    beforeEach(() => {
+      originalDevices = window.$exeDevices;
+      metadata = new window.Y.Doc().getMap('metadata');
+      bridge.documentManager = { getMetadata: () => metadata };
+      bridge.updateUndoRedoButtons = mock(() => {});
+      bridge.syncMetadataToLegacy = mock(() => {});
+      refreshNotices = mock(() => {});
+      window.$exeDevices = {
+        iDevice: { gamification: { report: { refreshPassScoreNotices: refreshNotices } } },
+      };
+      bridge.setupMetadataObserver();
+    });
+
+    afterEach(() => {
+      metadata.doc.destroy();
+      window.$exeDevices = originalDevices;
+    });
+
+    it.each(['remote', 'local', 'undo'])('refreshes notices on %s pass score changes', (origin) => {
+      bridge.isUndoRedoInProgress = origin === 'undo';
+      metadata.doc.transact(() => metadata.set('passScore', 9), origin);
+
+      expect(refreshNotices).toHaveBeenCalledTimes(1);
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('ignores unrelated metadata changes', () => {
+      metadata.set('description', 'Updated description');
+
+      expect(refreshNotices).not.toHaveBeenCalled();
+    });
+
+    it('handles a pass score change before the activity runtime has loaded', () => {
+      delete window.$exeDevices;
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('keeps syncing the metadata when a notice fails to refresh', () => {
+      const failure = new Error('notice failed');
+      refreshNotices.mockImplementation(() => {
+        throw failure;
+      });
+      bridge.app = { project: { properties: {} } };
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+
+      expect(console.error).toHaveBeenCalledWith('[YjsProjectBridge] Error refreshing pass score notices:', failure);
+      expect(bridge.syncMetadataToLegacy).toHaveBeenCalled();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+  });
+
   describe('syncMetadataToLegacy', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
@@ -3808,6 +4068,23 @@ describe('YjsProjectBridge', () => {
         get: (key) => key === 'addExeLink' ? 'true' : undefined,
       };
       bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.checked).toBe(true);
+    });
+
+    it('updates the every-activity pass rule checkbox from its metadata key', () => {
+      const mockInput = {
+        getAttribute: (attr) => attr === 'property' ? 'pp_passScoreEveryActivity' : 'checkbox',
+        type: 'checkbox',
+        checked: false,
+        value: '',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+      bridge.documentManager.getMetadata = () => ({
+        get: (key) => key === 'passScoreEveryActivity' ? 'true' : undefined,
+      });
 
       bridge.forceAllFormInputsSync();
 
@@ -5250,6 +5527,48 @@ describe('YjsProjectBridge', () => {
       delete global.window.__lastElpxExportTimeline;
     });
 
+    it('measures Electron phases from one clock reading, however slow the bridge is', async () => {
+      // On a loaded CI runner the clock moves between two reads in the bridge,
+      // which made the Electron durations come out a millisecond short.
+      let now = 0;
+      bridge.getElpxExportDebugNow = () => (now += 1);
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({
+          export: mock(() => Promise.resolve({
+            success: true,
+            data: new ArrayBuffer(8),
+            filename: 'project.elpx',
+          })),
+        })),
+      };
+      global.eXeLearning = { config: { debugElpxExport: true, isOfflineInstallation: true } };
+      global.window.eXeLearning = global.eXeLearning;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: { totalMs: 44, promptMs: 30, normalizeMs: 4, writeMs: 10 },
+        })),
+      };
+
+      try {
+        await bridge.exportToElpx();
+
+        expect(global.window.__lastElpxExportSummary).toEqual(
+          expect.objectContaining({ electronSaveMs: 44, electronPromptMs: 30 })
+        );
+      } finally {
+        delete bridge.getElpxExportDebugNow;
+        delete global.eXeLearning;
+        delete global.window.eXeLearning;
+        delete global.window.electronAPI;
+        delete global.window.__lastElpxExportSummary;
+        delete global.window.__lastElpxExportTimeline;
+      }
+    });
+
     it('falls back to browser download when not in Electron mode', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
@@ -6626,6 +6945,72 @@ describe('YjsProjectBridge', () => {
       expect(mockIconEl.innerHTML).toBe(originalHtml);
     });
 
+    it('renders material icons with the shared mask runtime', () => {
+      // The shared runtime rebuilds the icon from the in-memory sprite as a
+      // self-contained data: URI (loose per-icon files were removed).
+      const iconRuntime = require('../common/blockIconRuntime.js');
+      iconRuntime.loadMaterialSprite(
+        [
+          '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+          '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M40-200Z"/></symbol>',
+          '</svg>',
+        ].join('\n'),
+      );
+
+      const mockIconEl = {
+        innerHTML: '',
+        style: {
+          removeProperty: mock(() => {}),
+        },
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      bridge._syncBlockIcon(mockIconEl, { source: 'material', value: 'alarm' }, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('class="exe-material-icon"');
+      expect(mockIconEl.innerHTML).toContain('data:image/svg+xml;utf8,');
+      expect(mockIconEl.innerHTML).not.toContain('alarm.svg');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+      expect(mockIconEl.style.removeProperty).toHaveBeenCalledWith('color');
+    });
+
+    it('renders asset icons using resolved asset URLs', () => {
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                resolveAssetURLSync: () => 'blob:asset-icon',
+              },
+            },
+          },
+          themes: {
+            getThemeIcons: () => ({}),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      bridge._syncBlockIcon(mockIconEl, { source: 'asset', value: 'asset://uuid-123/icon.jpg' }, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('blob:asset-icon');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
     it('does not clear icon when already showing empty SVG', () => {
       const mockIconEl = {
         innerHTML: '<svg>empty</svg>',
@@ -6822,6 +7207,47 @@ describe('YjsProjectBridge', () => {
       await bridge.importFromElpx(file, { clearExisting: false });
 
       expect(bridge.documentManager.markDirty).toHaveBeenCalled();
+    });
+
+    // #2540: without server storage the opened file is where the assets live,
+    // so they must not count as unsaved changes right after opening it.
+    describe('assets of the opened file', () => {
+      beforeEach(() => {
+        bridge.assetManager = { markAssetsSavedLocally: mock(() => {}) };
+      });
+
+      it('marks them saved locally when the project has no server storage', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).toHaveBeenCalled();
+      });
+
+      it('leaves them pending upload when the server stores the project', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: true } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
+      });
+
+      it('leaves them unsaved when importing into the current project', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: false });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
+      });
+
+      it('opens fine with an asset handler that does not track local saves', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+        bridge.assetManager = {};
+
+        const stats = await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(stats.pages).toBe(1);
+      });
     });
   });
 

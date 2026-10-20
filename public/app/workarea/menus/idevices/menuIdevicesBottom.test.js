@@ -1,3 +1,4 @@
+vi.mock('../../../common/app_tooltip.js', () => ({ default: vi.fn((element) => window.bootstrap.Tooltip.getOrCreateInstance(element)) }));
 import MenuIdevicesBottom from './menuIdevicesBottom.js';
 
 describe('MenuIdevicesBottom', () => {

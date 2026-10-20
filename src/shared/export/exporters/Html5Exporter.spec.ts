@@ -101,7 +101,23 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        if (_files.includes('material-icons/material-icons.svg')) {
+            files.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -401,6 +417,35 @@ describe('Html5Exporter', () => {
             expect(indexHtml).toContain('libs/common.js');
         });
 
+        it('should inline material icon SVGs as data URIs in exported HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('data:image/svg+xml;utf8,');
+            expect(indexHtml).not.toContain('libs/material-icons/icons/lightbulb.svg');
+            expect(zip.files.has('libs/material-icons/icons/lightbulb.svg')).toBe(true);
+        });
+
         it('should use custom filename when provided', async () => {
             const result = await exporter.export({ filename: 'my-export.zip' });
 
@@ -452,6 +497,24 @@ describe('Html5Exporter', () => {
 
             // Other pages should have ../ prefix
             expect(html).toContain('href="../theme/');
+        });
+
+        it('should publish the project pass score for the runtime to read', () => {
+            document = new MockDocument({ passScore: 7.5 }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const html = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+        });
+
+        it('should publish the every-activity pass rule only when the project asks for it', () => {
+            const off = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const on = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(off).not.toContain('exe-pass-score-every-activity');
+            expect(on).toContain('<meta name="exe-pass-score-every-activity" content="true">');
         });
     });
 
@@ -640,7 +703,7 @@ describe('Html5Exporter', () => {
             // Check that base CSS includes LaTeX styles
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).toContain('.exe-math-rendered');
         });
 
@@ -657,7 +720,7 @@ describe('Html5Exporter', () => {
             // Check that base CSS does NOT include LaTeX styles
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).not.toContain('.exe-math-rendered');
         });
 
@@ -951,7 +1014,7 @@ describe('Html5Exporter', () => {
             // Since preRenderLatex was skipped, CSS should NOT include LaTeX styles
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).not.toContain('.exe-math-rendered');
         });
 
@@ -999,8 +1062,7 @@ describe('Html5Exporter', () => {
             });
 
             const indexHtml = zip.files.get('index.html');
-            const indexHtmlText =
-                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            const indexHtmlText = decodePreviewFile(indexHtml as ArrayBuffer | Uint8Array | string | undefined);
             expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
         });
 
@@ -1274,7 +1336,7 @@ describe('Html5Exporter', () => {
 
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).toContain('.exe-mermaid-rendered');
         });
 
@@ -1290,7 +1352,7 @@ describe('Html5Exporter', () => {
 
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
             expect(cssContent).not.toContain('.exe-mermaid-rendered');
         });
 
@@ -2097,9 +2159,62 @@ describe('Html5Exporter', () => {
             expect(files.has('libs/common.js')).toBe(true);
         });
 
-        it('should return ArrayBuffer content for all files', async () => {
+        it('should include used material icon SVGs in preview files', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-filter_5',
+                            icon: { source: 'material', value: 'filter_5' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
             const files = await exporter.generateForPreview();
 
+            expect(files.has('libs/material-icons/icons/filter_5.svg')).toBe(true);
+        });
+
+        it('should inline material icon SVGs as data URIs in preview HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+            const html = decodePreviewFile(files.get('index.html'));
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
+        });
+
+        it('should return ArrayBuffer content for all files', async () => {
+            const files = await exporter.generateForPreview();
             for (const [, content] of files) {
                 expect(content).toBeInstanceOf(ArrayBuffer);
             }
@@ -2227,6 +2342,163 @@ describe('Html5Exporter', () => {
             const files = await exporter.generateForPreview();
 
             expect(files.has('content/resources/images/image.png')).toBe(true);
+        });
+
+        it('should include custom block icon assets in preview files and HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            const html = decodePreviewFile(files.get('index.html'));
+            expect(html).toContain('content/resources/black-dog.jpg');
+        });
+
+        it('should only include referenced assets in preview files', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                        {
+                            id: 'unused-asset-id',
+                            filename: 'unused.jpg',
+                            originalPath: 'unused-asset-id/unused.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('unused JPG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            expect(files.has('content/resources/unused.jpg')).toBe(false);
+        });
+
+        it('should include content assets in preview files when a block has a custom icon', async () => {
+            const contentAssetId = 'a1b2c3d4-0000-4000-8000-000000000001';
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: `<p><img src="asset://${contentAssetId}.png"></p>`,
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                        {
+                            id: contentAssetId,
+                            filename: 'Captura desde 2026-09-29 10-13-04.png',
+                            originalPath: `${contentAssetId}/Captura desde 2026-09-29 10-13-04.png`,
+                            folderPath: '',
+                            mime: 'image/png',
+                            mimeType: 'image/png',
+                            data: Buffer.from('PNG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            expect(files.has('content/resources/Captura desde 2026-09-29 10-13-04.png')).toBe(true);
         });
 
         it('should handle asset fetch failure gracefully', async () => {
@@ -2688,7 +2960,7 @@ describe('Html5Exporter', () => {
 
             const baseCss = zip.files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
-            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
 
             // Should contain both LaTeX and Mermaid CSS
             expect(cssContent).toContain('.exe-math-rendered');

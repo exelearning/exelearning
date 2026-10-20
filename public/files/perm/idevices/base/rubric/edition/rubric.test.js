@@ -4,6 +4,7 @@
 
 /* eslint-disable no-undef */
 
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -970,5 +971,221 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect($exeDevice.ci18n.msgScore).toBe('Score');
       expect($exeDevice.ci18n.msgWeight).toBe('Weight');
     });
+  });
+
+  // Only 1-100 is stored. The previous `value || 100` let -1 through — which
+  // is exactly what the shared SCORM tab returns for an emptied weight field —
+  // and any number above 100 as well.
+  describe('normalizeWeight', () => {
+    it('keeps every weight inside the range, including the ends', () => {
+      expect($exeDevice.normalizeWeight(1)).toBe(1);
+      expect($exeDevice.normalizeWeight(40)).toBe(40);
+      expect($exeDevice.normalizeWeight(100)).toBe(100);
+    });
+
+    it('falls back to 100 outside the range or when unreadable', () => {
+      expect($exeDevice.normalizeWeight(0)).toBe(100);
+      expect($exeDevice.normalizeWeight(-1)).toBe(100);
+      expect($exeDevice.normalizeWeight(101)).toBe(100);
+      expect($exeDevice.normalizeWeight(undefined)).toBe(100);
+      expect($exeDevice.normalizeWeight('abc')).toBe(100);
+    });
+  });
+
+  /**
+   * The rubric grades on its own scale -- 0 to whatever the first level adds up
+   * to -- so its pass mark is set in those units rather than out of ten, right
+   * below the maximum the author is already reading.
+   */
+  /**
+   * The rubric used to be the one scoring iDevice that never registered in the
+   * progress report, so a course mixing rubrics with other activities produced
+   * a report the rubrics were simply missing from.
+   */
+  /**
+   * The rubric grades on its own 0..maximum scale internally, but the mark the
+   * author sets is the shared 0-10 one, like every other activity. That is what
+   * lets a page mixing a rubric with other scoring iDevices judge them all
+   * alike -- and it matches what the learner is shown, since the rubric already
+   * reports its score out of ten.
+   */
+  describe('pass score', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'rubric.js'), 'utf-8');
+    });
+
+    it('uses the shared control, with no scale of its own', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain('gamification.passScore.addEvents()');
+      expect(source).not.toContain('ri_PassScore');
+      expect(source).not.toContain('getPassScoreField');
+    });
+
+    it('stores the same two fields as every other iDevice', () => {
+      expect(source).toContain('data.passScoreMode = passScore.passScoreMode');
+      expect(source).toContain('data.passScoreCustom = passScore.passScoreCustom');
+      expect(source).not.toContain('data.passScore =');
+    });
+
+    it('takes the tab with no opt-out', () => {
+      expect(source).toContain('gamification.scorm.getTab($exeDevice.idevicePath)');
+      expect(source).not.toContain('passScore: false');
+    });
+  });
+
+  describe('progress report', () => {
+    let source;
+    let runtime;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'rubric.js'), 'utf-8');
+      runtime = readFileSync(join(__dirname, '..', 'export', 'rubric.js'), 'utf-8');
+    });
+
+    it('offers the shared control and wires its events', () => {
+      expect(source).toContain('gamification.progressBar.setValues(');
+      expect(source).toContain('gamification.progressBar.getValues()');
+      expect(source).toContain('gamification.progressBar.addEvents()');
+    });
+
+    it('stores what the author chose', () => {
+      expect(source).toContain('data.evaluation = progressBar.evaluation');
+      expect(source).toContain('data.evaluationID = progressBar.evaluationID');
+    });
+
+    it('translates the strings the report shows', () => {
+      // showEvaluationIcon reads these; without them the learner would see the
+      // English fallbacks whatever the project language.
+      expect(source).toContain('msgTypeGame: c_(');
+      expect(source).toContain('msgSuccessfulActivity: c_(');
+      expect(source).toContain('msgUnsuccessfulActivity: c_(');
+      expect(source).toContain('msgUncompletedActivity: c_(');
+    });
+
+    it('does not tie the report to SCORM', () => {
+      // initScorm returns early when the author chose not to save the score.
+      // Showing the verdict from there would make "do not save" silently switch
+      // the report off as well.
+      expect(runtime).toContain('initProgressReport: function');
+      expect(runtime).toContain('self.initProgressReport(data)');
+      expect(runtime).toContain('updateProgressReport: function');
+    });
+  });
+
+  describe('edition lifecycle', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    describe('readCSVFile', () => {
+      function csvFile() {
+        return new File(['A,B\n1,2'], 'rubric.csv', { type: 'text/csv' });
+      }
+
+      it('imports the CSV while the edition is open', async () => {
+        const importCSV = vi.spyOn($exeDevice, 'importCSV').mockImplementation(() => {});
+
+        $exeDevice.readCSVFile(csvFile());
+        await vi.waitFor(() => expect(importCSV).toHaveBeenCalledTimes(1));
+      });
+
+      it('aborts a read still in flight when the edition closes', () => {
+        const abort = vi.spyOn(window.FileReader.prototype, 'abort');
+
+        $exeDevice.readCSVFile(csvFile());
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not import a CSV that arrives after the edition closed', async () => {
+        const importCSV = vi.spyOn($exeDevice, 'importCSV').mockImplementation(() => {});
+
+        $exeDevice.readCSVFile(csvFile());
+        $exeDevice.$lifecycle.destroy();
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(importCSV).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("CEDEC's rubrics download", () => {
+      let handlers;
+      let abort;
+
+      function openTemplateControls() {
+        document.body.innerHTML = '<div id="ri_RubricsEditor"></div>';
+        delete $exeDevice.cedecRubrics;
+        $exeDevice.renderRubricTemplateControls();
+        $('#ri_LoadCEDECRubrics').trigger('click');
+      }
+
+      beforeEach(() => {
+        handlers = null;
+        abort = vi.fn();
+        vi.spyOn($, 'ajax').mockImplementation((options) => {
+          handlers = options;
+          return { abort };
+        });
+      });
+
+      it('stores the rubrics when the download answers while the editor is open', () => {
+        const complete = vi
+          .spyOn($exeDevice, 'completeRubricModels')
+          .mockImplementation(() => {});
+
+        openTemplateControls();
+        handlers.success({ rubrics: [{ title: 'x' }] });
+
+        expect($exeDevice.cedecRubrics).toEqual({ rubrics: [{ title: 'x' }] });
+        expect(complete).toHaveBeenCalledTimes(1);
+      });
+
+      it('aborts the pending download when the edition closes', () => {
+        openTemplateControls();
+        expect(abort).not.toHaveBeenCalled();
+
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      it('ignores a download that answers after the edition closed', () => {
+        const complete = vi
+          .spyOn($exeDevice, 'completeRubricModels')
+          .mockImplementation(() => {});
+
+        openTemplateControls();
+        $exeDevice.$lifecycle.destroy();
+        handlers.success({ rubrics: [{ title: 'x' }] });
+
+        expect($exeDevice.cedecRubrics).toBeUndefined();
+        expect(complete).not.toHaveBeenCalled();
+      });
+
+      it('does not alert for an error raised by its own abort', () => {
+        const alert = vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
+
+        openTemplateControls();
+        // jQuery calls the error handler synchronously when a request is aborted.
+        abort.mockImplementation(() => handlers.error());
+        $exeDevice.$lifecycle.destroy();
+
+        expect(alert).not.toHaveBeenCalled();
+      });
+    });
+  });
+});
+
+describe('rubric minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'rubric.js'));
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });

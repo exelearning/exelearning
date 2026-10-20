@@ -45,6 +45,9 @@ var $exeDevice = {
                 "The score can't be saved because this page is not part of a SCORM package."
             ),
             msgYouScore: c_('Your score'),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
             msgYouLastScore: c_('The last score saved is'),
@@ -66,6 +69,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Scrambled list'),
             msgStartGame: c_('Click here to start'),
             msgSubmit: c_('Submit'),
@@ -176,6 +180,10 @@ var $exeDevice = {
         if (!progressBar) return false;
         this.evaluationID = progressBar.evaluationID;
         this.evaluation = progressBar.evaluation;
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        this.passScoreMode = passScore.passScoreMode;
+        this.passScoreCustom = passScore.passScoreCustom;
         this.showSolutions = !!(
             this.ideviceBody.querySelector('#sortableShowSolutions') || {}
         ).checked;
@@ -231,6 +239,8 @@ var $exeDevice = {
             weighted: scorm.weighted || 100,
             evaluation: this.evaluation,
             evaluationID: this.evaluationID,
+            passScoreMode: this.passScoreMode,
+            passScoreCustom: this.passScoreCustom,
             main: 'sl' + this.id,
             msgs: this.msgs,
             scorerp: 0,
@@ -340,7 +350,6 @@ var $exeDevice = {
                                     <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
                                 </div>
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(this.idevicePath)}
                                 </div>
                             </div>
                         </div>
@@ -349,7 +358,7 @@ var $exeDevice = {
 
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(this.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
             </div>`;
@@ -360,7 +369,11 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#sortableAttemptsNumber')
             .on('keyup', function () {
@@ -402,9 +415,10 @@ var $exeDevice = {
                 }
 
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
         } else {
@@ -565,6 +579,10 @@ var $exeDevice = {
             evaluation: evalChecked,
             evaluationID: evalIDValue,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: data.passScoreMode,
+            passScoreCustom: data.passScoreCustom,
+        });
 
         this.ideviceBody.querySelector('#eXeGameInstructions').value =
             data.instructions ||
@@ -581,7 +599,7 @@ var $exeDevice = {
             this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1);
 
         data.weighted = data.weighted || 100;
-        data.repeatActivity = data.repeatActivity || false;
+        data.repeatActivity = true;
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 

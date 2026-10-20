@@ -32,6 +32,8 @@ export {
 export {
     parseThemeConfig,
     parseThemeConfigBasic,
+    compareThemeIconNames,
+    sortThemeIcons,
     type ThemeConfig,
     type ThemeIcon,
     type ParseThemeOptions,

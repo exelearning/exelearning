@@ -32,7 +32,9 @@ var $exeDevice = {
 
         this.idevicePath = path;
 
-        this.defaultImage = path + 'hood.jpg';
+        // hood.jpg ships only in export/ (the edition copy was a byte
+        // duplicate); the editor previews the export asset directly.
+        this.defaultImage = path.replace(/\/edition\/?$/, '/export/') + 'hood.jpg';
 
         this.id = $(element).attr('idevice-id');
         this.setMessagesInfo();
@@ -65,7 +67,7 @@ var $exeDevice = {
                 </div>
                 <div class="container">
                     <div class="ratio ratio-16x9 mb-4 MNFE-Preview">
-                        <img src="${path}hood.jpg" alt="Preview" id="mnfPreviewImage"
+                        <img src="${$exeDevice.defaultImage}" alt="Preview" id="mnfPreviewImage"
                             class="img-fluid object-fit-contain object-position-left">
                     </div>
                     <div class="d-flex align-items-center mb-3">
@@ -232,7 +234,7 @@ var $exeDevice = {
             maxZSize = 600,
             glassSize = $('#mnfLensSizeSelect').val() || 100,
             align = $('#mnfAlignSelect').val() || 'left',
-            defaultImage = $exeDevice.idevicePath + 'hood.jpg';
+            defaultImage = $exeDevice.defaultImage;
 
         let html = '';
         if (tinyMCE.get('instructions'))

@@ -44,17 +44,17 @@ jobs:
           images: |
             ${{ github.repository }}
             ghcr.io/${{ github.repository }}
+          # `latest` moves only in promote-latest.yml, when a release stops
+          # being a pre-release. The action's default flavor is `latest=auto`,
+          # which adds `latest` to every `type=ref,event=tag` build — the tag
+          # string is all it sees, so it cannot know the release is still a
+          # pre-release. It has to be turned off explicitly.
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=tag
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=tikismaker,enable=${{ github.ref == 'refs/heads/tikismaker' }}
-
-      # Verification of unauthorized changes in the workflows
-      - name: Check ci.yml and app.yml
-        if: github.event_name == 'pull_request'
-        run: |
-          git diff --name-only ${{ github.before }} ${{ github.sha }} | grep -Eq "^.github/workflows/(ci.yml|app.yml)$" && echo "Modifying or deleting ci.yml or app.yml is not allowed" && exit 1 || echo "Everything is fine"
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -64,11 +64,19 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
+      # Same bundle OSS-Fuzz builds from fuzz/*.fuzz.ts. A moved or renamed
+      # import fails this pull request instead of the OSS-Fuzz build.
+      - name: Build fuzz targets
+        run: sh fuzz/build.sh
+
       - name: Architecture records (identifiers, metadata, generated indexes)
         run: make architecture-check
 
       - name: Lint (Biome)
         run: make lint
+
+      - name: Build vendor libs
+        run: bun run bundle:vendor
 
       - name: Unit Tests + 90% Coverage
         run: make test-unit-ci
@@ -157,7 +165,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Hadolint Action
-        uses: hadolint/hadolint-action@v3.4.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           format: sarif
           output-file: hadolint-results.sarif

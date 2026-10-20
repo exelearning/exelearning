@@ -733,11 +733,12 @@ describe('StructureEngine', () => {
       expect(engine.menuStructureBehaviour.selectFirst).toHaveBeenCalled();
     });
 
-    it('handles remote structure changes and reloads page content', async () => {
+    it('handles remote structure changes and schedules the page reload through the bridge', async () => {
       engine.project._yjsEnabled = true;
       engine.project._yjsBridge = {
         onStructureChange: vi.fn(),
-        getAffectedPageIdsForBlockStructureChanges: vi.fn(() => new Set(['page-1']))
+        getAffectedPageIdsForBlockStructureChanges: vi.fn(() => new Set(['page-1'])),
+        schedulePageReloadIfCurrent: vi.fn(),
       };
       engine.menuStructureCompose = { compose: vi.fn() };
       engine.menuStructureBehaviour = {
@@ -766,14 +767,18 @@ describe('StructureEngine', () => {
 
       expect(selectSpy).toHaveBeenCalledWith('page-1');
       expect(engine.menuStructureCompose.compose).toHaveBeenCalled();
-      expect(mockProject.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalled();
+      // Reload goes through the bridge: debounced with the bridge's own reload and
+      // deferred while an iDevice is being edited (#2427).
+      expect(engine.project._yjsBridge.schedulePageReloadIfCurrent).toHaveBeenCalledWith('page-1');
+      expect(mockProject.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
 
     it('does not reload page content for remote changes handled incrementally', async () => {
       engine.project._yjsEnabled = true;
       engine.project._yjsBridge = {
         onStructureChange: vi.fn(),
-        getAffectedPageIdsForBlockStructureChanges: vi.fn(() => new Set())
+        getAffectedPageIdsForBlockStructureChanges: vi.fn(() => new Set()),
+        schedulePageReloadIfCurrent: vi.fn(),
       };
       engine.menuStructureCompose = { compose: vi.fn() };
       engine.menuStructureBehaviour = {
@@ -813,6 +818,7 @@ describe('StructureEngine', () => {
 
       expect(selectSpy).toHaveBeenCalledWith('page-1');
       expect(engine.menuStructureCompose.compose).toHaveBeenCalled();
+      expect(engine.project._yjsBridge.schedulePageReloadIfCurrent).not.toHaveBeenCalled();
       expect(mockProject.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
   });

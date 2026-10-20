@@ -1197,6 +1197,29 @@ describe('IdeviceNode', () => {
 
             expect(global.$exeDevice).toBeUndefined();
         });
+
+        it('keeps $exeDevice when another iDevice is being edited locally (#2427)', () => {
+            idevice.isSync = false;
+            const editing = { id: 'other-idevice', mode: 'edition' };
+            mockEngine.isIdeviceInEdition = vi.fn(() => editing);
+            global.$exeDevice = { save: vi.fn() };
+
+            idevice.restartExeIdeviceValue();
+
+            expect(global.$exeDevice).toBeDefined();
+            delete mockEngine.isIdeviceInEdition;
+        });
+
+        it('clears $exeDevice when this iDevice is the one being edited', () => {
+            idevice.isSync = false;
+            mockEngine.isIdeviceInEdition = vi.fn(() => idevice);
+            global.$exeDevice = { save: vi.fn() };
+
+            idevice.restartExeIdeviceValue();
+
+            expect(global.$exeDevice).toBeUndefined();
+            delete mockEngine.isIdeviceInEdition;
+        });
     });
 
     describe('showLockedPlaceholder', () => {

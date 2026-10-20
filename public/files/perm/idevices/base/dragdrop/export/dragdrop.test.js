@@ -67,6 +67,160 @@ describe('dragdrop iDevice export', () => {
     });
   });
 
+  describe('SCORM reporting on explicit replay', () => {
+    const instance = 0;
+
+    function setupGame(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="dadPMainContainer-0">
+          <div id="dadPContainerGame-0"></div>
+          <div id="dadPImgTime-0"></div>
+          <div id="dadPPTime-0"></div>
+          <div id="dadPButtons-0"></div>
+          <div id="dadPResetButton-0"></div>
+          <div id="dadPCheckButton-0"></div>
+          <div id="dadPPShowClue-0"></div>
+          <div id="dadPShowClue-0"></div>
+          <div id="dadPPHits-0"></div>
+          <div id="dadPPErrors-0"></div>
+          <div id="dadPCubierta-0"></div>
+          <div id="dadPStartGame-0"></div>
+          <div id="dadPMessage-0"></div>
+        </div>`;
+      $eXeDragDrop.options[instance] = Object.assign(
+        {
+          main: 'dadPMainContainer-0',
+          isScorm: 1,
+          type: 0,
+          time: 0,
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          errors: 0,
+          score: 0,
+          active: 0,
+          obtainedClue: false,
+          realNumberCards: 4,
+          itinerary: { showClue: false, showCodeAccess: false },
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeDragDrop, 'initializeDragAndDrop').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'createDrags').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'showScoreGame').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'updateTime').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupGame({ isScorm: 1 });
+      $eXeDragDrop.saveScormScore(instance);
+      expect($eXeDragDrop.sendScore).toHaveBeenCalledWith(true, instance);
+
+      $eXeDragDrop.sendScore.mockClear();
+      $eXeDragDrop.options[instance].isScorm = 2;
+      $eXeDragDrop.saveScormScore(instance);
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('publishes the cleared state when the board is restarted', () => {
+      setupGame({ hits: 4, errors: 2, gameOver: true });
+      let stateWhenReported;
+      $eXeDragDrop.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } =
+          $eXeDragDrop.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+
+      $eXeDragDrop.reboot(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('restarts a board whose game flag was still up', () => {
+      setupGame({ hits: 4, gameStarted: true, gameOver: false });
+
+      $eXeDragDrop.reboot(instance);
+
+      expect($eXeDragDrop.sendScore).toHaveBeenCalledWith(true, instance);
+      expect($eXeDragDrop.options[instance].hits).toBe(0);
+    });
+
+    it('does not publish a score when a game starts', () => {
+      setupGame({ hits: 3, gameOver: true });
+
+      $eXeDragDrop.startGame(instance);
+
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+      expect($eXeDragDrop.options[instance].hits).toBe(0);
+      expect($eXeDragDrop.options[instance].gameOver).toBe(false);
+      expect($eXeDragDrop.options[instance].gameStarted).toBe(true);
+    });
+
+    /** The code field, its cover and the maximize link the code entry drives. */
+    function addCodeAccessDom(typed) {
+      $('#dadPMainContainer-0').append(`
+        <div id="dadPCodeAccessDiv-0"></div>
+        <div id="dadPMesajeAccesCodeE-0"></div>
+        <a id="dadPLinkMaximize-0" href="#"></a>
+        <input id="dadPCodeAccessE-0" value="${typed}" />`);
+    }
+
+    // Behind a code the board never reported: the cover only hides it, and
+    // startGame is silent on purpose because loading and minimizing reach it
+    // too. The LMS kept the previous attempt's grade until the learner checked.
+    it('publishes a zero and an unfinished attempt when a valid code opens the board', () => {
+      setupGame({
+        hits: 3,
+        errors: 1,
+        gameOver: true,
+        itinerary: { showClue: false, showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('AbrE');
+      let stateWhenReported;
+      $eXeDragDrop.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } =
+          $eXeDragDrop.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+
+      $eXeDragDrop.enterCodeAccess(instance);
+
+      // No maximize handler is bound here: the report has to survive without
+      // the click side effect that normally starts the board.
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('neither starts nor reports when the code is wrong', () => {
+      setupGame({
+        itinerary: { showClue: false, showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('nope');
+
+      $eXeDragDrop.enterCodeAccess(instance);
+
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+      expect($eXeDragDrop.options[instance].gameStarted).toBe(false);
+      expect($('#dadPCodeAccessE-0').val()).toBe('');
+    });
+  });
+
   describe('setupTouchDragAndDrop', () => {
     it('exists as a function', () => {
       expect(typeof $eXeDragDrop.setupTouchDragAndDrop).toBe('function');
@@ -251,5 +405,163 @@ describe('dragdrop iDevice export', () => {
       const touchEndHandler = $eXeDragDrop.options[instance]._touchDragEnd;
       expect(() => touchEndHandler({ changedTouches: [{ clientX: 10, clientY: 10 }] })).not.toThrow();
     });
+  });
+
+  describe('initializeDragAndDrop guards (#2272)', () => {
+    const instance = 0;
+
+    afterEach(() => {
+      delete $.ui;
+      delete $.fn.draggable;
+      delete $.fn.droppable;
+      vi.useRealTimers();
+    });
+
+    it('returns early without throwing when options[instance] is gone', () => {
+      expect(() => $eXeDragDrop.initializeDragAndDrop(instance)).not.toThrow();
+    });
+
+    it('survives a stale 200ms retry that fires after teardown removed the options', () => {
+      vi.useFakeTimers();
+      // jQuery UI is not loaded, so the first call schedules a retry.
+      $eXeDragDrop.options[instance] = {};
+      $eXeDragDrop.initializeDragAndDrop(instance);
+      expect($eXeDragDrop.options[instance]._initRetries).toBe(1);
+      // Teardown wipes the options before the retry fires.
+      $eXeDragDrop.options = [];
+      expect(() => vi.advanceTimersByTime(200)).not.toThrow();
+    });
+
+    it('wires drag and drop when options, DOM and jQuery UI are present (positive path)', () => {
+      $.ui = { draggable: {}, droppable: {} };
+      $.fn.draggable = vi.fn(function () {
+        return this;
+      });
+      $.fn.droppable = vi.fn(function () {
+        return this;
+      });
+      document.body.innerHTML = `<div id="dadPGameContainer-${instance}"></div>`;
+      $eXeDragDrop.options[instance] = { _initRetries: 3 };
+
+      expect(() => $eXeDragDrop.initializeDragAndDrop(instance)).not.toThrow();
+
+      expect($eXeDragDrop.options[instance]._initRetries).toBe(0);
+      expect($.fn.draggable).toHaveBeenCalled();
+      expect($.fn.droppable).toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * showScoreGame picks the colour of the message the learner reads. It used to
+   * compare against a literal 5, which contradicted the progress report sitting
+   * on the same page -- the report called a 6 out of 10 "not passed" against a
+   * mark of 8 while this message painted it green.
+   *
+   * Colour 2 is the pass colour, 1 the fail colour; showMessage is where they
+   * are turned into a style, so that is what is observed.
+   */
+  describe('the message colour follows the pass mark', () => {
+    const instance = 0;
+
+    const play = (passScoreMode, passScoreCustom) => {
+      const showMessage = vi.spyOn($eXeDragDrop, 'showMessage').mockImplementation(() => {});
+      $eXeDragDrop.options[instance] = {
+        hits: 6,
+        errors: 4,
+        numberCards: 10,
+        realNumberCards: 10,
+        cardsGame: new Array(10),
+        passScoreMode,
+        passScoreCustom,
+        itinerary: { showClue: false },
+        msgs: { msgEndGameM: '%s' },
+      };
+      document.body.innerHTML = `<div id="dadPRepeatActivity-${instance}"></div>`;
+      $eXeDragDrop.showScoreGame(instance);
+      return showMessage.mock.calls[0][0];
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('passes a 6 on the project mark of 5', () => {
+      expect(play('global')).toBe(2);
+    });
+
+    it('fails the same 6 when the author set the mark at 8', () => {
+      expect(play('custom', 8)).toBe(1);
+    });
+
+    it('passes the same 6 when the author set the mark at 4.5', () => {
+      expect(play('custom', 4.5)).toBe(2);
+    });
+  });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and ending it when its own time ran out.
+  describe('the clock of a timed game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="dadPMainContainer-${instance}"></div>`;
+      $eXeDragDrop.options = [{ gameStarted: false, type: 2, time: 1 }];
+      for (const method of ['updateTime', 'gameOver', 'initializeDragAndDrop']) {
+        vi.spyOn($eXeDragDrop, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeDragDrop.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeDragDrop.updateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('ends its own game when the time runs out', () => {
+      $eXeDragDrop.startGame(instance);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeDragDrop.gameOver).toHaveBeenCalledWith(instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeDragDrop.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="dadPMainContainer-${instance}"></div>`;
+      $eXeDragDrop.options[instance] = { gameStarted: true, counter: 240 };
+      $eXeDragDrop.updateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeDragDrop.updateTime).not.toHaveBeenCalled();
+      expect($eXeDragDrop.gameOver).not.toHaveBeenCalled();
+      expect($eXeDragDrop.options[instance].counter).toBe(240);
+    });
+  });
+});
+
+describe('dragdrop minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'dragdrop.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
   });
 });

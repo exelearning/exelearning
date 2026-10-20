@@ -1,0 +1,211 @@
+# HA benchmark stack for issue #2255. Adapted from doc/deploy/docker-compose.redis.yml:
+# uses the prebuilt `exenew` image (no local `build:` context, since Gordobot
+# does not have this repo checked out), exposes the Nginx load balancer
+# directly on a host port (bypassing Traefik, which is irrelevant for this
+# internal benchmark stack), and keeps resource limits explicit so every run
+# records exactly what each instance was allowed to use.
+#
+# Deploy alongside/instead of the single-instance docker-compose.yml on the
+# system-under-test host. See test/load/deploy/README.md.
+#
+# Usage:
+#   docker compose -f docker-compose.ha.yml up -d                 # 2 instances (default)
+#   docker compose -f docker-compose.ha.yml --profile ha4 up -d   # 4 instances
+#
+# Set NGINX_CONF to switch the load-balancer config under test, e.g.:
+#   NGINX_CONF=nginx-baseline-default.conf docker compose -f docker-compose.ha.yml up -d nginx
+#   NGINX_CONF=nginx-tuned-ip-hash.conf docker compose -f docker-compose.ha.yml up -d nginx
+# (see test/load/deploy/README.md for the three variants and what each isolates)
+
+x-exelearning-env: &exelearning-env
+  APP_ENV: prod
+  APP_DEBUG: 0
+  APP_SECRET: "${APP_SECRET:-BenchHASecretChangeMe}"
+  APP_PORT: "8080"
+  APP_ONLINE_MODE: 1
+  DB_DRIVER: pdo_pgsql
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_NAME: "${DB_NAME:-exelearning}"
+  DB_USER: "${DB_USER:-postgres}"
+  DB_PASSWORD: "${DB_PASSWORD:-postgres}"
+  DB_CHARSET: utf8
+  DB_SERVER_VERSION: 18
+  FILES_DIR: /mnt/data/
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  APP_AUTH_METHODS: password
+  AUTH_CREATE_USERS: "true"
+  API_JWT_SECRET: "${API_JWT_SECRET:-BenchHAJwtSecretChangeMe}"
+
+x-exelearning-limits: &exelearning-limits
+  deploy:
+    resources:
+      limits:
+        cpus: "${INSTANCE_CPU_LIMIT:-2}"
+        memory: "${INSTANCE_MEM_LIMIT:-2g}"
+  ulimits:
+    nofile:
+      soft: 200000
+      hard: 200000
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "${LB_PORT:-8090}:80"
+    volumes:
+      - ./${NGINX_CONF:-nginx-tuned-least-conn.conf}:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - exelearning-1
+      - exelearning-2
+    restart: unless-stopped
+    # Container-level ceiling kept generous and constant across every
+    # NGINX_CONF variant, so nginx.conf's own worker_connections /
+    # worker_rlimit_nofile is the only variable under test (see
+    # test/load/deploy/README.md for the experiment design).
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
+    # No Docker healthcheck: `docker exec`-based checks were observed
+    # hanging indefinitely for this container on Gordobot even though the
+    # service itself responded fine externally (curl-verified) — a
+    # container-exec quirk on this host, not an actual nginx problem.
+    # Traefik excludes containers Docker reports unhealthy, so a stuck
+    # healthcheck silently drops the route; nothing in this compose file
+    # depends on nginx's own health, so omitting it is safe.
+    # Browsable via Traefik for manual/visual inspection only — k6 load
+    # tests always hit ${LB_PORT} directly over the LAN (see
+    # test/load/README.md's "bypass Cloudflare/WAN" methodology note).
+    # Routing traffic through Traefik/Cloudflare would reintroduce the
+    # exact WAN latency/limits the benchmark is designed to exclude.
+    networks:
+      - traefik_default
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_default"
+      - "traefik.http.routers.exenew-ha.rule=Host(`${TRAEFIK_HOST:-exenew-ha.localhost}`)"
+      - "traefik.http.services.exenew-ha.loadbalancer.server.port=80"
+
+  exelearning-1:
+    image: ghcr.io/exelearning/exelearning:${TAG:-exenew}
+    restart: unless-stopped
+    <<: *exelearning-limits
+    volumes:
+      - exelearning-ha-assets:/mnt/data:rw
+    environment:
+      <<: *exelearning-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  exelearning-2:
+    image: ghcr.io/exelearning/exelearning:${TAG:-exenew}
+    restart: unless-stopped
+    <<: *exelearning-limits
+    volumes:
+      - exelearning-ha-assets:/mnt/data:rw
+    environment:
+      <<: *exelearning-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  exelearning-3:
+    image: ghcr.io/exelearning/exelearning:${TAG:-exenew}
+    restart: unless-stopped
+    profiles: ["ha4"]
+    <<: *exelearning-limits
+    volumes:
+      - exelearning-ha-assets:/mnt/data:rw
+    environment:
+      <<: *exelearning-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  exelearning-4:
+    image: ghcr.io/exelearning/exelearning:${TAG:-exenew}
+    restart: unless-stopped
+    profiles: ["ha4"]
+    <<: *exelearning-limits
+    volumes:
+      - exelearning-ha-assets:/mnt/data:rw
+    environment:
+      <<: *exelearning-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+      POSTGRES_USER: "${DB_USER:-postgres}"
+      POSTGRES_DB: "${DB_NAME:-exelearning}"
+    volumes:
+      - postgres-ha-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-exelearning}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-ha-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  exelearning-ha-assets:
+  postgres-ha-data:
+  redis-ha-data:
+
+networks:
+  traefik_default:
+    external: true
+  default:

@@ -120,9 +120,10 @@ export interface IdeviceHandler {
      *
      * @param dict - Dictionary element of the iDevice
      * @param ideviceId - Generated iDevice ID
+     * @param context - Context with language and metadata
      * @returns Properties object (e.g., { questionsData: [...] })
      */
-    extractProperties(dict: Element, ideviceId?: string): Record<string, unknown>;
+    extractProperties(dict: Element, ideviceId?: string, context?: IdeviceHandlerContext): Record<string, unknown>;
 
     /**
      * Get block-level properties (optional)
