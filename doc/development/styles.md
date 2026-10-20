@@ -23,11 +23,11 @@ Example structure:
 <theme>
   <name>example</name>
   <title>Example</title>
-  <version>2025</version>
-  <compatibility>3.0</compatibility>
+  <version>20260913</version>
+  <compatibility>4.0.5</compatibility>
   <author>eXeLearning.net</author>
-  <license>Creative Commons by-sa</license>
-  <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
+  <license>Creative Commons BY-SA 4.0</license>
+  <license-url>http://creativecommons.org/licenses/by-sa/4.0/</license-url>
   <description>Example style for eXe.
 
 iDevice icons by…</description>
@@ -42,6 +42,21 @@ iDevice icons by…</description>
 - **`compatibility`**: eXeLearning version the style is compatible with.
 - **`author`**, **`license`**, **`license-url`**: Author and licensing information.
 - **`description`**: Style description (may include line breaks).
+
+### Crediting third-party material
+
+`description` is also where a style credits everything it ships that it did not create:
+fonts, iDevice icons, navigation icons, the Creative Commons badges in `img/licenses.gif`.
+Every bundled style does it, one paragraph per rights holder, naming the files, the author
+and the license (with its URL), and pointing to the full license text when the style ships
+it (`fonts/OFL.txt`, `icons/LICENSE.txt`).
+
+Material that is **not** under the style's license has to say so in its own paragraph:
+the CC badges are trademarks of Creative Commons, and institutional logos are trademarks of
+their owners. `cedec`, `etwinning`, `intef` and `kids` are the worked example for logos:
+their `description` lists every logo file as *all rights reserved*, and their `style.js`
+has a `logos` switch (`true`, `false`, a domain or an array of domains) so that whoever
+reuses the style can drop the logo band, or show it only on the institution's own sites.
 
 ---
 
@@ -77,8 +92,8 @@ iDevice icons by…</description>
 ### The shared icon set
 
 Every bundled style ships **the same 50 icons under the same names** — `activity`,
-`agreement`, `alert`, … `video`. Only the artwork and the file format differ: `base` and
-`neo` ship `.png`, the others `.svg`.
+`agreement`, `alert`, … `video`. Only the artwork and the file format differ: each style
+ships either `.png` or `.svg`.
 
 That is a contract, not a coincidence. A block stores its icon by **base name, without the
 extension**, and each style resolves that name to whichever file it happens to ship
@@ -246,7 +261,7 @@ leave the element at `0.9 × 1.2`. If your style already uses `scale`, account f
 
 **No style is named anywhere in the application.** There is no table of per-style colours
 in the core: the picker tint comes from CSS your style declares, and a style you write
-yourself is read exactly like the seven that ship with eXeLearning. Whatever the bundled
+yourself is read exactly like the ones that ship with eXeLearning. Whatever the bundled
 styles achieve, yours can achieve with the same declarations — and nothing you leave out
 is filled in for you by name.
 
@@ -299,7 +314,7 @@ Everything below lives in your `style.css`. Nothing needs a change in the applic
 | Recolour your **Style** `<img>` artwork inside the picker | a `filter` chain on `.modal #change-block-icon-modal-content .option-block-icon.exe-icon img` — never on the chip, and never on the General icons |
 | Resize the icons in exports | `.exe-content .box-icon img` and `.exe-content .box-icon .exe-material-icon` |
 | Resize them in the editor | the same pair under `#node-content-container.exe-content .box-head .exe-icon …` |
-| Multi-hued Style artwork that no single tint can match | pick one tint and declare it anyway — `neo` and `universal` do exactly this; changing your mind later is a one-line edit in your own stylesheet |
+| Multi-hued Style artwork that no single tint can match | pick one tint and declare it anyway — `kids`, `neo` and `universal` do exactly this; changing your mind later is a one-line edit in your own stylesheet |
 
 The one thing CSS cannot do for you is tint an `<img>` without a filter, which is why the
 Style/General split exists at all. Everything else about the presentation of both groups —
