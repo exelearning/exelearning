@@ -23,6 +23,7 @@ var $exeDevice = {
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         this.refreshTranslations();
+        this.setMessagesInfo();
         this.createForm();
         this.addEvents();
         this.getIdevicesBySessionId();
@@ -459,7 +460,7 @@ var $exeDevice = {
 
     generateHtmlFromPagesEdition: function (pages) {
         const idEvaluation = $('#informeEEvaluationID').val() || '';
-        const showTypeGame = $('#informeEShowTypeGame').val() || false;
+        const showTypeGame = $('#informeEShowTypeGame').is(':checked');
         let html = '<ul id="informeEPagesContainer">';
         pages.forEach((page) => {
             let pageHtml = `<li class="IFPE-PageItem" data-page-id="${page.id}">`;
@@ -487,7 +488,7 @@ var $exeDevice = {
                             </div>`
                         : '';
                     const typeIdevice = showTypeGame
-                        ? `<div id="informeEType">(${component.odeIdeviceTypeName})</div>`
+                        ? `<div class="IFPE-ComponentType">(${component.odeIdeviceTypeName})</div>`
                         : '';
                     const showLinks = `<div class="IFPE-PageTitleDiv">
                                 <div class="IFPE-Icon ${iconClass}"></div>
@@ -584,6 +585,9 @@ var $exeDevice = {
     setMessagesInfo: function () {
         var msgs = this.msgs;
         msgs.msgEProvideID = _('Please provide the ID of this progress report');
+        msgs.msgNoSuportBrowser = _(
+            'Your browser is not compatible with this tool.'
+        );
     },
     createForm: function () {
         const edition = $exeIDevicesEdition.iDevice,

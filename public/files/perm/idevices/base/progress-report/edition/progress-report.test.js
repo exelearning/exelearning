@@ -838,4 +838,47 @@ describe('progress-report edition: shared form tabs', () => {
         });
         expect(device.save()).not.toContain('exe-idevice-help');
     });
+
+    describe('listed iDevices', () => {
+        const pages = [
+            {
+                id: 'page-1',
+                title: 'Unit 1',
+                components: [
+                    { ideviceID: 'quiz', blockName: 'Quiz', odeIdeviceTypeName: 'trivial' },
+                    { ideviceID: 'words', blockName: 'Words', odeIdeviceTypeName: 'word-search' },
+                ],
+                children: [],
+            },
+        ];
+
+        it('shows the type of each iDevice only while the option is on', () => {
+            open();
+
+            document.getElementById('informeEShowTypeGame').checked = false;
+            expect(device.generateHtmlFromPagesEdition(pages)).not.toContain('(trivial)');
+
+            document.getElementById('informeEShowTypeGame').checked = true;
+            expect(device.generateHtmlFromPagesEdition(pages)).toContain('(trivial)');
+        });
+
+        it('gives no id to the type, which repeats for each iDevice', () => {
+            open();
+            const list = document.createElement('div');
+
+            list.innerHTML = device.generateHtmlFromPagesEdition(pages);
+
+            expect(list.querySelectorAll('[id="informeEType"]')).toHaveLength(0);
+            expect(list.querySelectorAll('.IFPE-ComponentType')).toHaveLength(2);
+        });
+    });
+
+    it('saves the message for browsers the report does not support', () => {
+        open(stored(report()));
+
+        const html = device.save();
+
+        expect(html).toContain('<div class="informe-bns js-hidden">Your browser is not compatible with this tool.</div>');
+        expect(html).not.toContain('undefined');
+    });
 });
