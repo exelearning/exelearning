@@ -49,13 +49,14 @@ const dynamicServerEnv = {
     // through the real API.
     APP_ENV: 'prod',
     API_JWT_SECRET: 'e2e-test-jwt-secret-not-for-production-use',
-    APP_SECRET: 'e2e-test-app-secret-not-for-production-use',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
     PUBLIC_VIEW_ENABLED: 'true', // Enable public read-only links for E2E tests
     // Platform (Moodle) integration: specs run a stand-in Moodle on localhost and
     // sign its JWTs with this secret (see specs/platform-edit-reuses-project.spec.ts).
+    // The SSRF guard blocks loopback providers unless private networks are allowed.
     APP_SECRET: 'e2e-platform-secret',
     PROVIDER_URLS: 'http://localhost',
+    PROVIDER_ALLOW_PRIVATE_NETWORK: 'true',
 };
 
 // Dynamic server config (used by chromium/firefox projects)
