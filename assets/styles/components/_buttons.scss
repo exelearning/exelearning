@@ -48,6 +48,11 @@
         color: var(--white);
     }
 
+    // Bootstrap's .btn:focus-visible sets a transparent background (white text on white)
+    &:not(.display-outline):focus-visible {
+        background: var(--brand-primary-dark) !important;
+    }
+
     span {
         color: var(--white) !important;
         font-size: 14px !important;
