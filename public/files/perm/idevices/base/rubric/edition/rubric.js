@@ -206,7 +206,7 @@ var $exeDevice = {
             html = `
             <div id="ri_IdeviceForm">
                 ${edition.common.getIdeviceDescription(
-                    'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
+                    _('Complete the table to define a scoring guide. Define the score or value of each descriptor.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rubrica.html',
                 )}
                 ${edition.tabs.getHtml('ri_IdeviceForm', {

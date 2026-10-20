@@ -1274,6 +1274,16 @@ describe('rubric edition: shared form tabs', () => {
         }
     });
 
+    it('marks the description of the iDevice for translation', () => {
+        // The helper translates it when drawn, but the string extractor only
+        // finds the texts written inside _(): without it, no catalog has it.
+        const source = readFileSync(join(__dirname, 'rubric.js'), 'utf-8');
+
+        expect(source).toContain(
+            "_('Complete the table to define a scoring guide. Define the score or value of each descriptor.')"
+        );
+    });
+
     it('reopens a saved rubric in the Questions tab, with its information and texts', () => {
         open(stored());
 
