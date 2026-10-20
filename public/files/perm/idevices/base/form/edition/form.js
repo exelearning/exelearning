@@ -412,6 +412,9 @@ var $exeDevice = {
         }
     },
     importActivity: function (content, filetype) {
+        const msg = _(
+            'Sorry, the selected file does not contain any questions that are compatible with this activity.'
+        );
         $('#eXeGameExportImport .exe-field-instructions')
             .eq(0)
             .text(`${_('Supported formats')}: txt, xml(Moodle)`);
@@ -485,7 +488,7 @@ var $exeDevice = {
                 questionsArray.push({
                     activityType: 'selection',
                     selectionType: selectionType,
-                    baseText: `<p>${$exeDevice.clearText(questionText)}<p>`,
+                    baseText: `<p>${$exeDevice.clearText(questionText)}</p>`,
                     answers: answers,
                 });
             } else if (type === 'truefalse') {
@@ -506,7 +509,7 @@ var $exeDevice = {
                 if (correctAnswer !== null) {
                     questionsArray.push({
                         activityType: 'true-false',
-                        baseText: `<p>${$exeDevice.clearText(questionText)}<p>`,
+                        baseText: `<p>${$exeDevice.clearText(questionText)}</p>`,
                         answer: correctAnswer,
                     });
                 }
@@ -605,7 +608,7 @@ var $exeDevice = {
         if (isNaN(solution) || (solution !== 0 && solution !== 1)) return null;
         return {
             activityType: 'true-false',
-            baseText: `<p>${$exeDevice.clearText(linarray[1])}<p>`,
+            baseText: `<p>${$exeDevice.clearText(linarray[1])}</p>`,
             answer: solution,
         };
     },
@@ -618,7 +621,7 @@ var $exeDevice = {
         if (isNaN(solution) || (solution !== 0 && solution !== 1)) return null;
         return {
             activityType: 'true-false',
-            baseText: `<p>${$exeDevice.clearText(linarray[1])}<p>`,
+            baseText: `<p>${$exeDevice.clearText(linarray[1])}</p>`,
             answer: solution,
         };
     },
@@ -630,7 +633,7 @@ var $exeDevice = {
         const solution = parseInt(linarray[1]) ? 1 : 0;
         return {
             activityType: 'true-false',
-            baseText: `<p>${$exeDevice.clearText(linarray[0])}<p>`,
+            baseText: `<p>${$exeDevice.clearText(linarray[0])}</p>`,
             answer: solution,
         };
     },
@@ -648,7 +651,7 @@ var $exeDevice = {
         let question = {
             activityType: 'selection',
             selectionType: 'single',
-            baseText: `<p>${$exeDevice.clearText(questionText)}<p>`,
+            baseText: `<p>${$exeDevice.clearText(questionText)}</p>`,
             answers: answers,
         };
         return question;
@@ -1282,7 +1285,7 @@ var $exeDevice = {
         const textareaId = `${$exeDevice.formPreviewId}Textarea_${this.generateRandomId()}`;
         return `<div id="${$exeDevice.formPreviewId}TextareaContainer" class="questionTextarea">
                         <div class="inline instructions">
-                        <span id="${$exeDevice.iconActivityId}_${this.generateRandomId}" class="inline-icon">${$exeDevice.iconTrueFalse}</span>
+                        <span id="${$exeDevice.iconActivityId}_${this.generateRandomId()}" class="inline-icon">${$exeDevice.iconTrueFalse}</span>
                         ${this.createActivityTitle('true-false')}
                         <button class="inline-icon help-icon">help_center</button>
                         </div>
@@ -1356,7 +1359,7 @@ var $exeDevice = {
                 ${this.createTextArea(optionTextareaId, 'small-textarea')}`;
         return `<div id="${$exeDevice.formPreviewId}TextareaContainer" class="questionTextarea">
                     <div class="inline instructions">
-                    <span id="${$exeDevice.iconActivityId}_${this.generateRandomId}" class="inline-icon">${$exeDevice.iconSelectOne}</span>
+                    <span id="${$exeDevice.iconActivityId}_${this.generateRandomId()}" class="inline-icon">${$exeDevice.iconSelectOne}</span>
                     ${this.createActivityTitle('selection')}
                     <button class="inline-icon help-icon">help_center</button>
                     </div>
@@ -1701,6 +1704,13 @@ var $exeDevice = {
                     );
                     if (editForm && editForm.parentElement) {
                         editForm.parentElement.remove();
+                    }
+
+                    // As removing it from the list does: an empty form says so.
+                    if ($exeDevice.questionsForm.length === 0) {
+                        $exeDevice.ideviceBody.querySelector(
+                            `#${$exeDevice.msgNoQuestionsId}`
+                        ).style.display = '';
                     }
 
                     $exeDevice.disableArrowUpDown();
@@ -2750,7 +2760,7 @@ var $exeDevice = {
         }
 
         let questionTextarea = $exeDevice.ideviceBody.querySelector(
-            `TEXTAREA[id^=${$exeDevice.formPreviewId}`
+            `TEXTAREA[id^="${$exeDevice.formPreviewId}"]`
         );
         questionTextarea.innerHTML = questionData.baseText.replace(
             /<p>\s*(<br\s*\/?>)?\s*<\/p>/gi,

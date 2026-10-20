@@ -787,18 +787,10 @@ describe('form iDevice edition', () => {
             <textarea class="small-textarea"></textarea>
           </div>
         `;
-        const root = document.getElementById('body');
-        // `setDataFromSelectionQuestion` builds one attribute selector without
-        // its closing bracket (`TEXTAREA[id^=formPreview`), which every engine
-        // rejects. That defect is out of scope here — the shim keeps the
-        // selector usable so the teardown behaviour can be observed.
-        $exeDevice.ideviceBody = {
-          querySelector: (selector) =>
-            root.querySelector(
-              selector.includes('[') && !selector.includes(']') ? `${selector}]` : selector
-            ),
-          querySelectorAll: (selector) => root.querySelectorAll(selector),
-        };
+        // The question textarea used to be looked up with an attribute selector
+        // missing its closing bracket, which only a browser's error recovery
+        // accepted: this suite had to patch every selector to run.
+        $exeDevice.ideviceBody = document.getElementById('body');
         $exeDevice.formPreviewId = 'formPreview';
         $exeDevice.questionsForm = [
           {
@@ -1122,5 +1114,66 @@ describe('form edition: shared form tabs', () => {
             time: '5',
             addBtnAnswers: false,
         });
+    });
+
+    it('closes the paragraph of every imported question', () => {
+        open();
+
+        // A second <p> used to stand where the closing tag belonged, so each
+        // imported question carried an empty paragraph after its text.
+        expect(device.getTrueFalseQuestion('1#The Sun is a star').baseText).toBe('<p>The Sun is a star</p>');
+        expect(device.getTrueFalseQuestionExe('v-f#The Sun is a star#1#a#b').baseText).toBe('<p>The Sun is a star</p>');
+        expect(device.getTrueFalseQuestionExeSv('The Sun is a star#1#a#b').baseText).toBe('<p>The Sun is a star</p>');
+        expect(device.getTestQuestion('0#Which is a star?#Sun#Moon').baseText).toBe('<p>Which is a star?</p>');
+        device.importCuestionaryXML(
+            '<quiz><question type="truefalse"><questiontext><text>The Moon is a planet</text></questiontext>' +
+                '<answer fraction="100"><text>false</text></answer><answer fraction="0"><text>true</text></answer>' +
+                '</question><question type="multichoice"><questiontext><text>Pick the star</text></questiontext>' +
+                '<answer fraction="100"><text>Sun</text></answer><answer fraction="0"><text>Moon</text></answer>' +
+                '</question></quiz>'
+        );
+        expect(device.questionsForm.map((question) => question.baseText)).toEqual([
+            '<p>The Moon is a planet</p>',
+            '<p>Pick the star</p>',
+        ]);
+    });
+
+    it('tells the author when a text file holds binary content', () => {
+        open();
+        eXe.app.alert.mockClear();
+
+        // The message it showed was never defined, so the import failed in
+        // silence with a ReferenceError.
+        expect(() => device.importActivity('Sun\u0000Moon', 'text/plain')).not.toThrow();
+        expect(eXe.app.alert).toHaveBeenCalledWith(
+            'Sorry, the selected file does not contain any questions that are compatible with this activity.'
+        );
+    });
+
+    it('gives the icon of each new question an id of its own', () => {
+        open();
+        const iconId = (html) => {
+            const holder = document.createElement('div');
+            holder.innerHTML = html;
+            return holder.querySelector('.inline-icon').id;
+        };
+
+        // The id used to embed the source code of generateRandomId, the same
+        // for every question.
+        expect(iconId(device.createTrueFalseQuestion())).toMatch(/^iconActivity_\d+-[A-Z0-9]+$/);
+        expect(iconId(device.createSelectionQuestion())).toMatch(/^iconActivity_\d+-[A-Z0-9]+$/);
+    });
+
+    it('says the form is empty again when the question being added is removed', () => {
+        open();
+        vi.spyOn(eXe.app, 'confirm').mockImplementation((title, message, onConfirm) => onConfirm());
+        const empty = document.getElementById('msgNoQuestions');
+
+        document.getElementById('buttonAddTrueFalseQuestionTop').click();
+        expect(empty.style.display).toBe('none');
+        document.getElementById('removeQuestion').click();
+
+        expect(document.querySelector('#formPreview > li')).toBeNull();
+        expect(empty.style.display).toBe('');
     });
 });
