@@ -51,12 +51,12 @@ var $exeDevice = {
 
         const root = document.getElementById('adaptativeQuizIdeviceForm') || document;
         if (
-            $exeDevicesEdition &&
-            $exeDevicesEdition.iDevice &&
-            $exeDevicesEdition.iDevice.voiceRecorder &&
-            typeof $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders === 'function'
+            $exeIDevicesEdition &&
+            $exeIDevicesEdition.iDevice &&
+            $exeIDevicesEdition.iDevice.voiceRecorder &&
+            typeof $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders === 'function'
         ) {
-            $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+            $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
         }
         // File picker buttons ("Select a file") are injected by the framework
         // via ideviceNode.legacyExeIdevicesFilePicker(); calling filePicker.init()
@@ -204,294 +204,304 @@ var $exeDevice = {
 
     createForm: function () {
         const path = this.idevicePath;
+        const edition = $exeIDevicesEdition.iDevice;
+        const options = `
+            <div id="adaptativeQuizEOptions">
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <span>${_('Number of levels')}:</span>
+                    <span class="ADQ-EInputLevels d-flex align-items-center gap-2 flex-nowrap">
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input" id="adaptativeQuizNumLevels3" type="radio" name="adqnumlevels" value="3" checked="checked" />
+                            <label for="adaptativeQuizNumLevels3">3</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input" id="adaptativeQuizNumLevels4" type="radio" name="adqnumlevels" value="4" />
+                            <label for="adaptativeQuizNumLevels4">4</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input" id="adaptativeQuizNumLevels5" type="radio" name="adqnumlevels" value="5" />
+                            <label for="adaptativeQuizNumLevels5">5</label>
+                        </div>
+                    </span>
+                    ${edition.common.getHelpTooltip(_('How many difficulty levels the quiz has, and the name of each one below. Every question belongs to a level, and every level needs at least two questions.'))}
+                </div>
+                <div class="ADQ-ELevelsGrid mb-3">
+                    <div>
+                        <label for="adaptativeQuizLevelName1">${_('Level 1 name')}:</label>
+                        <input type="text" id="adaptativeQuizLevelName1" class="form-control form-control-sm" value="${_('Easy')}" />
+                    </div>
+                    <div>
+                        <label for="adaptativeQuizLevelName2">${_('Level 2 name')}:</label>
+                        <input type="text" id="adaptativeQuizLevelName2" class="form-control form-control-sm" value="${_('Medium')}" />
+                    </div>
+                    <div>
+                        <label for="adaptativeQuizLevelName3">${_('Level 3 name')}:</label>
+                        <input type="text" id="adaptativeQuizLevelName3" class="form-control form-control-sm" value="${_('Hard')}" />
+                    </div>
+                    <div id="adaptativeQuizLevelName4Wrap" style="display:none">
+                        <label for="adaptativeQuizLevelName4">${_('Level 4 name')}:</label>
+                        <input type="text" id="adaptativeQuizLevelName4" class="form-control form-control-sm" value="${_('Expert')}" />
+                    </div>
+                    <div id="adaptativeQuizLevelName5Wrap" style="display:none">
+                        <label for="adaptativeQuizLevelName5">${_('Level 5 name')}:</label>
+                        <input type="text" id="adaptativeQuizLevelName5" class="form-control form-control-sm" value="${_('Master')}" />
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="adaptativeQuizInitialLevel" class="mb-0">${_('Initial level')}:</label>
+                    <select id="adaptativeQuizInitialLevel" class="form-control form-control-sm" style="width:auto">
+                        <option value="1">1</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4" data-level-extra="4" style="display:none">4</option>
+                        <option value="5" data-level-extra="5" style="display:none">5</option>
+                    </select>
+                    ${edition.common.getHelpTooltip(_('The level of the first question. The quiz goes up a level after two right answers in a row, and down after two wrong ones.'))}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="adaptativeQuizNumRound" class="mb-0">${_('Number of questions')}:</label>
+                    <input type="number" id="adaptativeQuizNumRound" class="form-control form-control-sm ADQ-ENumberInput" value="6" min="1" />
+                    ${edition.common.getHelpTooltip(_('How many questions each learner answers in a game. It cannot be more than the questions of the activity.'))}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="adaptativeQuizETime" class="mb-0">${_('Time (minutes)')}:</label>
+                    <input type="number" id="adaptativeQuizETime" class="form-control form-control-sm ADQ-ENumberInput" value="0" min="0" max="59" />
+                    ${edition.common.getHelpTooltip(_('Set the maximum time in minutes to complete the quiz. Set to 0 for unlimited time.'))}
+                </div>
+                <div class="adaptativeQuizShowSolutionRow d-flex align-items-center flex-nowrap gap-2 mb-3">
+                    <div class="toggle-item m-0">
+                        <span class="toggle-control"><input type="checkbox" id="adaptativeQuizShowSolution" class="toggle-input" checked/><span class="toggle-visual" aria-hidden="true"></span></span>
+                        <label for="adaptativeQuizShowSolution" class="toggle-label mb-0">${_('Show solutions')}.</label>
+                    </div>
+                    <label for="adaptativeQuizTimeShowSolution" class="mb-0 ms-2 d-flex align-items-center gap-1 adaptativeQuizShowSolutionTime">
+                        ${_('Show solution in')}:
+                    </label>
+                    <input type="number" class="form-control form-control-sm" id="adaptativeQuizTimeShowSolution" value="3" min="1" max="9" style="width:5rem;text-align:center" />
+                    <span>${_('seconds')}</span>
+                    ${edition.common.getHelpTooltip(_('After each answer, show the learners the right one for the given number of seconds.'))}
+                </div>
+                <div id="adaptativeQuizCustomMessagesRow" class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="toggle-item">
+                        <span class="toggle-control"><input type="checkbox" id="adaptativeQuizECustomMessages" class="toggle-input"/><span class="toggle-visual" aria-hidden="true"></span></span>
+                        <label for="adaptativeQuizECustomMessages" class="toggle-label mb-0">${_('Custom messages')}.</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(_('Write, in the Questions tab, your own messages for a right and a wrong answer to each question. Available when the solutions are shown.'))}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="toggle-item">
+                        <span class="toggle-control"><input type="checkbox" id="adaptativeQuizShuffle" class="toggle-input" checked/><span class="toggle-visual" aria-hidden="true"></span></span>
+                        <label for="adaptativeQuizShuffle" class="toggle-label mb-0">${_('Shuffle answer options at runtime')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(_('Display the answer options in a different random order each time.'))}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="toggle-item">
+                        <span class="toggle-control"><input type="checkbox" id="adaptativeQuizCaseSensitive" class="toggle-input"/><span class="toggle-visual" aria-hidden="true"></span></span>
+                        <label for="adaptativeQuizCaseSensitive" class="toggle-label mb-0">${_('Case-sensitive answer matching (word type)')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(_('In word questions, an answer written with different capital letters counts as wrong.'))}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="toggle-item">
+                        <span class="toggle-control"><input type="checkbox" id="adaptativeQuizAccentSensitive" class="toggle-input"/><span class="toggle-visual" aria-hidden="true"></span></span>
+                        <label for="adaptativeQuizAccentSensitive" class="toggle-label mb-0">${_('Require correct accents (word type)')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(_('In word questions, an answer with missing or wrong accents counts as wrong.'))}
+                </div>
+            </div>`;
+        const contents = `
+            <div class="ADQ-EPanel" id="adaptativeQuizEPanel">
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizELevelFilterDiv">
+                    <label for="adaptativeQuizELevelFilter" class="mb-0">${_('Level filter')}:</label>
+                    <select id="adaptativeQuizELevelFilter" class="form-control form-control-sm ADQ-ELevelFilter" style="width:auto">
+                        <option value="0" selected>${_('All')}</option>
+                    </select>
+                </div>
+                <div class="ADQ-EOptionsMedia">
+                    <div class="ADQ-EOptionsGame">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                            <span>${_('Type')}:</span>
+                            <span class="ADQ-EInputTypeSelect d-flex align-items-center gap-2 flex-wrap">
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeSelect" type="radio" name="adqtypeselect" value="0" checked="checked" />
+                                    <label for="adaptativeQuizTypeSelect">${_('Select')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeOrder" type="radio" name="adqtypeselect" value="1" />
+                                    <label for="adaptativeQuizTypeOrder">${_('Order')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeWord" type="radio" name="adqtypeselect" value="2" />
+                                    <label for="adaptativeQuizTypeWord">${_('Word')}</label>
+                                </div>
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <span>${_('Multimedia Type')}:</span>
+                            <span class="ADQ-EInputMedias d-flex align-items-center gap-2 flex-nowrap">
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-EType form-check-input" checked="checked" id="adaptativeQuizMediaNormal" type="radio" name="adqtype" value="0" />
+                                    <label for="adaptativeQuizMediaNormal">${_('None')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-EType form-check-input" id="adaptativeQuizMediaImage" type="radio" name="adqtype" value="1" />
+                                    <label for="adaptativeQuizMediaImage">${_('Image')}</label>
+                                </div>
+                            </span>
+                        </div>
+                        <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizInputImage">
+                            <label class="sr-av" for="adaptativeQuizEURLImage">${_('Image URL')}</label>
+                            <input type="text" class="exe-image-picker w-100 form-control me-0 ADQ-EImageInput" id="adaptativeQuizEURLImage"/>
+                            <a href="#" class="ADQ-ENavigationButton ADQ-EImageReload" id="adaptativeQuizEReloadImage" title="${_('Reload image')}" aria-label="${_('Reload image')}"><img src="${path}quextIEPlay.png" alt="${_('Reload image')}" class="ADQ-ENavigationButton" /></a>
+                        </div>
+                        <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="adaptativeQuizEAuthorAlt">
+                            <div class="w-50" id="adaptativeQuizEInputAuthor">
+                                <label for="adaptativeQuizEAuthor" class="form-label mb-1">${_('Authorship')}</label>
+                                <input id="adaptativeQuizEAuthor" type="text" class="form-control w-100 ADQ-EImageAuthor" />
+                            </div>
+                            <div class="w-50" id="adaptativeQuizEInputAlt">
+                                <label for="adaptativeQuizEAlt" class="form-label mb-1">${_('Alternative text')}</label>
+                                <input id="adaptativeQuizEAlt" type="text" class="form-control w-100 ADQ-EImageAlt" />
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizEOptionsNumberDiv">
+                            <span>${_('Options Number')}:</span>
+                            <span class="ADQ-EInputNumbers d-flex align-items-center gap-2 flex-nowrap">
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ2" type="radio" name="adqnumber" value="2" />
+                                    <label for="adaptativeQuizNumQ2">2</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ3" type="radio" name="adqnumber" value="3" />
+                                    <label for="adaptativeQuizNumQ3">3</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ4" type="radio" name="adqnumber" value="4" checked="checked" />
+                                    <label for="adaptativeQuizNumQ4">4</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ5" type="radio" name="adqnumber" value="5" />
+                                    <label for="adaptativeQuizNumQ5">5</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ6" type="radio" name="adqnumber" value="6" />
+                                    <label for="adaptativeQuizNumQ6">6</label>
+                                </div>
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3 d-none" id="adaptativeQuizEPercentageShowDiv">
+                            <label for="adaptativeQuizEPercentageShow">${_('Percentage of letters to show (%)')}:</label>
+                            <input type="number" id="adaptativeQuizEPercentageShow" class="ADQ-EPercentageShow form-control form-control-sm" value="35" min="0" max="100" step="5" style="width:auto" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <label for="adaptativeQuizDifficulty">${_('Difficulty')}:</label>
+                            <select id="adaptativeQuizDifficulty" class="form-control form-control-sm ADQ-EDifficulty" style="width:auto"></select>
+                        </div>
+                    </div>
+                    <div class="ADQ-EMultiMediaOption">
+                        <div class="ADQ-EMultimedia" id="adaptativeQuizMultimedia">
+                            <img class="ADQ-EMedia" id="adaptativeQuizEImagePreview" alt="${_('Image')}" style="display:none" />
+                            <img class="ADQ-EMedia" src="${path}quextIEImage.png" id="adaptativeQuizENoImage" alt="${_('No image')}" />
+                        </div>
+                    </div>
+                </div>
+                <div class="ADQ-EContents">
+                    <div class="ADQ-EQASelect" id="adaptativeQuizEQASelect">
+                        <div class="ADQ-EQuestionDiv">
+                            <label class="sr-av" for="adaptativeQuizEQuestion">${_('Question')}:</label>
+                            <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2">
+                                <input type="text" class="ADQ-EQuestion form-control" id="adaptativeQuizEQuestion" placeholder="${_('Question')}" />
+                                ${this.audioToggleButton('question')}
+                            </div>
+                            ${this.audioField('question')}
+                        </div>
+                        <div class="ADQ-EAnswers" id="adaptativeQuizEAnswers">
+                            ${this.renderAnswerRows()}
+                        </div>
+                    </div>
+                    <div class="ADQ-EQAWord d-none" id="adaptativeQuizEQAWord">
+                        <div class="ADQ-EWordRow">
+                            <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2 flex-nowrap mb-2">
+                                <label for="adaptativeQuizEWord" class="m-0">${_('Word')}:</label>
+                                <input type="text" class="ADQ-EWord form-control" id="adaptativeQuizEWord" placeholder="${_('Word')}" />
+                                ${this.audioToggleButton('word')}
+                            </div>
+                            ${this.audioField('word')}
+                        </div>
+                        <div class="ADQ-EWordRow">
+                            <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2 flex-nowrap mb-2">
+                                <label for="adaptativeQuizESolutionWord" class="m-0">${_('Definition')}:</label>
+                                <input type="text" class="ADQ-ESolutionWord form-control" id="adaptativeQuizESolutionWord" placeholder="${_('Definition')}" />
+                                ${this.audioToggleButton('solutionWord')}
+                            </div>
+                            ${this.audioField('solutionWord')}
+                        </div>
+                    </div>
+                </div>
+                <div class="ADQ-EOrders" id="adaptativeQuizEOrder">
+                    <div class="ADQ-ECustomMessage gap-2">
+                        <span class="sr-av">${_('Hit')}</span><span class="ADQ-EHit" aria-hidden="true">&#10004;</span>
+                        <label for="adaptativeQuizEMessageOK">${_('Message')}:</label>
+                        <input type="text" class="form-control ADQ-EMessageOK" id="adaptativeQuizEMessageOK" />
+                        ${this.audioToggleButton('msgHit')}
+                    </div>
+                    ${this.audioField('msgHit')}
+                    <div class="ADQ-ECustomMessage gap-2">
+                        <span class="sr-av">${_('Error')}</span><span class="ADQ-EError" aria-hidden="true">&#10006;</span>
+                        <label for="adaptativeQuizEMessageKO">${_('Message')}:</label>
+                        <input type="text" class="form-control ADQ-EMessageKO" id="adaptativeQuizEMessageKO" />
+                        ${this.audioToggleButton('msgError')}
+                    </div>
+                    ${this.audioField('msgError')}
+                </div>
+                <div class="ADQ-ENavigationButtons gap-2">
+                    <a href="#" id="adaptativeQuizEAdd" class="ADQ-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="ADQ-ENavigationButton" /></a>
+                    <a href="#" id="adaptativeQuizEFirst" class="ADQ-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="ADQ-ENavigationButton" /></a>
+                    <a href="#" id="adaptativeQuizEPrevious" class="ADQ-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="ADQ-ENavigationButton" /></a>
+                    <label class="sr-av" for="adaptativeQuizENumberQuestion">${_('Question number:')}:</label>
+                    <input type="text" class="ADQ-NumberQuestion form-control" id="adaptativeQuizENumberQuestion" value="1"/>
+                    <a href="#" id="adaptativeQuizENext" class="ADQ-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="ADQ-ENavigationButton" /></a>
+                    <a href="#" id="adaptativeQuizELast" class="ADQ-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="ADQ-ENavigationButton" /></a>
+                    <a href="#" id="adaptativeQuizEDelete" class="ADQ-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="ADQ-ENavigationButton" /></a>
+                    <a href="#" id="adaptativeQuizECopy" class="ADQ-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="ADQ-ENavigationButton" /></a>
+                    <a href="#" id="adaptativeQuizECut" class="ADQ-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="ADQ-ENavigationButton" /></a>
+                    <a href="#" id="adaptativeQuizEPaste" class="ADQ-ENavigationButton" title="${_('Paste question')}" style="display:none"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="ADQ-ENavigationButton" /></a>
+                </div>
+                <div class="ADQ-ENumQuestionDiv">
+                    <div class="ADQ-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
+                    <span class="ADQ-ENumQuestions" id="adaptativeQuizENumQuestions">0</span>
+                </div>
+            </div>`;
         const html = `
             <div id="adaptativeQuizIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _(
                         'Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.',
                     ),
                     null,
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span>${_('Number of levels')}:</span>
-                                <span class="ADQ-EInputLevels d-flex align-items-center gap-2 flex-nowrap">
-                                    <div class="form-check form-check-inline m-0">
-                                        <input class="form-check-input" id="adaptativeQuizNumLevels3" type="radio" name="adqnumlevels" value="3" checked="checked" />
-                                        <label for="adaptativeQuizNumLevels3">3</label>
-                                    </div>
-                                    <div class="form-check form-check-inline m-0">
-                                        <input class="form-check-input" id="adaptativeQuizNumLevels4" type="radio" name="adqnumlevels" value="4" />
-                                        <label for="adaptativeQuizNumLevels4">4</label>
-                                    </div>
-                                    <div class="form-check form-check-inline m-0">
-                                        <input class="form-check-input" id="adaptativeQuizNumLevels5" type="radio" name="adqnumlevels" value="5" />
-                                        <label for="adaptativeQuizNumLevels5">5</label>
-                                    </div>
-                                </span>
-                            </div>
-                            <div class="ADQ-ELevelsGrid mb-3">
-                                <div>
-                                    <label for="adaptativeQuizLevelName1">${_('Level 1 name')}:</label>
-                                    <input type="text" id="adaptativeQuizLevelName1" class="form-control form-control-sm" value="${_('Easy')}" />
-                                </div>
-                                <div>
-                                    <label for="adaptativeQuizLevelName2">${_('Level 2 name')}:</label>
-                                    <input type="text" id="adaptativeQuizLevelName2" class="form-control form-control-sm" value="${_('Medium')}" />
-                                </div>
-                                <div>
-                                    <label for="adaptativeQuizLevelName3">${_('Level 3 name')}:</label>
-                                    <input type="text" id="adaptativeQuizLevelName3" class="form-control form-control-sm" value="${_('Hard')}" />
-                                </div>
-                                <div id="adaptativeQuizLevelName4Wrap" style="display:none">
-                                    <label for="adaptativeQuizLevelName4">${_('Level 4 name')}:</label>
-                                    <input type="text" id="adaptativeQuizLevelName4" class="form-control form-control-sm" value="${_('Expert')}" />
-                                </div>
-                                <div id="adaptativeQuizLevelName5Wrap" style="display:none">
-                                    <label for="adaptativeQuizLevelName5">${_('Level 5 name')}:</label>
-                                    <input type="text" id="adaptativeQuizLevelName5" class="form-control form-control-sm" value="${_('Master')}" />
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="adaptativeQuizInitialLevel" class="mb-0">${_('Initial level')}:</label>
-                                <select id="adaptativeQuizInitialLevel" class="form-control form-control-sm" style="width:auto">
-                                    <option value="1">1</option>
-                                    <option value="2" selected>2</option>
-                                    <option value="3">3</option>
-                                    <option value="4" data-level-extra="4" style="display:none">4</option>
-                                    <option value="5" data-level-extra="5" style="display:none">5</option>
-                                </select>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="adaptativeQuizNumRound" class="mb-0">${_('Number of questions')}:</label>
-                                <input type="number" id="adaptativeQuizNumRound" class="form-control form-control-sm ADQ-ENumberInput" value="6" min="1" />
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="adaptativeQuizETime" class="mb-0">${_('Time (minutes)')}:</label>
-                                <input type="number" id="adaptativeQuizETime" class="form-control form-control-sm ADQ-ENumberInput" value="0" min="0" max="59" />
-                                <small class="text-muted">${_('Set to 0 to disable the time limit.')}</small>
-                            </div>
-                            <div class="adaptativeQuizShowSolutionRow d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item m-0">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizShowSolution" class="toggle-input" checked/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizShowSolution" class="toggle-label">${_('Show solutions')}.</label>
-                                </div>
-                                <label for="adaptativeQuizTimeShowSolution" class="mb-0 ms-2 d-flex align-items-center gap-1 adaptativeQuizShowSolutionTime">
-                                    ${_('Show solution in')}:
-                                </label>
-                                <input type="number" class="form-control form-control-sm" id="adaptativeQuizTimeShowSolution" value="3" min="1" max="9" style="width:5rem;text-align:center" />
-                                <span>${_('seconds')}</span>
-                            </div>
-                            <div id="adaptativeQuizCustomMessagesRow" class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizECustomMessages" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizECustomMessages" class="toggle-label">${_('Custom messages')}.</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizShuffle" class="toggle-input" checked/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizShuffle" class="toggle-label">${_('Shuffle answer options at runtime')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizCaseSensitive" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizCaseSensitive" class="toggle-label">${_('Case-sensitive answer matching (word type)')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizAccentSensitive" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizAccentSensitive" class="toggle-label">${_('Require correct accents (word type)')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Questions')}</a></legend>
-                        <div class="ADQ-EPanel" id="adaptativeQuizEPanel">
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizELevelFilterDiv">
-                                <label for="adaptativeQuizELevelFilter" class="mb-0">${_('Level filter')}:</label>
-                                <select id="adaptativeQuizELevelFilter" class="form-control form-control-sm ADQ-ELevelFilter" style="width:auto">
-                                    <option value="0" selected>${_('All')}</option>
-                                </select>
-                            </div>
-                            <div class="ADQ-EOptionsMedia">
-                                <div class="ADQ-EOptionsGame">
-                                    <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
-                                        <span>${_('Type')}:</span>
-                                        <span class="ADQ-EInputTypeSelect d-flex align-items-center gap-2 flex-wrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeSelect" type="radio" name="adqtypeselect" value="0" checked="checked" />
-                                                <label for="adaptativeQuizTypeSelect">${_('Select')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeOrder" type="radio" name="adqtypeselect" value="1" />
-                                                <label for="adaptativeQuizTypeOrder">${_('Order')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeWord" type="radio" name="adqtypeselect" value="2" />
-                                                <label for="adaptativeQuizTypeWord">${_('Word')}</label>
-                                            </div>
-                                        </span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                        <span>${_('Multimedia Type')}:</span>
-                                        <span class="ADQ-EInputMedias d-flex align-items-center gap-2 flex-nowrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-EType form-check-input" checked="checked" id="adaptativeQuizMediaNormal" type="radio" name="adqtype" value="0" />
-                                                <label for="adaptativeQuizMediaNormal">${_('None')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-EType form-check-input" id="adaptativeQuizMediaImage" type="radio" name="adqtype" value="1" />
-                                                <label for="adaptativeQuizMediaImage">${_('Image')}</label>
-                                            </div>
-                                        </span>
-                                    </div>
-                                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizInputImage">
-                                        <label class="sr-av" for="adaptativeQuizEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-image-picker w-100 form-control me-0 ADQ-EImageInput" id="adaptativeQuizEURLImage"/>
-                                        <a href="#" class="ADQ-ENavigationButton ADQ-EImageReload" id="adaptativeQuizEReloadImage" title="${_('Reload image')}" aria-label="${_('Reload image')}"><img src="${path}quextIEPlay.png" alt="${_('Reload image')}" class="ADQ-ENavigationButton" /></a>
-                                    </div>
-                                    <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="adaptativeQuizEAuthorAlt">
-                                        <div class="w-50" id="adaptativeQuizEInputAuthor">
-                                            <label for="adaptativeQuizEAuthor" class="form-label mb-1">${_('Authorship')}</label>
-                                            <input id="adaptativeQuizEAuthor" type="text" class="form-control w-100 ADQ-EImageAuthor" />
-                                        </div>
-                                        <div class="w-50" id="adaptativeQuizEInputAlt">
-                                            <label for="adaptativeQuizEAlt" class="form-label mb-1">${_('Alternative text')}</label>
-                                            <input id="adaptativeQuizEAlt" type="text" class="form-control w-100 ADQ-EImageAlt" />
-                                        </div>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizEOptionsNumberDiv">
-                                        <span>${_('Options Number')}:</span>
-                                        <span class="ADQ-EInputNumbers d-flex align-items-center gap-2 flex-nowrap">
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ2" type="radio" name="adqnumber" value="2" />
-                                                <label for="adaptativeQuizNumQ2">2</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ3" type="radio" name="adqnumber" value="3" />
-                                                <label for="adaptativeQuizNumQ3">3</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ4" type="radio" name="adqnumber" value="4" checked="checked" />
-                                                <label for="adaptativeQuizNumQ4">4</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ5" type="radio" name="adqnumber" value="5" />
-                                                <label for="adaptativeQuizNumQ5">5</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ6" type="radio" name="adqnumber" value="6" />
-                                                <label for="adaptativeQuizNumQ6">6</label>
-                                            </div>
-                                        </span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3 d-none" id="adaptativeQuizEPercentageShowDiv">
-                                        <label for="adaptativeQuizEPercentageShow">${_('Percentage of letters to show (%)')}:</label>
-                                        <input type="number" id="adaptativeQuizEPercentageShow" class="ADQ-EPercentageShow form-control form-control-sm" value="35" min="0" max="100" step="5" style="width:auto" />
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                        <label for="adaptativeQuizDifficulty">${_('Difficulty')}:</label>
-                                        <select id="adaptativeQuizDifficulty" class="form-control form-control-sm ADQ-EDifficulty" style="width:auto"></select>
-                                    </div>
-                                </div>
-                                <div class="ADQ-EMultiMediaOption">
-                                    <div class="ADQ-EMultimedia" id="adaptativeQuizMultimedia">
-                                        <img class="ADQ-EMedia" id="adaptativeQuizEImagePreview" alt="${_('Image')}" style="display:none" />
-                                        <img class="ADQ-EMedia" src="${path}quextIEImage.png" id="adaptativeQuizENoImage" alt="${_('No image')}" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="ADQ-EContents">
-                                <div class="ADQ-EQASelect" id="adaptativeQuizEQASelect">
-                                    <div class="ADQ-EQuestionDiv">
-                                        <label class="sr-av" for="adaptativeQuizEQuestion">${_('Question')}:</label>
-                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2">
-                                            <input type="text" class="ADQ-EQuestion form-control" id="adaptativeQuizEQuestion" placeholder="${_('Question')}" />
-                                            ${this.audioToggleButton('question')}
-                                        </div>
-                                        ${this.audioField('question')}
-                                    </div>
-                                    <div class="ADQ-EAnswers" id="adaptativeQuizEAnswers">
-                                        ${this.renderAnswerRows()}
-                                    </div>
-                                </div>
-                                <div class="ADQ-EQAWord d-none" id="adaptativeQuizEQAWord">
-                                    <div class="ADQ-EWordRow">
-                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2 flex-nowrap mb-2">
-                                            <label for="adaptativeQuizEWord" class="m-0">${_('Word')}:</label>
-                                            <input type="text" class="ADQ-EWord form-control" id="adaptativeQuizEWord" placeholder="${_('Word')}" />
-                                            ${this.audioToggleButton('word')}
-                                        </div>
-                                        ${this.audioField('word')}
-                                    </div>
-                                    <div class="ADQ-EWordRow">
-                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2 flex-nowrap mb-2">
-                                            <label for="adaptativeQuizESolutionWord" class="m-0">${_('Definition')}:</label>
-                                            <input type="text" class="ADQ-ESolutionWord form-control" id="adaptativeQuizESolutionWord" placeholder="${_('Definition')}" />
-                                            ${this.audioToggleButton('solutionWord')}
-                                        </div>
-                                        ${this.audioField('solutionWord')}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="ADQ-EOrders" id="adaptativeQuizEOrder">
-                                <div class="ADQ-ECustomMessage gap-2">
-                                    <span class="sr-av">${_('Hit')}</span><span class="ADQ-EHit" aria-hidden="true">&#10004;</span>
-                                    <label for="adaptativeQuizEMessageOK">${_('Message')}:</label>
-                                    <input type="text" class="form-control ADQ-EMessageOK" id="adaptativeQuizEMessageOK" />
-                                    ${this.audioToggleButton('msgHit')}
-                                </div>
-                                ${this.audioField('msgHit')}
-                                <div class="ADQ-ECustomMessage gap-2">
-                                    <span class="sr-av">${_('Error')}</span><span class="ADQ-EError" aria-hidden="true">&#10006;</span>
-                                    <label for="adaptativeQuizEMessageKO">${_('Message')}:</label>
-                                    <input type="text" class="form-control ADQ-EMessageKO" id="adaptativeQuizEMessageKO" />
-                                    ${this.audioToggleButton('msgError')}
-                                </div>
-                                ${this.audioField('msgError')}
-                            </div>
-                            <div class="ADQ-ENavigationButtons gap-2">
-                                <a href="#" id="adaptativeQuizEAdd" class="ADQ-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="ADQ-ENavigationButton" /></a>
-                                <a href="#" id="adaptativeQuizEFirst" class="ADQ-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="ADQ-ENavigationButton" /></a>
-                                <a href="#" id="adaptativeQuizEPrevious" class="ADQ-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="ADQ-ENavigationButton" /></a>
-                                <label class="sr-av" for="adaptativeQuizENumberQuestion">${_('Question number:')}:</label>
-                                <input type="text" class="ADQ-NumberQuestion form-control" id="adaptativeQuizENumberQuestion" value="1"/>
-                                <a href="#" id="adaptativeQuizENext" class="ADQ-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="ADQ-ENavigationButton" /></a>
-                                <a href="#" id="adaptativeQuizELast" class="ADQ-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="ADQ-ENavigationButton" /></a>
-                                <a href="#" id="adaptativeQuizEDelete" class="ADQ-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="ADQ-ENavigationButton" /></a>
-                                <a href="#" id="adaptativeQuizECopy" class="ADQ-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="ADQ-ENavigationButton" /></a>
-                                <a href="#" id="adaptativeQuizECut" class="ADQ-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="ADQ-ENavigationButton" /></a>
-                                <a href="#" id="adaptativeQuizEPaste" class="ADQ-ENavigationButton" title="${_('Paste question')}" style="display:none"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="ADQ-ENavigationButton" /></a>
-                            </div>
-                            <div class="ADQ-ENumQuestionDiv">
-                                <div class="ADQ-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
-                                <span class="ADQ-ENumQuestions" id="adaptativeQuizENumQuestions">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 10, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(10, { numLevels: this.numLevels })}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${edition.tabs.getHtml('adaptativeQuizIdeviceForm', {
+                    path: path,
+                    instructions: c_('Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.'),
+                    options: options,
+                    contents: contents,
+                    passwords: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        exportQuestions: true,
+                        type: 10,
+                        options: { numLevels: this.numLevels },
+                    },
+                })}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('adaptativeQuizIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('adaptativeQuizIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -952,7 +962,7 @@ var $exeDevice = {
     },
 
     updateAIHint: function () {
-        $exeDevicesEdition.iDevice.gamification.share.refreshIAPrompt(10, { numLevels: this.numLevels });
+        $exeIDevicesEdition.iDevice.gamification.share.refreshIAPrompt(10, { numLevels: this.numLevels });
     },
 
     /**
@@ -1324,7 +1334,7 @@ var $exeDevice = {
         $('#eXeIdeviceTextAfter').val(textAfter);
 
         if (data.msgs) {
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(data.msgs);
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(data.msgs);
         }
     },
 
@@ -1361,11 +1371,11 @@ var $exeDevice = {
             if (dataGame.levelNames[3]) $('#adaptativeQuizLevelName4').val(dataGame.levelNames[3]);
             if (dataGame.levelNames[4]) $('#adaptativeQuizLevelName5').val(dataGame.levelNames[4]);
         }
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: dataGame.evaluation,
             evaluationID: dataGame.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: dataGame.passScoreMode,
             passScoreCustom: dataGame.passScoreCustom,
         });
@@ -1380,9 +1390,9 @@ var $exeDevice = {
         this.active = 0;
         this.showQuestion(0);
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(dataGame.itinerary);
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(dataGame.itinerary);
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             dataGame.isScorm,
             dataGame.textButtonScorm,
             dataGame.repeatActivity,
@@ -1492,7 +1502,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues();
+        const itinerary = $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
         if (!this.validateQuestion()) return false;
 
@@ -1558,14 +1568,14 @@ var $exeDevice = {
             this.showMessage(this.msgs.msgInitialLevelEmpty);
         }
 
-        const progressBar = $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        const progressBar = $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
         const evaluation = progressBar.evaluation;
         const evaluationID = progressBar.evaluationID;
-        const passScore = $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        const passScore = $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
 
         const id = this.getIdeviceID();
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         let eXeFormInstructions = '';
         if (tinymce.get('eXeGameInstructions')) {
@@ -1935,7 +1945,7 @@ var $exeDevice = {
             return false;
         }
         const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             blob,
             `${_('Adaptative Quiz')}.txt`,
             'adaptativeQuizIdeviceForm',
@@ -2011,8 +2021,8 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#adaptativeQuizECustomMessages').on('change', function () {
             const showSolution = $('#adaptativeQuizShowSolution').is(':checked');
@@ -2144,8 +2154,8 @@ var $exeDevice = {
             $exeDevice.applyLevelFilter($(this).val());
         });
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(10, $exeDevice.insertAIContent, () => ({
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(10, $exeDevice.insertAIContent, () => ({
             numLevels: $exeDevice.numLevels,
         }));
 
@@ -2208,7 +2218,7 @@ var $exeDevice = {
             const $input = $('#adaptativeQuizIdeviceForm .ADQ-EAudioInput[data-audio-slot="' + slot + '"]');
             const selectedFile = ($input.val() || '').trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
     },

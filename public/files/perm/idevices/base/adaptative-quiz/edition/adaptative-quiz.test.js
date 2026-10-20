@@ -86,13 +86,11 @@ describe('adaptative-quiz edition', () => {
         });
     });
 
-    it('lays out the Custom texts tab inputs in two responsive columns (like guess)', () => {
+    it('leaves the layout of the Texts tab to the shared grid', () => {
         const css = readFileSync(EDITION_CSS, 'utf-8');
-        const rule = css.match(/#adaptativeQuizIdeviceForm \.exe-form-tab:has\(> \.ci18n\)\s*\{[\s\S]*?\}/)?.[0] || '';
-        expect(rule).toContain('display: flex');
-        expect(rule).toContain('flex-wrap: wrap');
-        // Each ci18n row takes roughly half the width → two columns.
-        expect(css).toContain('.exe-form-tab:has(> .ci18n) > * {');
+        // The rules of the old Custom texts tab would fight the shared columns.
+        expect(css).not.toContain('.exe-form-tab');
+        expect(css).not.toContain('.ci18n');
     });
 
     it('removes the question number prefix from validation messages', () => {
@@ -506,6 +504,18 @@ describe('adaptative-quiz edition', () => {
     });
 
     describe('save', () => {
+        // The tests below swap $exeIDevicesEdition for a stub of the shared
+        // blocks; vitest.setup.js installs the real one, which later suites use.
+        let realEdition;
+
+        beforeEach(() => {
+            realEdition = globalThis.$exeIDevicesEdition;
+        });
+
+        afterEach(() => {
+            globalThis.$exeIDevicesEdition = realEdition;
+        });
+
         // The save path goes through validateData(), which requires every
         // active level to have at least 2 questions. The active question
         // (index 0) is always overwritten by readQuestionFromDom() using the
@@ -584,7 +594,7 @@ describe('adaptative-quiz edition', () => {
         }
 
         it('defaults time to 0 when the form input is 0', () => {
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: {
@@ -633,7 +643,7 @@ describe('adaptative-quiz edition', () => {
         });
 
         it('reads time from the #adaptativeQuizETime input and clamps it to 0..59', () => {
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: {
@@ -703,7 +713,7 @@ describe('adaptative-quiz edition', () => {
             time.value = '0';
             form.appendChild(time);
 
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: { setValues: () => {} },
@@ -740,7 +750,7 @@ describe('adaptative-quiz edition', () => {
 
         it('returns a dataGame object when the form has a valid question', () => {
             // Stub globals that the shared edition helpers rely on.
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: {
@@ -795,7 +805,7 @@ describe('adaptative-quiz edition', () => {
         });
 
         it('rejects save when questions per round is greater than the created questions', () => {
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: {
@@ -856,7 +866,7 @@ describe('adaptative-quiz edition', () => {
         });
 
         it('rejects save when an active difficulty level has fewer than two questions', () => {
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: {
@@ -917,7 +927,7 @@ describe('adaptative-quiz edition', () => {
         });
 
         it('reads showSolution and timeShowSolution from the form when present', () => {
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: {
@@ -1018,7 +1028,7 @@ describe('adaptative-quiz edition', () => {
         });
 
         it('rejects save when showSolution is on but timeShowSolution is 0', () => {
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: {
@@ -1098,7 +1108,7 @@ describe('adaptative-quiz edition', () => {
             t.id = 'adaptativeQuizTimeShowSolution';
             form.appendChild(t);
 
-            globalThis.$exeDevicesEdition = {
+            globalThis.$exeIDevicesEdition = {
                 iDevice: {
                     gamification: {
                         itinerary: { setValues: () => {} },
@@ -1975,7 +1985,7 @@ describe('adaptative-quiz edition', () => {
     });
 
     /**
-     * The pass-score control is a shared block in common_edition.js, exercised
+     * The pass-score control is a shared block in common_idevices_edition.js, exercised
      * by its own tests. What is specific to this iDevice -- and what silently
      * breaks if someone edits the form -- is the wiring: all four call sites
      * have to be present, and the two saved fields have to reach the stored
@@ -1995,7 +2005,7 @@ describe('adaptative-quiz edition', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -2022,8 +2032,8 @@ describe('adaptative-quiz edition', () => {
         let savedGamification;
 
         beforeEach(() => {
-            savedGamification = global.$exeDevicesEdition.iDevice.gamification;
-            global.$exeDevicesEdition.iDevice.gamification = {
+            savedGamification = global.$exeIDevicesEdition.iDevice.gamification;
+            global.$exeIDevicesEdition.iDevice.gamification = {
                 ...savedGamification,
                 progressBar: { addEvents: vi.fn() },
                 passScore: { addEvents: vi.fn() },
@@ -2046,7 +2056,7 @@ describe('adaptative-quiz edition', () => {
             // leaks into the next one.
             idevice.$lifecycle.destroy();
             document.body.innerHTML = '';
-            global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+            global.$exeIDevicesEdition.iDevice.gamification = savedGamification;
         });
 
         /**
@@ -2120,5 +2130,193 @@ describe('adaptative-quiz minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('adaptative-quiz edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/adaptative-quiz/edition/';
+    const panel = (name) => document.getElementById(`adaptativeQuizIdeviceForm-panel-${name}`);
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        tooltips = new Map();
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn((scope) => {
+                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                    });
+                }),
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        document.body.innerHTML =
+            '<div class="idevice_node adaptative-quiz" id="adq-1"><div id="adqBody" idevice-id="adq-1"></div></div>';
+        device = global.loadIdevice(EDITION_SRC);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    const open = (previousData = {}) => device.init(document.getElementById('adqBody'), previousData, PATH);
+    const question = (difficulty, n) => ({
+        ...device.getCuestionDefault(),
+        difficulty,
+        question: `Question ${n}`,
+        options: ['A', 'B', 'C', 'D', '', ''].map((text) => ({ text, audio: '' })),
+        solutionMulti: [0],
+    });
+
+    it('lays the form out in the shared tabs, and opens on the questions', () => {
+        open();
+        const tabNames = [...document.querySelectorAll('#adaptativeQuizIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        open();
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toContain(
+            'Choose the correct answer for each question.'
+        );
+        for (const id of [
+            'adaptativeQuizNumLevels3',
+            'adaptativeQuizLevelName1',
+            'adaptativeQuizInitialLevel',
+            'adaptativeQuizNumRound',
+            'adaptativeQuizETime',
+            'adaptativeQuizShowSolution',
+            'adaptativeQuizTimeShowSolution',
+            'adaptativeQuizECustomMessages',
+            'adaptativeQuizShuffle',
+            'adaptativeQuizCaseSensitive',
+            'adaptativeQuizAccentSensitive',
+        ]) {
+            expect(panel('options').querySelector(`#${id}`)).not.toBeNull();
+        }
+        expect(panel('contents').querySelector('#adaptativeQuizEQuestion')).not.toBeNull();
+        expect(panel('contents').querySelector('#adaptativeQuizELevelFilter')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgCheck').value).toBe('Check');
+    });
+
+    it('offers Import, Export and Create with AI on the Questions tab', () => {
+        open();
+        const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+        expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame').getAttribute('accept')).toBe(
+            '.txt'
+        );
+        expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
+        expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+        open();
+        const helpButtons = [...panel('options').querySelectorAll('.exe-idevice-help')];
+
+        expect(helpButtons).toHaveLength(9);
+        for (const help of helpButtons) {
+            const row = help.closest('#adaptativeQuizEOptions > div');
+            expect(row.lastElementChild.contains(help)).toBe(true);
+            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            const control = row.querySelector('input, select');
+            const value = `${control.checked}${control.value}`;
+            help.click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+            expect(`${control.checked}${control.value}`).toBe(value);
+        }
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        open();
+
+        expect(tooltips.size).toBe(document.querySelectorAll('#adaptativeQuizIdeviceForm .exe-app-tooltip').length);
+        expect(tooltips.size).toBeGreaterThanOrEqual(9);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        open();
+
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('reopens and saves the options, the questions and the access code', () => {
+        vi.spyOn(global.tinymce, 'get').mockReturnValue(null);
+        open({
+            questionsGame: [question(1, 1), question(1, 2), question(2, 3), question(2, 4), question(3, 5), question(3, 6)],
+            numRound: 4,
+            time: 5,
+            showSolution: true,
+            timeShowSolution: 4,
+            customMessages: true,
+            shuffle: false,
+            caseSensitive: true,
+            accentSensitive: true,
+            numLevels: 3,
+            initialLevel: 1,
+            levelNames: ['Low', 'Mid', 'Top'],
+            itinerary: {
+                showClue: false,
+                clueGame: '',
+                percentageClue: 40,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Type the code',
+            },
+            msgs: { msgCheck: 'Go' },
+        });
+
+        expect(document.getElementById('adaptativeQuizNumRound').value).toBe('4');
+        expect(document.getElementById('adaptativeQuizETime').value).toBe('5');
+        expect(document.getElementById('adaptativeQuizTimeShowSolution').value).toBe('4');
+        expect(document.getElementById('adaptativeQuizECustomMessages').checked).toBe(true);
+        expect(document.getElementById('adaptativeQuizShuffle').checked).toBe(false);
+        expect(document.getElementById('adaptativeQuizLevelName3').value).toBe('Top');
+        expect(document.getElementById('eXeGameCodeAccess').value).toBe('1234');
+        expect(document.getElementById('ci18n_msgCheck').value).toBe('Go');
+        expect(document.getElementById('adaptativeQuizEQuestion').value).toBe('Question 1');
+
+        expect(device.save()).toMatchObject({
+            numRound: 4,
+            time: 5,
+            showSolution: true,
+            timeShowSolution: 4,
+            customMessages: true,
+            shuffle: false,
+            caseSensitive: true,
+            accentSensitive: true,
+            numLevels: 3,
+            initialLevel: 1,
+            levelNames: ['Low', 'Mid', 'Top'],
+            itinerary: { showCodeAccess: true, codeAccess: '1234', messageCodeAccess: 'Type the code' },
+            msgs: expect.objectContaining({ msgCheck: 'Go' }),
+        });
+        expect(device.questionsGame).toHaveLength(6);
     });
 });
