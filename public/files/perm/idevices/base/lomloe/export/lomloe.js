@@ -247,7 +247,7 @@ var $Lomloe = {
                         saberes.forEach(function (sab) {
                             var sabTip = (sab.subtitulo1 || '') + (sab.subtitulo2 ? ' — ' + sab.subtitulo2 : '');
                             html += '<span class="lomloe-saber-link-badge" data-lomloe-tip="' + self._esc(sabTip) + '">';
-                            html += self._esc(sab.nombre);
+                            html += self._esc(sab.codigo || sab.nombre);
                             html += '</span>';
                         });
                         html += '</td>';
@@ -270,7 +270,7 @@ var $Lomloe = {
             saberes.forEach(function (sel) {
                 var sabTip = (sel.subtitulo1 || '') + (sel.subtitulo2 ? ' — ' + sel.subtitulo2 : '');
                 html += '<tr>';
-                html += '<td><span class="lomloe-saber-link-badge" data-lomloe-tip="' + self._esc(sabTip) + '">' + self._esc(sel.nombre) + '</span></td>';
+                html += '<td><span class="lomloe-saber-link-badge" data-lomloe-tip="' + self._esc(sabTip) + '">' + self._esc(sel.codigo || sel.nombre) + '</span></td>';
                 html += '</tr>';
             });
 
