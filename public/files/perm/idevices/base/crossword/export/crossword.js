@@ -1740,7 +1740,8 @@ var $eXeCrucigrama = {
     },
 
     loadGame: function () {
-        $eXeCrucigrama.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeCrucigrama.options.length = $eXeCrucigrama.activities.length;
 
         $eXeCrucigrama.activities.each(function (i) {
             const dl = $('.crucigrama-DataGame', this);
@@ -1766,7 +1767,7 @@ var $eXeCrucigrama = {
                 mOption.urlBack = $imageBack.attr('href') || '';
             }
 
-            $eXeCrucigrama.options.push(mOption);
+            $eXeCrucigrama.options[i] = mOption;
 
             const ccgm = $eXeCrucigrama.createInterfaceCrucigrama(i);
 

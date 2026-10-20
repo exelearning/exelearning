@@ -44,6 +44,20 @@ describe('periodic-table iDevice export', () => {
         vi.restoreAllMocks();
     });
 
+    // Sentry: "ReferenceError: number is not defined" when the learner closes
+    // an element they have not completed yet.
+    it('returns an empty entry for an element not completed yet', () => {
+        $periodicTable.options = [{ completedElements: [{ id: 1, number: 1 }] }];
+
+        expect($periodicTable.getCompletedData(0, 26)).toEqual({
+            id: 26,
+            number: '',
+            name: '',
+            symbol: '',
+            group: '-1',
+        });
+    });
+
     describe('running out of time', () => {
         let previousReport;
 

@@ -64,7 +64,8 @@ var $eXeMathOperations = {
     },
 
     loadGame: function () {
-        $eXeMathOperations.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeMathOperations.options.length = $eXeMathOperations.activities.length;
         $eXeMathOperations.activities.each(function (i) {
             const dl = $('.mathoperations-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -76,7 +77,7 @@ var $eXeMathOperations = {
             mOption.main = 'mthoMainContainer-' + i;
             mOption.idevice = 'mathoperations-IDevice';
 
-            $eXeMathOperations.options.push(mOption);
+            $eXeMathOperations.options[i] = mOption;
 
             const matho = $eXeMathOperations.createInterfaceMathO(i);
             dl.before(matho).remove();
