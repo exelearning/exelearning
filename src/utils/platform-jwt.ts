@@ -9,7 +9,7 @@
  */
 import { jwtVerify } from 'jose';
 import { isIP } from 'node:net';
-import { isBlockedAddress } from './ssrf-guard';
+import { isBlockedAddress, isTrustedPrivateAddress } from './ssrf-guard';
 
 /**
  * Payload structure for platform JWT tokens
@@ -314,6 +314,14 @@ export function isAllowedProviderUrl(url: string): boolean {
         return false;
     }
 
+    // Reject embedded credentials (userinfo). `https://allowed.example@evil/...`
+    // parses to host `evil` while a naive `url.startsWith('https://allowed.example')`
+    // would be true — a classic allow-list bypass that lets a valid-JWT holder
+    // point the server's outbound request at an internal host (SSRF).
+    if (parsed.username !== '' || parsed.password !== '') {
+        return false;
+    }
+
     // Both http(s) schemes are special, so a parsed URL always carries a
     // non-empty host — the entry matcher can rely on that.
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
@@ -324,6 +332,25 @@ export function isAllowedProviderUrl(url: string): boolean {
         const entry = parseProviderEntry(allowedUrl);
         return entry !== null && matchesProviderEntry(parsed, entry);
     });
+}
+
+/**
+ * Check whether an allow-listed provider may be reached on a private network.
+ *
+ * The outbound SSRF guard rejects RFC1918/loopback/unique-local destinations by
+ * default, which also rejects a Moodle hosted on an internal network, behind a
+ * VPN or reached through private DNS. An administrator opts in explicitly with
+ * PROVIDER_ALLOW_PRIVATE_NETWORK=true (or 1), and the exception then applies
+ * only to URLs that already match PROVIDER_URLS. Link-local (cloud metadata),
+ * multicast and reserved ranges stay blocked either way (see
+ * `isTrustedPrivateAddress` in ./ssrf-guard).
+ *
+ * @param url - The provider URL about to become a server-side request target
+ * @returns true when private-network destinations are allowed for this URL
+ */
+export function isPrivateNetworkProviderAllowed(url: string): boolean {
+    const flag = process.env.PROVIDER_ALLOW_PRIVATE_NETWORK;
+    return (flag === 'true' || flag === '1') && isAllowedProviderUrl(url);
 }
 
 /**
@@ -344,10 +371,14 @@ export function isAllowedProviderUrl(url: string): boolean {
  * filtering (including DNS rebinding), the outbound request should additionally
  * go through `assertUrlAllowed` / `safeFetch` from `./ssrf-guard`.
  *
+ * `allowPrivateNetwork` admits RFC1918/loopback/unique-local literals for a
+ * provider the administrator trusts (see {@link isPrivateNetworkProviderAllowed}).
+ *
  * @param url - The return URL from the JWT payload
+ * @param options - Pass `allowPrivateNetwork` only for an allow-listed provider
  * @returns true if the URL is safe to use as a request target, false otherwise
  */
-export function isSafeReturnUrl(url: string): boolean {
+export function isSafeReturnUrl(url: string, options: { allowPrivateNetwork?: boolean } = {}): boolean {
     if (!url) {
         return false;
     }
@@ -363,6 +394,12 @@ export function isSafeReturnUrl(url: string): boolean {
         return false;
     }
 
+    // Reject embedded credentials: `https://allowed@internal/...` routes to
+    // `internal` while masquerading as `allowed` (SSRF / allow-list bypass).
+    if (parsed.username !== '' || parsed.password !== '') {
+        return false;
+    }
+
     // url.hostname keeps brackets for IPv6 literals; strip them for the IP check.
     const host = parsed.hostname.replace(/^\[/, '').replace(/\]$/, '');
     if (!host) {
@@ -372,7 +409,7 @@ export function isSafeReturnUrl(url: string): boolean {
     // If the host is an IP literal, reject blocked ranges synchronously.
     // Hostnames are left to the allow-list (and DNS-aware guard at fetch time).
     if (isIP(host) !== 0 && isBlockedAddress(host)) {
-        return false;
+        return Boolean(options.allowPrivateNetwork) && isTrustedPrivateAddress(host);
     }
 
     return true;
@@ -489,7 +526,9 @@ export async function getPlatformIntegrationParams(
 
     // Reject obviously-unsafe return URLs (non-http(s) scheme, internal IP
     // literal) before they can become a server-side request target (SSRF).
-    if (!isSafeReturnUrl(payload.returnurl)) {
+    if (
+        !isSafeReturnUrl(payload.returnurl, { allowPrivateNetwork: isPrivateNetworkProviderAllowed(payload.returnurl) })
+    ) {
         console.warn(`[PlatformJWT] Unsafe return URL rejected: ${payload.returnurl}`);
         return null;
     }

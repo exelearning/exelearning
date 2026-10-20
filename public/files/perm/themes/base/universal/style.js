@@ -206,9 +206,14 @@ var eXeUniversalStyle = {
     getBreadcrumbs : function(){
         if(!this.breadcrumbs) return;
         if ($("html").attr("id")=="exe-index") return false;
+        // Page titles are text: build nodes, never markup
+        function link(a){
+            var text = a.text();
+            return $("<a></a>").attr("href",a.attr("href")).attr("title",text).append($("<span></span>").text(eXeUniversalStyle.truncate(text)));
+        }
         function getNodeLinks(){
-            var res = '<li><strong><span>'+eXeUniversalStyle.truncate($(".page-header .page-title").text())+'</span></strong></li>';
-            var extra = "";
+            var res = $("<li></li>").append($("<strong></strong>").append($("<span></span>").text(eXeUniversalStyle.truncate($(".page-header .page-title").text()))));
+            var extra = [];
             var loc = window.location.href;
                 loc = loc.split("/");
                 loc = loc[loc.length-1];
@@ -229,20 +234,23 @@ var eXeUniversalStyle = {
                     var li = e.parent();
                     li.parents('li').each(function() {
                         var a = $("a",this).eq(0);
-                        extra = '<li><a href="'+a.attr("href")+'" title="'+eXeUniversalStyle.removeQuotes(a.text())+'"><span>'+eXeUniversalStyle.truncate(a.text())+'</span></a></li>' + extra;
+                        extra.unshift($("<li></li>").append(link(a)));
                     });
                 }
             });
             if ($('html').attr('id')=='exe-index') {
-                extra = '';
-                res = '';
+                extra = [];
+                res = [];
             }
             var img = 'theme/img/home.png';
             if ($('html').attr('id')!='exe-index') img = '../' + img;
-            var tit = eXeUniversalStyle.removeQuotes(mainTit);
-            return '<li><a href="'+mainLnk+'" id="siteBreadcrumbsHome" title="'+tit+'"><img src="'+img+'" width="19" height="19" alt="'+tit+'"><span class="sr-av">'+mainTit+'</span></a></li>' + extra + res;
+            var home = $('<a id="siteBreadcrumbsHome"></a>').attr("href",mainLnk).attr("title",mainTit);
+            home.append($('<img width="19" height="19">').attr("src",img).attr("alt",mainTit));
+            home.append($('<span class="sr-av"></span>').text(mainTit));
+            return [$("<li></li>").append(home)].concat(extra,res);
         }
-        var breadcrumb = '<div id="siteBreadcrumbs"><ul>'+getNodeLinks()+'</ul></div>';
+        var breadcrumb = $('<div id="siteBreadcrumbs"><ul></ul></div>');
+        breadcrumb.find("ul").append(getNodeLinks());
         $(".package-header").prepend(breadcrumb).addClass("width-breadcrumbs");
     },
     dropdownMenus: function(){

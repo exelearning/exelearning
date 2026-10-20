@@ -508,6 +508,65 @@ describe('select-media-files iDevice export', () => {
             expect(dmedia.options[instance].counter).toBe(240);
         });
     });
+
+    // Sentry: "$grid.masonry is not a function" when the Masonry plugin
+    // (mansory-jq.js) is not attached to jQuery when the game lays out.
+    describe('laying out without the Masonry plugin', () => {
+        beforeEach(() => {
+            document.body.innerHTML =
+                '<div id="slcmpMainContainer-0"><div class="SLCMP-Multimedia"></div></div>';
+            delete $.fn.masonry;
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            delete $.fn.masonry;
+        });
+
+        it('does not throw when switching layouts', () => {
+            expect(() => dmedia.destroyMasonry(0)).not.toThrow();
+            expect(() => dmedia.initializeMasonry(0)).not.toThrow();
+        });
+
+        it("only destroys its own game's grid, and only if Masonry runs on it", () => {
+            document.body.innerHTML = [0, 1, 2]
+                .map((i) => `<div id="slcmpMainContainer-${i}"><div class="SLCMP-Multimedia"></div></div>`)
+                .join('');
+            $('#slcmpMainContainer-0 .SLCMP-Multimedia, #slcmpMainContainer-1 .SLCMP-Multimedia').data('masonry', {});
+            const destroyed = [];
+            $.fn.masonry = vi.fn(function () {
+                destroyed.push(...this.toArray().map((el) => el.parentElement.id));
+            });
+
+            dmedia.destroyMasonry(0);
+            dmedia.destroyMasonry(2);
+
+            expect(destroyed).toEqual(['slcmpMainContainer-0']);
+        });
+
+        it('lays out the grid once the plugin finishes loading', () => {
+            dmedia.initializeMasonry(0);
+            $.fn.masonry = vi.fn();
+
+            vi.advanceTimersByTime(250);
+
+            expect($.fn.masonry).toHaveBeenCalledWith(expect.objectContaining({ itemSelector: '.SLCMP-GridItem' }));
+            expect($.fn.masonry.mock.contexts[0][0]).toBe(document.querySelector('#slcmpMainContainer-0 .SLCMP-Multimedia'));
+        });
+
+        it('does not lay out a grid switched to table mode while the plugin was loading', () => {
+            document.body.innerHTML =
+                '<div id="slcmpMainContainer-0"><div id="slcmpMultimedia-0" class="SLCMP-Multimedia"></div></div>';
+            dmedia.initializeMasonry(0);
+            $('#slcmpMultimedia-0').addClass('SLCMP-ModeTable');
+            $.fn.masonry = vi.fn();
+
+            vi.advanceTimersByTime(250);
+
+            expect($.fn.masonry).not.toHaveBeenCalled();
+        });
+    });
 });
 
 describe('select-media-files minimum score notice', () => {

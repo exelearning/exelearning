@@ -34,7 +34,8 @@ var $eXeBeforeAfter = {
     },
 
     loadGame: function () {
-        $eXeBeforeAfter.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeBeforeAfter.options.length = $eXeBeforeAfter.activities.length;
 
         $eXeBeforeAfter.activities.each(function (i) {
             const dl = $('.beforeafter-DataGame', this);
@@ -46,7 +47,7 @@ var $eXeBeforeAfter = {
             mOption.main = 'bfafMainContainer-' + i;
             mOption.idevice = 'beforeafter-IDevice';
 
-            $eXeBeforeAfter.options.push(mOption);
+            $eXeBeforeAfter.options[i] = mOption;
 
             const bfaf = $eXeBeforeAfter.createInterfaceCards(i);
 
