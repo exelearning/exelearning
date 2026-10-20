@@ -101,10 +101,6 @@ var $exeDevice = {
             ),
         };
     },
-    scoreNIA: true,
-    evaluation: false,
-    evaluationID: '',
-    ideviceID: false,
 
     testIfVideoExists: function (url, type) {
         if (!top.interactiveVideoEditor) {
@@ -118,16 +114,6 @@ var $exeDevice = {
     // Create the form to insert HTML in the TEXTAREA
     createForm: function () {
         var html = '';
-        var field = $('textarea.jsContentEditor').eq(0);
-        // Only one Interactive Video iDevice per page
-        if ($('.iDevice_wrapper.interactive-videoIdevice').length > 0) {
-            html =
-                '<p>' +
-                _('You can only add one Interactive Video iDevice per page.') +
-                '</p>';
-            field.before(html);
-            return;
-        }
         const edition = $exeIDevicesEdition.iDevice,
             options = `
                 <div id="interactiveVideoOptions">
@@ -236,23 +222,15 @@ var $exeDevice = {
 
         $('#interactiveVideoFile')
             .change(function () {
-                var e = $('#interactiveVideoEditorOpener');
                 // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
                 if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             })
             .keyup(function () {
-                var e = $('#interactiveVideoEditorOpener');
                 // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
                 if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             });
         $('#interactiveVideoYoutubeURL')
@@ -262,14 +240,10 @@ var $exeDevice = {
                     'https://youtu.be/',
                     'https://www.youtube.com/watch?v='
                 );
-                var e = $('#interactiveVideoEditorOpener');
                 if (
                     this.value.indexOf('https://www.youtube.com/watch?v=') == 0
                 ) {
                     $exeDevice.testIfVideoExists(this.value, 'youtube');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             })
             .keyup(function () {
@@ -278,41 +252,29 @@ var $exeDevice = {
                     'https://youtu.be/',
                     'https://www.youtube.com/watch?v='
                 );
-                var e = $('#interactiveVideoEditorOpener');
                 if (
                     this.value.indexOf('https://www.youtube.com/watch?v=') == 0
                 ) {
                     $exeDevice.testIfVideoExists(this.value, 'youtube');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             });
         $('#interactiveVideoMediatecaURL')
             .change(function () {
-                var e = $('#interactiveVideoEditorOpener');
                 if (
                     this.value.indexOf(
                         'https://mediateca.educa.madrid.org/video/'
                     ) == 0
                 ) {
                     $exeDevice.testIfVideoExists(this.value, 'mediateca');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             })
             .keyup(function () {
-                var e = $('#interactiveVideoEditorOpener');
                 if (
                     this.value.indexOf(
                         'https://mediateca.educa.madrid.org/video/'
                     ) == 0
                 ) {
                     $exeDevice.testIfVideoExists(this.value, 'mediateca');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             });
         // Create the object to contain all data
@@ -327,7 +289,6 @@ var $exeDevice = {
             imageList: [],
         };
         this.loadPreviousValues();
-        // To do now this.addExtjsScript();
     },
 
     // Load the saved values in the form fields
@@ -369,7 +330,6 @@ var $exeDevice = {
                 $('#interactiveVideo' + n)
                     .val(videoURL)
                     .prop('disabled', disabled);
-                $('#interactiveVideoEditorOpener').fadeIn();
                 // Get the video URL and type
                 top.interactiveVideoEditor.videoURL = videoURL;
                 top.interactiveVideoEditor.videoType = type;
@@ -519,7 +479,6 @@ var $exeDevice = {
                     typeof InteractiveVideo.ideviceID != 'undefined'
                         ? InteractiveVideo.ideviceID
                         : false;
-                $exeDevice.ideviceID = $exeDevice.getIdeviceID();
                 $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
                     evaluation: InteractiveVideo.evaluation,
                     evaluationID: InteractiveVideo.evaluationID,
@@ -543,8 +502,6 @@ var $exeDevice = {
     },
 
     toggleType: function (v) {
-        var btn = $('#interactiveVideoEditorOpener');
-        // To review: btn.hide();
         $('.interactiveVideoType').hide();
         $('#interactiveVideo-' + v).fadeIn();
         // Show/hide supported formats hint depending on source type
@@ -553,22 +510,8 @@ var $exeDevice = {
         } else {
             $('#interactiveFormats').hide();
         }
-        // Hide the "Please save your iDevice now and edit it to add interaction." message.
-        if (typeof $exeDevice.interactiveVideoEditorOpenerHTML != 'undefined') {
-            btn.html($exeDevice.interactiveVideoEditorOpenerHTML);
-        }
-        // $("#interactiveVideoFile,#interactiveVideoYoutubeURL,#interactiveVideoMediatecaURL").val("");
-        // if (top.interactiveVideoEditor.videoType)
         // Change the video type
         top.interactiveVideoEditor.videoType = v;
-        if ($exeDevice.interactiveVideoEditorOpenerHTML) {
-            // Keep displaying the "Save now" text if needed
-            if (v == 'local') $('#interactiveVideoFile').trigger('change');
-            else
-                $('#interactiveVideoEditorOpener').html(
-                    $exeDevice.interactiveVideoEditorOpenerHTML
-                );
-        }
     },
 
     editor: {
