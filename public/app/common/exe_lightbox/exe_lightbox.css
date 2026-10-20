@@ -93,3 +93,9 @@ div.with-audio .pp_gallery ul li a:hover,div.with-audio .pp_gallery ul li.select
 .exe-media-audio-box{text-align:center;height:50px;padding:40px 0}
 .exe-media-video-box{text-align:center;min-width:480px;height:auto}
 .exe-media-download{font-weight:normal;float:right}
+/* Inline content (exe-dialog-link), not audio or video: scroll inside and close button always visible (#2032) */
+div.pp_pic_holder .pp_content:has(.pp_inline):not(:has(.exe-media-box-element)){height:auto!important}
+div.pp_pic_holder .pp_content:has(.pp_inline):not(:has(.exe-media-box-element)) .pp_details{float:none;height:30px;margin:4px 0 0;padding-bottom:10px;box-sizing:content-box}
+div.pp_pic_holder .pp_content:has(.pp_inline):not(:has(.exe-media-box-element)) .pp_close{right:8px}
+div.pp_pic_holder .pp_content:has(.pp_inline):not(:has(.exe-media-box-element)) .pp_nav{margin-left:8px}
+#pp_full_res .pp_inline:not(:has(.exe-media-box-element)){max-height:calc(100vh - 140px);overflow-y:auto;padding:8px 16px 0}
