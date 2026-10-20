@@ -1287,6 +1287,24 @@ describe('LOMLOE per-dataset descriptor override', () => {
         expect(dev.save().lomloeDescriptors).toEqual({ CCL2: 'CCL2 — VAL' });
     });
 
+    // Issue #2587: the previous dataset's criterios stayed on screen after switching concreción.
+    it('clears the criterios panel when the dataset changes', async () => {
+        mockFetch(fixtureWithDescriptors(null));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        const items = el.querySelector('[id^="lomloe-items-"]');
+        expect(items.textContent).toContain('Crit 1');
+
+        const dsSelect = el.querySelector('[id^="lomloe-ds-"]');
+        dsSelect.value = 'ES';
+        dsSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        await new Promise(r => setTimeout(r, 50));
+
+        expect(items.hidden).toBe(true);
+        expect(items.textContent).not.toContain('Crit 1');
+        expect(el.querySelector('[id^="lomloe-no-mat-"]').hidden).toBe(false);
+    });
+
     it('does not render the reserved `descriptors` key as an etapa tab', async () => {
         mockFetch(fixtureWithDescriptors({ CCL2: 'x' }));
         dev.init(el, null);
