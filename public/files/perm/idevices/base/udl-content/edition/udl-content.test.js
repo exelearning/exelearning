@@ -176,20 +176,23 @@ describe('udl-content edition: shared form tabs', () => {
 
     const open = (previousData = '') => device.init(document.getElementById('udlBody'), previousData, PATH);
 
-    it('lays the form out in the shared tabs, and opens on the blocks', () => {
+    it('lays the form out in Activities and Texts, with no Options tab', () => {
         open();
         const tabNames = [...document.querySelectorAll('#udlContentEditorWrapper-tabs [data-exe-tab]')].map((tab) =>
             tab.getAttribute('data-exe-tab')
         );
 
-        expect(tabNames).toEqual(['options', 'contents', 'texts']);
+        expect(tabNames).toEqual(['contents', 'texts']);
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
     it('puts each part of the form in its tab, with no share windows', () => {
         open();
 
-        expect(panel('options').querySelectorAll('input[name="udlContentType"]')).toHaveLength(3);
+        // The type leads the blocks, as in main.
+        const form = panel('contents').querySelector('#udlContentForm');
+        expect(form.firstElementChild.id).toBe('udlContentTypeOptions');
+        expect(form.querySelectorAll('input[name="udlContentType"]')).toHaveLength(3);
         expect(panel('contents').querySelector('#udlContentFormAddBlock')).not.toBeNull();
         expect(panel('contents').querySelectorAll('.udlContentFormBlock')).toHaveLength(1);
         expect(panel('contents').firstElementChild.textContent).toContain('Write the content in blocks');
@@ -205,7 +208,7 @@ describe('udl-content edition: shared form tabs', () => {
 
         expect(group.getAttribute('role')).toBe('radiogroup');
         expect(document.getElementById(group.getAttribute('aria-labelledby')).textContent).toBe('Type:');
-        expect(panel('options').querySelectorAll('.exe-idevice-help')).toHaveLength(1);
+        expect(panel('contents').querySelectorAll('.exe-idevice-help')).toHaveLength(1);
         expect(group.lastElementChild.contains(help)).toBe(true);
         expect(help.getAttribute('aria-label')).toBe(help.title);
         help.click();

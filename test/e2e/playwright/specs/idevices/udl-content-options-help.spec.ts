@@ -35,7 +35,9 @@ test('UDL content explains its type inline and keeps it with its blocks and text
     await expect(page.locator('#udlContentEditorWrapper-tab-contents')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('[data-exe-share]')).toHaveCount(0);
 
-    await page.locator('#udlContentEditorWrapper-tab-options').click();
+    // The type leads the blocks in Activities, as in main: there is no Options tab.
+    await expect(page.locator('#udlContentEditorWrapper-tabs [data-exe-tab]')).toHaveCount(2);
+    await expect(page.locator('#udlContentEditorWrapper-panel-contents #udlContentTypeOptions')).toBeVisible();
     const help = page.locator('#udlContentTypeOptions .exe-idevice-help');
     await expect(help).toHaveCount(1);
     for (const width of [1280, 1024]) {
@@ -108,7 +110,6 @@ test('UDL content explains its type inline and keeps it with its blocks and text
     await expect
         .poll(() => page.evaluate(() => (window as any).tinymce.get('udlContentFormTxt-0').getContent()))
         .toContain('The main text');
-    await page.locator('#udlContentEditorWrapper-tab-options').click();
     await expect(page.locator('#udlContentType-expression')).toBeChecked();
     await page.locator('#udlContentEditorWrapper-tab-texts').click();
     await expect(page.locator('#ci18n_simplified')).toHaveValue('Plain words');

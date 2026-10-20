@@ -132,7 +132,9 @@ var $exeDevice = {
     // Create the form to insert HTML in the TEXTAREA
     createForm: function () {
         var edition = $exeIDevicesEdition.iDevice;
-        var options = `
+        // The type leads the blocks, as before the shared tabs: there is no
+        // Options tab.
+        var type = `
             <div id="udlContentTypeOptions" class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="udlContentTypeLabel">
                 <strong id="udlContentTypeLabel">${_('Type')}:</strong>
                 <label for="udlContentType-engagement" class="active mb-0"><input type="radio" name="udlContentType" id="udlContentType-engagement" value="engagement" checked="checked" /> ${_('Engagement')}</label>
@@ -142,6 +144,7 @@ var $exeDevice = {
             </div>`;
         var contents = `
             <div id="udlContentForm" class="udl-udl-contentIdevice">
+                ${type}
                 <p id="udlContentFormAddBlockWrapper"><a href="#" id="udlContentFormAddBlock" title="${_('New block')}">${_('New block')}</a></p>
                 <div id="udlContentFormBlocks"></div>
             </div>
@@ -157,7 +160,6 @@ var $exeDevice = {
         this.ideviceBody.innerHTML = `
             <div id="udlContentEditorWrapper">
                 ${edition.tabs.getHtml('udlContentEditorWrapper', {
-                    options: options,
                     contents: contents,
                     texts: strs,
                     share: false,
