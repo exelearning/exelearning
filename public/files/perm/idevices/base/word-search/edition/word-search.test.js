@@ -2,8 +2,8 @@
  * Unit tests for the word-search iDevice editor.
  *
  * Cover numeric field limits on keyup, the edition lifecycle teardown of
- * clue-audio preview and game-import file readers, and the form laid out in
- * the shared tabs with the shared feedback.
+ * game-import file readers, and the form laid out in the shared tabs with the
+ * shared feedback.
  */
 
 /* eslint-disable no-undef */
@@ -103,27 +103,6 @@ describe('word-search iDevice edition', () => {
     });
 });
 
-/**
- * Audio double with a real event target, so `canplaythrough` can be dispatched
- * the way the platform would.
- */
-function createFakeAudioClass() {
-    return class FakeAudio extends EventTarget {
-        constructor(src) {
-            super();
-            FakeAudio.instances.push(this);
-            this.src = src;
-            this.pause = vi.fn();
-            this.load = vi.fn();
-            this.play = vi.fn();
-        }
-
-        removeAttribute() {
-            this.src = '';
-        }
-    };
-}
-
 /** FileReader double that fires only when a test says so. */
 class FakeFileReader {
     constructor() {
@@ -148,24 +127,17 @@ FakeFileReader.instances = [];
 
 describe('word-search iDevice edition lifecycle', () => {
     let $exeDevice;
-    let FakeAudio;
-    let originalAudio;
     let originalFileReader;
     let originalMedia;
     let originalItinerary;
 
     beforeEach(() => {
-        FakeAudio = createFakeAudioClass();
-        FakeAudio.instances = [];
         FakeFileReader.instances = [];
 
-        originalAudio = global.Audio;
         originalFileReader = global.FileReader;
         originalMedia = $exeDevices.iDevice.gamification.media;
         originalItinerary = $exeIDevicesEdition.iDevice.gamification.itinerary;
 
-        global.Audio = FakeAudio;
-        window.Audio = FakeAudio;
         global.FileReader = FakeFileReader;
         window.FileReader = FakeFileReader;
         $exeDevices.iDevice.gamification.media = { extractURLGD: u => u };
@@ -177,58 +149,10 @@ describe('word-search iDevice edition lifecycle', () => {
 
     afterEach(() => {
         if ($exeDevice && $exeDevice.$lifecycle) $exeDevice.$lifecycle.destroy();
-        global.Audio = originalAudio;
-        window.Audio = originalAudio;
         global.FileReader = originalFileReader;
         window.FileReader = originalFileReader;
         $exeDevices.iDevice.gamification.media = originalMedia;
         $exeIDevicesEdition.iDevice.gamification.itinerary = originalItinerary;
-    });
-
-    describe('audio preview', () => {
-        it('plays the clip once it can play through while the edition is open', () => {
-            $exeDevice.playSound('clue.mp3');
-            const audio = FakeAudio.instances[0];
-
-            audio.dispatchEvent(new Event('canplaythrough'));
-
-            expect(audio.play).toHaveBeenCalledTimes(1);
-        });
-
-        it('stops the clip when the edition closes', () => {
-            $exeDevice.playSound('clue.mp3');
-            const audio = FakeAudio.instances[0];
-
-            $exeDevice.$lifecycle.destroy();
-
-            expect(audio.pause).toHaveBeenCalledTimes(1);
-            expect(audio.load).toHaveBeenCalledTimes(1);
-            expect(audio.src).toBe('');
-        });
-
-        it('never starts a clip that finished buffering after the edition closed', () => {
-            $exeDevice.playSound('clue.mp3');
-            const audio = FakeAudio.instances[0];
-
-            $exeDevice.$lifecycle.destroy();
-            audio.dispatchEvent(new Event('canplaythrough'));
-
-            expect(audio.play).not.toHaveBeenCalled();
-        });
-
-        it('never plays through the iDevice that replaced this one', () => {
-            const first = $exeDevice;
-            first.playSound('clue.mp3');
-            const audio = FakeAudio.instances[0];
-            first.$lifecycle.destroy();
-
-            const secondAudio = { play: vi.fn() };
-            global.$exeDevice = { playerAudio: secondAudio };
-            audio.dispatchEvent(new Event('canplaythrough'));
-
-            expect(secondAudio.play).not.toHaveBeenCalled();
-            global.$exeDevice = first;
-        });
     });
 
     describe('game import', () => {

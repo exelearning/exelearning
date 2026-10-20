@@ -17,16 +17,12 @@ var $exeDevice = {
     classIdevice: 'word-search',
     active: 0,
     wordsGame: [],
-    timeQuestion: 30,
-    percentajeShow: 35,
     typeEdit: -1,
     numberCutCuestion: -1,
     clipBoard: '',
     version: 2,
     idevicePath: '',
     checkAltImage: true,
-    playerAudio: '',
-    id: false,
     ci18n: {},
 
     init: function (element, previousData, path) {
@@ -118,21 +114,8 @@ var $exeDevice = {
         msgs.msgESelectFile = _(
             'The selected file does not contain a valid game'
         );
-        msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image'
-        );
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgECompleteQuestion = _('You have to complete the question');
-        msgs.msgECompleteAllOptions = _(
-            'You have to complete all the selected options'
-        );
-        msgs.msgESelectSolution = _('Choose the right answer');
-        msgs.msgWriteText = _('You have to type a text in the editor');
-        msgs.msgTypeChoose = _(
-            'Please check all the answers in the right order'
-        );
-        msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -556,8 +539,6 @@ var $exeDevice = {
 
     initQuestions: function () {
         $('#sopaEInputImage').removeClass('d-none').addClass('d-flex');
-        $('#sopaEMediaNormal').prop('disabled', false);
-        $('#sopaEMediaImage').prop('disabled', false);
         if ($exeDevice.wordsGame.length == 0) {
             const question = $exeDevice.getCuestionDefault();
             $exeDevice.wordsGame.push(question);
@@ -738,13 +719,6 @@ var $exeDevice = {
             }
         );
         return false;
-    },
-
-    getMediaType: function () {
-        let ele = document.getElementsByName('sopatype');
-        for (i = 0; i < ele.length; i++) {
-            if (ele[i].checked) return ele[i].value;
-        }
     },
 
     createlinksImage: function (wordsGame) {
@@ -931,32 +905,6 @@ var $exeDevice = {
             .on('error', function () {
                 return false;
             });
-    },
-
-    playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        // Closing the editor must silence the preview and drop its stream; the
-        // `canplaythrough` handler goes with it, so a clip that finishes
-        // buffering after teardown never starts playing.
-        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
-        this.$lifecycle.addEventListener(
-            $exeDevice.playerAudio,
-            'canplaythrough',
-            function () {
-                this.playerAudio.play();
-            }
-        );
-    },
-
-    stopSound() {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause == 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
     },
 
     paintMouse: function (image, cursor, x, y) {
@@ -1368,14 +1316,12 @@ var $exeDevice = {
             typeof game.percentajeQuestions == 'undefined'
                 ? 100
                 : game.percentajeQuestions;
-        game.percentageShow = $exeDevice.percentageShow;
         game.evaluation =
             typeof game.evaluation != 'undefined' ? game.evaluation : false;
         game.evaluationID =
             typeof game.evaluationID != 'undefined' ? game.evaluationID : '';
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
-        $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#sopaEShowMinimize').prop('checked', game.showMinimize);
         $('#sopaEShowResolve').prop('checked', game.showResolve);
