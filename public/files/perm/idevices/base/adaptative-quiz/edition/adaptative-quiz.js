@@ -29,7 +29,6 @@ var $exeDevice = {
     DEFAULT_MIN_PLAY: 5,
     LEVELS_BY_COUNT: { 3: [1, 2, 3], 4: [1, 2, 3, 4], 5: [1, 2, 3, 4, 5] },
     DEFAULT_NUM_LEVELS: 3,
-    AI_TOTAL_QUESTIONS: 60,
     numLevels: 3,
     get LEVELS() {
         return this.LEVELS_BY_COUNT[this.numLevels] || this.LEVELS_BY_COUNT[this.DEFAULT_NUM_LEVELS];
@@ -126,12 +125,10 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         this.msgs = {
-            msgNoSuportBrowser: _('Your browser is not compatible with this type of activity.'),
             msgNoQuestions: _('You must add at least one question.'),
             msgEOneQuestion: _('You must have at least one question.'),
             msgQuestionEmpty: _('Question %s: the question text cannot be empty.'),
             msgOptionsIncomplete: _('Question %s: please fill in all answer options.'),
-            msgNoCorrectSelected: _('Question %s: please mark which option is the correct answer.'),
             msgNumQuestionsRange: _('You must add at least %s questions.'),
             msgInitialLevelEmpty: _(
                 'Warning: the selected initial level has no questions. The quiz will start using the fallback level.',
@@ -142,7 +139,6 @@ var $exeDevice = {
             msgESelectAtLeastOne: _('Question %s: please mark at least one correct answer.'),
             msgEProvideWord: _('Question %s: please provide the solution word or phrase.'),
             msgEDefinition: _('Question %s: please provide the definition.'),
-            msgETypeChoose: _('Question %s: please specify a unique order from 1 to %n for every option.'),
         };
     },
 
@@ -1091,20 +1087,6 @@ var $exeDevice = {
 
         this.questionsGame[this.active] = q;
         return q;
-    },
-
-    clearQuestion: function () {
-        $(
-            '#adaptativeQuizEURLImage, #adaptativeQuizEAuthor, #adaptativeQuizEAlt, #adaptativeQuizAudio-question, #adaptativeQuizEQuestion, #adaptativeQuizEWord, #adaptativeQuizAudio-word, #adaptativeQuizESolutionWord, #adaptativeQuizAudio-solutionWord',
-        ).val('');
-        for (let k = 0; k < this.MAX_OPTIONS; k++) {
-            $('#adaptativeQuizEOption' + k).val('');
-            $('#adaptativeQuizAudio-option' + k).val('');
-        }
-        $(
-            '#adaptativeQuizEMessageOK, #adaptativeQuizEMessageKO, #adaptativeQuizAudio-msgHit, #adaptativeQuizAudio-msgError',
-        ).val('');
-        this.updateImagePreview('');
     },
 
     validateQuestion: function () {
