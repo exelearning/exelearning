@@ -230,7 +230,7 @@ describe('trueorfalse iDevice', () => {
 
     it('reports the empty activity on save instead of throwing', () => {
       $exeDevice.idevicePreviousData = savedGame();
-      $exeDevice.msgs = { msgEOneQuestion: 'Add at least one question' };
+      $exeDevice.setMessagesInfo();
       $exeDevice.loadPreviousValues();
 
       // The reported second failure: "can't access property 0" while saving.
@@ -239,7 +239,9 @@ describe('trueorfalse iDevice', () => {
         result = $exeDevice.validateData();
       }).not.toThrow();
       expect(result).toBe(false);
-      expect(eXe.app.alert).toHaveBeenCalledWith('Add at least one question');
+      // The message the iDevice defines: it used to read a key it never set,
+      // and the author got an empty alert.
+      expect(eXe.app.alert).toHaveBeenCalledWith('Please add at least one question');
     });
 
     it('treats a missing question editor as empty content when trimming', () => {
@@ -738,5 +740,74 @@ describe('trueorfalse edition: shared form tabs', () => {
                 { question: 'Rome is in France', solution: 0 },
             ],
         });
+    });
+
+    it('starts a new question empty, also without the rich editor', () => {
+        open();
+        vi.spyOn(global.tinymce, 'get').mockReturnValue(null);
+        $('#tofEQuestionEditor').val('First');
+        $('#tofAnswerFalse').prop('checked', true);
+
+        $('#tofEAdd').trigger('click');
+
+        expect(device.questionsGame).toHaveLength(2);
+        expect(device.questionsGame[0]).toMatchObject({ question: 'First', solution: 0 });
+        // The fields used to keep the previous question, which then was
+        // saved again as the new one.
+        expect($('#tofEQuestionEditor').val()).toBe('');
+        expect($('#tofEFeedBackEditor').val()).toBe('');
+        expect($('#tofESuggestionEditor').val()).toBe('');
+    });
+
+    it('exports the feedback and the suggestion in the order Import reads back', () => {
+        open();
+        vi.spyOn(global.tinymce, 'get').mockReturnValue(null);
+        const lines = device.getLinesQuestions([
+            { question: 'The Sun is a star', solution: 1, feedback: 'It shines', suggestion: 'Look up' },
+        ]);
+
+        device.insertQuestions(lines);
+
+        expect(device.questionsGame).toHaveLength(1);
+        expect(device.questionsGame[0]).toMatchObject({
+            question: 'The Sun is a star',
+            solution: true,
+            feedback: 'It shines',
+            suggestion: 'Look up',
+        });
+    });
+
+    it('exports the question on screen with its latest changes', async () => {
+        open({
+            typeGame: 'TrueOrFalse',
+            questionsGame: [{ question: 'Old', feedback: '', suggestion: '', solution: 1 }],
+            msgs: {},
+        });
+        vi.spyOn(global.tinymce, 'get').mockReturnValue(null);
+        const download = vi
+            .spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+            .mockReturnValue(true);
+        $('#tofEQuestionEditor').val('New');
+
+        device.exportQuestions();
+
+        expect(download).toHaveBeenCalledTimes(1);
+        expect(await download.mock.calls[0][0].text()).toBe('v-f#New#1##');
+    });
+
+    it('switches between the question, feedback and suggestion editors without following the link', () => {
+        open();
+
+        for (const [toggle, editor] of [
+            ['tofFeedBackToggle', 'tofFeedBackDiv'],
+            ['tofSuggestionToggle', 'SuggestionDiv'],
+            ['tofQuestionToggle', 'tofQuestionDiv'],
+        ]) {
+            const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+            document.getElementById(toggle).dispatchEvent(click);
+
+            expect(click.defaultPrevented).toBe(true);
+            expect(document.getElementById(editor).classList.contains('d-block')).toBe(true);
+        }
     });
 });

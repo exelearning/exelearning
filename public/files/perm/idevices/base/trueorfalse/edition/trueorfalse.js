@@ -182,17 +182,17 @@ var $exeDevice = {
         if (tinyMCE.get('tofEQuestionEditor')) {
             tinyMCE.get('tofEQuestionEditor').setContent('');
         }
-        $('tofEQuestionEditor').val('');
+        $('#tofEQuestionEditor').val('');
 
         if (tinyMCE.get('tofEFeedBackEditor')) {
             tinyMCE.get('tofEFeedBackEditor').setContent('');
         }
-        $('tofEFeedBackEditor').val('');
+        $('#tofEFeedBackEditor').val('');
 
         if (tinyMCE.get('tofESuggestionEditor')) {
             tinyMCE.get('tofESuggestionEditor').setContent('');
         }
-        $('tofESuggestionEditor').val('');
+        $('#tofESuggestionEditor').val('');
         $exeDevice.updateQuestionsNumber();
     },
 
@@ -200,17 +200,17 @@ var $exeDevice = {
         if (tinyMCE.get('tofEQuestionEditor')) {
             tinyMCE.get('tofEQuestionEditor').setContent('');
         }
-        $('tofEQuestionEditor').val('');
+        $('#tofEQuestionEditor').val('');
 
         if (tinyMCE.get('tofEFeedBackEditor')) {
             tinyMCE.get('tofEFeedBackEditor').setContent('');
         }
-        $('tofEFeedBackEditor').val('');
+        $('#tofEFeedBackEditor').val('');
 
         if (tinyMCE.get('tofESuggestionEditor')) {
             tinyMCE.get('tofESuggestionEditor').setContent('');
         }
-        $('tofESuggestionEditor').val('');
+        $('#tofESuggestionEditor').val('');
 
         $('input[name="tofAnswer"]').prop('checked', false);
     },
@@ -524,18 +524,20 @@ var $exeDevice = {
             $exeDevice.questionsGame.push($exeDevice.getDefaultQuestion());
         }
 
-        $('#tofQuestionToggle').on('click', () =>
-            $exeDevice.showEditor($('#tofQuestionDiv'), $('#tofQuestionToggle'))
-        );
-        $('#tofFeedBackToggle').on('click', () =>
-            $exeDevice.showEditor($('#tofFeedBackDiv'), $('#tofFeedBackToggle'))
-        );
-        $('#tofSuggestionToggle').on('click', () =>
-            $exeDevice.showEditor(
-                $('#SuggestionDiv'),
-                $('#tofSuggestionToggle')
-            )
-        );
+        // Links with href="#": without preventDefault each click also added
+        // an empty fragment to the address and a step to the history.
+        $('#tofQuestionToggle').on('click', (e) => {
+            e.preventDefault();
+            $exeDevice.showEditor($('#tofQuestionDiv'), $('#tofQuestionToggle'));
+        });
+        $('#tofFeedBackToggle').on('click', (e) => {
+            e.preventDefault();
+            $exeDevice.showEditor($('#tofFeedBackDiv'), $('#tofFeedBackToggle'));
+        });
+        $('#tofSuggestionToggle').on('click', (e) => {
+            e.preventDefault();
+            $exeDevice.showEditor($('#SuggestionDiv'), $('#tofSuggestionToggle'));
+        });
         $('#tofEPaste').hide();
 
         $('#tofShowSolutions').on('change', function () {
@@ -999,6 +1001,9 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
+        // Store the question on screen first: without it, its unsaved edits
+        // were left out, and a question just added still counted as empty.
+        if (!this.validateQuestion()) return false;
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
@@ -1020,7 +1025,9 @@ var $exeDevice = {
                 questionsGame[i].solution !== 'false'
                     ? 1
                     : 0;
-            let question = `v-f#${questionsGame[i].question}#${solution}#${questionsGame[i].feedback}#${questionsGame[i].suggestion}`;
+            // The order insertQuestions reads back, and the one the AI prompt
+            // asks for: suggestion before feedback.
+            let question = `v-f#${questionsGame[i].question}#${solution}#${questionsGame[i].suggestion}#${questionsGame[i].feedback}`;
             lineswords.push(question);
         }
         return lineswords;
@@ -1042,7 +1049,7 @@ var $exeDevice = {
         let evaluationID = '';
 
         if (questionsGame.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeDevice.showMessage($exeDevice.msgs.msgOneQuestion);
             return false;
         }
 
