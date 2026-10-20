@@ -223,23 +223,16 @@ test('new true-or-false activities offer a report only in test mode', async ({
     await addIdevice(page, 'trueorfalse');
     const nodeId = (await page.locator('#node-content .idevice_node.trueorfalse').getAttribute('id'))!;
     await expect(page.locator('#tofEIsTest')).not.toBeChecked();
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeHidden();
 
-    await page.locator('.exe-form-tabs a').first().click();
-    await page.getByRole('link', { name: 'Options', exact: true }).click();
+    await page.locator('#trueorfalseIdeviceForm-tab-options').click();
     await page.locator('#tofEIsTest').check();
     await page.waitForFunction(() => (window as any).tinymce?.get('tofEQuestionEditor')?.initialized);
     await page.evaluate(() =>
         (window as any).tinymce.get('tofEQuestionEditor').setContent('<p>The Earth is a planet.</p>'),
     );
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeVisible();
     await page.locator('#eXeProgressReport').check();
     const reportId = await page.locator('#eXeProgressReportID').inputValue();
@@ -247,20 +240,13 @@ test('new true-or-false activities offer a report only in test mode', async ({
 
     await editIdevice(page, nodeId);
     await expect(page.locator('#tofEIsTest')).toBeChecked();
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeVisible();
     await expect(page.locator('#eXeProgressReport')).toBeChecked();
     await expect(page.locator('#eXeProgressReportID')).toHaveValue(reportId);
-    await page.locator('.exe-form-tabs a').first().click();
-    await page.getByRole('link', { name: 'Options', exact: true }).click();
+    await page.locator('#trueorfalseIdeviceForm-tab-options').click();
     await page.locator('#tofEIsTest').uncheck();
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeHidden();
     await saveIdevice(page, nodeId);
     expect(await waitForPreviewContent(page, 30000)).toBe(true);
@@ -282,8 +268,7 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
     const nodeId = (await page.locator('#node-content .idevice_node.trueorfalse').getAttribute('id'))!;
     const form = page.locator('#trueorfalseIdeviceForm');
     const optionsTab = async () => {
-        await form.locator('.exe-form-tabs a').first().click();
-        await form.getByRole('link', { name: 'Options', exact: true }).click();
+        await form.locator('#trueorfalseIdeviceForm-tab-options').click();
     };
 
     await optionsTab();
@@ -292,10 +277,7 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
     await page.evaluate(() =>
         (window as any).tinymce.get('tofEQuestionEditor').setContent('<p>The Earth is a planet.</p>'),
     );
-    await form
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await form.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await page.locator('#eXeProgressReport').check();
     await page.locator('#eXePassScoreCustom').check();
     await page.locator('#eXePassScoreValue').fill('7');
@@ -324,10 +306,7 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
     await editIdevice(page, nodeId);
     await optionsTab();
     await page.locator('#tofEIsTest').check();
-    await form
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await form.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await page.locator('#eXeProgressReport').check();
     await page.locator('#eXeProgressReportID').fill('tof-report');
     await saveIdevice(page, nodeId);

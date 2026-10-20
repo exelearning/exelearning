@@ -61,7 +61,7 @@ var $exeDevice = {
             return data;
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         const questionsData = Array.isArray(data.questionsData)
             ? data.questionsData
             : [];
@@ -352,111 +352,126 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="tofEOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="tofEShowSlider" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="tofEShowSlider">${_('Slides list')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Show the questions one by one, as slides, instead of all of them on the page.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="tofEIsTest" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="tofEIsTest">${_('Test')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Mark the answers only when the learners check them all, and give them a score. Otherwise each answer is marked as soon as it is chosen.'))}
+                    </div>
+                    <div id="tofETimeDiv" class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="tofETime" class="mb-0">${_('Time (minutes)')}:</label>
+                        <input type="number" class="form-control" name="tofETime" id="tofETime" value="0" min="0" max="59" />
+                        ${edition.common.getHelpTooltip(_('Set the maximum time in minutes to complete the quiz. Set to 0 for unlimited time.'))}
+                    </div>
+                    <div id="tofEAttemptsNumberDiv" class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="tofEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                        <input type="number" class="form-control" name="tofEAttemptsNumber" id="tofEAttemptsNumber" value="1" min="1" max="9" />
+                        ${edition.common.getHelpTooltip(_('How many times the learners can check their answers.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="tofEQuestionsRandom" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="tofEQuestionsRandom">${_('Random questions')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Shuffle questions so they appear in random order for each learner.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="tofEPercentageQuestions" class="mb-0">%${_('Questions')}:</label>
+                        <input type="number" class="form-control" name="tofEPercentageQuestions" id="tofEPercentageQuestions" value="100" min="1" max="100" />
+                        <span id="tofENumeroPercentaje">1/1</span>
+                        ${edition.common.getHelpTooltip(_('Choose the percentage of questions included in each game. The counter shows how many questions will be used.'))}
+                    </div>
+                </div>`,
+            contents = `
+                <div class="TOF-EPanel" id="tofEPanel">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <a href="#" id="tofQuestionToggle" class="eXeE-TabButton eXeE-TabQuestions eXeE-Active">${_('Question')}</a>
+                        <a href="#" id="tofFeedBackToggle" class="eXeE-TabButton eXeE-TabFeebBack">${_('Feedback')}</a>
+                        <a href="#" id="tofSuggestionToggle" class="eXeE-TabButton eXeE-TabSuggestion">${_('Suggestion')}</a>
+                    </div>
+                    <div class="TOF-Editor d-block mb-3" id="tofQuestionDiv">
+                        <textarea id="tofEQuestionEditor" class="exe-html-editor TOF-EQuestion"></textarea>
+                    </div>
+                    <div class="TOF-Editor d-none mb-3" id="tofFeedBackDiv">
+                        <textarea id="tofEFeedBackEditor" class="exe-html-editor TOF-EFeedBack"></textarea>
+                    </div>
+                    <div class="TOF-Editor d-none mb-3" id="SuggestionDiv">
+                        <textarea id="tofESuggestionEditor" class="exe-html-editor TOF-ESuggestion"></textarea>
+                    </div>
+                    <div class="TOF-ERadioButtons d-flex flex-wrap align-items-center gap-3 mb-3">
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="radio" name="tofAnswer" value="1" id="tofAnswerTrue" />
+                            <label class="form-check-label" for="tofAnswerTrue">${_('True')}</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="radio" name="tofAnswer" value="0" id="tofAnswerFalse" />
+                            <label class="form-check-label" for="tofAnswerFalse">${_('False')}</label>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3" id="tofENavigationButtons">
+                        <a href="#" id="tofEAdd" class="TOF-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="TOF-EButtonImage b-add" /></a>
+                        <a href="#" id="tofEFirst" class="TOF-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="TOF-EButtonImage b-first" /></a>
+                        <a href="#" id="tofEPrevious" class="TOF-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="TOF-EButtonImage b-prev" /></a>
+                        <span class="sr-av">${_('Question number:')}</span><span class="TOF-NumberQuestion" id="tofENumberQuestion">1</span>
+                        <a href="#" id="tofENext" class="TOF-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="TOF-EButtonImage b-next" /></a>
+                        <a href="#" id="tofELast" class="TOF-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="TOF-EButtonImage b-last" /></a>
+                        <a href="#" id="tofEDelete" class="TOF-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="TOF-EButtonImage b-delete" /></a>
+                        <a href="#" id="tofECopy" class="TOF-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="TOF-EButtonImage b-copy" /></a>
+                        <a href="#" id="tofECut" class="TOF-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="TOF-EButtonImage b-cut" /></a>
+                        <a href="#" id="tofEPaste" class="TOF-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="TOF-EButtonImage b-paste" /></a>
+                    </div>
+                    <div class="TOF-ENumQuestionDiv d-flex flex-nowrap align-items-center gap-2" id="tofENumQuestionDiv">
+                        <div class="TOF-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
+                        <span class="TOF-ENumQuestions" id="tofENumQuestions">0</span>
+                    </div>
+                </div>`,
             html = `
             <div id="trueorfalseIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create interactive True or False quizzes.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/verdadero-falso.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Answer all the questions in this quiz.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="toggle-item mb-3">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="tofEShowSlider" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="tofEShowSlider">${_('Slides list')}</label>
-                            </div>
-                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                <div class="toggle-item mb-0">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="tofEIsTest" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="tofEIsTest">${_('Test')}</label>
-                                </div>
-                                <div id="tofETimeDiv" class="d-none flex-nowrap align-items-center gap-2">
-                                    <label for="tofETime" class="mb-0">${_('Time (minutes)')}:</label>
-                                    <input type="number" class="form-control" name="tofETime" id="tofETime" value="0" min="0" max="59" />
-                                </div>
-                                <div id="tofEAttemptsNumberDiv" class="d-none flex-nowrap align-items-center gap-2">
-                                    <label for="tofEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
-                                    <input type="number" class="form-control" name="tofEAttemptsNumber" id="tofEAttemptsNumber" value="1" min="1" max="9" />
-                                </div>
-                            </div>
-                            <div class="toggle-item mb-3">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="tofEQuestionsRandom" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="tofEQuestionsRandom">${_('Random questions')}</label>
-                            </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                <label for="tofEPercentageQuestions" class="mb-0">%${_('Questions')}:</label>
-                                <input type="number" class="form-control" name="tofEPercentageQuestions" id="tofEPercentageQuestions" value="100" min="1" max="100" />
-                                <span id="tofENumeroPercentaje">1/1</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Questions')}</a></legend>
-                        <div class="TOF-EPanel" id="tofEPanel">
-                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                <a href="#" id="tofQuestionToggle" class="eXeE-TabButton eXeE-TabQuestions eXeE-Active">${_('Question')}</a>
-                                <a href="#" id="tofFeedBackToggle" class="eXeE-TabButton eXeE-TabFeebBack">${_('Feedback')}</a>
-                                <a href="#" id="tofSuggestionToggle" class="eXeE-TabButton eXeE-TabSuggestion">${_('Suggestion')}</a>
-                            </div>
-                            <div class="TOF-Editor d-block mb-3" id="tofQuestionDiv">
-                                <textarea id="tofEQuestionEditor" class="exe-html-editor TOF-EQuestion"></textarea>
-                            </div>
-                            <div class="TOF-Editor d-none mb-3" id="tofFeedBackDiv">
-                                <textarea id="tofEFeedBackEditor" class="exe-html-editor TOF-EFeedBack"></textarea>
-                            </div>
-                            <div class="TOF-Editor d-none mb-3" id="SuggestionDiv">
-                                <textarea id="tofESuggestionEditor" class="exe-html-editor TOF-ESuggestion"></textarea>
-                            </div>
-                            <div class="TOF-ERadioButtons d-flex flex-wrap align-items-center gap-3 mb-3">
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="form-check-input" type="radio" name="tofAnswer" value="1" id="tofAnswerTrue" />
-                                    <label class="form-check-label" for="tofAnswerTrue">${_('True')}</label>
-                                </div>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="form-check-input" type="radio" name="tofAnswer" value="0" id="tofAnswerFalse" />
-                                    <label class="form-check-label" for="tofAnswerFalse">${_('False')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3" id="tofENavigationButtons">
-                                <a href="#" id="tofEAdd" class="TOF-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="TOF-EButtonImage b-add" /></a>
-                                <a href="#" id="tofEFirst" class="TOF-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="TOF-EButtonImage b-first" /></a>
-                                <a href="#" id="tofEPrevious" class="TOF-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="TOF-EButtonImage b-prev" /></a>
-                                <span class="sr-av">${_('Question number:')}</span><span class="TOF-NumberQuestion" id="tofENumberQuestion">1</span>
-                                <a href="#" id="tofENext" class="TOF-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="TOF-EButtonImage b-next" /></a>
-                                <a href="#" id="tofELast" class="TOF-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="TOF-EButtonImage b-last" /></a>
-                                <a href="#" id="tofEDelete" class="TOF-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="TOF-EButtonImage b-delete" /></a>
-                                <a href="#" id="tofECopy" class="TOF-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="TOF-EButtonImage b-copy" /></a>
-                                <a href="#" id="tofECut" class="TOF-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="TOF-EButtonImage b-cut" /></a>
-                                <a href="#" id="tofEPaste" class="TOF-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="TOF-EButtonImage b-paste" /></a>
-                            </div>
-                            <div class="TOF-ENumQuestionDiv d-flex flex-nowrap align-items-center gap-2" id="tofENumQuestionDiv">
-                                <div class="TOF-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
-                                <span class="TOF-ENumQuestions" id="tofENumQuestions">0</span>
-                            </div>
-                        </div>
-                    </fieldset>                        
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}          
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 6, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(6)}
-            </div>
-            `;
+                ${edition.tabs.getHtml('trueorfalseIdeviceForm', {
+                    path: path,
+                    instructions: c_('Answer all the questions in this quiz.'),
+                    options: options,
+                    contents: contents,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        exportQuestions: true,
+                        type: 6,
+                    },
+                    info: {
+                        contents: _('Write each statement, mark whether it is true or false and, if you like, add its feedback and a suggestion for the learners.'),
+                    },
+                })}
+            </div>`;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('trueorfalseIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('trueorfalseIdeviceForm');
+        edition.gamification.scorm.init();
         $exeDevice.enable();
     },
 
@@ -588,9 +603,9 @@ var $exeDevice = {
                 this.value = Math.max(0, Math.min(59, this.value));
             });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
         if (
             window.File &&
             window.FileReader &&
@@ -643,7 +658,7 @@ var $exeDevice = {
                 $exeDevice.updateQuestionsNumber();
             });
 
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             6,
             $exeDevice.insertQuestions
         );
@@ -782,7 +797,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importMoodle: function (xmlString) {
@@ -846,7 +860,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {
@@ -878,7 +891,7 @@ var $exeDevice = {
             $('#eXeGameInstructions').val(instructions);
             $('#eXeIdeviceTextAfter').val(textAfter);
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -886,11 +899,11 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -917,7 +930,7 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         game.showSlider =
             typeof game.showSlider !== 'undefined' ? game.showSlider : false;
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -992,7 +1005,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('True or false')}.txt`,
             'trueorfalseIdeviceForm'
@@ -1035,7 +1048,7 @@ var $exeDevice = {
 
         if (isTest) {
             const progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
             if (!progressBar) return false;
             evaluation = progressBar.evaluation;
             evaluationID = progressBar.evaluationID;
@@ -1043,7 +1056,7 @@ var $exeDevice = {
         // Read outside the isTest branch: the pass mark applies to every mode,
         // not only to the one that publishes a progress report.
         const passScore =
-            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+            $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
         for (let i = 0; i < questionsGame.length; i++) {
             const mQuestion = questionsGame[i];
 
@@ -1053,7 +1066,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (scorm.isScorm > 0 && !isTest) {
             $exeDevice.showMessage($exeDevice.msgs.msNotScorm);
