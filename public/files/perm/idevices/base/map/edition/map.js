@@ -333,7 +333,7 @@ var $exeDevice = {
                         ${help(_('How many names to offer for each spot. With 0 or 1, all of them are offered.'))}
                     </div>
                     <div class="MQE-EHide align-items-center flex-nowrap gap-2 mb-3" id="mapaSolutionData">
-                        <div class="toggle-item toggle-related m-0 d-flex align-items-center">
+                        <div class="toggle-item toggle-related m-0">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" checked id="mapaEShowSolution" />
                                 <span class="toggle-visual" aria-hidden="true"></span>
@@ -378,7 +378,7 @@ var $exeDevice = {
                             ${help(_('Open the content of a point as soon as the pointer is over its icon or area, without clicking.'))}
                         </div>
                     </div>
-                    <div id="mapaEAutoAudioDiv" class="MQE-EHide">
+                    <div id="mapaEAutoAudioDiv">
                         <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                             ${toggle('mapaEAutoAudio', `${_('Play the sound when scrolling the mouse over the points.')}.`, true)}
                             ${help(_('Play the sound of a point as soon as the pointer is over it.'))}
@@ -430,9 +430,9 @@ var $exeDevice = {
                                 </div>
                             </div>
                             <div id="mapaControls" style="display:none" class="align-items-center justify-content-center gap-2 mb-4">
-                                <button class="btn btn-primary" id="mapaClearButton">Limpiar</button>
-                                <button class="btn btn-primary" id="mapaRedoButton">Rehacer</button>
-                                <button class="btn btn-primary" id="mapaUndoButton">Deshacer</button>
+                                <button class="btn btn-primary" id="mapaClearButton">${_('Clear')}</button>
+                                <button class="btn btn-primary" id="mapaRedoButton">${_('Redo')}</button>
+                                <button class="btn btn-primary" id="mapaUndoButton">${_('Undo')}</button>
                             </div>
                             ${$exeDevice.getMultimediaPoint(path)}
                             ${$exeDevice.getSlide(path)}
@@ -3490,8 +3490,7 @@ var $exeDevice = {
                 if (type == 4) {
                     $('#mapaFQuestions').show();
                     $('#mapaEvaluationData').show();
-                    $('#mapaEShowSolution').show();
-                    $('label[for=mapaEShowSolution]').show();
+                    $('#mapaEShowSolution').closest('.toggle-item').show();
                     $('#mapaETimeShowSolution').prop(
                         'disabled',
                         !$('#mapaEShowSolution').is(':checked')
@@ -3499,8 +3498,7 @@ var $exeDevice = {
                 } else {
                     $('#mapaFQuestions').hide();
                     $('#mapaEvaluationData').hide();
-                    $('#mapaEShowSolution').hide();
-                    $('label[for=mapaEShowSolution]').hide();
+                    $('#mapaEShowSolution').closest('.toggle-item').hide();
                     $('#mapaETimeShowSolution').prop('disabled', false);
                 }
                 $('#mapaSolutionOrderDiv').hide();
@@ -4063,7 +4061,7 @@ var $exeDevice = {
         const select = `
             <div class="MQP-Dropdown">
                 <div class="d-flex align-items-center gap-2">
-                    <div>Icono:</div>
+                    <div>${_('Icon')}:</div>
                     <div id="mapaBtnDrop" class="MQP-Dropbtn" data-value="0">
                         <div class="MQE-P0"></div>
                         ${_('Magnifier')}
@@ -4344,7 +4342,7 @@ var $exeDevice = {
             $exeDevice.qActive = $exeDevice.selectsGame.length - 1;
             $exeDevice.qTypeEdit = -1;
             $('#mapaEPasteQ').hide();
-            $('#mapaENumQuestionsQ').text($exeDevice.selectsGame.length);
+            $('#mapaENumQuestions').text($exeDevice.selectsGame.length);
             $('#mapaENumberQuestionQ').val($exeDevice.selectsGame.length);
             $exeDevice.updateNumberQuestions();
         }
@@ -4379,7 +4377,7 @@ var $exeDevice = {
             $exeDevice.showQuestion($exeDevice.qActive);
             $exeDevice.qTypeEdit = -1;
             $('#mapaEPasteQ').hide();
-            $('#mapaENumQuestionsQ').text($exeDevice.selectsGame.length);
+            $('#mapaENumQuestions').text($exeDevice.selectsGame.length);
             $('#mapaENumberQuestionQ').val($exeDevice.qActive + 1);
             $exeDevice.updateNumberQuestions();
         }
@@ -4388,7 +4386,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.qTypeEdit = 0;
             $exeDevice.qClipBoard = JSON.parse(
-                JSON.stringify($exeDevice.selectsGame[$exeDevice.active])
+                JSON.stringify($exeDevice.selectsGame[$exeDevice.qActive])
             );
             $('#mapaEPasteQ').show();
         }
@@ -4410,16 +4408,17 @@ var $exeDevice = {
                 $exeDevice.qClipBoard
             );
             $exeDevice.showQuestion($exeDevice.qActive);
+            $exeDevice.updateNumberQuestions();
         } else if ($exeDevice.qTypeEdit == 1) {
             $('#mapaEPasteQ').hide();
             $exeDevice.qTypeEdit = -1;
-            $exeDevice.arrayMove(
+            $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.selectsGame,
                 $exeDevice.numberCutCuestion,
                 $exeDevice.qActive
             );
             $exeDevice.showQuestion($exeDevice.qActive);
-            $('#mapaENumQuestionsQ').text($exeDevice.selectsGame.length);
+            $('#mapaENumQuestions').text($exeDevice.selectsGame.length);
         }
     },
 
@@ -4464,7 +4463,7 @@ var $exeDevice = {
             $exeDevice.activeTest = $exeDevice.tests.length - 1;
             $exeDevice.pTypeEdit = -1;
             $('#mapaEPasteQ1').hide();
-            $('#mapaENumQuestionsQ1').text($exeDevice.tests.length);
+            $('#mapaENumQuestions1').text($exeDevice.tests.length);
             $('#mapaENumberQuestionQ1').val($exeDevice.tests.length);
             $exeDevice.updateNumberPointQuestions();
         }
@@ -4482,7 +4481,7 @@ var $exeDevice = {
             $exeDevice.showPointQuestion($exeDevice.activeTest);
             $exeDevice.pTypeEdit = -1;
             $('#mapaEPasteQ1').hide();
-            $('#mapaENumQuestionsQ1').text($exeDevice.tests.length);
+            $('#mapaENumQuestions1').text($exeDevice.tests.length);
             $('#mapaENumberQuestionQ1').val($exeDevice.activeTest + 1);
             $exeDevice.updateNumberPointQuestions();
         }
@@ -4525,7 +4524,7 @@ var $exeDevice = {
                 $exeDevice.activeTest
             );
             $exeDevice.showPointQuestion($exeDevice.activeTest);
-            $('#mapaENumQuestionsQ1').text($exeDevice.tests.length);
+            $('#mapaENumQuestions1').text($exeDevice.tests.length);
         }
     },
 
@@ -5371,8 +5370,7 @@ var $exeDevice = {
             game.evaluationG == 3
         ) {
             $('#mapaDataIdentifica').show();
-            $('#mapaEShowSolution').hide();
-            $('label[for=mapaEShowSolution]').hide();
+            $('#mapaEShowSolution').closest('.toggle-item').hide();
             $('#mapaETimeShowSolution').prop('disabled', false);
         }
 
@@ -5388,8 +5386,7 @@ var $exeDevice = {
         if (game.evaluationG == 4) {
             $('#mapaFQuestions').show();
             $('#mapaEvaluationData').show();
-            $('#mapaEShowSolution').show();
-            $('label[for=mapaEShowSolution]').show();
+            $('#mapaEShowSolution').closest('.toggle-item').show();
             $('#mapaETimeShowSolution').prop('disabled', !game.showSolution);
         }
 

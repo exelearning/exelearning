@@ -617,6 +617,7 @@ describe('map edition: shared form tabs', () => {
             sanitizeJSONString: (text) => text,
             hourToSeconds: () => 0,
             secondsToHour: () => '00:00:00',
+            arrayMove: (list, from, to) => list.splice(to, 0, list.splice(from, 1)[0]),
         });
         previousMedia = global.$exeDevices.iDevice.gamification.media;
         global.$exeDevices.iDevice.gamification.media = {
@@ -643,7 +644,7 @@ describe('map edition: shared form tabs', () => {
         }
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
-        for (const key of ['isJsonString', 'sanitizeJSONString', 'hourToSeconds', 'secondsToHour']) {
+        for (const key of ['isJsonString', 'sanitizeJSONString', 'hourToSeconds', 'secondsToHour', 'arrayMove']) {
             if (key in previousHelpers) helpers()[key] = previousHelpers[key];
             else delete helpers()[key];
         }
@@ -734,5 +735,74 @@ describe('map edition: shared form tabs', () => {
 
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
         expect(document.querySelectorAll('#mapaEOptions [data-target]')).toHaveLength(0);
+    });
+
+    it('names the icon and the drawing buttons in the language of the edition', () => {
+        expect(document.querySelector('.MQP-Dropdown').textContent).toContain('Icon:');
+        expect(document.getElementById('mapaClearButton').textContent).toBe('Clear');
+        expect(document.getElementById('mapaRedoButton').textContent).toBe('Redo');
+        expect(document.getElementById('mapaUndoButton').textContent).toBe('Undo');
+    });
+
+    it('offers the sound option of a new map, which starts in the Visited points mode', () => {
+        expect(document.getElementById('mapaEEvaluationPoints').checked).toBe(true);
+        expect(document.getElementById('mapaEAutoAudioDiv').classList.contains('MQE-EHide')).toBe(false);
+    });
+
+    it('hides the whole solutions switch where the mode does not offer it', () => {
+        const toggle = document.getElementById('mapaEShowSolution').closest('.toggle-item');
+
+        chooseMode(1);
+        expect(toggle.style.display).toBe('none');
+
+        chooseMode(4);
+        expect(toggle.style.display).not.toBe('none');
+    });
+
+    describe('questionnaire', () => {
+        const question = (text) => ({ ...device.getDefaultQuestion(), quextion: text });
+
+        beforeEach(() => {
+            chooseMode(4);
+            vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+        });
+
+        it('counts the questions as they are added', () => {
+            device.addQuestion();
+
+            expect(document.getElementById('mapaENumQuestions').textContent).toBe('2');
+        });
+
+        it('copies the question on screen', () => {
+            device.selectsGame = [question('First'), question('Second')];
+            device.qActive = 1;
+            device.active = 0;
+
+            device.copyQuestion();
+
+            expect(device.qClipBoard.quextion).toBe('Second');
+        });
+
+        it('moves a cut question when it is pasted', () => {
+            device.selectsGame = [question('A'), question('B'), question('C')];
+            device.qActive = 0;
+            device.cutQuestion();
+            device.qActive = 2;
+
+            expect(() => device.pasteQuestion()).not.toThrow();
+            expect(device.selectsGame.map((item) => item.quextion)).toEqual(['B', 'C', 'A']);
+        });
+
+        it('counts a pasted copy in the questions per game', () => {
+            device.selectsGame = [question('A'), question('B')];
+            device.qActive = 0;
+            device.updateNumberQuestions();
+
+            device.copyQuestion();
+            device.pasteQuestion();
+
+            expect(device.selectsGame).toHaveLength(3);
+            expect(document.getElementById('mapaNumberQuestions').textContent).toBe('3/3');
+        });
     });
 });
