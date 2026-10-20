@@ -1,5 +1,6 @@
 /**
- * Unit tests for rubric iDevice CSV tools (edition)
+ * Unit tests for rubric iDevice CSV tools (edition), its edit dialogs, and the
+ * form laid out in the shared tabs.
  */
 
 /* eslint-disable no-undef */
@@ -7,6 +8,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -323,41 +325,6 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     expect(document.querySelector('#rubric_1 .exe-rubrics-wrapper')).toBeNull();
     expect(document.querySelector('#rubric_1 .exe-rubrics-content')).toBeNull();
-  });
-
-  it('createForm uses common Bootstrap description helper in edition header', () => {
-    document.body.innerHTML = '<div id="rubric_body_create_form"></div>';
-    $exeDevice.ideviceBody = document.getElementById('rubric_body_create_form');
-
-    const getIdeviceDescriptionSpy = vi.fn(() => '<div class="alert alert-info alert-dismissible"></div>');
-    const getTextFieldsetSpy = vi.fn(() => '<fieldset class="text-after-fieldset"></fieldset>');
-    globalThis.$exeDevicesEdition.iDevice.common = {
-      getIdeviceDescription: getIdeviceDescriptionSpy,
-      getTextFieldset: getTextFieldsetSpy,
-    };
-    globalThis.$exeDevicesEdition.iDevice.tabs = { init: vi.fn() };
-    globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab = vi.fn(() => '<div class="scorm-tab"></div>');
-    globalThis.$exeDevicesEdition.iDevice.gamification.scorm.init = vi.fn();
-    globalThis.$exeDevicesEdition.iDevice.gamification.common.getLanguageTab = vi.fn(() => '<div class="lang-tab"></div>');
-
-    vi.spyOn($exeDevice, 'renderRubricTemplateControls').mockImplementation(() => {});
-    vi.spyOn($exeDevice, 'loadPreviousValues').mockImplementation(() => {});
-    vi.spyOn($exeDevice, 'initCSVTabControls').mockImplementation(() => {});
-
-    $exeDevice.createForm();
-
-    expect(getIdeviceDescriptionSpy).toHaveBeenCalledWith(
-      'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
-      'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rubrica.html'
-    );
-    expect($exeDevice.ideviceBody.innerHTML).toContain('alert alert-info alert-dismissible');
-    expect($exeDevice.ideviceBody.innerHTML).not.toContain('exe-block-dismissible');
-
-    const csvInput = $exeDevice.ideviceBody.querySelector('#ri_CsvFile');
-    expect(csvInput).not.toBeNull();
-    expect(csvInput.classList.contains('d-none')).toBe(true);
-    const csvTriggerBtn = $exeDevice.ideviceBody.querySelector('button.btn-primary.exe-file-btn[data-exe-file-trigger]');
-    expect(csvTriggerBtn).not.toBeNull();
   });
 
   it('openCellEditModal shows assessment criteria title and performance level from selected cell', () => {
@@ -913,7 +880,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
     it('forwards SCORM fields from stored data to scorm.setValues', () => {
       vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
       const setValuesSpy = vi.spyOn(
-        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        globalThis.$exeIDevicesEdition.iDevice.gamification.scorm,
         'setValues'
       );
 
@@ -933,7 +900,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
     it('passes undefined SCORM fields when absent in stored data', () => {
       vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
       const setValuesSpy = vi.spyOn(
-        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        globalThis.$exeIDevicesEdition.iDevice.gamification.scorm,
         'setValues'
       );
 
@@ -952,7 +919,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     it('does nothing when idevicePreviousData is empty', () => {
       const setValuesSpy = vi.spyOn(
-        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        globalThis.$exeIDevicesEdition.iDevice.gamification.scorm,
         'setValues'
       );
       $exeDevice.idevicePreviousData = '';
@@ -1031,7 +998,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
     });
 
     it('takes the tab with no opt-out', () => {
-      expect(source).toContain('gamification.scorm.getTab($exeDevice.idevicePath)');
+      expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
       expect(source).not.toContain('passScore: false');
     });
   });
@@ -1188,4 +1155,131 @@ describe('rubric minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('rubric edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/rubric/edition/';
+    const tabNames = () =>
+        [...document.querySelectorAll('#ri_IdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`ri_IdeviceForm-panel-${name}`);
+    const stored = (extra = {}) => `
+        <div class="rubric-IDevice">
+            <div class="exe-rubrics-DataGame js-hidden">${escape(
+                JSON.stringify({
+                    typeGame: 'Rubric',
+                    version: 2,
+                    table: {
+                        title: 'Oral presentation',
+                        categories: ['Voice'],
+                        scores: ['Good', 'Poor'],
+                        descriptions: [
+                            [
+                                { text: 'Clear', weight: '2' },
+                                { text: 'Unclear', weight: '1' },
+                            ],
+                        ],
+                    },
+                    i18n: { rubric: 'Scoring guide' },
+                    ...extra,
+                })
+            )}</div>
+            <p class="exe-rubrics-authorship"><span class="author">A teacher</span>. <span class="title"><em>Oral presentation</em></span></p>
+        </div>`;
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        tooltips = new Map();
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn((scope) => {
+                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                    });
+                }),
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        document.body.innerHTML = '<div class="idevice_node rubric" id="rubric-node"><div id="rubricBody"></div></div>';
+        const filename = join(__dirname, 'rubric.js');
+        runInThisContext(readFileSync(filename, 'utf8'), { filename });
+        device = global.$exeDevice;
+        global.attachEditionLifecycle(device);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    const open = (previousData = '') => device.init(document.getElementById('rubricBody'), previousData, PATH);
+
+    it('lays the form out in the shared tabs, and opens on the rubric', () => {
+        open();
+
+        expect(tabNames()).toEqual(['instructions', 'contents', 'after', 'grading', 'texts', 'csv']);
+        expect(document.getElementById('ri_IdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('ri_IdeviceForm-tab-csv').textContent.trim()).toBe('CSV import/export');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        open();
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe('Complete the following rubric');
+        expect(panel('contents').querySelector('#ri_RubricsEditor #ri_CreateNewRubric')).not.toBeNull();
+        expect(panel('contents').querySelector('#ri_TableEditor')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_rubric').value).toBe('Rubric');
+        expect(panel('csv').querySelector('#ri_CsvFile')).not.toBeNull();
+        expect(panel('csv').querySelector('#ri_ExportCsv')).not.toBeNull();
+    });
+
+    it('opens each panel with a single message, and offers no shared windows', () => {
+        open();
+
+        for (const name of ['contents', 'csv']) {
+            expect(panel(name).firstElementChild.classList.contains('alert-info')).toBe(true);
+            expect(panel(name).querySelectorAll('.alert')).toHaveLength(1);
+        }
+        expect(panel('csv').textContent).toContain('You can import rubric data from CSV files.');
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+        expect(document.querySelectorAll('#ri_IdeviceForm .exe-block-info, #ri_IdeviceForm fieldset')).toHaveLength(0);
+    });
+
+    it('keeps the CSV file input behind its button', () => {
+        open();
+
+        expect(document.getElementById('ri_CsvFile').classList.contains('d-none')).toBe(true);
+        expect(panel('csv').querySelector('button.btn-primary.exe-file-btn[data-exe-file-trigger]')).not.toBeNull();
+    });
+
+    it('disposes the tooltips of its tabs when the edition closes', () => {
+        open();
+
+        expect(tooltips.size).toBe(document.querySelectorAll('#ri_IdeviceForm .exe-app-tooltip').length);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('reopens a saved rubric in the Questions tab, with its information and texts', () => {
+        open(stored());
+
+        expect(panel('contents').querySelector('#ri_Table')).not.toBeNull();
+        expect(document.getElementById('ri_ShowRubricInfo').checked).toBe(true);
+        expect(document.getElementById('ri_RubricAuthor').value).toBe('A teacher');
+        expect(document.getElementById('ci18n_rubric').value).toBe('Scoring guide');
+    });
 });

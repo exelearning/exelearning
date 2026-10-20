@@ -178,61 +178,64 @@ var $exeDevice = {
             return;
         }
 
-        const html = `
+        const edition = $exeIDevicesEdition.iDevice,
+            contents = `
+                <div id="ri_RubricsEditor"></div>
+                <div id="ri_TableEditor"></div>
+                <div id="ri_PreviousContent"></div>`,
+            csv = `
+                <div id="ri_CsvTools">
+                    <div class="ri-csv-import">
+                        <form method="POST">
+                            <div class="exe-file-upload" data-exe-upload>
+                                <label for="ri_CsvFile" class="form-label mb-1">${_('Import')}: </label>
+                                <input type="file" id="ri_CsvFile" accept=".csv,text/csv" class="exe-file-input d-none" />
+                                <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_('Choose')}</button>
+                                <span class="exe-file-name" data-exe-file-name>${_('No file selected')}</span>
+                                <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: csv</span>
+                            </div>
+                        </form>
+                    </div>
+                    <p class="mt-3">
+                        ${_('You can export the rubric in CSV format to integrate it into other compatible activities.')}
+                    </p>
+                    <p class="ri-csv-export-actions d-flex align-items-center justify-content-start gap-1 mb-0">
+                        <input type="button" id="ri_ExportCsv" class="btn btn-primary" value="${_('Export CSV')}" />
+                    </p>
+                </div>`,
+            html = `
             <div id="ri_IdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rubrica.html',
                 )}
-
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following rubric'))}
-                    <fieldset class="exe-fieldset ">
-                        <legend><a href="#">${_('Rubric')}</a></legend>
-                        <div>
-                            <div id="ri_RubricsEditor"></div>
-                            <div id="ri_TableEditor"></div>
-                            <div id="ri_PreviousContent"></div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                <div class="exe-form-tab" title="${_('CSV import/export')}">
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('CSV import/export')}</a></legend>
-                        <div id="ri_CsvTools">
-                            <p class="exe-block-info">
-                                ${_('You can import rubric data from CSV files.')}
-                            </p>
-                            <div class="ri-csv-import">
-                                <form method="POST">
-                                    <div class="exe-file-upload" data-exe-upload>
-                                        <label for="ri_CsvFile" class="form-label mb-1">${_('Import')}: </label>
-                                        <input type="file" id="ri_CsvFile" accept=".csv,text/csv" class="exe-file-input d-none" />
-                                        <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_('Choose')}</button>
-                                        <span class="exe-file-name" data-exe-file-name>${_('No file selected')}</span>
-                                        <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: csv</span>
-                                    </div>
-                                </form>
-                            </div>
-                            <p class="exe-block-info mt-3">
-                                ${_('You can export the rubric in CSV format to integrate it into other compatible activities.')}
-                            </p>
-                            <p class="ri-csv-export-actions d-flex align-items-center justify-content-start gap-1 mb-0">
-                                <input type="button" id="ri_ExportCsv" class="btn btn-primary" value="${_('Export CSV')}" />
-                            </p>
-                        </div>
-                    </fieldset>
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${edition.tabs.getHtml('ri_IdeviceForm', {
+                    path: $exeDevice.idevicePath,
+                    instructions: c_('Complete the following rubric'),
+                    contents: contents,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                    info: {
+                        contents: _('Create a rubric or load an example, then complete the criteria, the levels and the descriptors of its table.'),
+                    },
+                    extra: [
+                        {
+                            name: 'csv',
+                            title: _('CSV import/export'),
+                            info: _('You can import rubric data from CSV files.'),
+                            content: csv,
+                        },
+                    ],
+                })}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        edition.tabs.bind('ri_IdeviceForm');
+        edition.gamification.scorm.init();
+        edition.gamification.progressBar.addEvents();
+        edition.gamification.passScore.addEvents();
 
         this.renderRubricTemplateControls();
         this.loadPreviousValues();
@@ -336,19 +339,19 @@ var $exeDevice = {
             $('#eXeIdeviceTextAfter').val(data.textAfter);
         }
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
             data.weighted
         );
 
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: data.passScoreMode,
             passScoreCustom: data.passScoreCustom,
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: data.evaluation,
             evaluationID: data.evaluationID,
         });
@@ -1769,16 +1772,16 @@ var $exeDevice = {
 
         data.i18n = this.collectRubricStringsFromForm();
 
-        var scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        var scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         data.isScorm = scorm.isScorm;
         data.textButtonScorm = scorm.textButtonScorm;
         data.repeatActivity = scorm.repeatActivity;
         data.weighted = $exeDevice.normalizeWeight(scorm.weighted);
-        var passScore = $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        var passScore = $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
         data.passScoreMode = passScore.passScoreMode;
         data.passScoreCustom = passScore.passScoreCustom;
 
-        var progressBar = $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        var progressBar = $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
         data.evaluation = progressBar.evaluation;
         data.evaluationID = progressBar.evaluationID;
