@@ -76,7 +76,8 @@ var $eXeSeleccionaMedias = {
     },
 
     loadGame: function () {
-        $eXeSeleccionaMedias.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeSeleccionaMedias.options.length = $eXeSeleccionaMedias.activities.length;
 
         $eXeSeleccionaMedias.activities.each(function (i) {
             const dl = $('.seleccionamedias-DataGame', this);
@@ -88,7 +89,7 @@ var $eXeSeleccionaMedias = {
             mOption.main = 'slcmpMainContainer-' + i;
             mOption.idevice = 'seleccionamedias-IDevice';
 
-            $eXeSeleccionaMedias.options.push(mOption);
+            $eXeSeleccionaMedias.options[i] = mOption;
 
             const slcmp = $eXeSeleccionaMedias.createInterfaceSelecciona(i);
 
@@ -1088,14 +1089,26 @@ var $eXeSeleccionaMedias = {
         }
     },
 
-    initializeMasonry: function (instance) {
-        // mansory-jq.js is a separate script. The game can lay out before it
-        // has defined $.fn.masonry, and the call then throws.
-        if (!$.fn || typeof $.fn.masonry !== 'function') return;
+    initializeMasonry: function (instance, attempt = 0) {
         const $grid = $('#slcmpMainContainer-' + instance).find(
             '.SLCMP-Multimedia'
         );
-        if (!$grid.length) return;
+        if ($grid.hasClass('SLCMP-ModeTable')) return;
+        // Without the plugin (mansory-jq.js) the cards keep their normal flow
+        // until it finishes loading.
+        if (typeof $grid.masonry !== 'function') {
+            if (attempt < 20) {
+                setTimeout(
+                    () =>
+                        $eXeSeleccionaMedias.initializeMasonry(
+                            instance,
+                            attempt + 1
+                        ),
+                    250
+                );
+            }
+            return;
+        }
         $grid.masonry({
             itemSelector: '.SLCMP-GridItem',
             columnWidth: '.SLCMP-GridItem',
@@ -1105,10 +1118,11 @@ var $eXeSeleccionaMedias = {
         $grid.masonry('layout');
     },
 
-    destroyMasonry: function () {
-        if (!$.fn || typeof $.fn.masonry !== 'function') return;
-        const $grid = $('.SLCMP-Multimedia');
-        if (!$grid.length || !$grid.data('masonry')) return;
+    destroyMasonry: function (instance) {
+        const $grid = $('#slcmpMainContainer-' + instance).find(
+            '.SLCMP-Multimedia'
+        );
+        if (!$grid.data('masonry')) return;
         $grid.masonry('destroy');
     },
 

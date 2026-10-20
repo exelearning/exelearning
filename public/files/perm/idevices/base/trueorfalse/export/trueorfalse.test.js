@@ -47,6 +47,14 @@ describe('trueorfalse iDevice export', () => {
     // skips the legacy migration and goes straight to getQuestions. Before the
     // helper was fixed that returned undefined and the next line read .length
     // off it, taking down the whole activity.
+    // Sentry: "undefined is not an object (evaluating 'msgs.msgTime')" while
+    // rendering an activity whose saved data has no interface texts.
+    it('falls back to the default texts when the saved data has none', () => {
+      const html = $trueorfalse.renderView({ typeGame: 'TrueOrFalse', questionsGame: [] }, false, '{content}', 'tof-1');
+
+      expect(html).toContain($trueorfalse.msgsdefault.msgTime);
+    });
+
     it('normalises missing questions to an empty list', () => {
       let result;
 

@@ -7,8 +7,13 @@ blocked and PDF.js is the only way to show an embedded PDF.
 ## Upstream
 
 - Project: https://github.com/mozilla/pdf.js
-- Version: **4.10.38**
-- Source files: `build/pdf.min.mjs` and `build/pdf.worker.min.mjs`
+- Version: **6.3.289**
+- Source files: `legacy/build/pdf.min.mjs` and `legacy/build/pdf.worker.min.mjs`
+
+The legacy build is required. pdf.js 6's modern build calls
+`Map.prototype.getOrInsertComputed` and `Math.sumPrecise` with no polyfill, so
+preview fails on browsers that do not ship those APIs. The legacy build
+includes the polyfills. `scripts/copy-vendor-libs.js` copies these files.
 
 ## Why the files are named `.js` and not `.mjs`
 
@@ -32,8 +37,9 @@ not from the filename.
 
 ## Updating
 
-1. Copy `build/pdf.min.mjs` → `pdf.min.js` and `build/pdf.worker.min.mjs` →
-   `pdf.worker.min.js` from the new `pdfjs-dist` release.
+1. Copy `legacy/build/pdf.min.mjs` → `pdf.min.js` and
+   `legacy/build/pdf.worker.min.mjs` → `pdf.worker.min.js` from the new
+   `pdfjs-dist` release. Do not copy `build/` (the modern bundles).
 2. Update the version above.
 3. Keep the `.js` extension. `scripts/static-assets-mime.spec.ts` fails the
    build if a `.mjs` file reappears here.

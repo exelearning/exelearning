@@ -1226,7 +1226,7 @@ describe('ProjectManager', () => {
                 expect(global.fetch).toHaveBeenNthCalledWith(
                     2,
                     '/exelearning/api/project/cleanup-import?path=%2Ftmp%2Fproject.elpx',
-                    { method: 'DELETE' },
+                    { method: 'DELETE', credentials: 'include' },
                 );
                 expect(replaceStateSpy).toHaveBeenCalled();
             } finally {
@@ -1855,6 +1855,20 @@ describe('ProjectManager', () => {
             expect(projectManager.initialiceProject).toHaveBeenCalled();
             expect(projectManager.showScreen).toHaveBeenCalled();
             expect(projectManager.setInstallationTypeAttribute).toHaveBeenCalled();
+        });
+
+        it('hands a pending static import file to the app', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+            mockApp.capabilities = { storage: { remote: false } };
+            mockApp.openStaticFile = vi.fn().mockResolvedValue();
+            const file = new File(['x'], 'course.elpx');
+            window.__pendingImportFile = file;
+
+            await projectManager.load();
+
+            expect(mockApp.openStaticFile).toHaveBeenCalledWith(file);
+            expect(window.__pendingImportFile).toBeNull();
         });
 
         it('loads content translations after Yjs initialization', async () => {
