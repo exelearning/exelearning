@@ -1098,7 +1098,7 @@ describe('az-quiz-game edition: shared form tabs', () => {
     });
 
     it('disposes the six option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBe(6);
+        expect(tooltips.size).toBe(12); // Options plus the six shared Grading helpers.
         device.$lifecycle.destroy();
         for (const tooltip of tooltips.values()) {
             expect(tooltip.dispose).toHaveBeenCalledTimes(1);

@@ -260,7 +260,7 @@ describe('puzzle edition: shared form tabs and feedback', () => {
                 common: {
                     initTooltips: vi.fn((scope) => {
                         scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
                         });
                     }),
                 },
@@ -362,7 +362,7 @@ describe('puzzle edition: shared form tabs and feedback', () => {
     });
 
     it('disposes all tooltips when the edition closes', () => {
-        expect(tooltips.size).toBe(10);
+        expect(tooltips.size).toBe(16); // Options plus the six shared Grading helpers.
         device.$lifecycle.destroy();
         for (const tooltip of tooltips.values()) {
             expect(tooltip.dispose).toHaveBeenCalledTimes(1);

@@ -2249,7 +2249,6 @@ var $exeDevice = {
                     return;
                 if (
                     $(e.target).is('#eXeProgressReportID') ||
-                    $(e.target).closest('#eXeProgressReportHelpLnk').length ||
                     $(e.target).closest('.exe-idevice-help-container').length
                 )
                     return;

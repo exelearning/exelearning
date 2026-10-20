@@ -662,7 +662,7 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
             common: {
                 initTooltips: vi.fn((scope) => {
                     scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                        tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
                     });
                 }),
             },
@@ -842,7 +842,7 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
     });
 
     it('disposes all option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBe(13);
+        expect(tooltips.size).toBe(19); // Options plus the six shared Grading helpers.
         device.$lifecycle.destroy();
         for (const tooltip of tooltips.values()) {
             expect(tooltip.dispose).toHaveBeenCalledTimes(1);

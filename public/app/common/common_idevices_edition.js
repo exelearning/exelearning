@@ -217,13 +217,8 @@ var $exeIDevicesEdition = {
                                     <div class="d-flex align-items-center flex-nowrap gap-2">
                                         <label for="eXeProgressReportID" class="mb-0">${_('Identifier')}:</label>
                                         <input type="text" class="form-control form-control-sm" id="eXeProgressReportID" disabled value="${window.eXeLearning?.app?.project?.odeId || ''}"/>
-                                        <a href="#eXeProgressReportHelp" id="eXeProgressReportHelpLnk" title="${_('Help')}">
-                                            <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" style="width:18px;height:18px;min-width:18px;min-height:18px;max-width:18px;max-height:18px"/>
-                                        </a>
+                                        ${$exeIDevicesEdition.iDevice.common.getHelpTooltip(_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.'))}
                                     </div>
-                                </div>
-                                <div id="eXeProgressReportHelp" class="alert alert-info d-none">
-                                    ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
                                 </div>
                             </div>`;
                 },
@@ -251,83 +246,7 @@ var $exeIDevicesEdition = {
                         var checked = $(this).is(':checked');
                         $('#eXeProgressReportID').prop('disabled', !checked);
                     });
-                    var toggleHelp = function (e) {
-                        e.preventDefault();
-                        $('#eXeProgressReportHelp').toggleClass('d-none');
-                    };
-                    // Delegated on `document`, so it outlives the edition form.
-                    // The legacy namespace still de-duplicates repeated calls;
-                    // the edition owns the registration when one is open, which
-                    // is what removes it on close.
-                    $(document).off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk');
-                    var lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
-                    if (lifecycle) {
-                        lifecycle.on(document, 'click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', toggleHelp);
-                    } else {
-                        $(document).on('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', toggleHelp);
-                    }
-                }
-            },
-            /**
-             * Collapsible help notes, the pattern the progress report has always
-             * used: a small icon that toggles a note below the control.
-             *
-             * The Grading tab needs six of them, and the alternative was six
-             * copies of the same anchor, the same inline sizing and the same
-             * delegated handler.
-             */
-            help: {
-
-                /**
-                 * @param {string} id Identifier of the note this opens.
-                 * @param {string} [path] The iDevice's asset path. Without it
-                 * no icon is rendered, rather than one pointing at nothing.
-                 * @returns {string} The icon markup, or '' when there is no path.
-                 */
-                icon: function (id, path) {
-                    if (!path) return '';
-                    return `<a href="#${id}" id="${id}Lnk" title="${_('Help')}">
-                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" style="width:18px;height:18px;min-width:18px;min-height:18px;max-width:18px;max-height:18px"/>
-                            </a>`;
-                },
-
-                /**
-                 * @param {string} id Identifier the icon points at.
-                 * @param {string[]} paragraphs Text of the note.
-                 * @returns {string} The note markup, closed.
-                 */
-                note: function (id, paragraphs) {
-                    const body = paragraphs
-                        .map((text, index) => `<p class="${index === paragraphs.length - 1 ? 'mb-0' : 'mb-2'}">${text}</p>`)
-                        .join('');
-                    return `<div id="${id}" class="alert alert-info d-none mt-2">${body}</div>`;
-                },
-
-                /**
-                 * Wire an icon to its note.
-                 *
-                 * Delegated and namespaced because addEvents runs again on
-                 * every re-render: a direct handler would stack up one copy per
-                 * render, and the note would flip once per copy -- i.e. appear
-                 * not to toggle at all.
-                 *
-                 * @param {string} id Identifier of the note.
-                 */
-                bind: function (id) {
-                    const event = `click.${id}`;
-                    const selector = `#${id}Lnk`;
-                    const toggleHelp = function (e) {
-                        e.preventDefault();
-                        $(`#${id}`).toggleClass('d-none');
-                    };
-                    // De-duplicate re-renders and release the document handler when the edition closes.
-                    $(document).off(event, selector);
-                    const lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
-                    if (lifecycle) {
-                        lifecycle.on(document, event, selector, toggleHelp);
-                    } else {
-                        $(document).on(event, selector, toggleHelp);
-                    }
+                    $exeIDevicesEdition.iDevice.common.initHelpTooltips(document.querySelector('.exe-progress-report-wrapper'));
                 }
             },
             /**
@@ -368,12 +287,7 @@ var $exeIDevicesEdition = {
                     return isFinite(parsed) ? Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10 : 5;
                 },
 
-                /**
-                 * @param {string} [path] The iDevice's own asset path, for the
-                 * help icon. Without it the icon is left out rather than
-                 * pointing at nothing.
-                 */
-                getContents: function (path) {
+                getContents: function () {
                     var global = $exeIDevicesEdition.iDevice.gamification.passScore.getGlobalValue();
                     return `<div class="exe-pass-score-wrapper" style="flex-basis:100%;width:100%">
                                 <h3 class="exe-evaluation-section-title" id="eXePassScoreLabel">${_('Minimum score to pass the activity')}</h3>
@@ -390,12 +304,11 @@ var $exeIDevicesEdition = {
                                         <label for="eXePassScoreValue" class="sr-av">${_('Minimum score to pass the activity')}</label>
                                         <input type="number" id="eXePassScoreValue" name="eXePassScoreValue" class="form-control form-control-sm" min="0" max="10" step="0.1" value="${global}" style="width:9ch !important;max-width:9ch !important" />
                                     </div>
-                                    ${$exeIDevicesEdition.iDevice.gamification.help.icon('eXePassScoreHelp', path)}
+                                    ${$exeIDevicesEdition.iDevice.common.getHelpTooltip([
+                                        _('Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.'),
+                                        _('Customize: the activity uses its own mark and ignores the project one.'),
+                                    ].join('\n\n'))}
                                 </div>
-                                ${$exeIDevicesEdition.iDevice.gamification.help.note('eXePassScoreHelp', [
-                                    _('Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.'),
-                                    _('Customize: the activity uses its own mark and ignores the project one.'),
-                                ])}
                             </div>`;
                 },
 
@@ -454,7 +367,7 @@ var $exeIDevicesEdition = {
                         $(this).val(passScore.normalize($(this).val()));
                     });
 
-                    $exeIDevicesEdition.iDevice.gamification.help.bind('eXePassScoreHelp');
+                    $exeIDevicesEdition.iDevice.common.initHelpTooltips(document.querySelector('.exe-pass-score-wrapper'));
                 }
             },
             itinerary: {
@@ -760,10 +673,8 @@ var $exeIDevicesEdition = {
                  * tab now composes all three, so every iDevice gets the same
                  * layout for free and none of them lays it out by hand.
                  *
-                 * @param {string} [path] The iDevice's own asset path, needed
-                 * by the progress report for its help icon. Omit it and the
-                 * report is left out -- which is what an iDevice that scores
-                 * without publishing a report wants.
+                 * @param {string} [path] Kept for compatibility: passing the
+                 * iDevice's asset path enables its progress report section.
                  * @param {Object} [options]
                  * @param {boolean} [options.hidebutton=false]
                  * @param {boolean} [options.onlybutton=false]
@@ -777,7 +688,7 @@ var $exeIDevicesEdition = {
                 getContents: function (path, options = {}) {
                     const { hidebutton = false, onlybutton = false, hideautosave = false } = options;
                     const autoSaveClass = hideautosave ? 'd-none' : 'd-flex';
-                    const help = $exeIDevicesEdition.iDevice.gamification.help;
+                    const help = $exeIDevicesEdition.iDevice.common.getHelpTooltip;
                     const buttonClass = hidebutton ? 'd-none' : 'd-flex';
                     const buttonLiClass = hidebutton ? 'd-none' : '';
                     const message = onlybutton ? _("Save the score") : _("Automatically save the score");
@@ -787,26 +698,25 @@ var $exeIDevicesEdition = {
                         ? $exeIDevicesEdition.iDevice.gamification.progressBar.getContents(path)
                         : '';
                     return `
+                        <div class="exe-scorm-wrapper">
                             <h3 class="exe-evaluation-section-title">${_('SCORM')}</h3>
                             <div class="d-flex align-items-center gap-1 mb-3 ml-1">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked />
                                 <label class="form-check-label" for="eXeGameSCORMNoSave">${_("Do not save the score")}</label>
-                                ${help.icon('eXeGameSCORMNoSaveHelp', path)}
+                                ${help([
+                                    _('The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.'),
+                                    _('The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.'),
+                                ].join('\n\n'))}
                             </div>
-                            ${help.note('eXeGameSCORMNoSaveHelp', [
-                                _('The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.'),
-                                _('The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.'),
-                            ])}
                             <div class="${autoSaveClass} align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMAutomatically">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
                                 <label class="form-check-label" for="eXeGameSCORMAutoSave">${message}</label>
                                 <span id="eXeGameSCORgameAuto" class="ms-3 d-none"></span>
-                                ${help.icon('eXeGameSCORMAutoSaveHelp', path)}
+                                ${help([
+                                    _('The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.'),
+                                    _('A learner who leaves halfway still has the work done so far recorded, because the score was already sent.'),
+                                ].join('\n\n'))}
                             </div>
-                            ${hideautosave ? '' : help.note('eXeGameSCORMAutoSaveHelp', [
-                                _('The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.'),
-                                _('A learner who leaves halfway still has the work done so far recorded, because the score was already sent.'),
-                            ])}
                             <div class="${buttonClass} align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
                                 <label class="form-check-label" for="eXeGameSCORMButtonSave">${_("Show a button to save the score")}</label>
@@ -814,12 +724,11 @@ var $exeIDevicesEdition = {
                                     <label for="eXeGameSCORMbuttonText" class="form-label mb-0">${_("Button text")}: </label>
                                     <input type="text" max="100" name="eXeGameSCORMbuttonText" id="eXeGameSCORMbuttonText" value="${_("Save score")}" class="form-control " style="width: auto; min-width: 140px;" />
                                 </span>
-                                ${help.icon('eXeGameSCORMButtonSaveHelp', path)}
+                                ${help([
+                                    _('Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.'),
+                                    _('Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.'),
+                                ].join('\n\n'))}
                             </div>
-                            ${help.note('eXeGameSCORMButtonSaveHelp', [
-                                _('Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.'),
-                                _('Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.'),
-                            ])}
                             <div id="eXeGameSCORMinstructionsAuto" class="mb-3 ml-2 d-none">
                                 <ul class="mb-3">
                                     <li>${_("This will only work when exported as SCORM")}</li>
@@ -835,21 +744,19 @@ var $exeIDevicesEdition = {
                                 <label for="eXeGameSCORMWeight" class="form-label mb-0">${_("Weighted")}: </label>
                                 <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value="100" min="1" max="100" class="form-control" style="width: 9.5ch !important; max-width:9.5ch  !important;" />
                                 <span>%</span>
-                                ${help.icon('eXeGameSCORMWeightHelp', path)}
+                                ${help([
+                                    _('The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.'),
+                                    _('What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.'),
+                                    _('For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.'),
+                                ].join('\n\n'))}
                             </div>
-                            ${help.note('eXeGameSCORMWeightHelp', [
-                                _('The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.'),
-                                _('What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.'),
-                                _('For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.'),
-                            ])}
+                        </div>
                             ${progressReport ? `<h3 class="exe-evaluation-section-title">${_('Progress report')}</h3>${progressReport}` : ''}
                             ${passScoreContents}`;
                 },
 
                 setValues: function (isScorm, textButtonScorm, repeatActivity = true, weighted = 100) {
-                    // The weight help note is hidden with the row it explains
-                    // (see addEvents), and starts closed on every load.
-                    $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMWeightHelp").addClass('d-none');
+                    $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto").addClass('d-none');
 
                     $('#eXeGameSCORMWeight').val(weighted);
 
@@ -891,11 +798,7 @@ var $exeIDevicesEdition = {
                     };
 
                     $('input[type=radio][name="eXeGameSCORM"]').on('change', function () {
-                        // The weight help note sits outside #eXeGameSCORMPercentaje
-                        // (an alert inside that flex row would squeeze the field),
-                        // so hiding the row has to take the note with it --
-                        // otherwise an open note outlives the control it explains.
-                        $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMWeightHelp").addClass('d-none').css('opacity', '');
+                        $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMPercentaje").addClass('d-none').css('opacity', '');
                         switch ($(this).val()) {
                             case '0':
                                 break;
@@ -919,17 +822,7 @@ var $exeIDevicesEdition = {
                         this.value = value;
                     });
 
-                    // The three mode notes stay available whichever mode is
-                    // selected -- the author is comparing them. Only the weight
-                    // note is tied to a control that comes and goes.
-                    [
-                        'eXeGameSCORMNoSaveHelp',
-                        'eXeGameSCORMAutoSaveHelp',
-                        'eXeGameSCORMButtonSaveHelp',
-                        'eXeGameSCORMWeightHelp',
-                    ].forEach(function (id) {
-                        $exeIDevicesEdition.iDevice.gamification.help.bind(id);
-                    });
+                    $exeIDevicesEdition.iDevice.common.initHelpTooltips(document.querySelector('.exe-scorm-wrapper'));
                 },
 
             },

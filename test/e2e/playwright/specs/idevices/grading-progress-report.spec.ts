@@ -32,22 +32,27 @@ for (const device of [
             await addIdevice(page, device.name);
         }
         const form = page.locator(device.form);
-        await form
-            .locator('.exe-form-tabs a')
-            .filter({ hasText: /^Grading$/ })
-            .click();
+        await form.locator('[data-exe-tab="grading"]').click();
         const report = form.locator('#eXeProgressReport');
         const identifier = form.locator('#eXeProgressReportID');
-        const help = form.locator('#eXeProgressReportHelp');
-        const link = form.locator('#eXeProgressReportHelpLnk');
+        const help = form.locator('.exe-progress-report-wrapper .help-content');
+        const information = form.locator('.exe-progress-report-wrapper .exe-idevice-help');
         const reportId = await identifier.inputValue();
 
         for (const enabled of [false, true]) {
             await report.setChecked(enabled);
             await expect(help).toBeHidden();
-            await link.locator('img').click();
+            await information.locator('.info-icon-solid-green').click();
             await expect(help).toBeVisible();
-            await link.click();
+            await expect(information).toHaveAttribute('aria-expanded', 'true');
+            await information.click();
+            await expect(help).toBeVisible();
+            await information.press('Escape');
+            await expect(help).toBeHidden();
+            await expect(information).toHaveAttribute('aria-expanded', 'false');
+            await information.click();
+            await expect(help).toBeVisible();
+            await form.locator('.exe-scorm-wrapper h3').click();
             await expect(help).toBeHidden();
             await expect(report).toBeChecked({ checked: enabled });
             await expect(identifier).toBeEnabled({ enabled });

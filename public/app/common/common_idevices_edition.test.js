@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { useGradingHelpHarness } from './grading-help.test-util.js';
 
 // Setup globals needed BEFORE the script is loaded
 globalThis._ = vi.fn((key) => key);
@@ -51,6 +52,7 @@ const $exeIDevicesEdition = require('./common_idevices_edition.js');
 globalThis.$exeIDevicesEdition = $exeIDevicesEdition;
 
 describe('common_idevices_edition.js', () => {
+  const helpHarness = useGradingHelpHarness();
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -330,6 +332,109 @@ describe('common_idevices_edition.js', () => {
     });
   });
 
+  describe('Grading information component', () => {
+    const grading = () => globalThis.$exeIDevicesEdition.iDevice.gamification;
+    const scopes = [
+      ['#eXeGameSCORMNoSave', 'sends no score to the LMS'],
+      ['#eXeGameSCORMAutoSave', 'reports its score by itself'],
+      ['#eXeGameSCORMButtonSave', 'until the learner presses the button'],
+      ['#eXeGameSCORMWeight', 'proportion between the weights'],
+      ['#eXeProgressReportID', 'You must indicate the ID'],
+      ['#eXePassScoreCustomOptions', 'Global value: the activity uses the mark'],
+    ];
+    const mount = (path = '/idevice/path/', options = {}) => {
+      document.body.innerHTML = grading().scorm.getContents(path, options);
+      grading().scorm.addEvents();
+      grading().progressBar.addEvents();
+      grading().passScore.addEvents();
+    };
+    const informationFor = (selector) => document.querySelector(selector).parentElement.querySelector('.exe-idevice-help');
+    const noteFor = (button) => document.getElementById(button.getAttribute('aria-controls'));
+
+    it.each(scopes)('uses the editor information component beside %s', (selector, explanation) => {
+      mount();
+      const button = informationFor(selector);
+      const note = noteFor(button);
+      const before = grading().scorm.getValues();
+      expect(button.type).toBe('button');
+      expect(button.title).toBe('Information');
+      expect(button.getAttribute('aria-label')).toBe('Information');
+      expect(button.querySelector('.info-icon-solid-green')).not.toBeNull();
+      expect(note.textContent).toContain(explanation);
+      expect(note.classList.contains('help-hidden')).toBe(true);
+      button.click();
+      expect(note.classList.contains('help-hidden')).toBe(false);
+      expect(button.getAttribute('aria-expanded')).toBe('true');
+      button.dispatchEvent(new MouseEvent('mouseleave'));
+      button.click();
+      expect(note.classList.contains('help-hidden')).toBe(false);
+      expect(grading().scorm.getValues()).toEqual(before);
+      button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(note.classList.contains('help-hidden')).toBe(true);
+      expect(button.getAttribute('aria-expanded')).toBe('false');
+      expect(document.querySelector('img[src$="quextIEHelp.png"]')).toBeNull();
+    });
+
+    it('closes the previous explanation when opening another one or clicking elsewhere', () => {
+      mount();
+      const first = informationFor('#eXeGameSCORMNoSave');
+      const second = informationFor('#eXeProgressReportID');
+      first.click();
+      second.click();
+      expect(noteFor(first).classList.contains('help-hidden')).toBe(true);
+      expect(noteFor(second).classList.contains('help-hidden')).toBe(false);
+      document.body.click();
+      expect(noteFor(second).classList.contains('help-hidden')).toBe(true);
+    });
+
+    it('closes weight help when selecting a mode that hides its field', () => {
+      mount();
+      grading().scorm.setValues(1, 'Save', true, 75);
+      const button = informationFor('#eXeGameSCORMWeight');
+      button.click();
+      expect(noteFor(button).classList.contains('help-hidden')).toBe(false);
+      document.getElementById('eXeGameSCORMNoSave').click();
+      expect(noteFor(button).classList.contains('help-hidden')).toBe(true);
+      expect(document.getElementById('eXeGameSCORMPercentaje').classList.contains('d-none')).toBe(true);
+      expect(button.closest('#eXeGameSCORMPercentaje')).not.toBeNull();
+    });
+
+    it('shows information without an asset path and keeps optional controls hidden', () => {
+      mount('', { hideautosave: true, hidebutton: true });
+      expect(document.querySelectorAll('.exe-idevice-help')).toHaveLength(5);
+      expect(document.getElementById('eXeProgressReport')).toBeNull();
+      expect(document.getElementById('eXeGameSCORMAutomatically').classList.contains('d-none')).toBe(true);
+      expect(document.getElementById('eXeGameSCORMblock').classList.contains('d-none')).toBe(true);
+      const button = informationFor('#eXeGameSCORMNoSave');
+      button.click();
+      expect(noteFor(button).classList.contains('help-hidden')).toBe(false);
+      expect(noteFor(button).textContent).toContain('\n\n');
+    });
+
+    it('binds each help once and releases all tooltips when the edition closes', () => {
+      const previousLifecycle = window.$exeEditionLifecycle;
+      const lifecycle = global.attachEditionLifecycle({ name: 'grading-help-test' });
+      try {
+        mount();
+        grading().scorm.addEvents();
+        grading().progressBar.addEvents();
+        grading().passScore.addEvents();
+        const instances = [...helpHarness.instances().values()];
+        expect(instances).toHaveLength(6);
+        const button = informationFor('#eXeProgressReportID');
+        button.click();
+        lifecycle.destroy();
+        instances.forEach((tooltip) => expect(tooltip.dispose).toHaveBeenCalledTimes(1));
+        expect(noteFor(button).classList.contains('help-hidden')).toBe(true);
+        button.click();
+        expect(noteFor(button).classList.contains('help-hidden')).toBe(true);
+      } finally {
+        lifecycle.destroy();
+        window.$exeEditionLifecycle = previousLifecycle;
+      }
+    });
+  });
+
   describe('gamification', () => {
     describe('instructions.getEditor', () => {
       const getEditor = (str) => globalThis.$exeIDevicesEdition.iDevice.gamification.instructions.getEditor(str);
@@ -420,8 +525,6 @@ describe('common_idevices_edition.js', () => {
         const html = progressBar().getContents('/path/to/');
         expect(html).toContain('id="eXeProgressReport"');
         expect(html).toContain('id="eXeProgressReportID"');
-        expect(html).toContain('id="eXeProgressReportHelp"');
-        expect(html).toContain('id="eXeProgressReportHelpLnk"');
         expect(html).toContain('toggle-item');
         expect(html).toContain('toggle-control');
         expect(html).toContain('toggle-input');
@@ -431,8 +534,9 @@ describe('common_idevices_edition.js', () => {
         expect(html).toContain('d-flex align-items-center flex-wrap gap-2');
         expect(html).toContain('d-flex align-items-center flex-nowrap gap-2');
         expect(html).toContain('form-control form-control-sm');
-        expect(html).toContain('alert alert-info d-none');
-        expect(html).toContain('/path/to/quextIEHelp.png');
+        expect(html).toContain('help-content help-hidden');
+        expect(html).toContain('info-icon-solid-green');
+        expect(html).not.toContain('quextIEHelp.png');
       });
 
       it('getContents suggests the project id as the report identifier, and nothing without a project', () => {
@@ -511,29 +615,6 @@ describe('common_idevices_edition.js', () => {
         expect(input.disabled).toBe(true);
       });
 
-      it('addEvents wires a centralized delegated handler for the help toggle', () => {
-        mountHtml();
-        progressBar().addEvents();
-        const help = document.getElementById('eXeProgressReportHelp');
-        const link = document.getElementById('eXeProgressReportHelpLnk');
-        expect(help.classList.contains('d-none')).toBe(true);
-        globalThis.$(link).trigger('click');
-        expect(help.classList.contains('d-none')).toBe(false);
-        globalThis.$(link).trigger('click');
-        expect(help.classList.contains('d-none')).toBe(true);
-      });
-
-      it('addEvents help-toggle handler is idempotent across re-renders', () => {
-        mountHtml();
-        progressBar().addEvents();
-        progressBar().addEvents();
-        progressBar().addEvents();
-        const help = document.getElementById('eXeProgressReportHelp');
-        const link = document.getElementById('eXeProgressReportHelpLnk');
-        globalThis.$(link).trigger('click');
-        expect(help.classList.contains('d-none')).toBe(false);
-      });
-
       it('getContents interpolates eXeLearning.app.project.odeId as default identifier value', () => {
         const previousOdeId = globalThis.eXeLearning.app.project.odeId;
         globalThis.eXeLearning.app.project.odeId = 'PROJECT-123';
@@ -560,7 +641,7 @@ describe('common_idevices_edition.js', () => {
         const html = progressBar().getContents('/path/to/');
         expect(html).toContain('Progress report');
         expect(html).toContain('Identifier');
-        expect(html).toContain('Help');
+        expect(html).toContain('Information');
         expect(html).toContain('You must indicate the ID');
       });
 
@@ -604,15 +685,6 @@ describe('common_idevices_edition.js', () => {
         expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
       });
 
-      it('addEvents help-link click prevents the default link navigation', () => {
-        mountHtml();
-        progressBar().addEvents();
-        const link = document.getElementById('eXeProgressReportHelpLnk');
-        const event = globalThis.$.Event('click');
-        globalThis.$(link).trigger(event);
-        expect(event.isDefaultPrevented()).toBe(true);
-      });
-
       it('addEvents change handler keeps the input value intact when toggling the checkbox', () => {
         mountHtml();
         progressBar().setValues({ evaluation: true, evaluationID: 'KEEPME' });
@@ -623,74 +695,6 @@ describe('common_idevices_edition.js', () => {
         globalThis.$(checkbox).trigger('change');
         expect(input.value).toBe('KEEPME');
         expect(input.disabled).toBe(true);
-      });
-    });
-
-    /**
-     * Extracted when the Grading tab needed its sixth collapsible note: the
-     * alternative was six copies of the same anchor, the same inline sizing and
-     * the same delegated handler.
-     */
-    describe('help', () => {
-      const help = () => globalThis.$exeIDevicesEdition.iDevice.gamification.help;
-
-      it('builds an icon pointing at its note', () => {
-        const icon = help().icon('someHelp', '/idevice/path/');
-
-        expect(icon).toContain('id="someHelpLnk"');
-        expect(icon).toContain('href="#someHelp"');
-        expect(icon).toContain('/idevice/path/quextIEHelp.png');
-      });
-
-      it('renders no icon without a path, rather than one pointing at nothing', () => {
-        expect(help().icon('someHelp')).toBe('');
-        expect(help().icon('someHelp', '')).toBe('');
-      });
-
-      it('builds a note closed, with the last paragraph flush to the bottom', () => {
-        const note = help().note('someHelp', ['first', 'second']);
-
-        expect(note).toContain('id="someHelp"');
-        expect(note).toContain('d-none');
-        expect(note).toContain('<p class="mb-2">first</p>');
-        expect(note).toContain('<p class="mb-0">second</p>');
-      });
-
-      it('gives a single paragraph no trailing margin either', () => {
-        expect(help().note('someHelp', ['only'])).toContain('<p class="mb-0">only</p>');
-      });
-
-      it('toggles the note from its icon', () => {
-        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
-        help().bind('someHelp');
-        const note = document.getElementById('someHelp');
-
-        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
-        expect(note.classList.contains('d-none')).toBe(false);
-        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
-        expect(note.classList.contains('d-none')).toBe(true);
-      });
-
-      it('survives being bound again on every re-render', () => {
-        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
-        help().bind('someHelp');
-        help().bind('someHelp');
-        help().bind('someHelp');
-
-        globalThis.$(document.getElementById('someHelpLnk')).trigger('click');
-
-        // Stacked handlers would flip the note once each and leave it closed.
-        expect(document.getElementById('someHelp').classList.contains('d-none')).toBe(false);
-      });
-
-      it('does not let the link navigate', () => {
-        document.body.innerHTML = help().icon('someHelp', '/p/') + help().note('someHelp', ['text']);
-        help().bind('someHelp');
-        const event = globalThis.$.Event('click');
-
-        globalThis.$(document.getElementById('someHelpLnk')).trigger(event);
-
-        expect(event.isDefaultPrevented()).toBe(true);
       });
     });
 
@@ -887,10 +891,6 @@ describe('common_idevices_edition.js', () => {
        * breaks away from it. The help note says so, like the progress report's.
        */
       describe('help note', () => {
-        const mountWithPath = () => {
-          document.body.innerHTML = passScore().getContents('/idevice/path/');
-        };
-
         it('explains both modes', () => {
           const html = passScore().getContents('/idevice/path/');
 
@@ -898,46 +898,6 @@ describe('common_idevices_edition.js', () => {
           expect(html).toContain('Customize: the activity uses its own mark');
         });
 
-        it('shows the help icon from the iDevice assets', () => {
-          const html = passScore().getContents('/idevice/path/');
-
-          expect(html).toContain('id="eXePassScoreHelpLnk"');
-          expect(html).toContain('/idevice/path/quextIEHelp.png');
-        });
-
-        it('leaves the icon out when the iDevice passes no path', () => {
-          // Better no icon than one pointing at nothing.
-          const html = passScore().getContents();
-
-          expect(html).not.toContain('eXePassScoreHelpLnk');
-          expect(html).toContain('eXePassScoreHelp');
-        });
-
-        it('starts hidden and toggles on click', () => {
-          mountWithPath();
-          passScore().addEvents();
-          const help = document.getElementById('eXePassScoreHelp');
-          const link = document.getElementById('eXePassScoreHelpLnk');
-
-          expect(help.classList.contains('d-none')).toBe(true);
-          globalThis.$(link).trigger('click');
-          expect(help.classList.contains('d-none')).toBe(false);
-          globalThis.$(link).trigger('click');
-          expect(help.classList.contains('d-none')).toBe(true);
-        });
-
-        it('keeps one handler across re-renders', () => {
-          // addEvents runs on every render; a direct handler would stack up and
-          // the note would flip once per copy, i.e. appear not to toggle.
-          mountWithPath();
-          passScore().addEvents();
-          passScore().addEvents();
-          passScore().addEvents();
-
-          globalThis.$(document.getElementById('eXePassScoreHelpLnk')).trigger('click');
-
-          expect(document.getElementById('eXePassScoreHelp').classList.contains('d-none')).toBe(false);
-        });
       });
     });
   });
@@ -2205,8 +2165,7 @@ describe('common_idevices_edition.js', () => {
       });
 
       it('leaves the progress report out when the iDevice passes no path', () => {
-        // The report needs the iDevice's own asset path for its help icon, so
-        // an iDevice that does not offer one does not get the section either.
+        // Passing a path still opts into the progress report for compatibility.
         const result = getContents();
 
         expect(result).not.toContain('eXeProgressReport');
@@ -2220,10 +2179,6 @@ describe('common_idevices_edition.js', () => {
        * and an author reading "%" next to a field naturally assumes otherwise.
        */
       describe('weight help note', () => {
-        const mountTab = () => {
-          document.body.innerHTML = getContents('/idevice/path/');
-        };
-
         it('explains that what counts is the proportion between weights', () => {
           const result = getContents('/idevice/path/');
 
@@ -2232,43 +2187,6 @@ describe('common_idevices_edition.js', () => {
           expect(result).toContain('left out of the calculation');
         });
 
-        it('puts the icon to the right of the weight field', () => {
-          const result = getContents('/idevice/path/');
-          const fieldAt = result.indexOf('id="eXeGameSCORMWeight"');
-          const iconAt = result.indexOf('id="eXeGameSCORMWeightHelpLnk"');
-
-          expect(iconAt).toBeGreaterThan(fieldAt);
-          expect(result).toContain('/idevice/path/quextIEHelp.png');
-        });
-
-        it('starts hidden and toggles on click', () => {
-          mountTab();
-          globalThis.$exeIDevicesEdition.iDevice.gamification.scorm.addEvents();
-          const help = document.getElementById('eXeGameSCORMWeightHelp');
-          const link = document.getElementById('eXeGameSCORMWeightHelpLnk');
-
-          expect(help.classList.contains('d-none')).toBe(true);
-          globalThis.$(link).trigger('click');
-          expect(help.classList.contains('d-none')).toBe(false);
-          globalThis.$(link).trigger('click');
-          expect(help.classList.contains('d-none')).toBe(true);
-        });
-
-        it('is hidden along with the weight field when the score is not saved', () => {
-          // The note lives outside the weight row, so an open note would
-          // otherwise survive the control it explains.
-          mountTab();
-          globalThis.$exeIDevicesEdition.iDevice.gamification.scorm.addEvents();
-          globalThis.$(document.getElementById('eXeGameSCORMWeightHelpLnk')).trigger('click');
-          expect(document.getElementById('eXeGameSCORMWeightHelp').classList.contains('d-none')).toBe(false);
-
-          const noSave = document.getElementById('eXeGameSCORMNoSave');
-          noSave.checked = true;
-          globalThis.$(noSave).trigger('change');
-
-          expect(document.getElementById('eXeGameSCORMPercentaje').classList.contains('d-none')).toBe(true);
-          expect(document.getElementById('eXeGameSCORMWeightHelp').classList.contains('d-none')).toBe(true);
-        });
       });
 
       /**
@@ -2278,34 +2196,6 @@ describe('common_idevices_edition.js', () => {
        * not -- that one is local to the browser).
        */
       describe('mode help notes', () => {
-        const ids = [
-          'eXeGameSCORMNoSaveHelp',
-          'eXeGameSCORMAutoSaveHelp',
-          'eXeGameSCORMButtonSaveHelp',
-        ];
-
-        it('gives every mode an icon beside its radio', () => {
-          const result = getContents('/idevice/path/');
-
-          for (const id of ids) {
-            expect(result).toContain(`id="${id}Lnk"`);
-            expect(result).toContain(`id="${id}"`);
-          }
-        });
-
-        it('places each icon after the radio it explains', () => {
-          const result = getContents('/idevice/path/');
-
-          expect(result.indexOf('eXeGameSCORMNoSaveHelpLnk')).toBeGreaterThan(
-            result.indexOf('id="eXeGameSCORMNoSave"'),
-          );
-          expect(result.indexOf('eXeGameSCORMAutoSaveHelpLnk')).toBeGreaterThan(
-            result.indexOf('id="eXeGameSCORMAutoSave"'),
-          );
-          expect(result.indexOf('eXeGameSCORMButtonSaveHelpLnk')).toBeGreaterThan(
-            result.indexOf('id="eXeGameSCORMButtonSave"'),
-          );
-        });
 
         it('says what each mode actually does', () => {
           const result = getContents('/idevice/path/');
@@ -2319,30 +2209,6 @@ describe('common_idevices_edition.js', () => {
           expect(result).toContain('does not close the activity');
         });
 
-        it('toggles each note independently', () => {
-          document.body.innerHTML = getContents('/idevice/path/');
-          globalThis.$exeIDevicesEdition.iDevice.gamification.scorm.addEvents();
-
-          globalThis.$(document.getElementById('eXeGameSCORMAutoSaveHelpLnk')).trigger('click');
-
-          expect(document.getElementById('eXeGameSCORMAutoSaveHelp').classList.contains('d-none')).toBe(false);
-          expect(document.getElementById('eXeGameSCORMNoSaveHelp').classList.contains('d-none')).toBe(true);
-          expect(document.getElementById('eXeGameSCORMButtonSaveHelp').classList.contains('d-none')).toBe(true);
-        });
-
-        it('keeps the mode notes open when the author switches mode', () => {
-          // Unlike the weight note, these explain options that stay on screen:
-          // the author is comparing them, so switching must not close them.
-          document.body.innerHTML = getContents('/idevice/path/');
-          globalThis.$exeIDevicesEdition.iDevice.gamification.scorm.addEvents();
-          globalThis.$(document.getElementById('eXeGameSCORMNoSaveHelpLnk')).trigger('click');
-
-          const auto = document.getElementById('eXeGameSCORMAutoSave');
-          auto.checked = true;
-          globalThis.$(auto).trigger('change');
-
-          expect(document.getElementById('eXeGameSCORMNoSaveHelp').classList.contains('d-none')).toBe(false);
-        });
       });
 
       it('offers the pass score to every iDevice, with no opt-out', () => {
@@ -3914,7 +3780,7 @@ describe('common_idevices_edition.js', () => {
       closeEdition();
       // Registrations made through the no-lifecycle fallback paths.
       $(document).off(
-        'click.filepicker click.exeProgressReportHelp click.exeFileTrigger change.exeFileInput'
+        'click.filepicker click.exeFileTrigger change.exeFileInput'
       );
     });
 
@@ -3935,73 +3801,6 @@ describe('common_idevices_edition.js', () => {
     });
 
     describe('document handlers', () => {
-      const gradingHelpIds = [
-        'eXePassScoreHelp',
-        'eXeGameSCORMNoSaveHelp',
-        'eXeGameSCORMAutoSaveHelp',
-        'eXeGameSCORMButtonSaveHelp',
-        'eXeGameSCORMWeightHelp',
-      ];
-
-      afterEach(() => {
-        gradingHelpIds.forEach(id => $(document).off('click.' + id));
-        $(document).off('click.gradingHelpProbe');
-      });
-
-      it.each(gradingHelpIds)('releases %s on close and rebinds it for the next edition', id => {
-        const help = iDevice().gamification.help;
-        document.body.innerHTML = help.icon(id, '/idevice/') + help.note(id, ['Help text']);
-        const link = $('#' + id + 'Lnk');
-        const note = $('#' + id);
-        const unrelated = vi.fn();
-        $(document).on('click.gradingHelpProbe', '#' + id + 'Lnk', unrelated);
-
-        openEdition();
-        // A re-render must leave just one toggle.
-        help.bind(id);
-        help.bind(id);
-        const event = $.Event('click');
-        link.trigger(event);
-        expect(event.isDefaultPrevented()).toBe(true);
-        expect(note.hasClass('d-none')).toBe(false);
-
-        closeEdition();
-        link.trigger('click');
-        expect(note.hasClass('d-none')).toBe(false);
-        expect(unrelated).toHaveBeenCalledTimes(2);
-
-        openEdition();
-        help.bind(id);
-        link.trigger('click');
-        expect(note.hasClass('d-none')).toBe(true);
-
-        closeEdition();
-        link.trigger('click');
-        expect(note.hasClass('d-none')).toBe(true);
-        expect(unrelated).toHaveBeenCalledTimes(4);
-      });
-
-      it('drops the progress-report help toggle and keeps unrelated document handlers', () => {
-        document.body.innerHTML = iDevice().gamification.progressBar.getContents('/themes/example/');
-        const unrelated = vi.fn();
-        $(document).on('click.unrelatedProbe', unrelated);
-
-        openEdition();
-        iDevice().gamification.progressBar.addEvents();
-
-        const help = document.getElementById('eXeProgressReportHelp');
-        $('#eXeProgressReportHelpLnk').trigger('click');
-        expect(help.classList.contains('d-none')).toBe(false);
-
-        lifecycle.destroy();
-        $('#eXeProgressReportHelpLnk').trigger('click');
-
-        expect(help.classList.contains('d-none')).toBe(false);
-        expect(unrelated).toHaveBeenCalledTimes(2);
-
-        $(document).off('click.unrelatedProbe');
-      });
-
       it('drops the import file-picker handlers', () => {
         document.body.innerHTML = `
           <div data-exe-upload>

@@ -477,7 +477,7 @@ describe('identify edition: shared form tabs and feedback', () => {
                 common: {
                     initTooltips: vi.fn((scope) => {
                         scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
                         });
                     }),
                 },

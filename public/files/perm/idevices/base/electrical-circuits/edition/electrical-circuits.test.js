@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
+import { useGradingHelpHarness } from '../../../../../../app/common/grading-help.test-util.js';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -49,6 +50,7 @@ describe('electrical-circuits iDevice edition', () => {
     });
 
     describe('progress report help', () => {
+        useGradingHelpHarness();
         let previousGamification;
         let previousLearning;
 
@@ -58,33 +60,34 @@ describe('electrical-circuits iDevice edition', () => {
             const { progressBar, itinerary } =
                 global.$exeIDevicesEdition.iDevice.gamification;
             global.$exeIDevicesEdition.iDevice.gamification = { ...previousGamification, progressBar, itinerary };
-            global.eXeLearning = { app: { project: { odeId: 'report-id' } } };
+            global.eXeLearning = { app: { ...previousLearning.app, project: { odeId: 'report-id' } } };
             document.body.innerHTML = `<div id="electricalCircuitsIdeviceForm">${progressBar.getContents('/idevice/')}</div>`;
             $exeDevice.addEvents();
         });
 
         afterEach(() => {
-            $(document).off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk');
             document.body.innerHTML = '';
             global.$exeIDevicesEdition.iDevice.gamification = previousGamification;
             global.eXeLearning = previousLearning;
         });
 
         it.each([
-            ['link', '#eXeProgressReportHelpLnk', false],
-            ['icon', '#eXeProgressReportHelpLnk img', false],
-            ['link', '#eXeProgressReportHelpLnk', true],
-            ['icon', '#eXeProgressReportHelpLnk img', true],
-        ])('toggles help through the %s (%s), reporting enabled=%s', (_target, selector, enabled) => {
+            ['button', '.exe-progress-report-wrapper .exe-idevice-help', false],
+            ['icon', '.exe-progress-report-wrapper .info-icon-solid-green', false],
+            ['button', '.exe-progress-report-wrapper .exe-idevice-help', true],
+            ['icon', '.exe-progress-report-wrapper .info-icon-solid-green', true],
+        ])('opens information through the %s (%s), reporting enabled=%s', (_target, selector, enabled) => {
             const checkbox = $('#eXeProgressReport').prop('checked', enabled).trigger('change');
             const identifier = $('#eXeProgressReportID');
-            const note = $('#eXeProgressReportHelp');
+            const note = $('.exe-progress-report-wrapper .help-content');
 
-            expect(note.hasClass('d-none')).toBe(true);
-            $(selector).trigger('click');
-            expect(note.hasClass('d-none')).toBe(false);
-            $(selector).trigger('click');
-            expect(note.hasClass('d-none')).toBe(true);
+            expect(note.hasClass('help-hidden')).toBe(true);
+            document.querySelector(selector).click();
+            expect(note.hasClass('help-hidden')).toBe(false);
+            document.querySelector(selector).click();
+            expect(note.hasClass('help-hidden')).toBe(false);
+            document.body.click();
+            expect(note.hasClass('help-hidden')).toBe(true);
             expect(checkbox.prop('checked')).toBe(enabled);
             expect(identifier.prop('disabled')).toBe(!enabled);
             expect(identifier.val()).toBe('report-id');
@@ -1494,7 +1497,7 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
                 common: {
                     initTooltips: vi.fn((scope) => {
                         scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
                         });
                     }),
                 },
@@ -1586,7 +1589,7 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
     });
 
     it('disposes all option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBe(8);
+        expect(tooltips.size).toBe(14); // Options plus the six shared Grading helpers.
         device.$lifecycle.destroy();
         for (const tooltip of tooltips.values()) {
             expect(tooltip.dispose).toHaveBeenCalledTimes(1);
