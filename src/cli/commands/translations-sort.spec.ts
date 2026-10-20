@@ -24,7 +24,6 @@ function makeXlf(targetLang: string, units: { id: string; resname: string; sourc
         `<?xml version="1.0" encoding="utf-8"?>\n` +
         `<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">\n` +
         `  <file source-language="en" target-language="${targetLang}" datatype="plaintext" original="file.ext">\n` +
-        `    <header><tool tool-id="symfony" tool-name="Symfony"/></header>\n` +
         `    <body>\n` +
         body +
         `\n    </body>\n` +
