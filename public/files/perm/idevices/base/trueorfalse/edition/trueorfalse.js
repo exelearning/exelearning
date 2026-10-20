@@ -15,18 +15,10 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'trueorfalse',
     active: 0,
-    numberId: 0,
-    typeActive: 0,
     questionsGame: [],
-    questionsString: [],
-    gameString: {},
-    time: 0,
     typeEdit: -1,
     numberCutCuestion: -1,
-    tofFeedBacks: [],
-    tofVersion: 1,
     clipBoard: '',
-    saving: false,
     id: false,
     ci18n: {},
 
@@ -152,13 +144,6 @@ var $exeDevice = {
         const msgs = this.msgs;
         msgs.msgWriteQuestion = _('Please write the question.');
         msgs.msgOneQuestion = _('Please add at least one question');
-        msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.'
-        );
-        msgs.msgTitleAltImageWarning = _('Accessibility warning');
-        msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
-        );
         msgs.msgCorrect = _('Select the correct answer');
         msgs.msNotScorm = _('SCORM grades can only be saved in Quiz mode');
     },
@@ -170,7 +155,6 @@ var $exeDevice = {
     addQuestion: function () {
         if (!$exeDevice.validateQuestion()) return;
         $exeDevice.typeEdit = -1;
-        $exeDevice.numberId++;
         $exeDevice.clearQuestion();
         $exeDevice.questionsGame.push($exeDevice.getDefaultQuestion());
         $exeDevice.active = $exeDevice.questionsGame.length - 1;
@@ -178,21 +162,6 @@ var $exeDevice = {
         $('#tofENumberQuestion').text($exeDevice.active + 1);
         $('#tofEPaste').hide();
         $('#tofENumQuestions').text($exeDevice.questionsGame.length);
-
-        if (tinyMCE.get('tofEQuestionEditor')) {
-            tinyMCE.get('tofEQuestionEditor').setContent('');
-        }
-        $('#tofEQuestionEditor').val('');
-
-        if (tinyMCE.get('tofEFeedBackEditor')) {
-            tinyMCE.get('tofEFeedBackEditor').setContent('');
-        }
-        $('#tofEFeedBackEditor').val('');
-
-        if (tinyMCE.get('tofESuggestionEditor')) {
-            tinyMCE.get('tofESuggestionEditor').setContent('');
-        }
-        $('#tofESuggestionEditor').val('');
         $exeDevice.updateQuestionsNumber();
     },
 
@@ -539,17 +508,6 @@ var $exeDevice = {
             $exeDevice.showEditor($('#SuggestionDiv'), $('#tofSuggestionToggle'));
         });
         $('#tofEPaste').hide();
-
-        $('#tofShowSolutions').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#tofTimeShowSolutions').prop('disabled', !marcado);
-        });
-
-        $('#tofShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#tofCodeAccess').prop('disabled', !marcado);
-            $('#tofMessageCodeAccess').prop('disabled', !marcado);
-        });
 
         $('#tofEAdd').on('click', function (e) {
             e.preventDefault();
