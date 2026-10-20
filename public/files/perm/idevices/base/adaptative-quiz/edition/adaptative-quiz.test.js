@@ -2319,4 +2319,31 @@ describe('adaptative-quiz edition: shared form tabs', () => {
         });
         expect(device.questionsGame).toHaveLength(6);
     });
+
+    it('names an emptied level with its default name', () => {
+        open();
+        const names = () => [...document.querySelectorAll('#adaptativeQuizDifficulty option')].map((o) => o.textContent);
+
+        $('#adaptativeQuizLevelName2').val('').trigger('change');
+
+        // It used to come out as "Level 2": the defaults were read from msgs.
+        expect(names()).toEqual(['Easy', 'Medium', 'Hard']);
+    });
+
+    it('tells the AI window which lines it could not add, instead of reporting them as added', () => {
+        open();
+        eXe.app.alert.mockClear();
+        // A solution letter beyond the options passes the AI window's pattern.
+        const wrong = '0@0#C#Which is a star?#Sun#Moon';
+
+        expect(device.insertAIContent([wrong])).toEqual({ handledMessaging: true, remainingLines: [wrong] });
+        expect(eXe.app.alert).toHaveBeenLastCalledWith('Sorry, wrong file format');
+
+        expect(device.insertAIContent(['0@0#A#Which is a star?#Sun#Moon', wrong])).toEqual({
+            handledMessaging: true,
+            remainingLines: [wrong],
+        });
+        expect(eXe.app.alert).toHaveBeenLastCalledWith(`The following lines are invalid:\n\n${wrong}`);
+        expect(device.questionsGame.map((q) => q.question)).toEqual(['Which is a star?']);
+    });
 });

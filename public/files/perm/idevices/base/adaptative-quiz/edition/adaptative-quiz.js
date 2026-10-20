@@ -747,18 +747,12 @@ var $exeDevice = {
      */
     getLevelNames: function () {
         const names = [];
+        // The defaults of the name fields. They used to be read from msgs,
+        // which never had them, so an emptied name came out as "Level n".
+        const defaults = [_('Easy'), _('Medium'), _('Hard'), _('Expert'), _('Master')];
         for (let i = 1; i <= this.numLevels; i++) {
             const $input = $('#adaptativeQuizLevelName' + i);
-            const fallback = i === 1
-                ? this.msgs.msgLevelEasy
-                : i === 2
-                    ? this.msgs.msgLevelMedium
-                    : i === 3
-                        ? this.msgs.msgLevelHard
-                        : i === 4
-                            ? this.msgs.msgLevelExpert
-                            : this.msgs.msgLevelMaster;
-            const name = ($input.val() || fallback || ('Level ' + i)).toString();
+            const name = ($input.val() || defaults[i - 1] || ('Level ' + i)).toString();
             names.push(name);
         }
         return names;
@@ -1789,15 +1783,24 @@ var $exeDevice = {
     insertAIContent: content => {
         const lines = Array.isArray(content) ? content : [];
         const parsed = [];
+        const rejected = [];
 
         for (let i = 0; i < lines.length; i++) {
             const q = $exeDevice.parseAIQuestionLine(lines[i]);
             if (q) parsed.push(q);
+            else rejected.push(lines[i]);
         }
 
+        // The AI window checks the lines with a broader pattern than this
+        // parser (a solution letter beyond the options passes it), so it used
+        // to announce them all as added. Report here what was left out, and
+        // hand those lines back to the window to be corrected.
         if (parsed.length === 0) {
             eXe.app.alert(_('Sorry, wrong file format'));
-            return;
+            return { handledMessaging: true, remainingLines: rejected };
+        }
+        if (rejected.length > 0) {
+            eXe.app.alert(_('The following lines are invalid:') + '\n\n' + rejected.join('\n'));
         }
 
         // Persist any in-progress edits from the form before mutating the
@@ -1825,6 +1828,7 @@ var $exeDevice = {
         $exeDevice.questionsGame = merged;
         $exeDevice.active = firstNewIdx;
         $exeDevice.showQuestion(firstNewIdx);
+        if (rejected.length > 0) return { handledMessaging: true, remainingLines: rejected };
     },
 
     /**
