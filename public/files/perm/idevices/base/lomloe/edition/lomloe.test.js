@@ -1329,6 +1329,37 @@ function walkAreas(dataset) {
     return out;
 }
 
+// Issue #2587: 1º–3º ESO Mathematics carried the 4º ESO Matemáticas A and B
+// criteria appended to each competencia, so every criterio showed up three times.
+// The four datasets built from the state minimums all inherited it.
+describe.each(['lomloe-ES.json', 'lomloe-ES-EFP.json', 'lomloe-ES-EX.json', 'lomloe-ES-MD.json'])(
+    '%s — criterios de evaluación (issue #2587)',
+    file => {
+        const data = loadDataset(file);
+
+        it('repeats no criterio inside a competencia', () => {
+            const dupes = [];
+            for (const { area, codArea, etapa, nivel } of walkAreas(data)) {
+                for (const [code, comp] of Object.entries(area.competencias_especificas)) {
+                    const descs = comp.criterios_evaluacion.map(c => c.descripcion.trim());
+                    if (new Set(descs).size !== descs.length) dupes.push(`${etapa}/${nivel}/${codArea}/${code}`);
+                }
+            }
+            expect(dupes).toEqual([]);
+        });
+
+        // RD 217/2022 sets the Mathematics 1º–3º ESO criteria jointly: 3,2,3,2,2,3,2,2,2,2.
+        it('keeps the RD 217/2022 criterio count for 1º–3º ESO Mathematics', () => {
+            for (const nivel of ['1º ESO', '2º ESO', '3º ESO']) {
+                const counts = Object.values(data.ESO[nivel].MAT.competencias_especificas).map(
+                    c => c.criterios_evaluacion.length,
+                );
+                expect(counts, nivel).toEqual([3, 2, 3, 2, 2, 3, 2, 2, 2, 2]);
+            }
+        });
+    },
+);
+
 // The 8 LOMLOE competencias clave (bare codes). Infantil links to these
 // rather than to numbered descriptores operativos (which only exist from
 // Primaria onward). See issue #1832 backfill.

@@ -18358,90 +18358,6 @@
                   "CE3",
                   "CCEC4"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE01-CR04",
-                "descripcion": "Reformular problemas matemáticos de forma verbal y gráfica, interpretando los datos, las relaciones entre ellos y las preguntas planteadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE01-CR05",
-                "descripcion": "Seleccionar herramientas y estrategias elaboradas valorando su eficacia e idoneidad en la resolución de problemas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE01-CR06",
-                "descripcion": "Obtener todas las posibles soluciones matemáticas de un problema activando los conocimientos y utilizando las herramientas tecnológicas necesarias.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE01-CR07",
-                "descripcion": "Reformular de forma verbal y gráfica problemas matemáticos, interpretando los datos, las relaciones entre ellos y las preguntas planteadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE01-CR08",
-                "descripcion": "Analizar y seleccionar diferentes herramientas y estrategias elaboradas en la resolución de un mismo problema, valorando su eficiencia.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE01-CR09",
-                "descripcion": "Obtener todas las posibles soluciones matemáticas de un problema movilizando los conocimientos y utilizando las herramientas tecnológicas necesarias.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
               }
             ]
           },
@@ -18464,54 +18380,6 @@
               {
                 "codigo": "ES-EX-ESO1-MAT-CE02-CR02",
                 "descripcion": "Comprobar la validez de las soluciones de un problema y su coherencia en el contexto planteado, evaluando el alcance y repercusión de estas desde diferentes perspectivas (de género, de sostenibilidad, de consumo responsable, etc.).",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE02-CR03",
-                "descripcion": "Comprobar la corrección matemática de las soluciones de un problema.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE02-CR04",
-                "descripcion": "Seleccionar las soluciones óptimas de un problema valorando tanto la corrección matemática como sus implicaciones desde diferentes perspectivas (de género, de sostenibilidad, de consumo responsable…).",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE02-CR05",
-                "descripcion": "Comprobar la corrección matemática de las soluciones de un problema.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE02-CR06",
-                "descripcion": "Justificar las soluciones óptimas de un problema desde diferentes perspectivas (matemática, de género, de sostenibilidad, de consumo responsable…).",
                 "competencias_clave": [
                   "STEM1",
                   "STEM2",
@@ -18565,84 +18433,6 @@
                   "CD5",
                   "CE3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE03-CR04",
-                "descripcion": "Formular, comprobar e investigar conjeturas de forma guiada estudiando patrones, propiedades y relaciones.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE03-CR05",
-                "descripcion": "Crear variantes de un problema dado, modificando alguno de sus datos y observando la relación entre los diferentes resultados obtenidos.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE03-CR06",
-                "descripcion": "Emplear herramientas tecnológicas adecuadas en la investigación y comprobación de conjeturas o problemas.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE03-CR07",
-                "descripcion": "Formular, comprobar e investigar conjeturas de forma guiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE03-CR08",
-                "descripcion": "Plantear variantes de un problema que lleven a una generalización.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE03-CR09",
-                "descripcion": "Emplear herramientas tecnológicas adecuadas en la investigación y comprobación de conjeturas o problemas.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
               }
             ]
           },
@@ -18675,58 +18465,6 @@
                   "CD5",
                   "CE3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE04-CR03",
-                "descripcion": "Reconocer e investigar patrones, organizar datos y descomponer un problema en partes más simples facilitando su interpretación y su tratamiento computacional.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE04-CR04",
-                "descripcion": "Modelizar situaciones y resolver problemas de forma eficaz interpretando, modificando y creando algoritmos sencillos.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE04-CR05",
-                "descripcion": "Generalizar patrones y proporcionar una representación computacional de situaciones problematizadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE04-CR06",
-                "descripcion": "Modelizar situaciones y resolver problemas de forma eficaz interpretando, modificando, generalizando y creando algoritmos.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
               }
             ]
           },
@@ -18748,50 +18486,6 @@
               {
                 "codigo": "ES-EX-ESO1-MAT-CE05-CR02",
                 "descripcion": "Realizar conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE05-CR03",
-                "descripcion": "Deducir relaciones entre los conocimientos y experiencias matemáticas, formando un todo coherente.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE05-CR04",
-                "descripcion": "Analizar y poner en práctica conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE05-CR05",
-                "descripcion": "Deducir relaciones entre los conocimientos y experiencias matemáticas, formando un todo coherente.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE05-CR06",
-                "descripcion": "Analizar y poner en práctica conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
                 "competencias_clave": [
                   "STEM1",
                   "STEM3",
@@ -18847,90 +18541,6 @@
                   "CE3",
                   "CCEC1"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE06-CR04",
-                "descripcion": "Proponer situaciones susceptibles de ser formuladas y resueltas mediante herramientas y estrategias matemáticas, estableciendo y aplicando conexiones entre el mundo real y las matemáticas, y usando los procesos inherentes a la investigación científica y matemática: inferir, medir, comunicar, clasificar y predecir.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE06-CR05",
-                "descripcion": "Identificar y aplicar conexiones coherentes entre las matemáticas y otras materias realizando un análisis crítico.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE06-CR06",
-                "descripcion": "Valorar la aportación de las matemáticas al progreso de la humanidad y su contribución en la superación de los retos que demanda la sociedad actual.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE06-CR07",
-                "descripcion": "Proponer situaciones susceptibles de ser formuladas y resueltas mediante herramientas y estrategias matemáticas, estableciendo y aplicando conexiones entre el mundo real y las matemáticas, y usando los procesos inherentes a la investigación científica y matemática: inferir, medir, comunicar, clasificar y predecir.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE06-CR08",
-                "descripcion": "Analizar y aplicar conexiones coherentes entre las matemáticas y otras materias realizando un análisis crítico.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE06-CR09",
-                "descripcion": "Valorar la aportación de las matemáticas al progreso de la humanidad y su contribución a la superación de los retos que demanda la sociedad actual.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
               }
             ]
           },
@@ -18953,54 +18563,6 @@
               {
                 "codigo": "ES-EX-ESO1-MAT-CE07-CR02",
                 "descripcion": "Elaborar representaciones matemáticas que ayuden en la búsqueda de estrategias de resolución de una situación problematizada.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE07-CR03",
-                "descripcion": "Representar matemáticamente la información más relevante de un problema, conceptos, procedimientos y resultados matemáticos visualizando ideas y estructurando procesos matemáticos.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE07-CR04",
-                "descripcion": "Seleccionar entre diferentes herramientas, incluidas las digitales, y formas de representación (pictórica, gráfica, verbal o simbólica) valorando su utilidad para compartir información.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE07-CR05",
-                "descripcion": "Representar matemáticamente la información más relevante de un problema, conceptos, procedimientos y resultados matemáticos visualizando ideas y estructurando procesos matemáticos.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE07-CR06",
-                "descripcion": "Seleccionar entre diferentes herramientas, incluidas las digitales, y formas de representación (pictórica, gráfica, verbal o simbólica) valorando su utilidad para compartir información.",
                 "competencias_clave": [
                   "STEM3",
                   "CD1",
@@ -19045,66 +18607,6 @@
                   "CE3",
                   "CCEC3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE08-CR03",
-                "descripcion": "Comunicar ideas, conclusiones, conjeturas y razonamientos matemáticos, utilizando diferentes medios, incluidos los digitales, con coherencia, claridad y terminología apropiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE08-CR04",
-                "descripcion": "Reconocer y emplear el lenguaje matemático presente en la vida cotidiana y en diversos contextos comunicando mensajes con contenido matemático con precisión y rigor.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE08-CR05",
-                "descripcion": "Comunicar ideas, conclusiones, conjeturas y razonamientos matemáticos, utilizando diferentes medios, incluidos los digitales, con coherencia, claridad y terminología apropiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE08-CR06",
-                "descripcion": "Reconocer y emplear el lenguaje matemático presente en la vida cotidiana y en diversos contextos comunicando mensajes con contenido matemático con precisión y rigor.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
               }
             ]
           },
@@ -19127,54 +18629,6 @@
               {
                 "codigo": "ES-EX-ESO1-MAT-CE09-CR02",
                 "descripcion": "Mostrar una actitud positiva y perseverante, aceptando la crítica razonada al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE09-CR03",
-                "descripcion": "Identificar y gestionar las emociones propias y desarrollar el autoconcepto matemático generando expectativas positivas ante nuevos retos matemáticos.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE09-CR04",
-                "descripcion": "Mostrar una actitud positiva y perseverante al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas aceptando la crítica razonada.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE09-CR05",
-                "descripcion": "Identificar y gestionar las emociones propias y desarrollar el autoconcepto matemático generando expectativas positivas ante nuevos retos matemáticos.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE09-CR06",
-                "descripcion": "Mostrar una actitud positiva y perseverante al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas aceptando la crítica razonada.",
                 "competencias_clave": [
                   "STEM5",
                   "CPSAA1",
@@ -19206,58 +18660,6 @@
               {
                 "codigo": "ES-EX-ESO1-MAT-CE10-CR02",
                 "descripcion": "Participar en el reparto de tareas que deban desarrollarse en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, asumiendo el rol asignado y responsabilizándose de la propia contribución al equipo.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE10-CR03",
-                "descripcion": "Colaborar activamente y construir relaciones trabajando con las matemáticas en equipos heterogéneos, respetando diferentes opiniones, comunicándose de manera efectiva, pensando de forma crítica y creativa, tomando decisiones y realizando juicios informados.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE10-CR04",
-                "descripcion": "Gestionar el reparto de tareas en el trabajo en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, responsabilizándose del rol asignado y de la propia contribución al equipo.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE10-CR05",
-                "descripcion": "Colaborar activamente y construir relaciones trabajando con las matemáticas en equipos heterogéneos, respetando diferentes opiniones, comunicándose de manera efectiva, pensando de forma crítica y creativa, tomando decisiones y realizando juicios informados.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO1-MAT-CE10-CR06",
-                "descripcion": "Gestionar el reparto de tareas en el trabajo en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, responsabilizándose del rol asignado y de la propia contribución al equipo.",
                 "competencias_clave": [
                   "CCL5",
                   "CP3",
@@ -26226,90 +25628,6 @@
                   "CE3",
                   "CCEC4"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE01-CR04",
-                "descripcion": "Reformular problemas matemáticos de forma verbal y gráfica, interpretando los datos, las relaciones entre ellos y las preguntas planteadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE01-CR05",
-                "descripcion": "Seleccionar herramientas y estrategias elaboradas valorando su eficacia e idoneidad en la resolución de problemas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE01-CR06",
-                "descripcion": "Obtener todas las posibles soluciones matemáticas de un problema activando los conocimientos y utilizando las herramientas tecnológicas necesarias.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE01-CR07",
-                "descripcion": "Reformular de forma verbal y gráfica problemas matemáticos, interpretando los datos, las relaciones entre ellos y las preguntas planteadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE01-CR08",
-                "descripcion": "Analizar y seleccionar diferentes herramientas y estrategias elaboradas en la resolución de un mismo problema, valorando su eficiencia.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE01-CR09",
-                "descripcion": "Obtener todas las posibles soluciones matemáticas de un problema movilizando los conocimientos y utilizando las herramientas tecnológicas necesarias.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
               }
             ]
           },
@@ -26332,54 +25650,6 @@
               {
                 "codigo": "ES-EX-ESO2-MAT-CE02-CR02",
                 "descripcion": "Comprobar la validez de las soluciones de un problema y su coherencia en el contexto planteado, evaluando el alcance y repercusión de estas desde diferentes perspectivas (de género, de sostenibilidad, de consumo responsable, etc.).",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE02-CR03",
-                "descripcion": "Comprobar la corrección matemática de las soluciones de un problema.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE02-CR04",
-                "descripcion": "Seleccionar las soluciones óptimas de un problema valorando tanto la corrección matemática como sus implicaciones desde diferentes perspectivas (de género, de sostenibilidad, de consumo responsable…).",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE02-CR05",
-                "descripcion": "Comprobar la corrección matemática de las soluciones de un problema.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE02-CR06",
-                "descripcion": "Justificar las soluciones óptimas de un problema desde diferentes perspectivas (matemática, de género, de sostenibilidad, de consumo responsable…).",
                 "competencias_clave": [
                   "STEM1",
                   "STEM2",
@@ -26433,84 +25703,6 @@
                   "CD5",
                   "CE3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE03-CR04",
-                "descripcion": "Formular, comprobar e investigar conjeturas de forma guiada estudiando patrones, propiedades y relaciones.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE03-CR05",
-                "descripcion": "Crear variantes de un problema dado, modificando alguno de sus datos y observando la relación entre los diferentes resultados obtenidos.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE03-CR06",
-                "descripcion": "Emplear herramientas tecnológicas adecuadas en la investigación y comprobación de conjeturas o problemas.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE03-CR07",
-                "descripcion": "Formular, comprobar e investigar conjeturas de forma guiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE03-CR08",
-                "descripcion": "Plantear variantes de un problema que lleven a una generalización.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE03-CR09",
-                "descripcion": "Emplear herramientas tecnológicas adecuadas en la investigación y comprobación de conjeturas o problemas.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
               }
             ]
           },
@@ -26543,58 +25735,6 @@
                   "CD5",
                   "CE3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE04-CR03",
-                "descripcion": "Reconocer e investigar patrones, organizar datos y descomponer un problema en partes más simples facilitando su interpretación y su tratamiento computacional.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE04-CR04",
-                "descripcion": "Modelizar situaciones y resolver problemas de forma eficaz interpretando, modificando y creando algoritmos sencillos.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE04-CR05",
-                "descripcion": "Generalizar patrones y proporcionar una representación computacional de situaciones problematizadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE04-CR06",
-                "descripcion": "Modelizar situaciones y resolver problemas de forma eficaz interpretando, modificando, generalizando y creando algoritmos.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
               }
             ]
           },
@@ -26616,50 +25756,6 @@
               {
                 "codigo": "ES-EX-ESO2-MAT-CE05-CR02",
                 "descripcion": "Realizar conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE05-CR03",
-                "descripcion": "Deducir relaciones entre los conocimientos y experiencias matemáticas, formando un todo coherente.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE05-CR04",
-                "descripcion": "Analizar y poner en práctica conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE05-CR05",
-                "descripcion": "Deducir relaciones entre los conocimientos y experiencias matemáticas, formando un todo coherente.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE05-CR06",
-                "descripcion": "Analizar y poner en práctica conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
                 "competencias_clave": [
                   "STEM1",
                   "STEM3",
@@ -26715,90 +25811,6 @@
                   "CE3",
                   "CCEC1"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE06-CR04",
-                "descripcion": "Proponer situaciones susceptibles de ser formuladas y resueltas mediante herramientas y estrategias matemáticas, estableciendo y aplicando conexiones entre el mundo real y las matemáticas, y usando los procesos inherentes a la investigación científica y matemática: inferir, medir, comunicar, clasificar y predecir.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE06-CR05",
-                "descripcion": "Identificar y aplicar conexiones coherentes entre las matemáticas y otras materias realizando un análisis crítico.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE06-CR06",
-                "descripcion": "Valorar la aportación de las matemáticas al progreso de la humanidad y su contribución en la superación de los retos que demanda la sociedad actual.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE06-CR07",
-                "descripcion": "Proponer situaciones susceptibles de ser formuladas y resueltas mediante herramientas y estrategias matemáticas, estableciendo y aplicando conexiones entre el mundo real y las matemáticas, y usando los procesos inherentes a la investigación científica y matemática: inferir, medir, comunicar, clasificar y predecir.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE06-CR08",
-                "descripcion": "Analizar y aplicar conexiones coherentes entre las matemáticas y otras materias realizando un análisis crítico.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE06-CR09",
-                "descripcion": "Valorar la aportación de las matemáticas al progreso de la humanidad y su contribución a la superación de los retos que demanda la sociedad actual.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
               }
             ]
           },
@@ -26821,54 +25833,6 @@
               {
                 "codigo": "ES-EX-ESO2-MAT-CE07-CR02",
                 "descripcion": "Elaborar representaciones matemáticas que ayuden en la búsqueda de estrategias de resolución de una situación problematizada.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE07-CR03",
-                "descripcion": "Representar matemáticamente la información más relevante de un problema, conceptos, procedimientos y resultados matemáticos visualizando ideas y estructurando procesos matemáticos.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE07-CR04",
-                "descripcion": "Seleccionar entre diferentes herramientas, incluidas las digitales, y formas de representación (pictórica, gráfica, verbal o simbólica) valorando su utilidad para compartir información.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE07-CR05",
-                "descripcion": "Representar matemáticamente la información más relevante de un problema, conceptos, procedimientos y resultados matemáticos visualizando ideas y estructurando procesos matemáticos.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE07-CR06",
-                "descripcion": "Seleccionar entre diferentes herramientas, incluidas las digitales, y formas de representación (pictórica, gráfica, verbal o simbólica) valorando su utilidad para compartir información.",
                 "competencias_clave": [
                   "STEM3",
                   "CD1",
@@ -26913,66 +25877,6 @@
                   "CE3",
                   "CCEC3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE08-CR03",
-                "descripcion": "Comunicar ideas, conclusiones, conjeturas y razonamientos matemáticos, utilizando diferentes medios, incluidos los digitales, con coherencia, claridad y terminología apropiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE08-CR04",
-                "descripcion": "Reconocer y emplear el lenguaje matemático presente en la vida cotidiana y en diversos contextos comunicando mensajes con contenido matemático con precisión y rigor.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE08-CR05",
-                "descripcion": "Comunicar ideas, conclusiones, conjeturas y razonamientos matemáticos, utilizando diferentes medios, incluidos los digitales, con coherencia, claridad y terminología apropiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE08-CR06",
-                "descripcion": "Reconocer y emplear el lenguaje matemático presente en la vida cotidiana y en diversos contextos comunicando mensajes con contenido matemático con precisión y rigor.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
               }
             ]
           },
@@ -26995,54 +25899,6 @@
               {
                 "codigo": "ES-EX-ESO2-MAT-CE09-CR02",
                 "descripcion": "Mostrar una actitud positiva y perseverante, aceptando la crítica razonada al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE09-CR03",
-                "descripcion": "Identificar y gestionar las emociones propias y desarrollar el autoconcepto matemático generando expectativas positivas ante nuevos retos matemáticos.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE09-CR04",
-                "descripcion": "Mostrar una actitud positiva y perseverante al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas aceptando la crítica razonada.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE09-CR05",
-                "descripcion": "Identificar y gestionar las emociones propias y desarrollar el autoconcepto matemático generando expectativas positivas ante nuevos retos matemáticos.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE09-CR06",
-                "descripcion": "Mostrar una actitud positiva y perseverante al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas aceptando la crítica razonada.",
                 "competencias_clave": [
                   "STEM5",
                   "CPSAA1",
@@ -27074,58 +25930,6 @@
               {
                 "codigo": "ES-EX-ESO2-MAT-CE10-CR02",
                 "descripcion": "Participar en el reparto de tareas que deban desarrollarse en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, asumiendo el rol asignado y responsabilizándose de la propia contribución al equipo.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE10-CR03",
-                "descripcion": "Colaborar activamente y construir relaciones trabajando con las matemáticas en equipos heterogéneos, respetando diferentes opiniones, comunicándose de manera efectiva, pensando de forma crítica y creativa, tomando decisiones y realizando juicios informados.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE10-CR04",
-                "descripcion": "Gestionar el reparto de tareas en el trabajo en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, responsabilizándose del rol asignado y de la propia contribución al equipo.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE10-CR05",
-                "descripcion": "Colaborar activamente y construir relaciones trabajando con las matemáticas en equipos heterogéneos, respetando diferentes opiniones, comunicándose de manera efectiva, pensando de forma crítica y creativa, tomando decisiones y realizando juicios informados.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO2-MAT-CE10-CR06",
-                "descripcion": "Gestionar el reparto de tareas en el trabajo en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, responsabilizándose del rol asignado y de la propia contribución al equipo.",
                 "competencias_clave": [
                   "CCL5",
                   "CP3",
@@ -34119,90 +32923,6 @@
                   "CE3",
                   "CCEC4"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE01-CR04",
-                "descripcion": "Reformular problemas matemáticos de forma verbal y gráfica, interpretando los datos, las relaciones entre ellos y las preguntas planteadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE01-CR05",
-                "descripcion": "Seleccionar herramientas y estrategias elaboradas valorando su eficacia e idoneidad en la resolución de problemas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE01-CR06",
-                "descripcion": "Obtener todas las posibles soluciones matemáticas de un problema activando los conocimientos y utilizando las herramientas tecnológicas necesarias.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE01-CR07",
-                "descripcion": "Reformular de forma verbal y gráfica problemas matemáticos, interpretando los datos, las relaciones entre ellos y las preguntas planteadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE01-CR08",
-                "descripcion": "Analizar y seleccionar diferentes herramientas y estrategias elaboradas en la resolución de un mismo problema, valorando su eficiencia.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE01-CR09",
-                "descripcion": "Obtener todas las posibles soluciones matemáticas de un problema movilizando los conocimientos y utilizando las herramientas tecnológicas necesarias.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "STEM4",
-                  "CD2",
-                  "CPSAA5",
-                  "CE3",
-                  "CCEC4"
-                ]
               }
             ]
           },
@@ -34225,54 +32945,6 @@
               {
                 "codigo": "ES-EX-ESO3-MAT-CE02-CR02",
                 "descripcion": "Comprobar la validez de las soluciones de un problema y su coherencia en el contexto planteado, evaluando el alcance y repercusión de estas desde diferentes perspectivas (de género, de sostenibilidad, de consumo responsable, etc.).",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE02-CR03",
-                "descripcion": "Comprobar la corrección matemática de las soluciones de un problema.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE02-CR04",
-                "descripcion": "Seleccionar las soluciones óptimas de un problema valorando tanto la corrección matemática como sus implicaciones desde diferentes perspectivas (de género, de sostenibilidad, de consumo responsable…).",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE02-CR05",
-                "descripcion": "Comprobar la corrección matemática de las soluciones de un problema.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD2",
-                  "CPSAA4",
-                  "CC3",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE02-CR06",
-                "descripcion": "Justificar las soluciones óptimas de un problema desde diferentes perspectivas (matemática, de género, de sostenibilidad, de consumo responsable…).",
                 "competencias_clave": [
                   "STEM1",
                   "STEM2",
@@ -34326,84 +32998,6 @@
                   "CD5",
                   "CE3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE03-CR04",
-                "descripcion": "Formular, comprobar e investigar conjeturas de forma guiada estudiando patrones, propiedades y relaciones.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE03-CR05",
-                "descripcion": "Crear variantes de un problema dado, modificando alguno de sus datos y observando la relación entre los diferentes resultados obtenidos.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE03-CR06",
-                "descripcion": "Emplear herramientas tecnológicas adecuadas en la investigación y comprobación de conjeturas o problemas.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE03-CR07",
-                "descripcion": "Formular, comprobar e investigar conjeturas de forma guiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE03-CR08",
-                "descripcion": "Plantear variantes de un problema que lleven a una generalización.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE03-CR09",
-                "descripcion": "Emplear herramientas tecnológicas adecuadas en la investigación y comprobación de conjeturas o problemas.",
-                "competencias_clave": [
-                  "CCL1",
-                  "STEM1",
-                  "STEM2",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3"
-                ]
               }
             ]
           },
@@ -34436,58 +33030,6 @@
                   "CD5",
                   "CE3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE04-CR03",
-                "descripcion": "Reconocer e investigar patrones, organizar datos y descomponer un problema en partes más simples facilitando su interpretación y su tratamiento computacional.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE04-CR04",
-                "descripcion": "Modelizar situaciones y resolver problemas de forma eficaz interpretando, modificando y creando algoritmos sencillos.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE04-CR05",
-                "descripcion": "Generalizar patrones y proporcionar una representación computacional de situaciones problematizadas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE04-CR06",
-                "descripcion": "Modelizar situaciones y resolver problemas de forma eficaz interpretando, modificando, generalizando y creando algoritmos.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CD5",
-                  "CE3"
-                ]
               }
             ]
           },
@@ -34509,50 +33051,6 @@
               {
                 "codigo": "ES-EX-ESO3-MAT-CE05-CR02",
                 "descripcion": "Realizar conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE05-CR03",
-                "descripcion": "Deducir relaciones entre los conocimientos y experiencias matemáticas, formando un todo coherente.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE05-CR04",
-                "descripcion": "Analizar y poner en práctica conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE05-CR05",
-                "descripcion": "Deducir relaciones entre los conocimientos y experiencias matemáticas, formando un todo coherente.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM3",
-                  "CD2",
-                  "CD3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE05-CR06",
-                "descripcion": "Analizar y poner en práctica conexiones entre diferentes procesos matemáticos aplicando conocimientos y experiencias previas.",
                 "competencias_clave": [
                   "STEM1",
                   "STEM3",
@@ -34608,90 +33106,6 @@
                   "CE3",
                   "CCEC1"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE06-CR04",
-                "descripcion": "Proponer situaciones susceptibles de ser formuladas y resueltas mediante herramientas y estrategias matemáticas, estableciendo y aplicando conexiones entre el mundo real y las matemáticas, y usando los procesos inherentes a la investigación científica y matemática: inferir, medir, comunicar, clasificar y predecir.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE06-CR05",
-                "descripcion": "Identificar y aplicar conexiones coherentes entre las matemáticas y otras materias realizando un análisis crítico.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE06-CR06",
-                "descripcion": "Valorar la aportación de las matemáticas al progreso de la humanidad y su contribución en la superación de los retos que demanda la sociedad actual.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE06-CR07",
-                "descripcion": "Proponer situaciones susceptibles de ser formuladas y resueltas mediante herramientas y estrategias matemáticas, estableciendo y aplicando conexiones entre el mundo real y las matemáticas, y usando los procesos inherentes a la investigación científica y matemática: inferir, medir, comunicar, clasificar y predecir.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE06-CR08",
-                "descripcion": "Analizar y aplicar conexiones coherentes entre las matemáticas y otras materias realizando un análisis crítico.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE06-CR09",
-                "descripcion": "Valorar la aportación de las matemáticas al progreso de la humanidad y su contribución a la superación de los retos que demanda la sociedad actual.",
-                "competencias_clave": [
-                  "STEM1",
-                  "STEM2",
-                  "CD3",
-                  "CD5",
-                  "CC4",
-                  "CE2",
-                  "CE3",
-                  "CCEC1"
-                ]
               }
             ]
           },
@@ -34714,54 +33128,6 @@
               {
                 "codigo": "ES-EX-ESO3-MAT-CE07-CR02",
                 "descripcion": "Elaborar representaciones matemáticas que ayuden en la búsqueda de estrategias de resolución de una situación problematizada.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE07-CR03",
-                "descripcion": "Representar matemáticamente la información más relevante de un problema, conceptos, procedimientos y resultados matemáticos visualizando ideas y estructurando procesos matemáticos.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE07-CR04",
-                "descripcion": "Seleccionar entre diferentes herramientas, incluidas las digitales, y formas de representación (pictórica, gráfica, verbal o simbólica) valorando su utilidad para compartir información.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE07-CR05",
-                "descripcion": "Representar matemáticamente la información más relevante de un problema, conceptos, procedimientos y resultados matemáticos visualizando ideas y estructurando procesos matemáticos.",
-                "competencias_clave": [
-                  "STEM3",
-                  "CD1",
-                  "CD2",
-                  "CD5",
-                  "CE3",
-                  "CCEC4"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE07-CR06",
-                "descripcion": "Seleccionar entre diferentes herramientas, incluidas las digitales, y formas de representación (pictórica, gráfica, verbal o simbólica) valorando su utilidad para compartir información.",
                 "competencias_clave": [
                   "STEM3",
                   "CD1",
@@ -34806,66 +33172,6 @@
                   "CE3",
                   "CCEC3"
                 ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE08-CR03",
-                "descripcion": "Comunicar ideas, conclusiones, conjeturas y razonamientos matemáticos, utilizando diferentes medios, incluidos los digitales, con coherencia, claridad y terminología apropiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE08-CR04",
-                "descripcion": "Reconocer y emplear el lenguaje matemático presente en la vida cotidiana y en diversos contextos comunicando mensajes con contenido matemático con precisión y rigor.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE08-CR05",
-                "descripcion": "Comunicar ideas, conclusiones, conjeturas y razonamientos matemáticos, utilizando diferentes medios, incluidos los digitales, con coherencia, claridad y terminología apropiada.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE08-CR06",
-                "descripcion": "Reconocer y emplear el lenguaje matemático presente en la vida cotidiana y en diversos contextos comunicando mensajes con contenido matemático con precisión y rigor.",
-                "competencias_clave": [
-                  "CCL1",
-                  "CCL3",
-                  "CP1",
-                  "STEM2",
-                  "STEM4",
-                  "CD2",
-                  "CD3",
-                  "CE3",
-                  "CCEC3"
-                ]
               }
             ]
           },
@@ -34888,54 +33194,6 @@
               {
                 "codigo": "ES-EX-ESO3-MAT-CE09-CR02",
                 "descripcion": "Mostrar una actitud positiva y perseverante, aceptando la crítica razonada al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE09-CR03",
-                "descripcion": "Identificar y gestionar las emociones propias y desarrollar el autoconcepto matemático generando expectativas positivas ante nuevos retos matemáticos.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE09-CR04",
-                "descripcion": "Mostrar una actitud positiva y perseverante al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas aceptando la crítica razonada.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE09-CR05",
-                "descripcion": "Identificar y gestionar las emociones propias y desarrollar el autoconcepto matemático generando expectativas positivas ante nuevos retos matemáticos.",
-                "competencias_clave": [
-                  "STEM5",
-                  "CPSAA1",
-                  "CPSAA4",
-                  "CPSAA5",
-                  "CE2",
-                  "CE3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE09-CR06",
-                "descripcion": "Mostrar una actitud positiva y perseverante al hacer frente a las diferentes situaciones de aprendizaje de las matemáticas aceptando la crítica razonada.",
                 "competencias_clave": [
                   "STEM5",
                   "CPSAA1",
@@ -34967,58 +33225,6 @@
               {
                 "codigo": "ES-EX-ESO3-MAT-CE10-CR02",
                 "descripcion": "Participar en el reparto de tareas que deban desarrollarse en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, asumiendo el rol asignado y responsabilizándose de la propia contribución al equipo.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE10-CR03",
-                "descripcion": "Colaborar activamente y construir relaciones trabajando con las matemáticas en equipos heterogéneos, respetando diferentes opiniones, comunicándose de manera efectiva, pensando de forma crítica y creativa, tomando decisiones y realizando juicios informados.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE10-CR04",
-                "descripcion": "Gestionar el reparto de tareas en el trabajo en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, responsabilizándose del rol asignado y de la propia contribución al equipo.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE10-CR05",
-                "descripcion": "Colaborar activamente y construir relaciones trabajando con las matemáticas en equipos heterogéneos, respetando diferentes opiniones, comunicándose de manera efectiva, pensando de forma crítica y creativa, tomando decisiones y realizando juicios informados.",
-                "competencias_clave": [
-                  "CCL5",
-                  "CP3",
-                  "STEM3",
-                  "CPSAA1",
-                  "CPSAA3",
-                  "CC2",
-                  "CC3"
-                ]
-              },
-              {
-                "codigo": "ES-EX-ESO3-MAT-CE10-CR06",
-                "descripcion": "Gestionar el reparto de tareas en el trabajo en equipo, aportando valor, favoreciendo la inclusión, la escucha activa, responsabilizándose del rol asignado y de la propia contribución al equipo.",
                 "competencias_clave": [
                   "CCL5",
                   "CP3",
