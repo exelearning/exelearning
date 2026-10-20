@@ -1,10 +1,13 @@
 /**
  * Unit tests for interactive-video iDevice (edition)
+ *
+ * The form is built with the real shared edition object; only the
+ * application's tooltips and Bootstrap stand in.
  */
 
 /* eslint-disable no-undef */
 
-import { existsSync, readFileSync } from 'fs';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -13,68 +16,48 @@ const __dirname = dirname(__filename);
 
 describe('interactive-video iDevice edition', () => {
   let $exeDevice;
-  let originalCommon;
-  let originalTabs;
-  let originalGamificationCommon;
-  let originalProgressBar;
-  let originalScorm;
+  let previousApp;
+  let tooltips;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
     document.body.innerHTML = '';
-
-    originalCommon = $exeDevicesEdition.iDevice.common;
-    originalTabs = $exeDevicesEdition.iDevice.tabs;
-    originalGamificationCommon = $exeDevicesEdition.iDevice.gamification.common;
-    originalProgressBar = $exeDevicesEdition.iDevice.gamification.progressBar;
-    originalScorm = $exeDevicesEdition.iDevice.gamification.scorm;
-
-    $exeDevicesEdition.iDevice.common = {
-      getTextFieldset: vi.fn(() => ''),
+    previousApp = global.eXeLearning.app;
+    tooltips = new Map();
+    global.eXeLearning.app = {
+      ...previousApp,
+      common: {
+        initTooltips: vi.fn((scope) => {
+          scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+          });
+        }),
+      },
     };
-    $exeDevicesEdition.iDevice.tabs = {
-      init: vi.fn(),
-    };
-    $exeDevicesEdition.iDevice.gamification.common = {
-      ...originalGamificationCommon,
-      getLanguageTab: vi.fn(() => ''),
-    };
-    $exeDevicesEdition.iDevice.gamification.progressBar = {
-      ...originalProgressBar,
-      getContents: vi.fn((path) => `<img id="progress-help-icon" src="${path}quextIEHelp.png">`),
-      addEvents: vi.fn(),
-    };
-    $exeDevicesEdition.iDevice.gamification.scorm = {
-      ...originalScorm,
-      getTab: vi.fn(() => ''),
-      init: vi.fn(),
-    };
+    vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
 
     $exeDevice = global.loadIdevice(join(__dirname, 'interactive-video.js'));
   });
 
   afterEach(() => {
-    $exeDevicesEdition.iDevice.common = originalCommon;
-    $exeDevicesEdition.iDevice.tabs = originalTabs;
-    $exeDevicesEdition.iDevice.gamification.common = originalGamificationCommon;
-    $exeDevicesEdition.iDevice.gamification.progressBar = originalProgressBar;
-    $exeDevicesEdition.iDevice.gamification.scorm = originalScorm;
+    $exeDevice?.$lifecycle?.destroy();
+    global.eXeLearning.app = previousApp;
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     global.$exeDevice = undefined;
     document.body.innerHTML = '';
   });
 
-  it('hands its asset path to the Grading tab, which needs it for the help icon', () => {
-    // The progress report moved into the tab, so this iDevice no longer renders
-    // it. What it still owns is the path the report's help icon is built from,
-    // and the asset that path points at.
+  it('hands its asset path to the Grading tab, which offers the progress report with it', () => {
     const container = document.createElement('div');
     const path = '/files/perm/idevices/base/interactive-video/edition/';
     document.body.appendChild(container);
 
     $exeDevice.init(container, '', path);
 
-    expect($exeDevicesEdition.iDevice.gamification.scorm.getTab).toHaveBeenCalledWith(path);
-    expect(existsSync(join(__dirname, 'quextIEHelp.png'))).toBe(true);
+    expect(
+      document.querySelector('#interactiveVideoIdeviceForm-panel-grading .exe-progress-report-wrapper')
+    ).not.toBeNull();
   });
 
   // The defect: loadPreviousValues called scorm.setValues with three
@@ -92,8 +75,9 @@ describe('interactive-video iDevice edition', () => {
     }
 
     beforeEach(() => {
-      setValues = vi.fn();
-      $exeDevicesEdition.iDevice.gamification.scorm.setValues = setValues;
+      setValues = vi
+        .spyOn($exeIDevicesEdition.iDevice.gamification.scorm, 'setValues')
+        .mockImplementation(() => {});
       previousTop = global.top;
       global.top = { interactiveVideoEditor: {} };
     });
@@ -151,6 +135,124 @@ describe('interactive-video iDevice edition', () => {
    * earn. This is the same criterion the export counts with, so the editor and
    * the runtime cannot disagree.
    */
+  describe('shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/interactive-video/edition/';
+    const panel = (name) => document.getElementById(`interactiveVideoIdeviceForm-panel-${name}`);
+    const stored = `
+      <div class="exe-interactive-video-content-before"><p>Watch carefully</p></div>
+      <div class="exe-interactive-video exe-interactive-video-no-results">
+        <p id="exe-interactive-video-file" class="js-hidden"><a href="files/tmp/video.mp4">mp4</a></p>
+        <script id="exe-interactive-video-contents" type="application/json">{"slides":[],"scoreNIA":true}</script>
+      </div>
+      <div class="exe-interactive-video-content-after"><p>Well done</p></div>`;
+    let previousTop;
+
+    beforeEach(() => {
+      previousTop = global.top;
+      global.top = {};
+    });
+
+    afterEach(() => {
+      global.top = previousTop;
+    });
+
+    const open = (previousData = '') => {
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      $exeDevice.init(container, previousData, PATH);
+    };
+
+    it('lays the form out in the shared tabs, and opens on the video', () => {
+      open();
+      const tabNames = [...document.querySelectorAll('#interactiveVideoIdeviceForm-tabs [data-exe-tab]')].map(
+        (tab) => tab.getAttribute('data-exe-tab')
+      );
+
+      expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading', 'texts']);
+      expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+      open();
+
+      expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+      expect(panel('options').querySelector('#interactiveVideoShowResults')).not.toBeNull();
+      expect(panel('options').querySelector('#interactiveVideoScoreNIA')).not.toBeNull();
+      expect(panel('contents').querySelector('#interactiveVideoType-youtube')).not.toBeNull();
+      expect(panel('contents').querySelector('#interactiveVideoFile')).not.toBeNull();
+      expect(panel('contents').querySelector('#interactiveVideoOpenEditor')).not.toBeNull();
+      expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+      expect(panel('texts').querySelector('#ci18n_start').value).toBe('Start');
+    });
+
+    it('says what goes in the Instructions and Questions tabs, and offers no sharing', () => {
+      open();
+
+      expect(panel('instructions').firstElementChild.textContent).toContain(
+        'Write the text the learners will read before the video.'
+      );
+      expect(panel('contents').firstElementChild.textContent).toContain(
+        'Choose the video, then open the editor to add its slides'
+      );
+      expect(document.querySelectorAll('[data-exe-share], .exe-block-success, #interactiveVideoIdeviceForm fieldset')).toHaveLength(0);
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+      open();
+      const helpButtons = [...panel('options').querySelectorAll('.exe-idevice-help')];
+
+      expect(helpButtons).toHaveLength(2);
+      for (const help of helpButtons) {
+        const row = help.closest('.d-flex');
+        expect(row.lastElementChild.contains(help)).toBe(true);
+        expect(help.getAttribute('aria-label')).toBe(help.title);
+        expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+        const input = row.querySelector('input');
+        const checked = input.checked;
+        help.click();
+        document.getElementById(help.getAttribute('aria-controls')).click();
+        expect(input.checked).toBe(checked);
+      }
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+      open();
+
+      expect(tooltips.size).toBe(document.querySelectorAll('#interactiveVideoIdeviceForm .exe-app-tooltip').length);
+      expect(tooltips.size).toBeGreaterThanOrEqual(2);
+      $exeDevice.$lifecycle.destroy();
+      for (const tooltip of tooltips.values()) {
+        expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+      }
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+      open();
+
+      document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+      expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('reopens the content before the video in the Instructions tab, and saves it where it was', () => {
+      open(stored);
+      expect(document.getElementById('eXeGameInstructions').value).toBe('<p>Watch carefully</p>');
+      const editors = {
+        eXeGameInstructions: '<p>Watch carefully</p>',
+        eXeIdeviceTextAfter: '<p>Well done</p>',
+      };
+      vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+        id in editors ? { getContent: () => editors[id] } : null
+      );
+
+      const html = $exeDevice.save();
+
+      expect(html).toContain('<div class="exe-interactive-video-content-before"><p>Watch carefully</p></div>');
+      expect(html).toContain('<div class="exe-interactive-video-content-after"><p>Well done</p></div>');
+      expect(html).not.toContain('exe-idevice-help');
+    });
+  });
+
   describe('hasScorableSlide', () => {
     const question = { type: 'singleChoice' };
     const picture = { type: 'image' };
@@ -218,7 +320,7 @@ describe('interactive-video iDevice edition', () => {
         // so rendering them again would show each control twice.
         expect(source).not.toContain('passScore.getContents(');
         expect(source).not.toContain('progressBar.getContents(');
-        expect(source).toContain('gamification.scorm.getTab(');
+        expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
     });
 
     it('restores the control when the iDevice is reopened', () => {
@@ -265,6 +367,7 @@ describe('interactive-video iDevice edition', () => {
       });
       window.__EXE_STATIC_MODE__ = true;
       global.bootstrap = {
+        Tooltip: { getInstance: (button) => tooltips.get(button) },
         Modal: function () {
           return {
             show: vi.fn(() => {

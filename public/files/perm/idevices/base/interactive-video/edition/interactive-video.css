@@ -6,21 +6,13 @@
  *
  * License: http://creativecommons.org/licenses/by-sa/4.0/
  */
-#node-content #interactiveVideoIdeviceFormTabs {
-    margin-bottom: 0;
-}
-
-#interactiveVideoEditor_header_hd-textEl {
-    padding: 10px;
-}
-
 #interactiveVideoEditorOpener,
 #interactiveVideo-youtube,
 #interactiveVideo-mediateca {
     display: none;
 }
 
-input[name="interactiveVideoType"] {
+#interactiveVideoContents input[name="interactiveVideoType"] {
     margin-left: 2em;
     vertical-align: top;
 }
@@ -48,43 +40,6 @@ input[name="interactiveVideoType"] {
     color: #666;
 }
 
-
-#interactiveVideoIdeviceFormTab1 p:first-child {
-    margin-top: 0;
-}
-
-#interactiveVideoIdeviceFormTab1 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
-}
-
-#interactiveVideoIdeviceFormTab1>* {
-    flex: 0 0 48%;
-}
-
-#interactiveVideoIdeviceFormTab1> :first-child {
-    flex: 0 0 100%;
-}
-
-
-@media screen and (max-width:720px) {
-    #interactiveVideoIdeviceFormTab1>* {
-        flex: 0 0 100%;
-    }
-}
-
-#interactiveVideoIdeviceFormTab1 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #0BA1A1;
-    font-weight: 500;
-}
-
-#interactiveVideoIdeviceFormTab1 input {
-    width: 100%;
-}
-
 .flexDisplay {
     display: flex;
     justify-content: flex-start;
@@ -92,11 +47,12 @@ input[name="interactiveVideoType"] {
     gap: 0.3em
 }
 
-/* To review */
-.idevice_node.interactive-video[mode="edition"] label {
+#interactiveVideoOptions label,
+#interactiveVideoContents label {
     margin-right: 0.15em !important;
 }
 
-.idevice_node.interactive-video[mode="edition"] input:is([type="checkbox"], [type="radio"], [type="number"]) {
+#interactiveVideoOptions input:is([type="checkbox"], [type="radio"], [type="number"]),
+#interactiveVideoContents input:is([type="checkbox"], [type="radio"], [type="number"]) {
     margin-right: 0.15em !important;
 }
