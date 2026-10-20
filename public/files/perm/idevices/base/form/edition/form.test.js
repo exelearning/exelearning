@@ -421,12 +421,6 @@ describe('form iDevice edition', () => {
     });
   });
 
-  describe('iDeviceId', () => {
-    it('has correct iDevice identifier', () => {
-      expect($exeDevice.iDeviceId).toBe('formIdevice');
-    });
-  });
-
   // ============================================
   // DOM Manipulation Tests
   // ============================================

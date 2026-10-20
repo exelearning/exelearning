@@ -8,10 +8,8 @@
  */
 var $exeDevice = {
     scorm: '',
-    iDeviceId: 'formIdevice',
     questionsIds: ['dropdown', 'selection', 'true-false', 'fill'],
     i18n: {},
-    dataIds: [],
     formPreviewId: 'formPreview',
     msgNoQuestionsId: 'msgNoQuestions',
     btnQuestionsTop: 'buttonHideShowQuestionsTop',
@@ -27,16 +25,7 @@ var $exeDevice = {
     checkCapitalizationId: 'checkCapitalization',
     checkStrictQualificationId: 'checkStrictQualification',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
-    questionTopBarId: 'questionTopBar',
     iconActivityId: 'iconActivity',
-    langDropdownHelpId: 'langDropdownHelp',
-    langMultipleSelectionHelpId: 'langMultipleSelectionHelp',
-    langSingleSelectionHelpId: 'langSingleSelectionHelp',
-    langFillHelpId: 'langFillHelp',
-    langTrueFalseHelpId: 'langTrueFalseHelp',
-    langCheckId: 'langChekButton',
-    langResetId: 'langResetButton',
-    langSolutionsId: 'langSolutionsButton',
     iconSelectOne: 'rule',
     iconSelectMultiple: 'checklist_rtl',
     iconTrueFalse: 'rule',
@@ -70,7 +59,6 @@ var $exeDevice = {
         this.refreshTranslations();
         this.setMessagesInfo();
         this.questions = this.generateStringsQuestions(this.questionsIds);
-        this.questionsString = this.questions;
         this.createForm(this.ideviceBody);
         this.setBehaviour();
         this.loadPreviousValues();
@@ -393,10 +381,6 @@ var $exeDevice = {
             '#frmEPercentageQuestions'
         ).value;
         this.time = this.ideviceBody.querySelector('#frmETime').value;
-        this.dataIds.push('eXeFormInstructions');
-        this.dataIds.push('questionsData');
-        this.dataIds.push($exeDevice.checkAddBtnAnswersId);
-        this.dataIds.push('eXeIdeviceTextAfter');
         const fields = this.ci18n,
             i18n = fields;
         for (const i in fields) {
@@ -799,10 +783,6 @@ var $exeDevice = {
     },
 
     setMessagesInfo: function () {
-        this.strings.msgEGeneralSettings = _('General settings');
-        this.strings.msgESCORM = _('SCORM');
-        this.strings.msgELanguageSettings = _('Language settings');
-        this.strings.msgELanguageShare = _('Share');
         this.strings.msgEInstructions = _('Instructions');
         this.strings.msgEActivity = _('Activity');
         this.strings.msgEQuestion = _('Question');
@@ -816,18 +796,15 @@ var $exeDevice = {
         this.strings.msgEAddSelectionQuestion = _(
             'Add a selection question to form'
         );
-        this.strings.msgEAddQuestion = _('Add this question to form');
         this.strings.msgESaveQuestion = _('Save');
         this.strings.msgECancelQuestion = _('Cancel');
         this.strings.msgERemoveQuestion = _('Remove');
         this.strings.msgEFormView = _('Form preview');
         this.strings.msgEText = _('Text');
-        this.strings.msgEQuestionType = _('Question type');
         this.strings.msgEShowHideWord = _('Show/Hide word');
         this.strings.msgEAddOption = _('Add new option');
         this.strings.msgOtherWords = _('Other words');
         this.strings.msgExampleOtherWords = _('cat|dog|fish');
-        this.strings.msgCheck = _('Check');
         this.strings.msgETrue = _('True');
         this.strings.msgEFalse = _('False');
         this.strings.msgNoQuestions = _('No questions in the form');
@@ -861,9 +838,6 @@ var $exeDevice = {
         );
         this.strings.msgInstructionsFillStrictQualification = _(
             `If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.`
-        );
-        this.strings.msgInstructionsFillCapitalize = _(
-            `If this option is checked, answers submitted with case differences will be marked as incorrect.`
         );
         this.strings.msgConfirmRemoveQuestion = _(
             "Are you sure you want to delete this question? This can't be undone."
@@ -1013,7 +987,6 @@ var $exeDevice = {
 
     setBehaviour() {
         const lifecycle = this.$lifecycle;
-        this.behaviourExeTabs();
         this.behaviourButtonHideShowQuestions($exeDevice.btnQuestionsTop);
         this.behaviourButtonAddTrueFalseQuestion(
             $exeDevice.btnAddTrueFalseTop,
@@ -1049,30 +1022,6 @@ var $exeDevice = {
             'beforeend'
         );
         this.behaviourEvaluation();
-        const initToggle = function ($input) {
-            const checked = $input.is(':checked');
-            $input
-                .closest('.toggle-item[role="switch"]')
-                .attr('aria-checked', checked);
-            const targetSel = $input.data('target');
-            if (targetSel) {
-                const $target = $(targetSel);
-                if (checked) {
-                    $target.css('display', 'flex');
-                } else {
-                    $target.hide();
-                }
-            }
-        };
-        $('.toggle-input').each(function () {
-            initToggle($(this));
-        });
-        // Delegated on `document`, which outlives the edition form, so the
-        // lifecycle removes it — under its own namespace — when the editor
-        // closes.
-        this.$lifecycle.on(document, 'change', '.toggle-input', function (event) {
-            initToggle($(event.currentTarget));
-        });
         $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             7,
             $exeDevice.insertQuestions
@@ -1088,7 +1037,6 @@ var $exeDevice = {
                 .text(`${_('Supported formats')}: txt, xml(Moodle)`);
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame').attr('accept', '.txt, .xml');
-            $('#eXeGameExportImport').show();
             $('#eXeGameImportGame').on('change', function (e) {
                 const file = e.target.files[0];
                 if (!file) {
@@ -1125,69 +1073,6 @@ var $exeDevice = {
             $('#eXeGameExportImport').hide();
         }
     },
-    getDefaultLangValues() {
-        let defaultLang = {};
-        defaultLang[_('True/False Help Text:')] = [
-            $exeDevice.langTrueFalseHelpId,
-            this.strings.msgLangTrueFalseHelp,
-        ];
-        defaultLang[_('Fill Help Text:')] = [
-            $exeDevice.langFillHelpId,
-            this.strings.msgLangFillHelp,
-        ];
-        defaultLang[_('Dropdown Help Text:')] = [
-            $exeDevice.langDropdownHelpId,
-            this.strings.msgLangDropdownHelp,
-        ];
-        defaultLang[_('Single Selection Help Text:')] = [
-            $exeDevice.langSingleSelectionHelpId,
-            this.strings.msgLangSingleSelectionHelp,
-        ];
-        defaultLang[_('Multiple Selection Help Text:')] = [
-            $exeDevice.langMultipleSelectionHelpId,
-            this.strings.msgLangMultipleSelectionHelp,
-        ];
-        defaultLang[_('Text for the button to check the answers:')] = [
-            $exeDevice.langCheckId,
-            this.strings.msgLangCheck,
-        ];
-        defaultLang[_('Text for the button to reset the answers:')] = [
-            $exeDevice.langResetId,
-            this.strings.msgLangResetId,
-        ];
-        defaultLang[_('Text for the button to show the solutions:')] = [
-            $exeDevice.langSolutionsId,
-            this.strings.msgLangSolutionsId,
-        ];
-        return defaultLang;
-    },
-
-    getCustomizableLangFields() {
-        const langValues = this.getDefaultLangValues();
-        const fields = Object.entries(langValues)
-            .map(([key, value]) => {
-                return `<div class="lang-option">
-                            <label for="${value[0]}">${key}</label>
-                            ${this.createInputText(value[0], value[1])}
-                        </div>`;
-            })
-            .join('');
-        return `<div class="grid-container">
-                        ${fields}
-                    </div>`;
-    },
-
-    createInstructionsFieldset() {
-        return `<fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${this.strings.msgEInstructions}</a></legend>
-                    <div>
-                    <p id="IdeviceForm_Instructions">
-                        ${this.createTextArea('eXeFormInstructions')}
-                    </p>
-                    </div>
-                </fieldset>`;
-    },
-
     createIconHTML(id, text, title, extraClass) {
         let titleText = title ? title : '';
         let iconClass = extraClass ? extraClass : '';
@@ -1834,15 +1719,6 @@ var $exeDevice = {
         $exeDevice.dataIdQuestionBeforeEdit = '';
     },
 
-    createFormViewFieldset() {
-        return `<fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${this.strings.msgEFormView}</a></legend>
-                    <div>
-                        <ul id="${$exeDevice.formPreviewId}"></ul>
-                    </div>
-                </fieldset>`;
-    },
-
     addQuestionfrmorm(containerId, questionType) {
         const newQuestion = this.createQuestionObject(
             containerId,
@@ -2062,97 +1938,6 @@ var $exeDevice = {
         );
     },
 
-    generateElementQuestionForm(containerId, questionId) {
-        let html = ``;
-        let valueText = ``;
-        let valueInputText = ``;
-        let valueAnswer = ``;
-        let container = $exeDevice.ideviceBody.querySelector(`#${containerId}`);
-        let tinyTextareaId = container.querySelector('TEXTAREA').id;
-        switch (questionId) {
-            case 'dropdown':
-                valueText = $exeDevice.getEditorTinyMCEValue(tinyTextareaId);
-                valueInputText = container.querySelector(
-                    `INPUT[name="${$exeDevice.formPreviewId}InputText"]`
-                ).value;
-                html += this.getProcessTextDropdownQuestion(
-                    valueText,
-                    valueInputText
-                );
-                break;
-            case 'selection':
-                let valueQuestionText =
-                    $exeDevice.getEditorTinyMCEValue(tinyTextareaId);
-                let options =
-                    $exeDevice.ideviceBody.querySelectorAll(
-                        `INPUT[id^=option_]`
-                    );
-                valueAnswer = [];
-                options.forEach((option) => {
-                    valueAnswer.push([
-                        option.checked,
-                        option.parentElement.parentElement.nextElementSibling
-                            .value,
-                    ]);
-                });
-                let optionType = '';
-                if (options.length > 0) {
-                    optionType = options[0].type;
-                }
-
-                html += this.getProcessTextSelectionQuestion(
-                    valueQuestionText,
-                    optionType,
-                    valueAnswer
-                );
-                break;
-            case 'true-false':
-                valueText = $exeDevice.getEditorTinyMCEValue(tinyTextareaId);
-                valueAnswer =
-                    this.capitalizar(
-                        document
-                            .querySelector('input[name="TrueFalseQuestion"]')
-                            .checked.toString()
-                    ) == 'True'
-                        ? 1
-                        : 0;
-                html += this.getProcessTextTrueFalseQuestion(
-                    valueText,
-                    valueAnswer
-                );
-                break;
-            case 'fill':
-                let checkCapitalization = $exeDevice.ideviceBody.querySelector(
-                    `#${$exeDevice.checkCapitalizationId}_${tinyTextareaId}`
-                ).checked;
-                let strictQualification = $exeDevice.ideviceBody.querySelector(
-                    `#${$exeDevice.checkStrictQualificationId}_${tinyTextareaId}`
-                ).checked;
-                valueText = $exeDevice.getEditorTinyMCEValue(tinyTextareaId);
-                html += this.getProcessTextFillQuestion(
-                    valueText,
-                    checkCapitalization,
-                    strictQualification
-                );
-                break;
-            default:
-                break;
-        }
-
-        return html;
-    },
-
-    getHtmlFormQuestionDropdown(visible) {
-        const style = visible ? 'style="display:none;"' : '';
-        return `<div id="dropdownQuestionFormCreation" 
-                         question="dropdown" 
-                         class="questionCreationForm" 
-                         ${style}>
-                        ${this.createQuestionTextareaFieldset('dropdownQuestionTextarea_0', this.strings.msgEText, true, false)}
-                        ${this.createQuestionInputTextFieldset('dropdownQuestionInputText_0', this.strings.msgOtherWords)}
-                    </div>`;
-    },
-
     removeOrAddUnderline(editorId) {
         const editor = tinyMCE.get(editorId);
         if (!editor) return;
@@ -2170,71 +1955,6 @@ var $exeDevice = {
 
             span.parentNode.replaceChild(u, span);
         });
-    },
-
-    createQuestionInputTextFieldset(id, label) {
-        return `<fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${label}</a></legend>
-                        <div><p>
-                            <div id="${id}InputTextContainer" class="question-input-text">
-                                ${this.createInputText(`${id}InputText`, '')}
-                            </div>
-                        </p></div>
-                    </fieldset>`;
-    },
-
-    getHtmlFormQuestionSelection(visible) {
-        const style = visible ? 'style="display:none;"' : '';
-        return `<div id="selectionQuestionFormCreation" 
-                         question="selection" 
-                         class="questionCreationForm" 
-                         ${style}>
-                        ${this.createQuestionTextareaFieldset('selectionQuestionTextarea_0', this.strings.msgEQuestion, false, false)}
-                    </div>`;
-    },
-
-    createQuestionTextareaFieldset(
-        id,
-        label,
-        buttonShowHide = false,
-        radioTrueFalse = false
-    ) {
-        const showHideButton = buttonShowHide
-            ? this.showHideWordButton(`${id}Textarea`)
-            : '';
-        const trueFalseRadios = radioTrueFalse
-            ? this.showTrueFalseRadioButtons(`${id}TrueFalseRadioButtons`)
-            : '';
-        return `<fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${label}</a></legend>
-                        <div><p>
-                            <div id="${id}TextareaContainer" class="questionTextarea">
-                                ${this.createTextArea(`${id}Textarea`)}
-                            </div>
-                            ${showHideButton}
-                            ${trueFalseRadios}
-                        </p></div>
-                    </fieldset>`;
-    },
-
-    getHtmlFormQuestionTrueFalse(visible) {
-        const style = visible ? 'style="display:none;"' : '';
-        return `<div id="trueFalseQuestionFormCreation" 
-                         question="true-false" 
-                         class="questionCreationForm" 
-                         ${style}>
-                        ${this.createQuestionTextareaFieldset('trueFalseQuestionTextarea_0', this.strings.msgEQuestion, false, true)}
-                    </div>`;
-    },
-
-    getHtmlFormQuestionFill(visible) {
-        const style = visible ? 'style="display:none;"' : '';
-        return `<div id="fillQuestionFormCreation" 
-                         question="fill" 
-                         class="questionCreationForm" 
-                         ${style}>
-                        ${this.createQuestionTextareaFieldset('fillQuestionTextarea_0', this.strings.msgEText, true, false)}
-                    </div>`;
     },
 
     showHideWordButton(editorId) {
@@ -2282,32 +2002,10 @@ var $exeDevice = {
                     </div>`;
     },
 
-    behaviourExeTabs() {
-        let exeTabs = document.querySelectorAll('.exe-form-tabs .exe-tab');
-        [].forEach.call(exeTabs, function (tab) {
-            tab.addEventListener('click', function (event) {
-                document
-                    .querySelectorAll('.exe-form-content')
-                    .forEach((content) => {
-                        content.style.display = 'none';
-                    });
-                document
-                    .querySelectorAll('.exe-form-tabs .exe-tab')
-                    .forEach((content) => {
-                        content.classList.remove('exe-form-active-tab');
-                    });
-                tab.classList.add('exe-form-active-tab');
-                document.getElementById(tab.getAttribute('tab')).style.display =
-                    'block';
-            });
-        });
-    },
-
     behaviourEvaluation() {
         const { ideviceBody } = $exeDevice;
         $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
-        const divTime = ideviceBody.querySelector('#frmETimeDiv');
         const percentageQuestions = ideviceBody.querySelector(
             '#frmEPercentageQuestions'
         );
@@ -2924,30 +2622,6 @@ var $exeDevice = {
             feedbackWrongInput.value = questionData.feedbackWrong;
         }
     },
-    createQuestionTextareaFieldset(
-        id,
-        label,
-        buttonShowHide = false,
-        radioTrueFalse = false
-    ) {
-        let html = ``;
-        html += `<fieldset class="exe-fieldset exe-fieldset-closed">`;
-        html += `<legend><a href="#">${label}</a></legend>`;
-        html += `<div><p>`;
-        html += `<div id="${id}TextareaContainer" class="questionTextarea">`;
-        html += this.createTextArea(`${id}Textarea`);
-        html += `</div>`;
-        if (buttonShowHide) html += this.showHideWordButton(`${id}Textarea`);
-        if (radioTrueFalse)
-            html += this.showTrueFalseRadioButtons(
-                `${id}TrueFalseRadioButtons`
-            );
-        html += `</p></div>`;
-        html += `</fieldset>`;
-        html += this.createFeedbackFieldset(id);
-        return html;
-    },
-
     createSuggestionField(id) {
         return `<div class="suggestion-field" style="margin-bottom: 10px;">
                     <label for="${id}Suggestion" style="display: block;  margin-bottom: 5px;">
@@ -3358,7 +3032,4 @@ var $exeDevice = {
         });
     },
 
-    capitalizar(str) {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    },
 };

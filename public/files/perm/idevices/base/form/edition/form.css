@@ -409,22 +409,6 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
     box-shadow: 0px 0px 5px rgba(155, 139, 0);
 }
 
-#formIdeviceForm .grid-container {
-    display: grid;
-    column-gap: 40px;
-    row-gap: 30px;
-    grid-template-columns: repeat(2, minmax(200px, 1fr));
-}
-
-#formIdeviceForm .lang-option {
-    display: flex;
-    flex-direction: column;
-}
-
-#formIdeviceForm .lang-option label {
-    font-weight: 700;
-}
-
 #formIdeviceForm #formPreview_buttonAddOption.question-button {
     color: var(--icon-gray);
     border-color: var(--elements-hover);
