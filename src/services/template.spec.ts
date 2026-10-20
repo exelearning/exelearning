@@ -386,4 +386,15 @@ describe('Template Service', () => {
             expect(acceptedExtensions).toContain('.vtt');
         });
     });
+
+    describe('workarea/access-denied.njk (issue #2499)', () => {
+        it('links the secondary button to /logout so the user can switch accounts', () => {
+            const html = renderTemplate('workarea/access-denied', { basePath: '/web/exelearning' });
+
+            expect(html).toContain('href="/web/exelearning/logout"');
+            expect(html).toContain('>Logout</a>');
+            expect(html).not.toContain('href="/web/exelearning/login"');
+            expect(html).not.toContain('Back to login');
+        });
+    });
 });
