@@ -131,59 +131,42 @@ var $exeDevice = {
 
     // Create the form to insert HTML in the TEXTAREA
     createForm: function () {
-        var html =
-            '\
-			<div id="udlContentForm" class="udl-udl-contentIdevice" >\
-				<p id="udlContentTypeOptions">\
-					<strong>' +
-            _('Type') +
-            ':</strong> \
-					<label for="udlContentType-engagement" class="active"><input type="radio" name="udlContentType" id="udlContentType-engagement" value="engagement" checked="checked" /> ' +
-            _('Engagement') +
-            '</label> \
-					<label for="udlContentType-representation"><input type="radio" name="udlContentType" id="udlContentType-representation" value="representation" /> ' +
-            _('Representation') +
-            '</label> \
-					<label for="udlContentType-expression"><input type="radio" name="udlContentType" id="udlContentType-expression" value="expression" /> ' +
-            _('Action & Expression') +
-            '</label> \
-				</p>\
-				<p id="udlContentFormAddBlockWrapper"><a href="#" id="udlContentFormAddBlock" title="' +
-            _('New block') +
-            '">' +
-            _('New block') +
-            '</a></p>\
-				<div id="udlContentFormBlocks"></div>\
-			</div>\
-			<p id="udlContentFormInfo">\
-				<a href="#udlContentFormInfoContent" title="' +
-            _('About this iDevice') +
-            '"><span class="sr-av">' +
-            _('About this iDevice') +
-            '</span></a>\
-				<span id="udlContentFormInfoContent">' +
-            _('Cofinanced by:') +
-            ' <span lang="es"><img src="' +
-            this.idevicePath +
-            'udl-content-logos.png" width="600" height="237" title="FEDER - Consejería de Educación y Deporte - Andalucía se mueve con Europa" alt="Unión Europea - FEDER - Junta de Andalucía - Consejería de Educación y Deporte - Andalucía se mueve con Europa" /></span></span>\
-			</p>\
-		';
-        // Language tab (i18n)
+        var edition = $exeIDevicesEdition.iDevice;
+        var options = `
+            <div id="udlContentTypeOptions" class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="udlContentTypeLabel">
+                <strong id="udlContentTypeLabel">${_('Type')}:</strong>
+                <label for="udlContentType-engagement" class="active mb-0"><input type="radio" name="udlContentType" id="udlContentType-engagement" value="engagement" checked="checked" /> ${_('Engagement')}</label>
+                <label for="udlContentType-representation" class="mb-0"><input type="radio" name="udlContentType" id="udlContentType-representation" value="representation" /> ${_('Representation')}</label>
+                <label for="udlContentType-expression" class="mb-0"><input type="radio" name="udlContentType" id="udlContentType-expression" value="expression" /> ${_('Action & Expression')}</label>
+                ${edition.common.getHelpTooltip(_('The principle of Universal Design for Learning this content supports. It sets the colour of its buttons and titles; choosing a UDL icon for the iDevice also changes it.'))}
+            </div>`;
+        var contents = `
+            <div id="udlContentForm" class="udl-udl-contentIdevice">
+                <p id="udlContentFormAddBlockWrapper"><a href="#" id="udlContentFormAddBlock" title="${_('New block')}">${_('New block')}</a></p>
+                <div id="udlContentFormBlocks"></div>
+            </div>
+            <p id="udlContentFormInfo">
+                <a href="#udlContentFormInfoContent" title="${_('About this iDevice')}"><span class="sr-av">${_('About this iDevice')}</span></a>
+                <span id="udlContentFormInfoContent">${_('Cofinanced by:')} <span lang="es"><img src="${this.idevicePath}udl-content-logos.png" width="600" height="237" title="FEDER - Consejería de Educación y Deporte - Andalucía se mueve con Europa" alt="Unión Europea - FEDER - Junta de Andalucía - Consejería de Educación y Deporte - Andalucía se mueve con Europa" /></span></span>
+            </p>`;
+        // Texts tab (i18n)
         var strs = {};
         for (var i in this.ci18n) {
             strs[i] = _(this.ci18n[i]);
         }
-        var tab =
-            $exeDevicesEdition.iDevice.gamification.common.getLanguageTab(strs);
-        html =
-            '<div id="udlContentEditorWrapper"><div class="exe-form-tab" title="' +
-            _('General settings') +
-            '">' +
-            html +
-            '</div>' +
-            tab +
-            '</div>';
-        this.ideviceBody.innerHTML = html;
+        this.ideviceBody.innerHTML = `
+            <div id="udlContentEditorWrapper">
+                ${edition.tabs.getHtml('udlContentEditorWrapper', {
+                    options: options,
+                    contents: contents,
+                    texts: strs,
+                    share: false,
+                    info: {
+                        contents: _('Write the content in blocks. Each block has a main content and, if you like, an easier-to-read version, an audio and a visual aid; with a button text, it stays hidden until the learner opens it.'),
+                    },
+                })}
+            </div>`;
+        edition.tabs.bind('udlContentEditorWrapper');
         this.addCommonEvents();
         this.loadPreviousValues();
     },
@@ -207,8 +190,6 @@ var $exeDevice = {
             $exeDevice.jsonToForm(data);
             return false;
         });
-        // Enable the tabs
-        $exeDevicesEdition.iDevice.tabs.init('udlContentEditorWrapper');
         // iDevice info
         $('#udlContentFormInfo a').click(function () {
             $('#udlContentFormInfoContent').toggle();
