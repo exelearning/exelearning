@@ -62,45 +62,13 @@ async function addGeogebraIdevice(page: Page): Promise<string> {
 }
 
 /**
- * The iDevice form fieldsets (Instructions, General Settings, Advanced
- * Options, Content after) are accordions, but they do not all start
- * collapsed: ideviceNode.legacyExeFieldsetAction() opens on load every
- * `fieldset.exe-fieldset` that does not carry `exe-fieldset-closed`, and
- * "General Settings" is one of those. Clicking its legend unconditionally
- * would therefore CLOSE it. The URL/Title/Authorship/Size controls all live
- * inside it, so click only when it is collapsed and assert the open state
- * either way.
+ * The URL, the title, the authorship and the size of the activity are in the
+ * Questions tab, which the form opens on. Selecting it again keeps the tests
+ * independent of that default.
  */
-async function openGeneralSettings(page: Page, ideviceId: string): Promise<void> {
-    const isCollapsed = await page.evaluate(id => {
-        const node = document.getElementById(id);
-        const fieldsets = Array.from(node?.querySelectorAll('fieldset.exe-fieldset') || []);
-        const generalSettings = fieldsets.find(fs =>
-            fs.querySelector('legend')?.textContent?.includes('General Settings'),
-        );
-        return generalSettings?.classList.contains('exe-fieldset-closed') ?? false;
-    }, ideviceId);
-
-    if (isCollapsed) {
-        const legend = page
-            .locator(`#${ideviceId} fieldset.exe-fieldset legend`)
-            .filter({ hasText: 'General Settings' })
-            .locator('a');
-        await legend.click();
-    }
-
-    await page.waitForFunction(
-        id => {
-            const node = document.getElementById(id);
-            const fieldsets = Array.from(node?.querySelectorAll('fieldset.exe-fieldset') || []);
-            const generalSettings = fieldsets.find(fs =>
-                fs.querySelector('legend')?.textContent?.includes('General Settings'),
-            );
-            return generalSettings?.classList.contains('exe-fieldset-open') ?? false;
-        },
-        ideviceId,
-        { timeout: 5000 },
-    );
+async function openActivityTab(page: Page): Promise<void> {
+    await page.locator('#eXeAutoGeogebraForm-tab-contents').click();
+    await page.locator('#geogebraActivityURL').waitFor({ state: 'visible', timeout: 5000 });
 }
 
 test.describe('GeoGebra Activity iDevice — display sizing (#2029)', () => {
@@ -126,7 +94,7 @@ test.describe('GeoGebra Activity iDevice — display sizing (#2029)', () => {
 
         const ideviceId = await addGeogebraIdevice(page);
         await editIdevice(page, ideviceId);
-        await openGeneralSettings(page, ideviceId);
+        await openActivityTab(page);
 
         // Regression guard for #2029: the size controls must be visible, not
         // hidden behind Bootstrap's d-none + a matching CSS display:none rule.
@@ -180,12 +148,9 @@ test.describe('GeoGebra Activity iDevice — minimum score notice', () => {
 
         const ideviceId = await addGeogebraIdevice(page);
         await editIdevice(page, ideviceId);
-        await openGeneralSettings(page, ideviceId);
+        await openActivityTab(page);
         await page.locator(`#${ideviceId} #geogebraActivityURL`).fill('VgHhQXCC');
-        await page
-            .locator(`#${ideviceId} .exe-form-tabs a`)
-            .filter({ hasText: /^Grading$/ })
-            .click();
+        await page.locator('#eXeAutoGeogebraForm-tab-grading').click();
         // The save button is the only way this activity reports.
         await page.locator('#eXeGameSCORMButtonSave').check();
         await page.locator('#eXePassScoreCustom').check();
@@ -218,12 +183,9 @@ test.describe('GeoGebra Activity iDevice — progress report', () => {
 
         const ideviceId = await addGeogebraIdevice(page);
         await editIdevice(page, ideviceId);
-        await openGeneralSettings(page, ideviceId);
+        await openActivityTab(page);
         await page.locator(`#${ideviceId} #geogebraActivityURL`).fill('VgHhQXCC');
-        await page
-            .locator(`#${ideviceId} .exe-form-tabs a`)
-            .filter({ hasText: /^Grading$/ })
-            .click();
+        await page.locator('#eXeAutoGeogebraForm-tab-grading').click();
         await page.locator('#eXeProgressReport').check();
         await saveIdevice(page, ideviceId);
 

@@ -1,5 +1,8 @@
 /**
  * Unit tests for GeoGebra activity iDevice (edition)
+ *
+ * The form laid out in the shared tabs is built with the real shared edition
+ * object; only the application's tooltips and Bootstrap stand in.
  */
 
 /* eslint-disable no-undef */
@@ -7,6 +10,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,7 +46,7 @@ describe('geogebra-activity iDevice (edition)', () => {
       <div id="geogebraActivitySCORMoptions" class="d-none"></div>
       <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
       <div id="geogebraActivityWeightDiv" class="d-none"></div>
-      <textarea id="geogebraActivityInstructions"></textarea>
+      <textarea id="eXeGameInstructions"></textarea>
       <textarea id="eXeIdeviceTextAfter"></textarea>
       <span id="geogebraActivityAuthorURL"></span>
       <span id="geogebraActivityTitle"></span>
@@ -80,7 +84,7 @@ describe('geogebra-activity iDevice (edition)', () => {
       <div id="geogebraActivitySCORMoptions" class="d-none"></div>
       <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
       <div id="geogebraActivityWeightDiv" class="d-none"></div>
-      <textarea id="geogebraActivityInstructions"></textarea>
+      <textarea id="eXeGameInstructions"></textarea>
       <textarea id="eXeIdeviceTextAfter"></textarea>
       <span id="geogebraActivityAuthorURL"></span>
       <span id="geogebraActivityTitle"></span>
@@ -109,7 +113,7 @@ describe('geogebra-activity iDevice (edition)', () => {
       <div id="geogebraActivitySCORMoptions" class="d-none"></div>
       <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
       <div id="geogebraActivityWeightDiv" class="d-none"></div>
-      <textarea id="geogebraActivityInstructions"></textarea>
+      <textarea id="eXeGameInstructions"></textarea>
       <textarea id="eXeIdeviceTextAfter"></textarea>
       <span id="geogebraActivityAuthorURL"></span>
       <span id="geogebraActivityTitle"></span>
@@ -138,7 +142,7 @@ describe('geogebra-activity iDevice (edition)', () => {
       <div id="geogebraActivitySCORMoptions" class="d-none"></div>
       <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
       <div id="geogebraActivityWeightDiv" class="d-none"></div>
-      <textarea id="geogebraActivityInstructions"></textarea>
+      <textarea id="eXeGameInstructions"></textarea>
       <textarea id="eXeIdeviceTextAfter"></textarea>
       <span id="geogebraActivityAuthorURL"></span>
       <span id="geogebraActivityTitle"></span>
@@ -167,7 +171,7 @@ describe('geogebra-activity iDevice (edition)', () => {
         <div id="geogebraActivitySCORMoptions" class="d-none"></div>
         <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
         <div id="geogebraActivityWeightDiv" class="d-none"></div>
-        <textarea id="geogebraActivityInstructions"></textarea>
+        <textarea id="eXeGameInstructions"></textarea>
         <textarea id="eXeIdeviceTextAfter"></textarea>
         <span id="geogebraActivityAuthorURL"></span>
         <span id="geogebraActivityTitle"></span>
@@ -179,28 +183,6 @@ describe('geogebra-activity iDevice (edition)', () => {
         <input id="geogebraActivityHeight" />
       `;
     }
-
-    it('renders createForm() with the size controls visible (not hidden)', () => {
-      document.body.innerHTML = '<div id="geogebra_body_create_form"></div>';
-      $exeDevice.ideviceBody = document.getElementById('geogebra_body_create_form');
-
-      globalThis.$exeDevicesEdition.iDevice.common = {
-        getIdeviceDescription: vi.fn(() => '<div class="alert alert-info"></div>'),
-        getTextFieldset: vi.fn(() => ''),
-      };
-
-      $exeDevice.createForm();
-
-      const sizeBlock = $exeDevice.ideviceBody.querySelector('#geogebraActivitySize');
-      expect(sizeBlock).not.toBeNull();
-      expect(sizeBlock.classList.contains('d-none')).toBe(false);
-      expect(sizeBlock.classList.contains('d-flex')).toBe(true);
-
-      const widthInput = $exeDevice.ideviceBody.querySelector('#geogebraActivityWidth');
-      const heightInput = $exeDevice.ideviceBody.querySelector('#geogebraActivityHeight');
-      expect(widthInput).not.toBeNull();
-      expect(heightInput).not.toBeNull();
-    });
 
     it('restores width and height from saved size classes', () => {
       document.body.innerHTML = buildSizeFieldsDom();
@@ -246,30 +228,28 @@ describe('geogebra-activity iDevice (edition)', () => {
     it('save() emits auto-geogebra-width/height classes for provided values', () => {
       document.body.innerHTML = buildSaveDom({ width: '800', height: '600' });
 
-      const previousEditors = global.tinymce.editors;
-      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+      const tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation(() => ({ getContent: () => '' }));
 
       try {
         const html = $exeDevice.save();
         expect(html).toContain('auto-geogebra-width-800');
         expect(html).toContain('auto-geogebra-height-600');
       } finally {
-        global.tinymce.editors = previousEditors;
+        tinymceGet.mockRestore();
       }
     });
 
     it('save() omits size classes when width and height are left blank', () => {
       document.body.innerHTML = buildSaveDom({ width: '', height: '' });
 
-      const previousEditors = global.tinymce.editors;
-      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+      const tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation(() => ({ getContent: () => '' }));
 
       try {
         const html = $exeDevice.save();
         expect(html).not.toContain('auto-geogebra-width-');
         expect(html).not.toContain('auto-geogebra-height-');
       } finally {
-        global.tinymce.editors = previousEditors;
+        tinymceGet.mockRestore();
       }
     });
 
@@ -278,8 +258,7 @@ describe('geogebra-activity iDevice (edition)', () => {
     it('save() appends the minimum score notice to the evaluation messages', () => {
       document.body.innerHTML = buildSaveDom({ width: '', height: '' });
 
-      const previousEditors = global.tinymce.editors;
-      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+      const tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation(() => ({ getContent: () => '' }));
 
       try {
         const container = document.createElement('div');
@@ -294,7 +273,7 @@ describe('geogebra-activity iDevice (edition)', () => {
         expect(messages[3]).toBe('Save score');
         expect(messages[4]).toBe('Minimum score needed to pass this activity: %s');
       } finally {
-        global.tinymce.editors = previousEditors;
+        tinymceGet.mockRestore();
       }
     });
   });
@@ -317,7 +296,7 @@ describe('geogebra-activity iDevice (edition)', () => {
       // It renders neither control itself any more: the Grading tab does.
       expect(source).not.toContain('passScore.getContents(');
       expect(source).not.toContain('progressBar.getContents(');
-      expect(source).toContain('gamification.scorm.getTab(');
+      expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: \{ hideautosave: true \}/);
     });
 
     it('hides the automatic mode, which this activity cannot do', () => {
@@ -477,4 +456,149 @@ describe('geogebra-activity iDevice (edition)', () => {
       expect(errorMessage).not.toHaveBeenCalled();
     });
   });
+});
+
+describe('geogebra-activity edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/geogebra-activity/edition/';
+    const panel = (name) => document.getElementById(`eXeAutoGeogebraForm-panel-${name}`);
+    const stored = `
+        <div class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-width-800 auto-geogebra-height-600 language-fr showMenuBar auto-geogebra-scale-80 auto-geogebra-evaluation-id-0 auto-geogebra-weight-100">
+            <div class="auto-geogebra-instructions"><p>Move the point</p></div>
+            <div class="auto-geogebra-extra-content"><p>Well done</p></div>
+        </div>`;
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        tooltips = new Map();
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn((scope) => {
+                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                    });
+                }),
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        document.body.innerHTML = '<div id="geogebraBody"></div>';
+        const filename = join(__dirname, 'geogebra-activity.js');
+        runInThisContext(readFileSync(filename, 'utf8'), { filename });
+        device = global.$exeDevice;
+        global.attachEditionLifecycle(device);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    const open = (previousData = '') => device.init(document.getElementById('geogebraBody'), previousData, PATH);
+
+    it('lays the form out in the shared tabs, and opens on the activity', () => {
+        open();
+        const tabNames = [...document.querySelectorAll('#eXeAutoGeogebraForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        open();
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+        expect(panel('options').querySelector('#geogebraActivityLang')).not.toBeNull();
+        expect(panel('options').querySelector('#geogebraActivityShowAuthor')).not.toBeNull();
+        expect(panel('contents').querySelector('#geogebraActivityURL')).not.toBeNull();
+        expect(panel('contents').querySelector('#geogebraActivitySize')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(document.querySelectorAll('[data-exe-share], #eXeAutoGeogebraForm fieldset')).toHaveLength(0);
+    });
+
+    it('keeps the size controls visible', () => {
+        open();
+        const sizeBlock = panel('contents').querySelector('#geogebraActivitySize');
+
+        expect(sizeBlock.classList.contains('d-none')).toBe(false);
+        expect(sizeBlock.classList.contains('d-flex')).toBe(true);
+    });
+
+    it('offers only the button among the ways of saving the score', () => {
+        open();
+
+        expect(panel('grading').querySelector('#eXeGameSCORMAutomatically').classList.contains('d-none')).toBe(true);
+    });
+
+    it('provides one accessible information button in each options row', () => {
+        open();
+        const options = panel('options');
+        const helpButtons = [...options.querySelectorAll('#eXeAutoGeogebraOptions .exe-idevice-help')];
+        const state = () => [...options.querySelectorAll('input')].map((input) => `${input.checked}${input.value}`);
+
+        expect(helpButtons).toHaveLength(3 + Object.keys(device.trueFalseOptions).length);
+        for (const help of helpButtons) {
+            expect(help.closest('.d-flex').lastElementChild.contains(help)).toBe(true);
+            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            const before = state();
+            help.click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+            expect(state()).toEqual(before);
+        }
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        open();
+
+        expect(tooltips.size).toBe(document.querySelectorAll('#eXeAutoGeogebraForm .exe-app-tooltip').length);
+        expect(tooltips.size).toBeGreaterThanOrEqual(18);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        open();
+
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('reopens a saved activity, its instructions included, and saves them where they were', () => {
+        open(stored);
+
+        expect(document.getElementById('geogebraActivityURL').value).toBe('https://www.geogebra.org/m/VgHhQXCC');
+        expect(document.getElementById('geogebraActivityLang').value).toBe('fr');
+        expect(document.getElementById('geogebraActivityshowMenuBar').checked).toBe(true);
+        expect(document.getElementById('geogebraActivityScale').value).toBe('80');
+        expect(document.getElementById('eXeGameInstructions').value).toBe('<p>Move the point</p>');
+        const editors = {
+            eXeGameInstructions: '<p>Move the point</p>',
+            eXeIdeviceTextAfter: '<p>Well done</p>',
+        };
+        vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+            id in editors ? { getContent: () => editors[id] } : null
+        );
+
+        const html = device.save();
+
+        expect(html).toContain('<div class="auto-geogebra-instructions"><p>Move the point</p></div>');
+        expect(html).toContain('<div class="auto-geogebra-extra-content"><p>Well done</p></div>');
+        expect(html).toContain('language-fr');
+        expect(html).toContain(' showMenuBar');
+        expect(html).not.toContain('exe-idevice-help');
+    });
 });

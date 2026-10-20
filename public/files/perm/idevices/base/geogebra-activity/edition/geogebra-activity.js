@@ -33,23 +33,23 @@ var $exeDevice = {
     idevicePath: '',
     ideviceID: '',
     classIdevice: 'geogebra-activity',
-    // True/false options
+    // True/false options: label, default value and the explanation of its help
     trueFalseOptions: {
-        showMenuBar: [_('Show menu bar'), false],
-        showAlgebraInput: [_('Algebra input field'), false],
-        showToolBar: [_('Toolbar'), false],
-        showToolBarHelp: [_('Toolbar help'), false],
-        showResetIcon: [_('Reset icon'), false],
-        enableShiftDragZoom: [_('Zoom'), false],
-        enableRightClick: [_('Enable right click'), false],
-        errorDialogsActive: [_('Error dialogs'), false],
-        preventFocus: [_('Prevent focus'), false],
-        showFullscreenButton: [_('Fullscreen button'), true],
-        disableAutoScale: [_('Disable auto-scale'), false],
-        showSuggestionButtons: [_('Suggestion buttons'), true],
-        playButton: [_('Play button'), false],
-        ShowTitle: [_('Title'), true],
-        ShowAuthor: [_('Authorship'), true],
+        showMenuBar: [_('Show menu bar'), false, _('Show the GeoGebra menu bar above the activity.')],
+        showAlgebraInput: [_('Algebra input field'), false, _('Show the input bar where the learners can type commands and expressions.')],
+        showToolBar: [_('Toolbar'), false, _('Show the toolbar with the construction tools.')],
+        showToolBarHelp: [_('Toolbar help'), false, _('Show the help of the selected tool next to the toolbar.')],
+        showResetIcon: [_('Reset icon'), false, _('Show a button that brings the activity back to how it started.')],
+        enableShiftDragZoom: [_('Zoom'), false, _('Let the learners move the view by dragging it and zoom it with the mouse wheel.')],
+        enableRightClick: [_('Enable right click'), false, _('Let the learners open the context menu of the objects with the right mouse button.')],
+        errorDialogsActive: [_('Error dialogs'), false, _('Show a message when a command typed by the learners is wrong.')],
+        preventFocus: [_('Prevent focus'), false, _('Do not move the keyboard focus to the activity when the page loads.')],
+        showFullscreenButton: [_('Fullscreen button'), true, _('Show a button that opens the activity in full screen.')],
+        disableAutoScale: [_('Disable auto-scale'), false, _('Keep the activity at its own size instead of fitting it to the width of the page.')],
+        showSuggestionButtons: [_('Suggestion buttons'), true, _('Show the suggestion buttons of the algebra view, such as the one for special points.')],
+        playButton: [_('Play button'), false, _('Load the activity when the learners press a play button, instead of with the page.')],
+        ShowTitle: [_('Title'), true, _('Show the title of the activity below it.')],
+        ShowAuthor: [_('Authorship'), true, _('Show the authorship of the activity below it.')],
     },
 
     init: function (element, previousData, path) {
@@ -67,69 +67,76 @@ var $exeDevice = {
             ' www.geogebra.org',
             ' <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">www.geogebra.org</a>'
         );
+        const edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="eXeAutoGeogebraOptions">
+                    <div id="geogebraActivityLangWrapper" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="geogebraActivityLang" class="mb-0">${_('Language')}:</label>
+                        <input type="text" maxlength="2" name="geogebraActivityLang" id="geogebraActivityLang" class="form-control" style="max-width:6ch" />
+                        <span class="input-instructions">es, en, fr, de, ca, eu, gl...</span>
+                        ${edition.common.getHelpTooltip(_('Language of the GeoGebra menus and messages, as a two-letter code.'))}
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="geogebraActivityBorderColor" class="mb-0">${_('Border color')}:</label>
+                        <input type="text" maxlength="6" name="geogebraActivityBorderColor" id="geogebraActivityBorderColor" class="exe-color-picker form-control" style="max-width:12ch" />
+                        ${edition.common.getHelpTooltip(_('Color of the border around the activity.'))}
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="geogebraActivityScale" class="mb-0">${_('Size')} (%):</label>
+                        <input type="number" name="geogebraActivityScale" id="geogebraActivityScale" value="100" min="1" max="100" step="1" class="form-control" />
+                        ${edition.common.getHelpTooltip(_('Size of the activity, as a percentage of its width and height.'))}
+                    </div>
+                    <div id="eXeAutoGeogebraCheckOptions">${this.getTrueFalseOptions()}</div>
+                </div>`,
+            contents = `
+                <div id="eXeAutoGeogebraActivity">
+                    <div id="geogebraActivityURLS" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="geogebraActivityURL" class="mb-0">${_('URL or identifier (ID)')}:</label>
+                        <input type="text" name="geogebraActivityURL" id="geogebraActivityURL" class="form-control w-100" />
+                        <a href="#" id="geogebraActivityPlayButton" title="${_('Load data')}" class="flex-shrink-0"><span class="sr-av">${_('Load data')}</span></a>
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="geogebraActivityURLexample" class="mb-0">${_('Example')}:</label>
+                        <input type="text" id="geogebraActivityURLexample" name="geogebraActivityURLexample" readonly value="${this.activityURLbase}VgHhQXCC" class="form-control w-100" />
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="mb-0">${_('Title')}:</span>
+                        <span id="geogebraActivityTitle">&hellip;</span>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="mb-0">${_('Authorship')}:</span>
+                        <span id="geogebraActivityAuthorURL">&hellip;</span>
+                    </div>
+                    <div id="geogebraActivitySize" class="d-flex flex-wrap align-items-center gap-2 mb-0">
+                        <label for="geogebraActivityWidth" class="mb-0">${_('Width')}:</label>
+                        <input type="text" maxlength="4" placeholder="800" name="geogebraActivityWidth" id="geogebraActivityWidth" class="form-control me-0" /><span class="text-muted me-2">px</span>
+                        <label for="geogebraActivityHeight" class="ps-3 mb-0">${_('Height')}:</label>
+                        <input type="text" maxlength="4" placeholder="600" name="geogebraActivityHeight" id="geogebraActivityHeight" class="form-control me-0" /><span class="text-muted">px</span>
+                    </div>
+                </div>`;
         const html = `
         <div id="eXeAutoGeogebraForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+            ${edition.common.getIdeviceDescription(
                 instructions,
                 'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/geogebra.html',
             )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                <fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${_('Instructions')}</a></legend>
-                    <div>
-                        <div class="exe-textarea-field mb-3">
-                            <label for="geogebraActivityInstructions" class="sr-av mb-0">${_('Instructions')}:</label>
-                            <textarea id="geogebraActivityInstructions" class="exe-html-editor"></textarea>
-                        </div>
-                    </div>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('General Settings')}</a></legend>
-                    <div>
-                        <div id="geogebraActivityURLS" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <label for="geogebraActivityURL" class="mb-0">${_('URL or identifier (ID)')}:</label>
-                            <input type="text" name="geogebraActivityURL" id="geogebraActivityURL" class="form-control w-100" />
-                            <a href="#" id="geogebraActivityPlayButton" title="${_('Load data')}" class="flex-shrink-0"><span class="sr-av">${_('Load data')}</span></a>
-                            <label for="geogebraActivityURLexample" class="mb-0">${_('Example')}:</label>
-                            <input type="text" id="geogebraActivityURLexample" name="geogebraActivityURLexample" readonly value="${this.activityURLbase}VgHhQXCC" class="form-control w-100" />
-                        </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <span class="mb-0">${_('Title')}:</span>
-                            <span id="geogebraActivityTitle">&hellip;</span>
-                        </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <span class="mb-0">${_('Authorship')}:</span>
-                            <span id="geogebraActivityAuthorURL">&hellip;</span>
-                        </div>
-                        <div id="geogebraActivitySize" class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <label for="geogebraActivityWidth" class="mb-0">${_('Width')}:</label>
-                            <input type="text" maxlength="4" placeholder="800" name="geogebraActivityWidth" id="geogebraActivityWidth" class="form-control me-0" /><span class="text-muted me-2">px</span>
-                            <label for="geogebraActivityHeight" class="ps-3 mb-0">${_('Height')}:</label>
-                            <input type="text" maxlength="4" placeholder="600" name="geogebraActivityHeight" id="geogebraActivityHeight" class="form-control me-0" /><span class="text-muted">px</span>
-                        </div>
-                    </div>
-                </fieldset>
-                <fieldset id="eXeAutoGeogebraAdvancedOptions" class="exe-fieldset exe-fieldset-closed exe-feedback-fieldset">
-                    <legend><a href="#">${_('Advanced Options')}</a></legend>
-                    <div>
-                        <div id="geogebraActivityLangWrapper" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <label for="geogebraActivityLang" class="mb-0">${_('Language')}:</label>
-                            <input type="text" maxlength="2" name="geogebraActivityLang" id="geogebraActivityLang" class="form-control" />
-                            <span class="input-instructions">es, en, fr, de, ca, eu, gl...</span>
-                            <label for="geogebraActivityBorderColor" class="mb-0">${_('Border color')}:</label>
-                            <input type="text" maxlength="6" name="geogebraActivityBorderColor" id="geogebraActivityBorderColor" class="exe-color-picker form-control" />
-                            <label for="geogebraActivityScale" class="mb-0">${_('Size')} (%):</label>
-                            <input type="number" name="geogebraActivityScale" id="geogebraActivityScale" value="100" min="1" max="100" step="1" class="form-control" />
-                        </div>
-                        <div id="eXeAutoGeogebraCheckOptions" class="d-flex align-items-center flex-wrap gap-2 mb-3">${this.getTrueFalseOptions()}</div>
-                    </div>
-                </fieldset>
-                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-            </div>
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath, { hideautosave: true })}
+            ${edition.tabs.getHtml('eXeAutoGeogebraForm', {
+                path: $exeDevice.idevicePath,
+                instructions: '',
+                options: options,
+                contents: contents,
+                after: true,
+                grading: { hideautosave: true },
+                share: false,
+                info: {
+                    options: _('Choose how the GeoGebra activity looks and what the learners can do in it.'),
+                    contents: _('Paste the address or the identifier of a GeoGebra activity and load its data.'),
+                },
+            })}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
+        edition.tabs.bind('eXeAutoGeogebraForm');
         $('#geogebraActivityURLexample').focus(function () {
             this.select();
         });
@@ -158,15 +165,10 @@ var $exeDevice = {
             let v = this.value.replace(/\D/g, '');
             this.value = Math.min(Math.max(v, 1), 100);
         });
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
-        $exeDevicesEdition.iDevice.tabs.init('eXeAutoGeogebraForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.gamification.scorm.init();
         this.loadPreviousValues();
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        edition.gamification.progressBar.addEvents();
+        edition.gamification.passScore.addEvents();
     },
 
     loadData: function (id, lurl) {
@@ -310,12 +312,15 @@ var $exeDevice = {
         for (let i in opts) {
             const checked = opts[i][1] ? ' checked="checked"' : '';
             html += `
-                <div class="toggle-item mb-3" style="width:300px; max-width:300px">
-                    <span class="toggle-control">
-                        <input type="checkbox" id="geogebraActivity${i}" class="toggle-input"${checked} />
-                        <span class="toggle-visual"></span>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="geogebraActivity${i}" class="toggle-input"${checked} />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label mb-0" for="geogebraActivity${i}">${opts[i][0]}</label>
                     </span>
-                    <label class="toggle-label mb-0" for="geogebraActivity${i}">${opts[i][0]}</label>
+                    ${$exeIDevicesEdition.iDevice.common.getHelpTooltip(opts[i][2])}
                 </div>
             `;
         }
@@ -410,7 +415,7 @@ var $exeDevice = {
                 } else if (part.indexOf('auto-geogebra-evaluation-id-') > -1) {
                     let evid = part.replace('auto-geogebra-evaluation-id-', '');
                     if (evid != '0') {
-                        $exeDevicesEdition.iDevice.gamification.progressBar.setValues(
+                        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues(
                             { evaluation: true, evaluationID: evid }
                         );
                     }
@@ -419,7 +424,7 @@ var $exeDevice = {
                     // finding the class IS the custom mode. Content saved
                     // before this option existed has no class and stays global,
                     // which is what setValues() defaults to.
-                    $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+                    $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
                         passScoreMode: 'custom',
                         passScoreCustom: part.replace($exeDevice.passScoreClass, ''),
                     });
@@ -441,7 +446,7 @@ var $exeDevice = {
                 }
             }
 
-            $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+            $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
                 scormMode,
                 scormButtonText,
                 true,
@@ -451,7 +456,7 @@ var $exeDevice = {
             // Instructions
             const instructions = $('.auto-geogebra-instructions', wrapper);
             if (instructions.length == 1)
-                $('#geogebraActivityInstructions').val(instructions.html());
+                $('#eXeGameInstructions').val(instructions.html());
             const textAfter = $('.auto-geogebra-extra-content', wrapper);
             if (textAfter.length == 1)
                 $('#eXeIdeviceTextAfter').val(textAfter.html());
@@ -504,16 +509,19 @@ var $exeDevice = {
             return false;
         }
         const progressBar =
-            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
         const evaluation = progressBar.evaluation;
         const evaluationID = evaluation ? progressBar.evaluationID : '0';
         const passScore =
-            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+            $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
 
         let divContent = '';
         // Instructions
-        let instructions = tinymce.editors[0].getContent();
+        const instructionsEditor = tinymce.get('eXeGameInstructions');
+        let instructions = instructionsEditor
+            ? instructionsEditor.getContent()
+            : $('#eXeGameInstructions').val() || '';
         if (instructions != '')
             divContent =
                 '<div class="auto-geogebra-instructions">' +
@@ -532,7 +540,7 @@ var $exeDevice = {
             ')</a></p>';
         let css = 'auto-geogebra auto-geogebra-' + url;
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         if (scorm.isScorm > 0) {
             let buttonText = scorm.textButtonScorm;
             if (buttonText == '') {
@@ -644,7 +652,10 @@ var $exeDevice = {
             escape(c_('The last score saved is')) +
             '</div>';
 
-        let textAfter = tinymce.editors[1].getContent();
+        const afterEditor = tinymce.get('eXeIdeviceTextAfter');
+        let textAfter = afterEditor
+            ? afterEditor.getContent()
+            : $('#eXeIdeviceTextAfter').val() || '';
         if (textAfter != '') {
             divContent +=
                 '<div class="auto-geogebra-extra-content">' +
