@@ -22,6 +22,7 @@ var $exeDevice = {
     challengesGame: [],
     desafioTitle: '',
     desafioTime: 40,
+    desafioType: 0,
     desafioSolution: '',
     desafioDescription: '',
     typeEdit: -1,
@@ -185,7 +186,7 @@ var $exeDevice = {
                 .get('desafioEChallenge-' + $exeDevice.active)
                 .setContent('');
         } else {
-            $('desafioEChallenge-' + $exeDevice.active).val('');
+            $('#desafioEChallenge-' + $exeDevice.active).val('');
         }
     },
 
@@ -194,6 +195,14 @@ var $exeDevice = {
         $('#desafioECSolution').val('');
         $('#desafioECMessage').val('');
         $('#desafioECTime').val(5);
+        $exeDevice.clearClues();
+    },
+
+    clearClues: function () {
+        $('#desafioEClue1, #desafioEClue2, #desafioEClue3').val('');
+        $('#desafioECTime1').val(5);
+        $('#desafioECTime2').val(10);
+        $('#desafioECTime3').val(5);
     },
 
     removeChallenge: function () {
@@ -226,7 +235,7 @@ var $exeDevice = {
             if (tinyMCE.get('desafioEChallenge-' + i)) {
                 tinyMCE.get('desafioEChallenge-' + i).setContent(text);
             } else {
-                $('desafioEChallenge-' + i).val(text);
+                $('#desafioEChallenge-' + i).val(text);
             }
         }
     },
@@ -349,6 +358,8 @@ var $exeDevice = {
             $('#desafioECTime1').val(c.clues[0].time);
             $('#desafioECTime2').val(c.clues[1].time);
             $('#desafioECTime3').val(c.clues[2].time);
+        } else {
+            $exeDevice.clearClues();
         }
     },
 
@@ -426,7 +437,7 @@ var $exeDevice = {
                         <div class="desafio-EInputMedias">
                             <span>${_('Description')}:</span>
                             <div id="divDesafioEDescription">
-                                <label for="desafioEDescription" class="sr-av">${_('Instructions')}:</label>
+                                <label for="desafioEDescription" class="sr-av">${_('Description')}:</label>
                                 <textarea id="desafioEDescription" class="exe-html-editor"></textarea>
                             </div>
                             <div id="desafioEChallenges" class="mb-3">
@@ -608,7 +619,7 @@ var $exeDevice = {
         for (let j = 0; j < num; j++) {
             const ch = `
             <div class="desafio-EDivFeebBack" id="desafioEDivFeebBack-${j}">
-                <label for="desafioEChallenge-${j}" class="sr-av">${_('Feedback')}</label>
+                <label for="desafioEChallenge-${j}" class="sr-av">${_('Description')}</label>
                 <textarea id="desafioEChallenge-${j}" class="exe-html-editor desafio-EFeedBack"></textarea>
             </div>
         `;
@@ -751,7 +762,7 @@ var $exeDevice = {
             $exeDevice.desafioTitle = dataGame.desafioTitle;
             $exeDevice.active = 0;
             $exeDevice.desafioSolution = dataGame.desafioSolution;
-            $exeDevice.desafioType = dataGame.desafioType;
+            $exeDevice.desafioType = dataGame.desafioType === 1 ? 1 : 0;
             $exeDevice.desafioTime = dataGame.desafioTime;
             $exeDevice.desafioDescription = '';
 
@@ -887,7 +898,7 @@ var $exeDevice = {
         if (tinyMCE.get(`desafioEChallenge-${i}`)) {
             p.description = tinyMCE.get(`desafioEChallenge-${i}`).getContent();
         } else {
-            p.description = $(`desafioEChallenge-${i}`).val();
+            p.description = $(`#desafioEChallenge-${i}`).val();
         }
 
         p.title = $('#desafioECTitle').val();

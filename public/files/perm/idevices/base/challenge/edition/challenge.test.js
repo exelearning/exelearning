@@ -878,4 +878,57 @@ describe('challenge edition: shared form tabs', () => {
             tinymceGet.mockRestore();
         }
     });
+
+    it('starts a new game as linear', () => {
+        open();
+
+        expect(document.getElementById('desafioEDType').value).toBe('0');
+    });
+
+    it('reopens a game saved without a type as linear', () => {
+        open(stored(game({ desafioType: null })));
+
+        expect(document.getElementById('desafioEDType').value).toBe('0');
+    });
+
+    it('starts a new trial with no help of its own', () => {
+        open();
+        document.getElementById('desafioEReto').click();
+        document.getElementById('desafioECTitle').value = 'Lock';
+        document.getElementById('desafioEClue1').value = 'Look under the mat';
+
+        device.addChallenge();
+        device.saveChallenge();
+
+        expect(document.getElementById('desafioEClue1').value).toBe('');
+        expect(device.challengesGame[0].clues[0].clue).toBe('Look under the mat');
+        expect(device.challengesGame[1].clues.map((clue) => clue.clue)).toEqual(['', '', '']);
+    });
+
+    it('shows no help on a trial that has none', () => {
+        open(stored(game()));
+        device.challengesGame.push(device.getChallengeDefault());
+
+        device.showChallenge(1);
+
+        expect(document.getElementById('desafioEClue1').value).toBe('');
+        expect(document.getElementById('desafioECTime2').value).toBe('10');
+    });
+
+    it('keeps a trial written before its editor starts', () => {
+        open();
+        device.active = 0;
+        document.getElementById('desafioEChallenge-0').value = '<p>Find the key</p>';
+
+        device.saveChallenge();
+
+        expect(device.challengesGame[0].description).toBe('<p>Find the key</p>');
+    });
+
+    it('names both description editors as descriptions', () => {
+        open();
+
+        expect(document.querySelector('label[for="desafioEDescription"]').textContent).toBe('Description:');
+        expect(document.querySelector('label[for="desafioEChallenge-0"]').textContent).toBe('Description');
+    });
 });
