@@ -205,6 +205,10 @@ export default class NavbarFile {
             // hidden on that platform.
             const onKey = (event) => {
                 if (event.key === 'Alt') {
+                    // Keep Windows/Linux native menus from taking focus after Alt is released.
+                    if (this.button?.getAttribute('aria-expanded') === 'true') {
+                        event.preventDefault();
+                    }
                     setVisible(event.type === 'keydown');
                 }
             };
