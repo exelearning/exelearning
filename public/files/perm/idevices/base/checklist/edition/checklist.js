@@ -13,7 +13,6 @@ var $exeDevice = {
         category: _('Assessment and tracking'),
         name: _('Checklist'),
     },
-    msgs: {},
     classIdevice: 'checklist',
     id: false,
     idevicePath: '',
@@ -28,11 +27,6 @@ var $exeDevice = {
         this.createForm();
         this.addEvents();
     },
-    setMessagesInfo: function () {
-        const msgs = this.msgs;
-        msgs.msgEProvideID = _('Please provide the ID of this progress report');
-    },
-
     refreshTranslations: function () {
         this.ci18n = {
             msgComplit: c_('Completed'),
@@ -469,14 +463,7 @@ var $exeDevice = {
             arrayLevels.push(obj);
         });
 
-        if (scoreError == 1) {
-            $exeDevice.showMessage(
-                _(
-                    'You must indicate the number of points for each item to be assesed'
-                )
-            );
-            return false;
-        } else if (scoreError == 2) {
+        if (scoreError == 2) {
             $exeDevice.showMessage(
                 _('You cannot indicate a score for this type of boxes')
             );
@@ -503,227 +490,6 @@ var $exeDevice = {
     },
     isNumberInteger: function (str) {
         return Number.isInteger(Number(str)) && Number(str) >= 0;
-    },
-    addEvents1: function () {
-        $('.CTJ-Add').click(function (e) {
-            e.preventDefault();
-            const parentRow = $(this).closest('.CTJ-data-row'),
-                clonedRow = parentRow.clone(true);
-
-            clonedRow
-                .find('.CTJ-Level1, .CTJ-Level2, .CTJ-Level3, .CTJ-Level4')
-                .html('');
-            clonedRow.insertAfter(parentRow);
-        });
-
-        $('.CTJ-Delete').click(function (e) {
-            e.preventDefault();
-            if ($('.CTJ-data-row').length > 1) {
-                if (confirm('¿Desea eliminar esta fila?')) {
-                    $(this).closest('.CTJ-data-row').remove();
-                }
-            } else {
-                $exeDevice.showMessage(_('There must be at least one row.'));
-            }
-        });
-
-        $('#ctjEURLLogo').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp`'],
-                selectedFile = $(this).val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            let url = selectedFile,
-                alt = _('Project logo');
-            $exeDevice.showImage(
-                '#ctjEImageLogo',
-                '#ctjEImageNoLogo',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEPlayLogo').on('click', function (e) {
-            e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-                selectedFile = $('#ctjEURLLogo').val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Project logo');
-            $exeDevice.showImage(
-                '#ctjEImageLogo',
-                '#ctjEImageNoLogo',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEURLCommunity').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $(this).val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Community/Company');
-            $exeDevice.showImage(
-                '#ctjEImageCommunity',
-                '#ctjEImageNoCommunity',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEPlayCommunity').on('click', function (e) {
-            e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $('#ctjEURLCommunity').val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Community/Company');
-            $exeDevice.showImage(
-                '#ctjEImageCommunity',
-                '#ctjEImageNoCommunity',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEURLDecorative').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $(this).val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Decoration');
-            $exeDevice.showImage(
-                '#ctjEImageDecorative',
-                '#ctjEImageNoDecorative',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEPlayDecorative').on('click', function (e) {
-            e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $('#ctjEURLDecorative').val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Decoration');
-            $exeDevice.showImage(
-                '#ctjEImageDecorative',
-                '#ctjEImageNoDecorative',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjCommunity').change(function () {
-            if ($(this).is(':checked')) {
-                $('#ctjcommunitylogo').show();
-            } else {
-                $('#ctjcommunitylogo').hide();
-            }
-        });
-
-        $('#ctjLogo').change(function () {
-            if ($(this).is(':checked')) {
-                $('#ctjlogologo').show();
-            } else {
-                $('#ctjlogologo').hide();
-            }
-        });
-
-        $('#ctjDecorative').change(function () {
-            if ($(this).is(':checked')) {
-                $('#ctjdecorativelogo').show();
-            } else {
-                $('#ctjdecorativelogo').hide();
-            }
-        });
-
-        $('#ctjUseScore').change(function () {
-            if ($(this).is(':checked')) {
-                $(
-                    '.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points'
-                ).show();
-            } else {
-                $(
-                    '.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points'
-                ).hide();
-            }
-        });
-
-        $('.CTJ-Table')
-            .on('change', 'select.CTJ-Select', function () {
-                const selectedOptionIndex = $(this).val();
-                const pointsCell = $(this).closest('tr').find('.CTJ-Points');
-                if (selectedOptionIndex == '3') {
-                    pointsCell.text('');
-                    pointsCell.attr('contenteditable', 'false');
-                } else {
-                    pointsCell.attr('contenteditable', 'true');
-                }
-            })
-            .trigger('change');
-
-        $('.CTJ-Table').on('keypress', '.CTJ-Points', function (event) {
-            const charCode = event.which ? event.which : event.keyCode;
-            if (charCode > 31 && (charCode < 48 || charCode > 57)) {
-                event.preventDefault();
-            }
-        });
     },
     addEvents() {
         const handleImageChange = (
@@ -936,8 +702,6 @@ var $exeDevice = {
             typeof game.userData == 'undefined' ? false : game.userData;
         game.useScore =
             typeof game.useScore == 'undefined' ? false : game.useScore;
-        game.weighted =
-            typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#ctjTitle').val(game.title);
