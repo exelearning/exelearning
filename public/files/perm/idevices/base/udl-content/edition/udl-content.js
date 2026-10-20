@@ -390,7 +390,6 @@ var $exeDevice = {
                 });
             }
         );
-        //var originalHTML = field.val();
         var blocks; // JSON (we'll transform the original HTML into a JSON object)
         if (originalHTML != '') {
             var wrapper = $("<div id='udlContentTmpWrapper'></div>");
@@ -510,9 +509,6 @@ var $exeDevice = {
         $('.udlContentFormBlock').each(function (i) {
             var e = $(this);
             $exeDevice.saveToTextareas(e);
-            var contAlt1 = '';
-            var contAlt2 = '';
-            var contAlt3 = '';
 
             var btnTxt = $("input[type='text']", this).val();
             btnTxt = $exeDevice.removeTags(btnTxt);
