@@ -17,7 +17,6 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'challenge',
     active: 0,
-    numberId: 0,
     typeActive: 0,
     challengesGame: [],
     desafioTitle: '',
@@ -27,11 +26,9 @@ var $exeDevice = {
     desafioDescription: '',
     typeEdit: -1,
     numberCutCuestion: -1,
-    desafioFeedBacks: [],
     desafioVersion: 1,
     clipBoard: '',
     desafioID: 0,
-    id: false,
     ci18n: {},
 
     init: function (element, previousData, path) {
@@ -132,9 +129,6 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgTitleDesafio = _('Please write the challenge title.');
         msgs.msgDescriptionDesafio = _(
             'Please write the challenge description.'
@@ -149,11 +143,6 @@ var $exeDevice = {
         );
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
-        );
-        msgs.msgClue = _('Help');
-        msgs.msgTitleAltImageWarning = _('Accessibility warning');
-        msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
     },
 
@@ -170,7 +159,6 @@ var $exeDevice = {
         }
 
         $exeDevice.typeEdit = -1;
-        $exeDevice.numberId++;
         $exeDevice.clearChallenge();
         $exeDevice.challengesGame.push($exeDevice.getChallengeDefault());
         $exeDevice.active = $exeDevice.challengesGame.length - 1;
@@ -193,8 +181,6 @@ var $exeDevice = {
     clearChallenge: function () {
         $('#desafioECTitle').val('');
         $('#desafioECSolution').val('');
-        $('#desafioECMessage').val('');
-        $('#desafioECTime').val(5);
         $exeDevice.clearClues();
     },
 
@@ -504,22 +490,6 @@ var $exeDevice = {
         $('#desafioEPaste').hide();
         $('#desafioENumQuestionDiv').hide();
 
-        $('#desafioEUseLives').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#desafioENumberLives').prop('disabled', !marcado);
-        });
-
-        $('#desafioShowSolutions').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#desafioTimeShowSolutions').prop('disabled', !marcado);
-        });
-
-        $('#desafioShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#desafioCodeAccess').prop('disabled', !marcado);
-            $('#desafioMessageCodeAccess').prop('disabled', !marcado);
-        });
-
         $('#desafioEAdd').on('click', function (e) {
             e.preventDefault();
             $exeDevice.addChallenge();
@@ -586,32 +556,6 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
-
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                $exeDevice.$lifecycle.ownFileReader(reader);
-                reader.onload = $exeDevice.$lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
     },
 
     getDivChallenges: function (num) {
@@ -812,7 +756,6 @@ var $exeDevice = {
                 : game.desafioID;
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
-        $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#desafioEShowMinimize').prop('checked', game.showMinimize);
         $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
@@ -942,47 +885,6 @@ var $exeDevice = {
         } else {
             $exeDevice.desafioDescription = $('#desafioEDescription').val();
         }
-    },
-
-    exportGame: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) {
-            return false;
-        }
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Game')}desafio.json`,
-            'desafioIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'desafio') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.active = 0;
-        $exeDevice.desafioTitle = game.desafioTitle;
-        $exeDevice.desafioSolution = game.desafioSolution;
-        $exeDevice.desafioDescription = game.desafioDescription;
-        $exeDevice.desafioType = game.desafioType;
-        $exeDevice.desafioTime = game.desafioTime;
-
-        $exeDevice.challengesGame = game.challengesGame;
-        $exeDevice.updateFieldGame(game);
-        const instructions = game.instructionsExe || game.instructions;
-        tinymce.editors[0].setContent(instructions);
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     getIdeviceID: function () {

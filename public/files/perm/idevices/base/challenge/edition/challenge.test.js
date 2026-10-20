@@ -253,8 +253,6 @@ describe('challenge iDevice', () => {
       document.body.innerHTML = `
         <input id="desafioECTitle" value="existing title" />
         <input id="desafioECSolution" value="existing solution" />
-        <input id="desafioECMessage" value="existing message" />
-        <input id="desafioECTime" value="10" />
       `;
     });
 
@@ -266,16 +264,6 @@ describe('challenge iDevice', () => {
     it('clears solution field', () => {
       $exeDevice.clearChallenge();
       expect($('#desafioECSolution').val()).toBe('');
-    });
-
-    it('clears message field', () => {
-      $exeDevice.clearChallenge();
-      expect($('#desafioECMessage').val()).toBe('');
-    });
-
-    it('sets default time value to 5', () => {
-      $exeDevice.clearChallenge();
-      expect($('#desafioECTime').val()).toBe('5');
     });
   });
 
@@ -289,12 +277,9 @@ describe('challenge iDevice', () => {
         <div class="desafio-EDivFeebBack" id="desafioEDivFeebBack-1" style="display: none"></div>
         <input id="desafioECTitle" value="" />
         <input id="desafioECSolution" value="" />
-        <input id="desafioECMessage" value="" />
-        <input id="desafioECTime" value="5" />
       `;
       $exeDevice.challengesGame = [{ title: 'Test', solution: 'sol', description: '' }];
       $exeDevice.active = 0;
-      $exeDevice.numberId = 0;
       $exeDevice.typeEdit = -1;
       $exeDevice.msgs = { msgTenChallenges: 'Max 10 challenges' };
       // Mock saveChallenge to avoid TinyMCE calls
@@ -552,100 +537,6 @@ describe('challenge iDevice', () => {
         it('wires the radio and input handlers', () => {
             expect(source).toContain('gamification.passScore.addEvents()');
         });
-    });
-});
-
-/**
- * Edition lifecycle teardown (#2293).
- *
- * The game import file reader is the only resource this editor creates that can
- * outlive its form, so the lifecycle must abort an in-flight read and reject a
- * result that arrives after the editor closed.
- */
-describe('challenge edition: lifecycle teardown (#2293)', () => {
-    let $exeDevice;
-    let originalExeDevicesEdition;
-
-    beforeEach(() => {
-        global.$exeDevice = undefined;
-        document.body.innerHTML = `
-      <div id="desafioIdeviceForm">
-        <div id="eXeGameExportImport">
-          <input id="eXeGameImportGame" type="file" />
-          <a href="#" id="eXeGameExportQuestions"></a>
-        </div>
-      </div>`;
-        originalExeDevicesEdition = global.$exeIDevicesEdition;
-        global.$exeIDevicesEdition = {
-            iDevice: {
-                gamification: {
-                    progressBar: { addEvents: vi.fn() },
-                    passScore: { addEvents: vi.fn() },
-                },
-            },
-        };
-        $exeDevice = global.loadIdevice(join(__dirname, 'challenge.js'));
-        $exeDevice.challengesGame = [];
-        $exeDevice.addEvents();
-    });
-
-    afterEach(() => {
-        if ($exeDevice && $exeDevice.$lifecycle) {
-            $exeDevice.$lifecycle.destroy();
-        }
-        global.$exeIDevicesEdition = originalExeDevicesEdition;
-        global.$exeDevice = undefined;
-        document.body.innerHTML = '';
-    });
-
-    it('aborts an in-flight import read and ignores its late result', () => {
-        const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-        const input = document.getElementById('eXeGameImportGame');
-        const file = new File(['challenge'], 'game.txt', { type: 'text/plain' });
-        Object.defineProperty(input, 'files', { value: [file], configurable: true });
-
-        const readers = [];
-        const realFileReader = global.FileReader;
-        class FakeFileReader {
-            constructor() {
-                this.readyState = 0;
-                this.onload = null;
-                this.aborted = false;
-                readers.push(this);
-            }
-            readAsText() {
-                this.readyState = 1;
-            }
-            abort() {
-                this.aborted = true;
-                this.readyState = 2;
-            }
-            fireLoad(result) {
-                this.readyState = 2;
-                this.onload({ target: { result } });
-            }
-        }
-        global.FileReader = FakeFileReader;
-        window.FileReader = FakeFileReader;
-
-        try {
-            $(input).trigger('change');
-            readers[0].fireLoad('finished');
-            expect(importGame).toHaveBeenCalledTimes(1);
-            expect(importGame).toHaveBeenCalledWith('finished');
-
-            $(input).trigger('change');
-            const pending = readers[1];
-            $exeDevice.$lifecycle.destroy();
-
-            expect(readers[0].aborted).toBe(false);
-            expect(pending.aborted).toBe(true);
-            pending.onload({ target: { result: 'late' } });
-            expect(importGame).toHaveBeenCalledTimes(1);
-        } finally {
-            global.FileReader = realFileReader;
-            window.FileReader = realFileReader;
-        }
     });
 });
 
