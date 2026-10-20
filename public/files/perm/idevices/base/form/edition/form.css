@@ -1,19 +1,5 @@
 /* Form iDevice (edition CSS) */
 
-
-/* #formIdeviceForm .formAddQuestionsContainer {
-  margin-top: 10px;
-} */
-
-.formAddQuestionsContainer .label-bold {
-    font-weight: bold;
-    margin-right: 20px;
-}
-
-.formAddQuestionsContainer .formSelector {
-    width: 200px;
-}
-
 #formIdeviceForm .questionTextarea {
     margin-bottom: 10px;
 }
@@ -21,21 +7,6 @@
 #formIdeviceForm #frmEPercentageQuestions {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
-}
-
-
-#addQuestionsContainerForm #addQuestionsSelectorContainer {
-    background-color: rgba(220, 220, 220, 0.8);
-    padding: 8px;
-}
-
-#addQuestionsContainerForm #addQuestionsButtonsContainer {
-    background-color: rgba(220, 220, 220, 0.8);
-    padding: 8px;
-}
-
-#addQuestionsContainerForm #addQuestionsOptionsContainer {
-    padding: 5px;
 }
 
 ul#formPreview {
@@ -249,16 +220,6 @@ ul#formPreview>li p {
     border-color: var(--dark-exe-color);
 }
 
-#formIdeviceForm .exe-button-remove {
-    color: var(--remove);
-    border: 0px;
-}
-
-#formIdeviceForm .exe-button-remove:hover {
-    color: var(--light-exe-color);
-    background-color: var(--remove);
-}
-
 #formIdeviceForm .container {
     max-width: 100%;
     padding: 0;
@@ -345,10 +306,6 @@ ul#formPreview>li p {
 
 #formIdeviceForm .question-input-text {
     margin-top: 10px;
-}
-
-#formIdeviceForm .question-in-edition {
-    padding: 10px;
 }
 
 #formIdeviceForm .container-add-questions {
@@ -485,23 +442,6 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
     box-shadow: 0px 0px 5px var(--dark-exe-color);
 }
 
-#formIdeviceForm #buttonshowhide.question-button {
-    color: var(--icon-gray);
-    border-color: var(--elements-hover);
-}
-
-#formIdeviceForm #buttonshowhide.question-button:hover {
-    color: var(--dark-exe-color);
-    border-color: var(--dark-exe-color);
-    box-shadow: 0px 0px 5px var(--dark-exe-color);
-}
-
-#formIdeviceForm #buttonshowhide.question-button:focus {
-    color: var(--dark-exe-color);
-    border-color: var(--dark-exe-color);
-    box-shadow: 0px 0px 5px var(--dark-exe-color);
-}
-
 #formIdeviceForm .FormViewContainer input.fillInput {
     margin: 6px 2px !important;
     max-width: 120px !important;
@@ -511,48 +451,6 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
     margin: 6px 2px !important;
 }
 
-#formIdeviceForm .Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
-}
-
-#formIdeviceForm .GameModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
-
-#formIdeviceForm .GameModeLabel {
-    font-weight: normal
-}
-
-#formIdeviceFormTab2 p:first-child {
-    margin-top: 0;
-}
-
-#formIdeviceFormTab2 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
-}
-
-#formIdeviceFormTab2>* {
-    flex: 0 0 48%;
-}
-
-#formIdeviceFormTab2> :first-child {
-    flex: 0 0 100%;
-}
-
-
-@media screen and (max-width:720px) {
-    #formIdeviceFormTab2>* {
-        flex: 0 0 100%;
-    }
-}
-
-
 #formPreview .FormViewContainer img {
     max-width: 100%;
     height: auto;
@@ -560,61 +458,6 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
 
 #formPreview .FormViewContainer img[style*="float"] {
     max-width: 60%;
-}
-
-#formIdeviceForm #formIdeviceFormTab2 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #0BA1A1;
-    font-weight: 500;
-}
-
-#formIdeviceForm #formIdeviceFormTab2 input {
-    width: 100%;
-}
-
-
-/* Tabs (this should be common) */
-.exe-form-tabs {
-    margin: 0 0 1.5em 0;
-    padding: 0;
-    list-style: none
-}
-
-#main .exe-form-tabs li {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    list-style-image: none;
-    display: inline
-}
-
-.exe-form-tabs li:first-child a {
-    border-top-left-radius: 4px;
-    border-bottom-left-radius: 4px
-}
-
-.exe-form-tabs li:last-child a {
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px
-}
-
-.exe-form-tabs a {
-    display: inline-block;
-    padding: .5em 1em;
-    border: 1px solid #CCC;
-    background: #F9F9F9;
-    color: #666
-}
-
-.exe-form-tabs li:not(:last-child) a {
-    border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-    color: #000;
-    background: #FFF;
-    font-weight: 500
 }
 
 /* Question editing - Bootstrap improvements */
@@ -635,6 +478,3 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
     font-size: 0.95rem;
 }
 
-#formIdeviceForm .row.g-3 {
-    margin-top: 0;
-}

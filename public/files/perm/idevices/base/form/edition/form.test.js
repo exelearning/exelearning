@@ -894,8 +894,8 @@ describe('form iDevice edition', () => {
   });
 
   /**
-   * The pass-score control is a shared block in common_edition.js, exercised by
-   * its own tests. What is specific to this iDevice -- and what silently breaks
+   * The pass-score control is a shared block in common_idevices_edition.js,
+   * exercised by its own tests. What is specific to this iDevice -- and what silently breaks
    * if someone edits the form -- is the wiring: all four call sites have to be
    * present, and the two saved fields have to reach the stored data. Reading
    * the source is how that is checked without standing up the whole edition
@@ -914,7 +914,7 @@ describe('form iDevice edition', () => {
         // so rendering them again would show each control twice.
         expect(source).not.toContain('passScore.getContents(');
         expect(source).not.toContain('progressBar.getContents(');
-        expect(source).toContain('gamification.scorm.getTab(');
+        expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
     });
 
     it('restores the control when the iDevice is reopened', () => {
@@ -959,4 +959,168 @@ describe('form minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('form edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/form/edition/';
+    const panel = (name) => document.getElementById(`formIdeviceForm-panel-${name}`);
+    const editors = {};
+    let device;
+    let previousApp;
+    let previousEditors;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        tooltips = new Map();
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn((scope) => {
+                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                    });
+                }),
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        // save() reads the instructions and the text after through tinyMCE.editors.
+        previousEditors = global.tinymce.editors;
+        global.tinymce.editors = {
+            eXeGameInstructions: { getContent: () => editors.eXeGameInstructions ?? '' },
+            eXeIdeviceTextAfter: { getContent: () => editors.eXeIdeviceTextAfter ?? '' },
+        };
+        document.body.innerHTML = '<div id="formBody" idevice-id="form-1"></div>';
+        device = global.loadIdevice(join(__dirname, 'form.js'));
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.tinymce.editors = previousEditors;
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    const open = (previousData = {}) => device.init(document.getElementById('formBody'), previousData, PATH);
+
+    it('lays the form out in the shared tabs, and opens on the questions', () => {
+        open();
+        const tabNames = [...document.querySelectorAll('#formIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading', 'texts']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        open();
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Complete the questions in the following quiz'
+        );
+        for (const id of ['frmEShowSlider', 'frmEQuestionsRandom', 'frmETime', 'frmEPercentageQuestions', 'checkAddBtnAnswers']) {
+            expect(panel('options').querySelector(`#${id}`)).not.toBeNull();
+        }
+        expect(panel('contents').querySelector('#formPreview')).not.toBeNull();
+        expect(panel('contents').querySelector('#buttonAddTrueFalseQuestionTop')).not.toBeNull();
+        expect(panel('contents').querySelector('#msgNoQuestions')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgCheck').value).toBe('Check');
+    });
+
+    it('offers Import and Create with AI on the Questions tab, but not Export, as main did', () => {
+        open();
+        const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame').getAttribute('accept')).toBe(
+            '.txt, .xml'
+        );
+        expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
+        expect(panel('contents').firstElementChild.textContent).toContain('Add true-false, fill-in, dropdown and selection');
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+        open();
+        const helpButtons = [...panel('options').querySelectorAll('.exe-idevice-help')];
+
+        expect(helpButtons).toHaveLength(5);
+        for (const help of helpButtons) {
+            const row = help.closest('#frmEOptions > div');
+            expect(row.lastElementChild.contains(help)).toBe(true);
+            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            const input = row.querySelector('input');
+            const value = `${input.checked}${input.value}`;
+            help.click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+            expect(`${input.checked}${input.value}`).toBe(value);
+        }
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        open();
+
+        expect(tooltips.size).toBe(document.querySelectorAll('#formIdeviceForm .exe-app-tooltip').length);
+        expect(tooltips.size).toBeGreaterThanOrEqual(5);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        open();
+
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('reopens and saves the questions with their options', () => {
+        const question = {
+            id: 'q1',
+            activityType: 'true-false',
+            baseText: '<p>The Sun is a star</p>',
+            answer: '1',
+            feedbackRight: '',
+            feedbackWrong: '',
+            suggestion: '',
+        };
+        open({
+            eXeFormInstructions: '<p>Answer them</p>',
+            questionsData: [question],
+            showSlider: true,
+            questionsRandom: true,
+            percentageQuestions: 50,
+            time: 5,
+            addBtnAnswers: false,
+            msgs: { msgCheck: 'Go' },
+        });
+        expect(document.getElementById('frmEShowSlider').checked).toBe(true);
+        expect(document.getElementById('frmEQuestionsRandom').checked).toBe(true);
+        expect(document.getElementById('frmEPercentageQuestions').value).toBe('50');
+        expect(document.getElementById('frmETime').value).toBe('5');
+        expect(document.getElementById('checkAddBtnAnswers').checked).toBe(false);
+        expect(document.getElementById('ci18n_msgCheck').value).toBe('Go');
+        expect(document.querySelectorAll('#formPreview > li')).toHaveLength(1);
+        expect(document.getElementById('msgNoQuestions').style.display).toBe('none');
+        editors.eXeGameInstructions = '<p>Answer them</p>';
+
+        expect(device.save()).toMatchObject({
+            eXeFormInstructions: '<p>Answer them</p>',
+            questionsData: [expect.objectContaining({ id: 'q1', activityType: 'true-false' })],
+            showSlider: true,
+            questionsRandom: true,
+            percentageQuestions: '50',
+            time: '5',
+            addBtnAnswers: false,
+        });
+    });
 });
