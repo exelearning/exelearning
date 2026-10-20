@@ -1357,6 +1357,18 @@ describe.each(['lomloe-ES.json', 'lomloe-ES-EFP.json', 'lomloe-ES-EX.json', 'lom
                 expect(counts, nivel).toEqual([3, 2, 3, 2, 2, 3, 2, 2, 2, 2]);
             }
         });
+
+        // The 1º–3º saberes had the 4º ESO items mixed in, and block A held 4º content only.
+        it('keeps only the RD 217/2022 saberes for 1º–3º ESO Mathematics', () => {
+            for (const nivel of ['1º ESO', '2º ESO', '3º ESO']) {
+                const bloques = data.ESO[nivel].MAT.saberes_basicos.bloques;
+                const counts = Object.values(bloques).map(items => items.length);
+                expect(counts, nivel).toEqual([21, 8, 7, 14, 12, 7]);
+                expect(bloques['A. Sentido numérico'][0].subtitulo_nivel_2).toBe(
+                    'Estrategias variadas de recuento sistemático en situaciones de la vida cotidiana.',
+                );
+            }
+        });
     },
 );
 

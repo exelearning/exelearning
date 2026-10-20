@@ -26574,44 +26574,109 @@
           "bloques": {
             "A. Sentido numérico": [
               {
-                "nombre": "ES-MD-ESO1-MAT-SB07-001",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Realización de estimaciones en diversos contextos analizando y acotando el error cometido."
+                "nombre": "ES-MD-ESO1-MAT-SB01-001",
+                "subtitulo_nivel_1": "1. Conteo.",
+                "subtitulo_nivel_2": "Estrategias variadas de recuento sistemático en situaciones de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO1-MAT-SB07-002",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Expresión de cantidades mediante números reales con la precisión requerida."
+                "nombre": "ES-MD-ESO1-MAT-SB01-002",
+                "subtitulo_nivel_1": "1. Conteo.",
+                "subtitulo_nivel_2": "Adaptación del conteo al tamaño de los números en problemas de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO1-MAT-SB07-003",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Diferentes representaciones de una misma cantidad."
+                "nombre": "ES-MD-ESO1-MAT-SB01-003",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Números grandes y pequeños: notación exponencial y científica y uso de la calculadora."
               },
               {
-                "nombre": "ES-MD-ESO1-MAT-SB07-004",
-                "subtitulo_nivel_1": "2. Sentido de las operaciones.",
-                "subtitulo_nivel_2": "Operaciones con números reales en la resolución de situaciones contextualizadas."
+                "nombre": "ES-MD-ESO1-MAT-SB01-004",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Realización de estimaciones con la precisión requerida."
               },
               {
-                "nombre": "ES-MD-ESO1-MAT-SB07-005",
-                "subtitulo_nivel_1": "2. Sentido de las operaciones.",
-                "subtitulo_nivel_2": "Propiedades y relaciones inversas de las operaciones: cálculos con números reales, incluyendo con herramientas digitales."
+                "nombre": "ES-MD-ESO1-MAT-SB01-005",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Números enteros, fraccionarios, decimales y raíces en la expresión de cantidades en contextos de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO1-MAT-SB07-006",
-                "subtitulo_nivel_1": "3. Relaciones.",
-                "subtitulo_nivel_2": "Los conjuntos numéricos (naturales, enteros, racionales y reales): relaciones entre ellos y propiedades."
+                "nombre": "ES-MD-ESO1-MAT-SB01-006",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Diferentes formas de representación de números enteros, fraccionarios y decimales, incluida la recta numérica."
               },
               {
-                "nombre": "ES-MD-ESO1-MAT-SB07-007",
-                "subtitulo_nivel_1": "3. Relaciones.",
-                "subtitulo_nivel_2": "Orden en la recta numérica. Intervalos."
+                "nombre": "ES-MD-ESO1-MAT-SB01-007",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Porcentajes mayores que 100 y menores que 1: interpretación."
               },
               {
-                "nombre": "ES-MD-ESO1-MAT-SB07-008",
-                "subtitulo_nivel_1": "4. Razonamiento proporcional.",
-                "subtitulo_nivel_2": "Situaciones de proporcionalidad directa e inversa en diferentes contextos: desarrollo y análisis de métodos para la resolución de problemas."
+                "nombre": "ES-MD-ESO1-MAT-SB01-008",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Estrategias de cálculo mental con números naturales, fracciones y decimales."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-009",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Operaciones con números enteros, fraccionarios o decimales en situaciones contextualizadas."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-010",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Relaciones inversas entre las operaciones (adición y sustracción; multiplicación y división; elevar al cuadrado y extraer la raíz cuadrada): comprensión y utilización en la simplificación y resolución de problemas."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-011",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Efecto de las operaciones aritméticas con números enteros, fracciones y expresiones decimales."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-012",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Propiedades de las operaciones (suma, resta, multiplicación, división y potenciación): cálculos de manera eficiente con números naturales, enteros, fraccionarios y decimales tanto mentalmente como de forma manual, con calculadora u hoja de cálculo."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-013",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Factores, múltiplos y divisores. Factorización en números primos para resolver problemas: estrategias y herramientas."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-014",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Comparación y ordenación de fracciones, decimales y porcentajes: situación exacta o aproximada en la recta numérica."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-015",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Selección de la representación adecuada para una misma cantidad en cada situación o problema."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-016",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Patrones y regularidades numéricas."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-017",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Razones y proporciones: comprensión y representación de relaciones cuantitativas."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-018",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Porcentajes: comprensión y resolución de problemas."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-019",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Situaciones de proporcionalidad en diferentes contextos: análisis y desarrollo de métodos para la resolución de problemas (aumentos y disminuciones porcentuales, rebajas y subidas de precios, impuestos, escalas, cambio de divisas, velocidad y tiempo, etc.)."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-020",
+                "subtitulo_nivel_1": "6. Educación financiera.",
+                "subtitulo_nivel_2": "Información numérica en contextos financieros sencillos: interpretación."
+              },
+              {
+                "nombre": "ES-MD-ESO1-MAT-SB01-021",
+                "subtitulo_nivel_1": "6. Educación financiera.",
+                "subtitulo_nivel_2": "Métodos para la toma de decisiones de consumo responsable: relaciones calidad-precio y valor-precio en contextos cotidianos."
               }
             ],
             "B. Sentido de la medida": [
@@ -26654,26 +26719,6 @@
                 "nombre": "ES-MD-ESO1-MAT-SB02-008",
                 "subtitulo_nivel_1": "3. Estimación y relaciones.",
                 "subtitulo_nivel_2": "Estrategias para la toma de decisión justificada del grado de precisión requerida en situaciones de medida."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB02-009",
-                "subtitulo_nivel_1": "1. Medición.",
-                "subtitulo_nivel_2": "La pendiente y su relación con un ángulo en situaciones sencillas: deducción y aplicación."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB02-010",
-                "subtitulo_nivel_1": "2. Cambio.",
-                "subtitulo_nivel_2": "Estudio gráfico del crecimiento y decrecimiento de funciones en contextos de la vida cotidiana con el apoyo de herramientas tecnológicas: tasas de variación absoluta, relativa y media."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB02-011",
-                "subtitulo_nivel_1": "1. Medición.",
-                "subtitulo_nivel_2": "Razones trigonométricas de un ángulo agudo y sus relaciones: aplicación a la resolución de problemas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB02-012",
-                "subtitulo_nivel_1": "2. Cambio.",
-                "subtitulo_nivel_2": "Estudio gráfico del crecimiento y decrecimiento de funciones en contextos de la vida cotidiana con el apoyo de herramientas tecnológicas: tasas de variación absoluta, relativa y media."
               }
             ],
             "C. Sentido espacial": [
@@ -26711,66 +26756,6 @@
                 "nombre": "ES-MD-ESO1-MAT-SB03-007",
                 "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
                 "subtitulo_nivel_2": "Relaciones geométricas en contextos matemáticos y no matemáticos (arte, ciencia, vida diaria…)."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-008",
-                "subtitulo_nivel_1": "1. Figuras geométricas de dos y tres dimensiones.",
-                "subtitulo_nivel_2": "Propiedades geométricas de objetos de la vida cotidiana: investigación con programas de geometría dinámica."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-009",
-                "subtitulo_nivel_1": "2. Movimientos y transformaciones.",
-                "subtitulo_nivel_2": "Transformaciones elementales en la vida cotidiana: investigación con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada, etc."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-010",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelos geométricos: representación y explicación de relaciones numéricas y algebraicas en situaciones diversas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-011",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelización de elementos geométricos de la vida cotidiana con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-012",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Elaboración y comprobación de conjeturas sobre propiedades geométricas mediante programas de geometría dinámica u otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-013",
-                "subtitulo_nivel_1": "1. Figuras geométricas de dos y tres dimensiones.",
-                "subtitulo_nivel_2": "Propiedades geométricas de objetos matemáticos y de la vida cotidiana: investigación con programas de geometría dinámica."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-014",
-                "subtitulo_nivel_1": "2. Localización y sistemas de representación.",
-                "subtitulo_nivel_2": "Figuras y objetos geométricos de dos dimensiones: representación y análisis de sus propiedades utilizando la geometría analítica."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-015",
-                "subtitulo_nivel_1": "2. Localización y sistemas de representación.",
-                "subtitulo_nivel_2": "Expresiones algebraicas de una recta: selección de la más adecuada en función de la situación a resolver."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-016",
-                "subtitulo_nivel_1": "3. Movimientos y transformaciones.",
-                "subtitulo_nivel_2": "Transformaciones elementales en la vida cotidiana: investigación con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-017",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelos geométricos: representación y explicación de relaciones numéricas y algebraicas en situaciones diversas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-018",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelización de elementos geométricos con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB03-019",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Elaboración y comprobación de conjeturas sobre propiedades geométricas mediante programas de geometría dinámica u otras herramientas."
               }
             ],
             "D. Sentido algebraico": [
@@ -26843,156 +26828,6 @@
                 "nombre": "ES-MD-ESO1-MAT-SB04-014",
                 "subtitulo_nivel_1": "6. Pensamiento computacional.",
                 "subtitulo_nivel_2": "Estrategias de formulación de cuestiones susceptibles de ser analizadas mediante programas y otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-015",
-                "subtitulo_nivel_1": "1. Patrones.",
-                "subtitulo_nivel_2": "Patrones, pautas y regularidades: observación, generalización y término general en casos sencillos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-016",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Modelización y resolución de problemas de la vida cotidiana mediante representaciones matemáticas y lenguaje algebraico, haciendo uso de distintos tipos de funciones."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-017",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Estrategias de deducción y análisis de conclusiones razonables de una situación de la vida cotidiana a partir de un modelo."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-018",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Variables: asociación de expresiones simbólicas al contexto del problema y diferentes usos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-019",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Características del cambio en la representación gráfica de relaciones lineales y cuadráticas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-020",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Relaciones lineales, cuadráticas y de proporcionalidad inversa en situaciones de la vida cotidiana o matemáticamente relevantes: expresión mediante álgebra simbólica."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-021",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Formas equivalentes de expresiones algebraicas en la resolución de ecuaciones lineales y cuadráticas, y sistemas de ecuaciones e inecuaciones lineales."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-022",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Estrategias de discusión y búsqueda de soluciones en ecuaciones lineales y cuadráticas en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-023",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Ecuaciones, sistemas de ecuaciones e inecuaciones: resolución mediante el uso de la tecnología."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-024",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones cuantitativas en situaciones de la vida cotidiana y clases de funciones que las modelizan."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-025",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones lineales y no lineales: identificación y comparación de diferentes modos de representación, tablas, gráficas o expresiones algebraicas, y sus propiedades a partir de ellas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-026",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Representación de funciones: interpretación de sus propiedades en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-027",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Resolución de problemas mediante la descomposición en partes, la automatización y el pensamiento algorítmico."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-028",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Estrategias en la interpretación, modificación y creación de algoritmos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-029",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Formulación y análisis de problemas de la vida cotidiana mediante programas y otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-030",
-                "subtitulo_nivel_1": "1. Patrones.",
-                "subtitulo_nivel_2": "Patrones, pautas y regularidades: observación, generalización y término general en casos sencillos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-031",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Modelización y resolución de problemas de la vida cotidiana mediante representaciones matemáticas y lenguaje algebraico, haciendo uso de distintos tipos de funciones."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-032",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Estrategias de deducción y análisis de conclusiones razonables de una situación de la vida cotidiana a partir de un modelo."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-033",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Variables: asociación de expresiones simbólicas al contexto del problema y diferentes usos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-034",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Relaciones entre cantidades y sus tasas de cambio."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-035",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Álgebra simbólica: representación de relaciones funcionales en contextos diversos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-036",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Formas equivalentes de expresiones algebraicas en la resolución de ecuaciones, sistemas de ecuaciones e inecuaciones lineales y no lineales sencillas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-037",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Estrategias de discusión y búsqueda de soluciones en ecuaciones lineales y no lineales sencillas en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-038",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Ecuaciones, sistemas e inecuaciones: resolución mediante el uso de la tecnología."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-039",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones cuantitativas en situaciones de la vida cotidiana y las clases de funciones que las modelizan."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-040",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones lineales y no lineales: identificación y comparación de diferentes modos de representación, tablas, gráficas o expresiones algebraicas, y sus propiedades a partir de ellas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-041",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Representación de funciones: interpretación de sus propiedades en situaciones de la vida cotidiana y otros contextos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-042",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Resolución de problemas mediante la descomposición en partes, la automatización y el pensamiento algorítmico."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-043",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Estrategias en la interpretación, modificación y creación de algoritmos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB04-044",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Formulación y análisis de problemas de la vida cotidiana mediante programas y otras herramientas."
               }
             ],
             "E. Sentido estocástico": [
@@ -27055,106 +26890,6 @@
                 "nombre": "ES-MD-ESO1-MAT-SB05-012",
                 "subtitulo_nivel_1": "3. Inferencia.",
                 "subtitulo_nivel_2": "Estrategias de deducción de conclusiones a partir de una muestra con el fin de emitir juicios y tomar decisiones adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-013",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Estrategias de recogida y organización de datos de situaciones de la vida cotidiana que involucren una variable bidimensional. Tablas de contingencia."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-014",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Análisis e interpretación de tablas y gráficos estadísticos de una y dos variables cualitativas, cuantitativas discretas y cuantitativas continuas en contextos reales."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-015",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Medidas de localización y dispersión: interpretación y análisis de la variabilidad."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-016",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Gráficos estadísticos de una y dos variables: representación mediante diferentes tecnologías (calculadora, hoja de cálculo, aplicaciones..), análisis, interpretación y obtención de conclusiones razonadas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-017",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Interpretación de la relación entre dos variables, valorando gráficamente con herramientas tecnológicas la pertinencia de realizar una regresión lineal. Ajuste lineal con herramientas tecnológicas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-018",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Experimentos compuestos: planificación, realización y análisis de la incertidumbre asociada."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-019",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Probabilidad: cálculo aplicando la regla de Laplace y técnicas de recuento en experimentos simples y compuestos (mediante diagramas de árbol, tablas…) y aplicación a la toma de decisiones fundamentadas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-020",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Diferentes etapas del diseño de estudios estadísticos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-021",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Estrategias y herramientas de presentación e interpretación de datos relevantes en investigaciones estadísticas mediante herramientas digitales adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-022",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Análisis del alcance de las conclusiones de un estudio estadístico valorando la representatividad de la muestra."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-023",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Estrategias de recogida y organización de datos de situaciones de la vida cotidiana que involucren una variable estadística bidimensional. Tablas de contingencia."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-024",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Análisis e interpretación de tablas y gráficos estadísticos de una y dos variables cualitativas, cuantitativas discretas y cuantitativas continuas en contextos reales."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-025",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Medidas de localización y dispersión: interpretación y análisis de la variabilidad."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-026",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Gráficos estadísticos de una y dos variables: representación mediante diferentes tecnologías (calculadora, hoja de cálculo, aplicaciones..), análisis, interpretación y obtención de conclusiones razonadas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-027",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Interpretación de la relación entre dos variables, valorando gráficamente con herramientas tecnológicas la pertinencia de realizar una regresión lineal. Ajuste lineal con herramientas tecnológicas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-028",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Experimentos compuestos: planificación, realización y análisis de la incertidumbre asociada."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-029",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Probabilidad: cálculo aplicando la regla de Laplace y técnicas de recuento en experimentos simples y compuestos (mediante diagramas de árbol, tablas…) y aplicación a la toma de decisiones fundamentadas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-030",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Diferentes etapas del diseño de estudios estadísticos."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-031",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Estrategias y herramientas de presentación e interpretación de datos relevantes en investigaciones estadísticas mediante herramientas digitales adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB05-032",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Análisis del alcance de las conclusiones de un estudio estadístico valorando la representatividad de la muestra."
               }
             ],
             "F. Sentido socioafectivo": [
@@ -27190,76 +26925,6 @@
               },
               {
                 "nombre": "ES-MD-ESO1-MAT-SB06-007",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género. MATEMÁTICAS A"
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-008",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Gestión emocional: emociones que intervienen en el aprendizaje de las matemáticas. Autoconciencia y autorregulación. Superación de bloqueos emocionales en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-009",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la curiosidad, la iniciativa, la perseverancia y la resiliencia en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-010",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la flexibilidad cognitiva: apertura a cambios de estrategia y transformación del error en oportunidad de aprendizaje."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-011",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Asunción de responsabilidades y participación activa, optimizando el trabajo en equipo. Estrategias de gestión de conflictos: pedir, dar y gestionar ayuda."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-012",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Métodos para la gestión y la toma de decisiones adecuadas en la resolución de situaciones propias del quehacer matemático en el trabajo en equipo."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-013",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "Actitudes inclusivas y aceptación de la diversidad presente en el aula y en la sociedad."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-014",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género. MATEMÁTICAS B"
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-015",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Gestión emocional: emociones que intervienen en el aprendizaje de las matemáticas. Autoconciencia y autorregulación."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-016",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la curiosidad, la iniciativa, la perseverancia y la resiliencia en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-017",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la flexibilidad cognitiva: apertura a cambios de estrategia y transformación del error en oportunidad de aprendizaje."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-018",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Asunción de responsabilidades y participación activa, optimizando el trabajo en equipo. Estrategias de gestión de conflictos: pedir, dar y gestionar ayuda."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-019",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Métodos para la gestión y la toma de decisiones adecuadas en la resolución de situaciones propias del quehacer matemático en el trabajo en equipo."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-020",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "Actitudes inclusivas y aceptación de la diversidad presente en el aula y en la sociedad."
-              },
-              {
-                "nombre": "ES-MD-ESO1-MAT-SB06-021",
                 "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
                 "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género."
               }
@@ -33844,44 +33509,109 @@
           "bloques": {
             "A. Sentido numérico": [
               {
-                "nombre": "ES-MD-ESO2-MAT-SB07-001",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Realización de estimaciones en diversos contextos analizando y acotando el error cometido."
+                "nombre": "ES-MD-ESO2-MAT-SB01-001",
+                "subtitulo_nivel_1": "1. Conteo.",
+                "subtitulo_nivel_2": "Estrategias variadas de recuento sistemático en situaciones de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO2-MAT-SB07-002",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Expresión de cantidades mediante números reales con la precisión requerida."
+                "nombre": "ES-MD-ESO2-MAT-SB01-002",
+                "subtitulo_nivel_1": "1. Conteo.",
+                "subtitulo_nivel_2": "Adaptación del conteo al tamaño de los números en problemas de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO2-MAT-SB07-003",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Diferentes representaciones de una misma cantidad."
+                "nombre": "ES-MD-ESO2-MAT-SB01-003",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Números grandes y pequeños: notación exponencial y científica y uso de la calculadora."
               },
               {
-                "nombre": "ES-MD-ESO2-MAT-SB07-004",
-                "subtitulo_nivel_1": "2. Sentido de las operaciones.",
-                "subtitulo_nivel_2": "Operaciones con números reales en la resolución de situaciones contextualizadas."
+                "nombre": "ES-MD-ESO2-MAT-SB01-004",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Realización de estimaciones con la precisión requerida."
               },
               {
-                "nombre": "ES-MD-ESO2-MAT-SB07-005",
-                "subtitulo_nivel_1": "2. Sentido de las operaciones.",
-                "subtitulo_nivel_2": "Propiedades y relaciones inversas de las operaciones: cálculos con números reales, incluyendo con herramientas digitales."
+                "nombre": "ES-MD-ESO2-MAT-SB01-005",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Números enteros, fraccionarios, decimales y raíces en la expresión de cantidades en contextos de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO2-MAT-SB07-006",
-                "subtitulo_nivel_1": "3. Relaciones.",
-                "subtitulo_nivel_2": "Los conjuntos numéricos (naturales, enteros, racionales y reales): relaciones entre ellos y propiedades."
+                "nombre": "ES-MD-ESO2-MAT-SB01-006",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Diferentes formas de representación de números enteros, fraccionarios y decimales, incluida la recta numérica."
               },
               {
-                "nombre": "ES-MD-ESO2-MAT-SB07-007",
-                "subtitulo_nivel_1": "3. Relaciones.",
-                "subtitulo_nivel_2": "Orden en la recta numérica. Intervalos."
+                "nombre": "ES-MD-ESO2-MAT-SB01-007",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Porcentajes mayores que 100 y menores que 1: interpretación."
               },
               {
-                "nombre": "ES-MD-ESO2-MAT-SB07-008",
-                "subtitulo_nivel_1": "4. Razonamiento proporcional.",
-                "subtitulo_nivel_2": "Situaciones de proporcionalidad directa e inversa en diferentes contextos: desarrollo y análisis de métodos para la resolución de problemas."
+                "nombre": "ES-MD-ESO2-MAT-SB01-008",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Estrategias de cálculo mental con números naturales, fracciones y decimales."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-009",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Operaciones con números enteros, fraccionarios o decimales en situaciones contextualizadas."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-010",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Relaciones inversas entre las operaciones (adición y sustracción; multiplicación y división; elevar al cuadrado y extraer la raíz cuadrada): comprensión y utilización en la simplificación y resolución de problemas."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-011",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Efecto de las operaciones aritméticas con números enteros, fracciones y expresiones decimales."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-012",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Propiedades de las operaciones (suma, resta, multiplicación, división y potenciación): cálculos de manera eficiente con números naturales, enteros, fraccionarios y decimales tanto mentalmente como de forma manual, con calculadora u hoja de cálculo."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-013",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Factores, múltiplos y divisores. Factorización en números primos para resolver problemas: estrategias y herramientas."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-014",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Comparación y ordenación de fracciones, decimales y porcentajes: situación exacta o aproximada en la recta numérica."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-015",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Selección de la representación adecuada para una misma cantidad en cada situación o problema."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-016",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Patrones y regularidades numéricas."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-017",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Razones y proporciones: comprensión y representación de relaciones cuantitativas."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-018",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Porcentajes: comprensión y resolución de problemas."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-019",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Situaciones de proporcionalidad en diferentes contextos: análisis y desarrollo de métodos para la resolución de problemas (aumentos y disminuciones porcentuales, rebajas y subidas de precios, impuestos, escalas, cambio de divisas, velocidad y tiempo, etc.)."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-020",
+                "subtitulo_nivel_1": "6. Educación financiera.",
+                "subtitulo_nivel_2": "Información numérica en contextos financieros sencillos: interpretación."
+              },
+              {
+                "nombre": "ES-MD-ESO2-MAT-SB01-021",
+                "subtitulo_nivel_1": "6. Educación financiera.",
+                "subtitulo_nivel_2": "Métodos para la toma de decisiones de consumo responsable: relaciones calidad-precio y valor-precio en contextos cotidianos."
               }
             ],
             "B. Sentido de la medida": [
@@ -33924,26 +33654,6 @@
                 "nombre": "ES-MD-ESO2-MAT-SB02-008",
                 "subtitulo_nivel_1": "3. Estimación y relaciones.",
                 "subtitulo_nivel_2": "Estrategias para la toma de decisión justificada del grado de precisión requerida en situaciones de medida."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB02-009",
-                "subtitulo_nivel_1": "1. Medición.",
-                "subtitulo_nivel_2": "La pendiente y su relación con un ángulo en situaciones sencillas: deducción y aplicación."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB02-010",
-                "subtitulo_nivel_1": "2. Cambio.",
-                "subtitulo_nivel_2": "Estudio gráfico del crecimiento y decrecimiento de funciones en contextos de la vida cotidiana con el apoyo de herramientas tecnológicas: tasas de variación absoluta, relativa y media."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB02-011",
-                "subtitulo_nivel_1": "1. Medición.",
-                "subtitulo_nivel_2": "Razones trigonométricas de un ángulo agudo y sus relaciones: aplicación a la resolución de problemas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB02-012",
-                "subtitulo_nivel_1": "2. Cambio.",
-                "subtitulo_nivel_2": "Estudio gráfico del crecimiento y decrecimiento de funciones en contextos de la vida cotidiana con el apoyo de herramientas tecnológicas: tasas de variación absoluta, relativa y media."
               }
             ],
             "C. Sentido espacial": [
@@ -33981,66 +33691,6 @@
                 "nombre": "ES-MD-ESO2-MAT-SB03-007",
                 "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
                 "subtitulo_nivel_2": "Relaciones geométricas en contextos matemáticos y no matemáticos (arte, ciencia, vida diaria…)."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-008",
-                "subtitulo_nivel_1": "1. Figuras geométricas de dos y tres dimensiones.",
-                "subtitulo_nivel_2": "Propiedades geométricas de objetos de la vida cotidiana: investigación con programas de geometría dinámica."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-009",
-                "subtitulo_nivel_1": "2. Movimientos y transformaciones.",
-                "subtitulo_nivel_2": "Transformaciones elementales en la vida cotidiana: investigación con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada, etc."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-010",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelos geométricos: representación y explicación de relaciones numéricas y algebraicas en situaciones diversas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-011",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelización de elementos geométricos de la vida cotidiana con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-012",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Elaboración y comprobación de conjeturas sobre propiedades geométricas mediante programas de geometría dinámica u otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-013",
-                "subtitulo_nivel_1": "1. Figuras geométricas de dos y tres dimensiones.",
-                "subtitulo_nivel_2": "Propiedades geométricas de objetos matemáticos y de la vida cotidiana: investigación con programas de geometría dinámica."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-014",
-                "subtitulo_nivel_1": "2. Localización y sistemas de representación.",
-                "subtitulo_nivel_2": "Figuras y objetos geométricos de dos dimensiones: representación y análisis de sus propiedades utilizando la geometría analítica."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-015",
-                "subtitulo_nivel_1": "2. Localización y sistemas de representación.",
-                "subtitulo_nivel_2": "Expresiones algebraicas de una recta: selección de la más adecuada en función de la situación a resolver."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-016",
-                "subtitulo_nivel_1": "3. Movimientos y transformaciones.",
-                "subtitulo_nivel_2": "Transformaciones elementales en la vida cotidiana: investigación con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-017",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelos geométricos: representación y explicación de relaciones numéricas y algebraicas en situaciones diversas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-018",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelización de elementos geométricos con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB03-019",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Elaboración y comprobación de conjeturas sobre propiedades geométricas mediante programas de geometría dinámica u otras herramientas."
               }
             ],
             "D. Sentido algebraico": [
@@ -34113,156 +33763,6 @@
                 "nombre": "ES-MD-ESO2-MAT-SB04-014",
                 "subtitulo_nivel_1": "6. Pensamiento computacional.",
                 "subtitulo_nivel_2": "Estrategias de formulación de cuestiones susceptibles de ser analizadas mediante programas y otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-015",
-                "subtitulo_nivel_1": "1. Patrones.",
-                "subtitulo_nivel_2": "Patrones, pautas y regularidades: observación, generalización y término general en casos sencillos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-016",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Modelización y resolución de problemas de la vida cotidiana mediante representaciones matemáticas y lenguaje algebraico, haciendo uso de distintos tipos de funciones."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-017",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Estrategias de deducción y análisis de conclusiones razonables de una situación de la vida cotidiana a partir de un modelo."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-018",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Variables: asociación de expresiones simbólicas al contexto del problema y diferentes usos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-019",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Características del cambio en la representación gráfica de relaciones lineales y cuadráticas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-020",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Relaciones lineales, cuadráticas y de proporcionalidad inversa en situaciones de la vida cotidiana o matemáticamente relevantes: expresión mediante álgebra simbólica."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-021",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Formas equivalentes de expresiones algebraicas en la resolución de ecuaciones lineales y cuadráticas, y sistemas de ecuaciones e inecuaciones lineales."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-022",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Estrategias de discusión y búsqueda de soluciones en ecuaciones lineales y cuadráticas en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-023",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Ecuaciones, sistemas de ecuaciones e inecuaciones: resolución mediante el uso de la tecnología."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-024",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones cuantitativas en situaciones de la vida cotidiana y clases de funciones que las modelizan."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-025",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones lineales y no lineales: identificación y comparación de diferentes modos de representación, tablas, gráficas o expresiones algebraicas, y sus propiedades a partir de ellas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-026",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Representación de funciones: interpretación de sus propiedades en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-027",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Resolución de problemas mediante la descomposición en partes, la automatización y el pensamiento algorítmico."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-028",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Estrategias en la interpretación, modificación y creación de algoritmos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-029",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Formulación y análisis de problemas de la vida cotidiana mediante programas y otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-030",
-                "subtitulo_nivel_1": "1. Patrones.",
-                "subtitulo_nivel_2": "Patrones, pautas y regularidades: observación, generalización y término general en casos sencillos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-031",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Modelización y resolución de problemas de la vida cotidiana mediante representaciones matemáticas y lenguaje algebraico, haciendo uso de distintos tipos de funciones."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-032",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Estrategias de deducción y análisis de conclusiones razonables de una situación de la vida cotidiana a partir de un modelo."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-033",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Variables: asociación de expresiones simbólicas al contexto del problema y diferentes usos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-034",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Relaciones entre cantidades y sus tasas de cambio."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-035",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Álgebra simbólica: representación de relaciones funcionales en contextos diversos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-036",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Formas equivalentes de expresiones algebraicas en la resolución de ecuaciones, sistemas de ecuaciones e inecuaciones lineales y no lineales sencillas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-037",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Estrategias de discusión y búsqueda de soluciones en ecuaciones lineales y no lineales sencillas en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-038",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Ecuaciones, sistemas e inecuaciones: resolución mediante el uso de la tecnología."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-039",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones cuantitativas en situaciones de la vida cotidiana y las clases de funciones que las modelizan."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-040",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones lineales y no lineales: identificación y comparación de diferentes modos de representación, tablas, gráficas o expresiones algebraicas, y sus propiedades a partir de ellas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-041",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Representación de funciones: interpretación de sus propiedades en situaciones de la vida cotidiana y otros contextos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-042",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Resolución de problemas mediante la descomposición en partes, la automatización y el pensamiento algorítmico."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-043",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Estrategias en la interpretación, modificación y creación de algoritmos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB04-044",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Formulación y análisis de problemas de la vida cotidiana mediante programas y otras herramientas."
               }
             ],
             "E. Sentido estocástico": [
@@ -34325,106 +33825,6 @@
                 "nombre": "ES-MD-ESO2-MAT-SB05-012",
                 "subtitulo_nivel_1": "3. Inferencia.",
                 "subtitulo_nivel_2": "Estrategias de deducción de conclusiones a partir de una muestra con el fin de emitir juicios y tomar decisiones adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-013",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Estrategias de recogida y organización de datos de situaciones de la vida cotidiana que involucren una variable bidimensional. Tablas de contingencia."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-014",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Análisis e interpretación de tablas y gráficos estadísticos de una y dos variables cualitativas, cuantitativas discretas y cuantitativas continuas en contextos reales."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-015",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Medidas de localización y dispersión: interpretación y análisis de la variabilidad."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-016",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Gráficos estadísticos de una y dos variables: representación mediante diferentes tecnologías (calculadora, hoja de cálculo, aplicaciones..), análisis, interpretación y obtención de conclusiones razonadas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-017",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Interpretación de la relación entre dos variables, valorando gráficamente con herramientas tecnológicas la pertinencia de realizar una regresión lineal. Ajuste lineal con herramientas tecnológicas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-018",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Experimentos compuestos: planificación, realización y análisis de la incertidumbre asociada."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-019",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Probabilidad: cálculo aplicando la regla de Laplace y técnicas de recuento en experimentos simples y compuestos (mediante diagramas de árbol, tablas…) y aplicación a la toma de decisiones fundamentadas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-020",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Diferentes etapas del diseño de estudios estadísticos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-021",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Estrategias y herramientas de presentación e interpretación de datos relevantes en investigaciones estadísticas mediante herramientas digitales adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-022",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Análisis del alcance de las conclusiones de un estudio estadístico valorando la representatividad de la muestra."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-023",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Estrategias de recogida y organización de datos de situaciones de la vida cotidiana que involucren una variable estadística bidimensional. Tablas de contingencia."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-024",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Análisis e interpretación de tablas y gráficos estadísticos de una y dos variables cualitativas, cuantitativas discretas y cuantitativas continuas en contextos reales."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-025",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Medidas de localización y dispersión: interpretación y análisis de la variabilidad."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-026",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Gráficos estadísticos de una y dos variables: representación mediante diferentes tecnologías (calculadora, hoja de cálculo, aplicaciones..), análisis, interpretación y obtención de conclusiones razonadas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-027",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Interpretación de la relación entre dos variables, valorando gráficamente con herramientas tecnológicas la pertinencia de realizar una regresión lineal. Ajuste lineal con herramientas tecnológicas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-028",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Experimentos compuestos: planificación, realización y análisis de la incertidumbre asociada."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-029",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Probabilidad: cálculo aplicando la regla de Laplace y técnicas de recuento en experimentos simples y compuestos (mediante diagramas de árbol, tablas…) y aplicación a la toma de decisiones fundamentadas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-030",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Diferentes etapas del diseño de estudios estadísticos."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-031",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Estrategias y herramientas de presentación e interpretación de datos relevantes en investigaciones estadísticas mediante herramientas digitales adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB05-032",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Análisis del alcance de las conclusiones de un estudio estadístico valorando la representatividad de la muestra."
               }
             ],
             "F. Sentido socioafectivo": [
@@ -34460,76 +33860,6 @@
               },
               {
                 "nombre": "ES-MD-ESO2-MAT-SB06-007",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género. MATEMÁTICAS A"
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-008",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Gestión emocional: emociones que intervienen en el aprendizaje de las matemáticas. Autoconciencia y autorregulación. Superación de bloqueos emocionales en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-009",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la curiosidad, la iniciativa, la perseverancia y la resiliencia en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-010",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la flexibilidad cognitiva: apertura a cambios de estrategia y transformación del error en oportunidad de aprendizaje."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-011",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Asunción de responsabilidades y participación activa, optimizando el trabajo en equipo. Estrategias de gestión de conflictos: pedir, dar y gestionar ayuda."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-012",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Métodos para la gestión y la toma de decisiones adecuadas en la resolución de situaciones propias del quehacer matemático en el trabajo en equipo."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-013",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "Actitudes inclusivas y aceptación de la diversidad presente en el aula y en la sociedad."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-014",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género. MATEMÁTICAS B"
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-015",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Gestión emocional: emociones que intervienen en el aprendizaje de las matemáticas. Autoconciencia y autorregulación."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-016",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la curiosidad, la iniciativa, la perseverancia y la resiliencia en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-017",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la flexibilidad cognitiva: apertura a cambios de estrategia y transformación del error en oportunidad de aprendizaje."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-018",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Asunción de responsabilidades y participación activa, optimizando el trabajo en equipo. Estrategias de gestión de conflictos: pedir, dar y gestionar ayuda."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-019",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Métodos para la gestión y la toma de decisiones adecuadas en la resolución de situaciones propias del quehacer matemático en el trabajo en equipo."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-020",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "Actitudes inclusivas y aceptación de la diversidad presente en el aula y en la sociedad."
-              },
-              {
-                "nombre": "ES-MD-ESO2-MAT-SB06-021",
                 "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
                 "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género."
               }
@@ -41042,44 +40372,109 @@
           "bloques": {
             "A. Sentido numérico": [
               {
-                "nombre": "ES-MD-ESO3-MAT-SB07-001",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Realización de estimaciones en diversos contextos analizando y acotando el error cometido."
+                "nombre": "ES-MD-ESO3-MAT-SB01-001",
+                "subtitulo_nivel_1": "1. Conteo.",
+                "subtitulo_nivel_2": "Estrategias variadas de recuento sistemático en situaciones de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO3-MAT-SB07-002",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Expresión de cantidades mediante números reales con la precisión requerida."
+                "nombre": "ES-MD-ESO3-MAT-SB01-002",
+                "subtitulo_nivel_1": "1. Conteo.",
+                "subtitulo_nivel_2": "Adaptación del conteo al tamaño de los números en problemas de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO3-MAT-SB07-003",
-                "subtitulo_nivel_1": "1. Cantidad.",
-                "subtitulo_nivel_2": "Diferentes representaciones de una misma cantidad."
+                "nombre": "ES-MD-ESO3-MAT-SB01-003",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Números grandes y pequeños: notación exponencial y científica y uso de la calculadora."
               },
               {
-                "nombre": "ES-MD-ESO3-MAT-SB07-004",
-                "subtitulo_nivel_1": "2. Sentido de las operaciones.",
-                "subtitulo_nivel_2": "Operaciones con números reales en la resolución de situaciones contextualizadas."
+                "nombre": "ES-MD-ESO3-MAT-SB01-004",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Realización de estimaciones con la precisión requerida."
               },
               {
-                "nombre": "ES-MD-ESO3-MAT-SB07-005",
-                "subtitulo_nivel_1": "2. Sentido de las operaciones.",
-                "subtitulo_nivel_2": "Propiedades y relaciones inversas de las operaciones: cálculos con números reales, incluyendo con herramientas digitales."
+                "nombre": "ES-MD-ESO3-MAT-SB01-005",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Números enteros, fraccionarios, decimales y raíces en la expresión de cantidades en contextos de la vida cotidiana."
               },
               {
-                "nombre": "ES-MD-ESO3-MAT-SB07-006",
-                "subtitulo_nivel_1": "3. Relaciones.",
-                "subtitulo_nivel_2": "Los conjuntos numéricos (naturales, enteros, racionales y reales): relaciones entre ellos y propiedades."
+                "nombre": "ES-MD-ESO3-MAT-SB01-006",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Diferentes formas de representación de números enteros, fraccionarios y decimales, incluida la recta numérica."
               },
               {
-                "nombre": "ES-MD-ESO3-MAT-SB07-007",
-                "subtitulo_nivel_1": "3. Relaciones.",
-                "subtitulo_nivel_2": "Orden en la recta numérica. Intervalos."
+                "nombre": "ES-MD-ESO3-MAT-SB01-007",
+                "subtitulo_nivel_1": "2. Cantidad.",
+                "subtitulo_nivel_2": "Porcentajes mayores que 100 y menores que 1: interpretación."
               },
               {
-                "nombre": "ES-MD-ESO3-MAT-SB07-008",
-                "subtitulo_nivel_1": "4. Razonamiento proporcional.",
-                "subtitulo_nivel_2": "Situaciones de proporcionalidad directa e inversa en diferentes contextos: desarrollo y análisis de métodos para la resolución de problemas."
+                "nombre": "ES-MD-ESO3-MAT-SB01-008",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Estrategias de cálculo mental con números naturales, fracciones y decimales."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-009",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Operaciones con números enteros, fraccionarios o decimales en situaciones contextualizadas."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-010",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Relaciones inversas entre las operaciones (adición y sustracción; multiplicación y división; elevar al cuadrado y extraer la raíz cuadrada): comprensión y utilización en la simplificación y resolución de problemas."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-011",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Efecto de las operaciones aritméticas con números enteros, fracciones y expresiones decimales."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-012",
+                "subtitulo_nivel_1": "3. Sentido de las operaciones.",
+                "subtitulo_nivel_2": "Propiedades de las operaciones (suma, resta, multiplicación, división y potenciación): cálculos de manera eficiente con números naturales, enteros, fraccionarios y decimales tanto mentalmente como de forma manual, con calculadora u hoja de cálculo."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-013",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Factores, múltiplos y divisores. Factorización en números primos para resolver problemas: estrategias y herramientas."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-014",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Comparación y ordenación de fracciones, decimales y porcentajes: situación exacta o aproximada en la recta numérica."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-015",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Selección de la representación adecuada para una misma cantidad en cada situación o problema."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-016",
+                "subtitulo_nivel_1": "4. Relaciones.",
+                "subtitulo_nivel_2": "Patrones y regularidades numéricas."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-017",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Razones y proporciones: comprensión y representación de relaciones cuantitativas."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-018",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Porcentajes: comprensión y resolución de problemas."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-019",
+                "subtitulo_nivel_1": "5. Razonamiento proporcional.",
+                "subtitulo_nivel_2": "Situaciones de proporcionalidad en diferentes contextos: análisis y desarrollo de métodos para la resolución de problemas (aumentos y disminuciones porcentuales, rebajas y subidas de precios, impuestos, escalas, cambio de divisas, velocidad y tiempo, etc.)."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-020",
+                "subtitulo_nivel_1": "6. Educación financiera.",
+                "subtitulo_nivel_2": "Información numérica en contextos financieros sencillos: interpretación."
+              },
+              {
+                "nombre": "ES-MD-ESO3-MAT-SB01-021",
+                "subtitulo_nivel_1": "6. Educación financiera.",
+                "subtitulo_nivel_2": "Métodos para la toma de decisiones de consumo responsable: relaciones calidad-precio y valor-precio en contextos cotidianos."
               }
             ],
             "B. Sentido de la medida": [
@@ -41122,26 +40517,6 @@
                 "nombre": "ES-MD-ESO3-MAT-SB02-008",
                 "subtitulo_nivel_1": "3. Estimación y relaciones.",
                 "subtitulo_nivel_2": "Estrategias para la toma de decisión justificada del grado de precisión requerida en situaciones de medida."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB02-009",
-                "subtitulo_nivel_1": "1. Medición.",
-                "subtitulo_nivel_2": "La pendiente y su relación con un ángulo en situaciones sencillas: deducción y aplicación."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB02-010",
-                "subtitulo_nivel_1": "2. Cambio.",
-                "subtitulo_nivel_2": "Estudio gráfico del crecimiento y decrecimiento de funciones en contextos de la vida cotidiana con el apoyo de herramientas tecnológicas: tasas de variación absoluta, relativa y media."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB02-011",
-                "subtitulo_nivel_1": "1. Medición.",
-                "subtitulo_nivel_2": "Razones trigonométricas de un ángulo agudo y sus relaciones: aplicación a la resolución de problemas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB02-012",
-                "subtitulo_nivel_1": "2. Cambio.",
-                "subtitulo_nivel_2": "Estudio gráfico del crecimiento y decrecimiento de funciones en contextos de la vida cotidiana con el apoyo de herramientas tecnológicas: tasas de variación absoluta, relativa y media."
               }
             ],
             "C. Sentido espacial": [
@@ -41179,66 +40554,6 @@
                 "nombre": "ES-MD-ESO3-MAT-SB03-007",
                 "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
                 "subtitulo_nivel_2": "Relaciones geométricas en contextos matemáticos y no matemáticos (arte, ciencia, vida diaria…)."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-008",
-                "subtitulo_nivel_1": "1. Figuras geométricas de dos y tres dimensiones.",
-                "subtitulo_nivel_2": "Propiedades geométricas de objetos de la vida cotidiana: investigación con programas de geometría dinámica."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-009",
-                "subtitulo_nivel_1": "2. Movimientos y transformaciones.",
-                "subtitulo_nivel_2": "Transformaciones elementales en la vida cotidiana: investigación con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada, etc."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-010",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelos geométricos: representación y explicación de relaciones numéricas y algebraicas en situaciones diversas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-011",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelización de elementos geométricos de la vida cotidiana con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-012",
-                "subtitulo_nivel_1": "3. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Elaboración y comprobación de conjeturas sobre propiedades geométricas mediante programas de geometría dinámica u otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-013",
-                "subtitulo_nivel_1": "1. Figuras geométricas de dos y tres dimensiones.",
-                "subtitulo_nivel_2": "Propiedades geométricas de objetos matemáticos y de la vida cotidiana: investigación con programas de geometría dinámica."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-014",
-                "subtitulo_nivel_1": "2. Localización y sistemas de representación.",
-                "subtitulo_nivel_2": "Figuras y objetos geométricos de dos dimensiones: representación y análisis de sus propiedades utilizando la geometría analítica."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-015",
-                "subtitulo_nivel_1": "2. Localización y sistemas de representación.",
-                "subtitulo_nivel_2": "Expresiones algebraicas de una recta: selección de la más adecuada en función de la situación a resolver."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-016",
-                "subtitulo_nivel_1": "3. Movimientos y transformaciones.",
-                "subtitulo_nivel_2": "Transformaciones elementales en la vida cotidiana: investigación con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-017",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelos geométricos: representación y explicación de relaciones numéricas y algebraicas en situaciones diversas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-018",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Modelización de elementos geométricos con herramientas tecnológicas como programas de geometría dinámica, realidad aumentada…."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB03-019",
-                "subtitulo_nivel_1": "4. Visualización, razonamiento y modelización geométrica.",
-                "subtitulo_nivel_2": "Elaboración y comprobación de conjeturas sobre propiedades geométricas mediante programas de geometría dinámica u otras herramientas."
               }
             ],
             "D. Sentido algebraico": [
@@ -41311,156 +40626,6 @@
                 "nombre": "ES-MD-ESO3-MAT-SB04-014",
                 "subtitulo_nivel_1": "6. Pensamiento computacional.",
                 "subtitulo_nivel_2": "Estrategias de formulación de cuestiones susceptibles de ser analizadas mediante programas y otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-015",
-                "subtitulo_nivel_1": "1. Patrones.",
-                "subtitulo_nivel_2": "Patrones, pautas y regularidades: observación, generalización y término general en casos sencillos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-016",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Modelización y resolución de problemas de la vida cotidiana mediante representaciones matemáticas y lenguaje algebraico, haciendo uso de distintos tipos de funciones."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-017",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Estrategias de deducción y análisis de conclusiones razonables de una situación de la vida cotidiana a partir de un modelo."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-018",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Variables: asociación de expresiones simbólicas al contexto del problema y diferentes usos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-019",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Características del cambio en la representación gráfica de relaciones lineales y cuadráticas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-020",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Relaciones lineales, cuadráticas y de proporcionalidad inversa en situaciones de la vida cotidiana o matemáticamente relevantes: expresión mediante álgebra simbólica."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-021",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Formas equivalentes de expresiones algebraicas en la resolución de ecuaciones lineales y cuadráticas, y sistemas de ecuaciones e inecuaciones lineales."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-022",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Estrategias de discusión y búsqueda de soluciones en ecuaciones lineales y cuadráticas en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-023",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Ecuaciones, sistemas de ecuaciones e inecuaciones: resolución mediante el uso de la tecnología."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-024",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones cuantitativas en situaciones de la vida cotidiana y clases de funciones que las modelizan."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-025",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones lineales y no lineales: identificación y comparación de diferentes modos de representación, tablas, gráficas o expresiones algebraicas, y sus propiedades a partir de ellas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-026",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Representación de funciones: interpretación de sus propiedades en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-027",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Resolución de problemas mediante la descomposición en partes, la automatización y el pensamiento algorítmico."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-028",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Estrategias en la interpretación, modificación y creación de algoritmos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-029",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Formulación y análisis de problemas de la vida cotidiana mediante programas y otras herramientas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-030",
-                "subtitulo_nivel_1": "1. Patrones.",
-                "subtitulo_nivel_2": "Patrones, pautas y regularidades: observación, generalización y término general en casos sencillos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-031",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Modelización y resolución de problemas de la vida cotidiana mediante representaciones matemáticas y lenguaje algebraico, haciendo uso de distintos tipos de funciones."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-032",
-                "subtitulo_nivel_1": "2. Modelo matemático.",
-                "subtitulo_nivel_2": "Estrategias de deducción y análisis de conclusiones razonables de una situación de la vida cotidiana a partir de un modelo."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-033",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Variables: asociación de expresiones simbólicas al contexto del problema y diferentes usos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-034",
-                "subtitulo_nivel_1": "3. Variable.",
-                "subtitulo_nivel_2": "Relaciones entre cantidades y sus tasas de cambio."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-035",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Álgebra simbólica: representación de relaciones funcionales en contextos diversos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-036",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Formas equivalentes de expresiones algebraicas en la resolución de ecuaciones, sistemas de ecuaciones e inecuaciones lineales y no lineales sencillas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-037",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Estrategias de discusión y búsqueda de soluciones en ecuaciones lineales y no lineales sencillas en situaciones de la vida cotidiana."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-038",
-                "subtitulo_nivel_1": "4. Igualdad y desigualdad.",
-                "subtitulo_nivel_2": "Ecuaciones, sistemas e inecuaciones: resolución mediante el uso de la tecnología."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-039",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones cuantitativas en situaciones de la vida cotidiana y las clases de funciones que las modelizan."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-040",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Relaciones lineales y no lineales: identificación y comparación de diferentes modos de representación, tablas, gráficas o expresiones algebraicas, y sus propiedades a partir de ellas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-041",
-                "subtitulo_nivel_1": "5. Relaciones y funciones.",
-                "subtitulo_nivel_2": "Representación de funciones: interpretación de sus propiedades en situaciones de la vida cotidiana y otros contextos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-042",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Resolución de problemas mediante la descomposición en partes, la automatización y el pensamiento algorítmico."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-043",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Estrategias en la interpretación, modificación y creación de algoritmos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB04-044",
-                "subtitulo_nivel_1": "6. Pensamiento computacional.",
-                "subtitulo_nivel_2": "Formulación y análisis de problemas de la vida cotidiana mediante programas y otras herramientas."
               }
             ],
             "E. Sentido estocástico": [
@@ -41523,106 +40688,6 @@
                 "nombre": "ES-MD-ESO3-MAT-SB05-012",
                 "subtitulo_nivel_1": "3. Inferencia.",
                 "subtitulo_nivel_2": "Estrategias de deducción de conclusiones a partir de una muestra con el fin de emitir juicios y tomar decisiones adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-013",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Estrategias de recogida y organización de datos de situaciones de la vida cotidiana que involucren una variable bidimensional. Tablas de contingencia."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-014",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Análisis e interpretación de tablas y gráficos estadísticos de una y dos variables cualitativas, cuantitativas discretas y cuantitativas continuas en contextos reales."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-015",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Medidas de localización y dispersión: interpretación y análisis de la variabilidad."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-016",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Gráficos estadísticos de una y dos variables: representación mediante diferentes tecnologías (calculadora, hoja de cálculo, aplicaciones..), análisis, interpretación y obtención de conclusiones razonadas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-017",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Interpretación de la relación entre dos variables, valorando gráficamente con herramientas tecnológicas la pertinencia de realizar una regresión lineal. Ajuste lineal con herramientas tecnológicas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-018",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Experimentos compuestos: planificación, realización y análisis de la incertidumbre asociada."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-019",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Probabilidad: cálculo aplicando la regla de Laplace y técnicas de recuento en experimentos simples y compuestos (mediante diagramas de árbol, tablas…) y aplicación a la toma de decisiones fundamentadas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-020",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Diferentes etapas del diseño de estudios estadísticos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-021",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Estrategias y herramientas de presentación e interpretación de datos relevantes en investigaciones estadísticas mediante herramientas digitales adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-022",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Análisis del alcance de las conclusiones de un estudio estadístico valorando la representatividad de la muestra."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-023",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Estrategias de recogida y organización de datos de situaciones de la vida cotidiana que involucren una variable estadística bidimensional. Tablas de contingencia."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-024",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Análisis e interpretación de tablas y gráficos estadísticos de una y dos variables cualitativas, cuantitativas discretas y cuantitativas continuas en contextos reales."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-025",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Medidas de localización y dispersión: interpretación y análisis de la variabilidad."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-026",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Gráficos estadísticos de una y dos variables: representación mediante diferentes tecnologías (calculadora, hoja de cálculo, aplicaciones..), análisis, interpretación y obtención de conclusiones razonadas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-027",
-                "subtitulo_nivel_1": "1. Organización y análisis de datos.",
-                "subtitulo_nivel_2": "Interpretación de la relación entre dos variables, valorando gráficamente con herramientas tecnológicas la pertinencia de realizar una regresión lineal. Ajuste lineal con herramientas tecnológicas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-028",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Experimentos compuestos: planificación, realización y análisis de la incertidumbre asociada."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-029",
-                "subtitulo_nivel_1": "2. Incertidumbre.",
-                "subtitulo_nivel_2": "Probabilidad: cálculo aplicando la regla de Laplace y técnicas de recuento en experimentos simples y compuestos (mediante diagramas de árbol, tablas…) y aplicación a la toma de decisiones fundamentadas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-030",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Diferentes etapas del diseño de estudios estadísticos."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-031",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Estrategias y herramientas de presentación e interpretación de datos relevantes en investigaciones estadísticas mediante herramientas digitales adecuadas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB05-032",
-                "subtitulo_nivel_1": "3. Inferencia.",
-                "subtitulo_nivel_2": "Análisis del alcance de las conclusiones de un estudio estadístico valorando la representatividad de la muestra."
               }
             ],
             "F. Sentido socioafectivo": [
@@ -41658,76 +40723,6 @@
               },
               {
                 "nombre": "ES-MD-ESO3-MAT-SB06-007",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género. MATEMÁTICAS A"
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-008",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Gestión emocional: emociones que intervienen en el aprendizaje de las matemáticas. Autoconciencia y autorregulación. Superación de bloqueos emocionales en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-009",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la curiosidad, la iniciativa, la perseverancia y la resiliencia en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-010",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la flexibilidad cognitiva: apertura a cambios de estrategia y transformación del error en oportunidad de aprendizaje."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-011",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Asunción de responsabilidades y participación activa, optimizando el trabajo en equipo. Estrategias de gestión de conflictos: pedir, dar y gestionar ayuda."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-012",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Métodos para la gestión y la toma de decisiones adecuadas en la resolución de situaciones propias del quehacer matemático en el trabajo en equipo."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-013",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "Actitudes inclusivas y aceptación de la diversidad presente en el aula y en la sociedad."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-014",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género. MATEMÁTICAS B"
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-015",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Gestión emocional: emociones que intervienen en el aprendizaje de las matemáticas. Autoconciencia y autorregulación."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-016",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la curiosidad, la iniciativa, la perseverancia y la resiliencia en el aprendizaje de las matemáticas."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-017",
-                "subtitulo_nivel_1": "1. Creencias, actitudes y emociones.",
-                "subtitulo_nivel_2": "Estrategias de fomento de la flexibilidad cognitiva: apertura a cambios de estrategia y transformación del error en oportunidad de aprendizaje."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-018",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Asunción de responsabilidades y participación activa, optimizando el trabajo en equipo. Estrategias de gestión de conflictos: pedir, dar y gestionar ayuda."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-019",
-                "subtitulo_nivel_1": "2. Trabajo en equipo y toma de decisiones.",
-                "subtitulo_nivel_2": "Métodos para la gestión y la toma de decisiones adecuadas en la resolución de situaciones propias del quehacer matemático en el trabajo en equipo."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-020",
-                "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
-                "subtitulo_nivel_2": "Actitudes inclusivas y aceptación de la diversidad presente en el aula y en la sociedad."
-              },
-              {
-                "nombre": "ES-MD-ESO3-MAT-SB06-021",
                 "subtitulo_nivel_1": "3. Inclusión, respeto y diversidad.",
                 "subtitulo_nivel_2": "La contribución de las matemáticas al desarrollo de los distintos ámbitos del conocimiento humano desde una perspectiva de género."
               }
