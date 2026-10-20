@@ -169,7 +169,7 @@ var $exeDevice = {
     createForm: function () {
         const path = this.idevicePath,
             edition = $exeIDevicesEdition.iDevice,
-            // The message of the Questions tab: how the words are written.
+            // The message of the Activities tab: how the words are written.
             wordInstructions = _(
                 "Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s"
             ).replace(

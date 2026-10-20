@@ -179,7 +179,7 @@ var $exeDevice = {
                     </div>
                     <div id="slcmECustomMessagesDiv" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
                         ${toggle('slcmECustomMessages', `${_('Custom messages')}.`)}
-                        ${help(_('Add a message, and its audio, for the right and the wrong answer of each activity in the Questions tab.'))}
+                        ${help(_('Add a message, and its audio, for the right and the wrong answer of each activity in the Activities tab.'))}
                     </div>
                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
                         ${toggle('slcmEModeTable', `${_('Table mode')}.`)}

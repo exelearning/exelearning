@@ -829,7 +829,7 @@ var $exeIDevicesEdition = {
 
             share: {
                 /**
-                 * The windows the Questions tab opens, in the order of its
+                 * The windows the Activities tab opens, in the order of its
                  * links.
                  */
                 windows: ['import', 'export', 'ai'],
@@ -962,7 +962,7 @@ var $exeIDevicesEdition = {
                         })
                         .join('');
                     return {
-                        toolbar: `<div class="d-flex justify-content-end flex-wrap gap-2 mb-2" role="toolbar" aria-label="${_('Questions')}">${links}</div>`,
+                        toolbar: `<div class="d-flex justify-content-end flex-wrap gap-2 mb-2" role="toolbar" aria-label="${_('Activities')}">${links}</div>`,
                         modals: modals,
                     };
                 },
@@ -1030,7 +1030,7 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
-                 * Open a window of the Questions tab. Focus goes back to the
+                 * Open a window of the Activities tab. Focus goes back to the
                  * link that opened it when it closes.
                  *
                  * @param {string} name A name in `windows`.
@@ -3034,18 +3034,14 @@ var $exeIDevicesEdition = {
 
             /**
              * The informative message that opens a tab: what is done there,
-             * broadly. Same alert as the iDevice description, with an icon
-             * from the application's icon font.
+             * broadly. Plain text, without a box or an icon.
              *
              * @param {string} text The message (HTML).
              * @returns {string} '' when there is no text.
              */
             getInfo: function (text) {
                 if (!text) return '';
-                return `<div class="alert alert-info d-flex align-items-start gap-2 mb-3" role="note">
-                        <span class="auto-icon fs-5 lh-1" aria-hidden="true">info</span>
-                        <p class="m-0">${text}</p>
-                    </div>`;
+                return `<p class="mt-0 mb-3">${text}</p>`;
             },
 
             /**
@@ -3087,7 +3083,7 @@ var $exeIDevicesEdition = {
                         };
                     case 'contents':
                         return {
-                            title: _('Questions'),
+                            title: _('Activities'),
                             info: _('Add the questions of the activity and edit them one by one.'),
                             content: html,
                         };
@@ -3142,7 +3138,7 @@ var $exeIDevicesEdition = {
              * (HTML); '' for none.
              * @param {string} [config.options] The game options (HTML).
              * @param {string} [config.contents] The questions, cards,
-             * words... of the activity (HTML), in the Questions tab.
+             * words... of the activity (HTML), in the Activities tab.
              * @param {boolean} [config.passwords] Access code and message.
              * @param {boolean} [config.feedback] See gamification.feedback.
              * @param {boolean} [config.after] The "Content after" editor.
@@ -3150,7 +3146,7 @@ var $exeIDevicesEdition = {
              * gamification.scorm.getContents.
              * @param {Object|Array} [config.texts] The iDevice's custom texts.
              * @param {boolean|Object} [config.share] The Import, Export and
-             * Create with AI links of the Questions tab, there by default:
+             * Create with AI links of the Activities tab, there by default:
              * { importQuestions, exportQuestions, type, options }, see
              * gamification.share.getTools; false to leave them out.
              * @param {Object<string, string>} [config.info] The iDevice's own
@@ -3224,7 +3220,7 @@ var $exeIDevicesEdition = {
             /**
              * Make the tabs of `getHtml` work: click, and the arrow, Home and
              * End keys of the WAI-ARIA tabs pattern. Also mounts the windows
-             * of the Questions tab (gamification.share.mount).
+             * of the Activities tab (gamification.share.mount).
              *
              * Handled here rather than by Bootstrap's tab plugin: the plugin
              * keeps an instance per button that nothing would dispose of when

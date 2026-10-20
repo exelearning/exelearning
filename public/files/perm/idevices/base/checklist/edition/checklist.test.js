@@ -111,7 +111,7 @@ describe('checklist edition: shared form tabs', () => {
         open();
 
         expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'after', 'texts']);
-        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
@@ -136,7 +136,7 @@ describe('checklist edition: shared form tabs', () => {
         open();
         const info = panel('contents').firstElementChild;
 
-        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Write the title of the checklist and its items');
         expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
     });

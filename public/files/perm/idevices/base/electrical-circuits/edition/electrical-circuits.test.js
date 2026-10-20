@@ -1540,7 +1540,7 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
             'grading',
             'texts',
         ]);
-        expect(document.getElementById('electricalCircuitsIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('electricalCircuitsIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

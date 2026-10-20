@@ -1225,7 +1225,7 @@ describe('rubric edition: shared form tabs', () => {
         open();
 
         expect(tabNames()).toEqual(['instructions', 'contents', 'after', 'grading', 'texts', 'csv']);
-        expect(document.getElementById('ri_IdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('ri_IdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(document.getElementById('ri_IdeviceForm-tab-csv').textContent.trim()).toBe('CSV import/export');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
@@ -1247,8 +1247,8 @@ describe('rubric edition: shared form tabs', () => {
         open();
 
         for (const name of ['contents', 'csv']) {
-            expect(panel(name).firstElementChild.classList.contains('alert-info')).toBe(true);
-            expect(panel(name).querySelectorAll('.alert')).toHaveLength(1);
+            expect(panel(name).firstElementChild.tagName).toBe('P');
+            expect(panel(name).querySelectorAll('.alert')).toHaveLength(0);
         }
         expect(panel('csv').textContent).toContain('You can import rubric data from CSV files.');
         expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);

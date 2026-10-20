@@ -162,7 +162,7 @@ describe('beforeafter edition: shared form tabs', () => {
     it('explains what goes in the Questions tab', () => {
         const info = panel('contents').firstElementChild;
 
-        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Add the cards: each one compares a before image with an after image. Edit them one by one.');
     });
 
@@ -203,7 +203,7 @@ describe('beforeafter edition: shared form tabs', () => {
             'grading',
             'texts',
         ]);
-        expect(document.getElementById('beforeAfterQIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('beforeAfterQIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

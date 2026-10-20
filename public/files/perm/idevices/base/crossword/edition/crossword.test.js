@@ -483,7 +483,7 @@ describe('crossword edition: shared form tabs and feedback', () => {
       'grading',
       'texts',
     ]);
-    expect(document.getElementById('ccgmQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+    expect(document.getElementById('ccgmQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
     expect(panel('contents').classList.contains('active')).toBe(true);
   });
 
@@ -622,7 +622,7 @@ describe('crossword edition: shared form tabs and feedback', () => {
     it('explains what goes in the Questions tab', () => {
         const info = panel('contents').firstElementChild;
 
-        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Add the words and their definitions, and edit them one by one.');
     });
 

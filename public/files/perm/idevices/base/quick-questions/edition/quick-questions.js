@@ -1033,7 +1033,7 @@ var $exeDevice = {
                             <span class="toggle-visual"></span>
                         </span>
                         <label for="quextECustomMessages" class="toggle-label">${_('Custom messages')}.</label>
-                        ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
+                        ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                         <div class="toggle-item toggle-related m-0" data-target="quextEShowSolution">
@@ -1057,7 +1057,7 @@ var $exeDevice = {
                             <span class="toggle-visual"></span>
                         </span>
                         <label for="quextECustomScore" class="toggle-label">${_('Custom score')}.</label>
-                        ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Questions tab.'))}
+                        ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Activities tab.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                         <span>${_('Score')}:</span>
@@ -1122,7 +1122,7 @@ var $exeDevice = {
                             <option value="5">10m</option>
                         </select>
                         <button id="quextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
-                        ${edition.common.getHelpTooltip(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Questions tab.'))}
+                        ${edition.common.getHelpTooltip(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Activities tab.'))}
                     </div>
                 </div>`,
             questions = `

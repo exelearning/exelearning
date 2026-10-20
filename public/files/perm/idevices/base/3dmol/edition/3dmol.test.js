@@ -908,7 +908,7 @@ describe('3dmol edition: shared form tabs and feedback', () => {
             'grading',
             'texts',
         ]);
-        expect(document.getElementById('dMoleIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('dMoleIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

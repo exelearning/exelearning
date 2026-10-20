@@ -617,7 +617,7 @@ describe('map edition: shared form tabs', () => {
 
     it('lays the form out in the shared tabs, and opens on its points', () => {
         expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
-        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
@@ -638,7 +638,7 @@ describe('map edition: shared form tabs', () => {
     it('explains the Questions tab, keeps the accessibility warning, and offers no sharing', () => {
         const info = panel('contents').firstElementChild;
 
-        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Choose the image of the map, add its points');
         expect(document.querySelector('#gameQEIdeviceForm > .alert-warning').textContent).toContain(
             'This game may present accessibility problems'

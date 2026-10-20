@@ -1323,7 +1323,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaECustomMessages">${_('Custom messages')}.</label>
-                                ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
+                                ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
                             </div>
                             <div class="toggle-item mb-3" data-target="seleccionaEAnswersRamdon">
                                 <span class="toggle-control">
@@ -1364,7 +1364,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaECustomScore">${_('Custom score')}.</label>
-                                ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Questions tab.'))}
+                                ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Activities tab.'))}
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaETypeActivity">
                                 <span> ${_('Score')}:</span> 
@@ -1444,7 +1444,7 @@ var $exeDevice = {
                                     <option value="5">10m</option>
                                 </select>
                                 <button id="seleccionaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
-                                ${edition.common.getHelpTooltip(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Questions tab.'))}
+                                ${edition.common.getHelpTooltip(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Activities tab.'))}
                             </div>
                         </div>`,
             questions = `

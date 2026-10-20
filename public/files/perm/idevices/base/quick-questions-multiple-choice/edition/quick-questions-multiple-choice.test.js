@@ -723,7 +723,7 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
             'grading',
             'texts',
         ]);
-        expect(document.getElementById('quickMultipleQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('quickMultipleQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

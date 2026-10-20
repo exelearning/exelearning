@@ -654,7 +654,7 @@ describe('challenge edition: shared form tabs', () => {
         open();
 
         expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'grading', 'texts']);
-        expect(document.getElementById('desafioIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('desafioIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
@@ -676,7 +676,7 @@ describe('challenge edition: shared form tabs', () => {
         open();
         const info = panel('contents').firstElementChild;
 
-        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Write the final challenge, add its trials and edit them one by one.');
         expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
     });

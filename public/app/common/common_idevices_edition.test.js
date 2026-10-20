@@ -972,7 +972,7 @@ describe('common_idevices_edition.js', () => {
         expect(buttons().map((tab) => tab.textContent.trim())).toEqual([
           'Instructions',
           'Options',
-          'Questions',
+          'Activities',
           'Passwords',
           'Feedback',
           'After',
@@ -999,29 +999,29 @@ describe('common_idevices_edition.js', () => {
         expect(panel('texts').querySelector('#ci18n_msgPlay').value).toBe('Play');
       });
 
-      it('opens every panel with a message saying what is done there, after an icon', () => {
+      it('opens every panel with a message saying what is done there, as plain text', () => {
         render(allTabs);
 
         tabNames().forEach((name) => {
           const info = panel(name).firstElementChild;
-          expect(info.className).toBe('alert alert-info d-flex align-items-start gap-2 mb-3');
-          expect(info.getAttribute('role')).toBe('note');
-          const icon = info.querySelector('.auto-icon');
-          expect(icon.textContent).toBe('info');
-          expect(icon.getAttribute('aria-hidden')).toBe('true');
-          expect(info.querySelector('p').textContent.trim().length).toBeGreaterThan(20);
+          // A paragraph, without the box and the icon it used to have.
+          expect(info.tagName).toBe('P');
+          expect(info.className).toBe('mt-0 mb-3');
+          expect(info.querySelector('.auto-icon')).toBeNull();
+          expect(panel(name).querySelector('.alert-info')).toBeNull();
+          expect(info.textContent.trim().length).toBeGreaterThan(20);
         });
       });
 
       it('lets the iDevice word the message of a shared tab, and keeps the rest', () => {
         render({ options: '', contents: '', info: { contents: 'Write a <b>word</b> for each letter.', ai: 'x' } });
 
-        expect(panel('contents').querySelector('.alert-info p').innerHTML).toBe('Write a <b>word</b> for each letter.');
-        expect(panel('contents').querySelectorAll('.alert-info')).toHaveLength(1);
-        expect(panel('options').querySelector('.alert-info p').textContent).toContain('Choose how the activity works');
+        expect(panel('contents').firstElementChild.innerHTML).toBe('Write a <b>word</b> for each letter.');
+        expect(panel('contents').textContent).not.toContain('Add the questions');
+        expect(panel('options').firstElementChild.textContent).toContain('Choose how the activity works');
 
         render({ contents: '', info: null });
-        expect(panel('contents').querySelector('.alert-info p').textContent).toContain('Add the questions');
+        expect(panel('contents').firstElementChild.textContent).toContain('Add the questions');
       });
 
       it('explains the passwords once, in the message of the tab', () => {
@@ -1038,10 +1038,10 @@ describe('common_idevices_edition.js', () => {
         expect(panel('contents').querySelector('#myQuestions')).not.toBeNull();
       });
 
-      it('always titles the content tab Questions, and takes only HTML for it', () => {
+      it('always titles the content tab Activities, and takes only HTML for it', () => {
         render({ contents: { title: 'Cards', content: '<p id="cards">x</p>' } });
 
-        expect(button('contents').textContent.trim()).toBe('Questions');
+        expect(button('contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').querySelector('#cards')).toBeNull();
       });
 
@@ -1066,14 +1066,14 @@ describe('common_idevices_edition.js', () => {
 
         expect(tabNames()).toEqual(['options', 'csv']);
         expect(button('csv').textContent.trim()).toBe('CSV');
-        expect(panel('csv').querySelector('.alert-info').textContent).toContain('Import a CSV file.');
+        expect(panel('csv').firstElementChild.textContent).toContain('Import a CSV file.');
         expect(panel('csv').querySelector('#csv')).not.toBeNull();
       });
 
       it('opens a tab of the iDevice without a message when it gives none', () => {
         render({ extra: [{ name: 'csv', title: 'CSV', content: '<p id="csv">x</p>' }] });
 
-        expect(panel('csv').querySelector('.alert-info')).toBeNull();
+        expect(panel('csv').children).toHaveLength(1);
         expect(panel('csv').firstElementChild.id).toBe('csv');
       });
 
@@ -1325,16 +1325,17 @@ describe('common_idevices_edition.js', () => {
       document.body.innerHTML = '';
     });
 
-    it('puts Import, Export and Create with AI on the right of the Questions tab, above its form', () => {
+    it('puts Import, Export and Create with AI on the right of the Activities tab, above its form', () => {
       render({ contents: '<div id="questionForm"></div>' });
 
       const panel = document.getElementById('testForm-panel-contents');
-      expect([...panel.children].map((child) => child.getAttribute('role') || child.id)).toEqual([
-        'note',
+      expect([...panel.children].map((child) => child.getAttribute('role') || child.id || child.tagName)).toEqual([
+        'P',
         'toolbar',
         'questionForm',
       ]);
       expect(panel.querySelector('[role="toolbar"]').classList.contains('justify-content-end')).toBe(true);
+      expect(panel.querySelector('[role="toolbar"]').getAttribute('aria-label')).toBe('Activities');
       expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
       expect(links().map(label)).toEqual(['Import', 'Export', 'Create with AI']);
       expect(links().map((element) => element.querySelector('.auto-icon').textContent)).toEqual([
@@ -1393,9 +1394,11 @@ describe('common_idevices_edition.js', () => {
         expect(el.getAttribute('aria-labelledby')).toBe(title.id);
         expect(el.querySelector('.btn-close').getAttribute('data-bs-dismiss')).toBe('modal');
         expect(el.classList.contains('fade')).toBe(false);
+        // The same plain message that opens each tab.
         const info = el.querySelector('.modal-body').firstElementChild;
-        expect(info.classList.contains('alert-info')).toBe(true);
-        expect(info.querySelector('.auto-icon').textContent).toBe('info');
+        expect(info.tagName).toBe('P');
+        expect(info.className).toBe('mt-0 mb-3');
+        expect(info.textContent.trim().length).toBeGreaterThan(20);
       });
       expect(modal('import').querySelector('#eXeGameImportGame')).not.toBeNull();
       expect(modal('export').querySelector('#eXeGameExportQuestions')).not.toBeNull();

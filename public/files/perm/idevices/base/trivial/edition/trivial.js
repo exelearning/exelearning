@@ -988,7 +988,7 @@ var $exeDevice = {
                             <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="6" id="trivialNG6" />
                             <label for="trivialNG6" class="form-check-label mb-0">6</label>
                         </div>
-                        ${help(_('How many topics the board has. Each topic has its own questions in the Questions tab.'))}
+                        ${help(_('How many topics the board has. Each topic has its own questions in the Activities tab.'))}
                     </div>
                     <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
                         ${toggle('trivialEShowMinimize', _('Show minimized.'))}
@@ -1021,7 +1021,7 @@ var $exeDevice = {
                             <option value="5">10m</option>
                         </select>
                         <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
-                        ${help(_('Select a time limit and click Accept to apply it to all the questions of the topic shown in the Questions tab.'))}
+                        ${help(_('Select a time limit and click Accept to apply it to all the questions of the topic shown in the Activities tab.'))}
                     </div>
                 </div>`,
             questions = `

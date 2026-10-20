@@ -735,7 +735,7 @@ describe('classify edition: shared form tabs and feedback', () => {
     it('explains what goes in the Questions tab', () => {
         const info = panel('contents').firstElementChild;
 
-        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Add the cards and choose the group each one belongs to. The groups are named in Options.');
     });
 

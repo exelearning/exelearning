@@ -88,7 +88,7 @@ var $exeDevice = {
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                         ${toggle('ctjUseScore', _('Assign scores'))}
-                        ${edition.common.getHelpTooltip(_('Give points to the items in the Questions tab. The checklist shows the score of what is ticked.'))}
+                        ${edition.common.getHelpTooltip(_('Give points to the items in the Activities tab. The checklist shows the score of what is ticked.'))}
                     </div>
                     ${logo('ctjCommunity', _('(Left) Logo'), _('Show an image at the top left of the checklist.'), 'ctjcommunitylogo', 'Community', 'ctjEURLCommunity', 'ctjEPlayCommunity', _('Community'), 'codejocomunidad.png')}
                     ${logo('ctjLogo', _('(Right) Logo'), _('Show an image at the top right of the checklist.'), 'ctjlogologo', 'Logo', 'ctjEURLLogo', 'ctjEPlayLogo', _('Logo'), 'cotejologo.png')}

@@ -736,7 +736,7 @@ describe('progress-report edition: shared form tabs', () => {
         open();
 
         expect(tabNames()).toEqual(['options', 'contents', 'texts']);
-        expect(document.getElementById('reportQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(document.getElementById('reportQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
@@ -755,7 +755,7 @@ describe('progress-report edition: shared form tabs', () => {
         open();
         const info = panel('contents').firstElementChild;
 
-        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('The pages and iDevices of this resource.');
         expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
         expect(document.querySelectorAll('#reportQEIdeviceForm .exe-block-info')).toHaveLength(0);
