@@ -20,17 +20,11 @@ var $exeDevice = {
     activeTest: 0,
     slides: [],
     tests: [],
-    testsPoint: [],
-    points: [],
     selectsGame: [],
     qActive: 0,
-    youtubeLoaded: false,
     player: '',
     timeUpdateInterval: '',
-    timeUpdateVIInterval: '',
     timeVideoFocus: 0,
-    timeVIFocus: true,
-    timePoint: 30,
     typeEdit: -1,
     typeEditSlide: -1,
     qTypeEdit: -1,
@@ -42,20 +36,16 @@ var $exeDevice = {
     sClipBoard: '',
     qClipBoard: '',
     idevicePath: '',
-    playerAudio: '',
     isVideoType: false,
     xA: 0,
     yA: 0,
-    iconType: 0,
     iconX: 0,
     iconY: 0,
     levels: [],
     level: 0,
     url: '',
-    map: {},
     hasYoutube: false,
     activeMap: {},
-    parentMap: {},
     localPlayer: '',
     id: false,
     currentPoints: [],
@@ -63,7 +53,6 @@ var $exeDevice = {
     canvas: null,
     ctx: null,
     version: 3,
-    areas: [],
     ci18n: {},
     init: function (element, previousData, path) {
 
@@ -195,17 +184,12 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _(
-            'Please provide the definition of the word or phrase'
-        );
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
-        msgs.msgECompletePoint = _('You have to complete the question');
         msgs.msgECompleteAllOptions = _(
             'You have to complete all the selected options'
         );
-        msgs.msgESelectSolution = _('Choose the right answer');
         msgs.msgECompleteURLYoutube = _('Please type or paste a valid URL.');
         msgs.msgEStartEndVideo = _(
             'You have to indicate the start and the end of the video that you want to show'
@@ -218,29 +202,14 @@ var $exeDevice = {
             'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgEUnavailableVideo = _('This video is not currently available');
         msgs.msgECompleteQuestion = _('You have to complete the question');
-        msgs.msgSilentPoint = _(
-            'The silence time is wrong. Check the video duration.'
-        );
-        msgs.msgProvideSolution = _('Please write the solution');
         msgs.msgEDefintion = _(
             'Please provide the definition of the word or phrase'
-        );
-        msgs.msgNotHitCuestion = _(
-            'The question marked as next in case of success does not exist.'
-        );
-        msgs.msgNotErrorCuestion = _(
-            'The question marked as next in case of error does not exist.'
         );
         msgs.msgProvideTitle = _('You must indicate a title for this point.');
         msgs.msgMarkPoint = _('You must mark a point on the map.');
@@ -637,16 +606,6 @@ var $exeDevice = {
                     $exeDevice.pointEnd = 100000;
                 }
             }
-        }
-    },
-
-    updateProgressBarLocal: function () {
-        if ($exeDevice.localPlayer) {
-            $('#progress-bar').val(
-                (Math.round($exeDevice.localPlayer.currentTime) /
-                    Math.round($exeDevice.localPlayer.duration)) *
-                    100
-            );
         }
     },
 
@@ -1096,8 +1055,6 @@ var $exeDevice = {
     },
 
     initPoints: function () {
-        $('#mapaEInputVideo').css('display', 'flex');
-        $('#mapaEInputImage').css('display', 'flex');
         $('#mapaMoreImage').css('display', 'flex');
         $('#mapaCloseDetail').hide();
         $('#mapaMoreImage').hide();
@@ -1147,7 +1104,6 @@ var $exeDevice = {
         $('#mapaDataFooter').show();
         $('#mapaPDataImage').hide();
         $('#mapaPDataVideo').hide();
-        $('#mapaPMap').hide();
         $('#mapaEditPointsMap').hide();
         $('#mapaEditSlide').hide();
         $('#mapaEditPointTest').hide();
@@ -1311,9 +1267,6 @@ var $exeDevice = {
         }
     },
 
-    updateProgressBar: function () {
-        // $('#progress-bar').val((player.getCurrentTime() / player.getDuration()) * 100);
-    },
     onPlayerError: function () {
         //$exeDevice.showMessage("El video mapaEdo no está disponible")
     },
@@ -1344,19 +1297,6 @@ var $exeDevice = {
                 });
             }
             lifecycle.clearInterval($exeDevice.timeUpdateInterval);
-            $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
-                $exeDevice?.updateTimerDisplay();
-            }, 1000);
-        }
-    },
-
-    playVideo: function () {
-        const lifecycle = this.$lifecycle;
-        if ($exeDevice.player) {
-            lifecycle.clearInterval($exeDevice.timeUpdateInterval);
-            if (typeof $exeDevice.player.playVideo === 'function') {
-                $exeDevice.player.playVideo();
-            }
             $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
                 $exeDevice?.updateTimerDisplay();
             }, 1000);
@@ -1443,61 +1383,6 @@ var $exeDevice = {
         return vertices;
     },
 
-    drawCurrentArea1: function () {
-        const ctx = $exeDevice.ctx,
-            currentPoints = $exeDevice.currentPoints,
-            canvas = $exeDevice.canvas;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const rect = $('#mapaImage')[0].getBoundingClientRect();
-
-        if (currentPoints.length < 2) return;
-
-        ctx.beginPath();
-        ctx.moveTo(
-            Math.round(currentPoints[0].x * rect.width),
-            Math.round(currentPoints[0].y * rect.height)
-        );
-        currentPoints.forEach((point) =>
-            ctx.lineTo(
-                Math.round(rect.width * point.x),
-                Math.round(point.y * rect.height)
-            )
-        );
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-        ctx.fill();
-    },
-
-    drawCurrentArea2: function () {
-        const ctx = $exeDevice.ctx,
-            currentPoints = $exeDevice.currentPoints,
-            canvas = $exeDevice.canvas;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const rect = $('#mapaImage')[0].getBoundingClientRect();
-
-        if (currentPoints.length < 2) return;
-
-        ctx.beginPath();
-        ctx.moveTo(
-            Math.round(currentPoints[0].x * rect.width),
-            Math.round(currentPoints[0].y * rect.height)
-        );
-        currentPoints.forEach((point) =>
-            ctx.lineTo(
-                Math.round(rect.width * point.x),
-                Math.round(point.y * rect.height)
-            )
-        );
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-        ctx.fill();
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-    },
-
     drawCurrentArea: function () {
         const ctx = $exeDevice.ctx,
             currentPoints = $exeDevice.currentPoints,
@@ -1534,29 +1419,6 @@ var $exeDevice = {
             ctx.lineWidth = 1;
             ctx.stroke();
         }
-    },
-
-    drawSavedAreas: function (backgroundImage) {
-        const ctx = $exeDevice.ctx,
-            canvas = $exeDevice.canvas,
-            areas = $exeDevice.areas;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(
-            backgroundImage,
-            0,
-            0,
-            backgroundImage.width,
-            backgroundImage.height
-        );
-        areas.forEach((area) => {
-            if (area.length < 2) return;
-            ctx.beginPath();
-            ctx.moveTo(area[0].x, area[0].y);
-            area.forEach((point) => ctx.lineTo(point.x, point.y));
-            ctx.closePath;
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
-            ctx.fill();
-        });
     },
 
     getDefaultSlide: function () {
@@ -2471,7 +2333,6 @@ var $exeDevice = {
             showMinimize = $('#mapaEShowMinimize').is(':checked'),
             hideScoreBar = $('#mapaEHideScoreBar').is(':checked'),
             hideAreas = $('#mapaEHideAreas').is(':checked'),
-            showActiveAreas = $('#mapaEShowActiveAreas').is(':checked'),
             url = $('#mapaURLImageMap').val(),
             authorImage = $('#mapaAuthorImageMap').val(),
             altImage = $('#mapaAltImageMap').val(),
@@ -2592,7 +2453,7 @@ var $exeDevice = {
             typeGame: 'Mapa',
             instructions: instructions,
             showMinimize: showMinimize,
-            showActiveAreas: showActiveAreas,
+            showActiveAreas: false,
             author: '',
             url: url,
             authorImage: authorImage,
@@ -2758,32 +2619,6 @@ var $exeDevice = {
             });
     },
 
-    playSound: function (selectedFile) {
-        const lifecycle = this.$lifecycle;
-        let selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        // The element is never inserted in the form, so closing the editor
-        // would otherwise leave it playing and downloading.
-        lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
-        lifecycle.addEventListener(
-            $exeDevice.playerAudio,
-            'canplaythrough',
-            function () {
-                $exeDevice?.playerAudio.play();
-            }
-        );
-    },
-
-    stopSound: function () {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause == 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
-    },
-
     paintMouse: function (x, y) {
         const $image = $('#mapaImage'),
             $cursor = $('#mapaCursor'),
@@ -2797,7 +2632,6 @@ var $exeDevice = {
         $canvas.hide();
         $control.hide();
         $('#mapaTextLinkDiv').hide();
-        $('#mapaIconPoint').show();
         if (x > 0 || y > 0) {
             const wI = $image.width() > 0 ? $image.width() : 1,
                 hI = $image.height() > 0 ? $image.height() : 1,
@@ -2826,7 +2660,6 @@ var $exeDevice = {
         $area.hide();
         $canvas.show();
         $control.css('display', 'flex');
-        $('#mapaIconPoint').show();
         $('#mapaTextLinkDiv').hide();
         $exeDevice.currentPoints = [];
         $exeDevice.redoPoints = [];
@@ -2852,7 +2685,6 @@ var $exeDevice = {
         $canvas.hide();
         $control.hide();
         $('#mapaTextLinkDiv').css('display', 'flex');
-        $('#mapaIconPoint').hide();
         if (x > 0 || y > 0) {
             const wI = $image.width() > 0 ? $image.width() : 1,
                 hI = $image.height() > 0 ? $image.height() : 1,
@@ -3292,7 +3124,6 @@ var $exeDevice = {
             const url = selectedFile,
                 alt = $('#mapaAltImageMap').val();
             $exeDevice.showImage(url, alt);
-            $('#mapaMultimediaPoint').fadeIn();
         });
 
         $('#mapaSShowImage').on('click', function (e) {
@@ -3335,10 +3166,6 @@ var $exeDevice = {
             }
             const alt = $('#mapaSAltImage').val();
             $exeDevice.showImageSlide(selectedFile, alt);
-        });
-
-        $('#mapaMultimediaPoint').on('click', function () {
-            $(this).fadeOut();
         });
 
         $('#gameQEIdeviceForm').on('click', 'input.MQE-Number', function () {
@@ -3440,31 +3267,6 @@ var $exeDevice = {
             }
         });
 
-        $('#mapaNumberPoint1').keyup(function (e) {
-            if (!$exeDevice) return;
-            if (e.keyCode == 13) {
-                let num = parseInt($(this).val());
-                if (!isNaN(num) && num > 0) {
-                    num =
-                        num < $exeDevice.activeMap.pts.length
-                            ? num - 1
-                            : $exeDevice.activeMap.pts.length - 1;
-                    if (
-                        $exeDevice.validatePoint(
-                            $exeDevice.activeMap.pts[num]
-                        ) !== false
-                    ) {
-                        $exeDevice.activeMap.active = num;
-                        $exeDevice.showPoint($exeDevice.activeMap.active);
-                    } else {
-                        $(this).val($exeDevice.activeMap.active + 1);
-                    }
-                } else {
-                    $(this).val($exeDevice.activeMap.active + 1);
-                }
-            }
-        });
-
         $('#gameQEIdeviceForm').on(
             'click',
             'input.MQE-TypeSelect',
@@ -3521,10 +3323,6 @@ var $exeDevice = {
                     $('#mapaDataIdentifica').show();
                 } else {
                     $('#mapaDataIdentifica').hide();
-                }
-                $('#mapaIconTypeDiv').show();
-                if (type == 1) {
-                    $('#mapaIconTypeDiv').hide();
                 }
                 $('#mapaEvaluationIdentify').hide();
                 if (type == 2 || type == 3) {
@@ -4044,19 +3842,6 @@ var $exeDevice = {
         $('#mapaNumberQuestions').text(num + '/' + nq);
     },
 
-    updateNumberPointQuestions: function () {
-        let percentaje = parseInt(
-                $exeDevice.removeTags($('#mapaPercentajeQuestions1').val())
-            ),
-            nq = $exeDevice.tests.length;
-
-        if (isNaN(percentaje)) return;
-
-        percentaje = Math.max(1, Math.min(percentaje, 100));
-        let num = Math.max(1, Math.round((percentaje * nq) / 100));
-        $('#mapaNumberQuestions1').text(num + '/' + nq);
-    },
-
     getDrowpBox() {
         const select = `
             <div class="MQP-Dropdown">
@@ -4235,9 +4020,6 @@ var $exeDevice = {
             icon = 19;
         }
         let icon1 = `url(${mI})`;
-        $('#mapaIconPoint').css({
-            'background-image': icon1,
-        });
         $('#mapaCursor').css({
             'background-image': icon1,
         });
@@ -4294,10 +4076,8 @@ var $exeDevice = {
 
         if (icon == 84 && evaluationG != 1) {
             $('#mapaTextLinkDiv').css('display', 'flex');
-            $('#mapaIconPoint').hide();
         } else {
             $('#mapaTextLinkDiv').hide();
-            $('#mapaIconPoint').show();
         }
 
         if (icon == 84 && evaluationG != 1) {
@@ -4465,7 +4245,6 @@ var $exeDevice = {
             $('#mapaEPasteQ1').hide();
             $('#mapaENumQuestions1').text($exeDevice.tests.length);
             $('#mapaENumberQuestionQ1').val($exeDevice.tests.length);
-            $exeDevice.updateNumberPointQuestions();
         }
     },
 
@@ -4483,7 +4262,6 @@ var $exeDevice = {
             $('#mapaEPasteQ1').hide();
             $('#mapaENumQuestions1').text($exeDevice.tests.length);
             $('#mapaENumberQuestionQ1').val($exeDevice.activeTest + 1);
-            $exeDevice.updateNumberPointQuestions();
         }
     },
 
@@ -4502,7 +4280,6 @@ var $exeDevice = {
             $exeDevice.numberCutPointQuestion = $exeDevice.activeTest;
             $exeDevice.pTypeEdit = 1;
             $('#mapaEPasteQ1').show();
-            $exeDevice.updateNumberPointQuestions();
         }
     },
 
@@ -4691,8 +4468,6 @@ var $exeDevice = {
             $(this).val(option);
         });
 
-        $('#mapaENumberQuestion1').val(i + 1);
-        $('#mapaEScoreQuestion1').val(1);
         $(
             "input.MQE-PNumber[name='mpnumber1'][value='" +
                 p.numberOptions +
@@ -4878,8 +4653,6 @@ var $exeDevice = {
         });
         $('#mapaEMessageOK').val(p.msgHit);
         $('#mapaEMessageKO').val(p.msgError);
-        $('#mapaENumberQuestion').val(i + 1);
-        $('#mapaEScoreQuestion').val(1);
         $(
             "input.MQE-Number[name='mpnumber'][value='" + p.numberOptions + "']"
         ).prop('checked', true);
@@ -5299,7 +5072,6 @@ var $exeDevice = {
         $('#mapaEShowMinimize').prop('checked', game.showMinimize);
         $('#mapaEHideScoreBar').prop('checked', game.hideScoreBar);
         $('#mapaEHideAreas').prop('checked', game.hideAreas);
-        $('#mapaEShowActiveAreas').prop('checked', game.showActiveAreas);
         $('#mapaURLImageMap').val(game.url);
         $('#mapaAuthorImageMap').val(game.authorImage);
         $('#mapaAltImageMap').val(game.altImage);
@@ -5372,11 +5144,6 @@ var $exeDevice = {
             $('#mapaDataIdentifica').show();
             $('#mapaEShowSolution').closest('.toggle-item').hide();
             $('#mapaETimeShowSolution').prop('disabled', false);
-        }
-
-        $('#mapaIconTypeDiv').show();
-        if (game.evaluationG == 1) {
-            $('#mapaIconTypeDiv').hide();
         }
 
         if (game.evaluationG == 0) {
@@ -5599,57 +5366,6 @@ var $exeDevice = {
 
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
-    },
-
-    getPointValues: function () {
-        let p = {};
-        p.title = $('#mapaTitle').val().trim();
-        p.type = parseInt($('#mapaTypePointSelect').val());
-        p.x = parseFloat($('#mapaX').val());
-        p.y = parseFloat($('#mapaY').val());
-        p.x1 = parseFloat($('#mapaX1').val());
-        p.y1 = parseFloat($('#mapaY1').val());
-        p.footer = $('#mapaFooter').val();
-        p.author = $('#mapaPAuthorImage').val();
-        p.alt = $('#mapaPAltImage').val();
-        p.url = $('#mapaURLImage').val().trim();
-        p.video = $('#mapaURLYoutube').val().trim();
-        p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-            $('#mapaPInitVideo').val()
-        );
-        p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-            $('#mapaPEndVideo').val()
-        );
-        p.audio = $('#mapaURLAudio').val().trim();
-        p.iVideo = isNaN(p.iVideo) ? 0 : p.iVideo;
-        p.fVideo = isNaN(p.fVideo) ? 3600 : p.fVideo;
-        p.iconType = parseInt($('#mapaBtnDrop').data('value'));
-        p.question = $('#mapaIdentify').val();
-        p.question_audio = $('#mapaURLAudioIdentify').val();
-        if ($('#mapaPContainer').is(':visible')) {
-            p.video = $('#mapaPURLYoutube').val().trim();
-            p.url = $('#mapaPURLImage').val().trim();
-            p.title = $('#mapaPTitle').val().trim();
-            p.footer = $('#mapaPFooter').val();
-        }
-        if (p.fVideo <= p.iVideo) p.fVideo = 36000;
-        if (p.type == 1) {
-            p.video = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                $('#mapaURLYoutube').val().trim()
-            )
-                ? $('#mapaURLYoutube').val()
-                : '';
-            if (p.video == '') {
-                p.video = $exeDevice.getIDMediaTeca(
-                    $('#mapaURLYoutube').val().trim()
-                )
-                    ? $('#mapaURLYoutube').val()
-                    : '';
-            }
-        }
-        p.eText = tinyMCE.get('mapaText').getContent();
-        p.toolTip = tinyMCE.get('mapaToolTip').getContent();
-        return p;
     },
 
     clickArea: function (epx, epy, epx1, epy1) {

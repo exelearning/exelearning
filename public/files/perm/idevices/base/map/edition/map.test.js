@@ -204,7 +204,6 @@ function buildForm() {
             <input id="mapaURLYoutube" type="text" value="" />
             <input id="mapaPURLYoutube" type="text" value="" />
             <input id="mapaNumberPoint" type="text" value="2" />
-            <input id="mapaNumberPoint1" type="text" value="2" />
             <img id="mapaPImage" alt="" />
             <div id="mapaPNoImage"></div>
             <video id="mapaEVideoLocal"></video>
@@ -270,11 +269,6 @@ describe('map edition: $exeDevice guards (#2271)', () => {
         it('does not throw on point number Enter keyup', () => {
             expect(() =>
                 $('#mapaNumberPoint').trigger(
-                    $.Event('keyup', { keyCode: 13 })
-                )
-            ).not.toThrow();
-            expect(() =>
-                $('#mapaNumberPoint1').trigger(
                     $.Event('keyup', { keyCode: 13 })
                 )
             ).not.toThrow();
@@ -525,38 +519,6 @@ describe('map edition: $exeDevice guards (#2271)', () => {
             expect(window.onYouTubeIframeAPIReady).toBe(null);
             onApiReady();
             expect(youTubeReady).toHaveBeenCalledTimes(1);
-        });
-
-        it('stops the preview audio when the edition closes', () => {
-            const audio = {
-                play: vi.fn(),
-                pause: vi.fn(),
-                load: vi.fn(),
-                removeAttribute: vi.fn(),
-                addEventListener: vi.fn(),
-                removeEventListener: vi.fn(),
-            };
-            const audioSpy = vi.spyOn(global, 'Audio').mockImplementation(function () {
-                return audio;
-            });
-
-            try {
-                $exeDevice.playSound('sound.mp3');
-                const [type, handler] = audio.addEventListener.mock.calls[0];
-                expect(type).toBe('canplaythrough');
-
-                handler();
-                expect(audio.play).toHaveBeenCalledTimes(1);
-
-                $exeDevice.$lifecycle.destroy();
-                expect(audio.pause).toHaveBeenCalledTimes(1);
-                expect(audio.removeAttribute).toHaveBeenCalledWith('src');
-
-                handler();
-                expect(audio.play).toHaveBeenCalledTimes(1);
-            } finally {
-                audioSpy.mockRestore();
-            }
         });
     });
 });
