@@ -2,6 +2,14 @@
 
 ## v4.0.6 – Unreleased
 
+### Changed
+
+- Security: backend hardening across path validation, access control, SSRF protection, XSS sanitisation, secrets and resource limits. **Action required when upgrading** (see `UPGRADE.md`):
+  - Production (`NODE_ENV=production` or `APP_ENV=prod`) refuses to start unless `API_JWT_SECRET` and `APP_SECRET` are set to real values
+  - Platform integration (Moodle `exescorm`/`exeweb`) requires an explicit `PROVIDER_URLS` allow-list; an empty value now rejects every callback
+  - Moodle sites on a private network (intranet, VPN, `localhost`) also need `PROVIDER_ALLOW_PRIVATE_NETWORK=true`, and the callbacks no longer follow redirects
+  - Non-Docker deployments with `APP_ENV=prod` must be served over HTTPS, because session cookies are now `Secure`
+
 ### Fixed
 
 - Preview: the first preview after opening a project no longer waits about 5 seconds, and the preview now recovers by itself when its worker stops responding during a session
