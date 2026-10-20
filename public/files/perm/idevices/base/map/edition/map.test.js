@@ -213,24 +213,31 @@ function buildForm() {
 
 describe('map edition: $exeDevice guards (#2271)', () => {
     let $exeDevice;
+    let previousItinerary;
+    let previousPlaySound;
+    let previousStopSound;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         buildForm();
+        const gamification = global.$exeIDevicesEdition.iDevice.gamification;
+        previousItinerary = gamification.itinerary;
+        previousPlaySound = gamification.helpers.playSound;
+        previousStopSound = gamification.helpers.stopSound;
         global.$exeDevices.iDevice.gamification.media = {
             getIDYoutube: vi.fn(() => false),
             getURLVideoMediaTeca: vi.fn(() => false),
             extractURLGD: vi.fn((url) => url),
         };
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = {
             getTab: vi.fn(() => ''),
             addEvents: vi.fn(),
             getValues: vi.fn(() => ({})),
             setValues: vi.fn(),
         };
-        global.$exeDevicesEdition.iDevice.gamification.helpers.playSound =
+        global.$exeIDevicesEdition.iDevice.gamification.helpers.playSound =
             vi.fn();
-        global.$exeDevicesEdition.iDevice.gamification.helpers.stopSound =
+        global.$exeIDevicesEdition.iDevice.gamification.helpers.stopSound =
             vi.fn();
         $exeDevice = global.loadIdevice(join(__dirname, 'map.js'));
         $exeDevice.addEvents();
@@ -240,6 +247,10 @@ describe('map edition: $exeDevice guards (#2271)', () => {
         // Close the edition as the workarea does, so nothing this test owns
         // (timers, players, media) survives into the next one.
         $exeDevice.$lifecycle.destroy();
+        const gamification = global.$exeIDevicesEdition.iDevice.gamification;
+        gamification.itinerary = previousItinerary;
+        gamification.helpers.playSound = previousPlaySound;
+        gamification.helpers.stopSound = previousStopSound;
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
@@ -391,7 +402,7 @@ describe('map edition: $exeDevice guards (#2271)', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -557,5 +568,171 @@ describe('map minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('map edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/map/edition/';
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    const tabNames = () =>
+        [...document.querySelectorAll('#gameQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`gameQEIdeviceForm-panel-${name}`);
+    const chooseMode = (value) => $(`input.MQE-TypeEvaluation[value="${value}"]`).prop('checked', true).trigger('click');
+    let device;
+    let previousApp;
+    let tooltips;
+    let previousHelpers;
+    let previousMedia;
+    let tinymceInit;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        previousHelpers = { ...helpers() };
+        Object.assign(helpers(), {
+            isJsonString: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return false;
+                }
+            },
+            sanitizeJSONString: (text) => text,
+            hourToSeconds: () => 0,
+            secondsToHour: () => '00:00:00',
+        });
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = {
+            getIDYoutube: () => false,
+            getURLVideoMediaTeca: () => false,
+            extractURLGD: (url) => url,
+        };
+        tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation(() => Promise.resolve([]));
+        document.body.innerHTML = '<div id="mapBody"></div>';
+        device = global.loadIdevice(join(__dirname, 'map.js'));
+        vi.spyOn(device, 'loadYoutubeApi').mockImplementation(() => {});
+        device.init(document.getElementById('mapBody'), {}, PATH);
+        // The form is wired once the editor of the point text is ready.
+        const { setup } = tinymceInit.mock.calls.find(([config]) => config.setup)[0];
+        let editorReady;
+        setup({ on: (event, callback) => event === 'init' && (editorReady = callback) });
+        editorReady();
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        for (const key of ['isJsonString', 'sanitizeJSONString', 'hourToSeconds', 'secondsToHour']) {
+            if (key in previousHelpers) helpers()[key] = previousHelpers[key];
+            else delete helpers()[key];
+        }
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its points', () => {
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Click on the active areas or image icons.'
+        );
+        expect(panel('options').querySelector('#mapaEOptions #mapaEEvaluationTest')).not.toBeNull();
+        expect(panel('contents').querySelector('.MQE-FieldPanel > #mapaEPanel')).not.toBeNull();
+        expect(panel('contents').querySelector('#mapaFQuestions')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit').value).toBe('Submit');
+        expect(document.querySelectorAll('#eXeIdeviceTextAfter')).toHaveLength(1);
+    });
+
+    it('explains the Questions tab, keeps the accessibility warning, and offers no sharing', () => {
+        const info = panel('contents').firstElementChild;
+
+        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.textContent).toContain('Choose the image of the map, add its points');
+        expect(document.querySelector('#gameQEIdeviceForm > .alert-warning').textContent).toContain(
+            'This game may present accessibility problems'
+        );
+        expect(document.querySelectorAll('.exe-block-dismissible, #gameQEIdeviceForm fieldset')).toHaveLength(0);
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('provides one accessible information button in each options row', () => {
+        const options = panel('options');
+        const helpButtons = [...options.querySelectorAll('#mapaEOptions .exe-idevice-help')];
+        const state = () => [...options.querySelectorAll('input')].map((input) => `${input.checked}${input.value}`);
+
+        expect(helpButtons).toHaveLength(12);
+        for (const help of helpButtons) {
+            expect(help.type).toBe('button');
+            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            const before = state();
+            help.click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+            expect(state()).toEqual(before);
+        }
+    });
+
+    it('shows the options of each assessment mode only', () => {
+        chooseMode(4);
+        expect(document.getElementById('mapaEvaluationData').style.display).not.toBe('none');
+        expect(document.getElementById('mapaFQuestions').style.display).not.toBe('none');
+        expect(document.getElementById('mapaSolutionOrderDiv').style.display).toBe('none');
+
+        chooseMode(5);
+        expect(document.getElementById('mapaSolutionOrderDiv').style.display).toBe('flex');
+        expect(document.getElementById('mapaFQuestions').style.display).toBe('none');
+
+        chooseMode(1);
+        expect(document.getElementById('mapaNumOptionsData').style.display).toBe('flex');
+        expect(document.getElementById('mapaEAutoShowDiv').style.display).toBe('none');
+
+        chooseMode(0);
+        expect(document.getElementById('mapaEAutoShowDiv').style.display).not.toBe('none');
+        expect(document.getElementById('mapaNumOptionsData').style.display).toBe('none');
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(document.querySelectorAll('#gameQEIdeviceForm .exe-app-tooltip').length);
+        expect(tooltips.size).toBeGreaterThanOrEqual(12);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('#mapaEOptions .toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+        expect(document.querySelectorAll('#mapaEOptions [data-target]')).toHaveLength(0);
     });
 });

@@ -9,6 +9,12 @@
     margin-right: 0 !important;
 }
 
+/* The long labels of the questionnaire percentages wrap beside their help. */
+#mapaEvaluationData label {
+    white-space: normal !important;
+    flex: 0 1 auto !important;
+}
+
 #gameQEIdeviceForm #mapaPercentajeShowQ,
 #gameQEIdeviceForm #mapaPercentajeIdentify,
 #gameQEIdeviceForm #mapaPercentajeQuestions,
@@ -29,26 +35,11 @@
     position: relative;
 }
 
-.MQE-EPanelP {
-    margin: 0.3em auto;
-    padding: 0;
-    width: 100%;
-    position: relative;
-    background-color: white;
-}
-
 #mapaCanvas {
     position: absolute;
     top: 0;
     left: 0;
     z-index: 111;
-}
-
-.MQE-EMediaContainer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
 }
 
 .MQE-EPointContainer,
@@ -85,7 +76,6 @@
     border-radius: 4px;
 }
 
-
 .MQE-EMultimedia {
     background-color: #fff;
     border-radius: .5em;
@@ -105,12 +95,7 @@
     min-width: 600px;
 }
 
-
 .MQE-EPanel p {
-    margin: 0.5em auto;
-}
-
-.MQE-EPanelP p {
     margin: 0.5em auto;
 }
 
@@ -168,9 +153,6 @@
     z-index: 110;
     background-color: rgba(255, 255, 255, 0.01);
 }
-
-
-
 
 .MQE-EArea {
     position: absolute;
@@ -230,43 +212,6 @@
     gap: 0.5rem;
 }
 
-.MQE-EFlexCenter {
-    align-items: center;
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: center;
-    min-width: 100px;
-    width: 100%;
-    margin-top: 1em;
-    gap: 0.5rem;
-
-}
-
-
-.MQE-EFlexN {
-    padding-left: 0.3em;
-    align-items: center;
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    gap: 0.5rem
-}
-
-.MQE-IconType {
-    align-items: center;
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-}
-
-.MQE-EIconPoint {
-    background-image: url(mapam0.svg);
-    background-size: 100% 100%;
-    height: 1.3em;
-    width: 1.3em;
-    margin-left: 0.5em;
-}
-
 .MQE-EFlexSolution {
     align-items: center;
     display: flex;
@@ -274,11 +219,6 @@
     justify-content: space-between;
     align-items: center;
 
-}
-
-.MQE-EFlexN span {
-    display: inline-block;
-    margin-left: 0.3em;
 }
 
 .MQE-EFlex input[type=text] {
@@ -300,23 +240,6 @@
 .MQE-EditPointsMap {
     font-size: 1.1em;
     display: none;
-}
-
-/* Opciones audio */
-.MQE-EInputAudio {
-    align-items: center;
-    display: flex;
-    justify-content: flex-start;
-}
-
-.MQE-EInputAudio input[type=text] {
-    flex-flow: 1;
-    min-width: 100px;
-    width: 100%;
-}
-
-.MQE-EInputAudio input[type=button] {
-    flex-shrink: 0;
 }
 
 /*Numero Preguntas */
@@ -451,8 +374,7 @@
 }
 
 .MQP-Dropbtn:focus,
-.MQP-Dropbtn:focus-visible,
-.MQP-Dropbtn.is-open {
+.MQP-Dropbtn:focus-visible {
     outline: 0;
     border-color: #86b7fe;
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, .25);
@@ -482,16 +404,6 @@ ul.MQP-DropdownContent {
     padding: 10px 0;
     margin: 0px 0px;
     z-index: 5;
-}
-
-.exe-block-dismissible {
-    position: relative;
-}
-
-.exe-block-close {
-    position: absolute;
-    top: 6px;
-    right: 5px;
 }
 
 .MQP-DropdownContent li:hover {
@@ -582,10 +494,6 @@ ul.MQP-DropdownContent {
     background-image: url(mapam20.svg);
 }
 
-.MQE-P21 {
-    background-image: url(mapam21.svg);
-}
-
 .MQE-P22 {
     background-image: url(mapam22.svg);
 }
@@ -654,16 +562,8 @@ ul.MQP-DropdownContent {
     background-image: url(mapam38.svg);
 }
 
-.MQE-P39 {
-    background-image: url(mapam39.svg);
-}
-
 .MQE-P40 {
     background-image: url(mapam40.svg);
-}
-
-.MQE-P41 {
-    background-image: url(mapam41.svg);
 }
 
 .MQE-P42 {
@@ -734,16 +634,8 @@ ul.MQP-DropdownContent {
     background-image: url(mapam58.svg);
 }
 
-.MQE-P59 {
-    background-image: url(mapam59.svg);
-}
-
 .MQE-P60 {
     background-image: url(mapam60.svg);
-}
-
-.MQE-P61 {
-    background-image: url(mapam61.svg);
 }
 
 .MQE-P62 {
@@ -814,10 +706,6 @@ ul.MQP-DropdownContent {
     background-image: url(mapam78.svg);
 }
 
-.MQE-P79 {
-    background-image: url(mapam79.svg);
-}
-
 .MQE-P80 {
     background-image: url(mapam80.svg);
 }
@@ -840,10 +728,6 @@ ul.MQP-DropdownContent {
 
 .MQE-P85 {
     background-image: url(mapam85.svg);
-}
-
-.MQE-P86 {
-    background-image: url(mapam86.svg);
 }
 
 .MQE-P87 {
@@ -914,16 +798,8 @@ ul.MQP-DropdownContent {
     background-image: url(mapam103.svg);
 }
 
-.MQE-P104 {
-    background-image: url(mapam104.svg);
-}
-
 .MQE-P105 {
     background-image: url(mapam105.svg);
-}
-
-.MQE-P106 {
-    background-image: url(mapam106.svg);
 }
 
 .MQE-P107 {
@@ -1000,26 +876,6 @@ ul.MQP-DropdownContent {
 
 .MQE-P125 {
     background-image: url(mapam125.svg);
-}
-
-.MQE-P126 {
-    background-image: url(mapam126.svg);
-}
-
-.MQE-P127 {
-    background-image: url(mapam127.svg);
-}
-
-.MQE-P128 {
-    background-image: url(mapam128.svg);
-}
-
-.MQE-P129 {
-    background-image: url(mapam129.svg);
-}
-
-.MQE-P130 {
-    background-image: url(mapam130.svg);
 }
 
 .MQP-DropdownContent li {
@@ -1108,197 +964,10 @@ a.MQE-More {
     transition: all .3s ease-in-out;
 }
 
-.MQE-EButtonImage:hover {
-    -webkit-transform: scale(1.05);
-    transform: scale(1.05);
-}
-
-.MQE-NumberQuestion {
-    text-align: center;
-    vertical-align: middle;
-    width: 4em;
-}
-
-/* Video introdución */
-.MQE-EVIDiv {
-    background-color: #f9f9f9;
-    display: none;
-    height: 100%;
-    left: 0;
-    position: absolute;
-    top: 0;
-    width: 100%;
-    z-index: 2000;
-}
-
-/* Video introdución */
-.MQE-EVIV {
-    width: 100%;
-}
-
-.MQE-EMVI {
-    height: 315px;
-    margin: 70px auto;
-    position: relative;
-    width: 560px;
-}
-
-.MQE-EVI,
-.MQE-ENoVI {
-    height: 100%;
-    left: 0;
-    position: absolute;
-    top: 0;
-    width: 100%;
-}
-
-.MQE-EVIOptions {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    height: 50px;
-    justify-content: flex-start;
-    position: absolute;
-    width: 100%;
-}
-
-.MQE-EVIOptions * {
-    margin-left: 0.3em;
-}
-
-.MQE-EVIOptions input[type=text] {
-    text-align: left;
-    width: 5em;
-}
-
-.MQE-EVIOptions input[type=text]:first-of-type {
-    width: 15em;
-}
-
-.MQE-EVideoIntroDiv {
-    border-radius: 10px;
-    height: 100%;
-    left: 0;
-    position: absolute;
-    top: 0;
-    width: 98%;
-    z-index: 2000;
-}
-
-.MQE-EVIClose {
-    position: absolute;
-    right: 0.3em;
-    top: 0.3em;
-}
-
-.MQE-EVIOptionsVQ {
-    margin-bottom: 0.6em;
-}
-
-.MQE-EVIOptionsVQ input[type=text] {
-    text-align: left;
-    width: 5em;
-}
-
-.MQE-EVIOptionsVQ #mapaVIURL {
-    width: 15em;
-}
-
 .MQE-EHide {
     display: none;
 }
 
-
-/* Tabs (this should be common) */
-.exe-form-tabs {
-    list-style: none;
-    margin: 0 0 1.5em 0;
-    padding: 0;
-}
-
-#main .exe-form-tabs li {
-    display: inline;
-    list-style: none;
-    list-style-image: none;
-    margin: 0;
-    padding: 0;
-}
-
-.exe-form-tabs li:first-child a {
-    border-bottom-left-radius: 4px;
-    border-top-left-radius: 4px;
-}
-
-.exe-form-tabs li:last-child a {
-    border-bottom-right-radius: 4px;
-    border-top-right-radius: 4px;
-}
-
-.exe-form-tabs a {
-    background: #F9F9F9;
-    border: 1px solid #CCC;
-    color: #666;
-    display: inline-block;
-    padding: .5em 1em;
-}
-
-.exe-form-tabs li:not(:last-child) a {
-    border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-    background: #FFF;
-    color: #000;
-    font-weight: 500;
-}
-
-#MQE-SCORMoptions {
-    margin-left: 1.5em;
-    visibility: hidden;
-}
-
-label[for=MQE-ActivitySCORM] {
-    font-weight: bold;
-}
-
-#MQE-SCORMinstructionsButton {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#MQE-SCORMinstructionsButton ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-#MQE-SCORMinstructionsButton ul li {
-    list-style-image: none;
-    margin: 0 0 .5em 0;
-    padding: 0;
-}
-
-#MQE-SCORMinstructionsAuto {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#MQE-SCORMinstructionsAuto ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-.GameModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
-
-.GameModeLabel {
-    font-weight: normal
-}
 .MQE-EOrders {
     margin-top: 0.5em;
     display: none;
@@ -1381,7 +1050,6 @@ label[for=MQE-ActivitySCORM] {
     width: 100%;
 }
 
-
 .MQE-EOptionDiv,
 .MQE-PEOptionDiv {
     align-items: center;
@@ -1395,14 +1063,6 @@ label[for=MQE-ActivitySCORM] {
 
 .MQE-EAnwersOptions,
 .MQE-PEAnwersOptions {
-    width: 100%;
-}
-
-.MQE-SolutionWordDiv {
-    align-items: center;
-    display: flex;
-    justify-content: center;
-    margin: .5em auto;
     width: 100%;
 }
 
@@ -1426,176 +1086,12 @@ label[for=MQE-ActivitySCORM] {
     width: 100%;
 }
 
-
 #mapaESolutionWord,
 #mapaEDefinitionWord {
     width: 100%;
 }
 
-.MQE-SolutionWordDiv input {
-    text-align: left;
-}
-
 /* Ocutar elementos */
-.MQE-DP,
-.MQE-ESolutionSelect label,
-.MQE-PESolutionSelect label {
+.MQE-DP {
     display: none;
-}
-
-.MQE-PointMap {
-    position: absolute;
-    background-color: white;
-    top: 0;
-    left: 0;
-    margin: 0 auto;
-}
-
-/* Especificos del juego  selecciona*/
-.MQE-ESolutionSelect,
-.MQE-PESolutionSelect {
-    margin-bottom: 0.5em;
-}
-
-.MQE-ESolutionSelect input[type=number],
-.MQE-PESolutionSelect .MQE-ESolutionSelect input[type=number] {
-    margin: auto 0.2em;
-}
-
-#gameQEIdeviceForm .gameQE-EOptionDiv label {
-    margin-right: 0.2em;
-}
-
-
-/* To review */
-#gameQEIdeviceForm .exe-block-info img {
-    margin-left: .2em;
-    vertical-align: middle;
-}
-
-
-
-
-#gameQEIdeviceFormTab3 p:first-child {
-    margin-top: 0;
-}
-
-#gameQEIdeviceFormTab3 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
-}
-
-#gameQEIdeviceFormTab3>* {
-    flex: 0 0 48%;
-}
-
-#gameQEIdeviceFormTab3> :first-child {
-    flex: 0 0 100%;
-}
-
-
-@media screen and (max-width:720px) {
-    #gameQEIdeviceFormTab3>* {
-        flex: 0 0 100%;
-    }
-}
-
-#gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #0BA1A1;
-    font-weight: 500;
-}
-
-#gameQEIdeviceForm #gameQEIdeviceFormTab3 input {
-    width: 100%;
-}
-
-/* Tabs (this should be common) */
-.exe-form-tabs {
-    list-style: none;
-    margin: 0 0 1.5em 0;
-    padding: 0;
-}
-
-#main .exe-form-tabs li {
-    display: inline;
-    list-style: none;
-    list-style-image: none;
-    margin: 0;
-    padding: 0;
-}
-
-.exe-form-tabs li:first-child a {
-    border-bottom-left-radius: 4px;
-    border-top-left-radius: 4px;
-}
-
-.exe-form-tabs li:last-child a {
-    border-bottom-right-radius: 4px;
-    border-top-right-radius: 4px;
-}
-
-.exe-form-tabs a {
-    background: #F9F9F9;
-    border: 1px solid #CCC;
-    color: #666;
-    display: inline-block;
-    padding: .5em 1em;
-}
-
-.exe-form-tabs li:not(:last-child) a {
-    border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-    background: #FFF;
-    color: #000;
-    font-weight: 500;
-}
-
-#gameQESCORMoptions {
-    margin-left: 1.5em;
-    visibility: hidden;
-}
-
-label[for=gameQEActivitySCORM] {
-    font-weight: bold;
-}
-
-#gameQESCORMinstructionsButton {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsButton ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsButton ul li {
-    list-style-image: none;
-    margin: 0 0 .5em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsAuto {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsAuto ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-
-
-.GameModeLabel {
-    font-weight: normal
 }
