@@ -108,7 +108,8 @@ test('True or false explains its options inline and shares its questions', async
     await expect(alert).toBeHidden();
     await expect(page.locator('#tofENumQuestions')).toHaveText('3');
 
-    // Export writes every question to a text file.
+    // Export writes every question in the order Import reads back: the one on
+    // screen as the editor stores it, and suggestion before feedback.
     await page.locator('[data-exe-share="export"]').click();
     const downloading = page.waitForEvent('download');
     await page.locator('#eXeGameExportQuestions').click();
@@ -116,11 +117,11 @@ test('True or false explains its options inline and shares its questions', async
     const stream = await download.createReadStream();
     let exported = '';
     for await (const chunk of stream) exported += chunk.toString();
-    const lines = exported.split('\n');
-    expect(lines).toHaveLength(3);
-    expect(lines[0]).toContain('The Sun is a star#1#');
-    expect(lines[1]).toContain('The Moon is a planet#0#');
-    expect(lines[2]).toContain('Is the Earth round?#1#');
+    expect(exported.split('\n')).toEqual([
+        'v-f#<p>The Sun is a star</p>#1##',
+        'v-f#The Moon is a planet#0##',
+        'v-f#Is the Earth round?#1#Think about the horizon.#It is not flat.',
+    ]);
 
     await saveIdevice(page, id!);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
