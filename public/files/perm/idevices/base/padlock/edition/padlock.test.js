@@ -291,28 +291,42 @@ describe('padlock edition: shared form tabs', () => {
         document.body.innerHTML = '';
     });
 
-    it('lays the form out in the shared tabs, and opens on the feedback to unlock', () => {
-        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'grading', 'texts']);
+    it('lays the form out in Activities, Grading and Texts, with no Instructions or Options tab', () => {
+        expect(tabNames()).toEqual(['contents', 'grading', 'texts']);
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
-    it('writes the instructions in their tab and the feedback with its code in Questions', () => {
-        expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+    it('keeps the instructions, the feedback, the access code and the options together in Activities', () => {
         expect(panel('contents').firstElementChild.textContent).toContain(
-            'Write the feedback learners unlock and the access code that opens it.'
+            'Write the instructions, the feedback learners unlock and the access code that opens it'
         );
-        expect(panel('contents').querySelector('#candadoEPanel #candadoEFeedBack')).not.toBeNull();
-        expect(panel('contents').querySelector('#candadoEPanel #candadoEDSolution')).not.toBeNull();
-        expect(panel('options').querySelector('#candadoEOptions #candadoEDTime')).not.toBeNull();
-        expect(panel('options').querySelector('#candadoEOptions #candadoEErrorMessage')).not.toBeNull();
+        for (const id of ['candadoEDescription', 'candadoEFeedBack', 'candadoEDSolution']) {
+            expect(panel('contents').querySelector(`#candadoEPanel #${id}`)).not.toBeNull();
+        }
+        expect(panel('contents').querySelector('#candadoEOptions #candadoEDTime')).not.toBeNull();
+        expect(panel('contents').querySelector('#candadoEOptions #candadoEErrorMessage')).not.toBeNull();
+        expect(document.getElementById('eXeGameInstructions')).toBeNull();
         expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
         expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
     });
 
-    it('leaves out the switch between editors, the share links and the report placeholder', () => {
-        for (const id of ['candadoECandado', 'candadoERetro', 'candadoEDescription', 'divCandadoFeebBack']) {
-            expect(document.getElementById(id)).toBeNull();
-        }
+    it('shows one editor at a time, switching between the instructions and the feedback', () => {
+        const shown = (id) => document.getElementById(id).style.display !== 'none';
+
+        expect(document.getElementById('candadoECandado').checked).toBe(true);
+        expect(shown('divCandadoInstructions')).toBe(true);
+        expect(shown('divCandadoFeebBack')).toBe(false);
+
+        document.getElementById('candadoERetro').click();
+        expect(shown('divCandadoInstructions')).toBe(false);
+        expect(shown('divCandadoFeebBack')).toBe(true);
+
+        document.getElementById('candadoECandado').click();
+        expect(shown('divCandadoInstructions')).toBe(true);
+        expect(shown('divCandadoFeebBack')).toBe(false);
+    });
+
+    it('leaves out the share links and the report placeholder', () => {
         expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
         expect(document.querySelector('.Games-Reportdiv')).toBeNull();
     });
@@ -363,7 +377,7 @@ describe('padlock edition: shared form tabs', () => {
             )
         );
 
-        expect(document.getElementById('eXeGameInstructions').value).toBe('<p>Find the code</p>');
+        expect(document.getElementById('candadoEDescription').value).toBe('<p>Find the code</p>');
         expect(document.getElementById('candadoEFeedBack').value).toBe('<p>Well done</p>');
         expect(document.getElementById('candadoEDSolution').value).toBe('1234');
         expect(document.getElementById('candadoEShowMinimize').checked).toBe(true);
@@ -395,7 +409,7 @@ describe('padlock edition: shared form tabs', () => {
 
         beforeEach(() => {
             editors = {
-                eXeGameInstructions: '<p>Find the code</p>',
+                candadoEDescription: '<p>Find the code</p>',
                 candadoEFeedBack: '<p>Well done</p>',
             };
             tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
@@ -424,7 +438,7 @@ describe('padlock edition: shared form tabs', () => {
         });
 
         it('asks for the instructions before saving', () => {
-            editors.eXeGameInstructions = '';
+            editors.candadoEDescription = '';
 
             expect(device.save()).toBe(false);
             expect(eXe.app.getLastAlert()).toBe('Please write the instructions.');

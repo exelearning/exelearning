@@ -153,10 +153,22 @@ var $exeDevice = {
                         ${help(_('The message learners see after the wrong codes above, for example a clue.'))}
                     </div>
                 </div>`,
+            // Instructions, feedback, access code and options share one tab,
+            // with one editor shown at a time, as before the shared tabs.
             contents = `
                 <div id="candadoEPanel">
-                    <div class="mb-3">
-                        <label for="candadoEFeedBack" class="mb-1 d-block">${msgs.msgEREtroalimatacion}:</label>
+                    <p class="candadoToggle" role="radiogroup" aria-label="${_('Choose the content to edit:')}">
+                        <input checked id="candadoECandado" type="radio" name="dsfDesRet" value="0" />
+                        <label for="candadoECandado">${_('Instructions')}</label>
+                        <input id="candadoERetro" type="radio" name="dsfDesRet" value="1" />
+                        <label for="candadoERetro">${msgs.msgEREtroalimatacion}</label>
+                    </p>
+                    <div id="divCandadoInstructions" class="mb-3">
+                        <label for="candadoEDescription" class="sr-av">${_('Instructions')}:</label>
+                        <textarea id="candadoEDescription" class="exe-html-editor form-control" rows="6"></textarea>
+                    </div>
+                    <div id="divCandadoFeebBack" class="mb-3">
+                        <label for="candadoEFeedBack" class="sr-av">${msgs.msgEREtroalimatacion}:</label>
                         <textarea id="candadoEFeedBack" class="exe-html-editor form-control" rows="6"></textarea>
                     </div>
                     <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
@@ -164,6 +176,7 @@ var $exeDevice = {
                         <input type="text" id="candadoEDSolution" class="form-control" style="max-width:20ch" />
                         ${help(_('The code learners have to type to see the feedback.'))}
                     </div>
+                    ${options}
                 </div>`,
             html = `
             <div id="candadoIdeviceForm">
@@ -173,20 +186,19 @@ var $exeDevice = {
                 )}
                 ${edition.tabs.getHtml('candadoIdeviceForm', {
                     path: $exeDevice.idevicePath,
-                    instructions: '',
-                    options: options,
                     contents: contents,
                     grading: true,
                     texts: this.ci18n,
                     share: false,
                     info: {
-                        contents: _('Write the feedback learners unlock and the access code that opens it.'),
+                        contents: _('Write the instructions, the feedback learners unlock and the access code that opens it, and choose how the padlock works.'),
                     },
                 })}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
+        $('#divCandadoFeebBack').hide();
         edition.tabs.bind('candadoIdeviceForm');
         edition.gamification.scorm.init();
 
@@ -256,7 +268,7 @@ var $exeDevice = {
             });
 
             if (candadoInstructions.length > 0) {
-                $('#eXeGameInstructions').val(candadoInstructions);
+                $('#candadoEDescription').val(candadoInstructions);
             }
             if (candadoRetro.length > 0) {
                 $('#candadoEFeedBack').val(candadoRetro);
@@ -303,7 +315,7 @@ var $exeDevice = {
             '</div>';
         html +=
             '<div class="candado-instructions js-hidden">' +
-            tinyMCE.get('eXeGameInstructions').getContent() +
+            tinyMCE.get('candadoEDescription').getContent() +
             '</div>';
         html +=
             '<div class="candado-retro js-hidden">' +
@@ -321,7 +333,7 @@ var $exeDevice = {
     validateCandado: function () {
         let message = '',
             candadoInstructions = tinyMCE
-                .get('eXeGameInstructions')
+                .get('candadoEDescription')
                 .getContent(),
             candadoRetro = tinyMCE.get('candadoEFeedBack').getContent();
         $exeDevice.candadoTime = parseInt(
@@ -408,6 +420,16 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        $('#candadoERetro').on('click', function () {
+            $('#divCandadoInstructions').hide();
+            $('#divCandadoFeebBack').show();
+        });
+
+        $('#candadoECandado').on('click', function () {
+            $('#divCandadoInstructions').show();
+            $('#divCandadoFeebBack').hide();
+        });
+
         $('#candadoEAttemps').on('focusout', function () {
             this.value = this.value.trim() === '' ? 0 : this.value;
             this.value = this.value > 9 ? 9 : this.value;
