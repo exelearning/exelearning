@@ -418,13 +418,6 @@ describe('progress-report edition iDevice', () => {
         });
     });
 
-    describe('typeshow property', () => {
-        test('should have default typeshow value', () => {
-            expect($exeDevice.typeshow).toBeDefined();
-            expect(typeof $exeDevice.typeshow).toBe('number');
-        });
-    });
-
     describe('applyTypeShow', () => {
         test('should be defined as a function', () => {
             expect(typeof $exeDevice.applyTypeShow).toBe('function');
@@ -535,13 +528,6 @@ describe('progress-report edition iDevice', () => {
         test('should be defined as an object', () => {
             expect($exeDevice.msgs).toBeDefined();
             expect(typeof $exeDevice.msgs).toBe('object');
-        });
-    });
-
-    describe('id property', () => {
-        test('should be an empty string initially', () => {
-            expect($exeDevice.id).toBeDefined();
-            expect(typeof $exeDevice.id).toBe('string');
         });
     });
 

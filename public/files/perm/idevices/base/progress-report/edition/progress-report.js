@@ -13,10 +13,8 @@ var $exeDevice = {
         name: _('Progress report'),
     },
     msgs: {},
-    id: '',
     number: 0,
     sessionIdevices: null,
-    typeshow: 0,
     ci18n: {},
     init: function (element, previousData, path) {
         this.ideviceBody = element;
@@ -584,7 +582,6 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         var msgs = this.msgs;
-        msgs.msgEProvideID = _('Please provide the ID of this progress report');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -908,8 +905,6 @@ var $exeDevice = {
             return false;
         }
 
-        $exeDevice.typeshow = typeshow;
-
         return {
             typeGame: 'Progress Report',
             typeshow: typeshow,
@@ -955,7 +950,6 @@ var $exeDevice = {
         $('#informeEShowTypeGame').prop('checked', game.showTypeGame);
         $('#informeEActiveLinks').prop('checked', game.activeLinks);
         $('#informeEUserData').prop('checked', game.userData);
-        $exeDevice.typeshow = game.typeshow;
         $exeDevice.showPages();
     },
 };
