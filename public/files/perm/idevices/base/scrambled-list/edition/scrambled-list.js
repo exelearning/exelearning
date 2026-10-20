@@ -10,7 +10,6 @@ var $exeDevice = {
     // Min number of items
     items_min: 3,
 
-    iDeviceId: 'sortableListForm',
     ci18n: {},
     ideviceBody: null,
     idevicePreviousData: null,
@@ -481,23 +480,6 @@ var $exeDevice = {
     },
 
     /**
-     * Function to create HTML textfield textarea
-     *
-     * @param {} id
-     * @param {*} title
-     * @returns string
-     */
-    createTextareaHTML(id, title, required) {
-        const requiredClass = required ? 'required' : '';
-        const requiredAttr = required ? ' required' : '';
-        return `
-        <p class="exe-text-field ${requiredClass}">
-            <label for="${id}">${title}:</label>
-            <textarea id="${id}" class="exe-html-editor"${requiredAttr}></textarea>
-        </p>`;
-    },
-
-    /**
      * Function to create HTML textfield input
      *
      * @param {} id
@@ -516,28 +498,6 @@ var $exeDevice = {
             id="${id}" onfocus="this.select()" />
             ${instructionsSpan}
         </p>`;
-    },
-
-    /**
-     * Function to create HTML fieldset
-     *
-     * @param {*} id
-     * @param {*} title
-     * @param {*} affix
-     * @returns string
-     */
-    createFieldset(id, title, affix) {
-        let affixText = affix ? ` (${affix})` : '';
-        return `
-      <fieldset class="exe-advanced exe-fieldset exe-feedback-fieldset exe-fieldset-closed">
-        <legend><a href="#">${title}${affixText}</a></legend>
-        <div>
-          <p>
-            <label for="${id}" class="sr-av">${title}</label>
-            <textarea id="${id}" class='exe-html-editor'></textarea>
-          </p>
-        <div>
-      </fieldset>`;
     },
 
     /**
