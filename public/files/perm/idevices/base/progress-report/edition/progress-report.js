@@ -610,6 +610,11 @@ var $exeDevice = {
                     ${toggle('informeEShowTypeGame', _('Show type of iDevice'), _('Show the type of each iDevice next to its title.'))}
                     ${toggle('informeEActiveLinks', _('Link report activities'), _('Make each assessed activity a link to its page. Links only work in websites, not in SCORM packages or local files.'))}
                     ${toggle('informeEUserData', _('User data'), _('Ask the learners for their name and the date, at the top of the report.'))}
+                </div>`,
+            // "Show" goes first, right above the list it filters, so the
+            // author sees the list change as they pick an option.
+            contents = `
+                <div id="informeEContents">
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-1">
                         <span>${_('Show')}:</span>
                         ${edition.common.getHelpTooltip(_('Choose which pages and iDevices the report lists.'))}
@@ -628,9 +633,6 @@ var $exeDevice = {
                             <label class="form-check-label mb-0 ms-1" for="showtype2">${_('Only pages with evaluable activities')}</label>
                         </div>
                     </div>
-                </div>`,
-            contents = `
-                <div id="informeEContents">
                     <div class="d-flex align-items-center gap-2 mb-3">
                         <strong>${_('Available iDevices')}:</strong>
                         <button id="informeERefresh" class="btn btn-primary btn-sm" type="button">${_('Refresh pages')}</button>

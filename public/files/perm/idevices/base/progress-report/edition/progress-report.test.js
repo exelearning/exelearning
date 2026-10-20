@@ -743,9 +743,18 @@ describe('progress-report edition: shared form tabs', () => {
     it('puts each part of the form in its tab', () => {
         open();
 
-        for (const id of ['informeEEvaluationID', 'informeEShowDate', 'informeEShowTypeGame', 'informeEActiveLinks', 'informeEUserData', 'showtype0']) {
+        for (const id of ['informeEEvaluationID', 'informeEShowDate', 'informeEShowTypeGame', 'informeEActiveLinks', 'informeEUserData']) {
             expect(panel('options').querySelector(`#${id}`)).not.toBeNull();
         }
+        // "Show" leads Activities, above the list it filters.
+        const contents = panel('contents').querySelector('#informeEContents');
+        expect(contents.querySelector('input[name="showtype"]')).toBe(contents.querySelector('input'));
+        expect(contents.querySelectorAll('input[name="showtype"]')).toHaveLength(3);
+        expect(
+            document.getElementById('showtype2').compareDocumentPosition(document.getElementById('informeEPages')) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
+        expect(panel('options').querySelector('input[name="showtype"]')).toBeNull();
         expect(panel('contents').querySelector('#informeEPages')).not.toBeNull();
         expect(panel('contents').querySelector('#informeERefresh')).not.toBeNull();
         expect(panel('texts').querySelector('#ci18n_msgSummary').value).toBe('Summary of activities');
@@ -761,13 +770,14 @@ describe('progress-report edition: shared form tabs', () => {
         expect(document.querySelectorAll('#reportQEIdeviceForm .exe-block-info')).toHaveLength(0);
     });
 
-    it('provides one accessible information button in each options row', () => {
+    it('provides one accessible information button in each options row, and one for "Show"', () => {
         open();
-        const options = panel('options');
-        const helpButtons = [...options.querySelectorAll('#informeEOptions .exe-idevice-help')];
-        const state = () => [...options.querySelectorAll('input')].map((input) => `${input.checked}${input.value}`);
+        const form = document.getElementById('reportQEIdeviceForm');
+        const helpButtons = [...form.querySelectorAll('#informeEOptions .exe-idevice-help, #informeEContents .exe-idevice-help')];
+        const state = () => [...form.querySelectorAll('input')].map((input) => `${input.checked}${input.value}`);
 
-        expect(helpButtons).toHaveLength(6);
+        expect(panel('options').querySelectorAll('.exe-idevice-help')).toHaveLength(5);
+        expect(panel('contents').querySelectorAll('#informeEContents .exe-idevice-help')).toHaveLength(1);
         for (const help of helpButtons) {
             expect(help.closest('.d-flex')).not.toBeNull();
             expect(help.type).toBe('button');
@@ -823,6 +833,25 @@ describe('progress-report edition: shared form tabs', () => {
             userData: true,
         });
         expect(device.save()).not.toContain('exe-idevice-help');
+    });
+
+    it('filters the list right below as soon as a "Show" option is picked', () => {
+        open();
+        document.getElementById('informeEPages').innerHTML = `
+            <div id="informeEPagesContainer"><ul><li class="IFPE-PageItem">Unit 1
+                <ul class="IFPE-Components">
+                    <li class="IFPE-ComponentItem" id="assessed" data-is-evaluable="true">Quiz</li>
+                    <li class="IFPE-ComponentItem" id="notAssessed" data-is-evaluable="false">Text</li>
+                </ul>
+            </li></ul></div>`;
+        const shown = (id) => document.getElementById(id).style.display !== 'none';
+
+        document.getElementById('showtype1').click();
+        expect(shown('assessed')).toBe(true);
+        expect(shown('notAssessed')).toBe(false);
+
+        document.getElementById('showtype0').click();
+        expect(shown('notAssessed')).toBe(true);
     });
 
     describe('listed iDevices', () => {

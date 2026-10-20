@@ -24,51 +24,58 @@ test('Progress report explains its options inline without changing their values'
     const id = await device.getAttribute('id');
     expect(id).toBeTruthy();
 
-    await page.locator('#reportQEIdeviceForm-tab-options').click();
-    const help = page.locator('#informeEOptions .exe-idevice-help:visible');
-    await expect(help).toHaveCount(6);
-    for (const width of [1280, 1024]) {
-        await page.setViewportSize({ width, height: 900 });
-        for (const button of await help.all()) {
-            await button.hover();
-            await expect(page.getByRole('tooltip')).toHaveText('Information');
-            await expect(page.locator('#informeEOptions .help-content:visible')).toHaveCount(0);
-            const sameLine = await button.evaluate(element => {
-                const row = element.closest('.d-flex')!;
-                const previousElement = element.parentElement!.previousElementSibling!;
-                const control = row.querySelector('input, select') || previousElement;
-                const a = element.getBoundingClientRect();
-                const b = control.getBoundingClientRect();
-                const previous = previousElement.getBoundingClientRect();
-                const gap = a.left - previous.right;
-                return a.top < b.bottom && b.top < a.bottom && gap >= 0 && gap <= 24;
-            });
-            expect(sameLine).toBe(true);
-            await button.click();
-            await expect(page.getByRole('tooltip')).toHaveCount(0);
-            const content = page.locator(`#${await button.getAttribute('aria-controls')}`);
-            await expect(content).toBeVisible();
-            const fitsInThePanel = await content.evaluate(element => {
-                const rect = element.getBoundingClientRect();
-                const icon = element.parentElement!.querySelector('button')!.getBoundingClientRect();
-                const panel = element.closest('.tab-pane')!.getBoundingClientRect();
-                return (
-                    Math.abs(rect.left - icon.left) < 2 &&
-                    rect.left >= panel.left &&
-                    rect.right <= Math.min(panel.right, window.innerWidth) &&
-                    element.scrollWidth <= element.clientWidth
-                );
-            });
-            expect(fitsInThePanel).toBe(true);
-            await page.locator('#reportQEIdeviceForm-tab-options').hover();
-            await expect(content).toBeVisible();
-            await expect(button).toHaveAttribute('aria-expanded', 'true');
-            await button.press('Escape');
-            await expect(content).toBeHidden();
+    // The settings in Options; "Show", leading Activities above the list it filters.
+    for (const [tab, container, count] of [
+        ['options', '#informeEOptions', 5],
+        ['contents', '#informeEContents', 1],
+    ] as const) {
+        await page.locator(`#reportQEIdeviceForm-tab-${tab}`).click();
+        const help = page.locator(`${container} .exe-idevice-help:visible`);
+        await expect(help).toHaveCount(count);
+        for (const width of [1280, 1024]) {
+            await page.setViewportSize({ width, height: 900 });
+            for (const button of await help.all()) {
+                await button.hover();
+                await expect(page.getByRole('tooltip')).toHaveText('Information');
+                await expect(page.locator(`${container} .help-content:visible`)).toHaveCount(0);
+                const sameLine = await button.evaluate(element => {
+                    const row = element.closest('.d-flex')!;
+                    const previousElement = element.parentElement!.previousElementSibling!;
+                    const control = row.querySelector('input, select') || previousElement;
+                    const a = element.getBoundingClientRect();
+                    const b = control.getBoundingClientRect();
+                    const previous = previousElement.getBoundingClientRect();
+                    const gap = a.left - previous.right;
+                    return a.top < b.bottom && b.top < a.bottom && gap >= 0 && gap <= 24;
+                });
+                expect(sameLine).toBe(true);
+                await button.click();
+                await expect(page.getByRole('tooltip')).toHaveCount(0);
+                const content = page.locator(`#${await button.getAttribute('aria-controls')}`);
+                await expect(content).toBeVisible();
+                const fitsInThePanel = await content.evaluate(element => {
+                    const rect = element.getBoundingClientRect();
+                    const icon = element.parentElement!.querySelector('button')!.getBoundingClientRect();
+                    const panel = element.closest('.tab-pane')!.getBoundingClientRect();
+                    return (
+                        Math.abs(rect.left - icon.left) < 2 &&
+                        rect.left >= panel.left &&
+                        rect.right <= Math.min(panel.right, window.innerWidth) &&
+                        element.scrollWidth <= element.clientWidth
+                    );
+                });
+                expect(fitsInThePanel).toBe(true);
+                await page.locator(`#reportQEIdeviceForm-tab-${tab}`).hover();
+                await expect(content).toBeVisible();
+                await expect(button).toHaveAttribute('aria-expanded', 'true');
+                await button.press('Escape');
+                await expect(content).toBeHidden();
+            }
         }
     }
 
     // Reading the help, or its open explanation, leaves the option as it was.
+    await page.locator('#reportQEIdeviceForm-tab-options').click();
     const linksHelp = page
         .locator('#informeEOptions .d-flex')
         .filter({ has: page.locator('#informeEActiveLinks') })
@@ -80,12 +87,18 @@ test('Progress report explains its options inline without changing their values'
 
     await page.locator('#informeEEvaluationID').fill('unit-one');
     await page.locator('#informeEActiveLinks').uncheck();
-    await page.locator('#showtype2').check();
 
-    // The iDevices it reports are listed in the Questions tab.
+    // The list follows "Show" as soon as an option is picked: a page with no
+    // assessable activity drops out of "Only pages with evaluable activities".
     await page.locator('#reportQEIdeviceForm-tab-contents').click();
     await expect(page.locator('#informeERefresh')).toBeVisible();
-    await expect(page.locator('#informeEPages')).toBeAttached();
+    const firstPage = page.locator('#informeEPages .IFPE-PageItem').first();
+    await expect(firstPage).toBeVisible();
+    await page.locator('#showtype2').check();
+    await expect(firstPage).toBeHidden();
+    await page.locator('#showtype0').check();
+    await expect(firstPage).toBeVisible();
+    await page.locator('#showtype2').check();
 
     await saveIdevice(page, id!);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
@@ -105,5 +118,6 @@ test('Progress report explains its options inline without changing their values'
     await page.locator('#reportQEIdeviceForm-tab-options').click();
     await expect(page.locator('#informeEEvaluationID')).toHaveValue('unit-one');
     await expect(page.locator('#informeEActiveLinks')).not.toBeChecked();
+    await page.locator('#reportQEIdeviceForm-tab-contents').click();
     await expect(page.locator('#showtype2')).toBeChecked();
 });
