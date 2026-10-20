@@ -435,6 +435,24 @@ describe('interactive-video iDevice export', () => {
     });
   });
 
+  // Sentry: "YT.Player is not a constructor". The API script defines YT as a
+  // stub before the player is there.
+  describe('youtubeApiReady', () => {
+    afterEach(() => {
+      delete global.YT;
+    });
+
+    it('waits while YT is only the loading stub', () => {
+      global.YT = { loading: 1, loaded: 0 };
+      expect($interactivevideo.youtubeApiReady()).toBe(false);
+    });
+
+    it('is ready once YT.Player exists', () => {
+      global.YT = { loading: 1, loaded: 1, Player: function () {} };
+      expect($interactivevideo.youtubeApiReady()).toBe(true);
+    });
+  });
+
   describe('showYoutubeFallback', () => {
     let capturedHtml;
     let capturedAfterHtml;
@@ -1299,6 +1317,33 @@ describe('interactive-video iDevice export', () => {
 
         expect(document.querySelector('script[src*="iframe_api"]')).not.toBeNull();
       } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    // Sentry: "YT.Player is not a constructor". iframe_api defines YT as a stub first,
+    // so the SDK poll has to wait for YT.Player rather than for YT itself.
+    it('hands over to ready() only once the SDK exposes YT.Player', () => {
+      vi.useFakeTimers();
+      const ready = vi.spyOn($interactivevideo, 'ready').mockImplementation(() => {});
+      try {
+        $interactivevideo.loadYoutubeSdk();
+        expect(document.querySelector('script[src*="iframe_api"]')).not.toBeNull();
+
+        global.YT = { loading: 1, loaded: 0 };
+        vi.advanceTimersByTime(500);
+        expect(ready).not.toHaveBeenCalled();
+
+        global.YT.Player = function () {};
+        vi.advanceTimersByTime(500);
+        expect(ready).toHaveBeenCalledTimes(1);
+
+        // The poll stops once it has handed over.
+        vi.advanceTimersByTime(1000);
+        expect(ready).toHaveBeenCalledTimes(1);
+      } finally {
+        ready.mockRestore();
+        delete global.YT;
         vi.useRealTimers();
       }
     });
