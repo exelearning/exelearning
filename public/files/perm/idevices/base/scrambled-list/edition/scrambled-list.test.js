@@ -439,6 +439,22 @@ describe('scrambled-list edition: shared form tabs', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
+    it('names each element of the list for screen readers, also when it is rebuilt', () => {
+        open();
+        const names = () =>
+            [...document.querySelectorAll('#sortableListFormList input')].map(
+                (input) => document.querySelector(`label[for="${input.id}"]`).textContent
+            );
+
+        expect(names()[0]).toBe('Element 1');
+        expect(names()[14]).toBe('Element 15');
+
+        device.addQuestions(['One', 'Two', 'Three']);
+
+        expect(names()[0]).toBe('Element 1');
+        expect(names()[2]).toBe('Element 3');
+    });
+
     it('reopens and saves the list with its options', () => {
         open({
             options: ['One', 'Two', 'Three'],

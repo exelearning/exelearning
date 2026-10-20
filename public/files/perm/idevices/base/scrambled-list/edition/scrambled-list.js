@@ -472,7 +472,7 @@ var $exeDevice = {
             const value = i < options.length ? options[i] : '';
             inputList += `
                 <li class="${requiredClass}">
-                    <label for="sortableListFormList${i}" class="sr-av"></label>
+                    <label for="sortableListFormList${i}" class="sr-av">${_('Element')} ${i + 1}</label>
                     <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
                         class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} value="${value}" />
                 </li>`;
@@ -693,7 +693,7 @@ var $exeDevice = {
             const requiredClass = isRequired ? 'required' : '';
             inputList += `
                 <li class="${requiredClass}">
-                    <label for="sortableListFormList${i}" class="sr-av"></label>
+                    <label for="sortableListFormList${i}" class="sr-av">${_('Element')} ${i + 1}</label>
                     <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
                         class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} />
                 </li>`;
