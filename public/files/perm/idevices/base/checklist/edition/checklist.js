@@ -98,7 +98,7 @@ var $exeDevice = {
                     </div>
                     ${logo('ctjCommunity', _('(Left) Logo'), _('Show an image at the top left of the checklist.'), 'ctjcommunitylogo', 'Community', 'ctjEURLCommunity', 'ctjEPlayCommunity', _('Community'), 'codejocomunidad.png')}
                     ${logo('ctjLogo', _('(Right) Logo'), _('Show an image at the top right of the checklist.'), 'ctjlogologo', 'Logo', 'ctjEURLLogo', 'ctjEPlayLogo', _('Logo'), 'cotejologo.png')}
-                    ${logo('ctjDecorative', _('Decorative image'), _('Show an image beside the items. It is not shown on mobile devices.'), 'ctjdecorativelogo', 'Decorative', 'ctjEURLDecorative', 'ctjEPlayDecorative', _('Community'), 'cotejodecorative.png')}
+                    ${logo('ctjDecorative', _('Decorative image'), _('Show an image beside the items. It is not shown on mobile devices.'), 'ctjdecorativelogo', 'Decorative', 'ctjEURLDecorative', 'ctjEPlayDecorative', _('Decorative image'), 'cotejodecorative.png')}
                     <div class="d-flex align-items-center flex-nowrap gap-2">
                         <label for="ctjFooter" class="mb-0">${_('Footer')}:</label>
                         ${edition.common.getHelpTooltip(_('Text at the bottom of the checklist, such as its license. It can include links.'))}
@@ -219,6 +219,10 @@ var $exeDevice = {
             const textAfter = $('.listacotejo-extra-content', wrapper);
             if (textAfter.length == 1)
                 $('#eXeIdeviceTextAfter').val(textAfter.html());
+
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                dataGame.msgs
+            );
         }
     },
 
@@ -230,9 +234,9 @@ var $exeDevice = {
 
         arrayLevels.forEach((obj) => {
             const row = $('<tr></tr>').addClass('CTJ-data-row'),
-                select = $('<select></select>').addClass('CTJ-Select');
+                select = $('<select></select>').addClass('CTJ-Select form-select');
 
-            [_('Box'), _('Text'), _('Choose'), _('Do not mark')].forEach(
+            [_('Box'), _('Text'), _('Selection'), _('Do not mark')].forEach(
                 (option, index) => {
                     const optElement = $('<option></option>')
                         .attr('value', index)
@@ -267,11 +271,11 @@ var $exeDevice = {
                 row.append(cell);
             }
             const addButton = $('<button>' + _('Add') + '</button>').addClass(
-                    'CTJ-Add'
+                    'CTJ-Add btn btn-primary btn-sm'
                 ),
                 deleteButton = $(
                     '<button>' + _('Delete') + '</button>'
-                ).addClass('CTJ-Delete'),
+                ).addClass('CTJ-Delete btn btn-primary btn-sm'),
                 editCell = $('<td></td>')
                     .addClass('CTJ-Editions')
                     .append(addButton, deleteButton);
@@ -387,6 +391,7 @@ var $exeDevice = {
             useScore = $('#ctjUseScore').is(':checked');
 
         let isLevelComplete = false,
+            hasEmptyRow = false,
             isMoreThanOneLevelFilled = false;
 
         if (title === '') {
@@ -404,6 +409,7 @@ var $exeDevice = {
 
             if (filledLevels === 0) {
                 $exeDevice.showMessage(_('No empty items can be left'));
+                hasEmptyRow = true;
                 return false;
             }
 
@@ -417,7 +423,7 @@ var $exeDevice = {
             }
         });
 
-        if (!isLevelComplete) {
+        if (!isLevelComplete || hasEmptyRow) {
             return false;
         }
         if (isMoreThanOneLevelFilled) {
@@ -477,7 +483,7 @@ var $exeDevice = {
             return false;
         }
 
-        return (data = {
+        return {
             typeGame: 'Cotejo',
             id: $exeDevice.id,
             title: title,
@@ -493,7 +499,7 @@ var $exeDevice = {
             userData: userData,
             footer: footer,
             useScore: useScore,
-        });
+        };
     },
     isNumberInteger: function (str) {
         return Number.isInteger(Number(str)) && Number(str) >= 0;
@@ -856,7 +862,7 @@ var $exeDevice = {
         });
 
         $('.CTJ-Table').on('keypress', '.CTJ-Points', function (event) {
-            charCode = event.which || event.keyCode;
+            const charCode = event.which || event.keyCode;
             if (charCode > 31 && (charCode < 48 || charCode > 57)) {
                 event.preventDefault();
             }

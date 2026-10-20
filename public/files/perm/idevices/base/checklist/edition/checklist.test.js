@@ -216,4 +216,46 @@ describe('checklist edition: shared form tabs', () => {
             useScore: false,
         });
     });
+
+    it('restores the custom texts of a saved checklist', () => {
+        open(stored(game({ msgs: { msgComplit: 'Finished' } })));
+
+        expect(document.getElementById('ci18n_msgComplit').value).toBe('Finished');
+    });
+
+    it('does not save an empty item after a filled one', () => {
+        open(stored(game()));
+        document.querySelectorAll('.CTJ-data-row')[1].querySelector('.CTJ-Level2').innerHTML = '';
+
+        expect(device.validateData()).toBe(false);
+        expect(eXe.app.getLastAlert()).toBe('No empty items can be left');
+    });
+
+    it('leaves no globals behind when saving or typing points', () => {
+        delete global.data;
+        delete global.charCode;
+        open(stored(game()));
+
+        device.validateData();
+        $(document.querySelector('.CTJ-Points')).trigger($.Event('keypress', { which: 65 }));
+
+        expect('data' in global).toBe(false);
+        expect('charCode' in global).toBe(false);
+    });
+
+    it('rebuilds the saved rows as the first one is built', () => {
+        open(stored(game()));
+        const row = document.querySelector('.CTJ-data-row');
+
+        expect(row.querySelector('select').classList.contains('form-select')).toBe(true);
+        expect(row.querySelector('option[value="2"]').textContent).toBe('Selection');
+        expect(row.querySelector('.CTJ-Add').classList.contains('btn')).toBe(true);
+        expect(row.querySelector('.CTJ-Delete').classList.contains('btn')).toBe(true);
+    });
+
+    it('names the address of the decorative image', () => {
+        open();
+
+        expect(document.querySelector('label[for="ctjEURLDecorative"]').textContent).toBe('Decorative image:');
+    });
 });
