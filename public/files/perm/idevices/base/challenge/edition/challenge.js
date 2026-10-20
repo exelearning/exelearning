@@ -329,7 +329,6 @@ var $exeDevice = {
         show('label[for="desafioECSolution"], #desafioECSolution');
 
         $('#desafioENumQuestionDiv').show();
-        $('#desafioSelects').hide();
 
         $('#desafioENavigationButtons').show();
 
@@ -355,128 +354,135 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-        <div id="desafioIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('Create escape room type activities in which players will have to complete trials before solving the final challenge.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/desafio.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve all the trials and complete the final challenge.'))}
-                <fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <div class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="desafioEShowMinimize" aria-label="${_('Show minimized.')}" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="desafioEShowMinimize">${_('Show minimized.')}</label>
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="desafioEOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="desafioEShowMinimize" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
+                            <label class="toggle-label mb-0" for="desafioEShowMinimize">${_('Show minimized.')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label id="desafiolblEDType" for="desafioEDType" class="mb-0">${_('Type')}:</label>
+                        <select id="desafioEDType" class="form-select form-select-sm">
+                            <option value="0" selected>Lineal</option>
+                            <option value="1">Libre</option>
+                        </select>
+                        ${edition.common.getHelpTooltip(_('Linear: the trials open one after another. Free: they can be solved in any order.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label id="desafiolblEDTime" for="desafioEDTime" class="mb-0">${_('Max time')}:</label>
+                        <select id="desafioEDTime" class="form-select form-select-sm">
+                            <option value="1">1m</option>
+                            <option value="10">10m</option>
+                            <option value="15">15m</option>
+                            <option value="20">20m</option>
+                            <option value="25">25m</option>
+                            <option value="30">30m</option>
+                            <option value="35">35m</option>
+                            <option value="40" selected>40m</option>
+                            <option value="45">45m</option>
+                            <option value="50">50m</option>
+                            <option value="55">55m</option>
+                            <option value="60">60m</option>
+                            <option value="70">70m</option>
+                            <option value="80">80m</option>
+                            <option value="90">90m</option>
+                            <option value="120">120m</option>
+                            <option value="150">150m</option>
+                            <option value="180">180m</option>
+                            <option value="210">210m</option>
+                            <option value="240">240m</option>
+                        </select>
+                        ${edition.common.getHelpTooltip(_('Time to complete the trials and the final challenge. When it runs out, the game has to be restarted.'))}
+                    </div>
+                </div>`,
+            contents = `
+                <div class="desafio-EPanel" id="desafioEPanel">
+                    <div class="desafioToggle d-flex align-items-center mb-3">
+                        <div class="m-0">
+                            <input class="desafio-Type" checked="checked" id="desafioEDesafio" type="radio" name="dsfDesRet" value="0" />
+                            <label id="labelDesafio" for="desafioEDesafio">${_('Challenge')}</label>
                         </div>
-                        <div class="Games-Reportdiv  d-flex align-items-center gap-2 flex-nowrap">
+                        <div class="m-0">
+                            <input class="desafio-Type" id="desafioEReto" type="radio" name="dsfDesRet" value="1" />
+                            <label id="labelReto"  for="desafioEReto">${_('Trials')}</label>
                         </div>
                     </div>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Questions')}</a></legend>
-                    <div class="desafio-EPanel" id="desafioEPanel">
-                        <div class="desafioToggle d-flex align-items-center mb-3">
-                            <div class="m-0">
-                                <input class="desafio-Type" checked="checked" id="desafioEDesafio" type="radio" name="dsfDesRet" value="0" />
-                                <label id="labelDesafio" for="desafioEDesafio">${_('Challenge')}</label>
-                            </div>
-                            <div class="m-0">
-                                <input class="desafio-Type" id="desafioEReto" type="radio" name="dsfDesRet" value="1" />
-                                <label id="labelReto"  for="desafioEReto">${_('Trials')}</label>
-                            </div>
-                            </div>
-                        <div class="desafio-EDAtaGame">
-                            <div class="desafio-EDataChallenger">
-                                <div class="desafio-DataDesafio mb-3 gap-2">
-                                    <label for="desafioEDTitle">${_('Title')}:</label><input type="text" id="desafioEDTitle" class="form-control form-control-sm" />
-                                    <label for="desafioEDSolution">${_('Solution')}:</label><input type="text" id="desafioEDSolution" class="form-control form-control-sm" />
-                                    <label for="desafioECTitle">${_('Title')}:</label><input type="text" id="desafioECTitle" class="form-control form-control-sm" />
-                                    <label for="desafioECSolution">${_('Solution')}:</label><input type="text" id="desafioECSolution" class="form-control form-control-sm" />
-                                </div>
-                                <div id="desafioSelects" class="align-items-center gap-2 flex-nowrap justify-flex-start mb-3">
-                                    <label id="desafiolblEDType" for="desafioEDType">${_('Type')}: </label>
-                                    <select id="desafioEDType" class="form-select form-select-sm">
-                                        <option value="0" selected>Lineal</option>
-                                        <option value="1">Libre</option>
-                                    </select>
-                                    <label id="desafiolblEDTime" for="desafioEDTime">${_('Max time')}: </label>
-                                    <select id="desafioEDTime" class="form-select form-select-sm">
-                                        <option value="1">1m</option>
-                                        <option value="10">10m</option>
-                                        <option value="15">15m</option>
-                                        <option value="20">20m</option>
-                                        <option value="25">25m</option>
-                                        <option value="30">30m</option>
-                                        <option value="35">35m</option>
-                                        <option value="40" selected>40m</option>
-                                        <option value="45">45m</option>
-                                        <option value="50">50m</option>
-                                        <option value="55">55m</option>
-                                        <option value="60">60m</option>
-                                        <option value="70">70m</option>
-                                        <option value="80">80m</option>
-                                        <option value="90">90m</option>
-                                        <option value="120">120m</option>
-                                        <option value="150">150m</option>
-                                        <option value="180">180m</option>
-                                        <option value="210">210m</option>
-                                        <option value="240">240m</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="desafio-EInputMedias">
-                                <span>${_('Description')}:</span>
-                                <div id="divDesafioEDescription">
-                                    <label for="desafioEDescription" class="sr-av">${_('Instructions')}:</label>
-                                    <textarea id="desafioEDescription" class="exe-html-editor"></textarea>
-                                </div>
-                                <div id="desafioEChallenges" class="mb-3">
-                                    ${this.getDivChallenges(10)}
-                                </div>
-                                <div class="desafio-EClues" id="desafioEClues">
-                                    ${this.getDivClues()}
-                                </div>
+                    <div class="desafio-EDAtaGame">
+                        <div class="desafio-EDataChallenger">
+                            <div class="desafio-DataDesafio mb-3 gap-2">
+                                <label for="desafioEDTitle">${_('Title')}:</label><input type="text" id="desafioEDTitle" class="form-control form-control-sm" />
+                                <label for="desafioEDSolution">${_('Solution')}:</label><input type="text" id="desafioEDSolution" class="form-control form-control-sm" />
+                                <label for="desafioECTitle">${_('Title')}:</label><input type="text" id="desafioECTitle" class="form-control form-control-sm" />
+                                <label for="desafioECSolution">${_('Solution')}:</label><input type="text" id="desafioECSolution" class="form-control form-control-sm" />
                             </div>
                         </div>
-                        <div class="desafio-ENavigationButtons gap-2" id="desafioENavigationButtons">
-                            <a href="#" id="desafioEAdd" class="desafio-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="desafio-EButtonImage b-add" /></a>
-                            <a href="#" id="desafioEFirst" class="desafio-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="desafio-EButtonImage b-first" /></a>
-                            <a href="#" id="desafioEPrevious" class="desafio-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="desafio-EButtonImage b-prev" /></a>
-                            <span class="sr-av">${_('Question number:')}</span><span class="desafio-NumberQuestion" id="desafioENumberChallenge">1</span>
-                            <a href="#" id="desafioENext" class="desafio-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="desafio-EButtonImage b-next" /></a>
-                            <a href="#" id="desafioELast" class="desafio-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="desafio-EButtonImage b-last" /></a>
-                            <a href="#" id="desafioEDelete" class="desafio-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="desafio-EButtonImage b-delete" /></a>
-                            <a href="#" id="desafioECopy" class="desafio-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="desafio-EButtonImage b-copy" /></a>
-                            <a href="#" id="desafioECut" class="desafio-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="desafio-EButtonImage b-cut" /></a>
-                            <a href="#" id="desafioEPaste" class="desafio-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="desafio-EButtonImage b-paste" /></a>
-                        </div>
-                        <div class="desafio-ENumQuestionDiv" id="desafioENumQuestionDiv">
-                            <div class="desafio-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
-                            <span class="desafio-ENumQuestions" id="desafioENumChallenges">0</span>
+                        <div class="desafio-EInputMedias">
+                            <span>${_('Description')}:</span>
+                            <div id="divDesafioEDescription">
+                                <label for="desafioEDescription" class="sr-av">${_('Instructions')}:</label>
+                                <textarea id="desafioEDescription" class="exe-html-editor"></textarea>
+                            </div>
+                            <div id="desafioEChallenges" class="mb-3">
+                                ${this.getDivChallenges(10)}
+                            </div>
+                            <div class="desafio-EClues" id="desafioEClues">
+                                ${this.getDivClues()}
+                            </div>
                         </div>
                     </div>
-                </fieldset>
+                    <div class="desafio-ENavigationButtons gap-2" id="desafioENavigationButtons">
+                        <a href="#" id="desafioEAdd" class="desafio-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="desafio-EButtonImage b-add" /></a>
+                        <a href="#" id="desafioEFirst" class="desafio-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="desafio-EButtonImage b-first" /></a>
+                        <a href="#" id="desafioEPrevious" class="desafio-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="desafio-EButtonImage b-prev" /></a>
+                        <span class="sr-av">${_('Question number:')}</span><span class="desafio-NumberQuestion" id="desafioENumberChallenge">1</span>
+                        <a href="#" id="desafioENext" class="desafio-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="desafio-EButtonImage b-next" /></a>
+                        <a href="#" id="desafioELast" class="desafio-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="desafio-EButtonImage b-last" /></a>
+                        <a href="#" id="desafioEDelete" class="desafio-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="desafio-EButtonImage b-delete" /></a>
+                        <a href="#" id="desafioECopy" class="desafio-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="desafio-EButtonImage b-copy" /></a>
+                        <a href="#" id="desafioECut" class="desafio-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="desafio-EButtonImage b-cut" /></a>
+                        <a href="#" id="desafioEPaste" class="desafio-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="desafio-EButtonImage b-paste" /></a>
+                    </div>
+                    <div class="desafio-ENumQuestionDiv" id="desafioENumQuestionDiv">
+                        <div class="desafio-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
+                        <span class="desafio-ENumQuestions" id="desafioENumChallenges">0</span>
+                    </div>
+                </div>`,
+            html = `
+            <div id="desafioIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create escape room type activities in which players will have to complete trials before solving the final challenge.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/desafio.html',
+                )}
+                ${edition.tabs.getHtml('desafioIdeviceForm', {
+                    path: path,
+                    instructions: c_('Solve all the trials and complete the final challenge.'),
+                    options: options,
+                    contents: contents,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                    info: {
+                        contents: _('Write the final challenge, add its trials and edit them one by one.'),
+                    },
+                })}
             </div>
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-        </div>
-    `;
+        `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('desafioIdeviceForm');
-
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('desafioIdeviceForm');
+        edition.gamification.scorm.init();
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.showDesafio();
     },
+
     addEvents: function () {
         if ($exeDevice.challengesGame.length == 0) {
             $exeDevice.active = 0;
@@ -486,29 +492,6 @@ var $exeDevice = {
         $('#desafioENavigationButtons').hide();
         $('#desafioEPaste').hide();
         $('#desafioENumQuestionDiv').hide();
-
-        // Toggle switches: sync aria-checked and optional target visibility
-        $('#desafioIdeviceForm').on('change', '.toggle-input', function () {
-            const $toggle = $(this).closest('.toggle-item');
-            const checked = $(this).is(':checked');
-            $toggle.attr('aria-checked', checked ? 'true' : 'false');
-            const target = $toggle.data('target');
-            if (target) {
-                $('#' + target).toggle(checked);
-            }
-        });
-        // Initialize toggle states
-        const initToggle = function (inputSelector) {
-            const $input = $(inputSelector);
-            const $toggle = $input.closest('.toggle-item');
-            const checked = $input.is(':checked');
-            $toggle.attr('aria-checked', checked ? 'true' : 'false');
-            const target = $toggle.data('target');
-            if (target) {
-                $('#' + target).toggle(checked);
-            }
-        };
-        initToggle('#desafioEShowMinimize');
 
         $('#desafioEUseLives').on('change', function () {
             const marcado = $(this).is(':checked');
@@ -589,9 +572,9 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         if (
             window.File &&
@@ -804,7 +787,7 @@ var $exeDevice = {
                 $('#eXeGameInstructions').val(instructions.html());
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -821,15 +804,15 @@ var $exeDevice = {
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#desafioEShowMinimize').prop('checked', game.showMinimize);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -957,7 +940,7 @@ var $exeDevice = {
         }
 
         const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('Game')}desafio.json`,
             'desafioIdeviceForm'
@@ -1008,9 +991,9 @@ var $exeDevice = {
             instructionsExe = tinyMCE.get('eXeGameInstructions').getContent(),
             showMinimize = $('#desafioEShowMinimize').is(':checked'),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!progressBar) return false;
@@ -1039,7 +1022,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             asignatura: '',
@@ -1086,7 +1069,6 @@ var $exeDevice = {
         hide('label[for="desafioECSolution"], #desafioECSolution');
 
         $exeDevice.typeActive = 0;
-        $('#desafioSelects').css('display', 'flex');
         $('#desafioENavigationButtons').hide();
         $('#desafioENumQuestionDiv').hide();
         $('#desafioEDTitle').val($exeDevice.desafioTitle);

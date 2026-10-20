@@ -5,12 +5,16 @@
  * - escapeHtml: HTML character escaping
  * - getChallengeDefault: Default challenge object structure
  * - getId: Unique ID generation
+ *
+ * Also covers the navigation between trials on a minimal DOM, and the form
+ * laid out in the shared tabs.
  */
 
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -210,95 +214,15 @@ describe('challenge iDevice', () => {
     });
   });
 
-  describe('createForm', () => {
-    let originalExeLearning;
-    let originalExeDevicesEdition;
-    let container;
-
-    beforeEach(() => {
-      container = document.createElement('div');
-      $exeDevice.ideviceBody = container;
-      $exeDevice.idevicePath = '/test/';
-      $exeDevice.ci18n = {};
-      $exeDevice.challengesGame = [];
-
-      originalExeLearning = global.eXeLearning;
-      originalExeDevicesEdition = global.$exeDevicesEdition;
-
-      global.eXeLearning = {
-        app: {
-          project: { odeId: 'ode-id' },
-        },
-      };
-      global.$exeDevicesEdition = {
-        iDevice: {
-          common: {
-            getIdeviceDescription: vi.fn(
-              () =>
-                '<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">mock description<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Hide"></button></p>',
-            ),
-          },
-          gamification: {
-            instructions: { getFieldset: vi.fn(() => '<div class="mock-fieldset"></div>') },
-            common: { getLanguageTab: vi.fn(() => '<div class="mock-language-tab"></div>') },
-            scorm: {
-              getTab: vi.fn(() => '<div class="mock-scorm-tab"></div>'),
-              init: vi.fn(),
-            },
-            progressBar: {
-              getContents: vi.fn(() => '<div class="mock-progress-bar"></div>'),
-              setValues: vi.fn(),
-              getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
-              addEvents: vi.fn(),
-            },
-            passScore: {
-              getContents: vi.fn(() => '<div class="mock-pass-score"></div>'),
-              setValues: vi.fn(),
-              getValues: vi.fn(() => ({ passScoreMode: 'global', passScoreCustom: 5 })),
-              addEvents: vi.fn(),
-            },
-          },
-          tabs: { init: vi.fn() },
-        },
-      };
-
-      $exeDevice.loadPreviousValues = vi.fn();
-      $exeDevice.addEvents = vi.fn();
-      $exeDevice.showDesafio = vi.fn();
-    });
-
-    afterEach(() => {
-      global.eXeLearning = originalExeLearning;
-      global.$exeDevicesEdition = originalExeDevicesEdition;
-    });
-
-    it('renders top info as dismissible Bootstrap alert', () => {
-      $exeDevice.createForm();
-      const scorm = global.$exeDevicesEdition.iDevice.gamification.scorm;
-      const topAlert = container.querySelector(
-        '#desafioIdeviceForm > .alert.alert-info.alert-dismissible',
-      );
-      const closeButton = topAlert?.querySelector(
-        'button.btn-close[data-bs-dismiss="alert"]',
-      );
-      expect(topAlert).not.toBeNull();
-      expect(closeButton).not.toBeNull();
-      // The progress report moved into the Grading tab, which needs this
-      // path for its help icon; passing it along is what this iDevice owns now.
-      expect(scorm.getTab).toHaveBeenCalledWith('/test/');
-      expect(container.querySelector('.mock-scorm-tab')).not.toBeNull();
-    });
-  });
-
   describe('addEvents', () => {
     let originalExeDevicesEdition;
 
     beforeEach(() => {
-      originalExeDevicesEdition = global.$exeDevicesEdition;
+      originalExeDevicesEdition = global.$exeIDevicesEdition;
       document.body.innerHTML = '<div id="desafioIdeviceForm"></div>';
       $exeDevice.challengesGame = [];
 
-      global.$exeDevicesEdition = {
+      global.$exeIDevicesEdition = {
         iDevice: {
           gamification: {
             progressBar: { addEvents: vi.fn() },
@@ -309,13 +233,13 @@ describe('challenge iDevice', () => {
     });
 
     afterEach(() => {
-      global.$exeDevicesEdition = originalExeDevicesEdition;
+      global.$exeIDevicesEdition = originalExeDevicesEdition;
     });
 
     it('registers shared progress bar events', () => {
       $exeDevice.addEvents();
       expect(
-        global.$exeDevicesEdition.iDevice.gamification.progressBar.addEvents,
+        global.$exeIDevicesEdition.iDevice.gamification.progressBar.addEvents,
       ).toHaveBeenCalledTimes(1);
     });
   });
@@ -413,7 +337,6 @@ describe('challenge iDevice', () => {
         <span id="desafioENumChallenges">3</span>
         <button id="desafioEPaste" style="display: block"></button>
         <div id="desafioENumQuestionDiv"></div>
-        <div id="desafioSelects"></div>
         <div id="desafioENavigationButtons"></div>
         <input id="desafioECTitle" />
         <input id="desafioECSolution" />
@@ -526,7 +449,6 @@ describe('challenge iDevice', () => {
     beforeEach(() => {
       document.body.innerHTML = `
         <div id="desafioENumQuestionDiv" style="display: none"></div>
-        <div id="desafioSelects" style="display: block"></div>
         <div id="desafioENavigationButtons" style="display: none"></div>
         <input id="desafioECTitle" value="" />
         <input id="desafioECSolution" value="" />
@@ -609,7 +531,7 @@ describe('challenge iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -653,8 +575,8 @@ describe('challenge edition: lifecycle teardown (#2293)', () => {
           <a href="#" id="eXeGameExportQuestions"></a>
         </div>
       </div>`;
-        originalExeDevicesEdition = global.$exeDevicesEdition;
-        global.$exeDevicesEdition = {
+        originalExeDevicesEdition = global.$exeIDevicesEdition;
+        global.$exeIDevicesEdition = {
             iDevice: {
                 gamification: {
                     progressBar: { addEvents: vi.fn() },
@@ -671,7 +593,7 @@ describe('challenge edition: lifecycle teardown (#2293)', () => {
         if ($exeDevice && $exeDevice.$lifecycle) {
             $exeDevice.$lifecycle.destroy();
         }
-        global.$exeDevicesEdition = originalExeDevicesEdition;
+        global.$exeIDevicesEdition = originalExeDevicesEdition;
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
@@ -735,4 +657,225 @@ describe('challenge minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('challenge edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/challenge/edition/';
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    const tabNames = () =>
+        [...document.querySelectorAll('#desafioIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`desafioIdeviceForm-panel-${name}`);
+    const trial = (title, solution) => ({
+        title,
+        solution,
+        description: `<p>${title}</p>`,
+        timeShow: -1,
+        clues: [
+            { clue: 'First help', time: 5 },
+            { clue: 'Second help', time: 10 },
+            { clue: 'Third help', time: 5 },
+        ],
+    });
+    const game = (overrides = {}) => ({
+        typeGame: 'desafio',
+        desafioTitle: 'The vault',
+        desafioSolution: 'OPEN',
+        desafioType: 1,
+        desafioTime: 60,
+        desafioDescription: '<p>Open the vault</p>',
+        showMinimize: true,
+        challengesGame: [trial('Lock', 'KEY')],
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        desafioID: 1234,
+        evaluation: false,
+        evaluationID: '',
+        msgs: {},
+        ...overrides,
+    });
+    let device;
+    let previousApp;
+    let previousHelpers;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        tooltips = new Map();
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn((scope) => {
+                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                    });
+                }),
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        previousHelpers = { ...helpers() };
+        Object.assign(helpers(), {
+            isJsonString: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return false;
+                }
+            },
+            decrypt: (text) => text,
+            encrypt: (text) => text,
+        });
+        document.body.innerHTML = '<div id="challengeBody"></div>';
+        const filename = join(__dirname, 'challenge.js');
+        runInThisContext(readFileSync(filename, 'utf8'), { filename });
+        device = global.$exeDevice;
+        global.attachEditionLifecycle(device);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        for (const key of ['isJsonString', 'decrypt', 'encrypt']) {
+            if (key in previousHelpers) helpers()[key] = previousHelpers[key];
+            else delete helpers()[key];
+        }
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    const open = (previousData = {}) => device.init(document.getElementById('challengeBody'), previousData, PATH);
+
+    const stored = (data) => `
+        <div class="desafio-IDevice">
+            <div class="desafio-instructions"><p>Escape!</p></div>
+            <div class="desafio-version js-hidden">2</div>
+            <div class="desafio-EDescription"><p>Open the vault</p></div>
+            <div class="desafio-ChallengeDescription"><p>Lock</p></div>
+            <div class="desafio-DataGame js-hidden">${JSON.stringify(data)}</div>
+        </div>`;
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        open();
+
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'grading', 'texts']);
+        expect(document.getElementById('desafioIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        open();
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Solve all the trials and complete the final challenge.'
+        );
+        expect(panel('options').querySelector('#desafioEShowMinimize')).not.toBeNull();
+        expect(panel('options').querySelector('#desafioEDType')).not.toBeNull();
+        expect(panel('options').querySelector('#desafioEDTime')).not.toBeNull();
+        expect(panel('contents').querySelector('#desafioEPanel')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgStartGame').value).toBe('Click here to start');
+    });
+
+    it('explains what goes in the Questions tab, and offers no sharing', () => {
+        open();
+        const info = panel('contents').firstElementChild;
+
+        expect(info.classList.contains('alert-info')).toBe(true);
+        expect(info.textContent).toContain('Write the final challenge, add its trials and edit them one by one.');
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+        open();
+        const helpButtons = [...panel('options').querySelectorAll('#desafioEOptions .exe-idevice-help')];
+
+        expect(helpButtons).toHaveLength(3);
+        for (const help of helpButtons) {
+            const row = help.closest('.d-flex');
+            expect(row.lastElementChild.contains(help)).toBe(true);
+            expect(help.type).toBe('button');
+            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            const controls = [...row.querySelectorAll('input, select')];
+            const values = controls.map((control) => `${control.checked}${control.value}`);
+            help.click();
+            row.querySelector('.help-content')?.click();
+            expect(controls.map((control) => `${control.checked}${control.value}`)).toEqual(values);
+        }
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        open();
+
+        expect(tooltips.size).toBe(document.querySelectorAll('#desafioIdeviceForm .exe-app-tooltip').length);
+        expect(tooltips.size).toBeGreaterThanOrEqual(3);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        open();
+
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('keeps the type and the time of the game in Options in both modes', () => {
+        open();
+
+        document.getElementById('desafioEReto').click();
+
+        expect(panel('options').querySelector('#desafioEDType').closest('.d-flex').style.display).not.toBe('none');
+        expect(panel('options').querySelector('#desafioEDTime').closest('.d-flex').style.display).not.toBe('none');
+    });
+
+    it('restores the options of a saved game', () => {
+        open(stored(game()));
+
+        expect(document.getElementById('desafioEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('desafioEDType').value).toBe('1');
+        expect(document.getElementById('desafioEDTime').value).toBe('60');
+        expect(document.getElementById('desafioEDTitle').value).toBe('The vault');
+    });
+
+    it('restores the custom texts of a saved game', () => {
+        open(stored(game({ msgs: { msgStartGame: 'Go!' } })));
+
+        expect(document.getElementById('ci18n_msgStartGame').value).toBe('Go!');
+    });
+
+    it('saves the options it shows', () => {
+        open(stored(game()));
+        const editors = {
+            eXeGameInstructions: '<p>Escape!</p>',
+            desafioEDescription: '<p>Open the vault</p>',
+            'desafioEChallenge-0': '<p>Lock</p>',
+        };
+        const tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+            id in editors ? { initialized: true, getContent: () => editors[id], setContent: () => {} } : null
+        );
+
+        try {
+            const data = device.validateData();
+
+            // happy-dom does not read `option:selected`, so the type and the
+            // time are left to the Playwright spec, which saves and reloads them.
+            expect(data).toMatchObject({
+                showMinimize: true,
+                desafioTitle: 'The vault',
+                desafioSolution: 'OPEN',
+            });
+            expect(device.save()).not.toContain('exe-idevice-help');
+        } finally {
+            tinymceGet.mockRestore();
+        }
+    });
 });
