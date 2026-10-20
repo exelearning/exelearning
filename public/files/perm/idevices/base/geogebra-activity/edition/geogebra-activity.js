@@ -31,7 +31,6 @@ var $exeDevice = {
     activityURLbase: 'https://www.geogebra.org/m/',
 
     idevicePath: '',
-    ideviceID: '',
     classIdevice: 'geogebra-activity',
     // True/false options: label, default value and the explanation of its help
     trueFalseOptions: {
@@ -434,11 +433,6 @@ var $exeDevice = {
                         passScoreMode: 'custom',
                         passScoreCustom: part.replace($exeDevice.passScoreClass, ''),
                     });
-                } else if (part.indexOf('auto-geogebra-ideviceid-') > -1) {
-                    $exeDevice.ideviceID = part.replace(
-                        'auto-geogebra-ideviceid-',
-                        ''
-                    );
                 }
                 let opts = this.trueFalseOptions;
                 for (let p in opts) {
