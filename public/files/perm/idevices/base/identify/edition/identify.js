@@ -622,7 +622,9 @@ var $exeDevice = {
                     texts: this.ci18n,
                     share: {
                         importQuestions: true,
-                        exportQuestions: false,
+                        // It reads txt files only, not Moodle xml.
+                        importInfo: _('You can import questions compatible with this activity from txt files.'),
+                        exportQuestions: true,
                         type: 4,
                     },
                 })}
@@ -1008,8 +1010,13 @@ var $exeDevice = {
         let valids = 0;
         lines.forEach((line) => {
             if (lineFormat.test(line)) {
+                // Fields trimmed: an exported question without a message
+                // carries a space there, which comes back empty.
                 const p = $exeDevice.getCuestionDefault(),
-                    linarray = line.trim().split('#');
+                    linarray = line
+                        .trim()
+                        .split('#')
+                        .map((field) => field.trim());
                 p.solution = linarray[0];
                 p.question = linarray[1];
 
@@ -1043,6 +1050,37 @@ var $exeDevice = {
             $exeDevice.questionsGame.push(p);
         });
         $exeDevice.addWords(valids);
+    },
+
+    /**
+     * Download the questions in the format Import reads back: one line per
+     * question, "solution#message#clue1#clue2…".
+     *
+     * @returns {boolean} Whether the file was offered.
+     */
+    exportQuestions: function () {
+        // The question on screen first, with its last changes, as saving does.
+        if (!$exeDevice.validateQuestion()) return false;
+        // # separates the fields: inside one it would split it in two.
+        const clean = (text) => String(text ?? '').replace(/#/g, ' ').trim();
+        const lines = [];
+        $exeDevice.questionsGame.forEach((q) => {
+            const solution = clean(q.solution);
+            const clues = q.clues.slice(0, q.numberClues).map(clean).filter(Boolean);
+            if (!solution || clues.length < 2) return;
+            // Import needs every field: an empty message goes as a space.
+            lines.push([solution, clean(q.question) || ' ', ...clues].join('#'));
+        });
+        if (lines.length === 0) {
+            eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
+            return false;
+        }
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
+            blob,
+            `${_('Identify')}.txt`,
+            'identifyQEIdeviceForm'
+        );
     },
 
     addWords: function (valids) {
@@ -1324,6 +1362,9 @@ var $exeDevice = {
                     });
                     reader.readAsText(file);
                 });
+            $('#eXeGameExportQuestions').on('click', () => {
+                $exeDevice.exportQuestions();
+            });
         } else $('#eXeGameExportImport').hide();
 
         $('#idfEShowSolution').on('change', function () {

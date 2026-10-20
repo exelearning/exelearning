@@ -111,4 +111,29 @@ test('Identify explains options inline without changing their values', async ({
     await page.locator('#identifyQEIdeviceForm-tab-contents').click();
     await expect(page.locator('#idfESolution')).toHaveValue('Mercury');
     await expect(page.locator('#idfEPista3')).toHaveValue('No moons');
+
+    // Import a real text file and export: the stored question and the
+    // imported ones come back in the format Import reads.
+    const lines = ['Paris#A capital#On the Seine#Has a tower', 'Rome# #Has a coliseum#In Italy#Seven hills'];
+    await page.locator('[data-exe-share="import"]').click();
+    await page.locator('#eXeGameImportGame').setInputFiles({
+        name: 'questions.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from(`${lines.join('\n')}\n`),
+    });
+    await expect(page.locator('#eXeShareModal-import')).toBeHidden();
+    await expect(page.locator('#idfESolution')).toHaveValue('Mercury');
+    await page.locator('[data-exe-share="export"]').click();
+    const downloading = page.waitForEvent('download');
+    await page.locator('#eXeGameExportQuestions').click();
+    const download = await downloading;
+    const stream = await download.createReadStream();
+    let exported = '';
+    for await (const chunk of stream) exported += chunk.toString();
+    expect(exported.split('\n')).toEqual([
+        'Mercury#Who am I?#Closest planet to the Sun#Smallest planet#Named after a Roman god#No moons',
+        ...lines,
+    ]);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#eXeShareModal-export')).toBeHidden();
 });

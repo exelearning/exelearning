@@ -535,9 +535,75 @@ describe('identify edition: shared form tabs and feedback', () => {
         }
     });
 
-    it('offers to import and to create with AI, as it did, but not to export', () => {
+    it('offers to import, to export and to create with AI', () => {
         const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
-        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+        expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
+        // It reads txt files only: the Import window does not offer Moodle xml.
+        expect(document.querySelector('#eXeShareModal-import .modal-body').firstElementChild.textContent).toBe(
+            'You can import questions compatible with this activity from txt files.'
+        );
+    });
+
+    describe('exporting', () => {
+        const question = (solution, message, clues) => ({
+            ...device.getCuestionDefault(),
+            solution,
+            question: message,
+            numberClues: clues.length,
+            clues: [...clues, ...Array(8 - clues.length).fill('')],
+        });
+        let download;
+
+        beforeEach(() => {
+            vi.spyOn(global.tinymce, 'get').mockReturnValue(null);
+            download = vi.spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob').mockReturnValue(true);
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('writes one line per question in the format Import reads back', async () => {
+            device.questionsGame = [
+                question('Paris', 'A capital', ['On the Seine', 'Has a tower', 'In France']),
+                question('Rome', '', ['Has a #1 coliseum', 'In Italy']),
+            ];
+            device.active = 0;
+            device.showQuestion(0);
+
+            document.getElementById('eXeGameExportQuestions').click();
+
+            expect(download).toHaveBeenCalledTimes(1);
+            const text = await download.mock.calls[0][0].text();
+            // A # inside a field would split it; an empty message goes as a space.
+            expect(text.split('\n')).toEqual([
+                'Paris#A capital#On the Seine#Has a tower#In France',
+                'Rome# #Has a  1 coliseum#In Italy',
+            ]);
+
+            device.questionsGame = [];
+            device.insertQuestions(text.split('\n'));
+            expect(device.questionsGame.map(({ solution, question: message, numberClues, clues }) => ({
+                solution,
+                message,
+                clues: clues.slice(0, numberClues),
+            }))).toEqual([
+                { solution: 'Paris', message: 'A capital', clues: ['On the Seine', 'Has a tower', 'In France'] },
+                { solution: 'Rome', message: '', clues: ['Has a  1 coliseum', 'In Italy'] },
+            ]);
+        });
+
+        it('exports the question on screen with its latest changes', async () => {
+            device.questionsGame = [question('Paris', 'A capital', ['On the Seine', 'Has a tower'])];
+            device.active = 0;
+            device.showQuestion(0);
+            document.getElementById('idfESolution').value = 'Lyon';
+
+            device.exportQuestions();
+
+            expect(await download.mock.calls[0][0].text()).toBe('Lyon#A capital#On the Seine#Has a tower');
+        });
     });
 
     it('explains each option without changing any of them', () => {
