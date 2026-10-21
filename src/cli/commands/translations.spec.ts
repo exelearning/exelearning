@@ -1136,6 +1136,23 @@ describe('Translations Command', () => {
             // MathJax-like key should NOT be present
             expect(content).not.toContain('mathfontexe');
         });
+
+        it('should exclude the generated pdf.js files', async () => {
+            const pdfjsDir = path.join(testDir, 'public', 'libs', 'pdfjs');
+            await fs.ensureDir(pdfjsDir);
+            // Minified pdf.js embeds binary data that can contain a `_(` followed by a backtick
+            await fs.writeFile(path.join(pdfjsDir, 'pdf.worker.min.js'), 'var d=a)_(`f)Mwjmb(af)Mwjmb`;');
+            const libsDir = path.join(testDir, 'public', 'libs', 'exe_lib');
+            await fs.ensureDir(libsDir);
+            await fs.writeFile(path.join(libsDir, 'exe_lib.js'), `const msg = _('regular.lib.translation');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('regular.lib.translation');
+            expect(content).not.toContain('Mwjmb');
+        });
     });
 
     describe('invalid key filtering', () => {

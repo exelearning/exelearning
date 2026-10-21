@@ -197,6 +197,7 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+shared[\\/]+export[\\/]+generators[\\/]+I18nGenerator\.ts$/, // Has translation strings in comments only
     /[\\/]+tinymce_5[\\/]+js[\\/]+tinymce[\\/]+plugins[\\/]+lists[\\/]+plugin\.min\.js$/, // TinyMCE lists plugin (minified, not translatable)
     /[\\/]+jquery-ui[\\/]+jquery-ui\.min\.js$/, // jQuery UI (minified, not translatable)
+    /[\\/]+libs[\\/]+pdfjs[\\/]+/, // pdf.js (minified, its embedded binary data contains `_(`-like sequences)
     /[\\/]+app\.bundle\.js$/, // Compiled bundle (stale; sources are scanned directly)
 ];
 
