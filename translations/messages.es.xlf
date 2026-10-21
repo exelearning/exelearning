@@ -15345,8 +15345,8 @@
         <source>To reduce its size, open the File Manager and:</source>
         <target>Para reducir su tamaño, abre el Gestor de archivos y:</target>
       </trans-unit>
-      <trans-unit id="zk8fw9d" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
-        <source>Sort by "Largest first" and review each asset\'s references.</source>
+      <trans-unit id="zk8fw9d" resname="Sort by &quot;Largest first&quot; and review each asset&apos;s references.">
+        <source>Sort by "Largest first" and review each asset's references.</source>
         <target>Ordena por "Más grandes primero" y revisa las referencias de cada recurso.</target>
       </trans-unit>
       <trans-unit id="jau1yrr" resname="Remove an unused older version of a large asset.">
@@ -15965,8 +15965,8 @@
         <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
         <target>La actividad no envía ninguna puntuación al LMS, ni siquiera al exportarla como SCORM. El usuario puede hacerla y ver su resultado, pero no se registra nada en la plataforma.</target>
       </trans-unit>
-      <trans-unit id="jlua5p6" resname="The progress report is not affected: it is kept in the learner\&apos;s own browser and works whatever you choose here.">
-        <source>The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.</source>
+      <trans-unit id="jlua5p6" resname="The progress report is not affected: it is kept in the learner&apos;s own browser and works whatever you choose here.">
+        <source>The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here.</source>
         <target>El informe de progreso no se ve afectado: se guarda en el propio navegador y funciona elijas lo que elijas aquí.</target>
       </trans-unit>
       <trans-unit id="o6vmdyy" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">

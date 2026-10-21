@@ -15345,8 +15345,8 @@
         <source>To reduce its size, open the File Manager and:</source>
         <target>~Por redukti ĝian grandecon, malfermu la Dosieran administrilon kaj:</target>
       </trans-unit>
-      <trans-unit id="5s79mc8" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
-        <source>Sort by "Largest first" and review each asset\'s references.</source>
+      <trans-unit id="5s79mc8" resname="Sort by &quot;Largest first&quot; and review each asset&apos;s references.">
+        <source>Sort by "Largest first" and review each asset's references.</source>
         <target>~Ordigu laŭ "Plej grandaj unue" kaj kontrolu la referencojn de ĉiu rimedo.</target>
       </trans-unit>
       <trans-unit id="yuj76zg" resname="Remove an unused older version of a large asset.">
@@ -15965,8 +15965,8 @@
         <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
         <target>~La aktiveco sendas neniun poentaron al la LMS, eĉ ne kiam ĝi estas eksportita kiel SCORM. La uzanto povas fari ĝin kaj vidi sian rezulton, sed nenio estas registrata en la platformo.</target>
       </trans-unit>
-      <trans-unit id="bgmmxcm" resname="The progress report is not affected: it is kept in the learner\&apos;s own browser and works whatever you choose here.">
-        <source>The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.</source>
+      <trans-unit id="bgmmxcm" resname="The progress report is not affected: it is kept in the learner&apos;s own browser and works whatever you choose here.">
+        <source>The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here.</source>
         <target>~La progresraporto ne estas tuŝita: ĝi estas konservata en la retumilo mem kaj funkcias kion ajn vi elektas ĉi tie.</target>
       </trans-unit>
       <trans-unit id="p9v8ubv" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">

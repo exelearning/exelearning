@@ -3781,7 +3781,7 @@ class YjsProjectBridge {
       `<p>${_('The project was not imported.')}</p>` +
       `<p>${_('To reduce its size, open the File Manager and:')}</p>` +
       `<ul>` +
-      `<li>${_('Sort by "Largest first" and review each asset\'s references.')}</li>` +
+      `<li>${_(`Sort by "Largest first" and review each asset's references.`)}</li>` +
       `<li>${_('Remove an unused older version of a large asset.')}</li>` +
       `<li>${_('Optimise, replace, or remove the large file.')}</li>` +
       `</ul>`;

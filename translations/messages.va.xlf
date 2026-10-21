@@ -15345,8 +15345,8 @@
         <source>To reduce its size, open the File Manager and:</source>
         <target>~Per a reduir-ne la grandària, obri el Gestor de fitxers i:</target>
       </trans-unit>
-      <trans-unit id="oe4b1xb" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
-        <source>Sort by "Largest first" and review each asset\'s references.</source>
+      <trans-unit id="oe4b1xb" resname="Sort by &quot;Largest first&quot; and review each asset&apos;s references.">
+        <source>Sort by "Largest first" and review each asset's references.</source>
         <target>~Ordena per "Més grans primer" i revisa les referències de cada recurs.</target>
       </trans-unit>
       <trans-unit id="r6jy713" resname="Remove an unused older version of a large asset.">
@@ -15965,8 +15965,8 @@
         <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
         <target>~L’activitat no envia cap puntuació a l’LMS, ni tan sols quan s’exporta com a SCORM. L’usuari la pot fer i veure’n el resultat, però no es registra res en la plataforma.</target>
       </trans-unit>
-      <trans-unit id="vzrd4zg" resname="The progress report is not affected: it is kept in the learner\&apos;s own browser and works whatever you choose here.">
-        <source>The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.</source>
+      <trans-unit id="vzrd4zg" resname="The progress report is not affected: it is kept in the learner&apos;s own browser and works whatever you choose here.">
+        <source>The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here.</source>
         <target>~L’informe de progrés no es veu afectat: es guarda en el mateix navegador i funciona tries el que tries ací.</target>
       </trans-unit>
       <trans-unit id="s62rodv" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">

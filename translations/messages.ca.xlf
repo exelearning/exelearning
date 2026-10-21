@@ -15345,8 +15345,8 @@
         <source>To reduce its size, open the File Manager and:</source>
         <target>~Per reduir-ne la mida, obre el Gestor de fitxers i:</target>
       </trans-unit>
-      <trans-unit id="62zf3q8" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
-        <source>Sort by "Largest first" and review each asset\'s references.</source>
+      <trans-unit id="62zf3q8" resname="Sort by &quot;Largest first&quot; and review each asset&apos;s references.">
+        <source>Sort by "Largest first" and review each asset's references.</source>
         <target>~Ordena per "Més grans primer" i revisa les referències de cada recurs.</target>
       </trans-unit>
       <trans-unit id="td7inu9" resname="Remove an unused older version of a large asset.">
@@ -15965,8 +15965,8 @@
         <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
         <target>~L'activitat no envia cap puntuació a l'LMS, ni tan sols quan s'exporta com a SCORM. L'usuari la pot fer i veure'n el resultat, però no es registra res a la plataforma.</target>
       </trans-unit>
-      <trans-unit id="p6nq2rj" resname="The progress report is not affected: it is kept in the learner\&apos;s own browser and works whatever you choose here.">
-        <source>The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.</source>
+      <trans-unit id="p6nq2rj" resname="The progress report is not affected: it is kept in the learner&apos;s own browser and works whatever you choose here.">
+        <source>The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here.</source>
         <target>~L'informe de progrés no es veu afectat: es desa al mateix navegador i funciona triïs el que triïs aquí.</target>
       </trans-unit>
       <trans-unit id="6me9ggx" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">
