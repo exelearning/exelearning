@@ -1,13 +1,15 @@
 /**
  * Platform Integration Service Tests
  */
-import { describe, it, expect, afterEach } from 'bun:test';
+import { describe, it, expect, afterEach, beforeEach } from 'bun:test';
 import {
     buildSetOdeUrl,
     buildGetOdeUrl,
     platformPetitionGet,
     platformPetitionSet,
     platformPetitionSetForward,
+    hashPlatformPackage,
+    isPlatformPackageCurrent,
     configure,
     resetDependencies,
 } from './platform-integration';
@@ -16,6 +18,9 @@ import type { PlatformJWTPayload } from '../utils/platform-jwt';
 describe('Platform Integration Service', () => {
     // Store original fetch
     const originalFetch = globalThis.fetch;
+    // Hermetic DNS resolver so safeFetch never hits the network for the
+    // example returnurl hosts; the mocked globalThis.fetch is still used.
+    const publicLookup = async (_host: string) => [{ address: '93.184.216.34' }];
 
     afterEach(() => {
         // Restore original fetch
@@ -79,6 +84,9 @@ describe('Platform Integration Service', () => {
     });
 
     describe('platformPetitionGet', () => {
+        beforeEach(() => {
+            configure({ lookupFn: publicLookup });
+        });
         const mockPayload: PlatformJWTPayload = {
             userid: '123',
             cmid: '456',
@@ -105,6 +113,33 @@ describe('Platform Integration Service', () => {
             await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow(
                 'Platform responded with status 500',
             );
+        });
+
+        it('refuses a provider redirect and never re-POSTs the body to the redirect target (SSRF exfil guard)', async () => {
+            // A malicious/compromised allow-listed provider 302s to an attacker's
+            // public host. The outbound POST carries the integration JWT, so
+            // safeFetch(maxRedirects: 0) must reject the redirect rather than
+            // replay the body there. publicLookup resolves every host to a PUBLIC
+            // IP, so the egress IP filter alone would NOT stop this exfiltration.
+            let calls = 0;
+            let attackerContacted = false;
+            globalThis.fetch = (async (url: string | URL | Request) => {
+                calls++;
+                if (String(url).includes('attacker.example')) {
+                    attackerContacted = true;
+                    return new Response(JSON.stringify({ status: '0' }), { status: 200 });
+                }
+                return new Response(null, {
+                    status: 302,
+                    headers: { location: 'https://attacker.example/collect' },
+                });
+            }) as unknown as typeof fetch;
+
+            await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow(
+                'Failed to fetch ELP from platform',
+            );
+            expect(calls).toBe(1);
+            expect(attackerContacted).toBe(false);
         });
 
         it('should throw error when platform returns error status in JSON', async () => {
@@ -189,9 +224,86 @@ describe('Platform Integration Service', () => {
                 'Failed to fetch ELP from platform: Network error',
             );
         });
+
+        it('refuses to fetch when the platform URL resolves to an internal address (SSRF)', async () => {
+            // The returnurl host resolves to link-local metadata; safeFetch must
+            // reject BEFORE any outbound request is made. Proves the fetch is wired
+            // through the SSRF guard (a revert to raw fetch() would fail this).
+            let fetchCalls = 0;
+            globalThis.fetch = async () => {
+                fetchCalls++;
+                return new Response('{}');
+            };
+            configure({ lookupFn: async () => [{ address: '169.254.169.254' }] });
+
+            await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow(
+                'Failed to fetch ELP from platform',
+            );
+            expect(fetchCalls).toBe(0);
+        });
+
+        describe('allow-listed provider on a private network', () => {
+            const savedEnv = {
+                PROVIDER_URLS: process.env.PROVIDER_URLS,
+                PROVIDER_ALLOW_PRIVATE_NETWORK: process.env.PROVIDER_ALLOW_PRIVATE_NETWORK,
+            };
+            const okResponse = () =>
+                new Response(JSON.stringify({ status: '0', ode_file: 'YmFzZTY0', ode_filename: 'project.elpx' }));
+
+            beforeEach(() => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com';
+                delete process.env.PROVIDER_ALLOW_PRIVATE_NETWORK;
+                configure({ lookupFn: async () => [{ address: '10.0.0.5' }] });
+            });
+
+            afterEach(() => {
+                for (const [key, value] of Object.entries(savedEnv)) {
+                    if (value === undefined) {
+                        delete process.env[key];
+                    } else {
+                        process.env[key] = value;
+                    }
+                }
+            });
+
+            it('is blocked by default', async () => {
+                let fetchCalls = 0;
+                globalThis.fetch = async () => {
+                    fetchCalls++;
+                    return okResponse();
+                };
+
+                await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow('Blocked address');
+                expect(fetchCalls).toBe(0);
+            });
+
+            it('is reached once PROVIDER_ALLOW_PRIVATE_NETWORK is enabled', async () => {
+                process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+                globalThis.fetch = async () => okResponse();
+
+                const result = await platformPetitionGet(mockPayload, 'jwt-token');
+                expect(result.ode_filename).toBe('project.elpx');
+            });
+
+            it('stays blocked for a host outside PROVIDER_URLS even with the opt-in', async () => {
+                process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+                process.env.PROVIDER_URLS = 'https://other.example.com';
+                let fetchCalls = 0;
+                globalThis.fetch = async () => {
+                    fetchCalls++;
+                    return okResponse();
+                };
+
+                await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow('Blocked address');
+                expect(fetchCalls).toBe(0);
+            });
+        });
     });
 
     describe('platformPetitionSet', () => {
+        beforeEach(() => {
+            configure({ lookupFn: publicLookup });
+        });
         const mockPayload: PlatformJWTPayload = {
             userid: '123',
             cmid: '456',
@@ -215,9 +327,7 @@ describe('Platform Integration Service', () => {
 
         it('should return error when project not found', async () => {
             // Configure with mock that returns null
-            configure({
-                findProjectByUuid: async () => null,
-            });
+            configure({ lookupFn: publicLookup, findProjectByUuid: async () => null });
 
             const result = await platformPetitionSet(mockPayload, 'jwt-token', 'non-existent-uuid');
 
@@ -228,6 +338,7 @@ describe('Platform Integration Service', () => {
         it('should return error when Yjs document snapshot not found', async () => {
             // Configure with mock project but no snapshot
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -249,6 +360,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -267,10 +379,37 @@ describe('Platform Integration Service', () => {
             expect(result.error).toContain('Platform responded with status 500');
         });
 
+        it('refuses to upload when the platform URL resolves to an internal address (SSRF)', async () => {
+            const mockSnapshot = createMockSnapshot();
+            let fetchCalls = 0;
+            globalThis.fetch = async () => {
+                fetchCalls++;
+                return new Response('{}');
+            };
+            configure({
+                lookupFn: async () => [{ address: '169.254.169.254' }],
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'test-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                findSnapshotByProjectId: async () => mockSnapshot,
+            });
+
+            const result = await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
+
+            // safeFetch must reject the internal address before any outbound request.
+            expect(result.success).toBe(false);
+            expect(fetchCalls).toBe(0);
+        });
+
         it('should return error when platform returns error in JSON response', async () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -300,6 +439,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -328,6 +468,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -357,6 +498,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -386,6 +528,7 @@ describe('Platform Integration Service', () => {
 
         it('should handle exceptions during snapshot loading gracefully', async () => {
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -409,6 +552,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -433,6 +577,7 @@ describe('Platform Integration Service', () => {
             const mockSnapshot = createMockSnapshot();
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -469,6 +614,7 @@ describe('Platform Integration Service', () => {
             let storedProjectUuid: string | null = null;
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -498,11 +644,36 @@ describe('Platform Integration Service', () => {
             expect(storedPlatformId).toBe('456'); // mockPayload.cmid
         });
 
+        it('records the hash of the exported package it posted', async () => {
+            let postedFile = '';
+            let storedHash: string | null | undefined;
+            configure({
+                lookupFn: publicLookup,
+                findProjectByUuid: async () => ({ id: 1, uuid: 'test-uuid', platform_id: null }) as never,
+                findSnapshotByProjectId: async () => createMockSnapshot(),
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    storedHash = data.platform_package_hash;
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async (_url, init) => {
+                const body = init?.body as FormData;
+                postedFile = JSON.parse(body.get('ode_data') as string).ode_file;
+                return new Response(JSON.stringify({ success: true }), { status: 200 });
+            };
+
+            const result = await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
+
+            expect(result.success).toBe(true);
+            expect(storedHash).toBe(hashPlatformPackage(Buffer.from(postedFile, 'base64')));
+        });
+
         it('should not store platform_id when upload fails', async () => {
             const mockSnapshot = createMockSnapshot();
             let updateCalled = false;
 
             configure({
+                lookupFn: publicLookup,
                 findProjectByUuid: async () => ({
                     id: 1,
                     uuid: 'test-uuid',
@@ -533,6 +704,9 @@ describe('Platform Integration Service', () => {
     });
 
     describe('platformPetitionSetForward', () => {
+        beforeEach(() => {
+            configure({ lookupFn: publicLookup });
+        });
         const forwardPayload: PlatformJWTPayload = {
             userid: '7',
             cmid: '42',
@@ -570,6 +744,27 @@ describe('Platform Integration Service', () => {
             expect(result.error).toContain('Missing package payload');
         });
 
+        it('refuses to forward when the platform URL resolves to an internal address (SSRF)', async () => {
+            let fetchCalls = 0;
+            globalThis.fetch = async () => {
+                fetchCalls++;
+                return new Response('{}');
+            };
+            configure({ lookupFn: async () => [{ address: '169.254.169.254' }] });
+
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt-token',
+                'project-uuid',
+                samplePackage,
+                'package.zip',
+            );
+
+            // safeFetch must reject the internal address before any outbound request.
+            expect(result.success).toBe(false);
+            expect(fetchCalls).toBe(0);
+        });
+
         it('forwards a base64-encoded ode_data payload to the platform set_ode URL', async () => {
             let capturedUrl: string | null = null;
             let capturedBody: FormData | null = null;
@@ -587,6 +782,8 @@ describe('Platform Integration Service', () => {
             // platform_id linkage is performed only when the upload succeeds.
             let linkedCmid: string | null = null;
             configure({
+                lookupFn: publicLookup,
+                findProjectByUuid: async () => ({ uuid: 'project-uuid', platform_id: null }) as never,
                 updateProjectByUuid: async (_db, _uuid, updates) => {
                     linkedCmid = (updates.platform_id as string) ?? null;
                     return undefined;
@@ -628,7 +825,7 @@ describe('Platform Integration Service', () => {
                 });
             };
 
-            configure({ updateProjectByUuid: async () => undefined });
+            configure({ lookupFn: publicLookup, updateProjectByUuid: async () => undefined });
 
             const result = await platformPetitionSetForward(forwardPayload, 'jwt-token', '', samplePackage, '');
 
@@ -671,9 +868,103 @@ describe('Platform Integration Service', () => {
             expect(result.error).toContain('Platform responded with status 503');
         });
 
+        it('binds the project to the site and cmid and records the hash of the package it sent', async () => {
+            const updates: Record<string, unknown>[] = [];
+            configure({
+                lookupFn: publicLookup,
+                findProjectByUuid: async () => ({ uuid: 'project-uuid', platform_id: null }) as never,
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    updates.push(data);
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            // Moodle signs cmid as a JSON number.
+            const payload = { ...forwardPayload, cmid: 42 as unknown as string };
+            const result = await platformPetitionSetForward(payload, 'jwt', 'project-uuid', samplePackage, 'p.zip', {
+                projectSaved: true,
+            });
+
+            expect(result.success).toBe(true);
+            expect(updates).toEqual([
+                {
+                    platform_id: '42',
+                    platform_site: 'https://moodle.example.com',
+                    platform_package_hash: hashPlatformPackage(samplePackage),
+                },
+            ]);
+        });
+
+        it('forgets the package of a project whose assets may not be on the server', async () => {
+            const updates: Record<string, unknown>[] = [];
+            configure({
+                lookupFn: publicLookup,
+                findProjectByUuid: async () =>
+                    ({ uuid: 'project-uuid', platform_id: '42', platform_package_hash: 'b'.repeat(64) }) as never,
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    updates.push(data);
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            await platformPetitionSetForward(forwardPayload, 'jwt', 'project-uuid', samplePackage, 'p.zip');
+
+            // The next edit imports the package again instead of reopening a
+            // project that would miss its images in another browser (#2550).
+            expect(updates).toEqual([
+                { platform_id: '42', platform_site: 'https://moodle.example.com', platform_package_hash: null },
+            ]);
+        });
+
+        it('upgrades a binding stored before platform sites were recorded', async () => {
+            const updates: Record<string, unknown>[] = [];
+            configure({
+                lookupFn: publicLookup,
+                findProjectByUuid: async () =>
+                    ({ uuid: 'project-uuid', platform_id: '42', platform_site: null }) as never,
+                updateProjectByUuid: async (_db, _uuid, data) => {
+                    updates.push(data);
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            await platformPetitionSetForward(forwardPayload, 'jwt', 'project-uuid', samplePackage, 'p.zip');
+
+            expect(updates[0]?.platform_site).toBe('https://moodle.example.com');
+        });
+
+        it('keeps the binding of a project that belongs to another activity', async () => {
+            let updateCalled = false;
+            configure({
+                lookupFn: publicLookup,
+                findProjectByUuid: async () =>
+                    ({ uuid: 'project-uuid', platform_id: '42', platform_site: 'https://other.example.com' }) as never,
+                updateProjectByUuid: async () => {
+                    updateCalled = true;
+                    return undefined;
+                },
+            });
+            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt',
+                'project-uuid',
+                samplePackage,
+                'p.zip',
+            );
+
+            expect(result.success).toBe(true);
+            expect(updateCalled).toBe(false);
+        });
+
         it('does not link platform_id when projectUuid is empty', async () => {
             let updateCalled = false;
             configure({
+                lookupFn: publicLookup,
                 updateProjectByUuid: async () => {
                     updateCalled = true;
                     return undefined;
@@ -697,6 +988,57 @@ describe('Platform Integration Service', () => {
             expect(result.success).toBe(true);
             expect(updateCalled).toBe(false);
         });
+    });
+});
+
+describe('Platform package tracking', () => {
+    const payload = {
+        userid: '7',
+        cmid: 42 as unknown as string,
+        returnurl: 'https://example.com/moodle/mod/exescorm/view.php?id=42',
+        pkgtype: 'scorm',
+        exp: 0,
+        iat: 0,
+    } as PlatformJWTPayload;
+    const site = 'https://example.com/moodle';
+    const packageHash = hashPlatformPackage(Buffer.from('PK package'));
+
+    afterEach(() => {
+        resetDependencies();
+    });
+
+    function withProject(project: Record<string, unknown> | undefined): void {
+        configure({ findProjectByUuid: async () => project as never });
+    }
+
+    it('hashes packages with SHA-256', () => {
+        expect(hashPlatformPackage(Buffer.from('abc'))).toBe(
+            'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+        );
+    });
+
+    it('reports a package as current when the project bound to the activity already holds it', async () => {
+        withProject({ platform_id: '42', platform_site: site, platform_package_hash: packageHash });
+
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(true);
+    });
+
+    it('reports a changed package, an unknown one or another activity as not current', async () => {
+        withProject({ platform_id: '42', platform_site: site, platform_package_hash: 'b'.repeat(64) });
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(false);
+
+        withProject({ platform_id: '42', platform_site: site, platform_package_hash: null });
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(false);
+
+        withProject({
+            platform_id: '42',
+            platform_site: 'https://other.example.com',
+            platform_package_hash: packageHash,
+        });
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(false);
+
+        withProject(undefined);
+        expect(await isPlatformPackageCurrent('uuid', payload, packageHash)).toBe(false);
     });
 });
 

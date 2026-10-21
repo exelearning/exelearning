@@ -163,7 +163,7 @@ export default class projectManager {
             Logger.log('[ProjectManager] Found pending import file, importing...');
             const file = window.__pendingImportFile;
             window.__pendingImportFile = null; // Clear it
-            this.importElp(file).catch(err => {
+            this.app.openStaticFile(file).catch(err => {
                 console.error('[ProjectManager] Failed to import pending file:', err);
             });
         }
@@ -459,6 +459,26 @@ export default class projectManager {
     }
 
     /**
+     * Tell the server the project now holds a platform package, so the next edit
+     * of the activity reopens it as is while the platform keeps that package.
+     * Best effort: without it the next edit simply imports the package again.
+     */
+    async _confirmPlatformElpImport(basePath, jwtToken, projectUuid, packageHash) {
+        try {
+            const response = await fetch(`${basePath}/api/platform/integration/confirmPlatformElpImport`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jwt_token: jwtToken, projectUuid, packageHash }),
+            });
+            if (!response.ok) {
+                throw new Error(`Platform confirmation responded with status ${response.status}`);
+            }
+        } catch (error) {
+            console.warn('[ProjectManager] Could not record the platform package of the project', error);
+        }
+    }
+
+    /**
      * Check URL/config for import path and import ELPX file if present.
      *
      * Supported sources:
@@ -482,16 +502,24 @@ export default class projectManager {
                 }
 
                 const basePath = window.eXeLearning?.config?.basePath || '';
+                // The server reopens the user's own project for the activity (#2549);
+                // naming it lets the server say whether it already holds the package.
+                const projectUuid = this.yjsProjectId || window.eXeLearning?.projectId;
                 const response = await fetch(`${basePath}/api/platform/integration/openPlatformElp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ jwt_token: jwtToken })
+                    body: JSON.stringify({ jwt_token: jwtToken, projectUuid })
                 });
 
                 if (response.ok) {
                     const data = await response.json();
 
-                    if (data.responseMessage === 'OK' && data.elpFile) {
+                    if (data.responseMessage === 'OK' && data.unchanged) {
+                        // Nobody changed the package on the platform since this project
+                        // last received or sent it: keep the project, including work
+                        // saved here but not sent back yet.
+                        Logger.log('[ProjectManager] Project already holds the platform package, keeping it');
+                    } else if (data.responseMessage === 'OK' && data.elpFile) {
                         Logger.log('[ProjectManager] ELP file fetched from platform, base64 size:', data.elpFile.length);
 
                         // Convert base64 to Blob/File
@@ -512,11 +540,18 @@ export default class projectManager {
                         if (isImportCancelled(stats)) {
                             Logger.log('[ProjectManager] Platform ELP import cancelled/rejected; project left unchanged');
                         } else {
+                            let saved = false;
                             try {
-                                await this._yjsBridge.documentManager.saveToServer();
+                                // A full save also uploads the package's assets: the next
+                                // edit may reopen this project from another browser (#2550).
+                                const saveResult = await this._yjsBridge.save({ showProgress: false });
+                                saved = saveResult?.success === true;
                                 Logger.log('[ProjectManager] Document saved to server after platform import');
                             } catch (saveError) {
                                 console.warn('[ProjectManager] Failed to save to server after platform import', saveError);
+                            }
+                            if (saved && data.packageHash) {
+                                await this._confirmPlatformElpImport(basePath, jwtToken, projectUuid, data.packageHash);
                             }
                         }
 
@@ -628,7 +663,8 @@ export default class projectManager {
                 // Cleanup: Request server to delete temp file (URL-import workflow only)
                 try {
                     await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        credentials: 'include'
                     });
                 } catch (cleanupError) {
                     console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);

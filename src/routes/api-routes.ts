@@ -126,6 +126,10 @@ export const API_ROUTES: RouteMap = {
         methods: ['POST'],
     },
     open_platform_elp: { path: '/api/platform/integration/openPlatformElp', methods: ['POST'] },
+    confirm_platform_elp_import: {
+        path: '/api/platform/integration/confirmPlatformElpImport',
+        methods: ['POST'],
+    },
 
     // Config
     api_config_upload_limits: { path: '/api/config/upload-limits', methods: ['GET'] },

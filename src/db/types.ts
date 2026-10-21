@@ -79,6 +79,8 @@ interface ProjectsTable {
     last_accessed_at: number | null; // Unix timestamp in milliseconds
     saved_once: number;
     platform_id: string | null; // External platform ID (e.g., Moodle cmid)
+    platform_site: string | null; // Base URL of the platform site platform_id belongs to
+    platform_package_hash: string | null; // SHA-256 of the last package exchanged with the platform
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }
