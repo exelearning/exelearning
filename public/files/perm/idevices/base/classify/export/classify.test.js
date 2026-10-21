@@ -515,17 +515,19 @@ describe('classify iDevice export', () => {
 
       // No activities should be processed
       expect(processedCount).toBe(0);
-      expect($eXeClasifica.options).toEqual([]);
+      expect($eXeClasifica.options.filter(Boolean)).toEqual([]);
     });
 
     it('processes activity with DataGame correctly', () => {
       // Act
       $eXeClasifica.loadGame();
 
-      // Assert: Options should have 2 entries (for the 2 activities with DataGame)
-      expect($eXeClasifica.options.length).toBe(2);
+      // Assert: each processed activity is stored under its own index; the
+      // skipped one (activity 2) keeps its slot, so handlers for activity 3
+      // find options[2].
       expect($eXeClasifica.options[0].idevice).toBe('clasifica-IDevice');
-      expect($eXeClasifica.options[1].idevice).toBe('clasifica-IDevice');
+      expect($eXeClasifica.options[1]).toBeUndefined();
+      expect($eXeClasifica.options[2].idevice).toBe('clasifica-IDevice');
     });
   });
 

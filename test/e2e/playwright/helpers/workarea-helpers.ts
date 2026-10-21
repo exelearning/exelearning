@@ -2584,3 +2584,35 @@ export async function serveWebSiteExport(page: Page, origin: string): Promise<st
 
     return Object.keys(files);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BROWSER CAPABILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Whether the page's browser can draw with the given WebGL version.
+ *
+ * Firefox has no WebGL on the GPU-less CI runners, so a test that needs a model or a molecule drawn
+ * checks first and skips there, with its reason, rather than timing out. `<model-viewer>` (GLB,
+ * GLTF) asks for WebGL 2 only; three.js r160 (STL) and 3Dmol fall back to WebGL 1.
+ *
+ * @param page - Any page of the browser under test
+ * @param version - The WebGL version the drawing needs
+ * @returns true when such a context can be created
+ */
+export async function hasWebGL(page: Page, version: 1 | 2 = 1): Promise<boolean> {
+    return page.evaluate(version => {
+        try {
+            const canvas = document.createElement('canvas');
+            const context =
+                version === 2
+                    ? canvas.getContext('webgl2')
+                    : canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            // Contexts are scarce: give this one back rather than wait for it to be collected.
+            (context as WebGLRenderingContext | null)?.getExtension('WEBGL_lose_context')?.loseContext();
+            return Boolean(context);
+        } catch {
+            return false;
+        }
+    }, version);
+}
