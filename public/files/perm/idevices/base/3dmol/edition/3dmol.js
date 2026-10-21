@@ -246,8 +246,6 @@ var $exeDevice = {
      * nothing was added and the author has already been told why.
      */
     insertQuestions: function (lines) {
-        // Keep the question on screen before leaving it, as "Add" does.
-        if (!$exeDevice.validateQuestion()) return { handledMessaging: true };
         const choice = /^([0-3]|[A-D]{1,4})#([^#]+)#([^#]+)#([^#]*)(#[^#]*){0,2}$/i,
             word = /^([^#]+)#([^#]+)$/,
             questions = [];
@@ -274,6 +272,9 @@ var $exeDevice = {
             eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
             return { handledMessaging: true };
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateQuestion()
+        );
         $exeDevice.selectsGame.push(...questions);
         $exeDevice.active = $exeDevice.selectsGame.length - questions.length;
         $exeDevice.showQuestion($exeDevice.active);

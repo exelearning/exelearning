@@ -969,4 +969,51 @@ describe('guess edition: shared form tabs and feedback', () => {
       expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
     });
   });
+
+  describe('adding words to the one on screen', () => {
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    // The author typed it in a new activity: it is on screen, not in the list yet.
+    const typeOnScreen = (word, definition) => {
+      // The blank first word the editor adds once its text editor is ready.
+      device.wordsGame = [device.getCuestionDefault()];
+      device.active = 0;
+      $('#adivinaESolutionWord').val(word);
+      $('#adivinaEDefinitionWord').val(definition);
+    };
+    let previousHourToSeconds;
+    let tinymceGet;
+
+    beforeEach(() => {
+      // The check of a word reads its video times and its text editor too.
+      previousHourToSeconds = helpers().hourToSeconds;
+      helpers().hourToSeconds = () => 0;
+      tinymceGet = vi
+        .spyOn(global.tinymce, 'get')
+        .mockReturnValue({ getContent: () => '', setContent: vi.fn(), hide: vi.fn(), show: vi.fn() });
+    });
+
+    afterEach(() => {
+      tinymceGet.mockRestore();
+      if (previousHourToSeconds) helpers().hourToSeconds = previousHourToSeconds;
+      else delete helpers().hourToSeconds;
+    });
+
+    it('keeps it when it is complete', () => {
+      typeOnScreen('HEART', 'Organ that pumps blood');
+
+      device.insertWords(['SUN#The star of our system']);
+
+      expect(device.wordsGame.map((item) => item.word)).toEqual(['HEART', 'SUN']);
+    });
+
+    it('leaves it out, without its warning, when it is incomplete', () => {
+      typeOnScreen('HEART', '');
+      eXe.app.alert.mockClear();
+
+      device.insertWords(['SUN#The star of our system']);
+
+      expect(device.wordsGame.map((item) => item.word)).toEqual(['SUN']);
+      expect(eXe.app.alert).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -1023,4 +1023,31 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             });
         });
     });
+
+    describe('adding cards to the one on screen', () => {
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (front, back) => {
+            $('#flipcardsEText').val(front);
+            $('#flipcardsETextBack').val(back);
+        };
+        const fronts = () => device.cardsGame.map((card) => device.decodeURIComponentSafe(card.eText));
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen('Sun', 'Star');
+
+            device.insertCards(['Moon#Satellite']);
+
+            expect(fronts()).toEqual(['Sun', 'Moon']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen('', 'Star');
+            eXe.app.alert.mockClear();
+
+            device.insertCards(['Moon#Satellite']);
+
+            expect(fronts()).toEqual(['Moon']);
+            expect(eXe.app.alert).not.toHaveBeenCalled();
+        });
+    });
 });

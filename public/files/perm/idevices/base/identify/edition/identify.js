@@ -1090,6 +1090,9 @@ var $exeDevice = {
             );
             return;
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateQuestion()
+        );
         $exeDevice.active = 0;
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();

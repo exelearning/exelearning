@@ -656,6 +656,38 @@ describe('identify edition: shared form tabs and feedback', () => {
         expect(added.clues.slice(0, 3)).toEqual(['Closest to the Sun', 'Smallest planet', 'No moons']);
     });
 
+    describe('adding questions to the one on screen', () => {
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (fields) => {
+            device.questionsGame = [question(fields)];
+            device.active = 0;
+            device.showQuestion(0);
+            device.questionsGame = [device.getCuestionDefault()];
+        };
+        const alertsWhile = (action) => {
+            const before = eXe.app._alertHistory.length;
+            action();
+            return eXe.app._alertHistory.slice(before);
+        };
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen({ solution: 'Venus' });
+
+            device.insertAIQuestions(['Mars#Red planet#Has two moons']);
+
+            expect(device.questionsGame.map((item) => item.solution)).toEqual(['Venus', 'Mars']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen({ solution: 'Venus', clues: ['Second planet', '', '', '', '', '', '', ''] });
+
+            const alerts = alertsWhile(() => device.insertAIQuestions(['Mars#Red planet#Has two moons']));
+
+            expect(device.questionsGame.map((item) => item.solution)).toEqual(['Mars']);
+            expect(alerts).toEqual([]);
+        });
+    });
+
     it('accepts webp pictures from the project files', () => {
         const picture = document.getElementById('idfEURLImage');
         picture.value = 'files/picture.webp';

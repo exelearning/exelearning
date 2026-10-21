@@ -137,3 +137,33 @@ test('Identify explains options inline without changing their values', async ({
     await page.keyboard.press('Escape');
     await expect(page.locator('#eXeShareModal-export')).toBeHidden();
 });
+
+test('Identify keeps the question typed on screen when questions are imported', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const uuid = await createProject(page, 'Identify import keeps the question');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'identify');
+
+    // Typed in the new activity, never stored by moving to another question.
+    await page.locator('#idfESolution').fill('Mercury');
+    await page.locator('#idfEPista0').fill('Closest planet to the Sun');
+    await page.locator('#idfEPista1').fill('Smallest planet');
+    await page.locator('#idfEPista2').fill('Named after a Roman god');
+    await page.locator('#idfEPista3').fill('No moons');
+
+    await page.locator('[data-exe-share="import"]').click();
+    await page.locator('#eXeGameImportGame').setInputFiles({
+        name: 'questions.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from('Paris#A capital#On the Seine#Has a tower\n'),
+    });
+    await expect(page.locator('#eXeShareModal-import')).toBeHidden();
+
+    await expect(page.locator('#idfENumQuestions')).toHaveText('2');
+    await expect(page.locator('#idfESolution')).toHaveValue('Mercury');
+    await expect(page.locator('#idfEPista3')).toHaveValue('No moons');
+});

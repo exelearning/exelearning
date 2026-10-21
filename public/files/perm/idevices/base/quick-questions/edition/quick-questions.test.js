@@ -732,5 +732,34 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
       expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
     });
   });
+
+  describe('adding questions to the one on screen', () => {
+    // The author typed it in a new activity: it is on screen, not in the list yet.
+    const typeOnScreen = (options) => {
+      device.questionsGame = [{ ...device.getCuestionDefault(), quextion: 'Capital of France?', options, solution: 0 }];
+      device.active = 0;
+      device.showQuestion(0);
+      device.questionsGame = [device.getCuestionDefault()];
+    };
+    const questions = () => device.questionsGame.map((item) => item.quextion);
+
+    it('keeps it when it is complete', () => {
+      typeOnScreen(['Paris', 'Rome', 'Madrid', 'Berlin']);
+
+      device.insertQuestions(['1#Capital of Italy?#Paris#Rome#Madrid#Berlin']);
+
+      expect(questions()).toEqual(['Capital of France?', 'Capital of Italy?']);
+    });
+
+    it('leaves it out, without its warning, when it is incomplete', () => {
+      typeOnScreen(['Paris', '', '', '']);
+      global.eXe.app.alert.mockClear();
+
+      device.insertQuestions(['1#Capital of Italy?#Paris#Rome#Madrid#Berlin']);
+
+      expect(questions()).toEqual(['Capital of Italy?']);
+      expect(global.eXe.app.alert).not.toHaveBeenCalled();
+    });
+  });
 });
 

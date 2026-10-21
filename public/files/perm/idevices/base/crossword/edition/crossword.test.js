@@ -716,4 +716,31 @@ describe('crossword edition: shared form tabs and feedback', () => {
       expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
     });
   });
+
+  describe('adding words to the one on screen', () => {
+    // The author typed it in a new activity: it is on screen, not in the list yet.
+    const typeOnScreen = (word, definition) => {
+      $('#ccgmESolutionWord').val(word);
+      $('#ccgmEDefinitionWord').val(definition);
+    };
+
+    it('keeps it when it is complete', () => {
+      typeOnScreen('HEART', 'Organ that pumps blood');
+
+      device.insertWords(['SUN#The star of our system']);
+
+      expect(device.wordsGame.map((item) => item.word)).toEqual(['HEART', 'SUN']);
+    });
+
+    it('leaves it out, without its warning, when it is incomplete', () => {
+      typeOnScreen('HEART', '');
+      eXe.app.alert.mockClear();
+
+      // Two: a crossword never goes below two words, empty or not.
+      device.insertWords(['SUN#The star of our system', 'MOON#It orbits the Earth']);
+
+      expect(device.wordsGame.map((item) => item.word)).toEqual(['SUN', 'MOON']);
+      expect(eXe.app.alert).not.toHaveBeenCalled();
+    });
+  });
 });

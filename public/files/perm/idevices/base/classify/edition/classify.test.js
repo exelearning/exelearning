@@ -947,4 +947,37 @@ describe('classify edition: shared form tabs and feedback', () => {
             });
         });
     });
+
+    describe('adding items to the one on screen', () => {
+        const item = (fields) => ({ ...device.getCuestionDefault(), ...fields });
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (fields) => {
+            device.wordsGame = [item(fields)];
+            device.active = 0;
+            device.showQuestion(0);
+            device.wordsGame = [device.getCuestionDefault()];
+        };
+        const alertsWhile = (action) => {
+            const before = eXe.app._alertHistory.length;
+            action();
+            return eXe.app._alertHistory.slice(before);
+        };
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen({ type: 1, group: 0, eText: 'Lion' });
+
+            device.insertWords(['0#Dog', '1#Cow']);
+
+            expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Lion', 'Dog', 'Cow']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen({ type: 1, group: 0, eText: '' });
+
+            const alerts = alertsWhile(() => device.insertWords(['0#Dog', '1#Cow']));
+
+            expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Dog', 'Cow']);
+            expect(alerts).toEqual([]);
+        });
+    });
 });

@@ -1066,14 +1066,31 @@ describe('3dmol edition: shared form tabs and feedback', () => {
             expect(document.getElementById('dmoleNumQuestions').textContent).toBe('4');
         });
 
-        it('adds nothing while the question on screen is incomplete', async () => {
+        it('keeps the last changes of the question on screen', async () => {
             await ready();
+            document.getElementById('dmoleQuestion').value = 'What is the formula of glucose?';
+
+            await saveFromAI(['A#Which is the lightest element?#Hydrogen#Helium']);
+
+            expect(device.selectsGame.map((question) => question.quextion)).toEqual([
+                'What is the formula of glucose?',
+                'Which is the lightest element?',
+            ]);
+        });
+
+        it('leaves out an incomplete question on screen, without a warning, and adds the new ones', async () => {
+            await ready();
+            const stored = device.selectsGame[0].quextion;
             document.getElementById('dmoleQuestion').value = '';
 
             await saveFromAI(['A#Which is the lightest element?#Hydrogen#Helium']);
 
-            expect(device.selectsGame).toHaveLength(1);
-            expect(global.eXe.app.alert).not.toHaveBeenCalledWith('The questions have been added successfully');
+            expect(device.selectsGame.map((question) => question.quextion)).toEqual([
+                stored,
+                'Which is the lightest element?',
+            ]);
+            expect(global.eXe.app.alert).toHaveBeenCalledTimes(1);
+            expect(global.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
         });
     });
 

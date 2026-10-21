@@ -529,4 +529,31 @@ describe('relate edition: shared form tabs and share windows', () => {
             expect(await blobs[0].text()).toBe('Sun#Sol');
         });
     });
+
+    describe('adding cards to the one on screen', () => {
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (front, back) => {
+            $('#rclEText').val(front);
+            $('#rclETextBack').val(back);
+        };
+        const fronts = () => device.cardsGame.map((item) => decodeURIComponent(item.eText));
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen('Sun', 'Sol');
+
+            device.insertCards(['Moon#Luna']);
+
+            expect(fronts()).toEqual(['Sun', 'Moon']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen('', 'Sol');
+            const before = eXe.app._alertHistory.length;
+
+            device.insertCards(['Moon#Luna']);
+
+            expect(fronts()).toEqual(['Moon']);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+    });
 });

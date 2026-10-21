@@ -813,6 +813,9 @@ var $exeDevice = {
             );
             return;
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateQuestion()
+        );
         for (let i = 0; i < questions.length; i++) {
             $exeDevice.questionsGame.push(questions[i]);
         }

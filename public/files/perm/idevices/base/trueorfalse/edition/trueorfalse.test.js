@@ -810,4 +810,41 @@ describe('trueorfalse edition: shared form tabs', () => {
             expect(document.getElementById(editor).classList.contains('d-block')).toBe(true);
         }
     });
+
+    describe('adding questions to the one on screen', () => {
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (question) => {
+            open();
+            // Each editor stands on its own textarea.
+            vi.spyOn(global.tinymce, 'get').mockImplementation((id) => ({
+                getContent: () => $(`#${id}`).val(),
+                setContent: (html) => $(`#${id}`).val(html),
+            }));
+            $('#tofEQuestionEditor').val(question);
+            $('input[name="tofAnswer"][value="1"]').prop('checked', true);
+        };
+        const addFromAI = () =>
+            device.insertQuestions(
+                device.getLinesQuestions([{ question: 'The Sun is a star', solution: 1, feedback: '', suggestion: '' }])
+            );
+        const questions = () => device.questionsGame.map((item) => item.question);
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen('Water boils at 100 degrees');
+
+            addFromAI();
+
+            expect(questions()).toEqual(['Water boils at 100 degrees', 'The Sun is a star']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen('');
+            const before = eXe.app._alertHistory.length;
+
+            addFromAI();
+
+            expect(questions()).toEqual(['The Sun is a star']);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+    });
 });

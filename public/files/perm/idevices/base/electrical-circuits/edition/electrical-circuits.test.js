@@ -1716,5 +1716,44 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
             expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
         });
     });
+
+    describe('adding questions to the one on screen', () => {
+        const question = (text, options) => ({
+            ...device.getCuestionDefault(),
+            quextion: text,
+            options,
+            solution: 'A',
+            tikzCode: '',
+            tikzSvg: '',
+        });
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (options) => {
+            device.selectsGame = [question('Which lamp lights up?', options)];
+            device.active = 0;
+            device.showQuestion(0);
+            device.selectsGame = [device.getCuestionDefault()];
+        };
+        const added = () => [question('What does a fuse protect?', ['The circuit', 'The lamp', 'The switch', 'The wire'])];
+        const questions = () => device.selectsGame.map((item) => item.quextion);
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen(['L1', 'L2', 'Both', 'None']);
+
+            device.addQuestions(added());
+
+            expect(questions()).toEqual(['Which lamp lights up?', 'What does a fuse protect?']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen(['L1', '', '', '']);
+            global.eXe.app.alert.mockClear();
+
+            device.addQuestions(added());
+
+            // What stays is the sample question a new activity starts with.
+            expect(questions()).toEqual([device.getCuestionDefault().quextion, 'What does a fuse protect?']);
+            expect(global.eXe.app.alert).not.toHaveBeenCalled();
+        });
+    });
 });
 

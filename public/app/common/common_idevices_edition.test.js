@@ -3959,6 +3959,39 @@ describe('common_idevices_edition.js', () => {
       });
     });
 
+    describe('keepQuestionOnScreen', () => {
+      it('stores a complete question, as its validation does', () => {
+        const validate = vi.fn(() => true);
+
+        expect(iDevice().gamification.share.keepQuestionOnScreen(validate)).toBe(true);
+        expect(validate).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves out an incomplete question without its warning, and restores the warnings', () => {
+        const alert = globalThis.eXe.app.alert;
+        alert.mockClear();
+        const validate = () => {
+          globalThis.eXe.app.alert('The question is incomplete');
+          return false;
+        };
+
+        expect(iDevice().gamification.share.keepQuestionOnScreen(validate)).toBe(false);
+        expect(alert).not.toHaveBeenCalled();
+        expect(globalThis.eXe.app.alert).toBe(alert);
+      });
+
+      it('restores the warnings even if the validation fails', () => {
+        const alert = globalThis.eXe.app.alert;
+
+        expect(() =>
+          iDevice().gamification.share.keepQuestionOnScreen(() => {
+            throw new Error('broken form');
+          })
+        ).toThrow('broken form');
+        expect(globalThis.eXe.app.alert).toBe(alert);
+      });
+    });
+
     describe('downloadBlob', () => {
       it('revokes the object URL and removes the anchor when the editor closes first', () => {
         vi.useFakeTimers();

@@ -1834,6 +1834,31 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
+                 * Store the question on screen when imported or generated
+                 * questions are added, before the form shows another one, as
+                 * moving to another question does, so that its last changes
+                 * are kept.
+                 *
+                 * A question that does not validate is left out, and without
+                 * the warning its validation gives: the author is adding
+                 * questions, not saving that one.
+                 *
+                 * @param {Function} validate - The iDevice's check of the
+                 *   question on screen, which stores it when it is complete.
+                 * @returns {boolean} `true` if the question was stored.
+                 */
+                keepQuestionOnScreen: function (validate) {
+                    const app = eXe.app;
+                    const alert = app.alert;
+                    app.alert = () => {};
+                    try {
+                        return validate() !== false;
+                    } finally {
+                        app.alert = alert;
+                    }
+                },
+
+                /**
                  * Download a Blob as a file from the editor UI.
                  *
                  * Centralizes the "anchor + click + revoke" pattern used by

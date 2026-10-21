@@ -1526,6 +1526,9 @@ var $exeDevice = {
             );
             return;
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateCard()
+        );
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
             if (card.eTextBk && card.eText) {

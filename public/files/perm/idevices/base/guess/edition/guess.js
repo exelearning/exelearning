@@ -2600,6 +2600,9 @@ var $exeDevice = {
                 wordsGame.push(p);
             }
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateQuestion()
+        );
         $exeDevice.wordsGame = wordsGame;
         $exeDevice.active = 0;
         $exeDevice.showQuestion($exeDevice.active);
