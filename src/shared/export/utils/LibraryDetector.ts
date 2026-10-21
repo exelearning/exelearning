@@ -18,6 +18,7 @@
 
 import type { LibraryPattern, LibraryDetectionResult, LibraryDetectionOptions } from '../interfaces';
 import { LIBRARY_PATTERNS, BASE_LIBRARIES, SCORM_LIBRARIES } from '../constants';
+import { decryptDataGame } from './dataGameCipher';
 
 /**
  * LibraryDetector class
@@ -176,32 +177,11 @@ export class LibraryDetector {
         const match = html.match(/<div[^>]*class="[^"]*DataGame[^"]*"[^>]*>(.*?)<\/div>/s);
         if (!match) return false;
 
-        // Decrypt the content (same algorithm as Symfony)
-        const decrypted = this._decrypt(match[1]);
+        // Decrypt the content with the shared DataGame cipher
+        const decrypted = decryptDataGame(match[1]);
 
         // Check for LaTeX patterns
         return /\\\(|\\\[/.test(decrypted);
-    }
-
-    /**
-     * Decrypt XOR-encoded string (matches Symfony's decrypt method)
-     * @param str - Encrypted string
-     * @returns Decrypted string
-     */
-    private _decrypt(str: string): string {
-        if (!str || str === 'undefined' || str === 'null') return '';
-
-        try {
-            str = decodeURIComponent(str);
-            const key = 146;
-            let result = '';
-            for (let i = 0; i < str.length; i++) {
-                result += String.fromCharCode(key ^ str.charCodeAt(i));
-            }
-            return result;
-        } catch {
-            return '';
-        }
     }
 
     /**

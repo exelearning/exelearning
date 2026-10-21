@@ -436,6 +436,47 @@ describe('menu and modal HTML generation', () => {
 
         expect(missing).toEqual([]);
     });
+
+    it('carries the print preview and the options panel beside it', () => {
+        // The print preview finds its elements by id instead of through the base Modal, so the
+        // check above passes it over; without this markup File → Print would silently do nothing.
+        const html = generateModalsHtml();
+        expect(html).toContain('id="printPreviewOverlay"');
+        expect(html).toContain('id="printOptionsPanel"');
+
+        // The panel is filled by script, so what the template carries must survive the
+        // conversion whole, with its strings left for the browser to translate.
+        const preview = processNjkTemplate(path.join(projectRoot, 'views/workarea/modals/pages/printpreview.njk'));
+        expect(preview).not.toMatch(/\{[{%#]/);
+        expect(preview).toContain('class="print-options-activities"');
+        expect(preview).toContain('id="printOptLinkUrls"');
+        expect(preview).toContain('id="printOptUnfoldBlocks"');
+        expect(preview).toContain('id="printOptTeacherOnly"');
+        expect(preview).toContain('data-i18n="Print teacher-only content"');
+        expect(preview).toContain('data-i18n="Print options"');
+        expect(preview).toContain('data-i18n="Document"');
+        expect(preview).toContain('data-i18n="Show link URLs"');
+        expect(preview).toContain('data-i18n="Print the content of minimized boxes"');
+        // Each sentence of the note is translated on its own: the panel shows one of the two
+        // endings, and a translation on the paragraph would replace all three.
+        expect(preview).toContain('data-i18n="All visible content will be printed."');
+        expect(preview).toContain(
+            'data-i18n="You can choose which activities to include and whether to show hidden content."',
+        );
+        expect(preview).toContain('data-i18n="You can choose whether to show hidden content."');
+        expect(preview).not.toMatch(/class="print-options-intro-text"[^>]*data-i18n/);
+        expect(preview).toContain('class="print-preview-notice" role="alert" hidden');
+        expect(preview).toContain(
+            'data-i18n="Printing did not start. Printing may be disabled in this browser or on this device."',
+        );
+        expect(preview).toContain('data-i18n="Open in a new tab"');
+        // The desktop app finds the frame by name to make a PDF of it.
+        expect(preview).toContain('name="exe-print-preview"');
+        expect(preview).toContain('class="print-preview-pdf-btn btn btn-secondary" hidden');
+        expect(preview).toContain('data-i18n="Save as PDF"');
+        expect(preview).toContain('data-i18n="The PDF could not be saved."');
+        expect(preview).toContain('data-i18n-aria-label="Close"');
+    });
 });
 
 describe('generateStaticHtml', () => {

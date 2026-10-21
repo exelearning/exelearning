@@ -5,15 +5,10 @@
  * but not the actual rendering (which requires Mermaid in a browser context).
  */
 import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
-import { Window } from 'happy-dom';
 
-// Setup DOM environment before importing MermaidPreRenderer
-const window = new Window();
-globalThis.DOMParser = window.DOMParser;
-globalThis.Node = window.Node;
-globalThis.document = window.document;
-
-// Import the module (it will attach to globalThis in Node/Bun context)
+// Uses the configured happy-dom environment: script loading is disabled and reported
+// as a successful load, so "cannot load Mermaid" paths fail fast instead of waiting
+// out the 5s load timeout.
 import './MermaidPreRenderer.js';
 
 describe('MermaidPreRenderer', () => {
@@ -129,7 +124,7 @@ describe('MermaidPreRenderer', () => {
             expect(result.count).toBe(0);
             // Original HTML should be preserved when Mermaid is not available
             expect(result.html).toBe(html);
-        }, 10000);
+        });
 
         test('handles empty string', async () => {
             const result = await MermaidPreRenderer.preRender('');
@@ -382,7 +377,7 @@ describe('MermaidPreRenderer', () => {
             // In test environment, script loading will fail, so initMermaid should throw
             await expect(MermaidPreRenderer._initMermaid())
                 .rejects.toThrow(/Mermaid library/);
-        }, 10000);
+        });
 
         test('calls mermaid.initialize with correct options', async () => {
             originalMermaid = globalThis.mermaid;
@@ -667,7 +662,7 @@ describe('MermaidPreRenderer', () => {
             // In test environment, loading will fail but should not throw
             expect(result.hasMermaid).toBe(true);
             expect(result.mermaidRendered).toBe(false);
-        }, 10000);
+        });
 
         test('initMermaid throws when mermaid cannot be loaded', async () => {
             delete globalThis.mermaid;
@@ -675,7 +670,25 @@ describe('MermaidPreRenderer', () => {
             // In test environment, script loading will timeout/fail
             await expect(MermaidPreRenderer._initMermaid())
                 .rejects.toThrow(/Mermaid library/);
-        }, 10000);
+        });
+
+        test('initMermaid rejects with a timeout when the script never loads', async () => {
+            delete globalThis.mermaid;
+            vi.useFakeTimers();
+            // Swallow the <script> so neither onload nor onerror ever fires
+            const appendSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((el) => el);
+
+            try {
+                const assertion = expect(MermaidPreRenderer._initMermaid()).rejects.toThrow(
+                    'Mermaid library load timeout'
+                );
+                await vi.advanceTimersByTimeAsync(5000);
+                await assertion;
+            } finally {
+                appendSpy.mockRestore();
+                vi.useRealTimers();
+            }
+        });
 
         test('initMermaid succeeds when mermaid is pre-loaded', async () => {
             globalThis.mermaid = {
@@ -698,7 +711,7 @@ describe('MermaidPreRenderer', () => {
             expect(result.hasMermaid).toBe(true);
             expect(result.mermaidRendered).toBe(false);
             expect(result.html).toBe(html);
-        }, 10000);
+        });
 
         test('preRender continues with rendering after dynamic load', async () => {
             // Start without mermaid
