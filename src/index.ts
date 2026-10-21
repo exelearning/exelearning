@@ -65,57 +65,6 @@ import * as path from 'path';
 // APP_PORT is used by Electron, PORT is standard convention
 const PORT = parseInt(process.env.APP_PORT || process.env.PORT || '8080', 10);
 
-// Reusable handler for exemindmap editor (to register at both root and BASE_PATH)
-const exemindmapEditorHandler = ({
-    params,
-    set,
-}: {
-    params: { '*': string };
-    set: { status: number; headers: Record<string, string> };
-}) => {
-    const relativePath = params['*'] || 'index.html';
-    const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor';
-    const filePath = path.join(process.cwd(), editorBase, relativePath);
-
-    // Security: ensure path is within the editor directory
-    const resolvedPath = path.resolve(filePath);
-    const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
-    if (!resolvedPath.startsWith(resolvedBase)) {
-        set.status = 403;
-        return 'Forbidden';
-    }
-
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        let content = fs.readFileSync(filePath);
-        const ext = path.extname(filePath).toLowerCase();
-        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-        // For HTML files, rewrite relative paths to absolute paths
-        if (ext === '.html' || ext === '.htm') {
-            let html = content.toString('utf-8');
-            // Fix relative paths like ../../../../../../../app/ -> /app/
-            html = html.replace(/href="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'href="/app/');
-            html = html.replace(/src="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'src="/app/');
-            // Fix local paths like css/ and js/ -> /api/exemindmap-editor/css/ etc
-            html = html.replace(/href="css\//g, 'href="/api/exemindmap-editor/css/');
-            html = html.replace(/src="js\//g, 'src="/api/exemindmap-editor/js/');
-            content = Buffer.from(html, 'utf-8');
-        }
-
-        set.headers['Content-Type'] = contentType;
-        set.headers['Content-Length'] = content.length.toString();
-        return content;
-    }
-
-    set.status = 404;
-    return 'Not Found';
-};
-
-// Base route handler for exemindmap editor (when no path is provided)
-const exemindmapEditorBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
-    return exemindmapEditorHandler({ params: { '*': '' }, set });
-};
-
 // Reusable handler for codemagic editor (to register at both root and BASE_PATH)
 const codemagicEditorHandler = ({
     params,
@@ -241,7 +190,6 @@ const app = new Elysia()
     // Serve files from FILES_DIR for /files/tmp/* and /files/dist/* paths
     // Also handle versioned paths like /v0.0.0-alpha/libs/* -> /libs/*
     // Also handle BASE_PATH prefixed static files
-    // Also handle exemindmap editor to bypass Bun's HMR bundler
     .onRequest(({ request }) => {
         const url = new URL(request.url);
         let pathname = url.pathname;
@@ -365,10 +313,6 @@ const app = new Elysia()
             }
         }
     })
-    // Serve exemindmap editor via API endpoint to bypass Bun's HTML bundler
-    // This uses /api/exemindmap-editor/* which Bun won't intercept
-    .get('/api/exemindmap-editor', exemindmapEditorBaseHandler) // Base route (no path)
-    .get('/api/exemindmap-editor/*', exemindmapEditorHandler) // Wildcard (with subpath)
     // Serve codemagic editor via API endpoint to bypass Bun's HTML bundler
     // This uses /api/codemagic-editor/* which Bun won't intercept
     .get('/api/codemagic-editor', codemagicEditorBaseHandler) // Base route (no path)
@@ -549,8 +493,6 @@ if (routePrefix) {
                 version: getAppVersion(),
             }))
             // Editor handlers must be registered at BASE_PATH too
-            .get('/api/exemindmap-editor', exemindmapEditorBaseHandler)
-            .get('/api/exemindmap-editor/*', exemindmapEditorHandler)
             .get('/api/codemagic-editor', codemagicEditorBaseHandler)
             .get('/api/codemagic-editor/*', codemagicEditorHandler),
     );
