@@ -536,6 +536,14 @@ export default class ModalProperties extends Modal {
             property
         );
         let helpContainer = this.makeRowElementHelp(property);
+        // Without the mode select, the row label names the checkbox group, which a label's `for` cannot target
+        if (property.type === 'multiselect' && !propertyValue.querySelector('.multiselect-mode')) {
+            propertyTitle.removeAttribute('for');
+            propertyTitle.id = `${propertyIdGenerated}-label`;
+            const list = propertyValue.querySelector('.multiselect-options');
+            list.removeAttribute('aria-label');
+            list.setAttribute('aria-labelledby', propertyTitle.id);
+        }
         if (property.type === 'checkbox') {
             propertyRow.classList.add('is-toggle-row');
             propertyTitle.classList.add('toggle-label');

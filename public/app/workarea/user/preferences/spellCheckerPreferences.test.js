@@ -7,6 +7,10 @@ import {
     spellCheckerSettingsToValue,
 } from './spellCheckerPreferences.js';
 
+// Expected names come from Intl itself so the tests survive ICU updates
+const intlName = (code, locale) =>
+    new Intl.DisplayNames([locale], { type: 'language', languageDisplay: 'standard' }).of(code);
+
 describe('spell checker renderer preferences', () => {
     it('maps System default to the shared sentinel', () => {
         expect(spellCheckerSettingsToValue({ systemDefault: true })).toEqual([SYSTEM_DEFAULT]);
@@ -40,8 +44,9 @@ describe('spell checker renderer preferences', () => {
     });
 
     it('names a language code in the interface language', () => {
-        expect(getLanguageDisplayName('es', 'en')).toBe('Spanish');
-        expect(getLanguageDisplayName('en-US', 'es')).toBe('inglés (Estados Unidos)');
+        expect(getLanguageDisplayName('es', 'en')).toBe(intlName('es', 'en'));
+        expect(getLanguageDisplayName('en-US', 'es')).toBe(intlName('en-US', 'es'));
+        expect(getLanguageDisplayName('es', 'en')).not.toBe('es');
     });
 
     it('falls back to the code when it cannot be named', () => {
@@ -50,19 +55,25 @@ describe('spell checker renderer preferences', () => {
     });
 
     it('sorts language options alphabetically by their name', () => {
-        const options = getSpellCheckerLanguageOptions(['fr', 'de', 'en-GB'], 'en');
-        expect(Object.keys(options)).toEqual(['en-GB', 'fr', 'de']);
-        expect(Object.values(options)).toEqual(['English (United Kingdom)', 'French', 'German']);
+        const codes = ['fr', 'de', 'en-GB'];
+        const options = getSpellCheckerLanguageOptions(codes, 'en');
+        const expected = codes.map(code => intlName(code, 'en')).sort(new Intl.Collator(['en']).compare);
+        expect(Object.values(options)).toEqual(expected);
+        expect(Object.keys(options).map(code => options[code])).toEqual(expected);
     });
 
     it('names languages in Valencian, which Intl does not know as va', () => {
         expect(getLanguageDisplayName('es', 'va')).toBe(getLanguageDisplayName('es', 'ca-ES-valencia'));
-        expect(getLanguageDisplayName('es', 'va')).toBe('espanyol');
     });
 
     it('keeps codes it cannot name when no interface language is given', () => {
         const options = getSpellCheckerLanguageOptions(['zz-invalid!', 'fr']);
         expect(options['zz-invalid!']).toBe('zz-invalid!');
         expect(options.fr).not.toBe('fr');
+    });
+
+    it('sorts with the default collation when the interface language is not a valid locale', () => {
+        const options = getSpellCheckerLanguageOptions(['fr', 'de'], 'not a locale!');
+        expect(Object.keys(options)).toEqual(['de', 'fr']);
     });
 });

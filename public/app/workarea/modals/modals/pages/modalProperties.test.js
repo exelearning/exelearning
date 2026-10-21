@@ -244,6 +244,33 @@ describe('ModalProperties', () => {
       });
     });
 
+    it('labels a checkbox group without System default through the row label', () => {
+      const row = modal.makeRowElement('languages', {
+        type: 'multiselect',
+        title: 'Languages',
+        value: [],
+        options: { es: 'Spanish' },
+      });
+      const label = row.querySelector(':scope > label');
+      const list = row.querySelector('.multiselect-options');
+
+      expect(label.hasAttribute('for')).toBe(false);
+      expect(list.getAttribute('aria-labelledby')).toBe(label.id);
+      expect(list.hasAttribute('aria-label')).toBe(false);
+    });
+
+    it('keeps the row label on the mode select when there is a System default', () => {
+      const row = modal.makeRowElement('languages', {
+        type: 'multiselect',
+        title: 'Languages',
+        value: [],
+        customLabel: 'Choose languages',
+        options: { __system_default__: 'System default', es: 'Spanish' },
+      });
+
+      expect(row.querySelector(':scope > label').getAttribute('for')).toBe(row.querySelector('.multiselect-mode').id);
+    });
+
     it('renders a dynamically added preference in the existing category', () => {
       const properties = {
         locale: { title: 'Language', type: 'select', value: 'en', options: { en: 'English' }, category: 'General settings' },

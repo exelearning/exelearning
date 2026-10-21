@@ -4,20 +4,27 @@
 
 .project-properties-tabs {
     display: flex;
-    flex-wrap: wrap;
     gap: 0;
     width: 100%;
     margin-bottom: 0;
-    border-bottom: 2px solid var(--gray-200, #e5e7eb);
+    // One row that scrolls when the tabs do not fit; a cut-off tab shows there is more
+    overflow-x: auto;
+    scrollbar-width: none;
+    // Underlines are inset shadows so the scroll box does not clip them
+    box-shadow: inset 0 -2px 0 var(--gray-200, #e5e7eb);
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
 
     .project-properties-tab {
-        padding: 10px 20px;
+        flex: 0 0 auto;
+        padding: 10px 14px;
         font-weight: 500;
+        white-space: nowrap;
         color: var(--gray-500, #6b7280);
         background: transparent;
         border: none;
-        border-bottom: 2px solid transparent;
-        margin-bottom: -2px;
         cursor: pointer;
         transition: all 0.2s ease;
         display: flex;
@@ -31,7 +38,7 @@
 
         &.active {
             color: var(--brand-primary, #0BA1A1);
-            border-bottom-color: var(--brand-primary, #0BA1A1);
+            box-shadow: inset 0 -2px 0 var(--brand-primary, #0BA1A1);
         }
 
         &:focus {
@@ -265,13 +272,13 @@
                 }
             }
         }
-        // Switches in two aligned columns; the font select takes its own full-width row
+        // Up to two columns of switches, sized by the pane rather than the window; the font select takes its own row
         #props-pane-export .form-properties {
             display: grid;
-            grid-template-columns: minmax(0, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(max(min(100%, 22rem), calc((100% - 2rem) / 2)), 1fr));
             column-gap: 2rem;
-            @media (min-width: 992px) {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+            .toggle-item {
+                flex-wrap: nowrap;
             }
             .property-row[property="pp_globalFont"] {
                 grid-column: 1 / -1;
