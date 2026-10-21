@@ -506,6 +506,9 @@ var $exeDevice = {
     },
 
     pasteCard: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateCard()
+        );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.active++;
             $exeDevice.cardsGame.splice(

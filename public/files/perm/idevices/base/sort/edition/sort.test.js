@@ -461,7 +461,9 @@ describe('sort edition: shared form tabs and feedback', () => {
             device.showPhrase(0, true);
 
             document.getElementById('ordenaECut').click();
+            // Moved to the second one, as the arrows do.
             device.active = 1;
+            device.showPhrase(1);
             document.getElementById('ordenaEPaste').click();
 
             expect(device.phrasesGame.map((p) => p.phrase)).toEqual(['Second one', 'First one']);
@@ -473,6 +475,16 @@ describe('sort edition: shared form tabs and feedback', () => {
 
             expect(device.phrasesGame).toHaveLength(2);
             expect(document.getElementById('ordenaENumeroPercentaje').textContent).toBe('2/2');
+        });
+
+        it('keeps the changes made to the activity on screen after copying it', () => {
+            device.copyPhrase();
+            const copied = device.phrasesGame[0].definition;
+            document.getElementById('ordenaEDefinition').value = 'Edited after copying';
+
+            device.pastePhrase();
+
+            expect(device.phrasesGame.map((p) => p.definition)).toEqual(['Edited after copying', copied]);
         });
     });
 });

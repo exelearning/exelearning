@@ -307,4 +307,16 @@ describe('beforeafter edition: shared form tabs', () => {
             expect(device.save()).toContain('<div class="beforeafter-extra-content"><p>Extra info</p></div>');
         });
     });
+
+    it('keeps the changes made to the card on screen after copying it', () => {
+        device.cardsGame = game().cardsGame;
+        device.active = 0;
+        device.showCard(0);
+        device.copyCard();
+        document.getElementById('bfafEText').value = 'Edited after copying';
+
+        device.pasteCard();
+
+        expect(device.cardsGame.map((card) => card.eText)).toEqual(['Edited after copying', 'Before title']);
+    });
 });

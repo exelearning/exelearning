@@ -243,6 +243,7 @@ var $exeDevice = {
     },
 
     pasteChallenge: function () {
+        $exeDevice.saveChallenge();
         if ($exeDevice.challengesGame.length > 9 + $exeDevice.typeEdit) {
             $('#desafioEPaste').hide();
             $exeDevice.showMessage($exeDevice.msgs.msgTenChallenges);

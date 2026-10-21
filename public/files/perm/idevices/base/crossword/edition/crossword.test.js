@@ -732,6 +732,16 @@ describe('crossword edition: shared form tabs and feedback', () => {
       expect(device.wordsGame.map((item) => item.word)).toEqual(['HEART', 'SUN']);
     });
 
+    it('keeps it when a copied word is pasted', () => {
+      typeOnScreen('HEART', 'Organ that pumps blood');
+      device.typeEdit = 0;
+      device.clipBoard = { ...device.getCuestionDefault(), word: 'SUN', definition: 'The star of our system' };
+
+      device.pasteQuestion();
+
+      expect(device.wordsGame.map((item) => item.word)).toEqual(['HEART', 'SUN']);
+    });
+
     it('leaves it out, without its warning, when it is incomplete', () => {
       typeOnScreen('HEART', '');
       eXe.app.alert.mockClear();

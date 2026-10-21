@@ -674,4 +674,35 @@ describe('trivial edition: shared form tabs', () => {
         expect(document.getElementById('eXeGameCodeAccess').value).toBe('1234');
         expect(global.$exeIDevicesEdition.iDevice.gamification.itinerary.getValues()).toEqual(itinerary);
     });
+
+    it('keeps the changes made to the question on screen after copying it', () => {
+        // Each editor stands on its own textarea.
+        vi.spyOn(global.tinymce, 'get').mockImplementation((id) => ({
+            getContent: () => $(`#${id}`).val() || '',
+            setContent: (html) => $(`#${id}`).val(html),
+            hide: vi.fn(),
+            show: vi.fn(),
+        }));
+        const topic = device.activeTema;
+        document.getElementById('trivialNameTema').value = 'Geography';
+        device.temas[topic] = [
+            {
+                ...device.getCuestionDefault(),
+                quextion: 'Capital of France?',
+                options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+                solution: 'A',
+            },
+        ];
+        device.activesQuestions[topic] = 0;
+        device.showQuestion(0);
+        device.copyQuestion();
+        document.getElementById('trivialEQuestion').value = 'Capital of Spain?';
+
+        device.pasteQuestion();
+
+        expect(device.temas[topic].map((question) => question.quextion)).toEqual([
+            'Capital of Spain?',
+            'Capital of France?',
+        ]);
+    });
 });

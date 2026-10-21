@@ -1942,6 +1942,9 @@ var $exeDevice = {
     },
 
     pasteQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateQuestion()
+        );
         if ($exeDevice.wordsGame.length >= 20) {
             $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
             return;

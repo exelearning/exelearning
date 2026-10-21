@@ -678,6 +678,16 @@ describe('identify edition: shared form tabs and feedback', () => {
             expect(device.questionsGame.map((item) => item.solution)).toEqual(['Venus', 'Mars']);
         });
 
+        it('keeps it when a copied question is pasted', () => {
+            typeOnScreen({ solution: 'Venus' });
+            device.typeEdit = 0;
+            device.clipBoard = question({ solution: 'Mars' });
+
+            device.pasteQuestion();
+
+            expect(device.questionsGame.map((item) => item.solution)).toEqual(['Venus', 'Mars']);
+        });
+
         it('leaves it out, without its warning, when it is incomplete', () => {
             typeOnScreen({ solution: 'Venus', clues: ['Second planet', '', '', '', '', '', '', ''] });
 

@@ -4214,6 +4214,9 @@ var $exeDevice = {
         }
     },
     pasteQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateQuestion()
+        );
         if ($exeDevice.qTypeEdit == 0) {
             $exeDevice.qActive++;
             $exeDevice.selectsGame.splice(
@@ -4318,6 +4321,9 @@ var $exeDevice = {
     },
 
     pastePointQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validatePointQuestion()
+        );
         if ($exeDevice.pTypeEdit == 0) {
             $exeDevice.activeTest++;
             $exeDevice.tests.splice(
@@ -4863,6 +4869,9 @@ var $exeDevice = {
     },
 
     pasteSlide: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateSlide()
+        );
         if ($exeDevice.typeEditSlide == 0) {
             $exeDevice.activeSlide++;
             let slide = $.extend(true, {}, $exeDevice.sClipBoard);
@@ -4989,6 +4998,14 @@ var $exeDevice = {
     },
 
     pastePoint: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => {
+                const pts = $exeDevice.activeMap.pts,
+                    point = $exeDevice.validatePoint(pts[$exeDevice.activeMap.active]);
+                if (point === false) return false;
+                pts[$exeDevice.activeMap.active] = point;
+            }
+        );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.activeMap.active++;
             let p = $.extend(true, {}, $exeDevice.clipBoard);

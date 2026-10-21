@@ -487,6 +487,9 @@ var $exeDevice = {
     },
 
     pasteQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateQuestion()
+        );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.activesQuestions[$exeDevice.activeTema]++;
             $exeDevice.temas[$exeDevice.activeTema].splice(

@@ -751,6 +751,21 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
       expect(questions()).toEqual(['Capital of France?', 'Capital of Italy?']);
     });
 
+    it('keeps it when a copied question is pasted', () => {
+      typeOnScreen(['Paris', 'Rome', 'Madrid', 'Berlin']);
+      device.typeEdit = 0;
+      device.clipBoard = {
+        ...device.getCuestionDefault(),
+        quextion: 'Capital of Italy?',
+        options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+        solution: 1,
+      };
+
+      device.pasteQuestion();
+
+      expect(questions()).toEqual(['Capital of France?', 'Capital of Italy?']);
+    });
+
     it('leaves it out, without its warning, when it is incomplete', () => {
       typeOnScreen(['Paris', '', '', '']);
       global.eXe.app.alert.mockClear();

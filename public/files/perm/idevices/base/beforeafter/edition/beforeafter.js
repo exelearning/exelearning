@@ -372,6 +372,9 @@ var $exeDevice = {
     },
 
     pasteCard: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateCard()
+        );
         let cards = $exeDevice.cardsGame,
             active = $exeDevice.active;
 

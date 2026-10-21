@@ -1744,6 +1744,16 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
             expect(questions()).toEqual(['Which lamp lights up?', 'What does a fuse protect?']);
         });
 
+        it('keeps it when a copied question is pasted', () => {
+            typeOnScreen(['L1', 'L2', 'Both', 'None']);
+            device.typeEdit = 0;
+            [device.clipBoard] = added();
+
+            device.pasteQuestion();
+
+            expect(questions()).toEqual(['Which lamp lights up?', 'What does a fuse protect?']);
+        });
+
         it('leaves it out, without its warning, when it is incomplete', () => {
             typeOnScreen(['L1', '', '', '']);
             global.eXe.app.alert.mockClear();

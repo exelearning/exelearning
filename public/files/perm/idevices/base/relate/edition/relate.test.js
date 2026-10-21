@@ -546,6 +546,16 @@ describe('relate edition: shared form tabs and share windows', () => {
             expect(fronts()).toEqual(['Sun', 'Moon']);
         });
 
+        it('keeps it when a copied card is pasted', () => {
+            typeOnScreen('Sun', 'Sol');
+            device.typeEdit = 0;
+            device.clipBoard = card('Moon', 'Luna');
+
+            device.pasteCard();
+
+            expect(fronts()).toEqual(['Sun', 'Moon']);
+        });
+
         it('leaves it out, without its warning, when it is incomplete', () => {
             typeOnScreen('', 'Sol');
             const before = eXe.app._alertHistory.length;

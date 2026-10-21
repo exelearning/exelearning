@@ -507,6 +507,19 @@ describe('hidden-image edition: shared form tabs', () => {
         expect(document.getElementById('hiENumeroPercentaje').textContent).toBe('2/2');
     });
 
+    it('keeps the changes made to the question on screen after copying it', () => {
+        device.updateFieldGame(game());
+        device.copyQuestion();
+        document.getElementById('hiEQuestion').value = 'What else is in the picture?';
+
+        device.pasteQuestion();
+
+        expect(device.questionsGame.map((item) => item.question)).toEqual([
+            'What else is in the picture?',
+            'What is in the picture?',
+        ]);
+    });
+
     it('keeps the custom texts when the iDevice is edited again', () => {
         device.idevicePreviousData = `
             <div class="hiddenimage-IDevice">

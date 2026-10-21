@@ -486,4 +486,14 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
             expect(savedHtml).toContain('dragdrop-extra-content');
         });
     });
+
+    it('keeps the changes made to the card on screen after copying it', () => {
+        document.getElementById('dadEDefinition').value = 'Heart';
+        device.copyCard();
+        document.getElementById('dadEDefinition').value = 'Lungs';
+
+        device.pasteCard();
+
+        expect(device.cardsGame.map((card) => card.definition)).toEqual(['Lungs', 'Heart']);
+    });
 });

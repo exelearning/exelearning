@@ -494,5 +494,14 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
             expect(document.getElementById('eCQNumQuestions').textContent).toBe('2');
             expect(document.getElementById('eCQNumeroPercentaje').textContent).toBe('2/2');
         });
+
+        it('keeps the changes made to the problem on screen after copying it', () => {
+            device.copyQuestion();
+            document.getElementById('eCQmax').value = '20';
+
+            device.pasteQuestion();
+
+            expect(device.questions.map((item) => item.max)).toEqual([20, 10]);
+        });
     });
 });

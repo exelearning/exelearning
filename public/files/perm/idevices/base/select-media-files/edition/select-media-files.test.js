@@ -977,7 +977,9 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
             device.showPhrase(0, true);
 
             document.getElementById('slcmECut').click();
+            // Moved to the second one, as the arrows do.
             device.active = 1;
+            device.showPhrase(1);
             document.getElementById('slcmEPaste').click();
 
             expect(device.phrasesGame.map((p) => p.definition)).toEqual(['Second', 'First']);
@@ -989,6 +991,16 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
 
             expect(device.phrasesGame).toHaveLength(2);
             expect(document.getElementById('slcmENumeroPercentaje').textContent).toBe('2/2');
+        });
+
+        it('keeps the changes made to the activity on screen after copying it', () => {
+            device.copyPhrase();
+            const copied = device.phrasesGame[0].definition;
+            document.getElementById('slcmEDefinition').value = 'Edited after copying';
+
+            device.pastePhrase();
+
+            expect(device.phrasesGame.map((p) => p.definition)).toEqual(['Edited after copying', copied]);
         });
     });
 });

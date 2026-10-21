@@ -1834,14 +1834,15 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
-                 * Store the question on screen when imported or generated
-                 * questions are added, before the form shows another one, as
-                 * moving to another question does, so that its last changes
-                 * are kept.
+                 * Store the question on screen when imported, generated or
+                 * pasted questions are added, before the form shows another
+                 * one, as moving to another question does, so that its last
+                 * changes are kept.
                  *
                  * A question that does not validate is left out, and without
                  * the warning its validation gives: the author is adding
-                 * questions, not saving that one.
+                 * questions, not saving that one. The list keeps its last
+                 * stored version.
                  *
                  * @param {Function} validate - The iDevice's check of the
                  *   question on screen, which stores it when it is complete.

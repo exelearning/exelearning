@@ -966,6 +966,9 @@ var $exeDevice = {
     },
 
     pastePuzzle: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validatePuzzle()
+        );
         if ($exeDevice.puzzlesGame.length >= 30) {
             $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
             return;

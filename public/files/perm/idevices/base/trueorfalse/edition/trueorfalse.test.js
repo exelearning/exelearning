@@ -837,6 +837,16 @@ describe('trueorfalse edition: shared form tabs', () => {
             expect(questions()).toEqual(['Water boils at 100 degrees', 'The Sun is a star']);
         });
 
+        it('keeps it when a copied question is pasted', () => {
+            typeOnScreen('Water boils at 100 degrees');
+            device.typeEdit = 0;
+            device.clipBoard = { question: 'The Sun is a star', solution: 1, feedback: '', suggestion: '' };
+
+            device.pasteQuestion();
+
+            expect(questions()).toEqual(['Water boils at 100 degrees', 'The Sun is a star']);
+        });
+
         it('leaves it out, without its warning, when it is incomplete', () => {
             typeOnScreen('');
             const before = eXe.app._alertHistory.length;

@@ -1040,6 +1040,16 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             expect(fronts()).toEqual(['Sun', 'Moon']);
         });
 
+        it('keeps it when a copied card is pasted', () => {
+            typeOnScreen('Sun', 'Star');
+            device.typeEdit = 0;
+            device.clipBoard = { ...device.getCardDefault(), eText: 'Moon', eTextBk: 'Satellite' };
+
+            device.pasteCard();
+
+            expect(fronts()).toEqual(['Sun', 'Moon']);
+        });
+
         it('leaves it out, without its warning, when it is incomplete', () => {
             typeOnScreen('', 'Star');
             eXe.app.alert.mockClear();

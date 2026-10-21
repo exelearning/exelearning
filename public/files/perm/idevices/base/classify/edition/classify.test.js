@@ -971,6 +971,16 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Lion', 'Dog', 'Cow']);
         });
 
+        it('keeps it when a copied item is pasted', () => {
+            typeOnScreen({ type: 1, group: 0, eText: 'Lion' });
+            device.typeEdit = 0;
+            device.clipBoard = item({ type: 1, group: 1, eText: 'Cow' });
+
+            device.pasteQuestion();
+
+            expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Lion', 'Cow']);
+        });
+
         it('leaves it out, without its warning, when it is incomplete', () => {
             typeOnScreen({ type: 1, group: 0, eText: '' });
 

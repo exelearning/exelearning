@@ -1086,4 +1086,15 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             expect(device.validateData().itinerary).toEqual(itinerary);
         });
     });
+
+    it('keeps the changes made to the cards on screen after copying them', () => {
+        document.getElementById('descubreEText-0').value = 'Sun';
+        document.getElementById('descubreEText-1').value = 'Sol';
+        device.copyQuestion();
+        document.getElementById('descubreEText-0').value = 'Moon';
+
+        device.pasteQuestion();
+
+        expect(device.wordsGame.map((question) => question.data[0].eText)).toEqual(['Moon', 'Sun']);
+    });
 });

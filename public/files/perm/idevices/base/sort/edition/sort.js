@@ -1751,6 +1751,9 @@ var $exeDevice = {
     },
 
     pastePhrase: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validatePhrase()
+        );
         if ($exeDevice.phrasesGame.length >= 20) {
             $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
             return;

@@ -839,4 +839,15 @@ describe('challenge edition: shared form tabs', () => {
         expect(document.querySelector('label[for="desafioEDescription"]').textContent).toBe('Description:');
         expect(document.querySelector('label[for="desafioEChallenge-0"]').textContent).toBe('Description');
     });
+
+    it('keeps the changes made to the trial on screen after copying it', () => {
+        open(stored(game()));
+        document.getElementById('desafioEReto').click();
+        device.copyChallenge();
+        document.getElementById('desafioECTitle').value = 'Door';
+
+        device.pasteChallenge();
+
+        expect(device.challengesGame.map((challenge) => challenge.title)).toEqual(['Door', 'Lock']);
+    });
 });

@@ -786,6 +786,64 @@ describe('map edition: shared form tabs', () => {
         });
     });
 
+    describe('pasting after changing what is on screen', () => {
+        const complete = (text) => ({
+            ...device.getDefaultQuestion(),
+            quextion: text,
+            options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+            solution: 'A',
+        });
+
+        it('keeps the changes made to a question of the game questionnaire', () => {
+            chooseMode(4);
+            device.selectsGame = [complete('Capital of France?')];
+            device.qActive = 0;
+            device.showQuestion(0);
+            device.copyQuestion();
+            $('#mapaEQuestion').val('Capital of Spain?');
+
+            device.pasteQuestion();
+
+            expect(device.selectsGame.map((item) => item.quextion)).toEqual(['Capital of Spain?', 'Capital of France?']);
+        });
+
+        it('keeps the changes made to a question of a point questionnaire', () => {
+            device.tests = [complete('Capital of France?')];
+            device.activeTest = 0;
+            device.showPointQuestion(0);
+            device.copyPointQuestion();
+            $('#mapaEQuestion1').val('Capital of Spain?');
+
+            device.pastePointQuestion();
+
+            expect(device.tests.map((item) => item.quextion)).toEqual(['Capital of Spain?', 'Capital of France?']);
+        });
+
+        it('keeps the changes made to a slide', () => {
+            device.slides = [{ ...device.getDefaultSlide(), title: 'Paris', url: 'images/paris.jpg' }];
+            device.activeSlide = 0;
+            device.showSlide(0);
+            device.copySlide();
+            $('#mapaSTitle').val('Rome');
+
+            device.pasteSlide();
+
+            expect(device.slides.map((slide) => slide.title)).toEqual(['Rome', 'Paris']);
+        });
+
+        it('keeps the point on screen as its check returns it', () => {
+            const points = device.activeMap.pts;
+            device.activeMap.active = 0;
+            device.typeEdit = 0;
+            device.clipBoard = { ...points[0], title: 'Copied' };
+            vi.spyOn(device, 'validatePoint').mockImplementation((point) => ({ ...point, title: 'Edited' }));
+
+            device.pastePoint();
+
+            expect(device.activeMap.pts.slice(0, 2).map((point) => point.title)).toEqual(['Edited', 'Copied']);
+        });
+    });
+
     it('goes to the question of the point questionnaire whose number is typed', () => {
         vi.spyOn(device, 'validatePointQuestion').mockReturnValue(true);
         device.tests = ['A', 'B', 'C'].map((text) => ({ ...device.getDefaultQuestion(), quextion: text }));

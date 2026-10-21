@@ -1078,6 +1078,20 @@ describe('3dmol edition: shared form tabs and feedback', () => {
             ]);
         });
 
+        it('keeps the last changes of the question on screen when a copied one is pasted', async () => {
+            await ready();
+            document.getElementById('dmoleQuestion').value = 'What is the formula of glucose?';
+            device.typeEdit = 0;
+            device.clipBoard = { ...device.selectsGame[0], quextion: 'Which is the lightest element?' };
+
+            device.pasteQuestion();
+
+            expect(device.selectsGame.map((question) => question.quextion)).toEqual([
+                'What is the formula of glucose?',
+                'Which is the lightest element?',
+            ]);
+        });
+
         it('leaves out an incomplete question on screen, without a warning, and adds the new ones', async () => {
             await ready();
             const stored = device.selectsGame[0].quextion;

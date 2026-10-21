@@ -1248,6 +1248,9 @@ var $exeDevice = {
     },
 
     pasteQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            () => $exeDevice.validateQuestion()
+        );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.active++;
             $exeDevice.wordsGame.splice(

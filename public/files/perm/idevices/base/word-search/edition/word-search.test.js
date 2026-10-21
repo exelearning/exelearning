@@ -496,6 +496,16 @@ describe('word-search edition: shared form tabs and feedback', () => {
             expect(device.wordsGame.map((item) => item.word)).toEqual(['SOL', 'LUNA']);
         });
 
+        it('keeps it when a copied word is pasted', () => {
+            typeOnScreen('SOL', 'Estrella');
+            device.typeEdit = 0;
+            device.clipBoard = word('LUNA', 'Satelite');
+
+            device.pasteQuestion();
+
+            expect(device.wordsGame.map((item) => item.word)).toEqual(['SOL', 'LUNA']);
+        });
+
         it('leaves it out, without its warning, when it is incomplete', () => {
             typeOnScreen('SOL', '');
 

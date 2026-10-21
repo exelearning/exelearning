@@ -508,6 +508,16 @@ describe('puzzle edition: shared form tabs and feedback', () => {
             expect(document.getElementById('puzzleENumeroPercentaje').textContent).toBe('2/2');
         });
 
+        it('keeps the changes made to the puzzle on screen after copying it', () => {
+            open();
+            device.copyPuzzle();
+            document.getElementById('puzzleERows').value = '4';
+
+            device.pastePuzzle();
+
+            expect(device.puzzlesGame.map((item) => item.rows)).toEqual([4, 3]);
+        });
+
         it('tells the author when there is no room for another puzzle', () => {
             open({ puzzlesGame: Array.from({ length: 30 }, () => puzzle()) });
 
