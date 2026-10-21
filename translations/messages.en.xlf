@@ -15701,10 +15701,6 @@
         <source>Public link</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="3vju0kf" resname="Public viewer link">
-        <source>Public viewer link</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="6upnr3k" resname="Regenerate link">
         <source>Regenerate link</source>
         <target></target>
