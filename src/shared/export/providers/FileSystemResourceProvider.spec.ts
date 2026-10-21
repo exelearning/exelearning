@@ -120,6 +120,69 @@ describe('FileSystemResourceProvider', () => {
         });
     });
 
+    describe('path traversal hardening', () => {
+        beforeEach(async () => {
+            // A directory outside every resource root that must never be exported.
+            await fs.ensureDir(path.join(testDir, 'secret'));
+            await fs.writeFile(path.join(testDir, 'secret', 'exelearning.db'), 'SECRET');
+            await fs.writeFile(path.join(testDir, 'secret', 'notes.txt'), 'SECRET');
+            await fs.writeFile(path.join(testDir, 'secret', 'config.js'), 'SECRET');
+        });
+
+        it('fetchTheme falls back to base for a theme name that traverses out of the themes directory', async () => {
+            const files = await provider.fetchTheme('../../../../secret');
+
+            expect(files.has('exelearning.db')).toBe(false);
+            expect([...files.keys()].sort()).toEqual(['content.css', 'default.js']);
+        });
+
+        it('fetchTheme rejects names with path separators even when the target exists', async () => {
+            await fs.ensureDir(path.join(testDir, 'files', 'perm', 'themes', 'base', 'base', 'nested'));
+            await fs.writeFile(path.join(testDir, 'files', 'perm', 'themes', 'base', 'base', 'nested', 'x.css'), '');
+
+            const files = await provider.fetchTheme('base/nested');
+
+            expect(files.has('x.css')).toBe(false);
+            expect(files.has('content.css')).toBe(true);
+        });
+
+        it('fetchIdeviceResources returns nothing for a traversing iDevice type', async () => {
+            await fs.ensureDir(path.join(testDir, 'secret', 'export'));
+            await fs.writeFile(path.join(testDir, 'secret', 'export', 'leak.js'), 'SECRET');
+
+            const files = await provider.fetchIdeviceResources('../../../../secret');
+
+            expect(files.size).toBe(0);
+        });
+
+        it('fetchGlobalFontFiles returns nothing for a traversing font id', async () => {
+            const files = await provider.fetchGlobalFontFiles('../../../../secret');
+
+            expect(files.size).toBe(0);
+        });
+
+        it('fetchI18nFile ignores a traversing language and falls back to English', async () => {
+            const i18nDir = path.join(testDir, 'app', 'common', 'i18n');
+            await fs.ensureDir(i18nDir);
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.en.js'), 'EN');
+
+            const result = await provider.fetchI18nFile('x/../../../../secret/config');
+
+            expect(result).toBe('EN');
+        });
+
+        it('fetchI18nTranslations returns an empty map for a traversing language', async () => {
+            // translations/ lives next to publicDir, so climb back into testDir/secret.
+            await fs.writeFile(
+                path.join(testDir, 'secret', 'notes.xlf'),
+                '<xliff><file><body><trans-unit id="1"><source>a</source><target>SECRET</target></trans-unit></body></file></xliff>',
+            );
+            const result = await provider.fetchI18nTranslations(`x/../../${path.basename(testDir)}/secret/notes`);
+
+            expect(result.size).toBe(0);
+        });
+    });
+
     describe('fetchTheme with embedded themes', () => {
         let extractedDir: string;
 

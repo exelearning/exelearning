@@ -295,6 +295,12 @@ describe('URL Utilities', () => {
             expect(result2).toBe(false);
         });
 
+        it('should reject legacy-looking session IDs that carry path segments', () => {
+            expect(getSessionDateComponents('20250101000000/../../..')).toBeNull();
+            expect(getSessionDateComponents('20250101000000\\..\\..')).toBeNull();
+            expect(getOdeSessionPath('20250101000000/../../../..', '/base')).toBe(false);
+        });
+
         it('should handle very long session IDs', () => {
             const longId = '20250116143027ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             const components = getSessionDateComponents(longId);

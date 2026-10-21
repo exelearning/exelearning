@@ -5,6 +5,7 @@ import { describe, it, expect } from 'bun:test';
 import { execute, printHelp, runCli, type ProjectsPurgeDependencies } from './projects-purge';
 import type { Kysely } from 'kysely';
 import type { Database } from '../../db/types';
+import { createFileHelper } from '../../services/file-helper';
 
 describe('Projects Purge Command', () => {
     // Mock file helper
@@ -220,6 +221,37 @@ describe('Projects Purge Command', () => {
             expect(fileHelper._removedPaths).toContain('/data/tmp/uuid-2');
             expect(fileHelper._removedPaths).toContain('/data/dist/uuid-2');
             expect(result.stats?.diskRemoved).toBe(4);
+        });
+
+        it('should skip project uuids that are not a safe path segment and still clean the others', async () => {
+            const realHelper = createFileHelper({
+                getEnv: (key: string) => (key === 'ELYSIA_FILES_DIR' ? '/data' : undefined),
+                getCwd: () => '/',
+            });
+            const removedPaths: string[] = [];
+            const fileHelper = {
+                getFilesDir: realHelper.getFilesDir,
+                getOdeSessionTempDir: realHelper.getOdeSessionTempDir,
+                getOdeSessionDistDir: realHelper.getOdeSessionDistDir,
+                fileExists: async () => true,
+                remove: async (targetPath: string) => {
+                    removedPaths.push(targetPath);
+                },
+            };
+
+            const deps: ProjectsPurgeDependencies = {
+                db: createMockDb({ projects: [{ uuid: '../../../home' }, { uuid: 'safe-uuid' }] }),
+                fileHelper,
+            };
+
+            const result = await execute([], { yes: true }, deps);
+
+            expect(result.success).toBe(false);
+            expect(result.stats?.diskFailures).toHaveLength(1);
+            expect(result.stats?.diskFailures[0]).toContain('Invalid session identifier');
+            expect(removedPaths.every(p => p.startsWith('/data/'))).toBe(true);
+            expect(removedPaths).toContain('/data/tmp/safe-uuid');
+            expect(removedPaths).toContain('/data/dist/safe-uuid');
         });
 
         it('should count missing paths correctly', async () => {

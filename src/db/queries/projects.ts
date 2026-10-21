@@ -9,6 +9,7 @@ import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { randomUUID } from 'crypto';
 import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn, insertIgnore } from '../helpers';
+import { assertSafePathSegment } from '../../utils/safe-path';
 
 // ============================================================================
 // HELPER TYPES AND FUNCTIONS
@@ -515,6 +516,9 @@ export async function createProjectWithUuid(
     uuid: string,
     data: Omit<NewProject, 'uuid'>,
 ): Promise<Project> {
+    // The uuid later names session and asset directories, so a caller-chosen
+    // value must be a single safe path segment.
+    assertSafePathSegment(uuid, { label: 'project uuid' });
     const timestamp = now();
     const values = {
         ...data,

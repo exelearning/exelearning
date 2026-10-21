@@ -5,6 +5,7 @@
  * These utilities generate file system paths based on session IDs
  * that follow Symfony's hierarchical directory structure.
  */
+import { isSafePathSegment } from './safe-path';
 
 /**
  * UUID v4 pattern for detection
@@ -29,7 +30,8 @@ export function getSessionDateComponents(odeSessionId: string): {
     month: string;
     day: string;
 } | null {
-    if (!odeSessionId) {
+    // The ID becomes a directory name, so it must be a single path segment.
+    if (!isSafePathSegment(odeSessionId)) {
         return null;
     }
 
