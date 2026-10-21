@@ -389,8 +389,8 @@ var $exeDevice = {
                             <div id="desafioSelects" class="align-items-center gap-2 flex-nowrap justify-flex-start mb-3">
                                 <label id="desafiolblEDType" for="desafioEDType" class="mb-0">${_('Type')}:</label>
                                 <select id="desafioEDType" class="form-select form-select-sm">
-                                    <option value="0" selected>Lineal</option>
-                                    <option value="1">Libre</option>
+                                    <option value="0" selected>${_('Linear')}</option>
+                                    <option value="1">${_('Free')}</option>
                                 </select>
                                 ${edition.common.getHelpTooltip(_('Linear: the trials open one after another. Free: they can be solved in any order.'))}
                                 <label id="desafiolblEDTime" for="desafioEDTime" class="mb-0 ms-3">${_('Max time')}:</label>

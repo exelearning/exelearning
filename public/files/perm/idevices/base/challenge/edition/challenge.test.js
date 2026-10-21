@@ -784,6 +784,15 @@ describe('challenge edition: shared form tabs', () => {
         expect(document.getElementById('desafioEDType').value).toBe('0');
     });
 
+    it('names the game types in the language of the edition', () => {
+        open();
+
+        expect([...document.querySelectorAll('#desafioEDType option')].map((option) => option.textContent)).toEqual([
+            'Linear',
+            'Free',
+        ]);
+    });
+
     it('reopens a game saved without a type as linear', () => {
         open(stored(game({ desafioType: null })));
 
