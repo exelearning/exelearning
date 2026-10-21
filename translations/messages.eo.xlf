@@ -16019,7 +16019,7 @@
       </trans-unit>
       <trans-unit id="tq6nbiv" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
-        <target></target>
+        <target>~La defaŭlta opcio uzas la lingvon de la operaciumo. Ĝi ankaŭ estas uzata, kiam neniu lingvo estas markita.</target>
       </trans-unit>
     </body>
   </file>

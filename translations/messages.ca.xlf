@@ -16019,7 +16019,7 @@
       </trans-unit>
       <trans-unit id="pi7wjyz" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
-        <target></target>
+        <target>~L'opció predeterminada fa servir l'idioma del sistema operatiu. També es fa servir quan no es marca cap idioma.</target>
       </trans-unit>
     </body>
   </file>

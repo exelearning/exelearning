@@ -16019,7 +16019,7 @@
       </trans-unit>
       <trans-unit id="h7bn1hf" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
-        <target></target>
+        <target>~L'option par défaut utilise la langue du système d'exploitation. Elle est aussi utilisée quand aucune langue n'est cochée.</target>
       </trans-unit>
     </body>
   </file>

@@ -16019,7 +16019,7 @@
       </trans-unit>
       <trans-unit id="xdjsrti" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
-        <target></target>
+        <target>~A opción predeterminada usa o idioma do sistema operativo. Tamén se usa cando non se marca ningún idioma.</target>
       </trans-unit>
     </body>
   </file>

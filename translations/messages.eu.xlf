@@ -16019,7 +16019,7 @@
       </trans-unit>
       <trans-unit id="7vtm55f" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
-        <target></target>
+        <target>~Aukera lehenetsiak sistema eragilearen hizkuntza erabiltzen du. Hizkuntzarik markatzen ez denean ere erabiltzen da.</target>
       </trans-unit>
     </body>
   </file>

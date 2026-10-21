@@ -16019,7 +16019,7 @@
       </trans-unit>
       <trans-unit id="0yr5x20" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
-        <target></target>
+        <target>~Opțiunea implicită folosește limba sistemului de operare. Este folosită și când nu este bifată nicio limbă.</target>
       </trans-unit>
     </body>
   </file>

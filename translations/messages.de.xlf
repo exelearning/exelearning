@@ -16019,7 +16019,7 @@
       </trans-unit>
       <trans-unit id="aognvs8" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
-        <target></target>
+        <target>~Die Standardoption verwendet die Sprache des Betriebssystems. Sie wird auch verwendet, wenn keine Sprache ausgewählt ist.</target>
       </trans-unit>
     </body>
   </file>
