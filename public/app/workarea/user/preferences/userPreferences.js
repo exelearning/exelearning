@@ -1,5 +1,6 @@
 import {
     SYSTEM_DEFAULT,
+    getSpellCheckerLanguageOptions,
     getSpellCheckerPreferenceCategory,
     spellCheckerSettingsToValue,
 } from './spellCheckerPreferences.js';
@@ -72,19 +73,17 @@ export default class UserPreferences {
             if (!settings?.supported) return;
 
             const category = getSpellCheckerPreferenceCategory(this.preferences);
+            const uiLocale = eXeLearning.app.locale?.lang || eXeLearning.config?.locale;
             this.preferences.spellCheckerLanguages = {
                 title: _('Spell checker languages'),
-                help: _(
-                    'Choose System default, or select no languages, to use the operating system language.'
-                ),
+                help: _('System default uses the operating system language.'),
                 ...(category !== undefined ? { category } : {}),
                 value: spellCheckerSettingsToValue(settings),
                 type: 'multiselect',
+                customLabel: _('Choose languages'),
                 options: {
                     [SYSTEM_DEFAULT]: _('System default'),
-                    ...Object.fromEntries(
-                        settings.availableLanguages.map(language => [language, language])
-                    ),
+                    ...getSpellCheckerLanguageOptions(settings.availableLanguages, uiLocale),
                 },
             };
         } catch (error) {

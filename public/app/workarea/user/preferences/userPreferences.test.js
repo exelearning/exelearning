@@ -133,6 +133,7 @@ describe('UserPreferences', () => {
       )) {
         preference.category = 'General settings';
       }
+      globalThis.eXeLearning.app.locale = { lang: 'fr' };
       window.electronAPI = {
         getSpellCheckerSettings: vi.fn().mockResolvedValue({
           supported: true,
@@ -148,7 +149,9 @@ describe('UserPreferences', () => {
         type: 'multiselect',
         category: 'General settings',
         value: ['es'],
-        options: { __system_default__: 'System default', 'en-US': 'en-US', es: 'es' },
+        customLabel: 'Choose languages',
+        // Named in the interface language and sorted by name
+        options: { __system_default__: 'System default', 'en-US': 'anglais (États-Unis)', es: 'espagnol' },
       }));
       delete window.electronAPI;
     });

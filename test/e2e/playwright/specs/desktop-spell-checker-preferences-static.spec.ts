@@ -1,6 +1,8 @@
 import { test, expect } from '../fixtures/static.fixture';
 
-test('desktop spell-checker preference is visible, exclusive, and saved through Electron', async ({ staticPage }) => {
+test('desktop spell-checker preference names languages, shows them on demand, and saves through Electron', async ({
+    staticPage,
+}) => {
     await staticPage.evaluate(async () => {
         const app = (window as any).eXeLearning.app;
         (window as any).__spellCheckerSelections = [];
@@ -30,15 +32,23 @@ test('desktop spell-checker preference is visible, exclusive, and saved through 
 
     const modal = staticPage.locator('#modalProperties');
     await expect(modal).toBeVisible();
-    const selector = modal.locator('[property="spellCheckerLanguages"]');
-    await expect(selector).toBeVisible();
+    const preference = modal.locator('[property="spellCheckerLanguages"]');
+    const mode = preference.locator('.multiselect-mode');
+    const list = preference.locator('.multiselect-options');
+    await expect(mode).toBeVisible();
     await expect(modal.locator('.exe-form-tabs')).toHaveCount(0);
 
-    await selector.selectOption(['__system_default__', 'es']);
-    await expect(selector).toHaveJSProperty('value', 'es');
-    await expect(selector.locator('option[value="__system_default__"]')).toHaveJSProperty('selected', false);
-    await expect(selector.locator('option[value="es"]')).toHaveJSProperty('selected', true);
+    // System default hides the language list
+    await expect(mode).toHaveValue('__system_default__');
+    await expect(list).toBeHidden();
 
+    await mode.selectOption('custom');
+    await expect(list).toBeVisible();
+    const spanish = list.locator('.multiselect-option[value="es"]');
+    // Options are named in the interface language, not shown as codes
+    await expect(list.locator(`label[for="${await spanish.getAttribute('id')}"]`)).not.toHaveText('es');
+
+    await spanish.check();
     await modal.locator('button.btn.btn-primary').click();
     await expect.poll(() => staticPage.evaluate(() => (window as any).__spellCheckerSelections)).toEqual([['es']]);
 });

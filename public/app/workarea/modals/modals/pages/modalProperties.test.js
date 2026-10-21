@@ -173,27 +173,75 @@ describe('ModalProperties', () => {
         expect(el.value).toBe('v2');
     });
 
-    it('should create a multi-select with selected options', () => {
+    it('should create a checkbox list with the selected options checked', () => {
       const prop = {
         type: 'multiselect',
         value: ['es', 'fr'],
-        options: { 'en-US': 'en-US', es: 'es', fr: 'fr' },
+        options: { 'en-US': 'English', es: 'Spanish', fr: 'French' },
       };
       const el = modal.makeRowValueElement('id', 'name', prop);
 
-      expect(el.multiple).toBe(true);
-      expect(Array.from(el.selectedOptions, option => option.value)).toEqual(['es', 'fr']);
+      expect(el.getAttribute('data-type')).toBe('multiselect');
+      expect(el.querySelector('.multiselect-mode')).toBeNull();
+      const list = el.querySelector('.multiselect-options');
+      expect(list.id).toBe('id');
+      expect(list.hidden).toBe(false);
+      expect(Array.from(list.querySelectorAll('.multiselect-option:checked'), input => input.value)).toEqual(['es', 'fr']);
+      const firstInput = list.querySelector('.multiselect-option');
+      expect(list.querySelector(`label[for="${firstInput.id}"]`).textContent).toBe('English');
     });
 
-    it('keeps System default exclusive from concrete languages', () => {
-      const el = modal.makeRowValueElement('id', 'name', {
-        type: 'multiselect', value: ['__system_default__'],
-        options: { __system_default__: 'System default', es: 'es' },
+    describe('with a System default option', () => {
+      const makeProperty = (value) => ({
+        type: 'multiselect',
+        title: 'Spell checker languages',
+        value,
+        customLabel: 'Choose languages',
+        options: { __system_default__: 'System default', es: 'Spanish', fr: 'French' },
       });
-      el.options[1].selected = true;
-      el.dispatchEvent(new Event('change'));
-      expect(el.options[0].selected).toBe(false);
-      expect(el.options[1].selected).toBe(true);
+
+      it('chooses between the default and the list with a select labelled by the row', () => {
+        const el = modal.makeRowValueElement('id', 'name', makeProperty(['__system_default__']));
+        const mode = el.querySelector('.multiselect-mode');
+        const list = el.querySelector('.multiselect-options');
+
+        expect(mode.id).toBe('id');
+        expect(Array.from(mode.options, option => option.textContent)).toEqual(['System default', 'Choose languages']);
+        expect(mode.value).toBe('__system_default__');
+        expect(mode.getAttribute('aria-controls')).toBe(list.id);
+        expect(list.hidden).toBe(true);
+        expect(list.querySelector('.multiselect-option[value="__system_default__"]')).toBeNull();
+      });
+
+      it('shows the list only while choosing languages', () => {
+        const el = modal.makeRowValueElement('id', 'name', makeProperty(['es']));
+        const mode = el.querySelector('.multiselect-mode');
+        const list = el.querySelector('.multiselect-options');
+        expect(mode.value).toBe('custom');
+        expect(list.hidden).toBe(false);
+
+        mode.value = '__system_default__';
+        mode.dispatchEvent(new Event('change'));
+        expect(list.hidden).toBe(true);
+
+        mode.value = 'custom';
+        mode.dispatchEvent(new Event('change'));
+        expect(list.hidden).toBe(false);
+      });
+
+      it('treats an empty value as the System default', () => {
+        const el = modal.makeRowValueElement('id', 'name', makeProperty([]));
+        expect(el.querySelector('.multiselect-mode').value).toBe('__system_default__');
+      });
+
+      it('hides other help texts when the select is focused', () => {
+        const spy = vi.spyOn(modal, 'hideHelpContentAll').mockImplementation(() => {});
+        const el = modal.makeRowValueElement('id', 'name', makeProperty([]));
+        el.querySelector('.multiselect-mode').dispatchEvent(new Event('focus'));
+        expect(spy).toHaveBeenCalledTimes(1);
+        el.querySelector('.multiselect-option').dispatchEvent(new Event('focus'));
+        expect(spy).toHaveBeenCalledTimes(2);
+      });
     });
 
     it('renders a dynamically added preference in the existing category', () => {
@@ -209,15 +257,47 @@ describe('ModalProperties', () => {
   });
 
   describe('getModalPropertiesData', () => {
-    it('should collect all selected multi-select values', () => {
-      modal.modalElementBody.innerHTML = `
-        <select class="property-value" property="languages" data-type="multiselect" multiple>
-          <option value="en-US" selected>en-US</option>
-          <option value="es">es</option>
-          <option value="fr" selected>fr</option>
-        </select>`;
+    const multiselect = (value) =>
+      modal.makeMultiSelectElement('id', 'languages', {
+        type: 'multiselect',
+        title: 'Languages',
+        value,
+        customLabel: 'Choose languages',
+        options: { __system_default__: 'System default', 'en-US': 'English', es: 'Spanish', fr: 'French' },
+      });
+
+    it('should collect the checked languages', () => {
+      modal.modalElementBody.replaceChildren(multiselect(['en-US', 'fr']));
 
       expect(modal.getModalPropertiesData()).toEqual({ languages: ['en-US', 'fr'] });
+    });
+
+    it('should save the System default when it is chosen, whatever is checked', () => {
+      const el = multiselect(['es']);
+      el.querySelector('.multiselect-mode').value = '__system_default__';
+      modal.modalElementBody.replaceChildren(el);
+
+      expect(modal.getModalPropertiesData()).toEqual({ languages: ['__system_default__'] });
+    });
+
+    it('should save the System default when choosing languages but none is checked', () => {
+      const el = multiselect(['es']);
+      el.querySelector('.multiselect-option[value="es"]').checked = false;
+      modal.modalElementBody.replaceChildren(el);
+
+      expect(modal.getModalPropertiesData()).toEqual({ languages: ['__system_default__'] });
+    });
+
+    it('should save an empty list when there is no System default option', () => {
+      const el = modal.makeMultiSelectElement('id', 'languages', {
+        type: 'multiselect',
+        title: 'Languages',
+        value: [],
+        options: { es: 'Spanish' },
+      });
+      modal.modalElementBody.replaceChildren(el);
+
+      expect(modal.getModalPropertiesData()).toEqual({ languages: [] });
     });
 
     it('should collect data from inputs', () => {
