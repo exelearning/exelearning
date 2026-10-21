@@ -22,6 +22,7 @@ import {
     findProjectByUuid as findProjectByUuidDefault,
     findProjectByPublicViewId as findProjectByPublicViewIdDefault,
     findProjectByPlatformId as findProjectByPlatformIdDefault,
+    findOwnedProjectByPlatformBinding as findOwnedProjectByPlatformBindingDefault,
     checkProjectAccess as checkProjectAccessDefault,
     createProject as createProjectDefault,
 } from '../db/queries';
@@ -37,6 +38,7 @@ import {
 } from '../shared/security/publicViewSandbox';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { isOfflineMode } from '../utils/offline.util';
+import { getPlatformBinding, getPlatformIntegrationParams, type PlatformBinding } from '../utils/platform-jwt';
 import { getAppVersion } from '../utils/version';
 import { canChangePassword } from '../services/password';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
@@ -125,6 +127,7 @@ export interface PagesQueriesDeps {
     findProjectByUuid: typeof findProjectByUuidDefault;
     findProjectByPublicViewId: typeof findProjectByPublicViewIdDefault;
     findProjectByPlatformId: typeof findProjectByPlatformIdDefault;
+    findOwnedProjectByPlatformBinding: typeof findOwnedProjectByPlatformBindingDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
     createProject: typeof createProjectDefault;
     getDefaultTheme: typeof getDefaultThemeDefault;
@@ -193,6 +196,7 @@ const defaultQueries: PagesQueriesDeps = {
     findProjectByUuid: findProjectByUuidDefault,
     findProjectByPublicViewId: findProjectByPublicViewIdDefault,
     findProjectByPlatformId: findProjectByPlatformIdDefault,
+    findOwnedProjectByPlatformBinding: findOwnedProjectByPlatformBindingDefault,
     checkProjectAccess: checkProjectAccessDefault,
     createProject: createProjectDefault,
     getDefaultTheme: getDefaultThemeDefault,
@@ -242,6 +246,23 @@ const defaultDependencies: PagesDependencies = {
     settings: defaultSettings,
 };
 
+/**
+ * Platform activity a /workarea request was sent to edit, from its platform JWT.
+ *
+ * Returns null when the token cannot be verified (signature, provider or return
+ * URL allow-list) or does not identify one activity, and when `odeId` is not that
+ * activity's cmid: /edit_ode passes the cmid as `odeId`, so any other value is a
+ * project UUID (or a mismatched request) and keeps its own access-checked lookup.
+ */
+async function getRequestPlatformBinding(jwtToken: string, odeId?: string): Promise<PlatformBinding | null> {
+    const params = await getPlatformIntegrationParams(jwtToken, 'get');
+    const binding = params ? getPlatformBinding(params) : null;
+    if (!binding || (odeId && odeId !== binding.cmid)) {
+        return null;
+    }
+    return binding;
+}
+
 // ============================================================================
 // Factory Function
 // ============================================================================
@@ -261,6 +282,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         findProjectByUuid,
         findProjectByPublicViewId,
         findProjectByPlatformId,
+        findOwnedProjectByPlatformBinding,
         checkProjectAccess,
         createProject,
         getDefaultTheme,
@@ -745,6 +767,63 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 let projectUuid = query.project as string | undefined;
                 const odeId = query.odeId as string | undefined;
                 const jwtTokenParam = query.jwt_token as string | undefined;
+
+                // =====================================================
+                // PLATFORM INTEGRATION: one project per user and activity
+                // =====================================================
+                // A verified platform JWT (from /new_ode or /edit_ode) identifies the
+                // activity: the platform site plus its course module id. Reopen the
+                // current user's own project for it, or create one bound to it, and let
+                // the client load the platform's package (it skips the import when the
+                // project already holds that package). Another user's project is never
+                // picked: the platform, not project ownership, decides who may edit the
+                // activity (#2498, #2549).
+                if (!projectUuid && jwtTokenParam && !isOfflineMode()) {
+                    const binding = await getRequestPlatformBinding(jwtTokenParam, odeId);
+                    if (binding) {
+                        try {
+                            let platformProject = await findOwnedProjectByPlatformBinding(
+                                db,
+                                currentUser.id,
+                                binding.site,
+                                binding.cmid,
+                            );
+                            if (platformProject) {
+                                console.log(
+                                    `[Pages] Platform integration: Reusing project ${platformProject.uuid} for cmid ${binding.cmid} on ${binding.site}`,
+                                );
+                            } else {
+                                platformProject = await createProject(db, {
+                                    title: 'New Project',
+                                    owner_id: currentUser.id,
+                                    saved_once: 0,
+                                    platform_id: binding.cmid,
+                                    platform_site: binding.site,
+                                });
+                                createSession({
+                                    sessionId: platformProject.uuid,
+                                    fileName: 'New Project.elp',
+                                    filePath: '',
+                                    createdAt: new Date(),
+                                    updatedAt: new Date(),
+                                    structure: null,
+                                    userId: currentUser.id,
+                                });
+                                console.log(
+                                    `[Pages] Platform integration: Created project ${platformProject.uuid} for cmid ${binding.cmid} on ${binding.site}`,
+                                );
+                            }
+
+                            return Response.redirect(
+                                `${getBasePath()}/workarea?project=${platformProject.uuid}&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`,
+                                302,
+                            );
+                        } catch (error) {
+                            console.error('[Pages] Platform integration: Failed to open the activity project:', error);
+                            // Continue - will fall through to the unbound flow
+                        }
+                    }
+                }
 
                 // =====================================================
                 // PLATFORM INTEGRATION: Handle odeId parameter from Moodle
