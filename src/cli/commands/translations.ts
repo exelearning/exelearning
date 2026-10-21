@@ -220,6 +220,10 @@ const INVALID_KEY_PATTERNS = [
     /^new\.key\./, // new.key.from.source
     /^existing\.key$/, // existing.key
     /^key$/, // just "key"
+    // Characters outside the XML 1.0 Char production (control characters, lone surrogates,
+    // U+FFFE/U+FFFF). Minified or binary sources can produce them, and writing one would make
+    // every XLF file unparseable.
+    /[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/u,
 ];
 
 /**
@@ -230,7 +234,7 @@ function shouldExcludeFile(filePath: string): boolean {
 }
 
 /**
- * Check if a key looks like a test pattern or is explicitly excluded
+ * Check if a key looks like a test pattern, is explicitly excluded or cannot be written to XML
  */
 function isInvalidKey(key: string): boolean {
     return EXCLUDE_EXACT_KEYS.has(key) || INVALID_KEY_PATTERNS.some(pattern => pattern.test(key));
