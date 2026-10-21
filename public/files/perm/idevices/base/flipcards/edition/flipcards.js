@@ -47,6 +47,7 @@ var $exeDevice = {
         $('#flipcardsETextDiv').hide();
         $('#flipcardsETextDivBack').hide();
         this.active = 0;
+        $('#flipcardsENumCards').text($exeDevice.cardsGame.length);
     },
     refreshTranslations: function () {
         this.ci18n = {

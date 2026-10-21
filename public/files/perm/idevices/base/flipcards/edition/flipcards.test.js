@@ -793,6 +793,12 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
         vi.unstubAllGlobals();
     });
 
+    it('counts the first card of a new activity', () => {
+        // The counter used to stay at the 0 of its markup until a card was added.
+        expect(device.cardsGame).toHaveLength(1);
+        expect(document.getElementById('flipcardsENumCards').textContent).toBe('1');
+    });
+
     it('explains what goes in the Questions tab', () => {
         const info = panel('contents').firstElementChild;
 
