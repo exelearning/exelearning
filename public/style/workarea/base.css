@@ -42,6 +42,17 @@
   transform: scale(1.2);
 }
 
+/* A Material icon is a background colour cut out by a mask, here or in the style's own rule, and
+   browsers leave backgrounds off the page unless the reader turns on "Background graphics": the
+   icon then prints as an empty box. Keep the colour for these icons alone, so they print without
+   printing every other background. */
+@media print {
+  .exe-material-icon {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 .exe-content a{
   color: #5a7f0c;
 }
@@ -854,5 +865,52 @@ html:not(.mode-teacher) .js .teacher-only {
     }
     body #headerContent {
         padding-top: 40px;
+    }
+}
+
+/* Some styles fix their header to the top of the screen (Flux, Neo, Nova, Zen). On paper a fixed
+   element is laid over the top of every sheet, where it covered the page title and whatever else
+   began there. It takes its place once, at the start, as the print preview already has it.
+   `!important` because a style fixes it with selectors of its own, some more specific than these. */
+@media print {
+    .exe-export .main-header,
+    .exe-export .page > header,
+    .exe-export .package-header {
+        position: static !important;
+    }
+}
+
+/* A block's heading goes to the sheet that holds the start of what it heads. What is kept whole,
+   such as a 3D model, moves to the next sheet when it does not fit, and would leave its heading
+   alone at the foot of the one before. */
+@media print {
+    .exe-export .box-head {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+}
+
+/* Printing opens every block that is merely folded.
+   A folded block is not hidden content: it is in the page, collapsed, and printing it gives a
+   sheet with a heading and nothing under it — which reads as an empty block rather than a missing
+   one, so nobody notices. The fold is not only the author's either. A reader collapses blocks
+   while reading and the state stays, so the same resource would print differently for two people;
+   and a block whose author turned its toggle off cannot be opened at all before printing.
+
+   `!important` is what the runtime fold requires: the toggle collapses with jQuery's slideUp(),
+   which leaves `display: none` in a style attribute on the element, and only `!important` beats
+   an inline style. The author's own fold is just the `.minimized` class and would not need it.
+
+   This reveals nothing the author hid. `novisible` and `teacher-only` sit on the <article>, which
+   the rules further up take out of the layout with `!important` of their own, so nothing inside
+   one is ever laid out — and an iDevice carrying either class keeps its own rule inside a block
+   that does open. `teacher-only` is deliberately not excluded here: in teacher mode that block is
+   meant to print, folded or not.
+
+   The print preview can ask for the page to print as it is shown instead, by putting
+   `exe-print-as-shown` on <html>: folded blocks then stay folded on paper. */
+@media print {
+    html:not(.exe-print-as-shown) .exe-export article.box.minimized > .box-content {
+        display: block !important;
     }
 }
