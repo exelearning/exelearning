@@ -32,6 +32,8 @@ export interface TranslationsResult {
         extracted: number;
         cleaned: number;
         removed: number;
+        /** Keys with more than one trans-unit in at least one locale. */
+        duplicates: number;
         locales: string[];
     };
 }
@@ -476,6 +478,24 @@ function removeObsoleteTransUnits(content: string, validKeys: Set<string>): { co
 }
 
 /**
+ * Return the keys that have more than one trans-unit, in file order.
+ * The catalogue keeps only the last unit it reads, so the others never reach the UI.
+ * Choosing which target to keep is a translation decision, so they are reported, not removed.
+ */
+export function findDuplicateResnames(content: string): string[] {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const match of content.matchAll(/<trans-unit\b[^>]*\bresname="([^"]*)"/g)) {
+        const key = unescapeXml(match[1]);
+        if (seen.has(key)) {
+            duplicates.add(key);
+        }
+        seen.add(key);
+    }
+    return [...duplicates];
+}
+
+/**
  * Process a single locale
  */
 async function processLocale(
@@ -484,12 +504,12 @@ async function processLocale(
     extractOnly: boolean,
     cleanOnly: boolean,
     removeObsolete: boolean,
-): Promise<{ extracted: number; cleaned: boolean; removed: number }> {
+): Promise<{ extracted: number; cleaned: boolean; removed: number; duplicates: string[] }> {
     const xlfPath = path.join(getTranslationsDir(), `messages.${locale}.xlf`);
 
     if (!fs.existsSync(xlfPath)) {
         warning(`XLF file not found: ${xlfPath}`);
-        return { extracted: 0, cleaned: false, removed: 0 };
+        return { extracted: 0, cleaned: false, removed: 0, duplicates: [] };
     }
 
     let content = fs.readFileSync(xlfPath, 'utf-8');
@@ -537,7 +557,15 @@ async function processLocale(
     // Write back
     fs.writeFileSync(xlfPath, content, 'utf-8');
 
-    return { extracted, cleaned, removed };
+    const duplicates = findDuplicateResnames(content);
+    if (duplicates.length > 0) {
+        warning(
+            `${locale}: ${duplicates.length} key(s) have more than one trans-unit and only the last one is used. ` +
+                `Keep one unit for each: ${duplicates.map(key => JSON.stringify(key)).join(', ')}`,
+        );
+    }
+
+    return { extracted, cleaned, removed, duplicates };
 }
 
 export async function execute(
@@ -601,6 +629,7 @@ export async function execute(
     let totalExtracted = 0;
     let totalCleaned = 0;
     let totalRemoved = 0;
+    const duplicateKeys = new Set<string>();
 
     for (const locale of locales) {
         info(`Processing locale: ${locale}`);
@@ -608,6 +637,7 @@ export async function execute(
         totalExtracted += result.extracted;
         totalRemoved += result.removed;
         if (result.cleaned) totalCleaned++;
+        for (const key of result.duplicates) duplicateKeys.add(key);
     }
 
     const messages: string[] = [];
@@ -620,6 +650,9 @@ export async function execute(
             messages.push(`Removed ${totalRemoved} obsolete trans-units across ${locales.length} locales`);
         }
     }
+    if (duplicateKeys.size > 0) {
+        messages.push(`${duplicateKeys.size} keys have duplicate trans-units (see warnings)`);
+    }
 
     return {
         success: true,
@@ -628,6 +661,7 @@ export async function execute(
             extracted: totalExtracted,
             cleaned: totalCleaned,
             removed: totalRemoved,
+            duplicates: duplicateKeys.size,
             locales,
         },
     };
