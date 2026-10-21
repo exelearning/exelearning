@@ -2217,7 +2217,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await expect(frame.locator('#section-worksheet-appendix')).toHaveCount(0);
     });
 
-    test('offers the options beside the preview when the project has them, with printing them in an appendix preselected', async ({
+    test('offers the options beside the preview when the project has them, with printing them in place preselected', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -2229,7 +2229,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
 
         await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true');
         await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(4);
-        await expect(panel.locator('input[name="print-activity-mode"][value="appendix"]')).toBeChecked();
+        await expect(panel.locator('input[name="print-activity-mode"][value="in-place"]')).toBeChecked();
 
         // One section under another, each set off from the one above by a rule: the document
         // options, then what to print, then which activities.
@@ -2260,17 +2260,17 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         );
         await expect(sections[1].locator('legend')).toHaveText('What would you like to print?');
         await expect(sections[1].locator('label')).toHaveText([
-            'Content without activities',
             'Content with activities',
             'Content with activities in an appendix',
             'Activities only (no other content)',
+            'Content without activities',
         ]);
         await expect(sections[2].locator('legend')).toHaveText('Activities');
 
-        // The preview is drawn at once, for the choice that is preselected: a pointer where each
-        // activity was, and the exercise itself in the appendix.
+        // The preview is drawn at once, for the choice that is preselected: each exercise where the
+        // author put it, with no pointer into an appendix.
         const { frame } = await waitForPreview(page);
-        await expect(frame.locator('.worksheet-reference').first()).toBeVisible();
+        await expect(frame.locator('.worksheet-reference')).toHaveCount(0);
         await expect(
             frame.locator('.worksheet-activity[data-idevice="guess"]:not(.worksheet-activity-reference)'),
         ).toHaveCount(1);
