@@ -7445,10 +7445,6 @@
         <source>Absolute error</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="DpYu48b" resname="% right to see the feedback">
-        <source>% right to see the feedback</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="ye8G32n" resname="Please specify the number of operations">
         <source>Please specify the number of operations</source>
         <target></target>
@@ -12101,10 +12097,6 @@
         <source>Send to %s</source>
         <target>Send to %s</target>
       </trans-unit>
-      <trans-unit id="finish_001" resname="Finish">
-        <source>Finish</source>
-        <target>Finish</target>
-      </trans-unit>
       <trans-unit id="xqscva0" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target></target>
@@ -12551,10 +12543,6 @@
       </trans-unit>
       <trans-unit id="i3bpt6t" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="h010ki7" resname="Being edited by">
-        <source>Being edited by</source>
         <target></target>
       </trans-unit>
       <trans-unit id="7o1v397" resname="An error occurred while creating the page">

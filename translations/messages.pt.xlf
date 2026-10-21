@@ -7441,10 +7441,6 @@
         <source>Absolute error</source>
         <target>~Erro absoluto  </target>
       </trans-unit>
-      <trans-unit id="DpYu48b" resname="% right to see the feedback">
-        <source>% right to see the feedback</source>
-        <target>~% direito para ver o feedback  </target>
-      </trans-unit>
       <trans-unit id="ye8G32n" resname="Please specify the number of operations">
         <source>Please specify the number of operations</source>
         <target>~Por favor, especifique o número de operações  </target>
@@ -12045,10 +12041,6 @@
         <source>Send to %s</source>
         <target>~Enviar para %s</target>
       </trans-unit>
-      <trans-unit id="finish_001" resname="Finish">
-        <source>Finish</source>
-        <target>~Concluir</target>
-      </trans-unit>
       <trans-unit id="h72md8e" resname="Unsaved changes">
         <source>Unsaved changes</source>
         <target>~Alterações não guardadas</target>
@@ -12556,10 +12548,6 @@
       <trans-unit id="i4upoxn" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
         <target>~Erro ao clonar a caixa</target>
-      </trans-unit>
-      <trans-unit id="dh4e22u" resname="Being edited by">
-        <source>Being edited by</source>
-        <target>~Editado por</target>
       </trans-unit>
       <trans-unit id="w70sdrg" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>

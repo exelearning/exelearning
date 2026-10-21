@@ -5591,7 +5591,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="% right to see the feedback">
         <source>% right to see the feedback</source>
-        <target>&amp;percnt; di risposte corrette per vedere il feedback</target>
+        <target>~% di risposte corrette per vedere il feedback</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -6191,7 +6191,7 @@
       </trans-unit>
       <trans-unit id="OHpcg.X" resname="Finish">
         <source>Finish</source>
-        <target>Termina</target>
+        <target>~Termina</target>
       </trans-unit>
       <trans-unit id="2QRc0q1" resname="Maximum card number: %s.">
         <source>Maximum card number: %s.</source>
@@ -7444,10 +7444,6 @@
       <trans-unit id="pY9ORr8" resname="Absolute error">
         <source>Absolute error</source>
         <target>Errore assoluto</target>
-      </trans-unit>
-      <trans-unit id="DpYu48b" resname="% right to see the feedback">
-        <source>% right to see the feedback</source>
-        <target>% corretto per vedere il feedback</target>
       </trans-unit>
       <trans-unit id="ye8G32n" resname="Please specify the number of operations">
         <source>Please specify the number of operations</source>
@@ -12089,10 +12085,6 @@
         <source>Send to %s</source>
         <target>Invia a %s</target>
       </trans-unit>
-      <trans-unit id="finish_001" resname="Finish">
-        <source>Finish</source>
-        <target>Termina</target>
-      </trans-unit>
       <trans-unit id="gs_001" resname="Search pages and content...">
         <source>Search pages and content...</source>
         <target>Cerca pagine e contenuti...</target>
@@ -12515,7 +12507,7 @@
       </trans-unit>
       <trans-unit id="8fx6tkz" resname="Being edited by">
         <source>Being edited by</source>
-        <target>In modifica da</target>
+        <target>~In modifica da</target>
       </trans-unit>
       <trans-unit id="k0rmngs" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
@@ -12564,10 +12556,6 @@
       <trans-unit id="zd87cxp" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
         <target>Errore durante la clonazione del box</target>
-      </trans-unit>
-      <trans-unit id="xdoy968" resname="Being edited by">
-        <source>Being edited by</source>
-        <target>In modifica da</target>
       </trans-unit>
       <trans-unit id="3uu010j" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>

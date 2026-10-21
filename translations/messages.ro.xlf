@@ -5587,7 +5587,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="% right to see the feedback">
         <source>% right to see the feedback</source>
-        <target>&amp;percnt; drept de a vedea feedback-ul</target>
+        <target>~% corect pentru a vedea feedback-ul</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -6187,7 +6187,7 @@
       </trans-unit>
       <trans-unit id="OHpcg.X" resname="Finish">
         <source>Finish</source>
-        <target>Terminare</target>
+        <target>~Terminare</target>
       </trans-unit>
       <trans-unit id="2QRc0q1" resname="Maximum card number: %s.">
         <source>Maximum card number: %s.</source>
@@ -7440,10 +7440,6 @@
       <trans-unit id="pY9ORr8" resname="Absolute error">
         <source>Absolute error</source>
         <target>Eroare absolută</target>
-      </trans-unit>
-      <trans-unit id="DpYu48b" resname="% right to see the feedback">
-        <source>% right to see the feedback</source>
-        <target>% drept pentru a vedea feedback-ul</target>
       </trans-unit>
       <trans-unit id="ye8G32n" resname="Please specify the number of operations">
         <source>Please specify the number of operations</source>
@@ -12045,10 +12041,6 @@
         <source>Send to %s</source>
         <target>Trimite la %s</target>
       </trans-unit>
-      <trans-unit id="finish_001" resname="Finish">
-        <source>Finish</source>
-        <target>Terminare</target>
-      </trans-unit>
       <trans-unit id="h72md8e" resname="Unsaved changes">
         <source>Unsaved changes</source>
         <target>Modificări nesalvate</target>
@@ -12507,7 +12499,7 @@
       </trans-unit>
       <trans-unit id="wekuocl" resname="Being edited by">
         <source>Being edited by</source>
-        <target>Editat de</target>
+        <target>~Editat de</target>
       </trans-unit>
       <trans-unit id="3ci6qx3" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
@@ -12556,10 +12548,6 @@
       <trans-unit id="0dk7xj5" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
         <target>Eroare la clonarea casetei</target>
-      </trans-unit>
-      <trans-unit id="feo2sap" resname="Being edited by">
-        <source>Being edited by</source>
-        <target>Editat de</target>
       </trans-unit>
       <trans-unit id="0pf40k4" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
