@@ -46,10 +46,10 @@ export const ACTIVITY_MODE_IN_PLACE = 'in-place';
 export const ACTIVITY_MODE_APPENDIX = 'appendix';
 
 /**
- * What printing does with the interactive activities until the user chooses otherwise: the
- * document keeps a pointer where each one was, and the exercises are gathered in an appendix.
+ * What printing does with the interactive activities until the user chooses otherwise: each one
+ * prints as an exercise where the author put it.
  */
-export const DEFAULT_ACTIVITY_MODE = ACTIVITY_MODE_APPENDIX;
+export const DEFAULT_ACTIVITY_MODE = ACTIVITY_MODE_IN_PLACE;
 
 /**
  * How long to wait after an option changes before drawing the preview again, so that ticking a
@@ -466,10 +466,10 @@ export default class ModalPrintPreview {
      */
     getChoices() {
         return [
-            { value: ACTIVITY_MODE_OMIT, label: _('Content without activities'), prints: false },
             { value: ACTIVITY_MODE_IN_PLACE, label: _('Content with activities'), prints: true },
             { value: ACTIVITY_MODE_APPENDIX, label: _('Content with activities in an appendix'), prints: true },
             { value: PREVIEW_MODE_IDEVICES, label: _('Activities only (no other content)'), prints: true },
+            { value: ACTIVITY_MODE_OMIT, label: _('Content without activities'), prints: false },
         ];
     }
 
