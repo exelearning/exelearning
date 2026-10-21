@@ -1235,4 +1235,75 @@ describe('Translations Command', () => {
             expect(content).not.toMatch(/resname="key"/);
         });
     });
+
+    describe('duplicate trans-units', () => {
+        const duplicateXlf = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext">
+    <body>
+      <trans-unit id="a1" resname="Being edited by">
+        <source>Being edited by</source>
+        <target>Lo está editando</target>
+      </trans-unit>
+      <trans-unit id="a2" resname="Sort by &quot;size&quot;">
+        <source>Sort by "size"</source>
+        <target>Ordenar por "tamaño"</target>
+      </trans-unit>
+      <trans-unit id="a3" resname="Being edited by ">
+        <source>Being edited by </source>
+        <target>Lo está editando </target>
+      </trans-unit>
+      <trans-unit id="a4" resname="Being edited by">
+        <source>Being edited by</source>
+        <target>Está siendo editado por</target>
+      </trans-unit>
+      <trans-unit id="a5" resname="Sort by &quot;size&quot;">
+        <source>Sort by "size"</source>
+        <target>Ordena por "tamaño"</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+
+        it('should list each repeated key once, unescaped, in file order', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+
+            expect(findDuplicateResnames(duplicateXlf)).toEqual(['Being edited by', 'Sort by "size"']);
+        });
+
+        it('should treat keys that differ only in surrounding spaces as different', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+
+            expect(findDuplicateResnames(duplicateXlf)).not.toContain('Being edited by ');
+        });
+
+        it('should return nothing when every key has one trans-unit', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+
+            expect(findDuplicateResnames(content)).toEqual([]);
+        });
+
+        it('should report duplicates without removing any trans-unit', async () => {
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), duplicateXlf);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.success).toBe(true);
+            expect(result.stats?.duplicates).toBe(2);
+            expect(result.message).toContain('2 keys have duplicate trans-units');
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content.match(/<trans-unit\b/g)).toHaveLength(5);
+        });
+
+        it('should not mention duplicates when there are none', async () => {
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.stats?.duplicates).toBe(0);
+            expect(result.message).not.toContain('duplicate');
+        });
+    });
 });
