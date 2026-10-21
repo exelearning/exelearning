@@ -229,6 +229,16 @@ describe('ModalProperties', () => {
         expect(list.hidden).toBe(false);
       });
 
+      it('offers only the System default when there are no languages to choose', () => {
+        const property = { ...makeProperty(['es']), options: { __system_default__: 'System default' } };
+        const el = modal.makeRowValueElement('id', 'name', property);
+        const mode = el.querySelector('.multiselect-mode');
+        expect(Array.from(mode.options, option => option.value)).toEqual(['__system_default__']);
+        expect(mode.value).toBe('__system_default__');
+        expect(el.querySelector('.multiselect-options').hidden).toBe(true);
+        expect(modal.getMultiSelectValue(el)).toEqual(['__system_default__']);
+      });
+
       it('treats an empty value as the System default', () => {
         const el = modal.makeRowValueElement('id', 'name', makeProperty([]));
         expect(el.querySelector('.multiselect-mode').value).toBe('__system_default__');

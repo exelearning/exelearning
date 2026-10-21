@@ -285,6 +285,22 @@ export default class FormProperties {
     }
 
     /**
+     * Scroll the tab row, when it is narrower than the tabs, so the tab and part of
+     * its neighbour show. Only the row scrolls: scrollIntoView would also scroll the
+     * page and a host page embedding eXe.
+     */
+    revealTab(tabsNav, tab) {
+        const peek = 48;
+        const row = tabsNav.getBoundingClientRect();
+        const box = tab.getBoundingClientRect();
+        if (box.left < row.left + peek) {
+            tabsNav.scrollLeft -= row.left + peek - box.left;
+        } else if (box.right > row.right - peek) {
+            tabsNav.scrollLeft += box.right - (row.right - peek);
+        }
+    }
+
+    /**
      * Activate a tab and show its content pane
      */
     activateTab(tabsNav, tabContent, activeButton, activePaneId) {
@@ -302,8 +318,7 @@ export default class FormProperties {
         // Activate selected tab
         activeButton.classList.add('active');
         activeButton.setAttribute('aria-selected', 'true');
-        // The tab row scrolls when it is narrower than the tabs
-        activeButton.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+        this.revealTab(tabsNav, activeButton);
 
         // Activate selected pane
         const activePane = tabContent.querySelector(`#${activePaneId}`);

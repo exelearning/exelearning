@@ -2037,17 +2037,37 @@ describe('FormProperties', () => {
             expect(pane2.classList.contains('active')).toBe(true);
         });
 
-        it('should scroll the activated tab into view in a narrow tab row', () => {
-            const formProperties = new FormProperties(mockProperties);
-            const tabsNav = document.createElement('div');
-            const tab = document.createElement('button');
-            tab.classList.add('project-properties-tab');
-            tab.scrollIntoView = vi.fn();
-            tabsNav.appendChild(tab);
+        describe('tab row scrolling', () => {
+            const rect = (left, right) => ({ left, right });
+            const setUp = (tabRect) => {
+                const formProperties = new FormProperties(mockProperties);
+                const tabsNav = document.createElement('div');
+                tabsNav.getBoundingClientRect = () => rect(0, 500);
+                tabsNav.scrollLeft = 100;
+                const tab = document.createElement('button');
+                tab.classList.add('project-properties-tab');
+                tab.getBoundingClientRect = () => tabRect;
+                tab.scrollIntoView = vi.fn();
+                tabsNav.appendChild(tab);
+                formProperties.activateTab(tabsNav, document.createElement('div'), tab, 'pane-1');
+                return { tabsNav, tab };
+            };
 
-            formProperties.activateTab(tabsNav, document.createElement('div'), tab, 'pane-1');
+            it('scrolls right so the next tab peeks in, without scrollIntoView', () => {
+                const { tabsNav, tab } = setUp(rect(400, 520));
+                expect(tabsNav.scrollLeft).toBe(168);
+                expect(tab.scrollIntoView).not.toHaveBeenCalled();
+            });
 
-            expect(tab.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+            it('scrolls left so the previous tab peeks in', () => {
+                const { tabsNav } = setUp(rect(-20, 100));
+                expect(tabsNav.scrollLeft).toBe(32);
+            });
+
+            it('leaves the row alone when the tab is well inside it', () => {
+                const { tabsNav } = setUp(rect(100, 200));
+                expect(tabsNav.scrollLeft).toBe(100);
+            });
         });
 
         it('should update aria-selected attributes', () => {
