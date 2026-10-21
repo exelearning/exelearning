@@ -4,6 +4,7 @@
 
 .project-properties-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 0;
     width: 100%;
     margin-bottom: 0;
@@ -264,25 +265,29 @@
                 }
             }
         }
-        @media (min-width: 1400px) {
-            #props-pane-export .form-properties {
-                overflow: auto;
+        // Switches in two aligned columns; the font select takes its own full-width row
+        #props-pane-export .form-properties {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            column-gap: 2rem;
+            @media (min-width: 992px) {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-            #props-pane-export .form-properties .property-row{
-                max-width: 45%;
-                float: left;
-            }
-            // The two fields that spell out a label above their control read as a
-            // pair, so each one opens its own line in the left column instead of
-            // being pulled up beside the checkbox that happens to precede it.
-            #props-pane-export .form-properties .property-row[property="pp_globalFont"],
-            #props-pane-export .form-properties .property-row[property="pp_passScore"] {
-                clear: left;
+            .property-row[property="pp_globalFont"] {
+                grid-column: 1 / -1;
+                margin-top: 1rem;
+                padding-top: 1.25rem;
+                border-top: 1px solid var(--gray-200, #e5e7eb);
             }
         }
-        .property-row[property="pp_globalFont"],
-        .property-row[property="pp_passScore"] {
-            margin-top:1em;
+        .property-row[property="pp_globalFont"] .form-select {
+            max-width: 24rem;
+        }
+        .properties-note {
+            margin: 0 0 1rem;
+            max-width: 80ch;
+            color: var(--gray-600, #4b5563);
+            font-size: .9375em;
         }
     }
     .footer {

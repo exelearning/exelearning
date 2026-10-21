@@ -43,6 +43,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
     const GROUPS_TITLE = {
         properties_package: `${TRANS_PREFIX}Content metadata`,
         export: `${TRANS_PREFIX}Export options`,
+        assessment: `${TRANS_PREFIX}Assessment`,
         custom_code: `${TRANS_PREFIX}Custom code`,
     };
 
@@ -401,7 +402,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 max: PASS_SCORE_MAX,
                 step: PASS_SCORE_STEP,
                 category: 'properties',
-                groups: { export: GROUPS_TITLE.export },
+                groups: { assessment: GROUPS_TITLE.assessment },
             },
             pp_passScoreEveryActivity: {
                 title: `${TRANS_PREFIX}Each SCORM activity must reach its minimum score`,
@@ -409,7 +410,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 value: 'false',
                 type: 'checkbox',
                 category: 'properties',
-                groups: { export: GROUPS_TITLE.export },
+                groups: { assessment: GROUPS_TITLE.assessment },
             },
             pp_extraHeadContent: {
                 title: `${TRANS_PREFIX}HEAD`,

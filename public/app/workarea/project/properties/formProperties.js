@@ -134,6 +134,13 @@ export default class FormProperties {
         const tabConfig = [
             { key: 'properties_package', title: _('Content metadata') },
             { key: 'export', title: _('Export options') },
+            {
+                key: 'assessment',
+                title: _('Assessment'),
+                note: _(
+                    'Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.'
+                ),
+            },
             { key: 'custom_code', title: _('Custom code') },
             { key: 'screenshot', title: _('Screenshot'), custom: true },
         ];
@@ -188,7 +195,7 @@ export default class FormProperties {
                 this.buildScreenshotPane(tabPane);
             } else {
                 const groupProperties = groupedProperties.get(tab.key) || [];
-                this.addPropertiesToPane(groupProperties, tabPane);
+                this.addPropertiesToPane(groupProperties, tabPane, tab.note);
             }
 
             tabContent.appendChild(tabPane);
@@ -248,14 +255,26 @@ export default class FormProperties {
 
     /**
      * Add properties to a tab pane
+     * @param {Array} propertiesArray - [key, property] pairs
+     * @param {HTMLElement} pane
+     * @param {string} [note] - Translated text shown above the properties, describing the whole pane
      */
-    addPropertiesToPane(propertiesArray, pane) {
+    addPropertiesToPane(propertiesArray, pane, note) {
         const container = document.createElement('div');
         container.classList.add(
             'properties-group',
             'properties-body-container',
             'form-properties'
         );
+
+        if (note) {
+            const noteElement = document.createElement('p');
+            noteElement.classList.add('properties-note');
+            noteElement.id = `${pane.id}-note`;
+            noteElement.textContent = note;
+            container.appendChild(noteElement);
+            pane.setAttribute('aria-describedby', noteElement.id);
+        }
 
         for (const [key, property] of propertiesArray) {
             const propertyRow = this.makeRowElement(key, property);

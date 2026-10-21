@@ -227,7 +227,7 @@ describe('Config Routes Integration', () => {
             });
         });
 
-        it('should have three groups: properties_package, export, custom_code', async () => {
+        it('should have four groups: properties_package, export, assessment, custom_code', async () => {
             const response = await configRoutes.handle(
                 new Request('http://localhost/api/parameter-management/parameters/data/list'),
             );
@@ -243,8 +243,9 @@ describe('Config Routes Integration', () => {
 
             expect(allGroups.has('properties_package')).toBe(true);
             expect(allGroups.has('export')).toBe(true);
+            expect(allGroups.has('assessment')).toBe(true);
             expect(allGroups.has('custom_code')).toBe(true);
-            expect(allGroups.size).toBe(3);
+            expect(allGroups.size).toBe(4);
         });
 
         it('should have help text on properties with help icons', async () => {

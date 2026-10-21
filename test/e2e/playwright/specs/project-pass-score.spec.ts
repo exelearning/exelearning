@@ -10,7 +10,7 @@ import { waitForAppReady, gotoWorkarea, selectFirstPage, addIdevice, saveIdevice
  * that does not define its own, which means the value has to reach the rendered
  * page — the editor writing it into the Y.Doc is only half the journey.
  *
- * These tests walk that journey end to end: the field in the Export options tab,
+ * These tests walk that journey end to end: the field in the Assessment tab,
  * the Y.Doc, and the META tag the preview page carries for the runtime to read.
  */
 
@@ -18,15 +18,15 @@ const PASS_SCORE_META = 'meta[name="exe-pass-score"]';
 const EVERY_ACTIVITY_META = 'meta[name="exe-pass-score-every-activity"]';
 
 /**
- * Open the project properties panel on the Export options tab.
+ * Open the project properties panel on the Assessment tab.
  */
-async function openExportOptions(page: import('@playwright/test').Page): Promise<void> {
+async function openAssessmentOptions(page: import('@playwright/test').Page): Promise<void> {
     await page.locator('#head-top-settings-button').click();
 
-    const exportTab = page.getByRole('tab', { name: /Export options|Opciones de exportación/i }).first();
-    await exportTab.waitFor({ state: 'visible', timeout: 10000 });
-    if ((await exportTab.getAttribute('aria-selected')) !== 'true') {
-        await exportTab.click();
+    const assessmentTab = page.getByRole('tab', { name: /^(Assessment|Evaluación)$/i }).first();
+    await assessmentTab.waitFor({ state: 'visible', timeout: 10000 });
+    if ((await assessmentTab.getAttribute('aria-selected')) !== 'true') {
+        await assessmentTab.click();
     }
 }
 
@@ -55,7 +55,7 @@ test.describe('Project pass score', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        await openExportOptions(page);
+        await openAssessmentOptions(page);
 
         const field = page.locator('input[property="pp_passScore"]');
         await field.waitFor({ state: 'visible', timeout: 10000 });
@@ -83,7 +83,7 @@ test.describe('Project pass score', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        await openExportOptions(page);
+        await openAssessmentOptions(page);
 
         const field = page.locator('input[property="pp_passScore"]');
         await field.waitFor({ state: 'visible', timeout: 10000 });
@@ -114,7 +114,7 @@ test.describe('Project pass score', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        await openExportOptions(page);
+        await openAssessmentOptions(page);
 
         const field = page.locator('input[property="pp_passScore"]');
         await field.waitFor({ state: 'visible', timeout: 10000 });
@@ -137,7 +137,7 @@ test.describe('Project pass score', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        await openExportOptions(page);
+        await openAssessmentOptions(page);
 
         const checkbox = page.locator('input[property="pp_passScoreEveryActivity"]');
         await checkbox.scrollIntoViewIfNeeded({ timeout: 10000 });
@@ -208,7 +208,7 @@ test.describe('Project pass score', () => {
             await joinSharedProject(peer, await getShareUrl(page));
             await waitForYjsSync(page);
             await waitForYjsSync(peer);
-            await openExportOptions(peer);
+            await openAssessmentOptions(peer);
             const field = peer.locator('input[property="pp_passScore"]');
             await expect(field).toHaveValue('5');
             const notice = rubric.locator('.exe-pass-score-notice');
