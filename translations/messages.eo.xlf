@@ -3845,10 +3845,6 @@
         <source>Project properties</source>
         <target>~Projekto-eco</target>
       </trans-unit>
-      <trans-unit id="W7h4Kea" resname="Share link">
-        <source>Share link</source>
-        <target>~Kopii ligilon</target>
-      </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
         <target>~Informo kaj prezento</target>
@@ -5985,14 +5981,6 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>~Ĉi tiu enhavo estis kreita kun eXeLearning, via libera kaj malfermfonta redaktilo por krei edukajn rimedojn.</target>
       </trans-unit>
-      <trans-unit id="V7aVH8i" resname="Download .elp file">
-        <source>Download .elp file</source>
-        <target>~Elŝuti elp-dosieron</target>
-      </trans-unit>
-      <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
-        <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target>~Ĉi tiu bloko kreos ligilon por elŝuti la elp-dosieron. Skribu kelkajn uzinstrukciojn kaj personecigu vian elŝutan ligilon.</target>
-      </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
         <target>~Ligiloj por elŝuto</target>
@@ -6345,10 +6333,6 @@
         <source>No questions in the form</source>
         <target>~Neniuj demandoj en la formularo</target>
       </trans-unit>
-      <trans-unit id="DCmDkZO" resname="Set the pass mark">
-        <source>Set the pass mark</source>
-        <target>~Elekti pasantecon</target>
-      </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
         <target>~Inkluzivi butonon por montri la respondojn</target>
@@ -6572,14 +6556,6 @@
       <trans-unit id="kVirQpc" resname="Border color">
         <source>Border color</source>
         <target>~Kovra koloro</target>
-      </trans-unit>
-      <trans-unit id="yWj5Kfm" resname="Save score button">
-        <source>Save score button</source>
-        <target>~Konservi poentaron</target>
-      </trans-unit>
-      <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
-        <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
-        <target>~La butono estos nur montrata kiam vi eksportas kiel SCORM kaj dum redaktado en eXeLearning.</target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
         <source>Provide a valid GeoGebra URL or activity ID.</source>
@@ -12421,22 +12397,6 @@
         <source>People with access</source>
         <target>~Havantoj kun aliro</target>
       </trans-unit>
-      <trans-unit id="gkvgh2w" resname="General access">
-        <source>General access</source>
-        <target>~Ĝenerala aliro</target>
-      </trans-unit>
-      <trans-unit id="46p14w1" resname="Restricted (Private)">
-        <source>Restricted (Private)</source>
-        <target>~Restriktita (Private)</target>
-      </trans-unit>
-      <trans-unit id="v1pds98" resname="Anyone with the link (Public)">
-        <source>Anyone with the link (Public)</source>
-        <target>~Ĉiuj kun la ligilo (Publika)</target>
-      </trans-unit>
-      <trans-unit id="71qdwgy" resname="Anyone who has the link can view and edit in real time">
-        <source>Anyone who has the link can view and edit in real time</source>
-        <target>~Ĉiu persono kun la ligo povas vidi kaj redakti en tempo real</target>
-      </trans-unit>
       <trans-unit id="ck26cxi" resname="Print preview">
         <source>Print preview</source>
         <target>~Antaŭrigardo de presado</target>
@@ -13532,14 +13492,6 @@
       <trans-unit id="3vx4js8" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
         <target>~Via aliro al ĉi tiu projekto estis nuligita.</target>
-      </trans-unit>
-      <trans-unit id="c957e2f" resname="source">
-        <source>source</source>
-        <target>~fonto</target>
-      </trans-unit>
-      <trans-unit id="q4yo54h" resname="target">
-        <source>target</source>
-        <target>~celo</target>
       </trans-unit>
       <trans-unit id="l2pgrp0" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>

@@ -3845,10 +3845,6 @@
         <source>Project properties</source>
         <target>Proprietà del progetto</target>
       </trans-unit>
-      <trans-unit id="W7h4Kea" resname="Share link">
-        <source>Share link</source>
-        <target>Condividi link</target>
-      </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
         <target>Informazioni e presentazione</target>
@@ -5989,14 +5985,6 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>Questo contenuto è stato creato con eXeLearning, il tuo editor gratuito e open source, per creare risorse educative.</target>
       </trans-unit>
-      <trans-unit id="V7aVH8i" resname="Download .elp file">
-        <source>Download .elp file</source>
-        <target>Scarica file .elp</target>
-      </trans-unit>
-      <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
-        <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target>Questo blocco creerà un collegamento per scaricare il file .elp. Scrivi le istruzioni d'uso e personalizza il collegamento di download.</target>
-      </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
         <target>Collegamento di download</target>
@@ -6349,10 +6337,6 @@
         <source>No questions in the form</source>
         <target>Nessuna domanda nel modulo</target>
       </trans-unit>
-      <trans-unit id="DCmDkZO" resname="Set the pass mark">
-        <source>Set the pass mark</source>
-        <target>Specificare il grado di approvazione</target>
-      </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
         <target>Includi un pulsante per mostrare le risposte</target>
@@ -6576,14 +6560,6 @@
       <trans-unit id="kVirQpc" resname="Border color">
         <source>Border color</source>
         <target>Colore del bordo</target>
-      </trans-unit>
-      <trans-unit id="yWj5Kfm" resname="Save score button">
-        <source>Save score button</source>
-        <target>Pulsante per salvare punti</target>
-      </trans-unit>
-      <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
-        <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
-        <target>Il pulsante verrà visualizzato solo durante l'esportazione come SCORM e durante la modifica in eXeLearning.</target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
         <source>Provide a valid GeoGebra URL or activity ID.</source>
@@ -12437,22 +12413,6 @@
         <source>People with access</source>
         <target>Persone con accesso</target>
       </trans-unit>
-      <trans-unit id="hxckaqg" resname="General access">
-        <source>General access</source>
-        <target>Accesso generale</target>
-      </trans-unit>
-      <trans-unit id="ij8ix9u" resname="Restricted (Private)">
-        <source>Restricted (Private)</source>
-        <target>Limitato (Privato)</target>
-      </trans-unit>
-      <trans-unit id="d2xjscm" resname="Anyone with the link (Public)">
-        <source>Anyone with the link (Public)</source>
-        <target>Chiunque abbia il collegamento (Pubblico)</target>
-      </trans-unit>
-      <trans-unit id="tyd94rr" resname="Anyone who has the link can view and edit in real time">
-        <source>Anyone who has the link can view and edit in real time</source>
-        <target>Chiunque abbia il collegamento può visualizzare e modificare in tempo reale</target>
-      </trans-unit>
       <trans-unit id="s4z0g66" resname="Print preview">
         <source>Print preview</source>
         <target>Anteprima di stampa</target>
@@ -13532,14 +13492,6 @@
       <trans-unit id="8pqhfep" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
         <target>Il tuo accesso a questo progetto è stato revocato.</target>
-      </trans-unit>
-      <trans-unit id="562k8fg" resname="source">
-        <source>source</source>
-        <target>sorgente</target>
-      </trans-unit>
-      <trans-unit id="opy2zs5" resname="target">
-        <source>target</source>
-        <target>destinazione</target>
       </trans-unit>
       <trans-unit id="a51qi4y" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>

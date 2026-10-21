@@ -3845,10 +3845,6 @@
         <source>Project properties</source>
         <target>Proiektuaren propietateak</target>
       </trans-unit>
-      <trans-unit id="W7h4Kea" resname="Share link">
-        <source>Share link</source>
-        <target>Partekatzeko esteka</target>
-      </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
         <target>Informazioa eta aurkezpena</target>
@@ -5985,14 +5981,6 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>Edukia eXeLearning-ekin sortu da, hezkuntzarako edukiak sortzeko kode irekiko programa librea.</target>
       </trans-unit>
-      <trans-unit id="V7aVH8i" resname="Download .elp file">
-        <source>Download .elp file</source>
-        <target>Jaitsi elp fitxategia</target>
-      </trans-unit>
-      <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
-        <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target>Bloke honek .elp-a jaisteko esteka sortuko du. Eman argibideak eta moldatu zure gustura jaitsi beharreko esteka.</target>
-      </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
         <target>Jaitsi esteka</target>
@@ -6345,10 +6333,6 @@
         <source>No questions in the form</source>
         <target>Ez dago galderarik inprimakian</target>
       </trans-unit>
-      <trans-unit id="DCmDkZO" resname="Set the pass mark">
-        <source>Set the pass mark</source>
-        <target>Gutxieneko puntuazioa ezarri</target>
-      </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
         <target>Erantzunak bistaratzeko botoi bat gehitu</target>
@@ -6572,14 +6556,6 @@
       <trans-unit id="kVirQpc" resname="Border color">
         <source>Border color</source>
         <target>Ertz-kolorea</target>
-      </trans-unit>
-      <trans-unit id="yWj5Kfm" resname="Save score button">
-        <source>Save score button</source>
-        <target>Puntuak gordetzeko botoia</target>
-      </trans-unit>
-      <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
-        <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
-        <target>Botoia SCORM formatuan eta edizio garaian erakutsiko da soilik.</target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
         <source>Provide a valid GeoGebra URL or activity ID.</source>
@@ -12421,22 +12397,6 @@
         <source>People with access</source>
         <target>Sarbidea duten pertsonak</target>
       </trans-unit>
-      <trans-unit id="9wre8vt" resname="General access">
-        <source>General access</source>
-        <target>Sarbide orokorra</target>
-      </trans-unit>
-      <trans-unit id="u8e79p9" resname="Restricted (Private)">
-        <source>Restricted (Private)</source>
-        <target>Murriztua (Pribatua)</target>
-      </trans-unit>
-      <trans-unit id="zw48xt3" resname="Anyone with the link (Public)">
-        <source>Anyone with the link (Public)</source>
-        <target>Edonor esteka bidez (Publikoa)</target>
-      </trans-unit>
-      <trans-unit id="icbijz2" resname="Anyone who has the link can view and edit in real time">
-        <source>Anyone who has the link can view and edit in real time</source>
-        <target>Esteka duen edonork ikusi eta editatu ahal izango du denbora errealean</target>
-      </trans-unit>
       <trans-unit id="gjfwita" resname="Print preview">
         <source>Print preview</source>
         <target>Inprimatu aurrebista</target>
@@ -13532,14 +13492,6 @@
       <trans-unit id="98b0wam" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
         <target>Zure sarbidea proiektu honetan bertan behera geratu da.</target>
-      </trans-unit>
-      <trans-unit id="wdqlbi8" resname="source">
-        <source>source</source>
-        <target>iturria</target>
-      </trans-unit>
-      <trans-unit id="ny3ki3k" resname="target">
-        <source>target</source>
-        <target>helmuga</target>
       </trans-unit>
       <trans-unit id="2lphe6l" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>

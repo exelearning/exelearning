@@ -3845,10 +3845,6 @@
         <source>Project properties</source>
         <target>Proprietăți proiect</target>
       </trans-unit>
-      <trans-unit id="W7h4Kea" resname="Share link">
-        <source>Share link</source>
-        <target>Link de partajare</target>
-      </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
         <target>Informații și prezentare</target>
@@ -5985,14 +5981,6 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>Acest conținut a fost creat cu eXeLearning, editorul tău gratuit și open source pentru crearea de resurse educaționale.</target>
       </trans-unit>
-      <trans-unit id="V7aVH8i" resname="Download .elp file">
-        <source>Download .elp file</source>
-        <target>Descarcă fișierul .elp</target>
-      </trans-unit>
-      <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
-        <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target>Acest bloc va crea un link pentru descărcarea fișierului elp. Scrie câteva instrucțiuni de utilizare și personalizează link-ul de descărcare.</target>
-      </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
         <target>Link de descărcare</target>
@@ -6345,10 +6333,6 @@
         <source>No questions in the form</source>
         <target>Nu există întrebări în formular</target>
       </trans-unit>
-      <trans-unit id="DCmDkZO" resname="Set the pass mark">
-        <source>Set the pass mark</source>
-        <target>Setează pragul de promovare</target>
-      </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
         <target>Include un buton pentru afișarea răspunsurilor</target>
@@ -6572,14 +6556,6 @@
       <trans-unit id="kVirQpc" resname="Border color">
         <source>Border color</source>
         <target>Culoarea marginii</target>
-      </trans-unit>
-      <trans-unit id="yWj5Kfm" resname="Save score button">
-        <source>Save score button</source>
-        <target>Buton de salvare scor</target>
-      </trans-unit>
-      <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
-        <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
-        <target>Butonul va fi afișat doar atunci când exportați ca SCORM și în timpul editării în eXeLearning.</target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
         <source>Provide a valid GeoGebra URL or activity ID.</source>
@@ -12421,22 +12397,6 @@
         <source>People with access</source>
         <target>Persoane cu acces</target>
       </trans-unit>
-      <trans-unit id="bwjbmyv" resname="General access">
-        <source>General access</source>
-        <target>Acces general</target>
-      </trans-unit>
-      <trans-unit id="fbntbt0" resname="Restricted (Private)">
-        <source>Restricted (Private)</source>
-        <target>Restricționat (Privat)</target>
-      </trans-unit>
-      <trans-unit id="naa6hjq" resname="Anyone with the link (Public)">
-        <source>Anyone with the link (Public)</source>
-        <target>Oricine are linkul (Public)</target>
-      </trans-unit>
-      <trans-unit id="0btjzxc" resname="Anyone who has the link can view and edit in real time">
-        <source>Anyone who has the link can view and edit in real time</source>
-        <target>Oricine cu link-ul poate vizualiza și edita în timp real</target>
-      </trans-unit>
       <trans-unit id="ngzh1y7" resname="Print preview">
         <source>Print preview</source>
         <target>Previzualizare de imprimare</target>
@@ -13532,14 +13492,6 @@
       <trans-unit id="pmk20cs" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
         <target>Accesul tău la acest proiect a fost revocat.</target>
-      </trans-unit>
-      <trans-unit id="ogtaqry" resname="source">
-        <source>source</source>
-        <target>sursă</target>
-      </trans-unit>
-      <trans-unit id="ggim3m6" resname="target">
-        <source>target</source>
-        <target>destinație</target>
       </trans-unit>
       <trans-unit id="fclnnoo" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>

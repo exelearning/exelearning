@@ -3845,10 +3845,6 @@
         <source>Project properties</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="W7h4Kea" resname="Share link">
-        <source>Share link</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
         <target></target>
@@ -5989,14 +5985,6 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="V7aVH8i" resname="Download .elp file">
-        <source>Download .elp file</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
-        <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
         <target></target>
@@ -6349,10 +6337,6 @@
         <source>No questions in the form</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="DCmDkZO" resname="Set the pass mark">
-        <source>Set the pass mark</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
         <target></target>
@@ -6575,14 +6559,6 @@
       </trans-unit>
       <trans-unit id="kVirQpc" resname="Border color">
         <source>Border color</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="yWj5Kfm" resname="Save score button">
-        <source>Save score button</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
-        <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
@@ -12433,22 +12409,6 @@
         <source>People with access</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="l3j18dv" resname="General access">
-        <source>General access</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ab38pk2" resname="Restricted (Private)">
-        <source>Restricted (Private)</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ss8j6kh" resname="Anyone with the link (Public)">
-        <source>Anyone with the link (Public)</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="vgl8pi5" resname="Anyone who has the link can view and edit in real time">
-        <source>Anyone who has the link can view and edit in real time</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="dygin8i" resname="Print preview">
         <source>Print preview</source>
         <target></target>
@@ -13519,14 +13479,6 @@
       </trans-unit>
       <trans-unit id="famh8qt" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="n7bfsuw" resname="source">
-        <source>source</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="l94ikeg" resname="target">
-        <source>target</source>
         <target></target>
       </trans-unit>
       <trans-unit id="eqsc2z1" resname="Create new formula toolbar">
