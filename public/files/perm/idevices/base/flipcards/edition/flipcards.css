@@ -43,7 +43,8 @@
     align-items: flex-start;
     display: flex;
     justify-content: center;
-    flex-wrap: nowrap;
+    /* The back goes below the front when both do not fit. */
+    flex-wrap: wrap;
     width: 100%;
 }
 
@@ -96,9 +97,8 @@
 }
 
 .FLCRDS-EDatosCarta {
-    width: 50%;
+    flex: 1 1 360px;
     max-width: 450px;
-    min-width: 400px;
     border-radius: 0.3em;
     padding: 0.7em;
     padding-bottom: 1.3em;

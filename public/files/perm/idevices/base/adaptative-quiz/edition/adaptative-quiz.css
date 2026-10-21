@@ -14,14 +14,19 @@
 .ADQ-EOptionsMedia {
     align-items: center;
     display: flex;
+    /* The preview goes below the fields when both do not fit. */
+    flex-wrap: wrap;
     justify-content: space-between;
     margin-bottom: 1em;
     width: 100%;
 }
 
 .ADQ-EOptionsGame {
-    min-height: 300px;
-    width: 50%;
+    flex: 1 1 280px;
+}
+
+.ADQ-EMultiMediaOption {
+    flex: 1 1 400px;
 }
 
 .ADQ-EOptionsGame input[type="text"] {
@@ -29,10 +34,11 @@
 }
 
 .ADQ-EMultimedia {
+    aspect-ratio: 400 / 227;
     background-color: #fff;
     border-radius: 0.5em;
-    height: 227px;
     margin: 40px auto auto auto;
+    max-width: 100%;
     position: relative;
     width: 400px;
 }

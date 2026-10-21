@@ -26,6 +26,8 @@
 .CCGM-EOptionsMedia {
 	align-items: center;
 	display: flex;
+	/* The preview goes below the fields when both do not fit. */
+	flex-wrap: wrap;
 	justify-content: space-between;
 	margin-bottom: 1em;
 	width: 100%;
@@ -33,18 +35,18 @@
 
 /* Medias */
 .CCGM-EMultiMediaOption {
+	flex: 1 1 400px;
 	height: 100%;
 	min-height: 300px;
-	min-width: 400px;
 	position: relative;
-	width: 50%;
 }
 
 .CCGM-EMultimedia {
+	aspect-ratio: 400 / 227;
 	background-color: #fff;
 	border-radius: .5em;
-	height: 227px;
 	margin: 40px auto auto auto;
+	max-width: 100%;
 	position: relative;
 	width: 400px;
 }
@@ -110,8 +112,7 @@
 }
 
 .CCGM-EOptionsGame {
-	min-height: 300px;
-	width: 50%;
+	flex: 1 1 280px;
 }
 
 .CCGM-EOptionsGame div {
