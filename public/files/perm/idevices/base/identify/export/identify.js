@@ -30,7 +30,7 @@ var $eXeIdentifica = {
         yellow: '#fcf4d3',
         correct: '#dcffdc',
     },
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
     initialScore: '',
@@ -55,7 +55,8 @@ var $eXeIdentifica = {
     },
 
     loadGame: function () {
-        $eXeIdentifica.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeIdentifica.options.length = $eXeIdentifica.activities.length;
         $eXeIdentifica.activities.each(function (i) {
             const dl = $('.identifica-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -73,7 +74,7 @@ var $eXeIdentifica = {
             mOption.main = 'idfMainContainer-' + i;
             mOption.idevice = 'identifica-IDevice';
 
-            $eXeIdentifica.options.push(mOption);
+            $eXeIdentifica.options[i] = mOption;
 
             const idf = $eXeIdentifica.createInterfaceIndetify(i);
             dl.before(idf).remove();

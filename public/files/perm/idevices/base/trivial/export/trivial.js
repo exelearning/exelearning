@@ -135,7 +135,8 @@ var $eXeTrivial = {
     },
 
     loadGame: function () {
-        $eXeTrivial.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeTrivial.options.length = $eXeTrivial.activities.length;
         $eXeTrivial.activities.each(function (i) {
             const dl = $('.trivial-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -158,7 +159,7 @@ var $eXeTrivial = {
                     );
                 mOption.temas[j] = cuestions;
             }
-            $eXeTrivial.options.push(mOption);
+            $eXeTrivial.options[i] = mOption;
 
             const trivial = $eXeTrivial.createInterfaceTrivial(i);
             dl.before(trivial).remove();

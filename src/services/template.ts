@@ -33,6 +33,24 @@ const env = nunjucks.configure(viewsDir, {
 // JSON filter - serialize to JSON
 env.addFilter('json', (value: unknown) => JSON.stringify(value));
 
+// jsonScript filter - serialize a value to JSON that is safe to embed inside a
+// SINGLE-QUOTED JS string literal in an inline <script> and JSON.parse() client-side.
+// JSON.stringify does NOT escape the string delimiter ('), the template-literal markers
+// (` and ${), or `</script>`, and leaves U+2028/U+2029 (illegal in JS string literals)
+// raw — so attacker-controlled values (e.g. a user's saved locale preference rendered
+// into views/workarea/workarea.njk) could break out and execute. Escape order matters:
+// backslashes first (so JSON's own escapes survive the JS-literal decode), then the '
+// delimiter, then `<` (neutralizes `</script>` while staying valid JSON via <) and
+// the line separators. Round-trips to the original value on JSON.parse.
+env.addFilter('jsonScript', (value: unknown) =>
+    JSON.stringify(value)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/</g, '\\u003c')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029'),
+);
+
 // Asset filter - prefix paths with base path and version for static assets (cache busting)
 env.addFilter('asset', (assetPath: string) => {
     const basePath = getBasePath();

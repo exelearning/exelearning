@@ -478,7 +478,11 @@
 
         const camera = new T.PerspectiveCamera(45, width / height, 0.1, 1000);
 
-        const renderer = new T.WebGLRenderer({ canvas, antialias: true });
+        // preserveDrawingBuffer keeps the last frame readable, so the copy of the page the desktop
+        // app prints can turn the canvas into a picture (<model-viewer> already keeps it). Only a
+        // page built for printing needs it; anywhere else it would only cost drawing speed.
+        const preserveDrawingBuffer = Boolean(globalScope.$exeExport?.printing);
+        const renderer = new T.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer });
         renderer.setSize(width, height);
         if (typeof renderer.setPixelRatio === 'function') {
             const dpr = (globalScope.devicePixelRatio || 1);

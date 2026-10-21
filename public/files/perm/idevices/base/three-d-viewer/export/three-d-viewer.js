@@ -11,6 +11,13 @@
 (function () {
     const globalScope = typeof window !== 'undefined' ? window : globalThis;
 
+    /**
+     * Where this script was loaded from, read while it runs. See getThreeJSBaseUrl: a page shown
+     * as a blob: document has no folder of its own, but it loads this script from the folder
+     * that holds the 3D libraries.
+     */
+    const OWN_SCRIPT_URL = (typeof document !== 'undefined' && document.currentScript?.src) || '';
+
     /** Default background color */
     const DEFAULT_BACKGROUND = '#f5f5f5';
 
@@ -530,6 +537,8 @@
      * Get the base URL for Three.js modules (STLLoader, OrbitControls, etc.).
      *
      * WHY mode-aware: Different execution contexts need different path strategies:
+     * - Blob document (the print preview): its URL has no folder to resolve anything against,
+     *   so the folder this script was loaded from, which the preview points at the server
      * - Static: Uses origin for absolute URL (prevents path duplication in dynamic imports)
      * - Server: Builds from config.baseURL + basePath (handles subdirectory installs)
      * - Export: Uses page URL base + relative paths (./idevices or ../idevices)
@@ -545,6 +554,10 @@
      * @returns {string} Absolute URL ending with trailing slash for module base path
      */
     function getThreeJSBaseUrl() {
+        if (globalScope.location?.protocol === 'blob:' && OWN_SCRIPT_URL) {
+            return OWN_SCRIPT_URL.slice(0, OWN_SCRIPT_URL.lastIndexOf('/') + 1);
+        }
+
         const mode = detectMode();
 
         if (mode.isStaticMode) {
@@ -1403,6 +1416,21 @@
                 viewerSrc = await resolveAssetUrlAsync(cfg.src);
             }
 
+            // On a page built for printing every model is loaded and drawn, in view or not.
+            // model-viewer loads a model when its viewer scrolls into view, and draws one that is
+            // out of view only once, so a viewer never scrolled to printed blank, and so did one
+            // whose drawing a resize (the options panel opening, say) had cleared. Counted as
+            // visible once loaded, it is drawn again whenever it needs to be.
+            if (globalScope.$exeExport?.printing) {
+                this.modelViewer.setAttribute('loading', 'eager');
+                Object.defineProperty(this.modelViewer, 'modelIsVisible', {
+                    configurable: true,
+                    get() {
+                        return Boolean(this.loaded);
+                    },
+                });
+            }
+
             if (viewerSrc) {
                 this.modelViewer.src = viewerSrc;
                 // model-viewer's property doesn't always reflect to the
@@ -1739,6 +1767,7 @@
 
     // Optional helpers exposed for debugging
     globalScope.$threedviewer.getModelViewerLibUrl = getModelViewerLibUrl;
+    globalScope.$threedviewer.getThreeJSBaseUrl = getThreeJSBaseUrl;
     globalScope.$threedviewer.resolveAssetUrl = resolveAssetUrl;
     globalScope.$threedviewer.__migrateLegacyConfig = migrateLegacyConfig;
     globalScope.$threedviewer.__detectModelTypeFromSrc = detectModelTypeFromSrc;

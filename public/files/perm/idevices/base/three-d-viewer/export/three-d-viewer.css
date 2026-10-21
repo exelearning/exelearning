@@ -322,3 +322,11 @@
 .tdv-placing canvas {
     cursor: crosshair !important;
 }
+
+/* On paper the viewer is a picture of the model: one sheet holds all of it. */
+@media print {
+    .three-d-viewer-wrapper {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
