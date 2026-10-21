@@ -75,8 +75,8 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'markdown-text',
         'file-attachment',
         'interactive-video',
-        'lomloe',
         'digcompedu',
+        'lomloe',
     ];
     const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
 
