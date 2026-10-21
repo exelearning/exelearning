@@ -41,16 +41,14 @@
     font-weight: 500;
     padding: 0 12px;
     background: var(--brand-primary);
+    // Bootstrap's hover and focus states read these; unset, focus shows white text on white
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-color: var(--white);
 
     &:hover,
     &:active {
         background: var(--brand-primary-dark) !important;
         color: var(--white);
-    }
-
-    // Bootstrap's .btn:focus-visible sets a transparent background (white text on white)
-    &:not(.display-outline):focus-visible {
-        background: var(--brand-primary-dark) !important;
     }
 
     span {
@@ -62,6 +60,8 @@
         background: transparent;
         border: 1.5px solid var(--brand-primary);
         color: var(--brand-primary);
+        --bs-btn-hover-bg: var(--brand-primary-50);
+        --bs-btn-hover-color: var(--brand-primary-dark);
 
         &:hover {
             background: var(--brand-primary-50) !important;
