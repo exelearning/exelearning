@@ -1587,7 +1587,7 @@ describe('FormProperties', () => {
             const tabs = table.querySelectorAll('.project-properties-tab');
             expect(tabs[0].textContent).toBe('Content metadata');
             expect(tabs[1].textContent).toBe('Export options');
-            expect(tabs[2].textContent).toBe('Assessment');
+            expect(tabs[2].textContent).toBe('Grading');
             expect(tabs[3].textContent).toBe('Custom code');
         });
 
@@ -1603,7 +1603,7 @@ describe('FormProperties', () => {
             expect(firstTab.getAttribute('aria-selected')).toBe('true');
         });
 
-        it('should place the assessment properties in their own tab', () => {
+        it('should place the grading properties in their own tab', () => {
             const formProperties = new FormProperties(mockProperties);
             const table = document.createElement('div');
             const properties = {
@@ -1618,21 +1618,21 @@ describe('FormProperties', () => {
                     type: 'number',
                     title: 'Minimum score to pass',
                     value: 5,
-                    groups: { assessment: 'Assessment' },
+                    groups: { grading: 'Grading' },
                     category: { properties: 'Properties' },
                 },
                 pp_passScoreEveryActivity: {
                     type: 'checkbox',
                     title: 'Each SCORM activity must reach its minimum score',
                     value: 'false',
-                    groups: { assessment: 'Assessment' },
+                    groups: { grading: 'Grading' },
                     category: { properties: 'Properties' },
                 },
             };
 
             formProperties.addRowsWithTabs(properties, table);
 
-            const pane = table.querySelector('#props-pane-assessment');
+            const pane = table.querySelector('#props-pane-grading');
             expect(pane.querySelector('[property="pp_passScore"]')).not.toBeNull();
             expect(pane.querySelector('[property="pp_passScoreEveryActivity"]')).not.toBeNull();
             expect(pane.querySelector('[property="pp_addPagination"]')).toBeNull();
@@ -1641,13 +1641,13 @@ describe('FormProperties', () => {
             expect(exportPane.querySelector('[property="pp_passScore"]')).toBeNull();
         });
 
-        it('should render a note at the top of the assessment pane', () => {
+        it('should render a note at the top of the grading pane', () => {
             const formProperties = new FormProperties(mockProperties);
             const table = document.createElement('div');
 
             formProperties.addRowsWithTabs({}, table);
 
-            const pane = table.querySelector('#props-pane-assessment');
+            const pane = table.querySelector('#props-pane-grading');
             const note = pane.querySelector('.form-properties').firstElementChild;
             expect(note.classList.contains('properties-note')).toBe(true);
             expect(note.textContent).toBe(
@@ -1663,7 +1663,7 @@ describe('FormProperties', () => {
             type: 'checkbox',
             title: 'Switch',
             value: 'false',
-            groups: { assessment: 'Assessment' },
+            groups: { grading: 'Grading' },
             category: { properties: 'Properties' },
         };
 
@@ -2035,6 +2035,19 @@ describe('FormProperties', () => {
             expect(tab2.classList.contains('active')).toBe(true);
             expect(pane1.classList.contains('active')).toBe(false);
             expect(pane2.classList.contains('active')).toBe(true);
+        });
+
+        it('should scroll the activated tab into view in a narrow tab row', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const tabsNav = document.createElement('div');
+            const tab = document.createElement('button');
+            tab.classList.add('project-properties-tab');
+            tab.scrollIntoView = vi.fn();
+            tabsNav.appendChild(tab);
+
+            formProperties.activateTab(tabsNav, document.createElement('div'), tab, 'pane-1');
+
+            expect(tab.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
         });
 
         it('should update aria-selected attributes', () => {

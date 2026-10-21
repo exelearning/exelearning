@@ -151,7 +151,11 @@ describe('UserPreferences', () => {
         value: ['es'],
         customLabel: 'Choose languages',
         // Named in the interface language and sorted by name
-        options: { __system_default__: 'System default', 'en-US': 'anglais (États-Unis)', es: 'espagnol' },
+        options: {
+          __system_default__: 'System default',
+          'en-US': new Intl.DisplayNames(['fr'], { type: 'language', languageDisplay: 'standard' }).of('en-US'),
+          es: new Intl.DisplayNames(['fr'], { type: 'language', languageDisplay: 'standard' }).of('es'),
+        },
       }));
       delete window.electronAPI;
     });

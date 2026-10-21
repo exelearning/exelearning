@@ -135,8 +135,8 @@ export default class FormProperties {
             { key: 'properties_package', title: _('Content metadata') },
             { key: 'export', title: _('Export options') },
             {
-                key: 'assessment',
-                title: _('Assessment'),
+                key: 'grading',
+                title: _('Grading'),
                 note: _(
                     'Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.'
                 ),
@@ -302,6 +302,8 @@ export default class FormProperties {
         // Activate selected tab
         activeButton.classList.add('active');
         activeButton.setAttribute('aria-selected', 'true');
+        // The tab row scrolls when it is narrower than the tabs
+        activeButton.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
 
         // Activate selected pane
         const activePane = tabContent.querySelector(`#${activePaneId}`);

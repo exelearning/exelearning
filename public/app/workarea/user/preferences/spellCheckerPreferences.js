@@ -11,22 +11,36 @@ function toIntlLocales(uiLocale) {
     return uiLocale ? [INTL_LOCALES[uiLocale] || uiLocale] : [];
 }
 
+function createDisplayNames(uiLocale) {
+    try {
+        // Standard display keeps regional variants together: "English (United States)"
+        return new Intl.DisplayNames(toIntlLocales(uiLocale), { type: 'language', languageDisplay: 'standard' });
+    } catch {
+        return null;
+    }
+}
+
+function createCollator(uiLocale) {
+    try {
+        return new Intl.Collator(toIntlLocales(uiLocale));
+    } catch {
+        return new Intl.Collator();
+    }
+}
+
 /**
  * Name a language code in the interface language, falling back to the code itself
  * @param {string} code - BCP 47 language code (es, en-US...)
  * @param {string} [uiLocale] - Interface language
+ * @param {Intl.DisplayNames|null} [displayNames] - Reused when naming several codes
  * @returns {string}
  */
-export function getLanguageDisplayName(code, uiLocale) {
+export function getLanguageDisplayName(code, uiLocale, displayNames = createDisplayNames(uiLocale)) {
     try {
-        // Standard display keeps regional variants together: "English (United States)"
-        const name = new Intl.DisplayNames(toIntlLocales(uiLocale), {
-            type: 'language',
-            languageDisplay: 'standard',
-        }).of(code);
+        const name = displayNames?.of(code);
         if (name && name !== code) return name;
     } catch {
-        // Invalid code or locale: show the code
+        // Invalid code: show the code
     }
     return code;
 }
@@ -38,10 +52,11 @@ export function getLanguageDisplayName(code, uiLocale) {
  * @returns {Object<string, string>}
  */
 export function getSpellCheckerLanguageOptions(codes, uiLocale) {
-    const collator = new Intl.Collator(toIntlLocales(uiLocale));
+    const displayNames = createDisplayNames(uiLocale);
+    const collator = createCollator(uiLocale);
     return Object.fromEntries(
         codes
-            .map(code => [code, getLanguageDisplayName(code, uiLocale)])
+            .map(code => [code, getLanguageDisplayName(code, uiLocale, displayNames)])
             .sort(([, a], [, b]) => collator.compare(a, b))
     );
 }

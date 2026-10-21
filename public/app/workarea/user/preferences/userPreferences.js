@@ -76,7 +76,9 @@ export default class UserPreferences {
             const uiLocale = eXeLearning.app.locale?.lang || eXeLearning.config?.locale;
             this.preferences.spellCheckerLanguages = {
                 title: _('Spell checker languages'),
-                help: _('System default uses the operating system language.'),
+                help: _(
+                    'System default uses the operating system language. It is also used when no language is checked.'
+                ),
                 ...(category !== undefined ? { category } : {}),
                 value: spellCheckerSettingsToValue(settings),
                 type: 'multiselect',
