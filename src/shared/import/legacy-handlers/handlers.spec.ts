@@ -24,6 +24,7 @@ import { ImageMagnifierHandler } from './ImageMagnifierHandler';
 import { GeogebraHandler } from './GeogebraHandler';
 import { InteractiveVideoHandler } from './InteractiveVideoHandler';
 import { GameHandler } from './GameHandler';
+import { encryptDataGame } from '../../export/utils/dataGameCipher';
 import { FpdSolvedExerciseHandler } from './FpdSolvedExerciseHandler';
 import { WikipediaHandler } from './WikipediaHandler';
 import { RssHandler } from './RssHandler';
@@ -4293,6 +4294,27 @@ describe('GameHandler', () => {
             `);
             const props = handler.extractProperties(dict);
             expect(props.typeGame).toBe('FlipCards');
+        });
+
+        it('should decrypt an encrypted DataGame, characters outside Latin-1 included', () => {
+            // escape() writes those as %uXXXX, which only unescape() reads back.
+            const payload = encryptDataGame(JSON.stringify({ typeGame: 'Selecciona', title: 'Ωμέγα' }));
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="&lt;div class=&quot;selecciona-DataGame&quot;&gt;${payload}&lt;/div&gt;"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+
+            expect(handler.extractProperties(dict)).toMatchObject({ typeGame: 'Selecciona', title: 'Ωμέγα' });
+            expect(handler.getTargetType()).toBe('quick-questions-multiple-choice');
         });
     });
 });
