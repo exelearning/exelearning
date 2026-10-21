@@ -1234,6 +1234,39 @@ describe('Translations Command', () => {
             // Should not add just "key" as a translation
             expect(content).not.toMatch(/resname="key"/);
         });
+
+        it('should exclude keys with characters that XML 1.0 does not allow', async () => {
+            const libDir = path.join(testDir, 'public', 'libs', 'minified');
+            await fs.ensureDir(libDir);
+            // Like the pdf.js worker: binary data inside a minified file that happens to hold `_(`
+            await fs.writeFile(
+                path.join(libDir, 'worker.min.js'),
+                `a=_('bin\u0004ary\u0005');b=_('nul\u0000');c=_('non￾char');d=_('Valid key with emoji \u{1F600}');`,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Valid key with emoji \u{1F600}');
+            expect(content).not.toContain('bin');
+            expect(content).not.toContain('nul');
+            expect(content).not.toContain('non');
+            // Every character left in the file must be allowed by the XML 1.0 Char production
+            expect(content).not.toMatch(/[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/u);
+        });
+
+        it('should keep keys with tabs and line breaks, which XML 1.0 allows', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(path.join(srcDir, 'source.ts'), "const a = trans('Column\tvalue\nnext line');");
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Column\tvalue\nnext line');
+        });
     });
 
     describe('duplicate trans-units', () => {
