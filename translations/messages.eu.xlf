@@ -15647,379 +15647,379 @@
       </trans-unit>
       <trans-unit id="g8vxxtf" resname="Minimum score to pass">
         <source>Minimum score to pass</source>
-        <target></target>
+        <target>~Gainditzeko gutxieneko puntuazioa</target>
       </trans-unit>
       <trans-unit id="xcp4nxs" resname="Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.">
         <source>Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.</source>
-        <target></target>
+        <target>~Jarduera bat gainditutzat jotzeko ikasleek lortu behar duten nota, 10etik. iDevice guztiek balio hau erabiltzen dute, berea definitzen ez badute.</target>
       </trans-unit>
       <trans-unit id="inm4juj" resname="Each SCORM activity must reach its minimum score">
         <source>Each SCORM activity must reach its minimum score</source>
-        <target></target>
+        <target>~SCORM jarduera bakoitzak bere gutxieneko puntuazioa lortu behar du</target>
       </trans-unit>
       <trans-unit id="p83yp4b" resname="A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.">
         <source>A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.</source>
-        <target></target>
+        <target>~SCORM orri bat gainditzen da soilik bere jarduera guztiek beren gutxieneko puntuazioa lortzen badute. Aukera hau markatzen ez bada, nahikoa da puntuazioen batez besteko haztatuak gutxieneko puntuazioena lortzea; beraz, nota altu batek baxu bat konpentsa dezake.</target>
       </trans-unit>
       <trans-unit id="uxyfe3c" resname="Edit access">
         <source>Edit access</source>
-        <target></target>
+        <target>~Nork edita dezakeen</target>
       </trans-unit>
       <trans-unit id="qdld7rb" resname="Only invited people">
         <source>Only invited people</source>
-        <target></target>
+        <target>~Gonbidatutako pertsonak soilik</target>
       </trans-unit>
       <trans-unit id="fas6nng" resname="Anyone with the edit link">
         <source>Anyone with the edit link</source>
-        <target></target>
+        <target>~Edizio-esteka duen edonork</target>
       </trans-unit>
       <trans-unit id="16ahswc" resname="Only the people added above can open and edit this resource.">
         <source>Only the people added above can open and edit this resource.</source>
-        <target></target>
+        <target>~Baimendutako pertsonek soilik ireki eta edita dezakete baliabide hau.</target>
       </trans-unit>
       <trans-unit id="x6lsoya" resname="Edit link">
         <source>Edit link</source>
-        <target></target>
+        <target>~Edizio-esteka</target>
       </trans-unit>
       <trans-unit id="qwletf3" resname="Public read-only link">
         <source>Public read-only link</source>
-        <target></target>
+        <target>~Esteka publikoa (irakurtzeko soilik)</target>
       </trans-unit>
       <trans-unit id="ba1hcha" resname="Disabled">
         <source>Disabled</source>
-        <target></target>
+        <target>~Desaktibatuta</target>
       </trans-unit>
       <trans-unit id="l3mixs7" resname="Enabled">
         <source>Enabled</source>
-        <target></target>
+        <target>~Aktibatuta</target>
       </trans-unit>
       <trans-unit id="elsfwgk" resname="This resource has no public read-only link.">
         <source>This resource has no public read-only link.</source>
-        <target></target>
+        <target>~Baliabide honek ez du esteka publikorik.</target>
       </trans-unit>
       <trans-unit id="10sw53m" resname="Public link">
         <source>Public link</source>
-        <target></target>
+        <target>~Esteka publikoa</target>
       </trans-unit>
       <trans-unit id="50rbc6p" resname="Regenerate link">
         <source>Regenerate link</source>
-        <target></target>
+        <target>~Esteka berriro sortu</target>
       </trans-unit>
       <trans-unit id="dldotg0" resname="Regenerate the public link? The previous link will stop working.">
         <source>Regenerate the public link? The previous link will stop working.</source>
-        <target></target>
+        <target>~Esteka publikoa berriro sortu? Aurrekoak ez du gehiago funtzionatuko.</target>
       </trans-unit>
       <trans-unit id="nkeb6yk" resname="Yes, regenerate">
         <source>Yes, regenerate</source>
-        <target></target>
+        <target>~Bai, berriro sortu</target>
       </trans-unit>
       <trans-unit id="5n5e7e6" resname="Print options">
         <source>Print options</source>
-        <target></target>
+        <target>~Inprimatzeko aukerak</target>
       </trans-unit>
       <trans-unit id="hx613u8" resname="Save as PDF">
         <source>Save as PDF</source>
-        <target></target>
+        <target>~PDF gisa gorde</target>
       </trans-unit>
       <trans-unit id="m1arx5z" resname="Printing did not start. Printing may be disabled in this browser or on this device.">
         <source>Printing did not start. Printing may be disabled in this browser or on this device.</source>
-        <target></target>
+        <target>~Inprimatzea ez da hasi. Baliteke nabigatzaile honetan edo gailuan desaktibatuta egotea.</target>
       </trans-unit>
       <trans-unit id="3sms83l" resname="The PDF could not be saved.">
         <source>The PDF could not be saved.</source>
-        <target></target>
+        <target>~Ezin izan da PDFa gorde.</target>
       </trans-unit>
       <trans-unit id="wpzhgxg" resname="All visible content will be printed.">
         <source>All visible content will be printed.</source>
-        <target></target>
+        <target>~Ikusgai dagoen eduki guztia inprimatuko da.</target>
       </trans-unit>
       <trans-unit id="cdo0zbc" resname="You can choose which activities to include and whether to show hidden content.">
         <source>You can choose which activities to include and whether to show hidden content.</source>
-        <target></target>
+        <target>~Zein jarduera sartu eta ezkutuko edukia erakutsi ala ez aukera dezakezu.</target>
       </trans-unit>
       <trans-unit id="axuu69l" resname="You can choose whether to show hidden content.">
         <source>You can choose whether to show hidden content.</source>
-        <target></target>
+        <target>~Ezkutuko edukia erakutsi ala ez aukera dezakezu.</target>
       </trans-unit>
       <trans-unit id="n7o2h1i" resname="Document">
         <source>Document</source>
-        <target></target>
+        <target>~Dokumentua</target>
       </trans-unit>
       <trans-unit id="wmvxwou" resname="Show link URLs">
         <source>Show link URLs</source>
-        <target></target>
+        <target>~Esteken URLa erakutsi</target>
       </trans-unit>
       <trans-unit id="hd5m6d6" resname="Print the content of minimized boxes">
         <source>Print the content of minimized boxes</source>
-        <target></target>
+        <target>~Minimizatutako kutxen edukia inprimatu</target>
       </trans-unit>
       <trans-unit id="uuhbh60" resname="Print teacher-only content">
         <source>Print teacher-only content</source>
-        <target></target>
+        <target>~Irakasleentzako soilik den edukia inprimatu</target>
       </trans-unit>
       <trans-unit id="j4gbsgp" resname="Loading preview...">
         <source>Loading preview...</source>
-        <target></target>
+        <target>~Aurrebista kargatzen...</target>
       </trans-unit>
       <trans-unit id="wjwoi2v" resname="Spell checker languages">
         <source>Spell checker languages</source>
-        <target></target>
+        <target>~Zuzentzaile ortografikoaren hizkuntzak</target>
       </trans-unit>
       <trans-unit id="wi7d8ff" resname="System default uses the operating system language.">
         <source>System default uses the operating system language.</source>
-        <target></target>
+        <target>~Aukera lehenetsiak sistema eragilearen hizkuntza erabiltzen du.</target>
       </trans-unit>
       <trans-unit id="he7u9z5" resname="Choose languages">
         <source>Choose languages</source>
-        <target></target>
+        <target>~Hizkuntzak aukeratu</target>
       </trans-unit>
       <trans-unit id="0h8vjbo" resname="System default">
         <source>System default</source>
-        <target></target>
+        <target>~Sistemaren lehenetsia</target>
       </trans-unit>
       <trans-unit id="zgpj4xt" resname="iDevice %1">
         <source>iDevice %1</source>
-        <target></target>
+        <target>~iDevice %1</target>
       </trans-unit>
       <trans-unit id="d26uym6" resname="%1 on page &quot;%2&quot;">
         <source>%1 on page "%2"</source>
-        <target></target>
+        <target>~%1 "%2" orrian</target>
       </trans-unit>
       <trans-unit id="22azljg" resname="Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.">
         <source>Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.</source>
-        <target></target>
+        <target>~Jarduera ebaluagarriek gutxieneko puntuazioa erabiltzen dute esportazio-formatu guztietan. SCORM aukera SCORMekin bateragarriak diren esportazioei soilik aplikatzen zaie.</target>
       </trans-unit>
       <trans-unit id="ldhvkbu" resname="Server unavailable">
         <source>Server unavailable</source>
-        <target></target>
+        <target>~Zerbitzaria ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="v8up3zn" resname="the server took too long to respond, try again later">
         <source>the server took too long to respond, try again later</source>
-        <target></target>
+        <target>~zerbitzariak denbora gehiegi behar izan du erantzuteko, saiatu berriro geroago</target>
       </trans-unit>
       <trans-unit id="4492dei" resname="too many requests to this site, try again later">
         <source>too many requests to this site, try again later</source>
-        <target></target>
+        <target>~eskaera gehiegi gune honetara, saiatu berriro geroago</target>
       </trans-unit>
       <trans-unit id="rw336o3" resname="server error, try again later">
         <source>server error, try again later</source>
-        <target></target>
+        <target>~zerbitzariaren errorea, saiatu berriro geroago</target>
       </trans-unit>
       <trans-unit id="9dkk7ne" resname="the site did not answer in time or was busy; the link may still work, try again later.">
         <source>the site did not answer in time or was busy; the link may still work, try again later.</source>
-        <target></target>
+        <target>~guneak ez du garaiz erantzun edo lanpetuta zegoen; baliteke estekak funtzionatzea, saiatu berriro geroago.</target>
       </trans-unit>
       <trans-unit id="5iy9tuu" resname="unavailable">
         <source>unavailable</source>
-        <target></target>
+        <target>~ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="rh8j4aw" resname="Print iDevices">
         <source>Print iDevices</source>
-        <target></target>
+        <target>~iDevice-ak inprimatu</target>
       </trans-unit>
       <trans-unit id="zzn7m9g" resname="Content without activities">
         <source>Content without activities</source>
-        <target></target>
+        <target>~Edukia jarduerarik gabe</target>
       </trans-unit>
       <trans-unit id="lu7x3qe" resname="Content with activities">
         <source>Content with activities</source>
-        <target></target>
+        <target>~Edukia jarduerekin</target>
       </trans-unit>
       <trans-unit id="o30k1k9" resname="Content with activities in an appendix">
         <source>Content with activities in an appendix</source>
-        <target></target>
+        <target>~Edukia, jarduerak eranskin batean dituela</target>
       </trans-unit>
       <trans-unit id="dmqgt06" resname="Activities only (no other content)">
         <source>Activities only (no other content)</source>
-        <target></target>
+        <target>~Jarduerak soilik (gainerako edukirik gabe)</target>
       </trans-unit>
       <trans-unit id="6m3ge5y" resname="What would you like to print?">
         <source>What would you like to print?</source>
-        <target></target>
+        <target>~Zer inprimatu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="4zj1nxb" resname="Shown when a printing mode that includes activities is selected.">
         <source>Shown when a printing mode that includes activities is selected.</source>
-        <target></target>
+        <target>~Jarduerak barne hartzen dituen inprimatze-modu bat aukeratzean erakusten da.</target>
       </trans-unit>
       <trans-unit id="rgmrm4q" resname="Title only">
         <source>Title only</source>
-        <target></target>
+        <target>~Izenburua soilik</target>
       </trans-unit>
       <trans-unit id="u50aa5p" resname="Select at least one activity to print.">
         <source>Select at least one activity to print.</source>
-        <target></target>
+        <target>~Hautatu gutxienez jarduera bat inprimatzeko.</target>
       </trans-unit>
       <trans-unit id="kj8vw3x" resname="Requires multimedia">
         <source>Requires multimedia</source>
-        <target></target>
+        <target>~Multimedia behar du</target>
       </trans-unit>
       <trans-unit id="mx5o5b1" resname="Invalid or empty activity data">
         <source>Invalid or empty activity data</source>
-        <target></target>
+        <target>~Jardueraren datu baliogabeak edo hutsak</target>
       </trans-unit>
       <trans-unit id="hwb011x" resname="Words that could not be placed">
         <source>Words that could not be placed</source>
-        <target></target>
+        <target>~Kokatu ezin izan diren hitzak</target>
       </trans-unit>
       <trans-unit id="wv3o16u" resname="This project has no printable activities yet.">
         <source>This project has no printable activities yet.</source>
-        <target></target>
+        <target>~Proiektu honek ez du oraindik jarduera inprimagarririk.</target>
       </trans-unit>
       <trans-unit id="b79uens" resname="Left out of this worksheet">
         <source>Left out of this worksheet</source>
-        <target></target>
+        <target>~Fitxa honetatik kanpo geratu direnak</target>
       </trans-unit>
       <trans-unit id="q1uun0l" resname="Not available in print">
         <source>Not available in print</source>
-        <target></target>
+        <target>~Ez dago erabilgarri bertsio inprimatuan</target>
       </trans-unit>
       <trans-unit id="2cm06s4" resname="Operation">
         <source>Operation</source>
-        <target></target>
+        <target>~Eragiketa</target>
       </trans-unit>
       <trans-unit id="3xaexfc" resname="Flip cards">
         <source>Flip cards</source>
-        <target></target>
+        <target>~Oroimen kartak</target>
       </trans-unit>
       <trans-unit id="gr514rb" resname="Electrical circuits">
         <source>Electrical circuits</source>
-        <target></target>
+        <target>~Zirkuitu elektrikoak</target>
       </trans-unit>
       <trans-unit id="cq7qy4n" resname="3D molecules">
         <source>3D molecules</source>
-        <target></target>
+        <target>~3D molekulak</target>
       </trans-unit>
       <trans-unit id="ejzyl87" resname="Select multimedia">
         <source>Select multimedia</source>
-        <target></target>
+        <target>~Multimedia-fitxategiak aukeratu</target>
       </trans-unit>
       <trans-unit id="or8iuxc" resname="Adaptative quiz">
         <source>Adaptative quiz</source>
-        <target></target>
+        <target>~Galdetegi moldagarria</target>
       </trans-unit>
       <trans-unit id="k7px0ot" resname="Print iDevices is not available.">
         <source>Print iDevices is not available.</source>
-        <target></target>
+        <target>~iDevice-ak inprimatzea ez dago erabilgarri.</target>
       </trans-unit>
       <trans-unit id="fush0x5" resname="Appendix">
         <source>Appendix</source>
-        <target></target>
+        <target>~Eranskina</target>
       </trans-unit>
       <trans-unit id="aulplrd" resname="See appendix, activity %s">
         <source>See appendix, activity %s</source>
-        <target></target>
+        <target>~Ikus eranskina, %s jarduera</target>
       </trans-unit>
       <trans-unit id="c4tft27" resname="Not available in print.">
         <source>Not available in print.</source>
-        <target></target>
+        <target>~Ez dago erabilgarri bertsio inprimatuan.</target>
       </trans-unit>
       <trans-unit id="am2yizf" resname="Anyone with this link can open and edit in real time.">
         <source>Anyone with this link can open and edit in real time.</source>
-        <target></target>
+        <target>~Esteka hau duen edonork ireki eta edita dezake denbora errealean.</target>
       </trans-unit>
       <trans-unit id="gl3hjiu" resname="Anyone with this link can view this resource, but not edit it.">
         <source>Anyone with this link can view this resource, but not edit it.</source>
-        <target></target>
+        <target>~Esteka hau duen edonork baliabide hau ikus dezake, baina ezin du editatu.</target>
       </trans-unit>
       <trans-unit id="ar1a7jf" resname="Public read-only link enabled">
         <source>Public read-only link enabled</source>
-        <target></target>
+        <target>~Esteka publikoa (irakurtzeko soilik) aktibatuta</target>
       </trans-unit>
       <trans-unit id="lg4u3cb" resname="Public read-only link disabled">
         <source>Public read-only link disabled</source>
-        <target></target>
+        <target>~Esteka publikoa (irakurtzeko soilik) desaktibatuta</target>
       </trans-unit>
       <trans-unit id="n42awjh" resname="Failed to update the public read-only link">
         <source>Failed to update the public read-only link</source>
-        <target></target>
+        <target>~Ezin izan da esteka publikoa eguneratu</target>
       </trans-unit>
       <trans-unit id="hste2ty" resname="The public link has been regenerated. The previous link will stop working.">
         <source>The public link has been regenerated. The previous link will stop working.</source>
-        <target></target>
+        <target>~Esteka publikoa berriro sortu da. Aurrekoak ez du gehiago funtzionatuko.</target>
       </trans-unit>
       <trans-unit id="lkxd0gw" resname="Failed to regenerate the public link">
         <source>Failed to regenerate the public link</source>
-        <target></target>
+        <target>~Ezin izan da esteka publikoa berriro sortu</target>
       </trans-unit>
       <trans-unit id="zgxhcib" resname="Minimum score to pass the activity">
         <source>Minimum score to pass the activity</source>
-        <target></target>
+        <target>~Jarduera gainditzeko gutxieneko puntuazioa</target>
       </trans-unit>
       <trans-unit id="lqo878f" resname="Global value">
         <source>Global value</source>
-        <target></target>
+        <target>~Balio globala</target>
       </trans-unit>
       <trans-unit id="a37gq02" resname="Customize">
         <source>Customize</source>
-        <target></target>
+        <target>~Pertsonalizatu</target>
       </trans-unit>
       <trans-unit id="dcxtlh7" resname="Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.">
         <source>Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.</source>
-        <target></target>
+        <target>~Balio globala: jarduerak proiektuaren propietateetan ezarritako nota erabiltzen du. Han aldatzen baduzu, jarduera honek ere aldaketa jarraitzen du.</target>
       </trans-unit>
       <trans-unit id="a3bqdf0" resname="Customize: the activity uses its own mark and ignores the project one.">
         <source>Customize: the activity uses its own mark and ignores the project one.</source>
-        <target></target>
+        <target>~Pertsonalizatu: jarduerak bere nota erabiltzen du eta proiektuarena alde batera uzten du.</target>
       </trans-unit>
       <trans-unit id="vr9hxdn" resname="Grading">
         <source>Grading</source>
-        <target></target>
+        <target>~Kalifikazioa</target>
       </trans-unit>
       <trans-unit id="5k4vy9d" resname="The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.">
         <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
-        <target></target>
+        <target>~Jarduerak ez dio inolako puntuaziorik bidaltzen LMSari, ezta SCORM gisa esportatzean ere. Erabiltzaileak egin dezake eta bere emaitza ikus dezake, baina plataforman ez da ezer erregistratzen.</target>
       </trans-unit>
       <trans-unit id="c6g4r7l" resname="The progress report is not affected: it is kept in the learner\&apos;s own browser and works whatever you choose here.">
         <source>The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.</source>
-        <target></target>
+        <target>~Aurrerapen-txostenari ez dio eragiten: nabigatzailean bertan gordetzen da eta hemen aukeratzen duzuna aukeratzen duzula ere funtzionatzen du.</target>
       </trans-unit>
       <trans-unit id="7z4ellj" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">
         <source>The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.</source>
-        <target></target>
+        <target>~Jarduerak bere kabuz bidaltzen du puntuazioa, erantzun ahala eta berriro amaitzean. Erabiltzaileak ez du ezer sakatu behar.</target>
       </trans-unit>
       <trans-unit id="7bfyk81" resname="A learner who leaves halfway still has the work done so far recorded, because the score was already sent.">
         <source>A learner who leaves halfway still has the work done so far recorded, because the score was already sent.</source>
-        <target></target>
+        <target>~Norbaitek erdibidean uzten badu, ordura arte egindako lana erregistratuta geratzen da, puntuazioa dagoeneko bidalita zegoelako.</target>
       </trans-unit>
       <trans-unit id="ks23l58" resname="Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.">
         <source>Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.</source>
-        <target></target>
+        <target>~Ez da ezer iristen LMSra botoia sakatu arte. Erabiltzaileak erabakitzen du bere puntuazioa erregistratzen den ala ez eta noiz; beraz, botoia sakatu gabe egindako jarduera batek ez du arrastorik uzten plataforman.</target>
       </trans-unit>
       <trans-unit id="3gv90dy" resname="Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.">
         <source>Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.</source>
-        <target></target>
+        <target>~Botoia sakatzean ordura arte lortutako puntuazioa argitaratzen da, baina jarduera ez da ixten: jarraitu eta berriro gorde daiteke.</target>
       </trans-unit>
       <trans-unit id="x5ssxmt" resname="The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.">
         <source>The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.</source>
-        <target></target>
+        <target>~Pisuak erabakitzen du jarduera honek zenbat balio duen orriaren puntuazioan, orri bereko beste jarduerekin alderatuta.</target>
       </trans-unit>
       <trans-unit id="rj07e1a" resname="What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.">
         <source>What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.</source>
-        <target></target>
+        <target>~Garrantzitsuena pisuen arteko proportzioa da, ez zenbakia bera. Orri batek jarduera bakarra badu, pisuak ez du eraginik: puntuazio osoa balio du.</target>
       </trans-unit>
       <trans-unit id="78w5y0c" resname="For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.">
         <source>For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.</source>
-        <target></target>
+        <target>~Adibidez, 100, 100 eta 50 pisuko hiru jarduerak orriaren puntuazioaren % 40, % 40 eta % 20 dira. Puntuazioa gordetzen ez duten jarduerak kalkulutik kanpo geratzen dira.</target>
       </trans-unit>
       <trans-unit id="cxqwz0y" resname="Minimum score needed to pass this activity: %s">
         <source>Minimum score needed to pass this activity: %s</source>
-        <target></target>
+        <target>~Jarduera hau gainditzeko behar den gutxieneko puntuazioa: %s</target>
       </trans-unit>
       <trans-unit id="6a0i8is" resname="Minimum score to pass: %s">
         <source>Minimum score to pass: %s</source>
-        <target></target>
+        <target>~Gainditzeko gutxieneko puntuazioa: %s</target>
       </trans-unit>
       <trans-unit id="my3ue9y" resname="Each activity must reach its minimum score">
         <source>Each activity must reach its minimum score</source>
-        <target></target>
+        <target>~Jarduera bakoitzak bere gutxieneko puntuazioa lortu behar du</target>
       </trans-unit>
       <trans-unit id="d1hrzuz" resname="This block will create a link to download the .elpx file. Write some use instructions and customize your download link.">
         <source>This block will create a link to download the .elpx file. Write some use instructions and customize your download link.</source>
-        <target></target>
+        <target>~Bloke honek .elpx fitxategia deskargatzeko esteka bat sortuko du. Idatzi erabilera-argibide batzuk eta pertsonalizatu deskarga-esteka.</target>
       </trans-unit>
       <trans-unit id="rcd2n5h" resname="Download .elpx file">
         <source>Download .elpx file</source>
-        <target></target>
+        <target>~Deskargatu .elpx fitxategia</target>
       </trans-unit>
     </body>
   </file>
