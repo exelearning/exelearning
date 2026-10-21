@@ -16017,6 +16017,10 @@
         <source>Download .elpx file</source>
         <target>~Deskargatu .elpx fitxategia</target>
       </trans-unit>
+      <trans-unit id="7vtm55f" resname="System default uses the operating system language. It is also used when no language is checked.">
+        <source>System default uses the operating system language. It is also used when no language is checked.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
