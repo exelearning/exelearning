@@ -172,6 +172,69 @@ describe('Locale translations', () => {
       expect(window.$exe_i18n.block).toBe('bloque');
     });
 
+    describe('content language from the shared project metadata', () => {
+      // The project language lives in the Y.Doc, so a collaborator chooses it.
+      // It selects which same-origin script is fetched and executed, so only a
+      // plain language subtag may reach the URL; anything else falls back to English.
+      it.each([
+        ['path traversal', '../../../evil'],
+        ['traversal after a valid tag', 'es/../../../files/tmp/x'],
+        ['encoded traversal', '..%2F..%2Fevil'],
+        ['query string', 'es?x=1'],
+        ['fragment', 'es#x'],
+        ['absolute URL', 'https://evil.example/x'],
+        ['protocol-relative', '//evil.example/x'],
+        ['backslash', 'es\\..\\x'],
+        ['whitespace', 'es x'],
+        ['too long', 'abcd'],
+        ['digits', '12'],
+        ['underscore region', 'zh_TW'],
+        ['NUL byte', 'es\u0000'],
+        ['unicode', 'ñá'],
+      ])('falls back to English for %s', async (_label, lang) => {
+        locale._contentLang = lang;
+        const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_EN });
+
+        await locale.refreshI18nGlobals();
+
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(mockFetch).toHaveBeenCalledWith('/v1.0.0/app/common/i18n/common_i18n.en.js');
+        expect(window.$exe_i18n.previous).toBe('Previous');
+      });
+
+      it.each([
+        ['es', 'es'],
+        ['ES', 'es'],
+        ['pt-BR', 'pt'],
+        ['ca-valencia', 'ca'],
+        ['va', 'va'],
+        ['ast', 'ast'],
+      ])('loads the bundle for %s', async (lang, expected) => {
+        locale._contentLang = lang;
+        const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
+
+        await locale.refreshI18nGlobals();
+
+        expect(mockFetch).toHaveBeenCalledWith(`/v1.0.0/app/common/i18n/common_i18n.${expected}.js`);
+      });
+
+      it.each([
+        ['null', null],
+        ['undefined', undefined],
+        ['empty', ''],
+        ['number', 42],
+      ])('uses the GUI language when the content language is %s', async (_label, lang) => {
+        locale._contentLang = lang;
+        locale.lang = 'es';
+        const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
+
+        await locale.refreshI18nGlobals();
+
+        const url = mockFetch.mock.calls[0][0];
+        expect(url).toMatch(/\/common_i18n\.(es|en)\.js$/);
+      });
+    });
+
     it('should use contentLang derived from loadContentTranslationsStrings', async () => {
       locale._contentLang = 'es';
       const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });

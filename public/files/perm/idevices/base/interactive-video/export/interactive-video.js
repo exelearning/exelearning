@@ -3087,7 +3087,11 @@ $(function () {
             // Try to find and parse the legacy script manually
             var container = document.querySelector('.exe-interactive-video');
             if (container) {
-                var legacyScript = container.querySelector('script[type="text/javascript"]');
+                // In the editor, sanitized content keeps this block as inert text
+                // (type="text/plain" data-exe-inert-script="text/javascript").
+                var legacyScript = container.querySelector(
+                    'script[type="text/javascript"], script[data-exe-inert-script="text/javascript"]'
+                );
                 if (legacyScript) {
                     var scriptContent = legacyScript.textContent || legacyScript.innerHTML || '';
                     // Remove CDATA markers and extract JSON

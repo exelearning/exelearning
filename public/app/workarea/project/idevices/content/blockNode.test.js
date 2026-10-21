@@ -1645,6 +1645,71 @@ describe('IdeviceBlockNode', () => {
             attached.splice(0).forEach((element) => element.remove());
         });
 
+        describe('collaborator-controlled asset icon descriptors', () => {
+            const parse = (html) => {
+                const host = document.createElement('div');
+                host.innerHTML = html;
+                return host;
+            };
+
+            const expectSingleInertImg = (html) => {
+                const host = parse(html);
+                expect(host.children).toHaveLength(1);
+                const img = host.querySelector('img');
+                expect(img).not.toBeNull();
+                for (const attr of Array.from(img.attributes)) {
+                    expect(['src', 'alt']).toContain(attr.name);
+                }
+                return img;
+            };
+
+            it.each([
+                'asset://uuid/x.png" onerror="window.__xss=1',
+                "asset://uuid/x.png' onerror='window.__xss=1",
+                'asset://uuid/x.png"><img src=x onerror="window.__xss=1">',
+                '/icons/a.png"><script>window.__xss=1</script>',
+                'javascript:window.__xss=1',
+            ])('renderIconPreviewHtml keeps %s inside the <img> attributes', (value) => {
+                // Resolution succeeds and returns the crafted value, so it reaches src too.
+                eXeLearning.app.project._yjsBridge = { assetManager: { resolveAssetURLSync: () => value } };
+                const html = block.renderIconPreviewHtml({ source: 'asset', value });
+                const img = expectSingleInertImg(html);
+                expect(img.getAttribute('alt')).toBe(value);
+                eXeLearning.app.project._yjsBridge = null;
+            });
+
+            it('escapes a crafted icon name used as alt text', () => {
+                const name = '"><img src=x onerror="window.__xss=1">';
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: { resolveAssetURLSync: () => 'blob:http://localhost/1' },
+                };
+                const html = block.renderIconPreviewHtml({ source: 'asset', value: 'asset://uuid/ok.png', name });
+                const img = expectSingleInertImg(html);
+                expect(img.getAttribute('src')).toBe('blob:http://localhost/1');
+                expect(img.getAttribute('alt')).toBe(name);
+                eXeLearning.app.project._yjsBridge = null;
+            });
+
+            it('applyIconElementState renders a crafted descriptor inert in the block header', () => {
+                block.iconElement = document.createElement('div');
+                block.applyIconElementState({
+                    source: 'asset',
+                    value: 'asset://uuid/x.png" onerror="window.__xss=1',
+                    previewUrl: 'asset://uuid/x.png" onerror="window.__xss=1',
+                });
+                expectSingleInertImg(block.iconElement.innerHTML);
+            });
+
+            it('still renders a legitimate asset icon', () => {
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: { resolveAssetURLSync: () => 'blob:http://localhost/ok' },
+                };
+                const html = block.renderIconPreviewHtml({ source: 'asset', value: 'asset://uuid/ok.png' });
+                expect(html).toBe('<img src="blob:http://localhost/ok" alt="asset://uuid/ok.png">');
+                eXeLearning.app.project._yjsBridge = null;
+            });
+        });
+
         it('normalizes legacy icon names into structured descriptors', () => {
             expect(block.normalizeIconDescriptor(null, '')).toEqual({ source: 'none', value: '' });
             expect(block.normalizeIconDescriptor(null, 'mi-alarm')).toEqual({

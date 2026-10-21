@@ -98,6 +98,8 @@ global.eXeLearning = {
 };
 
 // Import after setting up mocks
+import { JSDOM } from 'jsdom';
+import createDOMPurify from '../../../../../libs/dompurify/purify.min.js';
 import IdeviceNode, { parseIdeviceJsonProperties } from './ideviceNode.js';
 
 describe('parseIdeviceJsonProperties', () => {
@@ -5763,5 +5765,208 @@ describe('IdeviceNode', () => {
 
             expect(idevice.block.id).toBe(newKey);
         });
+    });
+
+    /**
+     * Every editor render of stored iDevice HTML goes through exportHtmlView(),
+     * and that content is shared over Yjs, so a collaborator controls it. These
+     * tests pin the chokepoint: what reaches the editor DOM is sanitized, while
+     * the stored htmlView (which exports and the edition form read) stays as is.
+     */
+    describe('collaborator content is sanitized on every editor render path', () => {
+        const PAYLOADS = [
+            '<img src=x onerror="window.__xss=1">',
+            '<script>window.__xss=1</script>',
+            '<a href="javascript:window.__xss=1">x</a>',
+            '<a href="JaVa&#x09;ScRiPt:window.__xss=1">x</a>',
+            '<iframe srcdoc="<script>window.__xss=1</script>"></iframe>',
+            '<svg onload="window.__xss=1"><a xlink:href="javascript:window.__xss=1"><text>t</text></a></svg>',
+            '<input autofocus onfocus="window.__xss=1">',
+            '<noscript><p title="</noscript><img src=x onerror=window.__xss=1>"></noscript>',
+            '<math><mtext><table><mglyph><style><img src=x onerror="window.__xss=1">',
+            '<form action="javascript:window.__xss=1"><button formaction="javascript:window.__xss=1">b</button></form>',
+        ];
+
+        const expectInertBody = (body) => {
+            expect(body.querySelectorAll('base, meta').length).toBe(0);
+            // A <script> may survive only as text no browser runs.
+            for (const script of body.querySelectorAll('script')) {
+                expect(script.getAttribute('type')).toBe('text/plain');
+                expect(script.hasAttribute('src')).toBe(false);
+            }
+            for (const el of body.querySelectorAll('*')) {
+                for (const attr of Array.from(el.attributes)) {
+                    const name = attr.name.toLowerCase();
+                    expect(name.startsWith('on'), `${el.tagName}[${name}]`).toBe(false);
+                    expect(name).not.toBe('srcdoc');
+                    expect(attr.value.replace(/[\u0000- ]+/g, '')).not.toMatch(/^(javascript|vbscript):/i);
+                }
+            }
+        };
+
+        const withPurify = (enabled) => {
+            beforeEach(() => {
+                if (enabled) {
+                    const { window: purifyWindow } = new JSDOM('<!doctype html><html><body></body></html>');
+                    window.DOMPurify = createDOMPurify(purifyWindow);
+                } else {
+                    delete window.DOMPurify;
+                }
+                vi.spyOn(console, 'warn').mockImplementation(() => {});
+                idevice.ideviceBody = document.createElement('div');
+                eXeLearning.app.themes = { selected: null };
+            });
+            afterEach(() => {
+                delete window.DOMPurify;
+                delete window.resolveAssetUrls;
+                vi.restoreAllMocks();
+            });
+        };
+
+        for (const [label, enabled] of [
+            ['with DOMPurify', true],
+            ['with the DOM fallback', false],
+        ]) {
+            describe(label, () => {
+                withPurify(enabled);
+
+                it.each(PAYLOADS)('exportHtmlView neutralizes %s', (payload) => {
+                    idevice.htmlView = `<p>before</p>${payload}<p>after</p>`;
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    expectInertBody(body);
+                    // Text before the payload survives (unclosed payloads may swallow what follows).
+                    expect(body.textContent).toContain('before');
+                });
+
+                it.each(PAYLOADS)('html iDevice render neutralizes %s', async (payload) => {
+                    idevice.htmlView = payload;
+                    await idevice.exportProcessIdeviceHtml();
+                    expectInertBody(idevice.ideviceBody);
+                });
+
+                it('keeps the stored htmlView untouched (exports and edition read it)', async () => {
+                    const raw = '<p onclick="go()">x</p><script>legacy()</script>';
+                    idevice.htmlView = raw;
+                    await idevice.exportProcessIdeviceHtml();
+                    expect(idevice.htmlView).toBe(raw);
+                });
+
+                it('sanitizes a theme iDevice template together with the content', () => {
+                    eXeLearning.app.themes = {
+                        selected: { templateIdevice: '<div class="themed" onmouseover="x()">{idevice-content}</div>' },
+                    };
+                    idevice.htmlView = '<p>ok</p><img src=x onerror="window.__xss=1">';
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    expectInertBody(body);
+                    expect(body.querySelector('.themed p').textContent).toBe('ok');
+                });
+
+                it('sanitizes after the URL transforms, so a transform cannot reintroduce active content', () => {
+                    window.resolveAssetUrls = vi.fn((html) => `${html}<img src=x onerror="window.__xss=1">`);
+                    idevice.htmlView = '<p>ok</p>';
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    expect(window.resolveAssetUrls).toHaveBeenCalled();
+                    expectInertBody(body);
+                });
+
+                it('keeps resolved blob: and app-internal URLs', () => {
+                    window.resolveAssetUrls = vi.fn((html) => html.replace('asset://uuid/a.png', 'blob:http://localhost/1'));
+                    idevice.htmlView =
+                        '<img src="asset://uuid/a.png"><img src="asset://uuid/b.png"><a href="exe-node:page-2">p</a>';
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    const [first, second] = body.querySelectorAll('img');
+                    expect(first.getAttribute('src')).toBe('blob:http://localhost/1');
+                    expect(second.getAttribute('src')).toBe('asset://uuid/b.png');
+                    expect(body.querySelector('a').getAttribute('href')).toBe('exe-node:page-2');
+                });
+
+                it('keeps legitimate authored content renderable', () => {
+                    idevice.htmlView =
+                        '<p><strong>Bold</strong> <em>it</em> \\(x^2\\)</p>' +
+                        '<iframe src="https://www.youtube.com/embed/abc" allowfullscreen></iframe>' +
+                        '<table><tbody><tr><td>1</td></tr></tbody></table>' +
+                        '<a href="https://example.org" target="_blank">link</a>';
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    expect(body.querySelector('strong').textContent).toBe('Bold');
+                    expect(body.querySelector('iframe').getAttribute('src')).toBe('https://www.youtube.com/embed/abc');
+                    expect(body.querySelector('td').textContent).toBe('1');
+                    expect(body.querySelector('a').getAttribute('target')).toBe('_blank');
+                    expect(body.textContent).toContain('\\(x^2\\)');
+                });
+
+                it.each([
+                    ['null', null],
+                    ['undefined', undefined],
+                    ['empty', ''],
+                ])('renders an empty body for %s htmlView', (_label, value) => {
+                    idevice.htmlView = value;
+                    expect(idevice.exportHtmlView()).toBe('');
+                });
+
+                it('JSON iDevice: sanitizes renderView output built from collaborator jsonProperties', async () => {
+                    const exportObject = {
+                        renderView: vi.fn((data) => `<div class="game"><h3>${data.title}</h3></div>`),
+                        renderBehaviour: vi.fn(),
+                        init: vi.fn(),
+                    };
+                    window.__testJsonExport = exportObject;
+                    idevice.idevice = { exportObject: '__testJsonExport', exportTemplateContent: '' };
+                    idevice.mode = 'export';
+                    idevice.jsonProperties = { title: '<img src=x onerror="window.__xss=1">Quiz' };
+
+                    await idevice.exportProcessIdeviceJson();
+
+                    expectInertBody(idevice.ideviceBody);
+                    expect(idevice.ideviceBody.querySelector('h3').textContent).toBe('Quiz');
+                    // The iDevice runtime still initializes on the sanitized markup.
+                    expect(exportObject.renderBehaviour).toHaveBeenCalled();
+                    expect(exportObject.init).toHaveBeenCalled();
+                    // The stored view keeps renderView's output for the export pipeline.
+                    expect(idevice.htmlView).toContain('onerror');
+                    delete window.__testJsonExport;
+                });
+
+                it('JSON iDevice without data: sanitizes the stored fallback view', async () => {
+                    const exportObject = { renderView: vi.fn(), renderBehaviour: vi.fn(), init: vi.fn() };
+                    window.__testJsonExport = exportObject;
+                    idevice.idevice = { exportObject: '__testJsonExport' };
+                    idevice.jsonProperties = {};
+                    idevice.htmlView = '<p>saved</p><img src=x onerror="window.__xss=1">';
+
+                    await idevice.exportProcessIdeviceJson();
+
+                    expectInertBody(idevice.ideviceBody);
+                    expect(idevice.ideviceBody.textContent).toContain('saved');
+                    expect(exportObject.init).toHaveBeenCalled();
+                    delete window.__testJsonExport;
+                });
+
+                it('apiGetHtmlView sanitizes the HTML returned by the API', async () => {
+                    eXeLearning.app.api.getSaveHtmlView = vi
+                        .fn()
+                        .mockResolvedValue({ htmlView: '<p>v</p><img src=x onerror="window.__xss=1">' });
+                    const result = await idevice.apiGetHtmlView();
+                    expectInertBody(idevice.ideviceBody);
+                    expect(result).toContain('onerror');
+                });
+
+                it('a remote update that lands in htmlView renders inert on the next render', async () => {
+                    // IdevicesEngine.updateRemoteIdeviceContent stores the incoming HTML
+                    // and then re-runs the export render; that second render must not
+                    // undo the sanitization it applied first.
+                    idevice.htmlView = '<p>local</p>';
+                    await idevice.exportProcessIdeviceHtml();
+                    idevice.htmlView = '<p>remote</p><img src=x onerror="window.__xss=1">';
+                    await idevice.exportProcessIdeviceHtml();
+                    expectInertBody(idevice.ideviceBody);
+                    expect(idevice.ideviceBody.textContent).toBe('remote');
+                });
+            });
+        }
     });
 });

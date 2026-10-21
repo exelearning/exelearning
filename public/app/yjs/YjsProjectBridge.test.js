@@ -10,6 +10,7 @@
  
 
 const YjsProjectBridge = require('./YjsProjectBridge');
+const { JSDOM } = require('jsdom');
 
 // Mock YjsDocumentManager
 class MockYjsDocumentManager {
@@ -339,6 +340,75 @@ describe('YjsProjectBridge', () => {
       await bridge._captureHtmlAsScreenshot('<div>x</div>');
 
       expect(createdScript.src).toBe('/files/perm/idevices/base/rubric/export/html2canvas.js');
+    });
+  });
+
+  describe('_captureHtmlAsScreenshot sandboxing', () => {
+    // The page HTML is built from collaborator-controlled project content, so
+    // the render frame must have scripting disabled before anything is written
+    // into it. allow-same-origin is kept so html2canvas can read its DOM.
+    const setupDom = () => {
+      const written = [];
+      const iframe = {
+        style: {},
+        contentDocument: {
+          readyState: 'complete',
+          body: { id: 'frame-body' },
+          open: vi.fn(),
+          write: vi.fn((html) => written.push(html)),
+          close: vi.fn(),
+        },
+      };
+      const canvas = { width: 0, height: 0, getContext: () => ({ fillRect: vi.fn(), drawImage: vi.fn() }), toDataURL: () => 'data:image/png;base64,ok' };
+      let sandboxAtAppend;
+      let sandboxAtWrite;
+      iframe.contentDocument.write = vi.fn((html) => {
+        sandboxAtWrite = iframe.sandbox;
+        written.push(html);
+      });
+      global.document.createElement = vi.fn((tag) => (tag === 'iframe' ? iframe : canvas));
+      global.document.body = {
+        appendChild: vi.fn((el) => {
+          sandboxAtAppend = el.sandbox;
+        }),
+        removeChild: vi.fn(),
+      };
+      window.html2canvas = vi.fn(async () => canvas);
+      return { iframe, written, sandboxAtAppend: () => sandboxAtAppend, sandboxAtWrite: () => sandboxAtWrite };
+    };
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => {
+      vi.useRealTimers();
+      delete window.html2canvas;
+    });
+
+    it('disables scripts in the render frame before it is attached or written', async () => {
+      const dom = setupDom();
+      const pending = bridge._captureHtmlAsScreenshot('<html><body><img src=x onerror="window.__xss=1"></body></html>');
+      await vi.advanceTimersByTimeAsync(500);
+      const result = await pending;
+
+      expect(dom.sandboxAtAppend()).toBe('allow-same-origin');
+      expect(dom.sandboxAtWrite()).toBe('allow-same-origin');
+      expect(dom.iframe.sandbox).not.toMatch(/allow-scripts/);
+      expect(dom.written).toHaveLength(1);
+      expect(window.html2canvas).toHaveBeenCalledWith(dom.iframe.contentDocument.body, expect.any(Object));
+      expect(result).toBe('data:image/png;base64,ok');
+      expect(global.document.body.removeChild).toHaveBeenCalledWith(dom.iframe);
+    });
+
+    it('still removes the frame when html2canvas fails', async () => {
+      const dom = setupDom();
+      window.html2canvas = vi.fn(async () => {
+        throw new Error('render failed');
+      });
+      const pending = bridge._captureHtmlAsScreenshot('<p>x</p>').catch((e) => e);
+      await vi.advanceTimersByTimeAsync(500);
+      const error = await pending;
+
+      expect(error).toBeInstanceOf(Error);
+      expect(global.document.body.removeChild).toHaveBeenCalledWith(dom.iframe);
     });
   });
 
@@ -7077,6 +7147,111 @@ describe('YjsProjectBridge', () => {
       expect(() => {
         bridge._syncBlockIcon(mockIconEl, 'some-icon', 'block-1');
       }).not.toThrow();
+    });
+
+    describe('collaborator-controlled icon descriptors (remote sync, undo/redo)', () => {
+      const makeIconEl = () => ({
+        innerHTML: '',
+        style: { removeProperty: mock(() => {}) },
+        classList: { add: mock(() => {}), remove: mock(() => {}), contains: () => true },
+        querySelector: () => null,
+      });
+
+      // global.document is a mock in this suite; parse with a real DOM.
+      const parse = (html) => {
+        const { window: parseWindow } = new JSDOM('<!doctype html><body></body>');
+        const host = parseWindow.document.createElement('div');
+        host.innerHTML = html;
+        return host;
+      };
+
+      const expectSingleInertImg = (html) => {
+        const host = parse(html);
+        expect(host.children).toHaveLength(1);
+        const img = host.querySelector('img');
+        expect(img).not.toBeNull();
+        for (const attr of Array.from(img.attributes)) {
+          expect(['src', 'alt']).toContain(attr.name);
+        }
+        return img;
+      };
+
+      const BREAKOUTS = [
+        'asset://uuid/x.png" onerror="window.__xss=1',
+        "asset://uuid/x.png' onerror='window.__xss=1",
+        'asset://uuid/x.png"><img src=x onerror="window.__xss=1">',
+        '/icons/a.png"><script>window.__xss=1</script>',
+        'asset://uuid/x.png\u0000" onload="window.__xss=1',
+      ];
+
+      it.each(BREAKOUTS)('asset value %s cannot break out of the <img> (unresolved URL)', (value) => {
+        window.eXeLearning = {
+          app: { project: { _yjsBridge: { assetManager: { resolveAssetURLSync: () => null } } }, themes: { getThemeIcons: () => ({}) } },
+        };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'asset', value }, 'block-1');
+        expectSingleInertImg(iconEl.innerHTML);
+      });
+
+      it('asset value cannot break out through the alt attribute when the URL resolves', () => {
+        const value = 'asset://uuid/x.png" onerror="window.__xss=1';
+        window.eXeLearning = {
+          app: {
+            project: { _yjsBridge: { assetManager: { resolveAssetURLSync: () => 'blob:http://localhost/1' } } },
+            themes: { getThemeIcons: () => ({}) },
+          },
+        };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'asset', value }, 'block-1');
+        const img = expectSingleInertImg(iconEl.innerHTML);
+        expect(img.getAttribute('src')).toBe('blob:http://localhost/1');
+        expect(img.getAttribute('alt')).toBe(value);
+      });
+
+      it('theme icon title from a theme cannot inject markup', () => {
+        window.eXeLearning = {
+          app: {
+            themes: {
+              getThemeIcons: () => ({
+                info: { id: 'info', value: '/icons/info.png', title: '"><img src=x onerror="window.__xss=1">' },
+              }),
+            },
+          },
+        };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'theme', value: 'info' }, 'block-1');
+        const img = expectSingleInertImg(iconEl.innerHTML);
+        expect(img.getAttribute('src')).toBe('/icons/info.png');
+        expect(img.getAttribute('alt')).toBe('"><img src=x onerror="window.__xss=1">');
+      });
+
+      it('an unknown theme icon name is not rendered at all', () => {
+        window.eXeLearning = { app: { themes: { getThemeIcons: () => ({}) } } };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'theme', value: '"><img src=x onerror=1>' }, 'block-1');
+        expect(iconEl.innerHTML).toBe('');
+      });
+
+      it('a crafted material icon name falls back to a known glyph', () => {
+        window.eXeLearning = { app: { themes: { getThemeIcons: () => ({}) } } };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'material', value: '"><img src=x onerror=1>' }, 'block-1');
+        const host = parse(iconEl.innerHTML);
+        expect(host.querySelector('img')).toBeNull();
+        expect(host.querySelector('.exe-material-icon')).not.toBeNull();
+      });
+
+      it('a legitimate asset icon still renders', () => {
+        window.eXeLearning = {
+          app: {
+            project: { _yjsBridge: { assetManager: { resolveAssetURLSync: () => 'blob:http://localhost/ok' } } },
+            themes: { getThemeIcons: () => ({}) },
+          },
+        };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'asset', value: 'asset://uuid/ok.png' }, 'block-1');
+        expect(iconEl.innerHTML).toBe('<img src="blob:http://localhost/ok" alt="asset://uuid/ok.png">');
+      });
     });
   });
 
