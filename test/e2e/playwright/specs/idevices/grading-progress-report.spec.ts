@@ -61,7 +61,7 @@ for (const device of [
     });
 }
 
-test('rubric reports its custom pass mark in the workarea and preview', async ({
+test('rubric reports its custom pass mark in the workarea and preview, with or without the date', async ({
     authenticatedPage: page,
     createProject,
 }) => {
@@ -133,6 +133,7 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
     const reportRow = frame.locator(`.IFPP-ComponentItem[data-component-id="${rubricId}"]`);
     await expect(reportRow).toHaveAttribute('data-is-evaluable', 'true');
     await expect(reportRow.locator('.IFPP-ComponentScore')).toHaveText('7.50');
+    await expect(reportRow.locator('.IFPP-ComponentDate')).toHaveText(/^\d{2}\/\d{2}\/\d{4} /);
     await expect(reportRow.locator('.IFPP-IdiviceIconFail')).toBeVisible();
 
     for (let index = 0; index < (await previewRows.count()); index++) {
@@ -149,6 +150,18 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
         .toBe(true);
     await expect(reportRow.locator('.IFPP-ComponentScore')).toHaveText('10');
     await expect(reportRow.locator('.IFPP-IdiviceIconPass')).toBeVisible();
+
+    // The author can leave out when each activity was completed.
+    // The panel closes offscreen rather than becoming hidden in the DOM.
+    await page.locator('#previewsidenavclose').click();
+    await editIdevice(page, reportNodeId);
+    await page.locator('#reportQEIdeviceForm-tab-options').click();
+    await page.locator('#informeEShowDate').uncheck();
+    await saveIdevice(page, reportNodeId);
+    expect(await waitForPreviewContent(page, 30000)).toBe(true);
+    const rowWithoutDate = getPreviewFrame(page).locator(`.IFPP-ComponentItem[data-component-id="${rubricId}"]`);
+    await expect(rowWithoutDate.locator('.IFPP-ComponentScore')).toHaveText('10');
+    await expect(rowWithoutDate.locator('.IFPP-ComponentDate')).toHaveText('');
 });
 
 test('scrambled-list shows the learner their score outside the editor', async ({

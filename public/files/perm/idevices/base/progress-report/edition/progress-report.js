@@ -933,8 +933,9 @@ var $exeDevice = {
     updateFieldGame: function (game) {
         game.evaluationID =
             typeof game.evaluationID !== 'undefined' ? game.evaluationID : '';
+        // A report saved before the option existed always showed the date.
         game.showDate =
-            typeof game.showDate !== 'undefined' ? game.showDate : false;
+            typeof game.showDate !== 'undefined' ? game.showDate : true;
         game.showTypeGame =
             typeof game.showTypeGame !== 'undefined'
                 ? game.showTypeGame

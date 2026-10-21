@@ -821,6 +821,14 @@ describe('progress-report edition: shared form tabs', () => {
         expect(document.getElementById('ci18n_msgSummary').value).toBe('Your results');
     });
 
+    it('keeps the date on for a report saved before the option existed', () => {
+        const older = report();
+        delete older.showDate;
+        open(stored(older));
+
+        expect(document.getElementById('informeEShowDate').checked).toBe(true);
+    });
+
     it('saves the options it shows', () => {
         open(stored(report()));
 
