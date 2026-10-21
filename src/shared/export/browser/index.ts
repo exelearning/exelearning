@@ -695,9 +695,10 @@ export async function generatePrintPreview(
     assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
 ): Promise<PrintPreviewResult> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // The exporter applies options.previewContentPolicy itself: only it knows which activities
+    // the chosen print mode converts, and those must reach the worksheet unfiltered.
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
-    const sourceDocument = new YjsDocumentAdapter(documentManager as any);
-    const document = withPreviewPolicy(sourceDocument, options?.previewContentPolicy);
+    const document = new YjsDocumentAdapter(documentManager as any);
 
     let resources;
     if (resourceFetcher) {
@@ -741,9 +742,7 @@ export async function generatePrintPreview(
         ...getMoleculeCaptureHook(options?.activities?.ideviceBasePath),
     };
 
-    const result = await exporter.generatePreview(previewOptions);
-    result.activeContentReport = activeContentReportOf(document);
-    return result;
+    return exporter.generatePreview(previewOptions);
 }
 
 /**

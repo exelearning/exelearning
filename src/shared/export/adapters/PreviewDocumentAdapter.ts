@@ -1,4 +1,5 @@
 import type {
+    ExportBlock,
     ExportComponent,
     ExportDocument,
     ExportMetadata,
@@ -72,9 +73,15 @@ export class PreviewDocumentAdapter implements ExportDocument {
     private readonly contexts = new Set<PreviewContentContext>();
     private activeContentFound = false;
 
+    /**
+     * @param passThrough - Components handed over unfiltered: ones a caller rebuilds from their
+     *   stored data and escapes itself (print's worksheet conversion), which filtering as HTML
+     *   would mangle. They never reach the page as author markup.
+     */
     constructor(
         private readonly document: ExportDocument,
         private readonly policy: PreviewContentPolicy,
+        private readonly passThrough?: (block: ExportBlock, component: ExportComponent) => boolean,
     ) {}
 
     getMetadata(): ExportMetadata {
@@ -108,7 +115,9 @@ export class PreviewDocumentAdapter implements ExportDocument {
                 // adapter fails closed everywhere else, so an unexplained exception here is
                 // a hole rather than a decision.
                 properties: block.properties ? this.cloneValue(block.properties, 'component-property') : undefined,
-                components: block.components.map(component => this.prepareComponent(component)),
+                components: block.components.map(component =>
+                    this.passThrough?.(block, component) ? component : this.prepareComponent(component),
+                ),
             })),
         }));
     }
