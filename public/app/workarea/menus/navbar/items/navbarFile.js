@@ -1758,17 +1758,10 @@ export default class NavbarFile {
             eXeLearning.app.project.odeId ||
             eXeLearning.app.project.odeSession;
 
-        // Persist the latest Yjs snapshot before uploading. The new endpoint
-        // does not depend on the snapshot, but the legacy fallback does.
-        try {
-            const docManager = eXeLearning.app.project._yjsBridge?.getDocumentManager?.();
-            if (docManager?.saveToServer) {
-                await docManager.saveToServer();
-                console.log('[NavbarFile] Project saved to server before platform upload');
-            }
-        } catch (saveError) {
-            console.warn('[NavbarFile] Failed to save before platform upload:', saveError);
-        }
+        // Save the project, assets included, before uploading. The next edit of
+        // the activity may reopen it as it is, maybe from another browser
+        // (#2550), and the legacy fallback builds the package from it.
+        const projectSaved = await this._saveProjectBeforePlatformUpload();
 
         const yjsBridge = eXeLearning.app.project?._yjsBridge;
         const SharedExporters = window.SharedExporters;
@@ -1789,6 +1782,7 @@ export default class NavbarFile {
                 projectUuid,
                 yjsBridge,
                 SharedExporters,
+                projectSaved,
             );
             if (handled) {
                 return;
@@ -1827,15 +1821,40 @@ export default class NavbarFile {
     }
 
     /**
+     * Save the project to the server before sending it to the platform.
+     *
+     * @returns {Promise<boolean>} true when the document and its assets were saved
+     */
+    async _saveProjectBeforePlatformUpload() {
+        try {
+            const yjsBridge = eXeLearning.app.project._yjsBridge;
+            if (typeof yjsBridge?.save === 'function') {
+                const result = await yjsBridge.save({ showProgress: false });
+                return result?.success === true;
+            }
+            const docManager = yjsBridge?.getDocumentManager?.();
+            if (docManager?.saveToServer) {
+                await docManager.saveToServer();
+                console.log('[NavbarFile] Project saved to server before platform upload');
+            }
+        } catch (saveError) {
+            console.warn('[NavbarFile] Failed to save before platform upload:', saveError);
+        }
+        return false;
+    }
+
+    /**
      * Browser-driven publish: generate the platform package in the browser
      * (where the Yjs document and IndexedDB assets live) and POST it as a
      * binary blob to the server forwarder endpoint.
      *
+     * @param {boolean} projectSaved - Whether the server holds the project and
+     * its assets, so the next edit of the activity can reopen it as it is
      * @returns {Promise<boolean>} true when the platform upload was handled
      * (success or surfaced error); false to fall back to the legacy server
      * generation path.
      */
-    async _uploadPlatformEventClientSide(jwt_token, projectUuid, yjsBridge, SharedExporters) {
+    async _uploadPlatformEventClientSide(jwt_token, projectUuid, yjsBridge, SharedExporters, projectSaved = false) {
         const payload = this._decodePlatformJwtPayload(jwt_token) || {};
         const exportFormat = payload.pkgtype === 'scorm' ? 'SCORM12' : 'HTML5';
 
@@ -1882,6 +1901,9 @@ export default class NavbarFile {
             formData.append('jwt_token', jwt_token || '');
             formData.append('projectUuid', projectUuid || '');
             formData.append('package', blob, filename);
+            if (projectSaved) {
+                formData.append('projectSaved', '1');
+            }
 
             const apiBase = `${window.location.origin}/api`;
             const response = await fetch(`${apiBase}/platform/integration/set_platform_new_ode_browser`, {

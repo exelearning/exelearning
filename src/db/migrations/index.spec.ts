@@ -113,7 +113,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('010_asset_metadata');
+            expect(result.rolledBack).toBe('011_asset_metadata');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {
@@ -128,7 +128,8 @@ describe('Database Migrations', () => {
             await migrateToLatest(db);
 
             // Rollback all migrations to remove all tables
-            await migrateDown(db); // rollback 010_asset_metadata
+            await migrateDown(db); // rollback 011_asset_metadata
+            await migrateDown(db); // rollback 010_project_platform_binding
             await migrateDown(db); // rollback 009_project_public_view_enabled
             await migrateDown(db); // rollback 008_project_public_view_id
             await migrateDown(db); // rollback 007_activity_log
@@ -199,7 +200,7 @@ describe('Database Migrations', () => {
 
             // After one rollback, the last migration should be pending
             // All prior migrations are still executed
-            expect(status.pending).toContain('010_asset_metadata');
+            expect(status.pending).toContain('011_asset_metadata');
             expect(status.executed).toContain('001_initial');
             expect(status.executed).toContain('000_legacy_symfony');
             expect(status.executed).toContain('002_asset_folder_path');
@@ -210,6 +211,7 @@ describe('Database Migrations', () => {
             expect(status.executed).toContain('007_activity_log');
             expect(status.executed).toContain('008_project_public_view_id');
             expect(status.executed).toContain('009_project_public_view_enabled');
+            expect(status.executed).toContain('010_project_platform_binding');
         });
     });
 
@@ -228,17 +230,18 @@ describe('Database Migrations', () => {
             expect(up1.executedMigrations).toContain('007_activity_log');
             expect(up1.executedMigrations).toContain('008_project_public_view_id');
             expect(up1.executedMigrations).toContain('009_project_public_view_enabled');
-            expect(up1.executedMigrations).toContain('010_asset_metadata');
+            expect(up1.executedMigrations).toContain('010_project_platform_binding');
+            expect(up1.executedMigrations).toContain('011_asset_metadata');
 
-            // Down - rolls back the last migration (010_asset_metadata)
+            // Down - rolls back the last migration (011_asset_metadata)
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('010_asset_metadata');
+            expect(down.rolledBack).toBe('011_asset_metadata');
 
-            // Up again - should re-apply 010_asset_metadata
+            // Up again - should re-apply 011_asset_metadata
             const up2 = await migrateToLatest(db);
             expect(up2.success).toBe(true);
-            expect(up2.executedMigrations).toContain('010_asset_metadata');
+            expect(up2.executedMigrations).toContain('011_asset_metadata');
         });
     });
 

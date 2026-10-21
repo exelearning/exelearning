@@ -79,6 +79,8 @@ interface ProjectsTable {
     last_accessed_at: number | null; // Unix timestamp in milliseconds
     saved_once: number;
     platform_id: string | null; // External platform ID (e.g., Moodle cmid)
+    platform_site: string | null; // Base URL of the platform site platform_id belongs to
+    platform_package_hash: string | null; // SHA-256 of the last package exchanged with the platform
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }
@@ -99,7 +101,7 @@ interface AssetsTable {
     component_id: string | null;
     content_hash: string | null;
     folder_path: string; // Relative folder path: "" = root, "website/css" = nested
-    // Centralized, reusable asset-level metadata (see migration 010). All optional;
+    // Centralized, reusable asset-level metadata (see migration 011). All optional;
     // null means "no metadata set" and is treated as empty everywhere. These are the
     // values that must not be re-entered on each insertion; per-instance values
     // (alt text, accessibility title, caption heading/notes) are NOT stored here.

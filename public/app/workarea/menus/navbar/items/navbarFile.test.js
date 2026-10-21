@@ -2365,6 +2365,61 @@ describe('NavbarFile', () => {
             expect(window.location.replace).toHaveBeenCalledWith('http://platform/return');
         });
 
+        // The next edit of the activity may reopen this project as it is, maybe
+        // from another browser, so its assets must be on the server too (#2550).
+        describe('saving the project before sending it to the platform', () => {
+            async function finish(save) {
+                window.location.search = '?jwt_token=ignored';
+                window.SharedExporters = {
+                    quickExport: vi
+                        .fn()
+                        .mockResolvedValue({ success: true, data: new Uint8Array([0x50, 0x4b]), filename: 'p.zip' }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    save,
+                    getDocumentManager: () => ({ saveToServer: vi.fn().mockResolvedValue() }),
+                    documentManager: { id: 'doc' },
+                    assetManager: { id: 'asset' },
+                };
+                const fetchMock = vi.fn().mockResolvedValue({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ responseMessage: 'OK', returnUrl: 'http://platform/return' }),
+                });
+                const originalFetch = global.fetch;
+                global.fetch = fetchMock;
+                try {
+                    await navbarFile.uploadPlatformEvent();
+                } finally {
+                    global.fetch = originalFetch;
+                    delete window.SharedExporters;
+                }
+                return fetchMock.mock.calls[0][1].body;
+            }
+
+            it('uploads the assets with the document and says the project is saved', async () => {
+                const save = vi.fn().mockResolvedValue({ success: true });
+
+                const body = await finish(save);
+
+                expect(save).toHaveBeenCalledWith({ showProgress: false });
+                expect(body.get('projectSaved')).toBe('1');
+                expect(window.location.replace).toHaveBeenCalledWith('http://platform/return');
+            });
+
+            it('still sends the package when the project could not be saved', async () => {
+                const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+                const failed = await finish(vi.fn().mockResolvedValue({ success: false }));
+                const thrown = await finish(vi.fn().mockRejectedValue(new Error('quota')));
+
+                expect(failed.get('projectSaved')).toBeNull();
+                expect(thrown.get('projectSaved')).toBeNull();
+                expect(window.location.replace).toHaveBeenCalledTimes(2);
+                warn.mockRestore();
+            });
+        });
+
         it('uploadPlatformEvent surfaces export failures from SharedExporters', async () => {
             window.location.search = '?jwt_token=ignored';
             const quickExport = vi.fn().mockResolvedValue({ success: false, error: 'no document' });
