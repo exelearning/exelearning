@@ -6,9 +6,10 @@ import {
     expandIdeviceCategory,
     saveProject,
     reloadPage,
+    hasWebGL,
 } from '../../helpers/workarea-helpers';
 import { unzipSync } from '../../../../../src/shared/export';
-import type { Download, Page } from '@playwright/test';
+import type { Download, FrameLocator, Locator, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -921,6 +922,263 @@ test.describe('3D Viewer iDevice', () => {
             await expect(page.locator('#modalFileManager.show, #modalFileManager[data-open="true"]')).toBeHidden({
                 timeout: 5000,
             });
+        });
+    });
+
+    test.describe('Print', () => {
+        // Each test draws its models with WebGL, which is slow when several run at once.
+        test.setTimeout(120000);
+
+        // The desktop app prints a copy of the preview made without its scripts, so the model has
+        // to reach the copy as a picture: a GLB model lives inside <model-viewer>'s shadow root, an
+        // STL model on a WebGL canvas. The tests stand in for the desktop app and keep the copy
+        // instead of printing it.
+        const models = [
+            { format: 'GLB', fixture: 'test/fixtures/Duck.glb', picture: 'img[src^="data:image/"]' },
+            {
+                format: 'STL',
+                fixture: 'test/fixtures/ascii-cube.stl',
+                picture: 'img.three-js-canvas[src^="data:image/"]',
+            },
+        ];
+
+        /**
+         * Add a 3D viewer with the given model to a new project, and open its print preview.
+         *
+         * @param beforePreview - What to do to the project once the viewer is in it
+         */
+        async function openPrintPreviewWith(
+            page: Page,
+            createProject: (page: Page, title: string) => Promise<string>,
+            format: string,
+            fixture: string,
+            beforePreview?: () => Promise<void>,
+        ): Promise<FrameLocator> {
+            // Without it drawn there is no model to picture: <model-viewer> (GLB) draws with WebGL 2,
+            // the STL viewer with WebGL 1. Firefox on the GPU-less CI runners has neither.
+            // https://github.com/exelearning/exelearning/issues/2547
+            const webgl = format === 'GLB' ? 2 : 1;
+            test.skip(
+                !(await hasWebGL(page, webgl)),
+                `This browser has no WebGL ${webgl} to draw the ${format} model with (issue #2547)`,
+            );
+            const projectUuid = await createProject(page, `3D Viewer print ${format}`);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await selectFirstPage(page);
+            await add3DViewerIdevice(page);
+            await uploadModelViaFilePicker(page, fixture);
+            await save3DViewerIdevice(page);
+            await beforePreview?.();
+
+            await page.locator('#dropdownFile').click();
+            await page.locator('#navbar-button-export-print').click();
+            const overlay = page.locator('#printPreviewOverlay');
+            await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
+            await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 60000 });
+            return page.frameLocator('.print-preview-iframe');
+        }
+
+        /** Wait for a <model-viewer> to show its model. */
+        async function expectModelShown(viewer: Locator): Promise<void> {
+            await expect
+                .poll(() => viewer.evaluate((element: any) => Boolean(element.loaded && element.modelIsVisible)), {
+                    timeout: 30000,
+                })
+                .toBe(true);
+        }
+
+        /** Print as the desktop app does, and keep the copy it would print. */
+        async function printDesktopCopy(page: Page): Promise<void> {
+            await page.evaluate(() => {
+                (window as any).electronAPI = {
+                    printPreview: async (url: string) => {
+                        (window as any).__printedSnapshot = await (await fetch(url)).text();
+                        return { success: true, canceled: false };
+                    },
+                };
+            });
+            await page.locator('.print-preview-print-btn').click();
+            await expect
+                .poll(() => page.evaluate(() => (window as any).__printedSnapshot || ''), { timeout: 15000 })
+                .toContain('three-d-viewer-wrapper');
+        }
+
+        for (const model of models) {
+            test(`keeps the ${model.format} model in the copy the desktop app prints`, async ({
+                authenticatedPage: page,
+                createProject,
+            }) => {
+                const preview = await openPrintPreviewWith(page, createProject, model.format, model.fixture);
+
+                // Wait for the model to be drawn in the preview. The template wraps the viewer in a
+                // second element of the same class; the runtime knows the inner one.
+                const wrapper = preview.locator('.three-d-viewer-wrapper[data-three-d]');
+                if (model.format === 'GLB') {
+                    await expectModelShown(wrapper.locator('model-viewer'));
+                } else {
+                    // The STL model is drawn by the iDevice itself, with the 3D libraries it loads
+                    // from beside its own script: in the preview, a blob: document, there is no
+                    // other folder to load them from. Its canvas and its hidden empty state do not
+                    // say the model is drawn: both are ready before the model has downloaded. Its
+                    // runtime does, as it starts drawing the moment it has the model.
+                    await expect
+                        .poll(
+                            () =>
+                                wrapper.evaluate((element: Element) => {
+                                    const instance = (window as any).eXe3DViewer?.getInstance?.(element);
+                                    return Boolean(instance?.mesh && instance.renderer?.info?.render?.frame > 0);
+                                }),
+                            { timeout: 30000 },
+                        )
+                        .toBe(true);
+                }
+
+                // On paper the viewer is kept whole on one sheet.
+                await page.emulateMedia({ media: 'print' });
+                expect(await wrapper.evaluate(element => getComputedStyle(element).breakInside)).toBe('avoid');
+                await page.emulateMedia({ media: null });
+
+                await printDesktopCopy(page);
+
+                const picture = await page.evaluate(async selector => {
+                    const copy = new DOMParser().parseFromString((window as any).__printedSnapshot, 'text/html');
+                    const image = copy.querySelector(`.three-d-viewer-wrapper ${selector}`);
+                    if (!image) return null;
+
+                    const decoded = new Image();
+                    decoded.src = image.getAttribute('src')!;
+                    await decoded.decode();
+                    const canvas = document.createElement('canvas');
+                    canvas.width = decoded.naturalWidth;
+                    canvas.height = decoded.naturalHeight;
+                    const context = canvas.getContext('2d')!;
+                    context.drawImage(decoded, 0, 0);
+                    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const colours = new Set<string>();
+                    for (let i = 0; i < data.length; i += 4 * 101) {
+                        colours.add(`${data[i]},${data[i + 1]},${data[i + 2]},${data[i + 3]}`);
+                    }
+                    // The STL path keeps a <model-viewer> it does not use, hidden.
+                    const shownViewers = [...copy.querySelectorAll('.three-d-viewer-wrapper model-viewer')].filter(
+                        viewer => (viewer as HTMLElement).style.display !== 'none',
+                    );
+                    return { shownViewers: shownViewers.length, width: canvas.width, colours: colours.size };
+                }, model.picture);
+
+                // The model has become a picture of it, not a blank frame: the model stands out
+                // from its background.
+                expect(picture).not.toBeNull();
+                expect(picture!.shownViewers).toBe(0);
+                expect(picture!.width).toBeGreaterThan(0);
+                expect(picture!.colours).toBeGreaterThan(1);
+            });
+        }
+
+        test('pictures a GLB model with the shape of its own viewer, beside a larger one', async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const preview = await openPrintPreviewWith(page, createProject, 'GLB', 'test/fixtures/Duck.glb');
+            const large = preview.locator('.three-d-viewer-wrapper model-viewer').first();
+            await expectModelShown(large);
+
+            // A second viewer of the model, smaller and square. Every viewer on a page draws on a
+            // canvas as large as the largest, in its top-left corner: a picture of that whole
+            // canvas would have the larger viewer's shape, and its model would shrink with it.
+            await large.evaluate((viewer: any) => {
+                const small = viewer.ownerDocument.createElement('model-viewer');
+                small.id = 'small-viewer';
+                small.style.cssText = 'display: block; width: 200px; height: 200px;';
+                small.src = viewer.src;
+                viewer.closest('.three-d-viewer-wrapper').before(small);
+            });
+            const small = preview.locator('#small-viewer');
+            await expectModelShown(small);
+            const viewers = { large: (await large.boundingBox())!, small: (await small.boundingBox())! };
+
+            await printDesktopCopy(page);
+
+            const pictures = await page.evaluate(async () => {
+                const copy = new DOMParser().parseFromString((window as any).__printedSnapshot, 'text/html');
+                const sizeOf = async (image: Element | null) => {
+                    if (!image) return null;
+                    const decoded = new Image();
+                    decoded.src = image.getAttribute('src')!;
+                    await decoded.decode();
+                    return { width: decoded.naturalWidth, height: decoded.naturalHeight };
+                };
+                return {
+                    large: await sizeOf(copy.querySelector('.three-d-viewer-wrapper img[src^="data:image/"]')),
+                    small: await sizeOf(copy.querySelector('img#small-viewer[src^="data:image/"]')),
+                };
+            });
+
+            const shape = (size: { width: number; height: number }) => size.width / size.height;
+            expect(pictures.large).not.toBeNull();
+            expect(pictures.small).not.toBeNull();
+            expect(shape(pictures.large!)).toBeCloseTo(shape(viewers.large), 1);
+            expect(shape(pictures.small!)).toBeCloseTo(shape(viewers.small), 1);
+        });
+
+        test('pictures a GLB model the preview was never scrolled to', async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            // A long text above the viewer puts it well below what the preview shows.
+            const preview = await openPrintPreviewWith(page, createProject, 'GLB', 'test/fixtures/Duck.glb', () =>
+                page.evaluate(() => {
+                    const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                    const first = binding.getPages()[0];
+                    const block = binding.createBlock(first.id, 'Long text');
+                    binding.createComponent(first.id, block, 'text', {
+                        htmlContent: `<div class="exe-text">${'<p>A paragraph that pushes the viewer down.</p>'.repeat(60)}</div>`,
+                    });
+                    const blocks = binding.getBlocks(first.id);
+                    binding.moveBlockRelative(blocks[blocks.length - 1].id, -(blocks.length - 1));
+                }),
+            );
+            const viewer = preview.locator('.three-d-viewer-wrapper model-viewer').first();
+
+            // model-viewer waits for a viewer to scroll into view before loading its model. On a
+            // page built for printing it loads it at once, so the copy has something to picture.
+            await expect
+                .poll(() => viewer.evaluate((element: any) => Boolean(element.loaded)), { timeout: 30000 })
+                .toBe(true);
+            expect(await viewer.evaluate(element => element.getBoundingClientRect().top > window.innerHeight)).toBe(
+                true,
+            );
+
+            // Kept whole, the viewer can move to the next sheet; its block's heading goes with it.
+            await page.emulateMedia({ media: 'print' });
+            await expect(preview.locator('article.box:has(.three-d-viewer-wrapper) > .box-head').first()).toHaveCSS(
+                'break-after',
+                'avoid',
+            );
+            await page.emulateMedia({ media: null });
+
+            await printDesktopCopy(page);
+
+            const colours = await page.evaluate(async () => {
+                const copy = new DOMParser().parseFromString((window as any).__printedSnapshot, 'text/html');
+                const image = copy.querySelector('.three-d-viewer-wrapper img[src^="data:image/"]');
+                if (!image) return 0;
+                const decoded = new Image();
+                decoded.src = image.getAttribute('src')!;
+                await decoded.decode();
+                const canvas = document.createElement('canvas');
+                canvas.width = decoded.naturalWidth;
+                canvas.height = decoded.naturalHeight;
+                const context = canvas.getContext('2d')!;
+                context.drawImage(decoded, 0, 0);
+                const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+                const seen = new Set<string>();
+                for (let i = 0; i < data.length; i += 4 * 101) {
+                    seen.add(`${data[i]},${data[i + 1]},${data[i + 2]},${data[i + 3]}`);
+                }
+                return seen.size;
+            });
+            expect(colours).toBeGreaterThan(1);
         });
     });
 });

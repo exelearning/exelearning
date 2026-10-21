@@ -36,7 +36,8 @@ var $eXeRelaciona = {
     },
 
     loadGame: function () {
-        $eXeRelaciona.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeRelaciona.options.length = $eXeRelaciona.activities.length;
 
         $eXeRelaciona.activities.each(function (i) {
             const dl = $('.relaciona-DataGame', this);
@@ -48,7 +49,7 @@ var $eXeRelaciona = {
             mOption.main = 'rlcMainContainer-' + i;
             mOption.idevice = 'relaciona-IDevice';
 
-            $eXeRelaciona.options.push(mOption);
+            $eXeRelaciona.options[i] = mOption;
 
             const rlc = $eXeRelaciona.createInterfaceCards(i);
 

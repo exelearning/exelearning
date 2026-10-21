@@ -5,9 +5,9 @@
  * Wraps PageRenderer (Single Page export logic) and patches paths for browser preview.
  */
 import type {
-    ExportAsset,
     ExportDocument,
     ExportPage,
+    ExportBlock,
     ExportComponent,
     ResourceProvider,
     AssetProvider,
@@ -16,7 +16,49 @@ import type {
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
+import { generateI18nScript } from '../generators/I18nGenerator';
+import { AssetUrlResolver } from '../utils/AssetUrlResolver';
+import { ThemeFileUrlResolver } from '../utils/ThemeFileUrlResolver';
+import { visibleWorksheetPages } from '../utils/visibility';
+import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
+import { renderMatchingLayoutScript } from '../worksheet/matchingLayout';
+import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
+import { nodeText } from '../worksheet/sanitizeHtml';
+import { parse, type DefaultTreeAdapterMap } from 'parse5';
 import { resolveMaterialIconDataUris } from './BaseExporter';
+import { PRERENDERED_LATEX_CSS } from '../constants';
+import {
+    applyActivityMode,
+    convertedBy,
+    droppedBy,
+    leaveOutTeacherOnlyActivities,
+    PRINTABLE_ACTIVITY_TYPE,
+    type ApplyActivityModeOptions,
+    type DocumentActivityMode,
+} from './printActivityModes';
+
+/**
+ * How the appendix of exercises breaks across printed pages.
+ *
+ * Carried with the exercise styles and never without them: a document that converts no activity
+ * has no appendix to lay out.
+ */
+const APPENDIX_PRINT_STYLES = `
+@media print {
+    /* Start the appendix on a new page */
+    #section-worksheet-appendix {
+        page-break-before: always;
+        break-before: page;
+    }
+
+    /* In the appendix, start each activity after the first on a new page. The note standing in for
+       one that cannot be printed is a line long, so it follows whatever came before it instead. */
+    #section-worksheet-appendix .box-content > :not(:first-child):not(:has(.worksheet-activity-unprintable)) {
+        page-break-before: always;
+        break-before: page;
+    }
+}
+`;
 
 /**
  * Options for print preview generation
@@ -29,10 +71,19 @@ export interface PrintPreviewOptions {
     /** Base path for URLs (e.g., '/exelearning') */
     basePath?: string;
     /**
-     * Full theme URL from the themes manager (e.g., '/v1/site-files/themes/chiquito/')
-     * When provided, this is used instead of constructing the path from theme name.
+     * Where the project's style is served from, as the themes manager knows it
+     * (e.g., 'https://host/v1/site-files/themes/chiquito/'). Everything the page takes from the
+     * style — its stylesheet, its script and the icons blocks are given — is loaded from here.
+     * It must be absolute for a preview shown as a blob: document. Without it, the style is
+     * looked for among the base styles.
      */
     themeUrl?: string;
+    /**
+     * Take the style from its own files, for a style that is not served from anywhere: one the
+     * user imported, kept with the project. The files it refers to are handed to the page as
+     * blob: URLs, which the result's `dispose()` releases. Ignored when `themeUrl` is given.
+     */
+    themeFromFiles?: boolean;
     /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
      * When provided and successful, MathJax library will NOT be included in the output.
@@ -51,6 +102,34 @@ export interface PrintPreviewOptions {
      * If true, enables auto-print mode (injects print scripts and onload handler).
      */
     printMode?: boolean;
+    /**
+     * If true, shows URLs inline after external links in printed output.
+     * E.g., "Cedec" becomes "Cedec [https://cedec.intef.es]".
+     * If false, also hides the URLs that a theme, an iDevice or base.css would print
+     * themselves, including the address of each external iframe.
+     * Applied on screen as well, so the preview matches the printed output.
+     * Defaults to true.
+     */
+    showLinkUrls?: boolean;
+    /**
+     * Whether the content kept for teachers prints. Its interactive activities are then treated
+     * as any other is; otherwise they are left out of the document. Showing the rest of that
+     * content is the preview's own business, by putting it in teacher mode. Defaults to false.
+     */
+    teacherOnly?: boolean;
+    /**
+     * What to do with the project's interactive activities, and the strings to do it with.
+     *
+     * Left out, the document prints exactly as the browser draws it, which is how printing
+     * behaved before there was anything else to choose.
+     */
+    activities?: ApplyActivityModeOptions & { mode: DocumentActivityMode };
+    /**
+     * Draws a molecule, for the activity that stores one without a picture of it.
+     *
+     * Only a browser can; without it those questions print without their molecules.
+     */
+    captureMolecule?: MoleculeRenderer;
 }
 
 /**
@@ -60,6 +139,14 @@ export interface PrintPreviewResult {
     success: boolean;
     html?: string;
     error?: string;
+    /**
+     * Releases the blob URLs the HTML points at, one per asset it uses.
+     *
+     * Only the caller knows when the document has stopped being shown, so it must call this then.
+     * A preview that is drawn again each time an option changes would otherwise leave a copy of
+     * each of those assets behind each time.
+     */
+    dispose?: () => void;
 }
 
 /**
@@ -69,11 +156,8 @@ export interface PrintPreviewResult {
  */
 export class PrintPreviewExporter {
     private document: ExportDocument;
-    private ideviceRenderer: IdeviceRenderer;
-    private pageRenderer: PageRenderer;
     private assets: AssetProvider | null;
     private resources: ResourceProvider;
-    private assetExportPathMap: Map<string, string> | null = null;
 
     /**
      * Create a PrintPreviewExporter
@@ -89,10 +173,6 @@ export class PrintPreviewExporter {
         this.document = document;
         this.resources = resourceProvider;
         this.assets = assetProvider;
-        // User IdeviceRenderer to render content.
-        // We initialize it here to use it for single-page rendering and icon resolution
-        this.ideviceRenderer = new IdeviceRenderer();
-        this.pageRenderer = new PageRenderer(this.ideviceRenderer);
     }
 
     /**
@@ -101,6 +181,12 @@ export class PrintPreviewExporter {
      * @returns Preview result with HTML string
      */
     async generatePreview(options: PrintPreviewOptions = {}): Promise<PrintPreviewResult> {
+        // Each result owns its URLs and rendering state, even when this exporter is reused
+        // or two callers generate previews concurrently.
+        const assetResolver = new AssetUrlResolver(this.assets);
+        const ideviceRenderer = new IdeviceRenderer();
+        const pageRenderer = new PageRenderer(ideviceRenderer);
+        let themeFiles: ThemeFileUrlResolver | null = null;
         try {
             const pages = this.document.getNavigation();
             const meta = this.document.getMetadata();
@@ -109,17 +195,50 @@ export class PrintPreviewExporter {
                 return { success: false, error: 'No pages to preview' };
             }
 
-            // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
-            let processedPages = await this.preprocessPages(pages);
+            // The activities kept for teachers print only with the rest of that content, and then
+            // the chosen mode treats them as any other.
+            const teacherOnly = options.teacherOnly === true;
+            const activities = options.activities && { ...options.activities, teacherOnly };
 
-            // Deduplicate components to remove artifacts from complex iDevices (e.g. Complete)
-            processedPages = this.deduplicateComponents(processedPages);
+            // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
+            let processedPages = await this.preprocessPages(
+                teacherOnly ? pages : leaveOutTeacherOnlyActivities(pages),
+                assetResolver,
+                activities && droppedBy(activities.mode, activities),
+            );
+
+            // Anything that has to be drawn before it can be printed is drawn first: converting an
+            // activity into an exercise is synchronous and has no browser to draw with.
+            if (activities && options.captureMolecule) {
+                processedPages = await this.captureDrawings(
+                    processedPages,
+                    options.captureMolecule,
+                    convertedBy(activities.mode, activities),
+                );
+            }
+
+            // Carry out what the user chose to do with the interactive activities. This works on
+            // the page model, so everything below renders it as it would any other document.
+            // Asset URLs are already resolved by this point, which is what lets a converted
+            // activity keep its pictures.
+            if (activities) {
+                processedPages = applyActivityMode(processedPages, activities.mode, activities);
+            }
 
             // Fetch theme files and configure icon resolution (from main)
             const themeName = meta.theme || 'base';
+            // The style's root scripts and stylesheets, which an older style calls default.js and
+            // content.css. Left empty, the page links style.js and style.css.
+            let themeRootFiles: string[] = [];
             try {
                 const themeFilesMap = await this.resources.fetchTheme(themeName);
-                this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+                ideviceRenderer.setThemeIconFiles(themeFilesMap);
+                themeRootFiles = [...themeFilesMap.keys()].filter(
+                    path => !path.includes('/') && (path.endsWith('.css') || path.endsWith('.js')),
+                );
+                if (options.themeFromFiles && !options.themeUrl && themeFilesMap.size > 0) {
+                    themeFiles = new ThemeFileUrlResolver(themeFilesMap);
+                }
             } catch {
                 // Theme fetch not available - icons will use .png fallback
             }
@@ -139,7 +258,7 @@ export class PrintPreviewExporter {
 
             // Generate the single-page HTML components using PageRenderer
             // This ensures we use the exact same logic as the "Single Page" export
-            let html = this.pageRenderer.renderSinglePage(processedPages, {
+            let html = pageRenderer.renderSinglePage(processedPages, {
                 projectTitle: meta.title || 'eXeLearning',
                 projectSubtitle: meta.subtitle || '',
                 language: meta.language || 'en',
@@ -152,21 +271,27 @@ export class PrintPreviewExporter {
                 passScore: meta.passScore,
                 passScoreEveryActivity: meta.passScoreEveryActivity,
                 version, // From browser context
-                assetExportPathMap: this.assetExportPathMap || undefined,
+                assetExportPathMap: assetResolver.getExportPathMap(),
                 materialIconDataUris,
+                printContext: { kind: 'document', activities: options.activities?.mode ?? null },
+                themeFiles: themeRootFiles,
             });
 
             // Post-process HTML:
             // 1. Pre-render LaTeX/Mermaid (if hooks provided)
             html = await this.preRenderContent(html, meta, options);
 
-            // 2. Patch relative paths (libs/, theme/) to server absolute paths
-            html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options);
+            // 2. Patch relative paths (libs/, theme/) to server absolute paths, once the translated
+            // strings the export scripts read are in the page itself
+            html = await this.inlineTranslatedStrings(html, meta.language || 'en');
+            html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options, themeFiles);
 
             // 2b. Resolve any remaining content/resources or asset:// URLs to blob URLs.
             // Block header custom icons are generated at render time, so they are not covered
-            // by the page/component preprocess step above.
-            html = await this.resolveAssetUrls(html);
+            // by the page/component preprocess step above. Nor is an exercise drawn from a
+            // decrypted payload, whose pictures are mapped here.
+            await assetResolver.build(html);
+            html = assetResolver.resolve(html);
 
             // 3. Make hidden feedback elements visible (remove display: none)
             html = this.revealFeedback(html);
@@ -175,47 +300,11 @@ export class PrintPreviewExporter {
             html = this.hidePrintExtras(html);
 
             // 5. Inject styles to avoid horizontal scroll
-            // Calculate logo URL for fix (same logic as patchPathsForServer)
-            const baseUrl = options.baseUrl || '';
-            const basePath = options.basePath || '';
-            // Determine version (priority: options > window > default)
-            let versionStr = options.version;
-            if (versionStr === undefined) {
-                versionStr = version !== 'v1.0.0' ? version : undefined;
-            }
-            // If version is still undefined/null, default to nothing or v1.0.0 depending on logic.
-            // patchPathsForServer uses options.version ?? 'v1.0.0' logic roughly.
-            // Let's use the exact same logic helper if possible, or replicate:
-            const effectiveVersion = options.version ?? version; // Use window version if options not present
-
-            const getPath = (path: string) => {
-                const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-                const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-                // If version is provided/detected, include it
-                if (effectiveVersion && effectiveVersion !== 'v1.0.0') {
-                    return `${baseUrl}${cleanBasePath}/${effectiveVersion}/${cleanPath}`;
-                }
-                // Default to no version in path if v1.0.0 or missing (usually dev)
-                // NOTE: build-static-bundle usually puts everything under version folder?
-                // patchPathsForServer logic:
-                // if (!version) return ... else return .../${version}/...
-                // It used `options.version === undefined ? 'v1.0.0' : options.version`
-                // and checked `if (!version)` (which is never true if it defaults to v1.0.0 string?)
-                // Wait, patchPathsForServer uses local scope version variable.
-
-                // Replicating patchPathsForServer logic exactly:
-                const v = options.version === undefined ? 'v1.0.0' : options.version;
-                // If v exists (it always does due to default), it appends it?
-                // No, check patchPathsForServer:
-                // const version = options.version === undefined ? 'v1.0.0' : options.version;
-                // if (!version) ...
-                // 'v1.0.0' is truthy. So it always appends version?
-                // Actually, let's look at patchPathsForServer implementation I saw earlier.
-                return `${baseUrl}${cleanBasePath}/${v}/${cleanPath}`;
-            };
-
-            const logoUrl = getPath('app/common/exe_powered_logo/exe_powered_logo.png');
-            html = this.injectPreviewStyles(html, logoUrl);
+            // Only a mode that puts exercises in the document needs their styling.
+            const convertsActivities = options.activities !== undefined && options.activities.mode !== 'omit';
+            const showLinkUrls = options.showLinkUrls !== false;
+            if (showLinkUrls) html = this.markLinksShowingTheirUrl(html);
+            html = this.injectPreviewStyles(html, { includeActivityStyles: convertsActivities, showLinkUrls });
 
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
@@ -224,8 +313,17 @@ export class PrintPreviewExporter {
                 // Even in normal preview mode, we need to force init scripts because window.eXeLearning is defined
                 html = this.injectInitScripts(html);
             }
-            return { success: true, html };
+            return {
+                success: true,
+                html,
+                dispose: () => {
+                    assetResolver.dispose();
+                    themeFiles?.dispose();
+                },
+            };
         } catch (error) {
+            assetResolver.dispose();
+            themeFiles?.dispose();
             console.error('PrintPreview generate error:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { success: false, error: errorMessage };
@@ -233,17 +331,52 @@ export class PrintPreviewExporter {
     }
 
     /**
+     * Draw whatever has to exist as a picture before an activity can be converted.
+     *
+     * Walks the components rather than the rendered HTML, because the conversion happens on the
+     * page model and needs the drawing already in place. Pages are copied, never mutated.
+     *
+     * One component at a time: a drawing may need a graphics context, and a browser hands out only
+     * a handful of those at once — a project with a dozen molecules in it would run dry partway
+     * through if they were all drawn together.
+     *
+     * Only the components that are converted are drawn. The rest print as they are, or not at
+     * all: left out, left unticked, hidden or for teachers only.
+     */
+    private async captureDrawings(
+        pages: ExportPage[],
+        render: MoleculeRenderer,
+        isConverted: (block: ExportBlock, component: ExportComponent) => boolean,
+    ): Promise<ExportPage[]> {
+        const captured: ExportPage[] = [];
+
+        // The navigation is flat by the time it gets here, which is also what the conversion that
+        // follows walks.
+        for (const page of pages) {
+            const blocks = [];
+            for (const block of page.blocks || []) {
+                const components = [];
+                for (const component of block.components || []) {
+                    components.push(
+                        isConverted(block, component)
+                            ? { ...component, content: await captureMolecules(component.content || '', render) }
+                            : component,
+                    );
+                }
+                blocks.push({ ...block, components });
+            }
+            captured.push({ ...page, blocks });
+        }
+
+        return captured;
+    }
+
+    /**
      * Filter out pages that are marked as not visible in export
      */
     private filterVisiblePages(pages: ExportPage[]): ExportPage[] {
         return (
-            pages
-                .filter(page => {
-                    // Check visibility property. Default is visible if undefined.
-                    // strict check for false or 'false'
-                    const isHidden = page.properties?.visibility === false || page.properties?.visibility === 'false';
-                    return !isHidden;
-                })
+            visibleWorksheetPages(pages)
                 // Recursively filter children (though ExportPage definition implies flat list,
                 // if PageRenderer handles hierarchy via other means, this is safe for future proofing
                 // or if ExportPage has children property not shown in interface file but present in runtime)
@@ -259,33 +392,149 @@ export class PrintPreviewExporter {
     }
 
     /**
-     * Inject styles to force content to fit within the page width
+     * Mark the external links whose text already is their address, so that it is not written
+     * after them a second time.
+     *
+     * CSS cannot compare a link's text with its href, so the HTML says it. Both are compared as
+     * the reader sees them, entities and percent-encoding decoded. The protocol, a trailing slash
+     * and the letter case of the host may differ: "Example.com" is the address of
+     * "https://example.com/". The rest may not, since a path or a query can tell two addresses
+     * apart by case alone.
+     *
+     * The links are found in the parsed document, not by a pattern, which would take an anchor
+     * never closed, or a "<a" in a script, for a link. Only the start tags are written to, at the
+     * places the parser read them from, so the rest of the document is left as it was.
      */
-    private injectPreviewStyles(html: string, logoUrl?: string): string {
-        const logoCss = logoUrl
+    private markLinksShowingTheirUrl(html: string): string {
+        const bare = (url: string) => {
+            const address = url
+                .trim()
+                .replace(/^https?:\/\//i, '')
+                .replace(/\/$/, '');
+            const hostEnd = address.search(/[/?#]/);
+            const host = hostEnd < 0 ? address.toLowerCase() : address.slice(0, hostEnd).toLowerCase();
+            const rest = hostEnd < 0 ? '' : address.slice(hostEnd);
+            try {
+                return host + decodeURI(rest);
+            } catch {
+                return host + rest;
+            }
+        };
+
+        const matchesByStart = new Map<number, boolean>();
+        const visit = (node: DefaultTreeAdapterMap['node']) => {
+            if (node.nodeName === 'a' && 'attrs' in node) {
+                const href = node.attrs.find(attribute => attribute.name === 'href')?.value ?? '';
+                const start = node.sourceCodeLocation?.startTag?.startOffset;
+                if (start !== undefined && /^https?:\/\//i.test(href)) {
+                    // Malformed HTML can produce several anchors from one start tag. An attribute
+                    // inserted there reaches every copy, so all must already show their address.
+                    const matches = bare(nodeText(node)) === bare(href);
+                    matchesByStart.set(start, matchesByStart.get(start) !== false && matches);
+                }
+            }
+            if ('childNodes' in node) for (const child of node.childNodes) visit(child);
+            if ('content' in node) visit(node.content);
+        };
+        visit(parse(html, { sourceCodeLocationInfo: true }));
+
+        const starts = [...matchesByStart]
+            .filter(([, matches]) => matches)
+            .map(([start]) => start)
+            .sort((a, b) => a - b);
+        if (starts.length === 0) return html;
+
+        // Slice only the original source and join once. Rebuilding the whole document for each
+        // insertion makes previews with many links take time proportional to links times HTML size.
+        const parts: string[] = [];
+        let cursor = 0;
+        for (const start of starts) {
+            const insertion = start + 2;
+            parts.push(html.slice(cursor, insertion), ' data-exe-text-is-url');
+            cursor = insertion;
+        }
+        parts.push(html.slice(cursor));
+        return parts.join('');
+    }
+
+    /**
+     * Inject styles to force content to fit within the page width
+     *
+     * @param options.includeActivityStyles - Style the exercises the activities were turned into
+     * @param options.showLinkUrls - Write each external link's URL after it, on screen and paper
+     */
+    private injectPreviewStyles(html: string, { includeActivityStyles = false, showLinkUrls = true } = {}): string {
+        // Turning the URLs off has to undo the rules that print them elsewhere, not just leave ours
+        // out: a theme (educablue) and an iDevice (udl-content) append them in their own print
+        // styles, and base.css shows the address of each external iframe on paper. Those only
+        // apply when printing, so the preview would hide what the printout still shows. This
+        // sheet comes after theirs, so `!important` wins over both their plain declarations and
+        // base.css's own `!important`; outside @media print, it holds on screen as well.
+        const linkUrlsCss = showLinkUrls
             ? `
-/* Fix for eXe logo 404 */
-#made-with-eXe a {
-    background-image: url("${logoUrl}") !important;
-}`
-            : '';
+/* Show URLs inline after external links (screen and print, so the preview matches) */
+a[href^="http"]::after {
+    content: " [" attr(href) "]";
+    font-size: 0.85em;
+    word-break: break-all;
+    color: #666;
+}
+/* Don't show URL for links whose text IS the URL (marked by markLinksShowingTheirUrl) */
+a[href^="http"][data-exe-text-is-url]::after { content: none; }
+/* Don't show URL for image-only links */
+a[href^="http"]:has(img:only-child)::after { content: none; }
+/* Show external iframe source URLs in print */
+.external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }
+/* Its link text already is the URL */
+.external-iframe-src a::after { content: none; }`
+            : `
+/* Link URLs are off: undo the theme, iDevice and base rules that print them (screen and print) */
+a[href^="http"]::after { content: none !important; }
+.external-iframe-src { display: none !important; }`;
 
         const styles = `
 <style>
 /* PREVIEW MODE (Screen) */
+${linkUrlsCss}
+/* Show on screen what goes on paper.
+   The link to eXe never prints, so the preview leaves it out as well. Folded blocks print open
+   (base.css) unless the print options ask for the page as it is shown, which puts
+   exe-print-as-shown on the html element: until then the preview opens them too, and leaves out
+   the toggles, which would only fold on screen a block that prints open anyway. */
+#made-with-eXe { display: none !important; }
+html:not(.exe-print-as-shown) .exe-export article.box.minimized > .box-content { display: block !important; }
+html:not(.exe-print-as-shown) .exe-export .box-toggle { display: none !important; }
+/* External links take the colour of the text around them and an underline, on screen as on paper.
+   Only those: iDevices and styles build controls out of links too, and style them by class. */
+.exe-content a[href^="http"] {
+    color: inherit;
+    text-decoration: underline;
+}
+/* Long lines of code wrap, on screen as on paper. Quotes are left out: pre-wrap would also keep
+   the line breaks of their source, and print them as blank lines. */
+pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
 /* Create space around the document in preview mode */
 body {
     padding: 40px;
     background-color: #f5f5f5; /* Light grey background for the "paper" effect */
 }
-/* The page content acts as the paper */
-.exe-single-page {
+/* The page content acts as the paper. The selector outweighs a style's own body rules
+   (body.exe-export), which would otherwise take the paper's margin away. */
+html body.exe-single-page {
     background-color: white;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
     max-width: 210mm; /* A4 width approx */
     margin: 0 auto;
-    padding: 20mm; /* A4 margins approx */
+    padding: 15mm; /* the @page margin every base style prints with, so lines break where they will on paper */
     box-sizing: border-box;
+}
+/* Inside it, the content gives up the padding a style may give it on screen, as every base style
+   that has some does on paper: the margin above is the only one. */
+html body.exe-single-page .exe-content {
+    padding: 0;
 }
 
 /* Force content to fit within the page (no horizontal scroll) */
@@ -356,7 +605,6 @@ figure img {
     pre, blockquote {
         page-break-inside: avoid;
         break-inside: avoid;
-        white-space: pre-wrap;
     }
 
     /* 2. Hide Title and Subtitle (Header) */
@@ -383,32 +631,61 @@ figure img {
         break-inside: avoid;
         border-bottom: none;
     }
+
+    /* Hide toggle content buttons — these are interactive-only controls */
+    .box-toggle { display: none !important; }
+
+    /* Hide game toolbar/score icons: they are background images, which browsers
+       omit by default when printing, leaving empty boxes */
+    [class*="exeQuextIcons"], .SopaIcons, .IDFPIcons { display: none !important; }
+
+    /* Hide map iDevice image overlays that are js-hidden */
+    .mapa-IDevice img.js-hidden { display: none !important; }
 }
 
-/* Force visibility for feedback elements even if JS tries to hide them */
-.feedback.js-hidden {
+/* Feedback prints open. Printing everything, it stays open whatever its button does. Printing the
+   page as the preview shows it, its button can fold it, as a block's toggle folds the block: the
+   rule then yields to the style the button writes, yet still outweighs \`.js .js-hidden\`. */
+html:not(.exe-print-as-shown) .feedback.js-hidden {
     display: block !important;
 }
-${logoCss}
+html.exe-print-as-shown .feedback.js-hidden {
+    display: block;
+}
+/* Formulas pre-rendered as SVG carry their MathML alongside, for screen readers. The exports hide
+   it with this sheet, added to their own base.css; the preview links the editor's base.css, which
+   lacks it, so without it here every formula showed twice. */
+${PRERENDERED_LATEX_CSS}
+${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''}
 </style>
 `;
-        return html.replace('</head>', `${styles}</head>`);
+        return html.replace('</head>', `${styles}${includeActivityStyles ? renderMatchingLayoutScript() : ''}</head>`);
     }
 
     /**
      * Pre-process pages to resolve asset URLs
      * Replaces asset://UUID with content/resources/FILENAME
      */
-    private async preprocessPages(pages: ExportPage[]): Promise<ExportPage[]> {
+    private async preprocessPages(
+        pages: ExportPage[],
+        assetResolver: AssetUrlResolver,
+        isDropped: (block: ExportBlock, component: ExportComponent) => boolean = () => false,
+    ): Promise<ExportPage[]> {
         if (!this.assets) return this.filterVisiblePages(pages);
-
-        // Build path map if not already done
-        if (!this.assetExportPathMap) {
-            await this.buildAssetExportPathMap();
-        }
 
         // Filter out hidden pages
         const visiblePages = this.filterVisiblePages(pages);
+
+        // Only the assets these pages use: a project's media can be heavy, and the preview is
+        // drawn again each time an option changes. An activity the chosen mode leaves out uses none.
+        const printed = visiblePages.map(page => ({
+            ...page,
+            blocks: (page.blocks || []).map(block => ({
+                ...block,
+                components: (block.components || []).filter(component => !isDropped(block, component)),
+            })),
+        }));
+        await assetResolver.build(JSON.stringify(printed));
 
         // Note: filterVisiblePages returns shallow copies, but preprocessPages was deep cloning.
         // Let's do a deep clone of the filtered result to be safe and consistent with previous logic
@@ -418,11 +695,11 @@ ${logoCss}
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
-                        component.content = await this.resolveAssetUrls(component.content);
+                        component.content = assetResolver.resolve(component.content);
                     }
                     if (component.properties) {
                         const propsStr = JSON.stringify(component.properties);
-                        const processedStr = await this.resolveAssetUrls(propsStr);
+                        const processedStr = assetResolver.resolve(propsStr);
                         component.properties = JSON.parse(processedStr);
                     }
                 }
@@ -432,108 +709,18 @@ ${logoCss}
     }
 
     /**
-     * Resolve asset:// and content/resources/ URLs to Blob URLs
-     */
-    private async resolveAssetUrls(content: string): Promise<string> {
-        if (!content || !this.assetExportPathMap) return content;
-
-        // Replace asset://UUID or content/resources/UUID with blob:URL
-        // Capture group 1 is the ID/Filename
-        // IMPORTANT: Exclude \ (backslash) to prevent consuming JSON escape characters (e.g. \")
-        return content.replace(/(?:asset:\/\/|content\/resources\/)([^"'\s\\]+)/gi, (_match, idOrFilename) => {
-            // 1. Try direct lookup (UUID or Filename as is)
-            let blobUrl = this.assetExportPathMap?.get(idOrFilename) || this.assetFilenameMap?.get(idOrFilename);
-
-            // 2. Try removing extension (e.g. UUID.png -> UUID)
-            if (!blobUrl && idOrFilename.includes('.')) {
-                const idWithoutExt = idOrFilename.substring(0, idOrFilename.lastIndexOf('.'));
-                blobUrl = this.assetExportPathMap?.get(idWithoutExt);
-            }
-
-            if (blobUrl) {
-                return blobUrl;
-            }
-
-            // Fallback: If it was asset://, convert to path. If it was already path, keep it.
-            if (_match.startsWith('asset://')) {
-                return `content/resources/${idOrFilename}`;
-            }
-            return _match;
-        });
-    }
-
-    private assetFilenameMap: Map<string, string> | null = null;
-
-    /**
-     * Build map of asset UUIDs to Blob URLs
-     */
-    private async buildAssetExportPathMap(): Promise<void> {
-        if (!this.assets) {
-            console.warn('[PrintPreviewExporter] No assets provider available');
-            return;
-        }
-
-        this.assetExportPathMap = new Map();
-        this.assetFilenameMap = new Map();
-
-        try {
-            const processAsset = async (asset: ExportAsset) => {
-                // Create Blob URL
-                let blobUrl = '';
-                if (asset.data) {
-                    try {
-                        const blob =
-                            asset.data instanceof Blob
-                                ? asset.data
-                                : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
-                                  new Blob([asset.data as any], { type: asset.mime });
-                        blobUrl = URL.createObjectURL(blob);
-                    } catch (err) {
-                        console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);
-                    }
-                } else {
-                    console.warn('[PrintPreview] Asset has no data:', asset.id);
-                }
-
-                if (blobUrl) {
-                    this.assetExportPathMap!.set(asset.id, blobUrl);
-                    if (asset.filename) {
-                        this.assetFilenameMap!.set(asset.filename, blobUrl);
-                    }
-                }
-            };
-
-            await this.iterateAssets(processAsset);
-            console.log('[PrintPreview] Asset map built. Size:', this.assetExportPathMap.size);
-        } catch (e) {
-            console.warn('[PrintPreviewExporter] Failed to build asset map:', e);
-        }
-    }
-
-    /**
-     * Iterate over all assets using the most efficient method available.
-     * Uses forEachAsset() when supported (streaming), otherwise falls back to getAllAssets().
-     */
-    private async iterateAssets(callback: (asset: ExportAsset) => Promise<void>): Promise<void> {
-        if (this.assets!.forEachAsset) {
-            await this.assets!.forEachAsset(callback);
-        } else {
-            const assets = await this.assets!.getAllAssets();
-            for (const asset of assets) {
-                await callback(asset);
-            }
-        }
-    }
-
-    /**
      * Get all unique iDevice types used in pages
+     *
+     * A component holding a converted activity is left out: it carries finished markup, so
+     * listing it here would ask the document for an iDevice script and stylesheet that do not
+     * exist.
      */
     private getUsedIdevices(pages: ExportPage[]): string[] {
         const types = new Set<string>();
         for (const page of pages) {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
-                    if (component.type) {
+                    if (component.type && component.type !== PRINTABLE_ACTIVITY_TYPE) {
                         types.add(component.type);
                     }
                 }
@@ -589,13 +776,62 @@ ${logoCss}
     }
 
     /**
+     * Put the translated strings the export scripts read into the preview itself.
+     *
+     * An export ships `libs/common_i18n.js` translated into the project's language. Linked to the
+     * file beside the editor's sources instead, the preview loaded the template, whose `c_()` calls
+     * fail outside the editor: `$exe_i18n` was never defined, and neither was any iDevice script
+     * that reads it as it loads, such as the Text iDevice, whose feedback button then did nothing.
+     * Without the translated file, resolve the source template to English using the same generator
+     * as the build. If neither resource is available, warn and keep the preview printable with an
+     * empty dictionary. Never load the unresolved template into the preview.
+     *
+     * @param html - The rendered page
+     * @param language - The project's language
+     * @returns The page, with the strings in a script of its own
+     */
+    private async inlineTranslatedStrings(html: string, language: string): Promise<string> {
+        const link = /<script\b[^>]*\bsrc="libs\/common_i18n\.js"[^>]*>\s*<\/script>/;
+        if (!link.test(html)) return html;
+
+        let strings = '';
+        try {
+            strings = await this.resources.fetchI18nFile(language);
+        } catch (error) {
+            console.warn('[PrintPreviewExporter] Could not fetch the translated strings:', error);
+        }
+        if (!strings) {
+            try {
+                const files = await this.resources.fetchLibraryFiles(['common_i18n.js']);
+                const template = files.get('common_i18n.js');
+                if (template?.length) strings = generateI18nScript(new TextDecoder().decode(template), new Map());
+            } catch (error) {
+                console.warn('[PrintPreviewExporter] Could not fetch the translation template:', error);
+            }
+        }
+        if (!strings) {
+            console.warn(
+                '[PrintPreviewExporter] Translation resources unavailable; continuing without shared translations.',
+            );
+            strings = 'window.$exe_i18n = window.$exe_i18n || {};';
+        }
+
+        // A string closing the script would end it early.
+        const script = `<script>${strings.replace(/<\/(script)/gi, '<\\/$1')}</script>`;
+        return html.replace(link, () => script);
+    }
+
+    /**
      * Patch relative paths generated by PageRenderer to point to server resources
+     *
+     * @param themeFiles - The style's own files, for a style that is not served from anywhere
      */
     private patchPathsForServer(
         html: string,
         themeName: string,
         usedIdevices: string[],
         options: PrintPreviewOptions,
+        themeFiles: ThemeFileUrlResolver | null = null,
     ): string {
         const baseUrl = options.baseUrl || '';
         const basePath = options.basePath || '';
@@ -631,14 +867,6 @@ ${logoCss}
             // Base CSS
             'content/css/base.css': getPath('style/workarea/base.css'), // Fallback/Core CSS
 
-            // Theme (in zip: theme/ -> on server: /files/perm/themes/base/...)
-            'theme/style.css': options.themeUrl
-                ? `${options.themeUrl.replace(/\/$/, '')}/style.css`
-                : getPath(`files/perm/themes/base/${themeName}/style.css`),
-            'theme/style.js': options.themeUrl
-                ? `${options.themeUrl.replace(/\/$/, '')}/style.js`
-                : getPath(`files/perm/themes/base/${themeName}/style.js`),
-
             // Highlighter (exe_highlighter)
             // PageRenderer outputs libs/exe_highlighter/...
             // Server has it in app/common/exe_highlighter/...
@@ -658,6 +886,22 @@ ${logoCss}
             // Replace refs in src="..." and href="..."
             processed = processed.replaceAll(`src="${key}"`, `src="${value}"`);
             processed = processed.replaceAll(`href="${key}"`, `href="${value}"`);
+        }
+
+        // Theme (in zip: theme/ -> wherever the style is served from, or its own files when it is
+        // served from nowhere). The whole prefix moves, not a list of files: the icons blocks are
+        // given live under it beside the stylesheet and the script, and a path left relative
+        // resolves to nothing in a blob: document.
+        if (themeFiles) {
+            processed = themeFiles.resolve(processed);
+        } else {
+            const themeBase = options.themeUrl
+                ? options.themeUrl.replace(/\/$/, '')
+                : getPath(`files/perm/themes/base/${themeName}`);
+            processed = processed.replace(
+                /(\s(?:src|href)=")theme\//g,
+                (_match, attribute) => `${attribute}${themeBase}/`,
+            );
         }
 
         // Handle iDevice resources (in zip: idevices/ -> on server: /files/perm/idevices/base/...)
@@ -852,55 +1096,6 @@ $(function() {
             }
 
             return match;
-        });
-    }
-
-    /**
-     * Deduplicate consecutive components that share the same type and ID prefix (timestamp)
-     * This handles cases like 'Complete' iDevice where it splits into multiple components
-     * but we only want to show the first one in print.
-     */
-    private deduplicateComponents(pages: ExportPage[]): ExportPage[] {
-        return pages.map(page => {
-            const blocks = page.blocks || [];
-            const newBlocks = blocks.map(block => {
-                const components = block.components || [];
-                const uniqueComponents: ExportComponent[] = [];
-                let lastComponent: ExportComponent | null = null;
-
-                for (const component of components) {
-                    let isDuplicate = false;
-
-                    if (lastComponent && lastComponent.type === component.type) {
-                        // Check ID prefix (first 14 chars are usually timestamp YYYYMMDDHHMMSS)
-                        // Example ID: 20251021091936ZBADPV
-                        const prefixLength = 14;
-                        if (
-                            lastComponent.id &&
-                            component.id &&
-                            lastComponent.id.substring(0, prefixLength) === component.id.substring(0, prefixLength)
-                        ) {
-                            isDuplicate = true;
-                        }
-                    }
-
-                    if (!isDuplicate) {
-                        uniqueComponents.push(component);
-                        lastComponent = component;
-                    }
-                }
-
-                return {
-                    ...block,
-                    components: uniqueComponents,
-                };
-            });
-
-            return {
-                ...page,
-                blocks: newBlocks,
-                // ExportPage is flat list, no children property
-            };
         });
     }
 

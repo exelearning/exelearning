@@ -21,8 +21,8 @@
         <filename>three-sixty-viewer.css</filename>
     </edition-css>
     <export-js>
-        <filename>three-sixty-viewer.js</filename>
         <filename>three.min.js</filename>
+        <filename>three-sixty-viewer.js</filename>
     </export-js>
     <export-css>
         <filename>three-sixty-viewer.css</filename>

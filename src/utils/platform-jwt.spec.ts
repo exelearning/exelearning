@@ -5,6 +5,7 @@ import {
     isValidProvider,
     isAllowedProviderUrl,
     isSafeReturnUrl,
+    isPrivateNetworkProviderAllowed,
     extractProviderId,
     decodePlatformJWT,
     buildIntegrationUrl,
@@ -26,7 +27,9 @@ describe('Platform JWT Utilities', () => {
             PROVIDER_URLS: process.env.PROVIDER_URLS,
             PROVIDER_TOKENS: process.env.PROVIDER_TOKENS,
             PROVIDER_IDS: process.env.PROVIDER_IDS,
+            PROVIDER_ALLOW_PRIVATE_NETWORK: process.env.PROVIDER_ALLOW_PRIVATE_NETWORK,
         };
+        delete process.env.PROVIDER_ALLOW_PRIVATE_NETWORK;
     });
 
     afterEach(() => {
@@ -438,6 +441,38 @@ describe('Platform JWT Utilities', () => {
         it('should reject internal IPv6 literal hosts (SSRF guard)', () => {
             expect(isSafeReturnUrl('http://[::1]/mod/exescorm/view.php')).toBe(false);
             expect(isSafeReturnUrl('http://[fe80::1]/mod/exescorm/view.php')).toBe(false);
+        });
+
+        it('should allow a private-network IP literal only with allowPrivateNetwork', () => {
+            const options = { allowPrivateNetwork: true };
+            expect(isSafeReturnUrl('http://192.168.1.10/mod/exescorm/view.php', options)).toBe(true);
+            expect(isSafeReturnUrl('http://[::1]/mod/exescorm/view.php', options)).toBe(true);
+            // Link-local metadata is never a trusted private network.
+            expect(isSafeReturnUrl('http://169.254.169.254/latest/meta-data/', options)).toBe(false);
+            expect(isSafeReturnUrl('http://[fe80::1]/mod/exescorm/view.php', options)).toBe(false);
+        });
+    });
+
+    describe('isPrivateNetworkProviderAllowed', () => {
+        beforeEach(() => {
+            process.env.PROVIDER_URLS = 'http://moodle.intranet';
+        });
+
+        it('is false by default, even for an allow-listed provider', () => {
+            expect(isPrivateNetworkProviderAllowed('http://moodle.intranet/mod/exescorm/get_ode.php')).toBe(false);
+        });
+
+        it('is true only for allow-listed providers once PROVIDER_ALLOW_PRIVATE_NETWORK is enabled', () => {
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+            expect(isPrivateNetworkProviderAllowed('http://moodle.intranet/mod/exescorm/get_ode.php')).toBe(true);
+            expect(isPrivateNetworkProviderAllowed('http://other.intranet/mod/exescorm/get_ode.php')).toBe(false);
+        });
+
+        it('accepts 1 as an enabled value and ignores any other value', () => {
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = '1';
+            expect(isPrivateNetworkProviderAllowed('http://moodle.intranet/x')).toBe(true);
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'yes';
+            expect(isPrivateNetworkProviderAllowed('http://moodle.intranet/x')).toBe(false);
         });
     });
 
@@ -852,6 +887,66 @@ describe('Platform JWT Utilities', () => {
 
             const params = await getPlatformIntegrationParams(token, 'set');
             expect(params).toBeNull();
+        });
+    });
+
+    describe('SSRF allow-list bypass hardening (isAllowedProviderUrl)', () => {
+        beforeEach(() => {
+            process.env.PROVIDER_URLS = 'https://moodle.allowed.example';
+        });
+
+        it('rejects a userinfo-smuggled internal host that prefix-matches an allowed origin', () => {
+            // Real host is internal.svc.cluster.local; the `@` makes
+            // url.startsWith('https://moodle.allowed.example') deceptively true.
+            expect(
+                isAllowedProviderUrl('https://moodle.allowed.example@internal.svc.cluster.local/mod/exescorm/x'),
+            ).toBe(false);
+        });
+
+        it('rejects a look-alike host that has an allowed origin as a string prefix', () => {
+            expect(isAllowedProviderUrl('https://moodle.allowed.example.evil.test/mod/exescorm/x')).toBe(false);
+        });
+
+        it('still allows a genuine returnurl on the configured provider origin', () => {
+            expect(isAllowedProviderUrl('https://moodle.allowed.example/mod/exescorm/view.php?id=1')).toBe(true);
+        });
+    });
+
+    describe('SSRF allow-list bypass hardening (getPlatformIntegrationParams end-to-end)', () => {
+        const signToken = async (returnurl: string) =>
+            new SignJWT({ userid: '1', cmid: '1', returnurl, pkgtype: 'scorm' } as unknown as Record<string, unknown>)
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(new TextEncoder().encode('test-secret'));
+
+        beforeEach(() => {
+            process.env.APP_SECRET = 'test-secret';
+            delete process.env.PROVIDER_IDS;
+            process.env.PROVIDER_URLS = 'https://moodle.allowed.example';
+        });
+
+        it('accepts an allow-listed private-network IP literal only with PROVIDER_ALLOW_PRIVATE_NETWORK', async () => {
+            process.env.PROVIDER_URLS = 'http://192.168.1.10';
+            const token = await signToken('http://192.168.1.10/mod/exescorm/view.php?id=1');
+            expect(await getPlatformIntegrationParams(token, 'get')).toBeNull();
+
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+            const params = await getPlatformIntegrationParams(token, 'get');
+            expect(params?.platformIntegrationUrl).toBe('http://192.168.1.10/mod/exescorm/get_ode.php');
+        });
+
+        it('still rejects a private IP literal that is not allow-listed when the opt-in is enabled', async () => {
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+            const token = await signToken('http://10.0.0.5/mod/exescorm/view.php?id=1');
+            expect(await getPlatformIntegrationParams(token, 'get')).toBeNull();
+        });
+
+        it('returns null for a userinfo-smuggled internal returnurl', async () => {
+            const token = await signToken(
+                'https://moodle.allowed.example@internal.svc.cluster.local/mod/exescorm/view.php',
+            );
+            expect(await getPlatformIntegrationParams(token, 'get')).toBeNull();
         });
     });
 });

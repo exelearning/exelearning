@@ -56,6 +56,9 @@
 *   Package: @sinclair/typebox
     *   Copyright: sinclairzx81
     *   License: MIT
+*   Package: @types/css-tree
+    *   Copyright: Erik Källén, Jason Kratzer
+    *   License: MIT
 *   Package: @types/fs-extra
     *   Copyright: Alan Agius, midknight41, Brendan Forster
     *   License: MIT
@@ -91,6 +94,9 @@
     *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
+    *   License: MIT
+*   Package: css-tree
+    *   Copyright: Roman Dvornov
     *   License: MIT
 *   Package: dompurify
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
@@ -185,6 +191,9 @@
 *   Package: nunjucks
     *   Copyright: James Long
     *   License: BSD-2-Clause
+*   Package: parse5
+    *   Copyright: Ivan Nikulin
+    *   License: MIT
 *   Package: pdfjs-dist
     *   Copyright: Mozilla Foundation
     *   License: Apache-2.0
