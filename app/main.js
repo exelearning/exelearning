@@ -14,6 +14,13 @@ const {
     windowHasUnsavedChanges,
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
+const { createFileReadGrants } = require('./file-read-grants');
+const { savePrintPreviewAsPdf } = require('./print-to-pdf');
+const { printPreview } = require('./print-preview');
+const {
+    createSpellCheckerController,
+    registerSpellCheckerIpc,
+} = require('./spell-checker-settings');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -179,6 +186,8 @@ log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'lo
 
 // files to open after app ready
 let pendingOpenFiles = [];
+// Files the renderer may read back through app:readFile (see file-read-grants.js)
+const fileReadGrants = createFileReadGrants();
 // Pending .elpx path per renderer WebContents id (sent when renderer is ready)
 const pendingOpenFileByWebContentsId = new Map();
 
@@ -207,9 +216,9 @@ console.error = (...args) => {
 process.on('uncaughtException', e => log.error('uncaughtException:', e));
 process.on('unhandledRejection', e => log.error('unhandledRejection:', e));
 
-// Locale detection for fallback strings
-const defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
-console.log(`Default locale: ${defaultLocale}.`);
+// Locale for the fallback strings of the native dialogs. It is read once the app is ready: before
+// that app.getLocale() returns an empty string, and every dialog spoke English on a Spanish system.
+let defaultLocale = 'en';
 
 let appDataPath;
 
@@ -285,8 +294,9 @@ function writeSettings(obj) {
     try {
         fs.mkdirSync(path.dirname(SETTINGS_FILE()), { recursive: true });
         fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(obj, null, 2), 'utf8');
+        return true;
     } catch (_e) {
-        // Best-effort; ignore
+        return false;
     }
 }
 
@@ -811,7 +821,7 @@ async function createWindow() {
                     const firstFile = filesToOpen.shift();
                     if (firstFile) {
                         console.log('[main] Sending file to main window:', firstFile);
-                        mainWindow.webContents.send('app:open-file', firstFile);
+                        mainWindow.webContents.send('app:open-file', fileReadGrants.grant(firstFile));
                     }
                     // Open remaining files in new windows/tabs
                     for (const filePath of filesToOpen) {
@@ -1370,6 +1380,19 @@ app.on('new-window-for-tab', () => {
 });
 
 app.whenReady().then(() => {
+    defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
+    console.log(`Default locale: ${defaultLocale}.`);
+
+    const spellCheckerController = createSpellCheckerController({
+        electronSession: session.defaultSession,
+        platform: process.platform,
+        systemLocale: app.getSystemLocale(),
+        readSettings,
+        writeSettings,
+        onError: error => console.warn('[SpellChecker] Settings operation failed:', error),
+    });
+    registerSpellCheckerIpc(ipcMain, spellCheckerController);
+    spellCheckerController.applyPersisted();
     // A fresh process has no file "currently associated" with the window
     // yet — clear the on-disk slot so a leftover filename from a previous
     // run does not shadow the title-derived suggestedName on first Save.
@@ -1490,20 +1513,11 @@ ipcMain.handle('app:openElp', async e => {
     });
     if (canceled || !filePaths || !filePaths.length) return null;
     setLastUsedDir(path.dirname(filePaths[0]));
-    return filePaths[0];
+    return fileReadGrants.grant(filePaths[0]);
 });
 
-// Read file contents as base64 for upload (renderer builds a File)
-ipcMain.handle('app:readFile', async (_e, { filePath }) => {
-    try {
-        if (!filePath) return { ok: false, error: 'No path' };
-        const data = fs.readFileSync(filePath);
-        const stat = fs.statSync(filePath);
-        return { ok: true, base64: data.toString('base64'), mtimeMs: stat.mtimeMs };
-    } catch (err) {
-        return { ok: false, error: err.message };
-    }
-});
+// Read file contents as base64 for upload (renderer builds a File), only for granted paths
+ipcMain.handle('app:readFile', async (_e, { filePath } = {}) => fileReadGrants.read(filePath));
 
 // Check an external link from the main process, where CORS does not apply,
 // and report the real HTTP status — same outcome as server-side validation.
@@ -1669,6 +1683,48 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
 ipcMain.handle('app:saveBuffer', saveBufferWithDialog);
 ipcMain.handle('app:saveBufferAs', saveBufferWithDialog);
 
+ipcMain.handle('app:printPreview', (e, { url } = {}) =>
+    printPreview(url, {
+        owner: e.sender.id,
+        createWindow: () => {
+            const win = new BrowserWindow({
+                show: false,
+                parent: BrowserWindow.fromWebContents(e.sender) || mainWindow,
+                webPreferences: {
+                    session: e.sender.session,
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    sandbox: true,
+                },
+            });
+            win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+            return win;
+        },
+    }),
+);
+
+// Save the print preview as a PDF: printing needs a print service and a printer, a PDF does not
+// (issue #1398). The PDF is made from the preview's own frame; see print-to-pdf.js.
+ipcMain.handle('app:savePrintPreviewAsPdf', async (e, { frameName, title } = {}) => {
+    const owner = BrowserWindow.fromWebContents(e.sender) || mainWindow;
+    const result = await savePrintPreviewAsPdf(
+        { webContents: e.sender, frameName, title },
+        {
+            showSaveDialog: options => dialog.showSaveDialog(owner, options),
+            writeFile: (filePath, data) => fs.promises.writeFile(filePath, data),
+            defaultDir: getLastUsedDir() || app.getPath('documents'),
+            countryCode: app.getLocaleCountryCode(),
+            dialogText: {
+                title: tOrDefault('save.downloadTitle', defaultLocale === 'es' ? 'Guardar archivo' : 'Save file'),
+                buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
+            },
+        },
+    );
+    if (result.saved) setLastUsedDir(path.dirname(result.filePath));
+    else if (result.error) console.error('[app:savePrintPreviewAsPdf] Error:', result.error);
+    return result;
+});
+
 
 /**
  * Create a new window for a project file
@@ -1731,7 +1787,7 @@ ipcMain.on('app:renderer-ready-for-open-file', (event) => {
     const wcId = event.sender.id;
     const filePath = pendingOpenFileByWebContentsId.get(wcId);
     if (!filePath) return;
-    event.sender.send('app:open-file', filePath);
+    event.sender.send('app:open-file', fileReadGrants.grant(filePath));
     pendingOpenFileByWebContentsId.delete(wcId);
 });
 

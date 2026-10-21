@@ -184,6 +184,16 @@ describe('Admin Upload Validator', () => {
             expect(BASE_THEME_NAMES).toContain('base');
             expect(BASE_THEME_NAMES).toContain('neo');
         });
+
+        test('BASE_THEME_NAMES should list every bundled theme directory', () => {
+            const baseThemesDir = path.join(process.cwd(), 'public', 'files', 'perm', 'themes', 'base');
+            const bundled = fs
+                .readdirSync(baseThemesDir, { withFileTypes: true })
+                .filter(entry => entry.isDirectory())
+                .map(entry => entry.name)
+                .sort();
+            expect([...BASE_THEME_NAMES].sort()).toEqual(bundled);
+        });
     });
 
     describe('validateThemeZip', () => {

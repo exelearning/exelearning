@@ -50,7 +50,8 @@ var $eXeOrdena = {
     },
 
     loadGame: function () {
-        $eXeOrdena.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeOrdena.options.length = $eXeOrdena.activities.length;
 
         $eXeOrdena.activities.each(function (i) {
             const dl = $('.ordena-DataGame', this);
@@ -62,7 +63,7 @@ var $eXeOrdena = {
             mOption.main = 'ordenaMainContainer-' + i;
             mOption.idevice = 'ordena-IDevice';
 
-            $eXeOrdena.options.push(mOption);
+            $eXeOrdena.options[i] = mOption;
 
             const ordena = $eXeOrdena.createInterfaceOrdena(i);
 
