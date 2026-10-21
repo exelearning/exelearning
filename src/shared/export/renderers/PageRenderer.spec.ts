@@ -969,6 +969,33 @@ describe('PageRenderer', () => {
             expect(html).toContain('Second');
         });
 
+        it("links the style's own root files, scripts first, as an older style names them", () => {
+            const html = renderer.renderSinglePage([createTestPage({ id: 'page-1', title: 'First' })], {
+                themeFiles: ['content.css', 'default.js'],
+            });
+
+            expect(html).toContain('<script src="theme/default.js"> </script>');
+            expect(html).toContain('<link rel="stylesheet" href="theme/content.css">');
+            expect(html).not.toContain('theme/style.css');
+            expect(html).not.toContain('theme/style.js');
+            expect(html.indexOf('theme/default.js')).toBeLessThan(html.indexOf('theme/content.css'));
+        });
+
+        it('links style.js and style.css when it is not told which files the style has', () => {
+            const html = renderer.renderSinglePage([createTestPage({ id: 'page-1', title: 'First' })], {});
+
+            expect(html).toContain('<script src="theme/style.js"> </script>');
+            expect(html).toContain('<link rel="stylesheet" href="theme/style.css">');
+        });
+
+        it("escapes a style's file name", () => {
+            const html = renderer.renderSinglePage([createTestPage({ id: 'page-1', title: 'First' })], {
+                themeFiles: ['a"><script>b.css'],
+            });
+
+            expect(html).not.toContain('"><script>b.css');
+        });
+
         it('should NOT include navigation tree (single page has siteNav-hidden)', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),

@@ -35,6 +35,8 @@ import { Epub3Exporter } from '../exporters/Epub3Exporter';
 import { ElpxExporter } from '../exporters/ElpxExporter';
 import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
+import { WorksheetExporter } from '../exporters/WorksheetExporter';
+import type { WorksheetOptions, WorksheetResult } from '../exporters/WorksheetExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
 import { PageElpxExporter } from '../exporters/PageElpxExporter';
 
@@ -50,6 +52,12 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 
 // Import utilities
 import { LibraryDetector } from '../utils/LibraryDetector';
+import {
+    hasTeacherOnlyContent,
+    type InteractiveActivityEntry,
+    listInteractiveActivities,
+} from '../exporters/printActivityModes';
+import type { MoleculeRenderer, MoleculeView } from '../worksheet/moleculeCapture';
 import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
@@ -534,6 +542,31 @@ function getMermaidPreRendererHooks(): MermaidPreRendererHooks | undefined {
 }
 
 /**
+ * Get the molecule capture hook if available in browser context.
+ *
+ * The 3D molecules activity stores a model rather than a picture of it, and only a browser can
+ * turn one into the other. Without this hook — a command-line export, say — those questions print
+ * without their molecules instead of failing.
+ *
+ * @param ideviceBasePath - Where the iDevice export files are served from, which is where the
+ *   viewer library lives; the capture cannot find it otherwise
+ * @returns Object with captureMolecule, or undefined
+ */
+function getMoleculeCaptureHook(ideviceBasePath?: string): { captureMolecule: MoleculeRenderer } | undefined {
+    if (typeof window === 'undefined' || !ideviceBasePath) return undefined;
+
+    const capture = (
+        window as unknown as {
+            MoleculeCapture?: { capture: (view: MoleculeView, basePath?: string) => Promise<string | null> };
+        }
+    ).MoleculeCapture;
+
+    if (!capture) return undefined;
+
+    return { captureMolecule: (view: MoleculeView) => capture.capture(view, ideviceBasePath) };
+}
+
+/**
  * Quick export function - creates exporter and runs export in one call
  *
  * @param format - Export format
@@ -617,6 +650,35 @@ export async function exportAndDownload(
 }
 
 /**
+ * List the interactive activities a printed document would contain.
+ *
+ * Printing asks the user what to do with them and which of them to print, and this is what it asks
+ * about: with none, printing goes straight to the preview as it always did.
+ *
+ * Lists the activities `applyActivityMode` can act on, excluding hidden pages, blocks and components.
+ * Teacher-only activities are marked so the dialog offers them when teacher-only content is included.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @returns The activities, in document order
+ */
+export function listProjectInteractiveActivities(documentManager: YjsDocumentManagerLike): InteractiveActivityEntry[] {
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    return listInteractiveActivities(new YjsDocumentAdapter(documentManager as any).getNavigation());
+}
+
+/**
+ * Whether a printed document would hold teacher-only content, which the print options then offer
+ * to print, including interactive activities that follow the selected printing mode.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @returns true when there is some
+ */
+export function projectHasTeacherOnlyContent(documentManager: YjsDocumentManagerLike): boolean {
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    return hasTeacherOnlyContent(new YjsDocumentAdapter(documentManager as any).getNavigation());
+}
+
+/**
  * Generate print preview HTML from Yjs document
  * Creates a single-page HTML with all pages visible for printing
  *
@@ -674,11 +736,52 @@ export async function generatePrintPreview(
         ...options,
         ...latexHooks,
         ...mermaidHooks,
+        // Only the modes that turn an activity into an exercise need a molecule drawn; printing the
+        // document as it stands already shows the viewer.
+        ...getMoleculeCaptureHook(options?.activities?.ideviceBasePath),
     };
 
     const result = await exporter.generatePreview(previewOptions);
     result.activeContentReport = activeContentReportOf(document);
     return result;
+}
+
+/**
+ * Generate a printable worksheet from the activities in a Yjs document
+ *
+ * Unlike generatePrintPreview, which prints the rendered export, this reads each activity's
+ * stored data and rebuilds it as a paper exercise.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param options - Translated labels and activity titles
+ * @param assetManager - Optional AssetManager (or cache) so pictures resolve
+ * @returns Worksheet result with HTML string
+ */
+export async function generateWorksheet(
+    documentManager: YjsDocumentManagerLike,
+    options?: WorksheetOptions,
+    assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
+): Promise<WorksheetResult> {
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
+
+    let assets: BrowserAssetProvider | null = null;
+    if (assetManager) {
+        const isNewManager = 'getProjectAssets' in assetManager;
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+        const cache = isNewManager ? null : (assetManager as any);
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+        const manager = isNewManager ? (assetManager as any) : null;
+
+        assets = new BrowserAssetProvider(cache, manager);
+    }
+
+    const latexHooks = await getLatexPreRendererHooks();
+    return new WorksheetExporter(document, assets).generate({
+        ...latexHooks,
+        ...options,
+        ...getMoleculeCaptureHook(options?.ideviceBasePath),
+    });
 }
 
 /**
@@ -860,7 +963,7 @@ export {
 };
 
 // Export types for TypeScript consumers
-export type { PrintPreviewOptions, PrintPreviewResult };
+export type { PrintPreviewOptions, PrintPreviewResult, WorksheetOptions, WorksheetResult };
 
 // Expose to window for browser use
 if (typeof window !== 'undefined') {
@@ -873,7 +976,11 @@ if (typeof window !== 'undefined') {
         generatePreviewForSW,
         // Print preview functions
         generatePrintPreview,
+        listProjectInteractiveActivities,
+        projectHasTeacherOnlyContent,
         createPrintPreviewExporter,
+        // Worksheet (printable activities) functions
+        generateWorksheet,
         // Adapters
         YjsDocumentAdapter,
         BrowserResourceProvider,
@@ -890,6 +997,7 @@ if (typeof window !== 'undefined') {
         Epub3Exporter,
         ElpxExporter,
         PrintPreviewExporter,
+        WorksheetExporter,
         ComponentExporter,
         PageElpxExporter,
         // Renderers
@@ -909,6 +1017,7 @@ if (typeof window !== 'undefined') {
         PrintPreviewExporter;
     (window as unknown as { generatePrintPreview: typeof generatePrintPreview }).generatePrintPreview =
         generatePrintPreview;
+    (window as unknown as { generateWorksheet: typeof generateWorksheet }).generateWorksheet = generateWorksheet;
 
     // Export as SharedExporters namespace
     (window as unknown as { SharedExporters: typeof windowExports }).SharedExporters = windowExports;
