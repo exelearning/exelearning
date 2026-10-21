@@ -1295,6 +1295,14 @@ describe('Yjs WebSocket Service', () => {
             expect(result.error?.reason).toBe('Invalid token');
         });
 
+        it('verifies tokens through the session revocation check by default', async () => {
+            resetDependencies();
+            const ws = createMockWebSocket() as any;
+            const result = await handleWebSocketOpen(ws, 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'not-a-jwt');
+            expect(result.error?.code).toBe(4001);
+            expect(result.error?.reason).toBe('Invalid token');
+        });
+
         it('should return error when access denied', async () => {
             const ws = createMockWebSocket() as any;
             // Add a project that user 2 doesn't have access to (owned by user 1, private)

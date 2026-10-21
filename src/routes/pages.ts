@@ -6,7 +6,7 @@
  */
 import { Elysia } from 'elysia';
 import { isProductionEnv } from '../utils/env';
-import { getJwtSecret } from './auth';
+import { getJwtSecret, passwordFingerprint } from './auth';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
@@ -522,6 +522,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 email: user.email,
                                 roles: JSON.parse(user.roles || '["ROLE_USER"]'),
                                 isGuest: false,
+                                pwh: passwordFingerprint(user.password),
                             });
                             cookie.auth.set({
                                 value: token,
