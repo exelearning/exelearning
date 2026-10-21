@@ -1,5 +1,12 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { reloadPage, gotoWorkarea, editIdevice, selectFirstPage } from '../../helpers/workarea-helpers';
+import {
+    reloadPage,
+    gotoWorkarea,
+    editIdevice,
+    selectFirstPage,
+    hasWebGL,
+    waitForAppReady,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -175,6 +182,45 @@ test.describe('Three Sixty Viewer iDevice', () => {
             expect(files).toContain('three.min.js');
             expect(files).toContain('OrbitControls.js');
         }
+    });
+
+    test('draws the viewer in the editor, with three.js loaded before it starts', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        // Without WebGL the viewer draws its fallback whatever the order, as on the GPU-less runners.
+        // https://github.com/exelearning/exelearning/issues/2547
+        test.skip(!(await hasWebGL(page)), 'This browser has no WebGL to draw the viewer with (issue #2547)');
+        // The editor starts a JSON iDevice as soon as its own script has defined its object. A slow
+        // three.js shows whether the libraries it needs are loaded before that script.
+        await page.route('**/three-sixty-viewer/export/three.min.js', async route => {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            await route.continue();
+        });
+
+        const projectUuid = await createProject(page, 'Three Sixty Editor Render');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 32;
+            const context = canvas.getContext('2d')!;
+            context.fillStyle = '#88aadd';
+            context.fillRect(0, 0, 64, 32);
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Panorama');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Panorama'), 'three-sixty-viewer', {
+                htmlContent: '',
+                jsonProperties: { src: canvas.toDataURL('image/png'), alt: 'E2E panorama' },
+            });
+        });
+        await page.locator('.nav-element-text').filter({ hasText: 'Panorama' }).first().click();
+
+        const viewer = page.locator('#node-content .idevice_node.three-sixty-viewer .three-sixty-viewer-wrapper');
+        await expect(viewer.locator('canvas')).toBeVisible({ timeout: 30000 });
+        await expect(viewer.locator('.three-sixty-viewer-fallback')).toHaveCount(0);
     });
 
     test('exposes scene list and hotspot list controls', async ({ authenticatedPage, createProject }) => {
