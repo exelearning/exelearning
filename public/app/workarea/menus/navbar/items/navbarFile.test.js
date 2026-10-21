@@ -994,6 +994,28 @@ describe('NavbarFile', () => {
             expect(navbarFile.downloadProjectEvent).toHaveBeenCalled();
         });
 
+        it('setExportPrintEvent should not print while an idevice is open', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+            vi.spyOn(navbarFile, 'startPrint').mockImplementation(() => {});
+            navbarFile.setExportPrintEvent();
+
+            const clickHandler = mockButtons.exportPrintButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.startPrint).not.toHaveBeenCalled();
+        });
+
+        it('setExportPrintEvent should start printing when no idevice is open', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            vi.spyOn(navbarFile, 'startPrint').mockImplementation(() => {});
+            navbarFile.setExportPrintEvent();
+
+            const clickHandler = mockButtons.exportPrintButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.startPrint).toHaveBeenCalledOnce();
+        });
+
         it('setDownloadProjectEvent should return false if idevice is open', () => {
             eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
             vi.spyOn(navbarFile, 'downloadProjectEvent');
@@ -1669,6 +1691,49 @@ describe('NavbarFile', () => {
             navbarFile.openPrintPreview();
 
             expect(consoleWarnSpy).toHaveBeenCalledWith('[NavbarFile] Print preview modal not available');
+            consoleWarnSpy.mockRestore();
+        });
+
+        it('should open the overlay in document mode by default', () => {
+            const mockPrintPreviewModal = { show: vi.fn() };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+
+            navbarFile.openPrintPreview();
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document', null, null, []);
+        });
+
+        it('should open the overlay in idevices mode when asked', () => {
+            const mockPrintPreviewModal = { show: vi.fn() };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+
+            navbarFile.openPrintPreview('idevices');
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('idevices', null, null, []);
+        });
+
+        it('should hand the overlay what to do with the activities, and which they are', () => {
+            const mockPrintPreviewModal = { show: vi.fn() };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+            const activities = [{ id: 'c1', type: 'guess', pageTitle: 'Tema 1', blockTitle: '' }];
+
+            navbarFile.openPrintPreview('document', 'appendix', ['c1'], activities);
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document', 'appendix', ['c1'], activities);
+        });
+
+        it('should say the print preview is not available, whatever the mode', () => {
+            eXeLearning.app.modals.printpreview = null;
+            const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            for (const mode of ['idevices', undefined]) {
+                eXeLearning.app.modals.alert.show.mockClear();
+                navbarFile.openPrintPreview(mode);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({ body: 'Print preview is not available.' })
+                );
+            }
+
             consoleWarnSpy.mockRestore();
         });
     });
@@ -3336,6 +3401,100 @@ describe('NavbarFile', () => {
             navbarFile.openUserOdeFilesEvent();
 
             expect(staticSpy).not.toHaveBeenCalled();
+        });
+    });
+});
+
+describe('NavbarFile printing with interactive activities', () => {
+    let navbarFile;
+    let printPreview;
+
+    /** Two activities, as listProjectInteractiveActivities gives them. */
+    const ACTIVITIES = [
+        { id: 'c1', type: 'guess', pageTitle: 'La Edad Media en la península', blockTitle: '' },
+        { id: 'c2', type: 'crossword', pageTitle: 'Repaso', blockTitle: 'Crucigrama final' },
+    ];
+
+    beforeEach(() => {
+        // The methods under test do not touch the navbar's buttons, so the prototype is exercised
+        // directly rather than rebuilding the whole menu fixture.
+        navbarFile = Object.create(NavbarFile.prototype);
+        printPreview = { show: vi.fn() };
+
+        global._ = (str) => str;
+        global.eXeLearning = {
+            app: {
+                project: { _yjsBridge: { documentManager: {} } },
+                modals: { printpreview: printPreview },
+            },
+        };
+        // The suite above deletes global.window in its teardown, so this stands one up again.
+        global.window = { SharedExporters: { listProjectInteractiveActivities: vi.fn(() => ACTIVITIES) } };
+    });
+
+    afterEach(() => {
+        delete global.window;
+        vi.clearAllMocks();
+    });
+
+    describe('when the project has no interactive activity', () => {
+        beforeEach(() => {
+            global.window.SharedExporters.listProjectInteractiveActivities = vi.fn(() => []);
+        });
+
+        it('opens the preview of the document untouched, with nothing to choose about', () => {
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledTimes(1);
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, []);
+        });
+    });
+
+    describe('when the project has them', () => {
+        it('opens the preview at once, with the activities printed in an appendix', () => {
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledTimes(1);
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'appendix', null, ACTIVITIES);
+        });
+
+        it('lists the activities of the project', () => {
+            navbarFile.startPrint();
+
+            expect(global.window.SharedExporters.listProjectInteractiveActivities).toHaveBeenCalledWith(
+                eXeLearning.app.project._yjsBridge.documentManager
+            );
+        });
+    });
+
+    describe('when the project cannot be inspected', () => {
+        it('prints untouched rather than failing, if the list is missing', () => {
+            delete global.window.SharedExporters;
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, []);
+        });
+
+        it('prints untouched rather than failing, if there is no document manager yet', () => {
+            eXeLearning.app.project._yjsBridge = null;
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, []);
+        });
+
+        it('prints untouched rather than failing, if listing throws', () => {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            global.window.SharedExporters.listProjectInteractiveActivities = vi.fn(() => {
+                throw new Error('broken');
+            });
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, []);
+            expect(warn).toHaveBeenCalledWith('[NavbarFile] Could not inspect the project:', expect.any(Error));
+            warn.mockRestore();
         });
     });
 });
