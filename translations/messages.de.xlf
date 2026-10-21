@@ -15645,6 +15645,390 @@
         <source>To save the score, the activity needs at least one question.</source>
         <target>~Um die Punktzahl zu speichern, benötigt die Aktivität mindestens eine Frage.</target>
       </trans-unit>
+      <trans-unit id="z51tu1h" resname="Minimum score to pass">
+        <source>Minimum score to pass</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dsv7esu" resname="Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.">
+        <source>Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="s4hz110" resname="Each SCORM activity must reach its minimum score">
+        <source>Each SCORM activity must reach its minimum score</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9et51k8" resname="A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.">
+        <source>A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tecndw7" resname="Edit access">
+        <source>Edit access</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kohf095" resname="Only invited people">
+        <source>Only invited people</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0wai5lf" resname="Anyone with the edit link">
+        <source>Anyone with the edit link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tsgmgvm" resname="Only the people added above can open and edit this resource.">
+        <source>Only the people added above can open and edit this resource.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kjadvyy" resname="Edit link">
+        <source>Edit link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ibgp2yy" resname="Public read-only link">
+        <source>Public read-only link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="onglmi5" resname="Disabled">
+        <source>Disabled</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jydxqaa" resname="Enabled">
+        <source>Enabled</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ri97xh2" resname="This resource has no public read-only link.">
+        <source>This resource has no public read-only link.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x4as12a" resname="Public link">
+        <source>Public link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vviiowk" resname="Public viewer link">
+        <source>Public viewer link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wmbet0m" resname="Regenerate link">
+        <source>Regenerate link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l5xrv43" resname="Regenerate the public link? The previous link will stop working.">
+        <source>Regenerate the public link? The previous link will stop working.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="juafj4v" resname="Yes, regenerate">
+        <source>Yes, regenerate</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jwxgm0k" resname="Print options">
+        <source>Print options</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pf6ygpu" resname="Save as PDF">
+        <source>Save as PDF</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="okkj8h0" resname="Printing did not start. Printing may be disabled in this browser or on this device.">
+        <source>Printing did not start. Printing may be disabled in this browser or on this device.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="guzk6of" resname="The PDF could not be saved.">
+        <source>The PDF could not be saved.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="os6uw5f" resname="All visible content will be printed.">
+        <source>All visible content will be printed.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="sxeghdv" resname="You can choose which activities to include and whether to show hidden content.">
+        <source>You can choose which activities to include and whether to show hidden content.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vflmf2y" resname="You can choose whether to show hidden content.">
+        <source>You can choose whether to show hidden content.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ejzeqz2" resname="Document">
+        <source>Document</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5uzigha" resname="Show link URLs">
+        <source>Show link URLs</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x49n8pb" resname="Print the content of minimized boxes">
+        <source>Print the content of minimized boxes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1072bs2" resname="Print teacher-only content">
+        <source>Print teacher-only content</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u1xuw7a" resname="Loading preview...">
+        <source>Loading preview...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="w18ph0k" resname="Spell checker languages">
+        <source>Spell checker languages</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wcmckl4" resname="System default uses the operating system language.">
+        <source>System default uses the operating system language.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3dvbgnn" resname="Choose languages">
+        <source>Choose languages</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="97ajxut" resname="System default">
+        <source>System default</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k3ritqc" resname="iDevice %1">
+        <source>iDevice %1</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xxf8qua" resname="%1 on page &quot;%2&quot;">
+        <source>%1 on page "%2"</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8tbtupu" resname="Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.">
+        <source>Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="17ma6pk" resname="Server unavailable">
+        <source>Server unavailable</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rpp218o" resname="the server took too long to respond, try again later">
+        <source>the server took too long to respond, try again later</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v50fzsy" resname="too many requests to this site, try again later">
+        <source>too many requests to this site, try again later</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g9uxxgc" resname="server error, try again later">
+        <source>server error, try again later</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="h77a7aa" resname="the site did not answer in time or was busy; the link may still work, try again later.">
+        <source>the site did not answer in time or was busy; the link may still work, try again later.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7r9g6dm" resname="unavailable">
+        <source>unavailable</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bcxnyn6" resname="Print iDevices">
+        <source>Print iDevices</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mcjsqmq" resname="Content without activities">
+        <source>Content without activities</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hl1zkk0" resname="Content with activities">
+        <source>Content with activities</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cgyp3a6" resname="Content with activities in an appendix">
+        <source>Content with activities in an appendix</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nokkv6r" resname="Activities only (no other content)">
+        <source>Activities only (no other content)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f8gvghh" resname="What would you like to print?">
+        <source>What would you like to print?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pfiqf11" resname="Shown when a printing mode that includes activities is selected.">
+        <source>Shown when a printing mode that includes activities is selected.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0hscrxo" resname="Title only">
+        <source>Title only</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6zysthq" resname="Select at least one activity to print.">
+        <source>Select at least one activity to print.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6zyplpj" resname="Requires multimedia">
+        <source>Requires multimedia</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xvawg7x" resname="Invalid or empty activity data">
+        <source>Invalid or empty activity data</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4sgik5x" resname="Words that could not be placed">
+        <source>Words that could not be placed</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dy1nurz" resname="This project has no printable activities yet.">
+        <source>This project has no printable activities yet.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4gheeun" resname="Left out of this worksheet">
+        <source>Left out of this worksheet</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qosbzmr" resname="Not available in print">
+        <source>Not available in print</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="riwm2be" resname="Operation">
+        <source>Operation</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="47nn5vc" resname="Flip cards">
+        <source>Flip cards</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7ik5cln" resname="Electrical circuits">
+        <source>Electrical circuits</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hiit98x" resname="3D molecules">
+        <source>3D molecules</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y25h0ay" resname="Select multimedia">
+        <source>Select multimedia</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gnlbwr0" resname="Adaptative quiz">
+        <source>Adaptative quiz</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x741vat" resname="Print iDevices is not available.">
+        <source>Print iDevices is not available.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1sgngu6" resname="Appendix">
+        <source>Appendix</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bsapvvx" resname="See appendix, activity %s">
+        <source>See appendix, activity %s</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hmx0v69" resname="Not available in print.">
+        <source>Not available in print.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="s8x6okj" resname="Anyone with this link can open and edit in real time.">
+        <source>Anyone with this link can open and edit in real time.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cx3eby2" resname="Anyone with this link can view this resource, but not edit it.">
+        <source>Anyone with this link can view this resource, but not edit it.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qn0pu2n" resname="Public read-only link enabled">
+        <source>Public read-only link enabled</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wc7o7yq" resname="Public read-only link disabled">
+        <source>Public read-only link disabled</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="31eosqx" resname="Failed to update the public read-only link">
+        <source>Failed to update the public read-only link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hpm2omf" resname="The public link has been regenerated. The previous link will stop working.">
+        <source>The public link has been regenerated. The previous link will stop working.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0z1ppp6" resname="Failed to regenerate the public link">
+        <source>Failed to regenerate the public link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2z3gjwn" resname="Minimum score to pass the activity">
+        <source>Minimum score to pass the activity</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l95xkcg" resname="Global value">
+        <source>Global value</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nkezmpk" resname="Customize">
+        <source>Customize</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jkjbgs4" resname="Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.">
+        <source>Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="je76ycz" resname="Customize: the activity uses its own mark and ignores the project one.">
+        <source>Customize: the activity uses its own mark and ignores the project one.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v55qanv" resname="Grading">
+        <source>Grading</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="p8vuq7h" resname="The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.">
+        <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xcmq9mj" resname="The progress report is not affected: it is kept in the learner\&apos;s own browser and works whatever you choose here.">
+        <source>The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ehax8zy" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">
+        <source>The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4ybmxvn" resname="A learner who leaves halfway still has the work done so far recorded, because the score was already sent.">
+        <source>A learner who leaves halfway still has the work done so far recorded, because the score was already sent.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rrhr87c" resname="Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.">
+        <source>Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1ccdtzc" resname="Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.">
+        <source>Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gjgbny7" resname="The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.">
+        <source>The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ft1it6b" resname="What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.">
+        <source>What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="m2bmtk8" resname="For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.">
+        <source>For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="asiifgz" resname="Minimum score needed to pass this activity: %s">
+        <source>Minimum score needed to pass this activity: %s</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cyozm0s" resname="Minimum score to pass: %s">
+        <source>Minimum score to pass: %s</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oquyrzy" resname="Each activity must reach its minimum score">
+        <source>Each activity must reach its minimum score</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="o3ony5b" resname="f)Mwjmb(af)Mwjmb\fUh\fT{\fTN\n{I\np@Fr\vBl\bQ\tA{\vUmGx\tA{ypYA\0zX\bTV\bWl\bUdBM\vB{\npV\v@xB\\\np@DbGz\tal\npa\tfM\tuD\bV~mx\vQ}\ndS\tp\\\bVK\bS]\bU|oD\tkV\ved\vHR\nb~M">
+        <source>f)Mwjmb(af)Mwjmb\fUh\fT{\fTN\n{I\np@Fr\vBl\bQ\tA{\vUmGx\tA{ypYA\0zX\bTV\bWl\bUdBM\vB{\npV\v@xB\\\np@DbGz\tal\npa\tfM\tuD\bV~mx\vQ}\ndS\tp\\\bVK\bS]\bU|oD\tkV\ved\vHR\nb~M</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wgonk3g" resname="This block will create a link to download the .elpx file. Write some use instructions and customize your download link.">
+        <source>This block will create a link to download the .elpx file. Write some use instructions and customize your download link.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="w4glsm1" resname="Download .elpx file">
+        <source>Download .elpx file</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
