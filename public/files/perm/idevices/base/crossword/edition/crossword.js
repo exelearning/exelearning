@@ -428,6 +428,7 @@ var $exeDevice = {
         }
 
         this.active = 0;
+        $('#ccgmENumQuestions').text($exeDevice.wordsGame.length);
     },
 
     changeTypeQuestion: function () {
@@ -1264,6 +1265,7 @@ var $exeDevice = {
                 $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit === 1) {
             $('#ccgmEPaste').hide();
             $exeDevice.typeEdit = -1;
@@ -1365,6 +1367,7 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
     },
     exportQuestions: function () {
+        if (!$exeDevice.validateQuestion()) return false;
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
@@ -1471,7 +1474,7 @@ var $exeDevice = {
                 }
             }
         });
-        $exeDevice.addWords(words);
+        if (!$exeDevice.addWords(words)) return { handledMessaging: true };
     },
 
     importMoodle: function (xmlString) {
@@ -1569,7 +1572,7 @@ var $exeDevice = {
             eXe.app.alert(
                 _('Sorry, there are no questions for this type of activity.')
             );
-            return;
+            return false;
         }
         const wordsGame = $exeDevice.wordsGame;
         for (let i = 0; i < words.length; i++) {
@@ -1586,7 +1589,7 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
+        return true;
     },
 
     validTime: function (time) {

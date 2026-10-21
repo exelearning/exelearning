@@ -632,6 +632,58 @@ describe('crossword edition: shared form tabs and feedback', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
+    it('counts the first word of a new activity', () => {
+      device.$lifecycle?.destroy();
+      device.wordsGame = [];
+      device.init(document.getElementById('crosswordBody'), {}, PATH);
+
+      expect(device.wordsGame).toHaveLength(1);
+      expect(document.getElementById('ccgmENumQuestions').textContent).toBe('1');
+    });
+
+    it('counts a pasted copy in the words per game', () => {
+      device.active = 0;
+      device.showQuestion(0);
+      device.updateQuestionsNumber();
+
+      device.copyQuestion();
+      device.pasteQuestion();
+
+      expect(device.wordsGame).toHaveLength(3);
+      expect(document.getElementById('ccgmENumeroPercentaje').textContent).toBe('3/3');
+    });
+
+    it('exports the word on screen with the others', async () => {
+      const blobs = [];
+      const download = vi
+        .spyOn(global.$exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+        .mockImplementation((blob) => {
+          blobs.push(blob);
+          return true;
+        });
+      device.active = 0;
+      device.showQuestion(0);
+      document.getElementById('ccgmESolutionWord').value = 'SUN';
+      document.getElementById('ccgmEDefinitionWord').value = 'The star of our system';
+
+      device.exportQuestions();
+      download.mockRestore();
+
+      // The word on screen used to be left out, or the export refused when it was new.
+      expect(blobs).toHaveLength(1);
+      expect(await blobs[0].text()).toBe('SUN#The star of our system\nARBOL#Planta con tronco');
+    });
+
+    it('does not tell the author that the AI words were added when none fits the game', () => {
+      eXe.app.alert.mockClear();
+
+      // Too long, and with a space: the filter leaves nothing to add.
+      expect(device.insertWords(['SOLAR SYSTEM#The sun and its planets'])).toEqual({ handledMessaging: true });
+      expect(eXe.app.alert).toHaveBeenCalledWith('Sorry, there are no questions for this type of activity.');
+      expect(device.wordsGame).toHaveLength(2);
+      expect(device.insertWords(['SUN#The star of our system'])).toBeUndefined();
+    });
+
     it('stores a word with the fields of its form only', () => {
       device.active = 0;
       $('#ccgmESolutionWord').val('HEART');

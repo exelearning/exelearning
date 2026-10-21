@@ -104,6 +104,37 @@ test('Crossword explains each option inline without changing its value', async (
     await solutionHelp.press('Escape');
     await expect(solutionContent).toBeHidden();
 
+    // Export includes the word still on screen (MOON, not stored yet), in the format Import reads.
+    await page.locator('#ccgmQEIdeviceForm-tab-contents').click();
+    await page.locator('[data-exe-share="export"]').click();
+    const downloading = page.waitForEvent('download');
+    await page.locator('#eXeGameExportQuestions').click();
+    const download = await downloading;
+    const stream = await download.createReadStream();
+    let exported = '';
+    for await (const chunk of stream) exported += chunk.toString();
+    expect(exported.split('\n')).toEqual(['EARTH#Our home planet', 'MOON#Earth natural satellite']);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#eXeShareModal-export')).toBeHidden();
+
+    // The AI window says when nothing fits the game, and adds what does.
+    const alert = page.locator('#modalAlert.show');
+    await page.locator('[data-exe-share="ai"]').click();
+    await page.locator('#eXeETabQuestions').click();
+    await page.locator('#eXeEQuestionsArea').fill('SOLAR SYSTEM#The sun and its planets');
+    await page.locator('#eXeESaveButton').click();
+    await expect(alert).toContainText('Sorry, there are no questions for this type of activity.');
+    await expect(alert).not.toContainText('added successfully');
+    await alert.locator('.close').first().click();
+    await expect(alert).toBeHidden();
+    await expect(page.locator('#ccgmENumQuestions')).toHaveText('2');
+    await page.locator('#eXeEQuestionsArea').fill('STAR#A sun far away');
+    await page.locator('#eXeESaveButton').click();
+    await expect(alert).toContainText('The questions have been added successfully');
+    await alert.locator('.close').first().click();
+    await expect(alert).toBeHidden();
+    await expect(page.locator('#ccgmENumQuestions')).toHaveText('3');
+
     await saveIdevice(page, id!);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
     const stored = await page.evaluate(componentId => {
@@ -123,4 +154,6 @@ test('Crossword explains each option inline without changing its value', async (
     await expect(page.locator('#ccgmETime')).toHaveValue('15');
     await caseHelp.hover();
     await expect(page.getByRole('tooltip')).toBeVisible();
+    await page.locator('#ccgmQEIdeviceForm-tab-contents').click();
+    await expect(page.locator('#ccgmENumQuestions')).toHaveText('3');
 });
