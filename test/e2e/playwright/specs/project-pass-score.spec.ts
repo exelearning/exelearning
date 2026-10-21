@@ -23,7 +23,7 @@ const EVERY_ACTIVITY_META = 'meta[name="exe-pass-score-every-activity"]';
 async function openGradingOptions(page: import('@playwright/test').Page): Promise<void> {
     await page.locator('#head-top-settings-button').click();
 
-    const gradingTab = page.getByRole('tab', { name: /^(Grading|Calificación)$/i }).first();
+    const gradingTab = page.locator('#props-tab-grading');
     await gradingTab.waitFor({ state: 'visible', timeout: 10000 });
     if ((await gradingTab.getAttribute('aria-selected')) !== 'true') {
         await gradingTab.click();
