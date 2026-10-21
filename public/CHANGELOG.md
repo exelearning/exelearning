@@ -1,10 +1,93 @@
 # CHANGELOG
 
-## v4.0.6 – Unreleased
+## v4.0.6 – 2026-10-29
+
+### Added
+
+- Printing: interactive activities now print as paper exercises built from their data (for example, a crossword prints as its grid and clues)
+- Printing: a "Print options" panel beside the preview lets you leave activities out, print them in place, move them to an appendix or print only the activities, and the preview follows every change
+- Desktop app: new "Save as PDF" button in the print preview, which works without a printer
+- iDevices: a shared Grading tab groups the SCORM score, progress report and minimum score options in every scoring iDevice
+- Project properties: a project-wide minimum score to pass, in a new Assessment tab, which every scoring iDevice follows unless it sets its own
+- SCORM: a project option requires every activity on a page to reach its own minimum score, and each page shows the learner the minimum score needed to pass it
+- Public read-only viewer: projects can be shared through an opaque link that anyone can open without signing in, with the content isolated from the user's session
+- Desktop app (Windows and Linux): choose the spell checker languages in Preferences, listed by name in the interface language, or keep the system default
+- New Cedec, eTwinning, INTEF and Kids styles
+- TinyMCE: new `exe-block-download` class to highlight blocks with download links
+- Documentation: plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive in English and Spanish, and a unified Spanish manual
+
+### Changed
+
+- Project properties: Export options are laid out in aligned columns, with the global font in its own row
+- Printing: the print preview now matches the paper, with correct styles and icons, the paper's margins, and links and code shown as they print
+- Link validator: timeouts, rate limits and server errors are now reported as "unavailable" instead of broken, and requests to the same site are spaced out and retried once
+- Collaborative editing: while you edit an iDevice, moves, reorders and deletions made by other users on the same page are applied when you finish editing
+- Download source file iDevice: the default button text and instructions now name the `.elpx` file
+- Download source file iDevice: images, PDFs, office documents and other compressed files are stored without recompression, making the download much faster
+- Missing-file notices now name the iDevice by its position, type and page
+- Docker: the image now runs on older x86_64 processors (Intel Sandy Bridge and Ivy Bridge) that were previously refused at startup
+- The "Access denied" page button now logs out, so you can sign in with another account
 
 ### Fixed
 
 - Preview: the first preview after opening a project no longer waits about 5 seconds, and the preview now recovers by itself when its worker stops responding during a session
+- Preview: images no longer disappear when a block uses a custom icon
+- Preview: theme icons, buttons and fonts are no longer missing when the preview cannot use its service worker
+- Math: in-line formulas are no longer cut at their first `=`, `+` or space in the preview and in exports
+- Collaborative editing: your unsaved work in an iDevice is no longer lost when another user adds or moves an iDevice on the same page
+- Collaborative editing: music notation and games such as the A-Z quiz, Guess and GeoGebra activity now render for other users without reloading the page
+- SCORM, IMS: the "Editable export" property is now respected, so packages exported without it no longer include the editable project
+- SCORM 2004: exported packages now report valid statuses
+- ELPX: exported packages now include the files of the selected global font
+- Server exports: images and audio stored in resource subfolders, as eXeLearning 3 did, are no longer broken
+- Exports: lightbox links now work in iDevices rendered after the page loads
+- Exports: a page no longer keeps checking indefinitely for an iDevice whose script fails to load
+- Exported `content.xml` no longer contains a second copy of the project screenshot
+- Download source file iDevice: the download no longer stays at "Processing... 100%" on sites whose security policy blocks background workers, such as Omeka S
+- Games: each iDevice now keeps its own clock and saved progress, also when the same game appears on several pages or is duplicated
+- iDevices: closing an editor no longer leaves timers and handlers running that could act on another iDevice
+- Interface: highlighted buttons no longer show white text on a white background when focused with the keyboard
+- Fixed runtime errors reported from production in game iDevices, the editor tooltips, the image editor and the file open flow
+- Static mode: a style or library loaded with missing files is no longer stored in the browser cache
+- Desktop app: opening a project with images or other files no longer reports unsaved changes on exit
+- Embedding: saving through the host (`REQUEST_SAVE`) now works, and hosts are notified when the project has unsaved changes and when it is saved
+- Moodle: editing an activity now reopens the user's own project for it instead of creating a new one each time, and no longer shows "Access denied" with older plugin versions
+- Security: hardened the backend against path traversal, cross-site scripting, server-side request forgery, broken access control and decompression bombs; production now refuses to start with default secrets
+- Security: uploaded HTML, SVG and XML files are served in a sandbox that cannot use the visitor's session
+- Security: the file manager applies the import size limits before extracting a ZIP archive
+- Security: the desktop app only reads files the user opened
+
+### Upgraded
+
+- bun (Docker image): 1.3 → 1.4
+- electron: 44.2.0 → 44.8.0
+- abcjs: 6.0.4 → 6.7.1
+- bootstrap: 5.3.6 → 5.3.8
+- dompurify: 3.3.1 → 3.4.14
+- interactjs: 1.10.11 → 1.10.28
+- jquery-ui: 1.14.1 → 1.14.2
+- @material-symbols/svg-400: 0.47.0 → 0.48.0
+- dotenv: 17.4.2 → 18.0.8
+- elysia: 1.4.29 → 1.4.30
+- fs-extra: 11.4.0 → 11.4.1
+- jose: 6.2.10 → 6.2.12
+- kysely: 0.29.5 → 0.29.6
+- lib0: 0.2.117 → 0.2.119
+- mysql2: 3.23.4 → 3.24.4
+- uuid: 14.0.2 → 14.0.3
+- ws: 8.21.3 → 8.22.0
+- yjs: 13.6.32 → 13.6.33
+- @biomejs/biome: 2.5.11 → 2.5.15
+- happy-dom: 20.11.6 → 21.0.3
+- sass: 1.103.1 → 1.105.2
+- vite: 8.2.2 → 8.3.4
+- vitest: 4.1.11 → 5.0.5
+
+### Removed
+
+- The File → Print iDevices menu entry; printing only the activities is now an option of the print panel
+
+---
 
 ## v4.0.5 – 2026-09-16
 

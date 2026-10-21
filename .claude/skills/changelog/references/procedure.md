@@ -58,6 +58,8 @@ Skip PRs that only touch tests, CI, linting, or internal tooling with no behavio
 
 Apply the same classification table and style rules as Mode B (see [B.3](#b3-classify-each-change) and [B.4](#b4-write-the-entries) above) to whatever survives the filter in A.4.
 
+Dependency PRs do not add `### Upgraded` bullets one by one. Recompute the whole section against the last published release as described in [Upgraded section](#upgraded-section-compare-against-the-last-published-release) and replace the draft's existing `### Upgraded` bullets with the result.
+
 ### A.6 Insert into the existing top block
 
 Find the **first** `## vX.Y.Z...` block in `public/CHANGELOG.md` (the topmost one — this is the active draft). For each new entry:
@@ -104,6 +106,8 @@ Record:
 - **`tagName`** — the git tag of the last release (e.g. `v4.0.0-rc1`).
 - **`publishedAt`** — the ISO timestamp used to filter merged PRs.
 
+`gh release view` without a tag returns the latest published release and skips drafts and pre-releases. The `### Upgraded` section is compared against this release (see [Upgraded section](#upgraded-section-compare-against-the-last-published-release)).
+
 ---
 
 ### B.2 Collect all merged PRs since the last release
@@ -140,7 +144,7 @@ Map every individual change (one PR may yield several entries) to one of four se
 |---------|----------------|
 | **Added** | New features, new iDevices, new CLI commands, new UI options, new documentation |
 | **Fixed** | Bug fixes, presentation corrections, performance improvements, security fixes |
-| **Upgraded** | Dependency version bumps |
+| **Upgraded** | Dependency version bumps, computed against the last published release (see [Upgraded section](#upgraded-section-compare-against-the-last-published-release)), never from PR titles |
 | **Removed** | Features, options or files that no longer exist |
 
 **Label hints:**
@@ -166,7 +170,7 @@ Follow the **exact style** of the existing changelog entries in `public/CHANGELO
   - ✅ `Sort iDevice: exercises with identical cards are now correctly validated`
   - ❌ `Fixed a bug in the validation logic of SortIdevice.js`
 - **Avoid technical jargon** unless already used in the existing changelog (e.g. `blob:`, `asset://`, `SCORM`).
-- **Dependency upgrades:** `package-name: OLD → NEW` (lowercase, `→`, no extra words).
+- **Dependency upgrades:** `package-name: OLD → NEW` (lowercase, `→`, no extra words), where OLD is the version in the last published release and NEW the version on `origin/main`; one bullet per dependency.
 - **Group related items** within each section (all TinyMCE entries together, all iDevice entries together, etc.).
 
 ### What NOT to include
@@ -235,6 +239,31 @@ After inserting the block, tell the user:
 > - Merge or remove redundant entries.
 > - Verify dependency version numbers against the actual `package.json` / `bun.lock` diff.
 > - Add anything the PRs may not have described explicitly.
+
+---
+
+## Upgraded section: compare against the last published release
+
+Dependency PRs (Dependabot, manual bumps) only show one step each. A package bumped twice since the release would otherwise appear twice, or start from an intermediate version that was never released. Build the section from the two trees instead:
+
+1. **Resolve the release commit from GitHub, not from local tags.** Local tags can differ from the remote ones.
+
+   ```
+   git fetch origin --no-tags
+   git ls-remote origin "refs/tags/<tagName>^{}" "refs/tags/<tagName>"
+   ```
+
+   Use the `^{}` line when present (annotated tag), otherwise the plain one. Call it `REL`. If `git cat-file -t REL` fails, run `git fetch origin REL`.
+2. **Compare dependency manifests between `REL` and `origin/main`:**
+
+   ```
+   git diff REL origin/main -- package.json app/package.json .github/workflows
+   ```
+
+   For each dependency or action whose entry changed, read the version actually used at both ends. A range such as `^11.17.2` is not a version: take the resolved one from `bun.lock` (`git show REL:bun.lock`, `git show origin/main:bun.lock`, entry `"name": ["name@x.y.z", …]`).
+3. **Write one bullet per dependency:** `name: <version at REL> → <version on origin/main>`. Skip it when both are equal (bumped and reverted). A dependency that did not exist at `REL` is not an upgrade, and one that no longer exists is not either; mention them under Added or Removed only if users notice.
+4. **Vendored libraries** outside the manifests (for example under `public/libs/`): compare the version recorded in their files at `REL` and on `origin/main` the same way.
+5. Keep the existing grouping and filter: runtime and user-visible dependencies, Electron and notable tooling. Development-only bumps may be grouped or left out, as in previous blocks.
 
 ---
 
