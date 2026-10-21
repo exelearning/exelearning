@@ -1120,6 +1120,18 @@ describe('IdeviceNode', () => {
             expect(select.children[1].value).toBe('page-2');
         });
 
+        it('renders page names as indented text, not HTML', () => {
+            const pageName = '<img src=x onerror="alert(1)">';
+            eXeLearning.app.project.structure.getAllNodesOrderByView.mockReturnValueOnce([
+                { id: 'page-1', deep: 2, pageName },
+            ]);
+            const body = idevice.generateModalMoveToPageBody();
+            const option = body.querySelector('.select-move-to-page option');
+
+            expect(option.querySelector('img')).toBeNull();
+            expect(option.textContent).toBe(`${'  '.repeat(2)} ${pageName}`);
+        });
+
         it('marks current page as selected', () => {
             const body = idevice.generateModalMoveToPageBody();
             const select = body.querySelector('.select-move-to-page');

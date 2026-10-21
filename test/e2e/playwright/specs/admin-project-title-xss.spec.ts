@@ -55,4 +55,50 @@ test.describe('Admin Projects panel - stored XSS in project title', () => {
         const flag = await page.evaluate(() => (window as Window & { __xssProjectTitle?: number }).__xssProjectTitle);
         expect(flag).toBeUndefined();
     });
+
+    test('keeps an attacker-controlled project uuid inside the view link', async ({ page }, testInfo) => {
+        if (testInfo.project.name.includes('static')) {
+            test.skip(true, 'Admin projects panel requires server routes');
+        }
+
+        const XSS_UUID = '"><img src=x onerror="window.__xssProjectUuid = 1">';
+
+        const loginResponse = await page.request.post('/api/auth/login', {
+            data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+        });
+        expect(loginResponse.ok()).toBeTruthy();
+
+        await page.route('**/api/admin/projects?*', route =>
+            route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    projects: [
+                        {
+                            id: 999002,
+                            uuid: XSS_UUID,
+                            title: 'Public project',
+                            owner_email: 'attacker@evil.test',
+                            owner_user_id: null,
+                            owner_id: 1,
+                            status: 'active',
+                            visibility: 'public',
+                            created_at: Date.now(),
+                        },
+                    ],
+                    total: 1,
+                }),
+            }),
+        );
+
+        await page.goto('/admin');
+        await page.waitForLoadState('networkidle');
+        await page.locator('.admin-nav-link[data-section="projects"]').click();
+
+        const viewLink = page.locator('#projectsTableBody a[href^="/workarea?project="]');
+        await expect(viewLink).toHaveAttribute('href', `/workarea?project=${encodeURIComponent(XSS_UUID)}`);
+        await expect(page.locator('#projectsTableBody img')).toHaveCount(0);
+        const flag = await page.evaluate(() => (window as Window & { __xssProjectUuid?: number }).__xssProjectUuid);
+        expect(flag).toBeUndefined();
+    });
 });

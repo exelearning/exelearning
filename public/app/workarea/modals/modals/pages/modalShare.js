@@ -151,7 +151,7 @@ export default class ModalShare extends Modal {
 
             const title = _('Share "{title}"').replace(
                 '{title}',
-                projectTitle || _('Untitled document')
+                this.escapeHtml(projectTitle || _('Untitled document'))
             );
             this.setTitle(title);
             this.setContentId(projectId);

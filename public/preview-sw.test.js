@@ -540,6 +540,13 @@ describe('Preview Service Worker', () => {
             expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
         });
 
+        it('should HTML-escape the file path', async () => {
+            const response = createNotFoundResponse('<img src=x onerror="alert(1)">&\'.html');
+            const text = await response.text();
+            expect(text).not.toContain('<img');
+            expect(text).toContain('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&amp;&#39;.html');
+        });
+
         it('should include the file path in message', async () => {
             const response = createNotFoundResponse('path/to/missing.html');
             const text = await response.text();
