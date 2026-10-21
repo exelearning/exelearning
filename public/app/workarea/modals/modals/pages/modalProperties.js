@@ -781,10 +781,12 @@ export default class ModalProperties extends Modal {
             const customOption = document.createElement('option');
             customOption.value = 'custom';
             customOption.textContent = property.customLabel;
-            mode.append(systemOption, customOption);
+            // Without options to check (e.g. no dictionaries installed) only the default is offered
+            mode.append(systemOption);
+            if (index > 0) mode.append(customOption);
 
             const useSystemDefault =
-                selectedValues.length === 0 || selectedValues.includes(SYSTEM_DEFAULT);
+                index === 0 || selectedValues.length === 0 || selectedValues.includes(SYSTEM_DEFAULT);
             mode.value = useSystemDefault ? SYSTEM_DEFAULT : 'custom';
             list.hidden = useSystemDefault;
             mode.addEventListener('change', () => {

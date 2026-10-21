@@ -28,8 +28,19 @@ function createCollator(uiLocale) {
     }
 }
 
+// ICU names languages in lowercase in es, ca, fr... but the dialog capitalizes them
+function capitalize(text, uiLocale) {
+    const first = text.charAt(0);
+    try {
+        return first.toLocaleUpperCase(toIntlLocales(uiLocale)) + text.slice(1);
+    } catch {
+        return first.toUpperCase() + text.slice(1);
+    }
+}
+
 /**
- * Name a language code in the interface language, falling back to the code itself
+ * Name a language code in the interface language, with an initial capital,
+ * falling back to the code itself
  * @param {string} code - BCP 47 language code (es, en-US...)
  * @param {string} [uiLocale] - Interface language
  * @param {Intl.DisplayNames|null} [displayNames] - Reused when naming several codes
@@ -38,7 +49,7 @@ function createCollator(uiLocale) {
 export function getLanguageDisplayName(code, uiLocale, displayNames = createDisplayNames(uiLocale)) {
     try {
         const name = displayNames?.of(code);
-        if (name && name !== code) return name;
+        if (name && name !== code) return capitalize(name, uiLocale);
     } catch {
         // Invalid code: show the code
     }
@@ -51,7 +62,7 @@ export function getLanguageDisplayName(code, uiLocale, displayNames = createDisp
  * @param {string} [uiLocale]
  * @returns {Object<string, string>}
  */
-export function getSpellCheckerLanguageOptions(codes, uiLocale) {
+export function getSpellCheckerLanguageOptions(codes = [], uiLocale) {
     const displayNames = createDisplayNames(uiLocale);
     const collator = createCollator(uiLocale);
     return Object.fromEntries(
