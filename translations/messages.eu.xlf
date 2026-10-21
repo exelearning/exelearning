@@ -15999,11 +15999,11 @@
       </trans-unit>
       <trans-unit id="d1hrzuz" resname="This block will create a link to download the .elpx file. Write some use instructions and customize your download link.">
         <source>This block will create a link to download the .elpx file. Write some use instructions and customize your download link.</source>
-        <target>~Bloke honek .elpx fitxategia deskargatzeko esteka bat sortuko du. Idatzi erabilera-argibide batzuk eta pertsonalizatu deskarga-esteka.</target>
+        <target>Bloke honek .elpx-a jaisteko esteka sortuko du. Eman argibideak eta moldatu zure gustura jaitsi beharreko esteka.</target>
       </trans-unit>
       <trans-unit id="rcd2n5h" resname="Download .elpx file">
         <source>Download .elpx file</source>
-        <target>~Deskargatu .elpx fitxategia</target>
+        <target>Jaitsi .elpx fitxategia</target>
       </trans-unit>
       <trans-unit id="7vtm55f" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>

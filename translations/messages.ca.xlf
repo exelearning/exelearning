@@ -15999,11 +15999,11 @@
       </trans-unit>
       <trans-unit id="oliazww" resname="This block will create a link to download the .elpx file. Write some use instructions and customize your download link.">
         <source>This block will create a link to download the .elpx file. Write some use instructions and customize your download link.</source>
-        <target>~Aquest bloc crearà un enllaç per descarregar el fitxer .elpx. Escriu unes instruccions d'ús i personalitza l'enllaç de descàrrega.</target>
+        <target>Aquest bloc crearà un enllaç per descarregar el fitxer .elpx. Escriviu algunes instruccions d’ús i personalitzeu l’enllaç de baixada.</target>
       </trans-unit>
       <trans-unit id="pqcmlfd" resname="Download .elpx file">
         <source>Download .elpx file</source>
-        <target>~Descarrega el fitxer .elpx</target>
+        <target>Descarrega el fitxer .elpx</target>
       </trans-unit>
       <trans-unit id="pi7wjyz" resname="System default uses the operating system language. It is also used when no language is checked.">
         <source>System default uses the operating system language. It is also used when no language is checked.</source>

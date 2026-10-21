@@ -15999,7 +15999,7 @@
       </trans-unit>
       <trans-unit id="wgonk3g" resname="This block will create a link to download the .elpx file. Write some use instructions and customize your download link.">
         <source>This block will create a link to download the .elpx file. Write some use instructions and customize your download link.</source>
-        <target>~Dieser Block erstellt einen Link zum Herunterladen der .elpx-Datei. Schreiben Sie eine Gebrauchsanleitung und passen Sie den Download-Link an.</target>
+        <target>~Dieser Block erstellt einen Link zum Herunterladen der .elpx-Datei. Schreiben Sie einige Anweisungen zur Verwendung und passen Sie Ihren Download-Link an.</target>
       </trans-unit>
       <trans-unit id="w4glsm1" resname="Download .elpx file">
         <source>Download .elpx file</source>
