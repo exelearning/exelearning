@@ -7,14 +7,19 @@
     gap: 0;
     width: 100%;
     margin-bottom: 0;
-    // One row that scrolls when the tabs do not fit; a cut-off tab shows there is more
+    // One row that scrolls when the tabs do not fit; the thin scrollbar keeps every tab reachable with a mouse
     overflow-x: auto;
-    scrollbar-width: none;
+    scrollbar-width: thin;
     // Underlines are inset shadows so the scroll box does not clip them
     box-shadow: inset 0 -2px 0 var(--gray-200, #e5e7eb);
 
     &::-webkit-scrollbar {
-        display: none;
+        height: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--gray-300, #d1d5db);
+        border-radius: 3px;
     }
 
     .project-properties-tab {
@@ -48,6 +53,16 @@
 
         &:focus:not(:focus-visible) {
             outline: none;
+        }
+
+        // Inset ring: the scroll box would clip the global outer one, which also hides the underline
+        &:focus-visible {
+            box-shadow: inset 0 0 0 2px var(--brand-primary-300) !important;
+        }
+
+        &.active:focus-visible {
+            // The underline goes first so it is painted over the ring
+            box-shadow: inset 0 -2px 0 var(--brand-primary, #0BA1A1), inset 0 0 0 2px var(--brand-primary-300) !important;
         }
     }
 }
