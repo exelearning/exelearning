@@ -545,10 +545,12 @@ var $exeDevice = {
     getSelectType: function () {
         return `
             <div id="mapaMutimediaType" class="mb-4">
-                <div class="flex-nowrap align-items-center gap-2" style="display:flex;width:100%">
+                <div class="flex-wrap align-items-center gap-2" style="display:flex;width:100%">
                     ${$exeDevice.getDrowpBox()}
-                    <label for="mapaTitle" class="m-0">${_('Title')}:</label>
-                    <input id="mapaTitle" type="text" class="form-control" />
+                    <div class="d-flex flex-nowrap align-items-center gap-2">
+                        <label for="mapaTitle" class="m-0">${_('Title')}:</label>
+                        <input id="mapaTitle" type="text" class="form-control" />
+                    </div>
                     <div class="d-flex justify-content-start flex-nowrap align-items-center gap-2">
                         <label for="mapaTypePointSelect" class="m-0">${_('Type')}:</label>
                         <select id="mapaTypePointSelect" name="mapaTypePointSelect" class="form-select">
@@ -565,7 +567,7 @@ var $exeDevice = {
                         </select>
                         <button type="button" id="mapaEditPointsMap" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Edit map points')}">${_('Edit')}</button>
                         <button type="button" id="mapaEditSlide" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Edit presentation points')}">${_('Edit')}</button>
-                        <button type="button" id="mapaEditPointTest" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Editar cuestionario')}">${_('Edit')}</button>
+                        <button type="button" id="mapaEditPointTest" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Edit questionnaire')}">${_('Edit')}</button>
                     </div>
                 </div>
             </div>`;
@@ -3263,6 +3265,38 @@ var $exeDevice = {
                     }
                 } else {
                     $(this).val($exeDevice.activeMap.active + 1);
+                }
+            }
+        });
+
+        $('#mapaENumberQuestionQ').keyup(function (e) {
+            if (!$exeDevice) return;
+            if (e.keyCode == 13) {
+                const num = parseInt($(this).val());
+                if (!isNaN(num) && num > 0 && $exeDevice.validateQuestion()) {
+                    $exeDevice.qActive =
+                        Math.min(num, $exeDevice.selectsGame.length) - 1;
+                    $exeDevice.showQuestion($exeDevice.qActive);
+                } else {
+                    $(this).val($exeDevice.qActive + 1);
+                }
+            }
+        });
+
+        $('#mapaENumberQuestionQ1').keyup(function (e) {
+            if (!$exeDevice) return;
+            if (e.keyCode == 13) {
+                const num = parseInt($(this).val());
+                if (
+                    !isNaN(num) &&
+                    num > 0 &&
+                    $exeDevice.validatePointQuestion()
+                ) {
+                    $exeDevice.activeTest =
+                        Math.min(num, $exeDevice.tests.length) - 1;
+                    $exeDevice.showPointQuestion($exeDevice.activeTest);
+                } else {
+                    $(this).val($exeDevice.activeTest + 1);
                 }
             }
         });

@@ -321,7 +321,8 @@
 }
 
 #mapaTitle {
-    max-width: 250px;
+    width: 250px;
+    min-width: 160px;
     margin-right: 4px;
 }
 

@@ -766,5 +766,38 @@ describe('map edition: shared form tabs', () => {
             expect(device.selectsGame).toHaveLength(3);
             expect(document.getElementById('mapaNumberQuestions').textContent).toBe('3/3');
         });
+
+        it('goes to the question whose number is typed', () => {
+            device.selectsGame = [question('A'), question('B'), question('C')];
+            device.qActive = 0;
+            const input = $('#mapaENumberQuestionQ');
+
+            input.val('2').trigger($.Event('keyup', { keyCode: 13 }));
+            expect(device.qActive).toBe(1);
+            expect($('#mapaEQuestion').val()).toBe('B');
+
+            input.val('9').trigger($.Event('keyup', { keyCode: 13 }));
+            expect(device.qActive).toBe(2);
+            expect(input.val()).toBe('3');
+
+            input.val('x').trigger($.Event('keyup', { keyCode: 13 }));
+            expect(device.qActive).toBe(2);
+            expect(input.val()).toBe('3');
+        });
+    });
+
+    it('goes to the question of the point questionnaire whose number is typed', () => {
+        vi.spyOn(device, 'validatePointQuestion').mockReturnValue(true);
+        device.tests = ['A', 'B', 'C'].map((text) => ({ ...device.getDefaultQuestion(), quextion: text }));
+        device.activeTest = 0;
+        const input = $('#mapaENumberQuestionQ1');
+
+        input.val('3').trigger($.Event('keyup', { keyCode: 13 }));
+        expect(device.activeTest).toBe(2);
+        expect($('#mapaEQuestion1').val()).toBe('C');
+
+        input.val('0').trigger($.Event('keyup', { keyCode: 13 }));
+        expect(device.activeTest).toBe(2);
+        expect(input.val()).toBe('3');
     });
 });
