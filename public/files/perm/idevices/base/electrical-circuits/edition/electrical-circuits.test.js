@@ -1611,6 +1611,18 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
         expect(panel('contents').classList.contains('active')).toBe(false);
     });
 
+    it('enables the solution time again when solutions are switched back on', () => {
+        device.updateFieldGame(game({ showSolution: false }));
+        const time = document.getElementById('elceTimeShowSolution');
+        expect(time.disabled).toBe(true);
+
+        document.getElementById('elceShowSolution').click();
+        expect(time.disabled).toBe(false);
+
+        document.getElementById('elceShowSolution').click();
+        expect(time.disabled).toBe(true);
+    });
+
     it('restores the feedback with the game', () => {
         device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
 

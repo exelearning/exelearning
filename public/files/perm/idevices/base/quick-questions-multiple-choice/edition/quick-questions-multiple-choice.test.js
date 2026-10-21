@@ -883,6 +883,18 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
         expect(document.getElementById('seleccionaEUseLives').disabled).toBe(false);
     });
 
+    it('enables the solution time again when solutions are switched back on', () => {
+        device.updateFieldGame(game({ showSolution: false }));
+        const time = document.getElementById('seleccionaETimeShowSolution');
+        expect(time.disabled).toBe(true);
+
+        document.getElementById('seleccionaEShowSolution').click();
+        expect(time.disabled).toBe(false);
+
+        document.getElementById('seleccionaEShowSolution').click();
+        expect(time.disabled).toBe(true);
+    });
+
     it('restores the feedback and its mode with the game', () => {
         device.updateFieldGame(game({ gameMode: 2, feedBack: false, percentajeFB: 60 }));
 
