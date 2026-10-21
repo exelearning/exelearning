@@ -15765,10 +15765,6 @@
         <source>Spell checker languages</source>
         <target>~Lingvoj de la literumilo</target>
       </trans-unit>
-      <trans-unit id="tcyafy7" resname="System default uses the operating system language.">
-        <source>System default uses the operating system language.</source>
-        <target>~La defaŭlta opcio uzas la lingvon de la operaciumo.</target>
-      </trans-unit>
       <trans-unit id="zetrvmv" resname="Choose languages">
         <source>Choose languages</source>
         <target>~Elekti lingvojn</target>
