@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="eu" datatype="plaintext" original="file.ext">
-    <header>
-      <tool tool-id="symfony" tool-name="Symfony"/>
-    </header>
     <body>
       <trans-unit id="cBwQM6_" resname="Permissions error">
         <source>Permissions error</source>
@@ -2799,7 +2796,7 @@
       </trans-unit>
       <trans-unit id="CY42PFV" resname="Simple harmonic motion">
         <source>Simple harmonic motion</source>
-        <target>Mugimendu harmoniko sinplearen aldia</target>
+        <target>~Mugimendu harmoniko sinplea</target>
       </trans-unit>
       <trans-unit id="hWbOeHF" resname="Electricity and Magnetism">
         <source>Electricity and Magnetism</source>

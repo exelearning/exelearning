@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="eo" datatype="plaintext" original="file.ext">
-    <header>
-      <tool tool-id="symfony" tool-name="Symfony"/>
-    </header>
     <body>
       <trans-unit id="cBwQM6_" resname="Permissions error">
         <source>Permissions error</source>
@@ -1783,11 +1780,11 @@
       </trans-unit>
       <trans-unit id="okBpgji" resname="Down arrow">
         <source>Down arrow</source>
-        <target>~Malsupra flago</target>
+        <target>~Sago malsupren</target>
       </trans-unit>
       <trans-unit id="V6Dm6uX" resname="Up arrow">
         <source>Up arrow</source>
-        <target>~Malsupra flago</target>
+        <target>~Sago supren</target>
       </trans-unit>
       <trans-unit id="2xUlg0C" resname="Right loop arrow">
         <source>Right loop arrow</source>
@@ -1803,11 +1800,11 @@
       </trans-unit>
       <trans-unit id="rtCVSEI" resname="Arrow with text above">
         <source>Arrow with text above</source>
-        <target>~Sago kun teksto sube</target>
+        <target>~Sago kun teksto supre</target>
       </trans-unit>
       <trans-unit id="2xsg9dy" resname="Arrow with text above and below">
         <source>Arrow with text above and below</source>
-        <target>~Sago kun teksto sube kaj sube</target>
+        <target>~Sago kun teksto supre kaj sube</target>
       </trans-unit>
       <trans-unit id="fkj1H3d" resname="Right curve arrow">
         <source>Right curve arrow</source>
@@ -7515,7 +7512,7 @@
       </trans-unit>
       <trans-unit id="Ke5uJZY" resname="No decimals">
         <source>No decimals</source>
-        <target>~Respondo (opcia)</target>
+        <target>~Sen decimaloj</target>
       </trans-unit>
       <trans-unit id="4PgfFKC" resname="Feedback (optional)">
         <source>Feedback (optional)</source>
