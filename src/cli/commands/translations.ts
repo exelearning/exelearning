@@ -223,7 +223,7 @@ const INVALID_KEY_PATTERNS = [
     // Characters outside the XML 1.0 Char production (control characters, lone surrogates,
     // U+FFFE/U+FFFF). Minified or binary sources can produce them, and writing one would make
     // every XLF file unparseable.
-    /[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/u,
+    /[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u,
 ];
 
 /**

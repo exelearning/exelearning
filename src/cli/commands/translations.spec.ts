@@ -1241,7 +1241,7 @@ describe('Translations Command', () => {
             // Like the pdf.js worker: binary data inside a minified file that happens to hold `_(`
             await fs.writeFile(
                 path.join(libDir, 'worker.min.js'),
-                `a=_('bin\u0004ary\u0005');b=_('nul\u0000');c=_('non￾char');d=_('Valid key with emoji \u{1F600}');`,
+                `a=_('bin\u0004ary\u0005');b=_('nul\u0000');c=_('non\uFFFEchar');d=_('Valid key with emoji \u{1F600}');`,
             );
 
             const { execute } = await import('./translations');
@@ -1253,7 +1253,7 @@ describe('Translations Command', () => {
             expect(content).not.toContain('nul');
             expect(content).not.toContain('non');
             // Every character left in the file must be allowed by the XML 1.0 Char production
-            expect(content).not.toMatch(/[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/u);
+            expect(content).not.toMatch(/[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u);
         });
 
         it('should keep keys with tabs and line breaks, which XML 1.0 allows', async () => {
