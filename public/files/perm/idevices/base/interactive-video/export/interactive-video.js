@@ -208,6 +208,14 @@ var $interactivevideo = {
         );
     },
 
+    /**
+     * iframe_api defines window.YT straight away as a stub and only adds
+     * YT.Player once the player script has loaded.
+     */
+    youtubeApiReady: function () {
+        return typeof YT !== 'undefined' && typeof YT.Player === 'function';
+    },
+
     enable: function () {
         this.isInExe = eXe.app.isInExe();
         // Create the required HTML elements:
@@ -508,7 +516,7 @@ var $interactivevideo = {
             }
 
             isYTready = setInterval(function () {
-                if (typeof YT !== 'undefined') {
+                if ($interactivevideo.youtubeApiReady()) {
                     onYouTubeIframeAPIReady = $interactivevideo.ready();
                     clearInterval(isYTready);
                 }

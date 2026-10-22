@@ -72,7 +72,8 @@ var $padlock = {
     },
 
     loadGame: function () {
-        $padlock.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $padlock.options.length = $padlock.activities.length;
         $padlock.activities.each(function (i) {
             const dl = $('.candado-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -90,7 +91,7 @@ var $padlock = {
 
             mOption.id = typeof mOption.id === 'undefined' ? i : mOption.id;
             mOption.storageKey = $padlock.storageKeyOf(this);
-            $padlock.options.push(mOption);
+            $padlock.options[i] = mOption;
 
             mOption.scorerp = 0;
             mOption.idevicePath = $padlock.idevicePath;

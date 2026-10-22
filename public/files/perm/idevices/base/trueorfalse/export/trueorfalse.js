@@ -252,6 +252,7 @@ var $trueorfalse = {
         data.questionsRandom = data.questionsRandom ?? false;
 
         data.weighted = data.weighted ?? 100;
+        data.msgs = data.msgs ?? $trueorfalse.msgsdefault;
         data.percentageQuestions = data.percentageQuestions ?? 100;
 
         if (typeof data.typeGame === 'undefined') {
@@ -1129,5 +1130,6 @@ var $trueorfalse = {
         textButtonScorm: 'Save score',
         msgNext: 'Next',
         msgPrevious: 'Previous',
+        msgTime: 'Time per question',
     },
 };
