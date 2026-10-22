@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="gl" datatype="plaintext" original="file.ext">
-    <header>
-      <tool tool-id="symfony" tool-name="Symfony"/>
-    </header>
     <body>
       <trans-unit id="cBwQM6_" resname="Permissions error">
         <source>Permissions error</source>
@@ -3355,7 +3352,7 @@
       </trans-unit>
       <trans-unit id="ME62tP7" resname="1. Generate Prompt">
         <source>1. Generate Prompt</source>
-        <target>1. Xerar Prompt</target>
+        <target>1. Xerar prompt</target>
       </trans-unit>
       <trans-unit id="t4Y7vhN" resname="2. Launch in ChatGPT">
         <source>2. Launch in ChatGPT</source>
@@ -11867,7 +11864,7 @@
       </trans-unit>
       <trans-unit id="ca_CvA8" resname="Double">
         <source>Double</source>
-        <target>Doble</target>
+        <target>Dobre</target>
       </trans-unit>
       <trans-unit id="2cP9lEv" resname="Groove">
         <source>Groove</source>
@@ -14479,7 +14476,7 @@
       </trans-unit>
       <trans-unit id="wdnpak4" resname="You answered all the questions.">
         <source>You answered all the questions.</source>
-        <target>Respondiche todas as preguntas.</target>
+        <target>Respondiches todas as preguntas.</target>
       </trans-unit>
       <trans-unit id="hcfduih" resname="You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.">
         <source>You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.</source>
@@ -14539,7 +14536,7 @@
       </trans-unit>
       <trans-unit id="ql94mvq" resname="Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz">
         <source>Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</source>
-        <target>Formato de modelo 3D non compatible. Formatos compatibles: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</target>
+        <target>Formato de modelo 3D non compatible. Formatos compatibles: PDB, SDF, MOL2, XYZ, CIF, mmCIF, ZIP, TGZ, GZ</target>
       </trans-unit>
       <trans-unit id="2k5qt2u" resname="Could not render the selected 3D model">
         <source>Could not render the selected 3D model</source>
@@ -14647,27 +14644,27 @@
       </trans-unit>
       <trans-unit id="3rue3mi" resname="Line">
         <source>Line</source>
-        <target>Liña</target>
+        <target>Liñas</target>
       </trans-unit>
       <trans-unit id="at18p86" resname="Cross">
         <source>Cross</source>
-        <target>Cruz</target>
+        <target>Cruces</target>
       </trans-unit>
       <trans-unit id="9qr29co" resname="Stick">
         <source>Stick</source>
-        <target>Varilla</target>
+        <target>Barras</target>
       </trans-unit>
       <trans-unit id="nbcqh2r" resname="Sphere">
         <source>Sphere</source>
-        <target>Esfera</target>
+        <target>Esferas</target>
       </trans-unit>
       <trans-unit id="wactnp3" resname="Cartoon">
         <source>Cartoon</source>
-        <target>Cartoon</target>
+        <target>Cintas</target>
       </trans-unit>
       <trans-unit id="c2ey2eh" resname="Surface">
         <source>Surface</source>
-        <target>Superficie</target>
+        <target>Superficies</target>
       </trans-unit>
       <trans-unit id="e7o5rle" resname="Toggle background">
         <source>Toggle background</source>
@@ -14759,7 +14756,7 @@
       </trans-unit>
       <trans-unit id="bwqwbf1" resname="Curriculum foundations summary">
         <source>Curriculum foundations summary</source>
-        <target>Resumo da fundamentación curricular</target>
+        <target>Resumo dos fundamentos curriculares</target>
       </trans-unit>
       <trans-unit id="zul02lf" resname="Reset all selections? Changes will be lost.">
         <source>Reset all selections? Changes will be lost.</source>
@@ -14799,11 +14796,11 @@
       </trans-unit>
       <trans-unit id="6rfbnqu" resname="LOMLOE Curriculum Foundations">
         <source>LOMLOE Curriculum Foundations</source>
-        <target>Fundamentación Curricular LOMLOE</target>
+        <target>Fundamentos curriculares LOMLOE</target>
       </trans-unit>
       <trans-unit id="kp2hi6l" resname="Foundations">
         <source>Foundations</source>
-        <target>Fundamentación</target>
+        <target>Fundamentos</target>
       </trans-unit>
       <trans-unit id="bmm51bk" resname="Selected elements">
         <source>Selected elements</source>
@@ -15095,7 +15092,7 @@
       </trans-unit>
       <trans-unit id="f3h71k2" resname="Level up!">
         <source>Level up!</source>
-        <target>Subes de nivel!</target>
+        <target>Sobes de nivel!</target>
       </trans-unit>
       <trans-unit id="4r0edwu" resname="Level down">
         <source>Level down</source>
@@ -15523,7 +15520,7 @@
       </trans-unit>
       <trans-unit id="6j2cajg" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
-        <target>As fórmulas móstranse aínda que esta opción estea desactivada. Actívaa para incluír a biblioteca MathJax completa nas exportacións. Iso engade o seu menú contextual e as súas funcións interactivas.</target>
+        <target>As fórmulas amósanse aínda que esta opción estea desactivada. Actívaa para incluír a biblioteca MathJax completa nas exportacións. Iso engade o seu menú contextual e as súas funcións interactivas.</target>
       </trans-unit>
       <trans-unit id="bg3z8te" resname="Change password">
         <source>Change password</source>
@@ -15631,7 +15628,7 @@
       </trans-unit>
       <trans-unit id="8jb1hp2" resname="To save the score, the activity needs at least one question.">
         <source>To save the score, the activity needs at least one question.</source>
-        <target>~Para gardar a puntuación, a actividade necesita polo menos unha pregunta.</target>
+        <target>Para gardar a puntuación, a actividade necesita polo menos unha pregunta.</target>
       </trans-unit>
       <trans-unit id="lwgi3hv" resname="Minimum score to pass">
         <source>Minimum score to pass</source>
