@@ -90,9 +90,11 @@ describe('NavbarFile — folder project actions', () => {
     let originalElectronAPI;
     let originalSharedExporters;
     let originalEnableFolderProjects;
+    let documentListeners;
 
     beforeEach(() => {
         vi.useFakeTimers();
+        documentListeners = vi.spyOn(document, 'addEventListener');
         navbar = buildNavbarDOM();
 
         alertShow = vi.fn();
@@ -139,6 +141,9 @@ describe('NavbarFile — folder project actions', () => {
     });
 
     afterEach(() => {
+        for (const [type, listener, options] of documentListeners.mock.calls) {
+            document.removeEventListener(type, listener, options);
+        }
         vi.useRealTimers();
         vi.restoreAllMocks();
         if (originalShowDirectoryPicker === undefined) delete window.showDirectoryPicker;
@@ -217,6 +222,40 @@ describe('NavbarFile — folder project actions', () => {
             for (const item of nav.folderProjectActionItems) {
                 expect(item.classList.contains('d-none')).toBe(false);
             }
+        });
+
+        it.each([true, false])('keeps repeated Alt presses in the open File menu (altKey=%s)', (altKey) => {
+            window.electronAPI = { openProjectFolder: vi.fn() };
+            const nav = new NavbarFile({ navbar });
+            nav.button.setAttribute('aria-expanded', 'true');
+            nav.setFolderProjectActionsEvents();
+
+            for (let press = 0; press < 3; press++) {
+                for (const type of ['keydown', 'keyup']) {
+                    const event = new KeyboardEvent(type, { key: 'Alt', altKey, cancelable: true });
+                    document.dispatchEvent(event);
+                    expect(event.defaultPrevented).toBe(true);
+                    for (const item of nav.folderProjectActionItems) {
+                        expect(item.classList.contains('d-none')).toBe(type === 'keyup');
+                    }
+                }
+            }
+        });
+
+        it('preserves native keyboard handling outside the open File menu and for other keys', () => {
+            window.electronAPI = { openProjectFolder: vi.fn() };
+            const nav = new NavbarFile({ navbar });
+            nav.setFolderProjectActionsEvents();
+
+            for (const type of ['keydown', 'keyup']) {
+                const event = new KeyboardEvent(type, { key: 'Alt', cancelable: true });
+                document.dispatchEvent(event);
+                expect(event.defaultPrevented).toBe(false);
+            }
+            nav.button.setAttribute('aria-expanded', 'true');
+            const event = new KeyboardEvent('keydown', { key: 'F10', cancelable: true });
+            document.dispatchEvent(event);
+            expect(event.defaultPrevented).toBe(false);
         });
 
         it('hides entries when the File dropdown closes', () => {
