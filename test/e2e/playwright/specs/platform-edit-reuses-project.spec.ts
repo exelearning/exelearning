@@ -29,6 +29,14 @@ const FIXTURE = path.join(__dirname, '../../../fixtures/really-simple-test-proje
 const IMAGE_FIXTURE = path.join(__dirname, '../../../fixtures/sample-3.jpg');
 const IMAGE_NAME = 'moodle-activity-image.jpg';
 
+// With E2E_BASE_URL the server runs in Docker (the DB matrix), where "localhost" is
+// the container: it reaches this runner as host.docker.internal (see
+// doc/deploy/docker-compose.e2e.yml), and the browser resolves that name to this runner.
+const MOODLE_HOST = process.env.E2E_BASE_URL ? 'host.docker.internal' : 'localhost';
+if (process.env.E2E_BASE_URL) {
+    test.use({ launchOptions: { args: [`--host-resolver-rules=MAP ${MOODLE_HOST} 127.0.0.1`] } });
+}
+
 interface StandInMoodle {
     url: string;
     packageBytes: Buffer;
@@ -73,7 +81,7 @@ async function startStandInMoodle(initialPackage: Buffer): Promise<StandInMoodle
     });
     // No host: listen on both IPv4 and IPv6, whichever "localhost" resolves to.
     await new Promise<void>(resolve => server.listen(0, resolve));
-    moodle.url = `http://localhost:${(server.address() as AddressInfo).port}`;
+    moodle.url = `http://${MOODLE_HOST}:${(server.address() as AddressInfo).port}`;
     moodle.close = () => new Promise(resolve => server.close(() => resolve()));
     return moodle;
 }
