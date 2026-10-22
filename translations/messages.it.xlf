@@ -5591,7 +5591,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="% right to see the feedback">
         <source>% right to see the feedback</source>
-        <target>~% di risposte corrette per vedere il feedback</target>
+        <target>% di risposte corrette per vedere il feedback</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -6191,7 +6191,7 @@
       </trans-unit>
       <trans-unit id="OHpcg.X" resname="Finish">
         <source>Finish</source>
-        <target>~Termina</target>
+        <target>Termina</target>
       </trans-unit>
       <trans-unit id="2QRc0q1" resname="Maximum card number: %s.">
         <source>Maximum card number: %s.</source>
@@ -12507,7 +12507,7 @@
       </trans-unit>
       <trans-unit id="8fx6tkz" resname="Being edited by">
         <source>Being edited by</source>
-        <target>~In modifica da</target>
+        <target>In modifica da</target>
       </trans-unit>
       <trans-unit id="k0rmngs" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
