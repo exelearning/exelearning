@@ -13,9 +13,12 @@ import type {
     AssetProvider,
     LatexPreRenderResult,
     MermaidPreRenderResult,
+    PreviewContentPolicy,
+    PreviewContentReport,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
+import { PreviewDocumentAdapter } from '../adapters/PreviewDocumentAdapter';
 import { generateI18nScript } from '../generators/I18nGenerator';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { ThemeFileUrlResolver } from '../utils/ThemeFileUrlResolver';
@@ -102,6 +105,8 @@ export interface PrintPreviewOptions {
      * If true, enables auto-print mode (injects print scripts and onload handler).
      */
     printMode?: boolean;
+    /** Preview-only author-content policy supplied by the browser UI. */
+    previewContentPolicy?: PreviewContentPolicy;
     /**
      * If true, shows URLs inline after external links in printed output.
      * E.g., "Cedec" becomes "Cedec [https://cedec.intef.es]".
@@ -139,6 +144,7 @@ export interface PrintPreviewResult {
     success: boolean;
     html?: string;
     error?: string;
+    activeContentReport?: PreviewContentReport;
     /**
      * Releases the blob URLs the HTML points at, one per asset it uses.
      *
@@ -188,17 +194,27 @@ export class PrintPreviewExporter {
         const pageRenderer = new PageRenderer(ideviceRenderer);
         let themeFiles: ThemeFileUrlResolver | null = null;
         try {
-            const pages = this.document.getNavigation();
-            const meta = this.document.getMetadata();
-
-            if (pages.length === 0) {
-                return { success: false, error: 'No pages to preview' };
-            }
-
             // The activities kept for teachers print only with the rest of that content, and then
             // the chosen mode treats them as any other.
             const teacherOnly = options.teacherOnly === true;
             const activities = options.activities && { ...options.activities, teacherOnly };
+
+            // Author content goes through the preview policy, except the activities this mode
+            // turns into exercises: those are rebuilt from their stored data, which the worksheet
+            // escapes itself, so filtering it as HTML first would print it mangled.
+            const document = options.previewContentPolicy
+                ? new PreviewDocumentAdapter(
+                      this.document,
+                      options.previewContentPolicy,
+                      activities && convertedBy(activities.mode, activities),
+                  )
+                : null;
+            const pages = (document ?? this.document).getNavigation();
+            const meta = (document ?? this.document).getMetadata();
+
+            if (pages.length === 0) {
+                return { success: false, error: 'No pages to preview' };
+            }
 
             // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
             let processedPages = await this.preprocessPages(
@@ -316,6 +332,7 @@ export class PrintPreviewExporter {
             return {
                 success: true,
                 html,
+                activeContentReport: document?.getReport(),
                 dispose: () => {
                     assetResolver.dispose();
                     themeFiles?.dispose();

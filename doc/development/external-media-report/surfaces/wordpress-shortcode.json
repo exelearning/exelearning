@@ -1,0 +1,20 @@
+{
+  "id": "wordpress-shortcode",
+  "expect": "promoted",
+  "platform": "WordPress",
+  "name": "Shortcode [exelearning]",
+  "url": "http://localhost:8888/2026/07/28/evil-elpx-shortcode/",
+  "frame": "iframe.exelearning-iframe",
+  "note": "manejador de shortcode, con sus propios atributos por defecto",
+  "players": [
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+  ],
+  "sandboxes": [
+    "allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+  ],
+  "canonicalHost": "object",
+  "youtubeSdk": "undefined",
+  "vimeoSdk": "undefined",
+  "contentSandbox": "allow-scripts allow-popups allow-forms",
+  "contentOpaque": true
+}

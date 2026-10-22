@@ -19,6 +19,7 @@
  * started. The desktop app instead hands a copy of the preview as it stands to its main process,
  * which prints it and says whether printing failed or was cancelled.
  */
+import { createPreviewContentPolicy } from '../../../../utils/previewContentPolicy.js';
 import PrintOptionsPanel, { PRINT_TEACHER_ONLY_FIELD, PRINT_UNFOLD_BLOCKS_FIELD } from './printOptionsPanel.js';
 import { printPreviewSnapshot } from './printPreviewSnapshot.js';
 
@@ -727,7 +728,10 @@ export default class ModalPrintPreview {
         return generatePrintPreviewFn(
             yjsBridge.documentManager,
             yjsBridge.resourceFetcher || null,
-            this.buildPreviewOptions(),
+            {
+                ...this.buildPreviewOptions(),
+                previewContentPolicy: createPreviewContentPolicy(yjsBridge.documentManager.projectId),
+            },
             yjsBridge.assetManager || null
         );
     }
@@ -799,6 +803,13 @@ export default class ModalPrintPreview {
         if (!result.success || !result.html) {
             result.dispose?.();
             throw new Error(result.error || _('Failed to generate preview'));
+        }
+
+        // Only the document preview runs author content through the preview policy; the worksheet
+        // sanitizes it itself and carries no report, which would otherwise hide the panel's shield.
+        if (this.mode !== PREVIEW_MODE_IDEVICES) {
+            const previewPanel = eXeLearning.app.interface?.previewButton?.getPanel?.();
+            previewPanel?._updateActiveContentIndicator?.(result.activeContentReport);
         }
 
         // Resolve asset URLs if available

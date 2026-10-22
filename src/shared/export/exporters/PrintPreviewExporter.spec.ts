@@ -14,6 +14,7 @@ import type {
     ExportDocument,
     ExportMetadata,
     ExportPage,
+    PreviewContentPolicy,
     ResourceProvider,
 } from '../interfaces';
 
@@ -2612,6 +2613,52 @@ describe('PrintPreviewExporter and interactive activities', () => {
     }
 
     for (const mode of ['in-place', 'appendix'] as const) {
+        it(`converts an activity from its stored data, not the preview-filtered copy, in ${mode} mode`, async () => {
+            // The worksheet escapes the activity's text itself. Filtering that data as HTML first
+            // stripped the literal "<script>" and printed "&lt;" in its place.
+            const policy: PreviewContentPolicy = {
+                prepare: html =>
+                    html.includes('<script')
+                        ? {
+                              html: html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/</g, '&lt;'),
+                              activeContentFound: true,
+                              categories: ['script'],
+                              actions: ['removed'],
+                          }
+                        : { html, activeContentFound: false, categories: [], actions: [] },
+            };
+            const pages = projectWithActivity().getNavigation();
+            pages[0].blocks[0].components = [
+                { id: 'c1', type: 'text', order: 0, content: '<p>Prose</p><script>prose()</script>', properties: {} },
+                {
+                    id: 'c2',
+                    type: 'adaptative-quiz',
+                    order: 1,
+                    content: '',
+                    properties: {
+                        questions: [
+                            { typeSelect: 2, question: 'pH', solutionWord: 'Acidity < 7 <script>alert(1)</script>' },
+                        ],
+                    },
+                },
+            ];
+
+            const result = await new PrintPreviewExporter(createMockDocument(pages), resources).generatePreview({
+                activities: { mode },
+                previewContentPolicy: policy,
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('Acidity &lt; 7 &lt;script&gt;alert(1)&lt;/script&gt;');
+            expect(result.html).not.toContain('prose()');
+            // Only the prose is reported: the converted activity never reaches the page as markup.
+            expect(result.activeContentReport).toMatchObject({
+                activeContentFound: true,
+                contexts: ['component-html'],
+            });
+            expect(result.activeContentReport?.categories).toContain('script');
+        });
+
         it(`prints a selected activity with a shared legacy id prefix in ${mode} mode`, async () => {
             const pages = projectWithActivity().getNavigation();
             const component = pages[0].blocks[0].components[1];
