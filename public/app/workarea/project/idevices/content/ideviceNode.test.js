@@ -2918,6 +2918,45 @@ describe('IdeviceNode', () => {
             });
         });
 
+        it('blocks edition when Yjs holds malformed jsonProperties the node has not reloaded', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.jsonProperties = { questionsData: [] };
+            idevice.jsonPropertiesParseError = null;
+            const malformed = '{"questionsData":';
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponent: vi.fn(() => ({ jsonProperties: malformed })),
+                },
+            };
+
+            idevice.edition();
+
+            expect(idevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice error',
+                body: 'This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.',
+                contentId: 'error',
+            });
+            expect(idevice.jsonPropertiesParseError).toBeInstanceOf(SyntaxError);
+            expect(idevice.malformedJsonPropertiesRaw).toBe(malformed);
+        });
+
+        it('allows edition when the stored jsonProperties parse after a stale error', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponent: vi.fn(() => ({ jsonProperties: '{}' })),
+                },
+            };
+
+            idevice.edition();
+
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
+            expect(idevice.jsonPropertiesParseError).toBeNull();
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('edition');
+        });
+
         it('sets editing component in Yjs when enabled', () => {
             eXeLearning.app.project._yjsEnabled = true;
             idevice.yjsComponentId = 'yjs-comp-id';

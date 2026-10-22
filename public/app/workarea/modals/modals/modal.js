@@ -34,6 +34,10 @@ export default class Modal {
         // cancel it (otherwise a show()+close() in quick succession pops up a
         // blank, never-hidden modal — see close()).
         this.pendingShowTimeout = null;
+        // close() wipes the body 100ms later when clearAfterClose is set. A
+        // show() inside that window has to cancel the wipe: timeMin is 50ms,
+        // so the new body would be cleared while the modal stays open.
+        this.pendingClearTimeout = null;
         this.modal = new bootstrap.Modal(this.modalElement, {});
         this.timeMax = 500;
         this.timeMin = 50;
@@ -280,6 +284,12 @@ export default class Modal {
      * @param {*} data
      */
     show(data) {
+        // A previous close() may still be about to wipe the body. Cancel it
+        // before this show() writes, or the wipe lands after setBody().
+        if (this.pendingClearTimeout) {
+            clearTimeout(this.pendingClearTimeout);
+            this.pendingClearTimeout = null;
+        }
         let time = this.manager.closeModals() ? this.timeMax : this.timeMin;
         // A previous show() may still be waiting on its deferred timer (the
         // shared info/alert modal is a singleton and can be reused in quick
@@ -340,7 +350,11 @@ export default class Modal {
         }
         this.modal.hide();
         if (this.clearAfterClose) {
-            setTimeout(() => {
+            if (this.pendingClearTimeout) {
+                clearTimeout(this.pendingClearTimeout);
+            }
+            this.pendingClearTimeout = setTimeout(() => {
+                this.pendingClearTimeout = null;
                 this.modalElementTitle.innerHTML = '';
                 this.modalElementBody.innerHTML = '';
                 this.modalElementHeader.removeAttribute('modal-content-id');

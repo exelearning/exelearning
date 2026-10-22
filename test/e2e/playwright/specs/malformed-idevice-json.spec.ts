@@ -144,7 +144,11 @@ test.describe('Damaged iDevice JSON', () => {
 
         await page.locator('#editIdeviceidevice-malformed-json').click();
 
-        await expect(page.locator('#modalAlert')).toContainText('cannot be edited because its saved data is damaged');
+        // #modalAlert is always in the document; its close button is static.
+        // Wait until this show() has opened it, then read that body.
+        await expect(page.locator('#modalAlert[data-open="true"]')).toContainText(
+            'cannot be edited because its saved data is damaged',
+        );
         await expect(page.locator('.idevice_node#idevice-malformed-json')).toHaveAttribute('mode', 'export');
 
         // The original payload must survive the blocked edit, not be overwritten.
