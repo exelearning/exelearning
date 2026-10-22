@@ -28,6 +28,7 @@ export {
     findProjectById,
     findProjectByUuid,
     findProjectByPlatformId,
+    findOwnedProjectByPlatformBinding,
     findProjectByPublicViewId,
     generatePublicViewId,
     setPublicViewEnabled,
