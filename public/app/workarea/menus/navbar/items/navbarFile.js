@@ -857,8 +857,8 @@ export default class NavbarFile {
      * The preview opens straight away. A game board printed as the browser draws it is not an
      * exercise, so when the project has interactive activities the options panel beside the
      * preview lets the user choose what to do with them, and the preview follows. They start
-     * printed in an appendix, with a pointer to each where the author put it. With none, there
-     * is nothing to decide and the document prints as it always did.
+     * printed as exercises where the author put them. With none, there is nothing to decide and
+     * the document prints as it always did.
      */
     startPrint() {
         const activities = this.listInteractiveActivities();
