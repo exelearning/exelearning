@@ -87,7 +87,7 @@
     "dotenv": "^18.0.8",
     "edicuatex": "1.5.5",
     "elysia": "^1.4.30",
-    "fast-xml-parser": "^5.11.1",
+    "fast-xml-parser": "^5.11.2",
     "fflate": "^0.8.3",
     "fs-extra": "^11.4.1",
     "fzstd": "0.1.1",
