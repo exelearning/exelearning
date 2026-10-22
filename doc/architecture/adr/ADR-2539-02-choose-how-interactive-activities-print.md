@@ -9,7 +9,7 @@ deciders:
 reviewers:
   - "@mnarvaezm"
 related:
-  prs: [2539]
+  prs: [2539, 2600]
   changes: ["2539-print-idevice-contents"]
   adrs: [ADR-2539-01]
 supersedes: []
@@ -110,12 +110,13 @@ like to print?* offers four mutually exclusive choices, each named by what it pr
 | Activities only (no other content) | The worksheet alone — what *Print iDevices* used to produce |
 | Content without activities | The document without them |
 
-**Printing each activity where the author put it is the default**, and the choices are offered in
-that order, from the whole document to less of it. The document keeps the order the author gave it,
-with each activity now an exercise instead of a game board. The appendix is one choice away for a
-handout whose text should run on without exercises breaking it up; there each exercise starts on a
-page of its own, and a pointer marks where each one was. (Until review, the appendix was the
-default.)
+**Printing each activity where the author put it is the default**. The two choices that include
+both content and activities come first, followed by activities only and content without activities.
+The document keeps the order the author gave it, with each activity now an exercise instead of a
+game board. The appendix is one choice away for a handout whose text should run on without exercises
+breaking it up; there each exercise starts on a page of its own, and a pointer marks where each one
+was. [PR #2600](https://github.com/exelearning/exelearning/pull/2600) changed the default from the
+appendix to activities in place.
 
 **Which activities print is chosen in the same panel.** While a choice prints activities, the panel
 lists them all under *Activities*: those with a printed form ticked, and those that can never be

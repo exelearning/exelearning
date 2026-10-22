@@ -9,7 +9,7 @@ import {
     openProjectFolderInBrowser,
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
-import { DEFAULT_ACTIVITY_MODE, PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
+import { PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -863,12 +863,7 @@ export default class NavbarFile {
     startPrint() {
         const activities = this.listInteractiveActivities();
 
-        this.openPrintPreview(
-            PREVIEW_MODE_DOCUMENT,
-            activities.length > 0 ? DEFAULT_ACTIVITY_MODE : null,
-            null,
-            activities
-        );
+        this.openPrintPreview(PREVIEW_MODE_DOCUMENT, null, null, activities);
     }
 
     /**

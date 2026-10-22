@@ -2846,7 +2846,7 @@ test.describe('Print: the activities that can never be printed', () => {
         await expect(panel.locator(TITLE_ONLY)).toHaveCount(0);
 
         // A padlock can be printed. One that guards nothing still says so where it stood.
-        const { frame } = await choosePrintOption(page, 'in-place');
+        const { frame } = await waitForPreview(page);
         await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="padlock"]')).toHaveCount(1);
     });
 
@@ -3679,7 +3679,7 @@ test.describe('Print: a formula shows once', () => {
         );
 
         await openPrintPanel(page);
-        let { frame } = await choosePrintOption(page, 'in-place');
+        let { frame } = await waitForPreview(page);
         await expect(frame.locator('.exe-math-rendered svg').first()).toBeVisible();
         expect(await mathmlHidden(page, frame)).toEqual({ screen: true, paper: true });
 

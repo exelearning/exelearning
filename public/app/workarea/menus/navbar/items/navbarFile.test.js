@@ -3451,11 +3451,11 @@ describe('NavbarFile printing with interactive activities', () => {
     });
 
     describe('when the project has them', () => {
-        it('opens the preview at once, with the activities printed where the author put them', () => {
+        it('opens the preview at once, letting the options panel choose the default', () => {
             navbarFile.startPrint();
 
             expect(printPreview.show).toHaveBeenCalledTimes(1);
-            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place', null, ACTIVITIES);
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, ACTIVITIES);
         });
 
         it('lists the activities of the project', () => {

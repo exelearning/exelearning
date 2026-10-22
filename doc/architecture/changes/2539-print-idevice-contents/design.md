@@ -7,13 +7,13 @@ authors:
   - "@mnarvaezm"
 reviewers:
   - "@mnarvaezm"
-implementation_prs: [2539]
+implementation_prs: [2539, 2600]
 related_adrs: [ADR-2539-01, ADR-2539-02]
 supersedes: []
 superseded_by: []
 ai_assistance:
-  tool: Claude Code
-  model: Claude Opus 5
+  tool: Claude Code; Codex
+  model: Claude Opus 5; GPT-6
 ---
 
 # Printing interactive activities as paper exercises
@@ -39,7 +39,7 @@ This document covers how both are implemented.
 |---|---|
 | iDevices with a printable form | Twenty-nine: every interactive activity except the eleven settled as unprintable |
 | Interactive activities in total | 40 of the 52 iDevices; eleven of those say they are not available in print |
-| Printing modes | Leave them out · in place · in an appendix · only the activities |
+| Printing modes | In place (default) · in an appendix · only the activities · leave them out |
 | Answer key | Not in this phase |
 | Writes to the project | None — both paths are read-only |
 

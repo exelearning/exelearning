@@ -8,10 +8,10 @@ import PrintOptionsPanel, {
 import { PRINT_SELECTION_ALL, PRINT_SELECTION_FIELD } from './printActivitySelection.js';
 
 const CHOICES = [
-    { value: 'omit', label: 'Content without activities', prints: false },
     { value: 'in-place', label: 'Content with activities', prints: true },
     { value: 'appendix', label: 'Content with activities in an appendix', prints: true },
     { value: 'idevices', label: 'Activities only (no other content)', prints: true },
+    { value: 'omit', label: 'Content without activities', prints: false },
 ];
 
 const LABELS = {
@@ -244,7 +244,7 @@ describe('PrintOptionsPanel', () => {
         });
 
         it('offers the choices in order, with the one asked for preselected', () => {
-            expect(radios().map((radio) => radio.value)).toEqual(['omit', 'in-place', 'appendix', 'idevices']);
+            expect(radios().map((radio) => radio.value)).toEqual(['in-place', 'appendix', 'idevices', 'omit']);
             expect(checkedChoice()).toBe('in-place');
             expect([...root.querySelectorAll('.print-activities-options label')].map((label) => label.textContent)).toEqual(
                 CHOICES.map((choice) => choice.label)
@@ -295,13 +295,13 @@ describe('PrintOptionsPanel', () => {
         it('falls back to the first choice when the one asked for is not offered', () => {
             configure({ choice: 'nonsense' });
 
-            expect(checkedChoice()).toBe('omit');
+            expect(checkedChoice()).toBe('in-place');
         });
 
         it('falls back to the first choice when none is asked for', () => {
             configure({ choice: null });
 
-            expect(checkedChoice()).toBe('omit');
+            expect(checkedChoice()).toBe('in-place');
         });
 
         it('ticks only the activities it is told to', () => {

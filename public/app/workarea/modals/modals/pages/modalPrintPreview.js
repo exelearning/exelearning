@@ -46,12 +46,6 @@ export const ACTIVITY_MODE_IN_PLACE = 'in-place';
 export const ACTIVITY_MODE_APPENDIX = 'appendix';
 
 /**
- * What printing does with the interactive activities until the user chooses otherwise: each one
- * prints as an exercise where the author put it.
- */
-export const DEFAULT_ACTIVITY_MODE = ACTIVITY_MODE_IN_PLACE;
-
-/**
  * How long to wait after an option changes before drawing the preview again, so that ticking a
  * handful of activities in a row draws it once.
  */
@@ -183,7 +177,8 @@ export default class ModalPrintPreview {
      *
      * @param {string} mode - PREVIEW_MODE_DOCUMENT (default) or PREVIEW_MODE_IDEVICES
      * @param {string|null} activityMode - What to do with the interactive activities, for the
-     *     document mode. Null prints the document untouched.
+     *     document mode. Null uses the panel's default when activities are offered, or prints
+     *     the document untouched when there are none.
      * @param {string[]|null} selectedActivities - Ids of the activities to print, in either mode.
      *     Null prints every one of them.
      * @param {Array<object>} activities - The interactive activities of the project, as the
@@ -286,10 +281,7 @@ export default class ModalPrintPreview {
         this.panel.configure({
             activities: this.activities,
             choices: this.getChoices(),
-            choice:
-                this.mode === PREVIEW_MODE_IDEVICES
-                    ? PREVIEW_MODE_IDEVICES
-                    : this.activityMode || DEFAULT_ACTIVITY_MODE,
+            choice: this.mode === PREVIEW_MODE_IDEVICES ? PREVIEW_MODE_IDEVICES : this.activityMode,
             selectedActivities: this.selectedActivities,
             labels: this.getPanelLabels(),
             ideviceName: (type) => this.ideviceName(type),
@@ -459,7 +451,8 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * The choices about the interactive activities, in the order they are offered.
+     * The choices about the interactive activities, in the order they are offered. The first is
+     * the default when no supported choice is requested.
      *
      * @returns {Array<{value: string, label: string, prints: boolean}>} `prints` is false for the
      *     choice that leaves the activities out, which makes picking among them pointless

@@ -747,7 +747,7 @@ describe('ModalPrintPreview and its options panel', () => {
     };
 
     /** Show the preview of a project that has the three activities above. */
-    const showWithActivities = (mode = PREVIEW_MODE_DOCUMENT, activityMode = ACTIVITY_MODE_IN_PLACE, selected = null) =>
+    const showWithActivities = (mode = PREVIEW_MODE_DOCUMENT, activityMode = null, selected = null) =>
         modal.show(mode, activityMode, selected, ACTIVITIES);
 
     beforeEach(() => {
@@ -844,7 +844,7 @@ describe('ModalPrintPreview and its options panel', () => {
             );
         });
 
-        it('offers the choices when it has some, with the one it is given preselected', async () => {
+        it('offers the choices when it has some, with the default preselected', async () => {
             await showWithActivities();
 
             expect(panelEl().hidden).toBe(false);
@@ -863,8 +863,8 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(lastOptions().activities).not.toHaveProperty('selectedActivities');
         });
 
-        it('starts the activities where the author put them when the arguments say nothing about them', async () => {
-            await modal.show(PREVIEW_MODE_DOCUMENT, null, null, ACTIVITIES);
+        it.each([null, 'unknown-mode'])('prints activities in place when the requested choice is %s', async (choice) => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, choice, null, ACTIVITIES);
 
             expect(checkedChoice()).toBe(ACTIVITY_MODE_IN_PLACE);
             expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_IN_PLACE);
