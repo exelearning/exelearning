@@ -45,7 +45,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 
 select {
-    &.select-move-to-page, &.property-value {
+    &.select-move-to-page, &.property-value, &.multiselect-mode {
         padding: 9px 12px;
         border: 1px solid #c3c5d5;
         border-radius: 8px;
@@ -73,6 +73,47 @@ select {
 
         &.hidden {
             display: none;
+        }
+    }
+    // Label and help stay level with the mode select when the list below it is open
+    .property-row:has(> .property-multiselect) {
+        align-items: flex-start;
+        > label,
+        > .exe-form-help {
+            margin-top: 10px;
+        }
+    }
+}
+
+.property-multiselect {
+    .multiselect-mode {
+        width: 100%;
+    }
+    .multiselect-options {
+        max-height: 14rem;
+        overflow-y: auto;
+        margin-top: 8px;
+        padding: 6px 14px;
+        border: 1px solid #c3c5d5;
+        border-radius: 8px;
+        &[hidden] {
+            display: none;
+        }
+    }
+    .form-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin: 4px 0;
+        padding-left: 0;
+        .form-check-input {
+            float: none;
+            flex-shrink: 0;
+            margin: 4px 0 0;
+        }
+        .form-check-label {
+            margin-top: 1px;
+            font-size: .95em;
         }
     }
 }

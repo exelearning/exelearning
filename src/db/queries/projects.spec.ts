@@ -10,6 +10,7 @@ import {
     findProjectById,
     findProjectByUuid,
     findProjectByPlatformId,
+    findOwnedProjectByPlatformBinding,
     findProjectByPublicViewId,
     findProjectWithOwner,
     findProjectByUuidWithOwner,
@@ -212,6 +213,71 @@ describe('Project Queries', () => {
             // Project has null platform_id by default
             const found = await findProjectByPlatformId(db, 'any-id');
             expect(found).toBeUndefined();
+        });
+    });
+
+    describe('findOwnedProjectByPlatformBinding', () => {
+        const site = 'https://moodle.example.com/moodle';
+
+        async function boundProject(
+            uuid: string,
+            binding: { owner_id?: number; platform_site?: string | null; platform_id?: string; status?: string },
+        ) {
+            await createProjectWithUuid(db, uuid, { title: uuid, owner_id: binding.owner_id ?? testUser.id });
+            await db
+                .updateTable('projects')
+                .set({
+                    platform_id: binding.platform_id ?? '1234',
+                    platform_site: binding.platform_site === undefined ? site : binding.platform_site,
+                    status: binding.status ?? 'active',
+                })
+                .where('uuid', '=', uuid)
+                .execute();
+        }
+
+        it("returns the owner's project bound to the site and cmid", async () => {
+            await boundProject('bound', {});
+
+            const found = await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234');
+
+            expect(found?.uuid).toBe('bound');
+        });
+
+        it('ignores projects of other users bound to the same activity', async () => {
+            const other = await createUser(db, { email: 'other@example.com', user_id: 'other', password: 'x' });
+            await boundProject('other-owner', { owner_id: other.id });
+
+            expect(await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234')).toBeUndefined();
+        });
+
+        it('ignores the same cmid on another site and legacy bindings without a site', async () => {
+            await boundProject('other-site', { platform_site: 'https://other.example.com' });
+            await boundProject('legacy', { platform_site: null });
+
+            expect(await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234')).toBeUndefined();
+        });
+
+        it('ignores deleted projects but keeps archived ones', async () => {
+            await boundProject('deleted', { status: 'inactive' });
+            expect(await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234')).toBeUndefined();
+
+            await boundProject('archived', { status: 'archived' });
+            expect((await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234'))?.uuid).toBe('archived');
+        });
+
+        it('returns the most recently updated project when several are bound', async () => {
+            await boundProject('older', {});
+            await boundProject('newer', {});
+            await boundProject('oldest', {});
+            for (const [uuid, updatedAt] of [
+                ['older', 2000],
+                ['newer', 3000],
+                ['oldest', 1000],
+            ] as const) {
+                await db.updateTable('projects').set({ updated_at: updatedAt }).where('uuid', '=', uuid).execute();
+            }
+
+            expect((await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234'))?.uuid).toBe('newer');
         });
     });
 
