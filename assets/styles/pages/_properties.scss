@@ -46,15 +46,6 @@
             box-shadow: inset 0 -2px 0 var(--brand-primary, #0BA1A1);
         }
 
-        &:focus {
-            outline: 2px solid var(--brand-primary, #0BA1A1);
-            outline-offset: -2px;
-        }
-
-        &:focus:not(:focus-visible) {
-            outline: none;
-        }
-
         // Inset ring: the scroll box would clip the global outer one, which also hides the underline
         &:focus-visible {
             box-shadow: inset 0 0 0 2px var(--brand-primary-300) !important;
@@ -65,11 +56,16 @@
             box-shadow: inset 0 -2px 0 var(--brand-primary, #0BA1A1), inset 0 0 0 2px var(--brand-primary-300) !important;
         }
 
-        // Forced colors drop box-shadow, so the active tab needs a real border
+        // Forced colors drop box-shadow, so the active and focused tabs need a real border and outline
         @media (forced-colors: active) {
             &.active {
                 padding-bottom: 8px;
                 border-bottom: 2px solid Highlight;
+            }
+
+            &:focus-visible {
+                outline: 2px solid Highlight !important;
+                outline-offset: -2px;
             }
         }
     }
