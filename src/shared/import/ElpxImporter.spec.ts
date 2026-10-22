@@ -37,6 +37,55 @@ describe('ElpxImporter', () => {
         }
     });
 
+    /** Minimal content.xml holding one page, one block and one activity. */
+    const buildSingleComponentPackage = (ideviceType: string, htmlView: string, jsonProperties: string) =>
+        new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<userPreferences></userPreferences>
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Stale template</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId><odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName><odeNavStructureOrder>0</odeNavStructureOrder>
+    <odeNavStructureProperties></odeNavStructureProperties>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page-1</odePageId><odeBlockId>block-1</odeBlockId>
+        <blockName>Block</blockName><iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odePagStructureProperties></odePagStructureProperties>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page-1</odePageId><odeBlockId>block-1</odeBlockId>
+            <odeIdeviceId>component-1</odeIdeviceId>
+            <odeIdeviceTypeName>${ideviceType}</odeIdeviceTypeName>
+            <htmlView><![CDATA[${htmlView}]]></htmlView>
+            <jsonProperties><![CDATA[${jsonProperties}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+            <odeComponentsProperties></odeComponentsProperties>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`);
+
+    const importSingleComponent = async (ideviceType: string, htmlView: string, jsonProperties: string) => {
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        const result = await importer.importFromZipContents({
+            'content.xml': buildSingleComponentPackage(ideviceType, htmlView, jsonProperties),
+        });
+        const page = ydoc.getArray('navigation').get(0) as Y.Map<unknown>;
+        const block = (page.get('blocks') as Y.Array<unknown>).get(0) as Y.Map<unknown>;
+        const component = (block.get('components') as Y.Array<unknown>).get(0) as Y.Map<unknown>;
+        return { result, jsonProperties: component.get('jsonProperties') as string | undefined, ydoc };
+    };
+
     describe('importFromBuffer', () => {
         it('should import a basic ELP file', async () => {
             const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
@@ -382,42 +431,6 @@ describe('ElpxImporter', () => {
          * it is a frozen older generation of the activity. Its references must
          * not be reported, and it must not travel into the next export.
          */
-        const buildSingleComponentPackage = (ideviceType: string, htmlView: string, jsonProperties: string) =>
-            new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
-<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
-<userPreferences></userPreferences>
-<odeResources></odeResources>
-<odeProperties>
-  <odeProperty><key>pp_title</key><value>Stale template</value></odeProperty>
-</odeProperties>
-<odeNavStructures>
-  <odeNavStructure>
-    <odePageId>page-1</odePageId><odeParentPageId></odeParentPageId>
-    <pageName>Page</pageName><odeNavStructureOrder>0</odeNavStructureOrder>
-    <odeNavStructureProperties></odeNavStructureProperties>
-    <odePagStructures>
-      <odePagStructure>
-        <odePageId>page-1</odePageId><odeBlockId>block-1</odeBlockId>
-        <blockName>Block</blockName><iconName></iconName>
-        <odePagStructureOrder>0</odePagStructureOrder>
-        <odePagStructureProperties></odePagStructureProperties>
-        <odeComponents>
-          <odeComponent>
-            <odePageId>page-1</odePageId><odeBlockId>block-1</odeBlockId>
-            <odeIdeviceId>component-1</odeIdeviceId>
-            <odeIdeviceTypeName>${ideviceType}</odeIdeviceTypeName>
-            <htmlView><![CDATA[${htmlView}]]></htmlView>
-            <jsonProperties><![CDATA[${jsonProperties}]]></jsonProperties>
-            <odeComponentsOrder>0</odeComponentsOrder>
-            <odeComponentsProperties></odeComponentsProperties>
-          </odeComponent>
-        </odeComponents>
-      </odePagStructure>
-    </odePagStructures>
-  </odeNavStructure>
-</odeNavStructures>
-</ode>`);
-
         const STALE_TEXT_TEMPLATE = JSON.stringify({
             ideviceId: 'component-1',
             textInfoDurationInput: '',
@@ -429,18 +442,6 @@ describe('ElpxImporter', () => {
             textFeedbackInput: 'Show Feedback',
             textFeedbackTextarea: '',
         });
-
-        const importSingleComponent = async (ideviceType: string, htmlView: string, jsonProperties: string) => {
-            const ydoc = new Y.Doc();
-            const importer = new ElpxImporter(ydoc, null, silentLogger);
-            const result = await importer.importFromZipContents({
-                'content.xml': buildSingleComponentPackage(ideviceType, htmlView, jsonProperties),
-            });
-            const page = ydoc.getArray('navigation').get(0) as Y.Map<unknown>;
-            const block = (page.get('blocks') as Y.Array<unknown>).get(0) as Y.Map<unknown>;
-            const component = (block.get('components') as Y.Array<unknown>).get(0) as Y.Map<unknown>;
-            return { result, jsonProperties: component.get('jsonProperties') as string | undefined, ydoc };
-        };
 
         it('drops the eXe 3 text template stranded on an html-type activity and does not report its references', async () => {
             const { result, jsonProperties, ydoc } = await importSingleComponent(
@@ -591,9 +592,10 @@ describe('ElpxImporter', () => {
     describe('damaged jsonProperties preservation (#2190)', () => {
         // The verbatim payload persisted inside test/fixtures/damaged-trueorfalse-json.elpx:
         // the #2177 corruption shape, where lost escape backslashes leave raw quotes
-        // inside a JSON string. It must never parse.
+        // inside a JSON string, also cut short before its closing brace so that not
+        // even the #2611 repair can read it. It must never parse.
         const DAMAGED_RAW =
-            '{"ideviceId":"idevice-damaged-malformed","typeGame":"TrueOrFalse","questionsData":[{"baseText":"<audio controls="controls" src=""><a href="">audio.webm</a></audio>","answer":"True"}]}';
+            '{"ideviceId":"idevice-damaged-malformed","typeGame":"TrueOrFalse","questionsData":[{"baseText":"<audio controls="controls" src=""><a href="">audio.webm</a></audio>","answer":"True"}]';
 
         const getComponentById = (ydoc: Y.Doc, componentId: string): Y.Map<unknown> | null => {
             const navigation = ydoc.getArray('navigation');
@@ -689,6 +691,61 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
             ydoc2.destroy();
+        });
+    });
+
+    describe('damaged jsonProperties repair (#2611)', () => {
+        // A text activity whose content.xml was edited by an AI generator: one
+        // image was spliced into the JSON string without escaping its quotes.
+        const IMAGE =
+            '<img src="{{context_path}}/content/resources/volcan.jpg" style="max-width: 100%; height: auto;" />';
+        const SPLICED_RAW = `{"ideviceId":"component-1","textTextarea":"<p style=\\"text-align: center;\\">${IMAGE}</p>","textFeedbackInput":"Show Feedback"}`;
+
+        it('repairs unescaped quotes so the activity stays editable, and reports the repair', async () => {
+            const { result, jsonProperties, ydoc } = await importSingleComponent(
+                'text',
+                `<div class="exe-text"><p style="text-align: center;">${IMAGE}</p></div>`,
+                SPLICED_RAW,
+            );
+
+            const props = JSON.parse(jsonProperties as string) as Record<string, string>;
+            expect(props.textTextarea).toBe(`<p style="text-align: center;">${IMAGE}</p>`);
+            expect(props.textFeedbackInput).toBe('Show Feedback');
+            expect(result.malformedProperties).toEqual([]);
+            expect(result.repairedProperties).toEqual([{ componentId: 'component-1', ideviceType: 'text' }]);
+            // The repaired references still go through the missing-file report.
+            expect(result.missingAssets).toEqual([
+                { componentId: 'component-1', ideviceType: 'text', paths: ['content/resources/volcan.jpg'] },
+            ]);
+
+            ydoc.destroy();
+        });
+
+        it('keeps a payload it cannot repair verbatim and reports it as damaged', async () => {
+            const truncated = SPLICED_RAW.slice(0, -1);
+            const { result, jsonProperties, ydoc } = await importSingleComponent(
+                'text',
+                '<p>Last content</p>',
+                truncated,
+            );
+
+            expect(jsonProperties).toBe(truncated);
+            expect(result.malformedProperties).toEqual([{ componentId: 'component-1', ideviceType: 'text' }]);
+            expect(result.repairedProperties).toEqual([]);
+
+            ydoc.destroy();
+        });
+
+        it('does not report valid payloads as repaired', async () => {
+            const { result, ydoc } = await importSingleComponent(
+                'text',
+                '<p>Fine</p>',
+                '{"textTextarea":"<p>Fine</p>"}',
+            );
+
+            expect(result.repairedProperties).toEqual([]);
+
+            ydoc.destroy();
         });
     });
 

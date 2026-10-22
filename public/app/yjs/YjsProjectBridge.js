@@ -3987,7 +3987,8 @@ class YjsProjectBridge {
     // projectManager.importFromElpxViaYjs, but the static build and the
     // embedding bridge call this method directly — so this is the only place
     // that reports what the import could not fully restore: unsatisfied asset
-    // references (#2223) and activities with damaged saved data (#2190).
+    // references (#2223) and activities with damaged (#2190) or repaired (#2611)
+    // saved data.
     window.eXeLearning?.app?.project?.showImportNotices?.(stats);
 
     return stats;

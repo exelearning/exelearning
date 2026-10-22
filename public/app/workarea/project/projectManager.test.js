@@ -416,8 +416,20 @@ describe('ProjectManager', () => {
         expect(call.body).toContain('rabbit.svg');
     });
 
+    // #2611
+    it('shows a modal naming the activities whose saved data was repaired', () => {
+        projectManager.showImportNotices({
+            repairedProperties: [{ componentId: 'c1', ideviceType: 'text' }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('repaired-activities');
+        expect(call.body).toContain('text');
+    });
+
     it('stays silent when the import reported no problems', () => {
-        projectManager.showImportNotices({ missingAssets: [], malformedProperties: [] });
+        projectManager.showImportNotices({ missingAssets: [], malformedProperties: [], repairedProperties: [] });
         projectManager.showImportNotices({});
         projectManager.showImportNotices(undefined);
 

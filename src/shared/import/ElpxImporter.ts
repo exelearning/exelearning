@@ -49,6 +49,7 @@ import {
 import { PASS_SCORE_DEFAULT, normalizePassScore } from '../export/metadata-properties';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 import { isLegacyGenericTextTemplate } from './legacyGenericTextTemplate';
+import { repairJsonProperties } from './repairJsonProperties';
 import { addUnresolvedAssetRefs, type UnresolvedAssetRef } from './unresolvedAssetRefs';
 import {
     DEFAULT_ZIP_LIMITS,
@@ -141,6 +142,8 @@ export class ElpxImporter {
     private unresolvedAssets: UnresolvedAssetRef[] = [];
     /** Activities whose persisted jsonProperties could not be parsed (#2190). */
     private malformedProperties: MalformedPropertiesRef[] = [];
+    /** Activities whose damaged jsonProperties were repaired on import (#2611). */
+    private repairedProperties: MalformedPropertiesRef[] = [];
 
     /**
      * Create a new ElpxImporter
@@ -569,6 +572,7 @@ export class ElpxImporter {
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
         this.unresolvedAssets = [];
         this.malformedProperties = [];
+        this.repairedProperties = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -751,6 +755,7 @@ export class ElpxImporter {
         stats.zipContents = zip;
         stats.missingAssets = this.unresolvedAssets;
         stats.malformedProperties = this.malformedProperties;
+        stats.repairedProperties = this.repairedProperties;
 
         const { zipContents: _zip, ...statsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Import complete:', statsWithoutZip);
@@ -769,6 +774,7 @@ export class ElpxImporter {
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
         this.unresolvedAssets = [];
         this.malformedProperties = [];
+        this.repairedProperties = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -864,6 +870,7 @@ export class ElpxImporter {
         stats.zipContents = zip;
         stats.missingAssets = this.unresolvedAssets;
         stats.malformedProperties = this.malformedProperties;
+        stats.repairedProperties = this.repairedProperties;
 
         const { zipContents: _zipLegacy, ...legacyStatsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Legacy import complete:', legacyStatsWithoutZip);
@@ -1568,6 +1575,22 @@ export class ElpxImporter {
                         break;
                     } catch {
                         // Try next candidate.
+                    }
+                }
+
+                if (!parsed) {
+                    // Packages edited outside eXe (AI generators, scripts) often
+                    // splice HTML into the JSON without escaping it (#2611). Try
+                    // the conservative repair; it only counts when it parses.
+                    for (const candidate of parseCandidates) {
+                        const repaired = repairJsonProperties(candidate);
+                        if (repaired) {
+                            this.logger.warn(`[ElpxImporter] Repaired invalid JSON for ${componentId}`);
+                            props = repaired;
+                            parsed = true;
+                            this.repairedProperties.push({ componentId, ideviceType });
+                            break;
+                        }
                     }
                 }
 

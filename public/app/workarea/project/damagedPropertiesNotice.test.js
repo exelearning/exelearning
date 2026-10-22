@@ -1,5 +1,8 @@
 /* eslint-disable no-undef */
-import { buildDamagedPropertiesNotice } from './damagedPropertiesNotice.js';
+import {
+    buildDamagedPropertiesNotice,
+    buildRepairedPropertiesNotice,
+} from './damagedPropertiesNotice.js';
 
 describe('buildDamagedPropertiesNotice', () => {
     it('returns null when the import reported no damage', () => {
@@ -43,5 +46,31 @@ describe('buildDamagedPropertiesNotice', () => {
 
         expect(notice.body).not.toContain('<img');
         expect(notice.body).toContain('&lt;img');
+    });
+});
+
+// #2611
+describe('buildRepairedPropertiesNotice', () => {
+    it('returns null when nothing was repaired', () => {
+        expect(buildRepairedPropertiesNotice([])).toBeNull();
+        expect(buildRepairedPropertiesNotice(undefined)).toBeNull();
+        expect(buildRepairedPropertiesNotice([null, { componentId: 'c1' }])).toBeNull();
+    });
+
+    it('names the repaired activity types and asks the author to check them', () => {
+        const notice = buildRepairedPropertiesNotice([
+            { componentId: 'idevice-1', ideviceType: 'text' },
+            { componentId: 'idevice-2', ideviceType: 'text' },
+        ]);
+
+        expect(notice.title).toBe('Repaired activities');
+        expect(notice.body).toContain('repaired automatically');
+        expect(notice.body).toContain('text</strong> (2)');
+    });
+
+    it('escapes activity types', () => {
+        const notice = buildRepairedPropertiesNotice([{ componentId: 'c1', ideviceType: '<b>x</b>' }]);
+
+        expect(notice.body).toContain('&lt;b&gt;');
     });
 });
