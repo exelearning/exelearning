@@ -870,12 +870,16 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_IN_PLACE);
         });
 
-        it('starts with the choice it is told to', async () => {
-            await showWithActivities(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX);
+        it.each([ACTIVITY_MODE_IN_PLACE, ACTIVITY_MODE_APPENDIX, ACTIVITY_MODE_OMIT])(
+            'starts with the explicit document choice %s',
+            async (choice) => {
+                await showWithActivities(PREVIEW_MODE_DOCUMENT, choice);
 
-            expect(checkedChoice()).toBe(ACTIVITY_MODE_APPENDIX);
-            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_APPENDIX);
-        });
+                expect(checkedChoice()).toBe(choice);
+                expect(lastOptions().activities.mode).toBe(choice);
+                expect(global.window.generateWorksheet).not.toHaveBeenCalled();
+            }
+        );
 
         it('starts with the worksheet when printing only the activities', async () => {
             await showWithActivities(PREVIEW_MODE_IDEVICES, null);
@@ -909,6 +913,23 @@ describe('ModalPrintPreview and its options panel', () => {
 
             expect(radios()).toHaveLength(0);
             expect(lastOptions().activities).toBeUndefined();
+        });
+
+        it('restores the default and all activities when reopening after a worksheet selection', async () => {
+            await showWithActivities(PREVIEW_MODE_IDEVICES, null, ['c2']);
+            expect(boxes().map((box) => box.checked)).toEqual([false, true, false]);
+            modal.close();
+
+            await showWithActivities();
+
+            expect(modal.mode).toBe(PREVIEW_MODE_DOCUMENT);
+            expect(checkedChoice()).toBe(ACTIVITY_MODE_IN_PLACE);
+            expect(boxes().every((box) => box.checked)).toBe(true);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_IN_PLACE);
+            expect(lastOptions().activities).not.toHaveProperty('selectedActivities');
+            expect(printBtn().disabled).toBe(true);
+            loaded();
+            expect(printBtn().disabled).toBe(false);
         });
 
         it('treats anything but a list as no activities', async () => {
@@ -1288,6 +1309,24 @@ describe('ModalPrintPreview and its options panel', () => {
             tick(teacherOnly(), true);
             await settle();
             expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_APPENDIX);
+            expect(lastOptions().teacherOnly).toBe(true);
+        });
+
+        it('uses the default when the only activities are first offered by the teacher option', async () => {
+            withTeacherOnlyContent(true);
+            const teacherActivity = { id: 't1', type: 'guess', pageTitle: 'Notes', blockTitle: '', teacherOnly: true };
+            await modal.show(PREVIEW_MODE_DOCUMENT, null, null, [teacherActivity]);
+
+            expect(radios()).toHaveLength(0);
+            expect(lastOptions()).not.toHaveProperty('activities');
+            loadedPage();
+            tick(teacherOnly(), true);
+            await settle();
+
+            expect(checkedChoice()).toBe(ACTIVITY_MODE_IN_PLACE);
+            expect(boxes().map((box) => box.value)).toEqual(['t1']);
+            expect(boxes()[0].checked).toBe(true);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_IN_PLACE);
             expect(lastOptions().teacherOnly).toBe(true);
         });
 
