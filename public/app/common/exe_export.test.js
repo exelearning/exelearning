@@ -1735,6 +1735,69 @@ describe('exe_export.js', () => {
     });
   });
 
+  describe('initPrintButton', () => {
+    it('does nothing when #exe-print-btn is not in the DOM', () => {
+      expect(() => window.$exeExport.initPrintButton()).not.toThrow();
+    });
+
+    it('triggers window.print() directly when document has exe-single-page class', () => {
+      const btn = document.createElement('button');
+      btn.id = 'exe-print-btn';
+      document.body.appendChild(btn);
+      document.body.classList.add('exe-single-page');
+
+      const originalPrint = window.print;
+      window.print = vi.fn();
+
+      window.$exeExport.initPrintButton();
+      btn.click();
+
+      expect(window.print).toHaveBeenCalledTimes(1);
+
+      btn.remove();
+      document.body.classList.remove('exe-single-page');
+      window.print = originalPrint;
+    });
+
+    it('opens print.html in new tab when on index page', () => {
+      const btn = document.createElement('button');
+      btn.id = 'exe-print-btn';
+      document.body.appendChild(btn);
+      document.body.classList.remove('exe-single-page');
+      document.documentElement.id = 'exe-index';
+
+      const originalOpen = window.open;
+      window.open = vi.fn();
+
+      window.$exeExport.initPrintButton();
+      btn.click();
+
+      expect(window.open).toHaveBeenCalledWith('print.html?print=1', '_blank', 'noopener');
+
+      btn.remove();
+      window.open = originalOpen;
+    });
+
+    it('opens ../print.html in new tab when on subpage', () => {
+      const btn = document.createElement('button');
+      btn.id = 'exe-print-btn';
+      document.body.appendChild(btn);
+      document.body.classList.remove('exe-single-page');
+      document.documentElement.id = 'exe-subpage';
+
+      const originalOpen = window.open;
+      window.open = vi.fn();
+
+      window.$exeExport.initPrintButton();
+      btn.click();
+
+      expect(window.open).toHaveBeenCalledWith('../print.html?print=1', '_blank', 'noopener');
+
+      btn.remove();
+      window.open = originalOpen;
+    });
+  });
+
   describe('addClassJsExecutedToExeContent', () => {
     it('does nothing when exe-content element does not exist', () => {
       // No exe-content element

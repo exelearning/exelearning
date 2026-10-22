@@ -2018,6 +2018,56 @@ describe('Html5Exporter', () => {
         });
     });
 
+    describe('Print Button and print.html Support', () => {
+        it('should not include print.html or print button when addPrintButton is disabled (default)', async () => {
+            document = new MockDocument({ addPrintButton: false }, [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('print.html')).toBe(false);
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('id="exe-print-btn"');
+
+            const previewFiles = await exporter.generateForPreview();
+            expect(previewFiles.has('print.html')).toBe(false);
+        });
+
+        it('should include print.html and print button when addPrintButton is enabled', async () => {
+            document = new MockDocument({ addPrintButton: true }, [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+
+            expect(zip.files.has('print.html')).toBe(true);
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('id="exe-print-btn"');
+            const printHtml = zip.files.get('print.html') as string;
+            expect(printHtml).toContain('id="exe-print-btn"');
+            expect(printHtml).toContain('exe-single-page');
+
+            const previewFiles = await exporter.generateForPreview();
+            expect(previewFiles.has('print.html')).toBe(true);
+        });
+    });
+
     describe('Global Font Support', () => {
         let resources: MockResourceProvider;
         let assets: MockAssetProvider;

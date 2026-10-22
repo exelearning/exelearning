@@ -121,6 +121,7 @@ export class PageRenderer {
             // Export options (with defaults)
             addExeLink = true,
             addPagination = false,
+            addPrintButton = false,
             addSearchBox = false,
             addAccessibilityToolbar = false,
             addMathJax = false,
@@ -182,14 +183,17 @@ export class PageRenderer {
         const onLoadAttr = onLoadScript ? ` onload="${onLoadScript}"` : '';
         const onUnloadAttr = onUnloadScript ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"` : '';
 
-        // Build page header (with optional page counter)
+        // Build page header (with optional page counter and print button)
         const pageHeaderHtml = this.renderPageHeader(page, {
             projectTitle,
             projectSubtitle: options.projectSubtitle,
             currentPageIndex: currentIdx,
             totalPages: total,
             addPagination,
+            addPrintButton,
             pageLabel: options.navLabels?.page,
+            printLabel: options.navLabels?.print,
+            language,
         });
 
         // Build search box div (only if enabled)
@@ -711,14 +715,31 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
             currentPageIndex: number;
             totalPages: number;
             addPagination?: boolean;
+            addPrintButton?: boolean;
             pageLabel?: string;
+            printLabel?: string;
+            language?: string;
         },
     ): string {
-        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination, pageLabel } = options;
+        const {
+            projectTitle,
+            projectSubtitle,
+            currentPageIndex,
+            totalPages,
+            addPagination,
+            addPrintButton,
+            pageLabel,
+            language = 'en',
+        } = options;
 
         // Page counter is only shown if addPagination is true
         const pageCounterHtml = addPagination
             ? ` <p class="page-counter"> <span class="page-counter-label">${pageLabel || 'Page'} </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
+            : '';
+
+        const effectivePrintLabel = options.printLabel || trans('Print', {}, language);
+        const printButtonHtml = addPrintButton
+            ? ` <div class="exe-print-action"><button type="button" class="btn-print" id="exe-print-btn" title="${this.escapeHtml(effectivePrintLabel)}" aria-label="${this.escapeHtml(effectivePrintLabel)}"><span class="sr-av">${this.escapeHtml(effectivePrintLabel)}</span></button></div>\n`
             : '';
 
         // Check if page title should be hidden and get effective title
@@ -737,7 +758,7 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
         // Wrap headers in main-header so theme JS (e.g., flux movePageTitle) can find them
         // Theme JS looks for '.main-header .page-header' to move title into .page-content
         // Note: page-counter is inside main-header for CSS compatibility with legacy themes
-        return `<header class="main-header">${pageCounterHtml}
+        return `<header class="main-header">${pageCounterHtml}${printButtonHtml}
 <div class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${subtitleHtml}</div>
 <div class="page-header"><h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1></div>
 </header>`;
@@ -1275,10 +1296,12 @@ ${userFooterHtml}</div></footer>`;
             passScoreEveryActivity?: boolean;
             version?: string;
             addExeLink?: boolean;
+            addPrintButton?: boolean;
             userFooterContent?: string;
-            navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            navLabels?: { previous?: string; next?: string; page?: string; license?: string; print?: string };
             materialIconDataUris?: Map<string, string>;
             printContext?: PrintContext;
+            assetExportPathMap?: Map<string, string>;
             /** The style's root .js and .css files; style.js and style.css when not given. */
             themeFiles?: string[];
         } = {},
@@ -1295,6 +1318,7 @@ ${userFooterHtml}</div></footer>`;
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             addExeLink = true,
+            addPrintButton = false,
             userFooterContent = '',
             version,
             detectedLibraries = [],
@@ -1304,6 +1328,7 @@ ${userFooterHtml}</div></footer>`;
             passScoreEveryActivity = false,
             navLabels,
             materialIconDataUris,
+            assetExportPathMap,
             themeFiles = [],
         } = options;
 
@@ -1326,7 +1351,7 @@ ${userFooterHtml}</div></footer>`;
                 page,
                 '',
                 projectTitle,
-                undefined,
+                assetExportPathMap,
                 {
                     author: options.author,
                     description: options.description,
@@ -1388,6 +1413,11 @@ ${sectionContent}
                 .map(file => `<link rel="stylesheet" href="theme/${this.escapeAttr(file)}">`),
         ].join('\n');
 
+        const effectivePrintLabel = navLabels?.print || trans('Print', {}, language);
+        const printButtonHtml = addPrintButton
+            ? ` <div class="exe-print-action"><button type="button" class="btn-print" id="exe-print-btn" title="${this.escapeHtml(effectivePrintLabel)}" aria-label="${this.escapeHtml(effectivePrintLabel)}"><span class="sr-av">${this.escapeHtml(effectivePrintLabel)}</span></button></div>\n`
+            : '';
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
@@ -1414,7 +1444,7 @@ ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
 <main class="page">
-<header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
+<header class="package-header">${printButtonHtml}<p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels })}

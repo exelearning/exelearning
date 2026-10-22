@@ -270,6 +270,7 @@ export abstract class BaseExporter {
         licenseLabel: string;
         madeWith: string;
         newWindow: string;
+        print: string;
     }> {
         const translations = await this.resources.fetchI18nTranslations(language);
         let translatedLicense = license;
@@ -287,6 +288,7 @@ export abstract class BaseExporter {
             licenseLabel: translations.get('License') || 'License',
             madeWith: translations.get('Made with eXeLearning') || 'Made with eXeLearning',
             newWindow: translations.get('New window') || 'New window',
+            print: translations.get('Print') || 'Print',
         };
     }
 

@@ -296,6 +296,7 @@ export class PageExporter extends Html5Exporter {
             materialIconDataUris,
             // The style's own root files: an older style has content.css and default.js
             themeFiles,
+            addPrintButton: meta.addPrintButton ?? false,
         });
     }
 

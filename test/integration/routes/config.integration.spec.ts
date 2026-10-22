@@ -182,6 +182,7 @@ describe('Config Routes Integration', () => {
                 'pp_addPagination',
                 'pp_addSearchBox',
                 'pp_addAccessibilityToolbar',
+                'pp_addPrintButton',
                 'pp_passScore',
                 'pp_extraHeadContent',
                 'footer',
@@ -192,7 +193,7 @@ describe('Config Routes Integration', () => {
             });
         });
 
-        it('should have exactly 17 project properties including the minimum pass score rules', async () => {
+        it('should have exactly 18 project properties including the minimum pass score rules', async () => {
             const response = await configRoutes.handle(
                 new Request('http://localhost/api/parameter-management/parameters/data/list'),
             );
@@ -201,7 +202,7 @@ describe('Config Routes Integration', () => {
             const nestedConfig = data.odeProjectSyncPropertiesConfig as Record<string, Record<string, unknown>>;
             const config = flattenProperties(nestedConfig);
 
-            expect(Object.keys(config).length).toBe(17);
+            expect(Object.keys(config).length).toBe(18);
             expect(config.pp_passScore).toMatchObject({
                 value: 5,
                 type: 'number',
@@ -268,6 +269,7 @@ describe('Config Routes Integration', () => {
                 'pp_addPagination',
                 'pp_addSearchBox',
                 'pp_addAccessibilityToolbar',
+                'pp_addPrintButton',
                 'pp_extraHeadContent',
                 'footer',
             ];
@@ -306,6 +308,7 @@ describe('Config Routes Integration', () => {
             expect(config.pp_addPagination.type).toBe('checkbox');
             expect(config.pp_addSearchBox.type).toBe('checkbox');
             expect(config.pp_addAccessibilityToolbar.type).toBe('checkbox');
+            expect(config.pp_addPrintButton.type).toBe('checkbox');
         });
 
         it('should have properties in correct groups', async () => {
@@ -331,6 +334,7 @@ describe('Config Routes Integration', () => {
             expect(Object.keys(config.pp_addPagination.groups)[0]).toBe('export');
             expect(Object.keys(config.pp_addSearchBox.groups)[0]).toBe('export');
             expect(Object.keys(config.pp_addAccessibilityToolbar.groups)[0]).toBe('export');
+            expect(Object.keys(config.pp_addPrintButton.groups)[0]).toBe('export');
 
             // custom_code group
             expect(Object.keys(config.pp_extraHeadContent.groups)[0]).toBe('custom_code');

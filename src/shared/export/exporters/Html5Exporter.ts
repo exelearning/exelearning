@@ -222,6 +222,7 @@ export class Html5Exporter extends BaseExporter {
 
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+            const usedIdevices = this.getUsedIdevices(pages);
 
             // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and add directly to ZIP
             // Pages are added to ZIP immediately to avoid storing all HTML in memory
@@ -289,6 +290,40 @@ export class Html5Exporter extends BaseExporter {
             if (meta.addSearchBox) {
                 const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap);
                 addFile('search_index.js', searchIndexContent);
+            }
+
+            // 2.5. Add print.html if print button is enabled
+            if (meta.addPrintButton) {
+                let printHtml = this.generatePrintHtml(
+                    pages,
+                    meta,
+                    usedIdevices,
+                    faviconInfo,
+                    [],
+                    meta.addMathJax === true,
+                    navLabels,
+                    materialIconDataUris,
+                    themeRootFiles,
+                    assetExportPathMap,
+                );
+
+                if (!meta.addMathJax) {
+                    const latexResult = await this.preRenderHtmlLatex(printHtml, options);
+                    printHtml = latexResult.html;
+                }
+
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(printHtml);
+                        if (result.mermaidRendered) {
+                            printHtml = result.html;
+                        }
+                    } catch (error) {
+                        console.warn('[Html5Exporter] Mermaid pre-render failed for print.html:', error);
+                    }
+                }
+
+                addFile('print.html', printHtml);
             }
 
             // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
@@ -381,7 +416,6 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 9. Fetch and add iDevice assets
-            const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
                     // Normalize iDevice type to directory name (e.g., 'FreeTextIdevice' -> 'text')
@@ -508,6 +542,7 @@ export class Html5Exporter extends BaseExporter {
             // Export options
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addPrintButton: meta.addPrintButton ?? false,
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             addMathJax: meta.addMathJax === true,
@@ -531,6 +566,48 @@ export class Html5Exporter extends BaseExporter {
             version: meta.exelearningVersion,
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
+        });
+    }
+
+    /**
+     * Generate standalone single-page HTML for printing in multi-page export
+     */
+    generatePrintHtml(
+        pages: ExportPage[],
+        meta: ExportMetadata,
+        usedIdevices: string[],
+        faviconInfo?: FaviconInfo | null,
+        detectedLibraries: string[] = [],
+        addMathJax = false,
+        navLabels?: { previous: string; next: string; page: string; license?: string; print?: string },
+        materialIconDataUris?: Map<string, string>,
+        themeFiles?: string[],
+        assetExportPathMap?: Map<string, string>,
+    ): string {
+        return this.pageRenderer.renderSinglePage(pages, {
+            projectTitle: meta.title || 'eXeLearning',
+            projectSubtitle: meta.subtitle || '',
+            language: meta.language || 'en',
+            customStyles: meta.customStyles || '',
+            usedIdevices,
+            author: meta.author || '',
+            license: meta.license || '',
+            licenseUrl: meta.licenseUrl || '',
+            faviconPath: faviconInfo?.path,
+            faviconType: faviconInfo?.type,
+            version: meta.exelearningVersion,
+            detectedLibraries,
+            linkToElp: false,
+            addMathJax,
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
+            addExeLink: meta.addExeLink ?? true,
+            userFooterContent: meta.footer,
+            navLabels,
+            materialIconDataUris,
+            themeFiles,
+            assetExportPathMap,
+            addPrintButton: true,
         });
     }
 
@@ -689,6 +766,7 @@ export class Html5Exporter extends BaseExporter {
 
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+            const usedIdevices = this.getUsedIdevices(pages);
 
             // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and collect for later addition
             // We buffer page HTML because ELPX download scripts need libraries to be loaded first
@@ -744,6 +822,40 @@ export class Html5Exporter extends BaseExporter {
             if (meta.addSearchBox) {
                 const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap);
                 addFile('search_index.js', searchIndexContent);
+            }
+
+            // 2.5. Add print.html if print button is enabled
+            if (meta.addPrintButton) {
+                let printHtml = this.generatePrintHtml(
+                    pages,
+                    meta,
+                    usedIdevices,
+                    faviconInfo,
+                    [],
+                    meta.addMathJax === true,
+                    navLabels,
+                    materialIconDataUris,
+                    themeRootFiles,
+                    assetExportPathMap,
+                );
+
+                if (!meta.addMathJax) {
+                    const latexResult = await this.preRenderHtmlLatex(printHtml, options);
+                    printHtml = latexResult.html;
+                }
+
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(printHtml);
+                        if (result.mermaidRendered) {
+                            printHtml = result.html;
+                        }
+                    } catch {
+                        // Continue without pre-rendering
+                    }
+                }
+
+                addFile('print.html', printHtml);
             }
 
             // 3. Add content.xml (ODE format for re-import) when editable source is enabled.
@@ -827,7 +939,6 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 9. Fetch and add iDevice assets
-            const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
                     const normalizedType = this.resources.normalizeIdeviceType(idevice);

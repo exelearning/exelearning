@@ -103,6 +103,11 @@ window.$exeExport = {
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
         setTimeout(() => {
             try {
+                this.initPrintButton();
+            } catch (err) {
+                console.error('Error: Failed to initialize print button');
+            }
+            try {
                 this.triggerPrintIfRequested();
             } catch (err) {
                 console.error('Error: Failed to trigger print dialog');
@@ -665,6 +670,36 @@ window.$exeExport = {
         if (params.get('print') === '1' && typeof window.print === 'function') {
             window.print();
         }
+    },
+
+    /**
+     * Initialize print button click handler.
+     * In single-page export, prints the page directly.
+     * In multi-page export, opens print.html in a new tab/window with ?print=1.
+     */
+    initPrintButton: function () {
+        var btn = document.getElementById('exe-print-btn');
+        if (!btn) return;
+
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (document.body && document.body.classList.contains('exe-single-page')) {
+                if (typeof window.print === 'function') {
+                    window.print();
+                }
+                return;
+            }
+
+            var isSubpage = false;
+            if (window.location && window.location.pathname) {
+                isSubpage = window.location.pathname.indexOf('/html/') !== -1;
+            }
+            if (!isSubpage && document.documentElement && document.documentElement.id) {
+                isSubpage = document.documentElement.id !== 'exe-index';
+            }
+            var printUrl = (isSubpage ? '../' : '') + 'print.html?print=1';
+            window.open(printUrl, '_blank', 'noopener');
+        });
     }
 }
 } // End of if (typeof window.$exeExport === 'undefined')

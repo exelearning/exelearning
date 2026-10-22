@@ -2088,6 +2088,7 @@ class YjsProjectBridge {
       'pp_addSearchBox': 'addSearchBox',
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
+      'pp_addPrintButton': 'addPrintButton',
       'pp_globalFont': 'globalFont',
       'pp_passScore': 'passScore',
       'pp_passScoreEveryActivity': 'passScoreEveryActivity',

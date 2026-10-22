@@ -467,6 +467,7 @@ export class Scorm2004Exporter extends Html5Exporter {
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addPrintButton: meta.addPrintButton ?? false,
             addMathJax: meta.addMathJax === true,
             // Project-wide pass score, published to the page as a META so iDevices
             // resolve it at runtime instead of carrying a copy of their own.

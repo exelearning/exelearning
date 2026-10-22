@@ -482,6 +482,23 @@ describe('PageExporter', () => {
             expect(contentXml).toContain('<ode');
         });
 
+        it('should NOT include print button when addPrintButton is false (default)', async () => {
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('id="exe-print-btn"');
+        });
+
+        it('should include print button in index.html when addPrintButton is true', async () => {
+            document = new MockDocument({ addPrintButton: true }, samplePages);
+            exporter = new PageExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('id="exe-print-btn"');
+            expect(indexHtml).toContain('class="exe-print-action"');
+        });
+
         it('should NOT include content.xml when exportSource is false', async () => {
             document = new MockDocument({ exportSource: false }, samplePages);
             exporter = new PageExporter(document, resources, assets, zip);
