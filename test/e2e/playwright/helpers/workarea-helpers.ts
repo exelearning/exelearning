@@ -1484,6 +1484,25 @@ async function openActionsDropdown(page: Page, dropdownSelector: string, itemSel
     await item.waitFor({ state: 'visible', timeout: 5000 });
 }
 
+/**
+ * Export the whole project from the "Export as" menu (Web Site or SCORM 1.2)
+ * and return the Playwright download.
+ */
+export async function exportProjectAs(page: Page, format: 'html5' | 'scorm12'): Promise<Download> {
+    await page.locator('#dropdownFile').click();
+    const submenu = page.locator('#dropdownExportAs:visible, #dropdownExportAsOffline:visible').first();
+    if ((await submenu.count()) > 0) {
+        await submenu.click();
+    }
+    const option = page
+        .locator(`#navbar-button-export-${format}:visible, #navbar-button-exportas-${format}:visible`)
+        .first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    const downloadPromise = page.waitForEvent('download', { timeout: 90000 });
+    await option.click();
+    return downloadPromise;
+}
+
 export async function exportBlock(page: Page, blockId: string): Promise<Download> {
     const exportSelector = `#dropdownBlockMore-button-export${blockId}`;
     await openActionsDropdown(page, `#dropdownMenuButton${blockId}`, exportSelector);

@@ -43,3 +43,20 @@
 .imageGallery-IDevice .imageContainer .imageLink .title {
   display: none;
 }
+
+/* Lightbox caption (author, title and license links) */
+.sl-wrapper .sl-caption a {
+  color: aqua;
+  padding-right: 10px;
+}
+
+.sl-wrapper .sl-caption span {
+  padding-right: 10px;
+}
+
+.sl-wrapper .sl-caption .license,
+.sl-wrapper .sl-caption .license a,
+.sl-wrapper .sl-caption .custom-license,
+.sl-wrapper .sl-caption .custom-license a {
+  padding-right: 0;
+}
