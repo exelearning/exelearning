@@ -133,10 +133,11 @@ describe('UserPreferences', () => {
       )) {
         preference.category = 'General settings';
       }
+      globalThis.eXeLearning.app.locale = { lang: 'fr' };
       window.electronAPI = {
         getSpellCheckerSettings: vi.fn().mockResolvedValue({
           supported: true,
-          availableLanguages: ['en-US', 'es'],
+          availableLanguages: ['es', 'en-US'],
           selectedLanguages: ['es'],
           systemDefault: false,
         }),
@@ -144,12 +145,25 @@ describe('UserPreferences', () => {
 
       await userPreferences.load();
 
-      expect(userPreferences.preferences.spellCheckerLanguages).toEqual(expect.objectContaining({
+      const frName = (code) => {
+        const name = new Intl.DisplayNames(['fr'], { type: 'language', languageDisplay: 'standard' }).of(code);
+        return name.charAt(0).toLocaleUpperCase('fr') + name.slice(1);
+      };
+      const preference = userPreferences.preferences.spellCheckerLanguages;
+      expect(preference).toEqual(expect.objectContaining({
         type: 'multiselect',
         category: 'General settings',
         value: ['es'],
-        options: { __system_default__: 'System default', 'en-US': 'en-US', es: 'es' },
+        customLabel: 'Choose languages',
+        // Named in the interface language, with an initial capital
+        options: {
+          __system_default__: 'System default',
+          'en-US': frName('en-US'),
+          es: frName('es'),
+        },
       }));
+      // Sorted by name ("Anglais" before "Espagnol"), not in the order Electron reports
+      expect(Object.keys(preference.options)).toEqual(['__system_default__', 'en-US', 'es']);
       delete window.electronAPI;
     });
 

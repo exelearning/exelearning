@@ -77,8 +77,8 @@ describe('buildConfigParams', () => {
             expect(passScore().value).toBe(5);
         });
 
-        it('lives in the export options group', () => {
-            expect(Object.keys(passScore().groups)).toEqual(['export']);
+        it('lives in the grading group', () => {
+            expect(Object.keys(passScore().groups)).toEqual(['grading']);
         });
 
         it('carries the translation prefix on its user-facing strings', () => {
@@ -103,10 +103,10 @@ describe('buildConfigParams', () => {
             expect(everyActivity().value).toBe('false');
         });
 
-        it('sits right after the minimum score, in the export options group', () => {
+        it('sits right after the minimum score, in the grading group', () => {
             const keys = Object.keys(properties());
             expect(keys.indexOf('pp_passScoreEveryActivity')).toBe(keys.indexOf('pp_passScore') + 1);
-            expect(Object.keys(everyActivity().groups)).toEqual(['export']);
+            expect(Object.keys(everyActivity().groups)).toEqual(['grading']);
         });
 
         it('carries the translation prefix on its user-facing strings', () => {
