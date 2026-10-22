@@ -45,10 +45,11 @@ test('desktop spell-checker preference names languages, shows them on demand, an
     await mode.selectOption('custom');
     await expect(list).toBeVisible();
     const spanish = list.locator('.multiselect-option[value="es"]');
-    // Options are named in the interface language, not shown as codes
+    // Options are named in the interface language with an initial capital, not shown as codes
     const expectedName = await staticPage.evaluate(() => {
         const lang = (window as any).eXeLearning.app.locale?.lang || 'en';
-        return new Intl.DisplayNames([lang], { type: 'language', languageDisplay: 'standard' }).of('es');
+        const name = new Intl.DisplayNames([lang], { type: 'language', languageDisplay: 'standard' }).of('es') || '';
+        return name.charAt(0).toLocaleUpperCase([lang]) + name.slice(1);
     });
     expect(expectedName).not.toBe('es');
     await expect(list.locator(`label[for="${await spanish.getAttribute('id')}"]`)).toHaveText(expectedName as string);

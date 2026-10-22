@@ -798,17 +798,25 @@ export default class ModalProperties extends Modal {
             wrapper.append(mode);
         }
 
+        // Until the user changes the field, keep the saved value: options that are no longer listed are not dropped
+        if (selectedValues.length > 0) {
+            wrapper.dataset.savedValue = JSON.stringify(selectedValues);
+            wrapper.addEventListener('change', () => delete wrapper.dataset.savedValue);
+        }
+
         wrapper.append(list);
         return wrapper;
     }
 
     /**
-     * Value of a multiselect property: the checked options, or SYSTEM_DEFAULT
+     * Value of a multiselect property: the saved value while the user has not
+     * changed the field, otherwise the checked options, or SYSTEM_DEFAULT
      * when that default is chosen or no option is checked
      * @param {HTMLElement} wrapper - Element built by makeMultiSelectElement
      * @returns {string[]}
      */
     getMultiSelectValue(wrapper) {
+        if (wrapper.dataset.savedValue) return JSON.parse(wrapper.dataset.savedValue);
         const mode = wrapper.querySelector('.multiselect-mode');
         if (mode?.value === SYSTEM_DEFAULT) return [SYSTEM_DEFAULT];
         const checked = Array.from(
