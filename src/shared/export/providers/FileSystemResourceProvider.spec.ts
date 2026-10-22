@@ -11,11 +11,13 @@ import * as os from 'os';
 
 describe('FileSystemResourceProvider', () => {
     let provider: FileSystemResourceProvider;
+    let testRoot: string;
     let testDir: string;
 
     beforeEach(async () => {
-        // Create temp directory structure
-        testDir = path.join(os.tmpdir(), `test-resources-${Date.now()}`);
+        // Keep public/ and its sibling translations/ inside a unique root owned by this test.
+        testRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'test-resources-'));
+        testDir = path.join(testRoot, 'public');
         await fs.ensureDir(testDir);
 
         // Create test file structure (matching actual directory layout)
@@ -76,7 +78,7 @@ describe('FileSystemResourceProvider', () => {
     });
 
     afterEach(async () => {
-        await fs.remove(testDir);
+        await fs.remove(testRoot);
     });
 
     describe('fetchTheme', () => {
@@ -108,15 +110,13 @@ describe('FileSystemResourceProvider', () => {
 
         it('should return empty map when neither theme nor base exists', async () => {
             // Create a provider with a directory that has no themes at all
-            const emptyDir = path.join(os.tmpdir(), `test-empty-${Date.now()}`);
+            const emptyDir = path.join(testRoot, 'empty');
             await fs.ensureDir(emptyDir);
             const emptyProvider = new FileSystemResourceProvider(emptyDir);
 
             const files = await emptyProvider.fetchTheme('nonexistent');
 
             expect(files.size).toBe(0);
-
-            await fs.remove(emptyDir);
         });
     });
 
@@ -124,13 +124,9 @@ describe('FileSystemResourceProvider', () => {
         let extractedDir: string;
 
         beforeEach(async () => {
-            // Create a temp directory for extracted ELP/ELPX files
-            extractedDir = path.join(os.tmpdir(), `test-extracted-${Date.now()}`);
+            // Keep extracted ELP/ELPX files under the same isolated test root.
+            extractedDir = path.join(testRoot, 'extracted');
             await fs.ensureDir(extractedDir);
-        });
-
-        afterEach(async () => {
-            await fs.remove(extractedDir);
         });
 
         it('should use embedded theme when downloadable=1', async () => {
@@ -571,11 +567,9 @@ describe('FileSystemResourceProvider', () => {
             await fs.ensureDir(i18nDir);
         });
 
-        afterEach(async () => {
-            await fs.remove(i18nDir);
-        });
+        it('should return empty string when neither a built file nor the template exists', async () => {
+            await fs.remove(path.join(testDir, 'app', 'common', 'common_i18n.js'));
 
-        it('should return empty string when no i18n file exists', async () => {
             const result = await provider.fetchI18nFile('es');
             expect(result).toBe('');
         });
@@ -606,6 +600,55 @@ describe('FileSystemResourceProvider', () => {
 
             expect(result).toBe(ptContent);
         });
+
+        // A checkout that was never built, as the CLI may run from
+        describe('with no built file', () => {
+            let templatePath: string;
+            let translationsDir: string;
+
+            beforeEach(async () => {
+                templatePath = path.join(testDir, 'app', 'common', 'common_i18n.js');
+                await fs.writeFile(templatePath, '$exe_i18n = { "previous": c_("Previous"), "next": c_("Next") };');
+                translationsDir = path.join(testRoot, 'translations');
+                await fs.ensureDir(translationsDir);
+                await fs.writeFile(
+                    path.join(translationsDir, 'messages.es.xlf'),
+                    `<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="es" datatype="plaintext" original="file.ext">
+    <body>
+      <trans-unit id="1" resname="Previous">
+        <source>Previous</source>
+        <target>Anterior</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`,
+                );
+            });
+
+            it('should build the file from the template and the XLF translations', async () => {
+                const result = await provider.fetchI18nFile('es');
+
+                // Translated where the catalogue has the string, and in English where it does not.
+                expect(result).toBe('$exe_i18n = { "previous": "Anterior", "next": "Next" };');
+            });
+
+            it('should build it in English for a language without translations', async () => {
+                const result = await provider.fetchI18nFile('xx');
+
+                expect(result).toBe('$exe_i18n = { "previous": "Previous", "next": "Next" };');
+            });
+
+            it('should still prefer a built file to the template', async () => {
+                const built = '$exe_i18n = { "previous": "Anterior (built)", "next": "Siguiente" };';
+                await fs.writeFile(path.join(i18nDir, 'common_i18n.es.js'), built);
+
+                const result = await provider.fetchI18nFile('es');
+
+                expect(result).toBe(built);
+            });
+        });
     });
 
     describe('fetchI18nTranslations', () => {
@@ -625,16 +668,11 @@ describe('FileSystemResourceProvider', () => {
   </file>
 </xliff>`;
 
-        // translationsDir lives one level above publicDir (testDir)
         let translationsDir: string;
 
         beforeEach(async () => {
-            translationsDir = path.join(testDir, '..', 'translations');
+            translationsDir = path.join(testRoot, 'translations');
             await fs.ensureDir(translationsDir);
-        });
-
-        afterEach(async () => {
-            await fs.remove(translationsDir);
         });
 
         it('should return empty map when XLF file does not exist', async () => {
