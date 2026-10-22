@@ -45,6 +45,7 @@ import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
+import { sessionRevocationGuard } from './services/session-revocation';
 import { getBasePath } from './utils/basepath.util';
 import { serveSiteThemeFile } from './utils/site-theme-file';
 import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
@@ -450,6 +451,9 @@ const app = new Elysia()
             },
         });
     })
+    // Drop session tokens whose account was deleted, deactivated, demoted or had
+    // its password changed, before any route (or the maintenance check) reads them.
+    .use(sessionRevocationGuard())
     // Maintenance mode check — runs after static file serving
     .onRequest(async ({ request }) => {
         if (!(await isMaintenanceMode(db))) return;

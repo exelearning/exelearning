@@ -169,5 +169,52 @@ describe('Yjs debug routes', () => {
             const nowSec = Math.floor(Date.now() / 1000);
             expect((payload.exp as number) - nowSec).toBeLessThanOrEqual(300);
         });
+
+        it('never outlives the caller token, so it cannot renew a session', async () => {
+            const callerExp = Math.floor(Date.now() / 1000) + 60;
+            const shortLived = await new SignJWT({ sub: 42, email: 'u42@test.local', roles: ['ROLE_USER'] })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime(callerExp)
+                .sign(new TextEncoder().encode(TEST_SECRET));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/yjs/debug/uuid-owned/ws-url', {
+                    headers: { Authorization: `Bearer ${shortLived}` },
+                }),
+            );
+            const data = (await res.json()) as { wsUrl: string; expiresInSeconds: number };
+            expect(data.expiresInSeconds).toBeLessThanOrEqual(60);
+
+            const { payload } = await jwtVerify(data.wsUrl.split('token=')[1], new TextEncoder().encode(TEST_SECRET));
+            expect(payload.exp).toBe(callerExp);
+        });
+
+        it("copies the caller's identity claims instead of upgrading them", async () => {
+            const guest = await new SignJWT({
+                sub: 42,
+                email: 'u42@test.local',
+                roles: ['ROLE_GUEST'],
+                isGuest: true,
+                authMethod: 'guest',
+                pwh: 'fingerprint',
+            })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(new TextEncoder().encode(TEST_SECRET));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/yjs/debug/uuid-owned/ws-url', {
+                    headers: { Authorization: `Bearer ${guest}` },
+                }),
+            );
+            const data = (await res.json()) as { wsUrl: string };
+            const { payload } = await jwtVerify(data.wsUrl.split('token=')[1], new TextEncoder().encode(TEST_SECRET));
+            expect(payload.isGuest).toBe(true);
+            expect(payload.authMethod).toBe('guest');
+            expect(payload.pwh).toBe('fingerprint');
+            expect(payload.roles).toEqual(['ROLE_GUEST']);
+        });
     });
 });
