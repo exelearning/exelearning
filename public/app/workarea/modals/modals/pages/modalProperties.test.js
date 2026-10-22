@@ -229,14 +229,14 @@ describe('ModalProperties', () => {
         expect(list.hidden).toBe(false);
       });
 
-      it('offers only the System default when there are no languages to choose', () => {
+      it('offers only the System default when there are no languages to choose, keeping the saved ones', () => {
         const property = { ...makeProperty(['es']), options: { __system_default__: 'System default' } };
         const el = modal.makeRowValueElement('id', 'name', property);
         const mode = el.querySelector('.multiselect-mode');
         expect(Array.from(mode.options, option => option.value)).toEqual(['__system_default__']);
         expect(mode.value).toBe('__system_default__');
         expect(el.querySelector('.multiselect-options').hidden).toBe(true);
-        expect(modal.getMultiSelectValue(el)).toEqual(['__system_default__']);
+        expect(modal.getMultiSelectValue(el)).toEqual(['es']);
       });
 
       it('treats an empty value as the System default', () => {
@@ -311,7 +311,9 @@ describe('ModalProperties', () => {
 
     it('should save the System default when it is chosen, whatever is checked', () => {
       const el = multiselect(['es']);
-      el.querySelector('.multiselect-mode').value = '__system_default__';
+      const mode = el.querySelector('.multiselect-mode');
+      mode.value = '__system_default__';
+      mode.dispatchEvent(new Event('change', { bubbles: true }));
       modal.modalElementBody.replaceChildren(el);
 
       expect(modal.getModalPropertiesData()).toEqual({ languages: ['__system_default__'] });
@@ -319,10 +321,28 @@ describe('ModalProperties', () => {
 
     it('should save the System default when choosing languages but none is checked', () => {
       const el = multiselect(['es']);
-      el.querySelector('.multiselect-option[value="es"]').checked = false;
+      const option = el.querySelector('.multiselect-option[value="es"]');
+      option.checked = false;
+      option.dispatchEvent(new Event('change', { bubbles: true }));
       modal.modalElementBody.replaceChildren(el);
 
       expect(modal.getModalPropertiesData()).toEqual({ languages: ['__system_default__'] });
+    });
+
+    it('should keep saved languages that are no longer listed while the field is unchanged', () => {
+      modal.modalElementBody.replaceChildren(multiselect(['es', 'de']));
+
+      expect(modal.getModalPropertiesData()).toEqual({ languages: ['es', 'de'] });
+    });
+
+    it('should drop languages that are no longer listed once the field changes', () => {
+      const el = multiselect(['es', 'de']);
+      const option = el.querySelector('.multiselect-option[value="fr"]');
+      option.checked = true;
+      option.dispatchEvent(new Event('change', { bubbles: true }));
+      modal.modalElementBody.replaceChildren(el);
+
+      expect(modal.getModalPropertiesData()).toEqual({ languages: ['es', 'fr'] });
     });
 
     it('should save an empty list when there is no System default option', () => {
