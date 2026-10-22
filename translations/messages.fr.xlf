@@ -15693,6 +15693,1222 @@
         <source>To save the score, the activity needs at least one question.</source>
         <target>~Pour enregistrer le score, l'activité doit comporter au moins une question.</target>
       </trans-unit>
+      <trans-unit id="q3lhhro" resname="Free Mermaid diagram editor">
+        <source>Free Mermaid diagram editor</source>
+        <target>~Éditeur libre de diagrammes Mermaid</target>
+      </trans-unit>
+      <trans-unit id="kt0z433" resname="Diagram">
+        <source>Diagram</source>
+        <target>~Diagramme</target>
+      </trans-unit>
+      <trans-unit id="582e2lv" resname="Choose an example">
+        <source>Choose an example</source>
+        <target>~Choisir un exemple</target>
+      </trans-unit>
+      <trans-unit id="msx4m43" resname="The current diagram will be erased. Continue?">
+        <source>The current diagram will be erased. Continue?</source>
+        <target>~Le diagramme actuel sera effacé. Continuer ?</target>
+      </trans-unit>
+      <trans-unit id="ea6qjup" resname="Open a file (.mmd, .md, .txt)">
+        <source>Open a file (.mmd, .md, .txt)</source>
+        <target>~Ouvrir un fichier (.mmd, .md, .txt)</target>
+      </trans-unit>
+      <trans-unit id="ip3ekzn" resname="Save as a .mmd file">
+        <source>Save as a .mmd file</source>
+        <target>~Enregistrer en fichier .mmd</target>
+      </trans-unit>
+      <trans-unit id="dn95tlp" resname="Copy the code">
+        <source>Copy the code</source>
+        <target>~Copier le code</target>
+      </trans-unit>
+      <trans-unit id="lj86nnm" resname="Download the diagram as SVG">
+        <source>Download the diagram as SVG</source>
+        <target>~Télécharger le diagramme en SVG</target>
+      </trans-unit>
+      <trans-unit id="git68f9" resname="Download the diagram as PNG">
+        <source>Download the diagram as PNG</source>
+        <target>~Télécharger le diagramme en PNG</target>
+      </trans-unit>
+      <trans-unit id="s3th5gr" resname="Copy the diagram as an image">
+        <source>Copy the diagram as an image</source>
+        <target>~Copier le diagramme comme image</target>
+      </trans-unit>
+      <trans-unit id="0l2r48x" resname="Share the diagram">
+        <source>Share the diagram</source>
+        <target>~Partager le diagramme</target>
+      </trans-unit>
+      <trans-unit id="hton85a" resname="Link to the editor">
+        <source>Link to the editor</source>
+        <target>~Lien vers l'éditeur</target>
+      </trans-unit>
+      <trans-unit id="x9u3wlf" resname="Opens in Sirena with the code in view, ready to keep editing">
+        <source>Opens in Sirena with the code in view, ready to keep editing</source>
+        <target>~S'ouvre dans Sirena avec le code visible, prêt à continuer l'édition</target>
+      </trans-unit>
+      <trans-unit id="5a452eu" resname="Full-screen link">
+        <source>Full-screen link</source>
+        <target>~Lien plein écran</target>
+      </trans-unit>
+      <trans-unit id="765lpsx" resname="Opens the diagram alone, filling the whole window">
+        <source>Opens the diagram alone, filling the whole window</source>
+        <target>~Ouvre le diagramme seul, sur toute la fenêtre</target>
+      </trans-unit>
+      <trans-unit id="l791akg" resname="Embed code">
+        <source>Embed code</source>
+        <target>~Code d'intégration</target>
+      </trans-unit>
+      <trans-unit id="78anm4s" resname="A frame ready to paste into any web page: a blog, a personal site or a teaching resource">
+        <source>A frame ready to paste into any web page: a blog, a personal site or a teaching resource</source>
+        <target>~Un cadre prêt à coller dans n'importe quelle page web : un blog, un site personnel ou une ressource pédagogique</target>
+      </trans-unit>
+      <trans-unit id="i4pqrsw" resname="Embed code copied to the clipboard">
+        <source>Embed code copied to the clipboard</source>
+        <target>~Code d'intégration copié dans le presse-papiers</target>
+      </trans-unit>
+      <trans-unit id="ndwgf4l" resname="Edit in Sirena">
+        <source>Edit in Sirena</source>
+        <target>~Modifier dans Sirena</target>
+      </trans-unit>
+      <trans-unit id="kazala6" resname="Title and description for accessibility">
+        <source>Title and description for accessibility</source>
+        <target>~Titre et description pour l'accessibilité</target>
+      </trans-unit>
+      <trans-unit id="3aaqqpf" resname="Diagram title and description">
+        <source>Diagram title and description</source>
+        <target>~Titre et description du diagramme</target>
+      </trans-unit>
+      <trans-unit id="zfjmkbb" resname="They are stored inside the diagram and read out by screen readers. Worth adding to any material that gets published.">
+        <source>They are stored inside the diagram and read out by screen readers. Worth adding to any material that gets published.</source>
+        <target>~Ils sont enregistrés dans le diagramme et lus par les lecteurs d'écran. Il est conseillé de les ajouter à tout matériel publié.</target>
+      </trans-unit>
+      <trans-unit id="th6tatw" resname="Syntax for this diagram">
+        <source>Syntax for this diagram</source>
+        <target>~Syntaxe de ce diagramme</target>
+      </trans-unit>
+      <trans-unit id="4wizcet" resname="Clicking a snippet inserts it into the editor.">
+        <source>Clicking a snippet inserts it into the editor.</source>
+        <target>~Un clic sur un fragment l'insère dans l'éditeur.</target>
+      </trans-unit>
+      <trans-unit id="wvyjr50" resname="For this diagram type, the syntax is in the Mermaid reference.">
+        <source>For this diagram type, the syntax is in the Mermaid reference.</source>
+        <target>~Pour ce type de diagramme, la syntaxe se trouve dans la référence de Mermaid.</target>
+      </trans-unit>
+      <trans-unit id="cg1qss5" resname="Download the diagram">
+        <source>Download the diagram</source>
+        <target>~Télécharger le diagramme</target>
+      </trans-unit>
+      <trans-unit id="7vzvl47" resname="Print or save as PDF">
+        <source>Print or save as PDF</source>
+        <target>~Imprimer ou enregistrer en PDF</target>
+      </trans-unit>
+      <trans-unit id="hkrbz44" resname="There is no diagram to print.">
+        <source>There is no diagram to print.</source>
+        <target>~Il n'y a aucun diagramme à imprimer.</target>
+      </trans-unit>
+      <trans-unit id="ydabvgu" resname="PNG image">
+        <source>PNG image</source>
+        <target>~Image PNG</target>
+      </trans-unit>
+      <trans-unit id="8kr8ty9" resname="To insert into a document or a presentation">
+        <source>To insert into a document or a presentation</source>
+        <target>~Pour l'insérer dans un document ou une présentation</target>
+      </trans-unit>
+      <trans-unit id="sn5wo4y" resname="SVG image">
+        <source>SVG image</source>
+        <target>~Image SVG</target>
+      </trans-unit>
+      <trans-unit id="v037jqh" resname="Vector: scales without losing quality and can be edited">
+        <source>Vector: scales without losing quality and can be edited</source>
+        <target>~Vectorielle : s'agrandit sans perte de qualité et se modifie</target>
+      </trans-unit>
+      <trans-unit id="49dhneg" resname="HTML page">
+        <source>HTML page</source>
+        <target>~Page HTML</target>
+      </trans-unit>
+      <trans-unit id="v2hv4d8" resname="The diagram on its own, ready to open in a browser">
+        <source>The diagram on its own, ready to open in a browser</source>
+        <target>~Le diagramme seul, prêt à ouvrir dans un navigateur</target>
+      </trans-unit>
+      <trans-unit id="fxkcajz" resname=".mmd source">
+        <source>.mmd source</source>
+        <target>~Source .mmd</target>
+      </trans-unit>
+      <trans-unit id="qugdsxr" resname="The diagram text, to keep editing it here">
+        <source>The diagram text, to keep editing it here</source>
+        <target>~Le texte du diagramme, pour continuer à le modifier ici</target>
+      </trans-unit>
+      <trans-unit id="b7efpl0" resname="PNG resolution">
+        <source>PNG resolution</source>
+        <target>~Résolution du PNG</target>
+      </trans-unit>
+      <trans-unit id="0jae4lm" resname="1× (screen size)">
+        <source>1× (screen size)</source>
+        <target>~1× (taille écran)</target>
+      </trans-unit>
+      <trans-unit id="xonj3lw" resname="2× (sharp)">
+        <source>2× (sharp)</source>
+        <target>~2× (net)</target>
+      </trans-unit>
+      <trans-unit id="98xijts" resname="4× (for large prints)">
+        <source>4× (for large prints)</source>
+        <target>~4× (pour grands tirages)</target>
+      </trans-unit>
+      <trans-unit id="nlrztmx" resname="PNG background">
+        <source>PNG background</source>
+        <target>~Fond du PNG</target>
+      </trans-unit>
+      <trans-unit id="uw46c0k" resname="The editor one">
+        <source>The editor one</source>
+        <target>~Celui de l'éditeur</target>
+      </trans-unit>
+      <trans-unit id="l8niccy" resname="Transparent">
+        <source>Transparent</source>
+        <target>~Transparent</target>
+      </trans-unit>
+      <trans-unit id="b9w249t" resname="It also applies to the copy as image button.">
+        <source>It also applies to the copy as image button.</source>
+        <target>~S'applique aussi au bouton de copie comme image.</target>
+      </trans-unit>
+      <trans-unit id="bos8g74" resname="Stroke style">
+        <source>Stroke style</source>
+        <target>~Style du trait</target>
+      </trans-unit>
+      <trans-unit id="yu190ky" resname="Classic">
+        <source>Classic</source>
+        <target>~Classique</target>
+      </trans-unit>
+      <trans-unit id="rh50kmm" resname="Hand drawn">
+        <source>Hand drawn</source>
+        <target>~À main levée</target>
+      </trans-unit>
+      <trans-unit id="inba7rh" resname="Modern">
+        <source>Modern</source>
+        <target>~Moderne</target>
+      </trans-unit>
+      <trans-unit id="5rtugqk" resname="Text size">
+        <source>Text size</source>
+        <target>~Taille du texte</target>
+      </trans-unit>
+      <trans-unit id="32wm9g5" resname="Typography">
+        <source>Typography</source>
+        <target>~Typographie</target>
+      </trans-unit>
+      <trans-unit id="b117r5g" resname="Small">
+        <source>Small</source>
+        <target>~Petite</target>
+      </trans-unit>
+      <trans-unit id="y8hg3f2" resname="Normal">
+        <source>Normal</source>
+        <target>~Normale</target>
+      </trans-unit>
+      <trans-unit id="mo6s5b0" resname="Large">
+        <source>Large</source>
+        <target>~Grande</target>
+      </trans-unit>
+      <trans-unit id="zg04jiw" resname="Very large">
+        <source>Very large</source>
+        <target>~Très grande</target>
+      </trans-unit>
+      <trans-unit id="ui9fsph" resname="Main colour">
+        <source>Main colour</source>
+        <target>~Couleur principale</target>
+      </trans-unit>
+      <trans-unit id="22tjxot" resname="Theme colours">
+        <source>Theme colours</source>
+        <target>~Couleurs du thème</target>
+      </trans-unit>
+      <trans-unit id="ecv96x8" resname="Grey">
+        <source>Grey</source>
+        <target>~Gris</target>
+      </trans-unit>
+      <trans-unit id="6kadcdv" resname="Black and white">
+        <source>Black and white</source>
+        <target>~Noir et blanc</target>
+      </trans-unit>
+      <trans-unit id="65wvuo5" resname="Custom colour…">
+        <source>Custom colour…</source>
+        <target>~Couleur personnalisée…</target>
+      </trans-unit>
+      <trans-unit id="tz9ee9n" resname="Lines">
+        <source>Lines</source>
+        <target>~Lignes</target>
+      </trans-unit>
+      <trans-unit id="si3qwpq" resname="Arrow label background">
+        <source>Arrow label background</source>
+        <target>~Fond des étiquettes de flèche</target>
+      </trans-unit>
+      <trans-unit id="z0o9cu0" resname="Changing the fill adjusts border, lines, text and label background on its own until they are set by hand.">
+        <source>Changing the fill adjusts border, lines, text and label background on its own until they are set by hand.</source>
+        <target>~Changer le remplissage ajuste d'office la bordure, les lignes, le texte et le fond des étiquettes, tant qu'ils ne sont pas définis à la main.</target>
+      </trans-unit>
+      <trans-unit id="294lsg9" resname="%% Concept map: every link carries a verb, for example A[Water] -- is found as --&gt; B[Three states]">
+        <source>%% Concept map: every link carries a verb, for example A[Water] -- is found as --&gt; B[Three states]</source>
+        <target>~%% Carte conceptuelle : chaque lien porte un verbe, par exemple A[Eau] -- se trouve en --&gt; B[Trois états]</target>
+      </trans-unit>
+      <trans-unit id="4f5n1zf" resname="Colours of the element and of the label background">
+        <source>Colours of the element and of the label background</source>
+        <target>~Couleurs de l'élément et du fond des étiquettes</target>
+      </trans-unit>
+      <trans-unit id="1sxvy6z" resname="Theme">
+        <source>Theme</source>
+        <target>~Thème</target>
+      </trans-unit>
+      <trans-unit id="qinoysf" resname="Theme: the colours of the whole diagram">
+        <source>Theme: the colours of the whole diagram</source>
+        <target>~Thème : les couleurs de tout le diagramme</target>
+      </trans-unit>
+      <trans-unit id="1exdpq8" resname="Remove colours set by hand">
+        <source>Remove colours set by hand</source>
+        <target>~Retirer les couleurs mises à la main</target>
+      </trans-unit>
+      <trans-unit id="vlbl3hf" resname="The diagram has colours given to boxes, arrows, labels or slices, which show on top of the theme. If this box is ticked, they are removed when a theme is chosen; otherwise, they are kept.">
+        <source>The diagram has colours given to boxes, arrows, labels or slices, which show on top of the theme. If this box is ticked, they are removed when a theme is chosen; otherwise, they are kept.</source>
+        <target>~Le diagramme a des couleurs données à des boîtes, des flèches, des étiquettes ou des secteurs, qui s'affichent par-dessus le thème. Si cette case est cochée, elles sont retirées lors du choix d'un thème ; sinon, elles sont conservées.</target>
+      </trans-unit>
+      <trans-unit id="7y0ycge" resname="Whole diagram">
+        <source>Whole diagram</source>
+        <target>~Tout le diagramme</target>
+      </trans-unit>
+      <trans-unit id="0hq6x1t" resname="Whole box">
+        <source>Whole box</source>
+        <target>~Toute la boîte</target>
+      </trans-unit>
+      <trans-unit id="k3rlkcu" resname="Text only">
+        <source>Text only</source>
+        <target>~Texte seulement</target>
+      </trans-unit>
+      <trans-unit id="n3a2a42" resname="Border only">
+        <source>Border only</source>
+        <target>~Bordure seulement</target>
+      </trans-unit>
+      <trans-unit id="86l6nqs" resname="Other size">
+        <source>Other size</source>
+        <target>~Autre taille</target>
+      </trans-unit>
+      <trans-unit id="i7kzelr" resname="Font">
+        <source>Font</source>
+        <target>~Police</target>
+      </trans-unit>
+      <trans-unit id="0irt163" resname="Serif">
+        <source>Serif</source>
+        <target>~Avec empattements</target>
+      </trans-unit>
+      <trans-unit id="v5av5h1" resname="Handwritten">
+        <source>Handwritten</source>
+        <target>~Manuscrite</target>
+      </trans-unit>
+      <trans-unit id="4u8sy2s" resname="Box width">
+        <source>Box width</source>
+        <target>~Largeur des boîtes</target>
+      </trans-unit>
+      <trans-unit id="udlqa5t" resname="Narrow">
+        <source>Narrow</source>
+        <target>~Étroite</target>
+      </trans-unit>
+      <trans-unit id="ya18em5" resname="Wide">
+        <source>Wide</source>
+        <target>~Large</target>
+      </trans-unit>
+      <trans-unit id="pfhytza" resname="Very wide">
+        <source>Very wide</source>
+        <target>~Très large</target>
+      </trans-unit>
+      <trans-unit id="3vvzqty" resname="Other width">
+        <source>Other width</source>
+        <target>~Autre largeur</target>
+      </trans-unit>
+      <trans-unit id="jaza1qs" resname="Layout engine">
+        <source>Layout engine</source>
+        <target>~Moteur de disposition</target>
+      </trans-unit>
+      <trans-unit id="9wep895" resname="Merge arrows going to the same place">
+        <source>Merge arrows going to the same place</source>
+        <target>~Réunir les flèches qui vont au même endroit</target>
+      </trans-unit>
+      <trans-unit id="ltczwm7" resname="This diagram type does not accept an accessible title or description: they are kept as a comment in the code and do not reach screen readers.">
+        <source>This diagram type does not accept an accessible title or description: they are kept as a comment in the code and do not reach screen readers.</source>
+        <target>~Ce type de diagramme n'accepte ni titre ni description accessibles : ils sont conservés comme commentaire dans le code et n'atteignent pas les lecteurs d'écran.</target>
+      </trans-unit>
+      <trans-unit id="1r44k5k" resname="ELK layered">
+        <source>ELK layered</source>
+        <target>~ELK par couches</target>
+      </trans-unit>
+      <trans-unit id="pstqtqt" resname="The default: right-angled arrows and elements in levels">
+        <source>The default: right-angled arrows and elements in levels</source>
+        <target>~Par défaut : flèches à angle droit et éléments par niveaux</target>
+      </trans-unit>
+      <trans-unit id="5li4c9a" resname="Dagre">
+        <source>Dagre</source>
+        <target>~Dagre</target>
+      </trans-unit>
+      <trans-unit id="u2hdrj4" resname="The classic one: supports line shape and spacing">
+        <source>The classic one: supports line shape and spacing</source>
+        <target>~Le classique : gère la forme des lignes et l'espacement</target>
+      </trans-unit>
+      <trans-unit id="nm06hqp" resname="ELK tree">
+        <source>ELK tree</source>
+        <target>~ELK arbre</target>
+      </trans-unit>
+      <trans-unit id="610j0c4" resname="For hierarchies, like an organisation chart">
+        <source>For hierarchies, like an organisation chart</source>
+        <target>~Pour les hiérarchies, comme un organigramme</target>
+      </trans-unit>
+      <trans-unit id="l96qfon" resname="ELK radial">
+        <source>ELK radial</source>
+        <target>~ELK radial</target>
+      </trans-unit>
+      <trans-unit id="dvybdwu" resname="In rings around the first element">
+        <source>In rings around the first element</source>
+        <target>~En anneaux autour du premier élément</target>
+      </trans-unit>
+      <trans-unit id="8z1b4tm" resname="ELK stress">
+        <source>ELK stress</source>
+        <target>~ELK stress</target>
+      </trans-unit>
+      <trans-unit id="esahhbx" resname="Spreads by distances, with no direction">
+        <source>Spreads by distances, with no direction</source>
+        <target>~Répartit selon les distances, sans direction</target>
+      </trans-unit>
+      <trans-unit id="dpd6je6" resname="ELK force">
+        <source>ELK force</source>
+        <target>~ELK force</target>
+      </trans-unit>
+      <trans-unit id="mntoj79" resname="Like magnets pushing apart, with no direction">
+        <source>Like magnets pushing apart, with no direction</source>
+        <target>~Comme des aimants qui se repoussent, sans direction</target>
+      </trans-unit>
+      <trans-unit id="5ax9h85" resname="ELK no overlaps">
+        <source>ELK no overlaps</source>
+        <target>~ELK sans chevauchement</target>
+      </trans-unit>
+      <trans-unit id="m799fae" resname="Separates what overlaps, changing as little as possible">
+        <source>Separates what overlaps, changing as little as possible</source>
+        <target>~Sépare ce qui se chevauche en changeant le moins possible</target>
+      </trans-unit>
+      <trans-unit id="h0ysw2o" resname="ELK boxes">
+        <source>ELK boxes</source>
+        <target>~ELK boîtes</target>
+      </trans-unit>
+      <trans-unit id="7ytj4xm" resname="In rows, ignoring the arrows">
+        <source>In rows, ignoring the arrows</source>
+        <target>~En rangées, sans tenir compte des flèches</target>
+      </trans-unit>
+      <trans-unit id="90713em" resname="ELK packed">
+        <source>ELK packed</source>
+        <target>~ELK compact</target>
+      </trans-unit>
+      <trans-unit id="lxhg236" resname="In a compact rectangle, ignoring the arrows">
+        <source>In a compact rectangle, ignoring the arrows</source>
+        <target>~Dans un rectangle compact, sans tenir compte des flèches</target>
+      </trans-unit>
+      <trans-unit id="5nvrspk" resname="ELK by parts">
+        <source>ELK by parts</source>
+        <target>~ELK par parties</target>
+      </trans-unit>
+      <trans-unit id="w0m3135" resname="Places unconnected parts separately">
+        <source>Places unconnected parts separately</source>
+        <target>~Place à part les parties non reliées</target>
+      </trans-unit>
+      <trans-unit id="lxkoszw" resname="Undo (Ctrl+Z)">
+        <source>Undo (Ctrl+Z)</source>
+        <target>~Annuler (Ctrl+Z)</target>
+      </trans-unit>
+      <trans-unit id="u3d4d4g" resname="Redo (Ctrl+Y)">
+        <source>Redo (Ctrl+Y)</source>
+        <target>~Rétablir (Ctrl+Y)</target>
+      </trans-unit>
+      <trans-unit id="nw0fgzx" resname="The arrow">
+        <source>The arrow</source>
+        <target>~La flèche</target>
+      </trans-unit>
+      <trans-unit id="qisglso" resname="Colour the arrow on this line:">
+        <source>Colour the arrow on this line:</source>
+        <target>~Colorer la flèche de cette ligne :</target>
+      </trans-unit>
+      <trans-unit id="ohdft82" resname="All lines">
+        <source>All lines</source>
+        <target>~Toutes les lignes</target>
+      </trans-unit>
+      <trans-unit id="r2q4qhr" resname="Arrow thickness">
+        <source>Arrow thickness</source>
+        <target>~Épaisseur des flèches</target>
+      </trans-unit>
+      <trans-unit id="nmivdzt" resname="Line type">
+        <source>Line type</source>
+        <target>~Type de ligne</target>
+      </trans-unit>
+      <trans-unit id="5t33sl9" resname="Arrow heads">
+        <source>Arrow heads</source>
+        <target>~Pointes de flèche</target>
+      </trans-unit>
+      <trans-unit id="qkohtpa" resname="Dash-dot">
+        <source>Dash-dot</source>
+        <target>~Trait-point</target>
+      </trans-unit>
+      <trans-unit id="qfqlk3y" resname="Thick">
+        <source>Thick</source>
+        <target>~Épaisse</target>
+      </trans-unit>
+      <trans-unit id="emkj4la" resname="Invisible">
+        <source>Invisible</source>
+        <target>~Invisible</target>
+      </trans-unit>
+      <trans-unit id="k15bzzt" resname="Arrow at both ends">
+        <source>Arrow at both ends</source>
+        <target>~Flèche aux deux extrémités</target>
+      </trans-unit>
+      <trans-unit id="0zxlkb7" resname="Circle at both ends">
+        <source>Circle at both ends</source>
+        <target>~Cercle aux deux extrémités</target>
+      </trans-unit>
+      <trans-unit id="4ahvpjm" resname="Cross at both ends">
+        <source>Cross at both ends</source>
+        <target>~Croix aux deux extrémités</target>
+      </trans-unit>
+      <trans-unit id="xgav3d4" resname="Border thickness">
+        <source>Border thickness</source>
+        <target>~Épaisseur de la bordure</target>
+      </trans-unit>
+      <trans-unit id="7fcfio2" resname="Other thickness">
+        <source>Other thickness</source>
+        <target>~Autre épaisseur</target>
+      </trans-unit>
+      <trans-unit id="vfarmok" resname="Thin">
+        <source>Thin</source>
+        <target>~Fine</target>
+      </trans-unit>
+      <trans-unit id="9occlio" resname="Very thick">
+        <source>Very thick</source>
+        <target>~Très épaisse</target>
+      </trans-unit>
+      <trans-unit id="ahymdsp" resname="At the cursor">
+        <source>At the cursor</source>
+        <target>~Au curseur</target>
+      </trans-unit>
+      <trans-unit id="2f3trsa" resname="Thickness of the arrow on this line:">
+        <source>Thickness of the arrow on this line:</source>
+        <target>~Épaisseur de la flèche de cette ligne :</target>
+      </trans-unit>
+      <trans-unit id="8vz1u4q" resname="Border thickness of the element">
+        <source>Border thickness of the element</source>
+        <target>~Épaisseur de la bordure de l'élément</target>
+      </trans-unit>
+      <trans-unit id="gfsizjb" resname="The border">
+        <source>The border</source>
+        <target>~La bordure</target>
+      </trans-unit>
+      <trans-unit id="th0se8c" resname="Place the cursor on the line of an arrow or an element.">
+        <source>Place the cursor on the line of an arrow or an element.</source>
+        <target>~Placez le curseur sur la ligne d'une flèche ou d'un élément.</target>
+      </trans-unit>
+      <trans-unit id="4bqxq2c" resname="This box">
+        <source>This box</source>
+        <target>~Cette boîte</target>
+      </trans-unit>
+      <trans-unit id="p9jytmv" resname="All boxes">
+        <source>All boxes</source>
+        <target>~Toutes les boîtes</target>
+      </trans-unit>
+      <trans-unit id="w9a5xj8" resname="Changes the boxes that carry the general shape ({n} of {m}); those changed one by one are kept.">
+        <source>Changes the boxes that carry the general shape ({n} of {m}); those changed one by one are kept.</source>
+        <target>~Modifie les boîtes qui portent la forme générale ({n} sur {m}) ; celles modifiées une à une sont conservées.</target>
+      </trans-unit>
+      <trans-unit id="p1bzlv3" resname="No box carries the general shape; those changed one by one are kept.">
+        <source>No box carries the general shape; those changed one by one are kept.</source>
+        <target>~Aucune boîte ne porte la forme générale ; celles modifiées une à une sont conservées.</target>
+      </trans-unit>
+      <trans-unit id="1kloju7" resname="Boxes: shape and width">
+        <source>Boxes: shape and width</source>
+        <target>~Boîtes : forme et largeur</target>
+      </trans-unit>
+      <trans-unit id="wfjpw3d" resname="Box shape">
+        <source>Box shape</source>
+        <target>~Forme de la boîte</target>
+      </trans-unit>
+      <trans-unit id="23la7yh" resname="Of the box at the cursor, or of all of them">
+        <source>Of the box at the cursor, or of all of them</source>
+        <target>~De la boîte au curseur, ou de toutes</target>
+      </trans-unit>
+      <trans-unit id="x7do35a" resname="Where a long text is broken into several lines">
+        <source>Where a long text is broken into several lines</source>
+        <target>~Où un texte long est coupé en plusieurs lignes</target>
+      </trans-unit>
+      <trans-unit id="ihdkflt" resname="Shape of the element">
+        <source>Shape of the element</source>
+        <target>~Forme de l'élément</target>
+      </trans-unit>
+      <trans-unit id="r9hdpua" resname="Place the cursor on the line of an element and press the button again.">
+        <source>Place the cursor on the line of an element and press the button again.</source>
+        <target>~Placez le curseur sur la ligne d'un élément et appuyez à nouveau sur le bouton.</target>
+      </trans-unit>
+      <trans-unit id="2khxy6o" resname="Arrow text">
+        <source>Arrow text</source>
+        <target>~Texte de la flèche</target>
+      </trans-unit>
+      <trans-unit id="jdcf0mv" resname="Remove the text colour">
+        <source>Remove the text colour</source>
+        <target>~Retirer la couleur du texte</target>
+      </trans-unit>
+      <trans-unit id="54e484i" resname="Arrow properties">
+        <source>Arrow properties</source>
+        <target>~Propriétés de la flèche</target>
+      </trans-unit>
+      <trans-unit id="1o2e2in" resname="In flowcharts and concept maps:">
+        <source>In flowcharts and concept maps:</source>
+        <target>~Dans les organigrammes et les cartes conceptuelles :</target>
+      </trans-unit>
+      <trans-unit id="bdj8gnu" resname="Right-click a box, an arrow or the background: change its format.">
+        <source>Right-click a box, an arrow or the background: change its format.</source>
+        <target>~Clic droit sur une boîte, une flèche ou le fond : modifier son format.</target>
+      </trans-unit>
+      <trans-unit id="jsa1gy5" resname="Double-click: edit the text.">
+        <source>Double-click: edit the text.</source>
+        <target>~Double-clic : modifier le texte.</target>
+      </trans-unit>
+      <trans-unit id="wda20fc" resname="Long press a box, an arrow or the background: change its format.">
+        <source>Long press a box, an arrow or the background: change its format.</source>
+        <target>~Appui long sur une boîte, une flèche ou le fond : modifier son format.</target>
+      </trans-unit>
+      <trans-unit id="o55gqk4" resname="Double tap: edit the text.">
+        <source>Double tap: edit the text.</source>
+        <target>~Double appui : modifier le texte.</target>
+      </trans-unit>
+      <trans-unit id="7vvd2eo" resname="Close the notice">
+        <source>Close the notice</source>
+        <target>~Fermer l'avis</target>
+      </trans-unit>
+      <trans-unit id="o2qkcot" resname="Do not show again">
+        <source>Do not show again</source>
+        <target>~Ne plus afficher</target>
+      </trans-unit>
+      <trans-unit id="2mr1kz7" resname="Width of the code panel">
+        <source>Width of the code panel</source>
+        <target>~Largeur du panneau de code</target>
+      </trans-unit>
+      <trans-unit id="bc03m1j" resname="Bold and italic cannot be used in a text that contains a formula.">
+        <source>Bold and italic cannot be used in a text that contains a formula.</source>
+        <target>~Le gras et l'italique ne s'appliquent pas à un texte qui contient une formule.</target>
+      </trans-unit>
+      <trans-unit id="fsx4w25" resname="Line break inside the text">
+        <source>Line break inside the text</source>
+        <target>~Saut de ligne dans le texte</target>
+      </trans-unit>
+      <trans-unit id="8wtjzpm" resname="Write the text">
+        <source>Write the text</source>
+        <target>~Écrire le texte</target>
+      </trans-unit>
+      <trans-unit id="dx476wd" resname="Delete the box">
+        <source>Delete the box</source>
+        <target>~Supprimer la boîte</target>
+      </trans-unit>
+      <trans-unit id="g9hlyug" resname="Add a box inside">
+        <source>Add a box inside</source>
+        <target>~Ajouter une boîte à l'intérieur</target>
+      </trans-unit>
+      <trans-unit id="j9grr92" resname="Tree item">
+        <source>Tree item</source>
+        <target>~Élément de l'arbre</target>
+      </trans-unit>
+      <trans-unit id="dmmlcbr" resname="Remove the highlight">
+        <source>Remove the highlight</source>
+        <target>~Retirer la mise en évidence</target>
+      </trans-unit>
+      <trans-unit id="dcraefo" resname="Whole block">
+        <source>Whole block</source>
+        <target>~Tout le bloc</target>
+      </trans-unit>
+      <trans-unit id="vmsg1qh" resname="Title only">
+        <source>Title only</source>
+        <target>~Titre seulement</target>
+      </trans-unit>
+      <trans-unit id="yemmfxl" resname="Border type">
+        <source>Border type</source>
+        <target>~Type de bordure</target>
+      </trans-unit>
+      <trans-unit id="uzh5wc2" resname="All blocks">
+        <source>All blocks</source>
+        <target>~Tous les blocs</target>
+      </trans-unit>
+      <trans-unit id="eyxd7bc" resname="New block, with the boxes on the selected lines">
+        <source>New block, with the boxes on the selected lines</source>
+        <target>~Nouveau bloc avec les boîtes des lignes sélectionnées</target>
+      </trans-unit>
+      <trans-unit id="ftpa451" resname="Groups the boxes of the cursor line or the selection">
+        <source>Groups the boxes of the cursor line or the selection</source>
+        <target>~Regroupe les boîtes de la ligne du curseur ou de la sélection</target>
+      </trans-unit>
+      <trans-unit id="tl3aqlg" resname="Put into a new block">
+        <source>Put into a new block</source>
+        <target>~Mettre dans un nouveau bloc</target>
+      </trans-unit>
+      <trans-unit id="srr7vww" resname="Move to “{b}”">
+        <source>Move to “{b}”</source>
+        <target>~Déplacer vers « {b} »</target>
+      </trans-unit>
+      <trans-unit id="6077m5h" resname="Take out of “{b}”">
+        <source>Take out of “{b}”</source>
+        <target>~Sortir de « {b} »</target>
+      </trans-unit>
+      <trans-unit id="p4agzrw" resname="Write the title">
+        <source>Write the title</source>
+        <target>~Écrire le titre</target>
+      </trans-unit>
+      <trans-unit id="piipb57" resname="Dissolve the block (the boxes stay)">
+        <source>Dissolve the block (the boxes stay)</source>
+        <target>~Défaire le bloc (les boîtes restent)</target>
+      </trans-unit>
+      <trans-unit id="qy7wx2v" resname="The diagram’s">
+        <source>The diagram’s</source>
+        <target>~Celle du diagramme</target>
+      </trans-unit>
+      <trans-unit id="3y7v2xx" resname="Add a link">
+        <source>Add a link</source>
+        <target>~Ajouter un lien</target>
+      </trans-unit>
+      <trans-unit id="ytahrcv" resname="Change the link">
+        <source>Change the link</source>
+        <target>~Modifier le lien</target>
+      </trans-unit>
+      <trans-unit id="vu5qol8" resname="Box link">
+        <source>Box link</source>
+        <target>~Lien de la boîte</target>
+      </trans-unit>
+      <trans-unit id="qbvzopb" resname="Clicking the box opens this address in a new tab. In the editor it opens with Ctrl and click, so a plain click still moves and edits.">
+        <source>Clicking the box opens this address in a new tab. In the editor it opens with Ctrl and click, so a plain click still moves and edits.</source>
+        <target>~Un clic sur la boîte ouvre cette adresse dans un nouvel onglet. Dans l'éditeur, elle s'ouvre avec Ctrl et clic, pour qu'un clic simple permette toujours de déplacer et de modifier.</target>
+      </trans-unit>
+      <trans-unit id="de7hag7" resname="Address">
+        <source>Address</source>
+        <target>~Adresse</target>
+      </trans-unit>
+      <trans-unit id="8j3rr12" resname="Tooltip text (optional)">
+        <source>Tooltip text (optional)</source>
+        <target>~Texte d'info-bulle (facultatif)</target>
+      </trans-unit>
+      <trans-unit id="o3rtxhs" resname="Remove the link">
+        <source>Remove the link</source>
+        <target>~Retirer le lien</target>
+      </trans-unit>
+      <trans-unit id="o0vbvi9" resname="Ctrl and click opens the link.">
+        <source>Ctrl and click opens the link.</source>
+        <target>~Ctrl et clic ouvrent le lien.</target>
+      </trans-unit>
+      <trans-unit id="ld1krzj" resname="Delete the arrow">
+        <source>Delete the arrow</source>
+        <target>~Supprimer la flèche</target>
+      </trans-unit>
+      <trans-unit id="n0l3bou" resname="Drag to draw an arrow">
+        <source>Drag to draw an arrow</source>
+        <target>~Faites glisser pour tracer une flèche</target>
+      </trans-unit>
+      <trans-unit id="2ue0ay9" resname="Add a box">
+        <source>Add a box</source>
+        <target>~Ajouter une boîte</target>
+      </trans-unit>
+      <trans-unit id="oijoq3t" resname="Add a connected box">
+        <source>Add a connected box</source>
+        <target>~Ajouter une boîte reliée</target>
+      </trans-unit>
+      <trans-unit id="t0f1k08" resname="The formula was placed in a new box.">
+        <source>The formula was placed in a new box.</source>
+        <target>~La formule a été placée dans une nouvelle boîte.</target>
+      </trans-unit>
+      <trans-unit id="j4084lb" resname="Maths formula (opens the Edicuatex editor)">
+        <source>Maths formula (opens the Edicuatex editor)</source>
+        <target>~Formule mathématique (ouvre l'éditeur Edicuatex)</target>
+      </trans-unit>
+      <trans-unit id="86lccaw" resname="The browser blocked the formula editor window.">
+        <source>The browser blocked the formula editor window.</source>
+        <target>~Le navigateur a bloqué la fenêtre de l'éditeur de formules.</target>
+      </trans-unit>
+      <trans-unit id="ylb1nio" resname="Diagram type">
+        <source>Diagram type</source>
+        <target>~Type de diagramme</target>
+      </trans-unit>
+      <trans-unit id="d2xbcfg" resname="Colour of the element at the cursor">
+        <source>Colour of the element at the cursor</source>
+        <target>~Couleur de l'élément au curseur</target>
+      </trans-unit>
+      <trans-unit id="d0usmfv" resname="Place the cursor on the line of an element (a box, a state…) and press the button again.">
+        <source>Place the cursor on the line of an element (a box, a state…) and press the button again.</source>
+        <target>~Placez le curseur sur la ligne d'un élément (une boîte, un état…) et appuyez à nouveau sur le bouton.</target>
+      </trans-unit>
+      <trans-unit id="3i1zlux" resname="Colour the element">
+        <source>Colour the element</source>
+        <target>~Colorer l'élément</target>
+      </trans-unit>
+      <trans-unit id="4b8aze4" resname="Colour the elements">
+        <source>Colour the elements</source>
+        <target>~Colorer les éléments</target>
+      </trans-unit>
+      <trans-unit id="skncqn5" resname="Another colour…">
+        <source>Another colour…</source>
+        <target>~Autre couleur…</target>
+      </trans-unit>
+      <trans-unit id="2bv795f" resname="Remove the colour">
+        <source>Remove the colour</source>
+        <target>~Retirer la couleur</target>
+      </trans-unit>
+      <trans-unit id="y4ikdtc" resname="Clear formatting">
+        <source>Clear formatting</source>
+        <target>~Effacer la mise en forme</target>
+      </trans-unit>
+      <trans-unit id="isr84y9" resname="Clear formatting: remove colours, styles, stroke, typography and widths (bold and italic text are kept)">
+        <source>Clear formatting: remove colours, styles, stroke, typography and widths (bold and italic text are kept)</source>
+        <target>~Effacer la mise en forme : retire couleurs, styles, trait, typographie et largeurs (le gras et l'italique sont conservés)</target>
+      </trans-unit>
+      <trans-unit id="ddo46d3" resname="Direction">
+        <source>Direction</source>
+        <target>~Direction</target>
+      </trans-unit>
+      <trans-unit id="bv6uil1" resname="Top to bottom">
+        <source>Top to bottom</source>
+        <target>~De haut en bas</target>
+      </trans-unit>
+      <trans-unit id="jzo429t" resname="Bottom to top">
+        <source>Bottom to top</source>
+        <target>~De bas en haut</target>
+      </trans-unit>
+      <trans-unit id="r9spa0x" resname="Left to right">
+        <source>Left to right</source>
+        <target>~De gauche à droite</target>
+      </trans-unit>
+      <trans-unit id="p39d1e0" resname="Right to left">
+        <source>Right to left</source>
+        <target>~De droite à gauche</target>
+      </trans-unit>
+      <trans-unit id="s2uph6u" resname="Number the messages">
+        <source>Number the messages</source>
+        <target>~Numéroter les messages</target>
+      </trans-unit>
+      <trans-unit id="hgvlzeg" resname="Sequence">
+        <source>Sequence</source>
+        <target>~Séquence</target>
+      </trans-unit>
+      <trans-unit id="dwjw1q2" resname="Repeat the participants below">
+        <source>Repeat the participants below</source>
+        <target>~Répéter les participants en bas</target>
+      </trans-unit>
+      <trans-unit id="ihbi5um" resname="Wrap long messages">
+        <source>Wrap long messages</source>
+        <target>~Couper les messages longs</target>
+      </trans-unit>
+      <trans-unit id="99ic8s2" resname="Chart">
+        <source>Chart</source>
+        <target>~Graphique</target>
+      </trans-unit>
+      <trans-unit id="1neulqh" resname="Orientation">
+        <source>Orientation</source>
+        <target>~Orientation</target>
+      </trans-unit>
+      <trans-unit id="0ax5yjp" resname="Vertical">
+        <source>Vertical</source>
+        <target>~Vertical</target>
+      </trans-unit>
+      <trans-unit id="5wgycer" resname="Horizontal">
+        <source>Horizontal</source>
+        <target>~Horizontal</target>
+      </trans-unit>
+      <trans-unit id="6fqvyga" resname="Show the values">
+        <source>Show the values</source>
+        <target>~Afficher les valeurs</target>
+      </trans-unit>
+      <trans-unit id="dfh1in9" resname="Sectors">
+        <source>Sectors</source>
+        <target>~Secteurs</target>
+      </trans-unit>
+      <trans-unit id="5zly1ax" resname="Ring">
+        <source>Ring</source>
+        <target>~Anneau</target>
+      </trans-unit>
+      <trans-unit id="s5xhtku" resname="No ring">
+        <source>No ring</source>
+        <target>~Sans anneau</target>
+      </trans-unit>
+      <trans-unit id="fz1xejx" resname="Legend">
+        <source>Legend</source>
+        <target>~Légende</target>
+      </trans-unit>
+      <trans-unit id="060vffc" resname="On the right">
+        <source>On the right</source>
+        <target>~À droite</target>
+      </trans-unit>
+      <trans-unit id="e7shmgt" resname="On the left">
+        <source>On the left</source>
+        <target>~À gauche</target>
+      </trans-unit>
+      <trans-unit id="ixpf9hr" resname="Above">
+        <source>Above</source>
+        <target>~En haut</target>
+      </trans-unit>
+      <trans-unit id="iedvybw" resname="Below">
+        <source>Below</source>
+        <target>~En bas</target>
+      </trans-unit>
+      <trans-unit id="11dg913" resname="Colour of each sector">
+        <source>Colour of each sector</source>
+        <target>~Couleur de chaque secteur</target>
+      </trans-unit>
+      <trans-unit id="wilx71p" resname="Back to the default colours">
+        <source>Back to the default colours</source>
+        <target>~Revenir aux couleurs par défaut</target>
+      </trans-unit>
+      <trans-unit id="zgk0gq8" resname="Calendar">
+        <source>Calendar</source>
+        <target>~Calendrier</target>
+      </trans-unit>
+      <trans-unit id="mvrj0th" resname="Axis dates">
+        <source>Axis dates</source>
+        <target>~Dates de l'axe</target>
+      </trans-unit>
+      <trans-unit id="368vcz4" resname="Other format">
+        <source>Other format</source>
+        <target>~Autre format</target>
+      </trans-unit>
+      <trans-unit id="xhcmfbh" resname="%d day, %m month, %Y four-digit year, %y two-digit.">
+        <source>%d day, %m month, %Y four-digit year, %y two-digit.</source>
+        <target>~%d jour, %m mois, %Y année sur quatre chiffres, %y sur deux.</target>
+      </trans-unit>
+      <trans-unit id="5gvykqz" resname="As Mermaid (2026-01-07)">
+        <source>As Mermaid (2026-01-07)</source>
+        <target>~Comme Mermaid (2026-01-07)</target>
+      </trans-unit>
+      <trans-unit id="8nl2qk1" resname="Day/month (07/01)">
+        <source>Day/month (07/01)</source>
+        <target>~Jour/mois (07/01)</target>
+      </trans-unit>
+      <trans-unit id="6hulk5g" resname="Day/month/year (07/01/2026)">
+        <source>Day/month/year (07/01/2026)</source>
+        <target>~Jour/mois/année (07/01/2026)</target>
+      </trans-unit>
+      <trans-unit id="mrpkrbv" resname="Short day/month/year (07/01/26)">
+        <source>Short day/month/year (07/01/26)</source>
+        <target>~Jour/mois/année court (07/01/26)</target>
+      </trans-unit>
+      <trans-unit id="hm8mgrn" resname="Axis ticks">
+        <source>Axis ticks</source>
+        <target>~Graduations de l'axe</target>
+      </trans-unit>
+      <trans-unit id="1a61gfv" resname="Automatic">
+        <source>Automatic</source>
+        <target>~Automatique</target>
+      </trans-unit>
+      <trans-unit id="keq5b2z" resname="Every day">
+        <source>Every day</source>
+        <target>~Chaque jour</target>
+      </trans-unit>
+      <trans-unit id="o6fs6s0" resname="Every week">
+        <source>Every week</source>
+        <target>~Chaque semaine</target>
+      </trans-unit>
+      <trans-unit id="t1fp2ea" resname="Every two weeks">
+        <source>Every two weeks</source>
+        <target>~Toutes les deux semaines</target>
+      </trans-unit>
+      <trans-unit id="19gpez4" resname="Every month">
+        <source>Every month</source>
+        <target>~Chaque mois</target>
+      </trans-unit>
+      <trans-unit id="tbsl8j2" resname="The week starts on">
+        <source>The week starts on</source>
+        <target>~La semaine commence le</target>
+      </trans-unit>
+      <trans-unit id="hpjmgsq" resname="Sunday (as Mermaid)">
+        <source>Sunday (as Mermaid)</source>
+        <target>~Dimanche (comme Mermaid)</target>
+      </trans-unit>
+      <trans-unit id="xu2d1k4" resname="Monday">
+        <source>Monday</source>
+        <target>~Lundi</target>
+      </trans-unit>
+      <trans-unit id="pdpsny2" resname="Skip the weekends">
+        <source>Skip the weekends</source>
+        <target>~Sauter les week-ends</target>
+      </trans-unit>
+      <trans-unit id="bpg7a5c" resname="My saved diagrams">
+        <source>My saved diagrams</source>
+        <target>~Mes diagrammes enregistrés</target>
+      </trans-unit>
+      <trans-unit id="he522zd" resname="My diagrams">
+        <source>My diagrams</source>
+        <target>~Mes diagrammes</target>
+      </trans-unit>
+      <trans-unit id="twd0hsx" resname="They are kept in this browser, on this computer. They never leave it or reach any server.">
+        <source>They are kept in this browser, on this computer. They never leave it or reach any server.</source>
+        <target>~Ils sont conservés dans ce navigateur, sur cet ordinateur. Ils n'en sortent jamais et n'atteignent aucun serveur.</target>
+      </trans-unit>
+      <trans-unit id="kxglv4a" resname="No diagrams saved yet.">
+        <source>No diagrams saved yet.</source>
+        <target>~Aucun diagramme enregistré pour l'instant.</target>
+      </trans-unit>
+      <trans-unit id="1r1udcl" resname="Maximum saved diagrams">
+        <source>Maximum saved diagrams</source>
+        <target>~Nombre maximal de diagrammes enregistrés</target>
+      </trans-unit>
+      <trans-unit id="vsufm5r" resname="On reaching the maximum, the oldest ones are deleted, counting from when they were last modified.">
+        <source>On reaching the maximum, the oldest ones are deleted, counting from when they were last modified.</source>
+        <target>~Une fois le maximum atteint, les plus anciens sont supprimés, en comptant depuis leur dernière modification.</target>
+      </trans-unit>
+      <trans-unit id="t8xxkdo" resname="The oldest diagrams were deleted to stay within the maximum.">
+        <source>The oldest diagrams were deleted to stay within the maximum.</source>
+        <target>~Les diagrammes les plus anciens ont été supprimés pour respecter le maximum.</target>
+      </trans-unit>
+      <trans-unit id="8ku0lvw" resname="The oldest diagrams will be deleted, leaving {n}. Continue?">
+        <source>The oldest diagrams will be deleted, leaving {n}. Continue?</source>
+        <target>~Les diagrammes les plus anciens seront supprimés pour n'en garder que {n}. Continuer ?</target>
+      </trans-unit>
+      <trans-unit id="o0hz8vh" resname="The backup is a file with every saved diagram. It serves to move them to another browser or to recover them if this browser data is cleared.">
+        <source>The backup is a file with every saved diagram. It serves to move them to another browser or to recover them if this browser data is cleared.</source>
+        <target>~La sauvegarde est un fichier contenant tous les diagrammes enregistrés. Elle sert à les transférer vers un autre navigateur ou à les récupérer si les données de ce navigateur sont effacées.</target>
+      </trans-unit>
+      <trans-unit id="b9s4sz9" resname="Export backup">
+        <source>Export backup</source>
+        <target>~Exporter une sauvegarde</target>
+      </trans-unit>
+      <trans-unit id="pu04jee" resname="Import backup">
+        <source>Import backup</source>
+        <target>~Importer une sauvegarde</target>
+      </trans-unit>
+      <trans-unit id="2j2agbu" resname="There is no diagram to export.">
+        <source>There is no diagram to export.</source>
+        <target>~Il n'y a aucun diagramme à exporter.</target>
+      </trans-unit>
+      <trans-unit id="htdr8f5" resname="The file is not a Sirena backup.">
+        <source>The file is not a Sirena backup.</source>
+        <target>~Le fichier n'est pas une sauvegarde de Sirena.</target>
+      </trans-unit>
+      <trans-unit id="p2hr4pb" resname="Diagrams added: {n}">
+        <source>Diagrams added: {n}</source>
+        <target>~Diagrammes ajoutés : {n}</target>
+      </trans-unit>
+      <trans-unit id="nt87q8a" resname="Only text files (.mmd, .md, .txt) and .json backups can be opened.">
+        <source>Only text files (.mmd, .md, .txt) and .json backups can be opened.</source>
+        <target>~Seuls les fichiers texte (.mmd, .md, .txt) et les sauvegardes .json peuvent être ouverts.</target>
+      </trans-unit>
+      <trans-unit id="cvkjnah" resname="Could not save in this browser.">
+        <source>Could not save in this browser.</source>
+        <target>~Impossible d'enregistrer dans ce navigateur.</target>
+      </trans-unit>
+      <trans-unit id="61t345s" resname="Rename the diagram">
+        <source>Rename the diagram</source>
+        <target>~Renommer le diagramme</target>
+      </trans-unit>
+      <trans-unit id="0dnuu1e" resname="Mark this diagram">
+        <source>Mark this diagram</source>
+        <target>~Marquer ce diagramme</target>
+      </trans-unit>
+      <trans-unit id="5abbucj" resname="Delete the marked ones">
+        <source>Delete the marked ones</source>
+        <target>~Supprimer ceux qui sont marqués</target>
+      </trans-unit>
+      <trans-unit id="l1302dc" resname="Delete the {n} marked diagrams? This cannot be undone.">
+        <source>Delete the {n} marked diagrams? This cannot be undone.</source>
+        <target>~Supprimer les {n} diagrammes marqués ? Cette action est irréversible.</target>
+      </trans-unit>
+      <trans-unit id="7843df0" resname="Delete “{nombre}”? This cannot be undone.">
+        <source>Delete “{nombre}”? This cannot be undone.</source>
+        <target>~Supprimer « {nombre} » ? Cette action est irréversible.</target>
+      </trans-unit>
+      <trans-unit id="ow1rdea" resname="New diagram">
+        <source>New diagram</source>
+        <target>~Nouveau diagramme</target>
+      </trans-unit>
+      <trans-unit id="c2hisp2" resname="Line shape">
+        <source>Line shape</source>
+        <target>~Forme des lignes</target>
+      </trans-unit>
+      <trans-unit id="mb7wpgd" resname="Curved">
+        <source>Curved</source>
+        <target>~Courbes</target>
+      </trans-unit>
+      <trans-unit id="t2eczas" resname="Straight">
+        <source>Straight</source>
+        <target>~Droites</target>
+      </trans-unit>
+      <trans-unit id="8dqcct9" resname="Stepped">
+        <source>Stepped</source>
+        <target>~En escalier</target>
+      </trans-unit>
+      <trans-unit id="t5ph8v1" resname="Spacing">
+        <source>Spacing</source>
+        <target>~Espacement</target>
+      </trans-unit>
+      <trans-unit id="f62h5co" resname="Compact">
+        <source>Compact</source>
+        <target>~Compact</target>
+      </trans-unit>
+      <trans-unit id="1fgnay8" resname="Drawing margins">
+        <source>Drawing margins</source>
+        <target>~Marges du dessin</target>
+      </trans-unit>
+      <trans-unit id="ymbe10d" resname="Tight">
+        <source>Tight</source>
+        <target>~Serrées</target>
+      </trans-unit>
+      <trans-unit id="terw956" resname="Diagram appearance">
+        <source>Diagram appearance</source>
+        <target>~Apparence du diagramme</target>
+      </trans-unit>
+      <trans-unit id="3wwyeej" resname="Light or dark mode">
+        <source>Light or dark mode</source>
+        <target>~Mode clair ou sombre</target>
+      </trans-unit>
+      <trans-unit id="z5pf1ji" resname="Zoom in">
+        <source>Zoom in</source>
+        <target>~Zoom avant</target>
+      </trans-unit>
+      <trans-unit id="q08r75t" resname="Fit to the available space">
+        <source>Fit to the available space</source>
+        <target>~Ajuster à l'espace disponible</target>
+      </trans-unit>
+      <trans-unit id="mgvgx9g" resname="Zoom out">
+        <source>Zoom out</source>
+        <target>~Zoom arrière</target>
+      </trans-unit>
+      <trans-unit id="bfbmkv4" resname="Back to 100 %">
+        <source>Back to 100 %</source>
+        <target>~Revenir à 100 %</target>
+      </trans-unit>
+      <trans-unit id="pymsy3h" resname="Diagram code">
+        <source>Diagram code</source>
+        <target>~Code du diagramme</target>
+      </trans-unit>
+      <trans-unit id="aywrxtw" resname="Copied">
+        <source>Copied</source>
+        <target>~Copié</target>
+      </trans-unit>
+      <trans-unit id="eyutsly" resname="Link copied to the clipboard">
+        <source>Link copied to the clipboard</source>
+        <target>~Lien copié dans le presse-papiers</target>
+      </trans-unit>
+      <trans-unit id="f2ftfl1" resname="Image copied to the clipboard">
+        <source>Image copied to the clipboard</source>
+        <target>~Image copiée dans le presse-papiers</target>
+      </trans-unit>
+      <trans-unit id="nzpquz4" resname="Copying was not possible">
+        <source>Copying was not possible</source>
+        <target>~La copie n'a pas été possible</target>
+      </trans-unit>
+      <trans-unit id="wkp0uie" resname="The diagram has an error">
+        <source>The diagram has an error</source>
+        <target>~Le diagramme contient une erreur</target>
+      </trans-unit>
+      <trans-unit id="tupwmbq" resname="Write the diagram code or choose an example.">
+        <source>Write the diagram code or choose an example.</source>
+        <target>~Écrivez le code du diagramme ou choisissez un exemple.</target>
+      </trans-unit>
+      <trans-unit id="dd4c24i" resname="Rendering…">
+        <source>Rendering…</source>
+        <target>~Dessin en cours…</target>
+      </trans-unit>
+      <trans-unit id="wgjwxb7" resname="Neutral">
+        <source>Neutral</source>
+        <target>~Neutre</target>
+      </trans-unit>
+      <trans-unit id="hn4nkko" resname="Forest">
+        <source>Forest</source>
+        <target>~Forêt</target>
+      </trans-unit>
+      <trans-unit id="hvoor0n" resname="Base">
+        <source>Base</source>
+        <target>~Base</target>
+      </trans-unit>
+      <trans-unit id="2u8wrwe" resname="Diagrams generated with">
+        <source>Diagrams generated with</source>
+        <target>~Diagrammes générés avec</target>
+      </trans-unit>
+      <trans-unit id="66u8rvq" resname="How it works">
+        <source>How it works</source>
+        <target>~Comment ça marche</target>
+      </trans-unit>
+      <trans-unit id="soxirez" resname="The diagram is written as text in the left panel and the drawing appears on the right. Everything runs in the browser itself: the diagram is not sent to any server.">
+        <source>The diagram is written as text in the left panel and the drawing appears on the right. Everything runs in the browser itself: the diagram is not sent to any server.</source>
+        <target>~Le diagramme s'écrit sous forme de texte dans le panneau de gauche et le dessin apparaît à droite. Tout se passe dans le navigateur : le diagramme n'est envoyé à aucun serveur.</target>
+      </trans-unit>
+      <trans-unit id="z57nyar" resname="The share button builds an address that carries the compressed diagram inside, so it can be shared without uploading it anywhere. The link can open in the editor or full screen, with the diagram alone, and the code to embed it in another page is available too.">
+        <source>The share button builds an address that carries the compressed diagram inside, so it can be shared without uploading it anywhere. The link can open in the editor or full screen, with the diagram alone, and the code to embed it in another page is available too.</source>
+        <target>~Le bouton de partage construit une adresse qui contient le diagramme compressé, ce qui permet de le partager sans le téléverser nulle part. Le lien peut s'ouvrir dans l'éditeur ou en plein écran, avec le diagramme seul, et le code pour l'intégrer dans une autre page est aussi disponible.</target>
+      </trans-unit>
+      <trans-unit id="ougbkkf" resname="Mermaid syntax reference">
+        <source>Mermaid syntax reference</source>
+        <target>~Référence de la syntaxe de Mermaid</target>
+      </trans-unit>
+      <trans-unit id="2vohmzb" resname="Credits and licences">
+        <source>Credits and licences</source>
+        <target>~Crédits et licences</target>
+      </trans-unit>
+      <trans-unit id="qz8fdfa" resname="Credits, licences and AI use">
+        <source>Credits, licences and AI use</source>
+        <target>~Crédits, licences et utilisation de l'IA</target>
+      </trans-unit>
+      <trans-unit id="8rjcunm" resname="Sirena is by Juan José de Haro, with the code under AGPL v3 and the content under CC BY-SA 4.0. It draws the diagrams with Mermaid, by Knut Sveidqvist and contributors (MIT), which bundles other free libraries, among them D3 (ISC), ELK (EPL 2.0 or GPL 3.0), KaTeX (MIT), Cytoscape (MIT) and DOMPurify (MPL 2.0 or Apache 2.0). The icons are from Lucide (ISC).">
+        <source>Sirena is by Juan José de Haro, with the code under AGPL v3 and the content under CC BY-SA 4.0. It draws the diagrams with Mermaid, by Knut Sveidqvist and contributors (MIT), which bundles other free libraries, among them D3 (ISC), ELK (EPL 2.0 or GPL 3.0), KaTeX (MIT), Cytoscape (MIT) and DOMPurify (MPL 2.0 or Apache 2.0). The icons are from Lucide (ISC).</source>
+        <target>~Sirena est l'œuvre de Juan José de Haro ; le code est sous AGPL v3 et le contenu sous CC BY-SA 4.0. Les diagrammes sont dessinés avec Mermaid, de Knut Sveidqvist et ses contributeurs (MIT), qui intègre d'autres bibliothèques libres, dont D3 (ISC), ELK (EPL 2.0 ou GPL 3.0), KaTeX (MIT), Cytoscape (MIT) et DOMPurify (MPL 2.0 ou Apache 2.0). Les icônes proviennent de Lucide (ISC).</target>
+      </trans-unit>
+      <trans-unit id="1gxrtj8" resname="All libraries and their licences">
+        <source>All libraries and their licences</source>
+        <target>~Toutes les bibliothèques et leurs licences</target>
+      </trans-unit>
+      <trans-unit id="ngrz6m1" resname="Sirena was programmed with the help of AI (Claude), in ">
+        <source>Sirena was programmed with the help of AI (Claude), in </source>
+        <target>~Sirena a été programmé avec l'aide de l'IA (Claude), en </target>
+      </trans-unit>
+      <trans-unit id="gpzf1d3" resname="co-creation, level 4 of MIAE">
+        <source>co-creation, level 4 of MIAE</source>
+        <target>~co-création, niveau 4 du MIAE</target>
+      </trans-unit>
+      <trans-unit id="k0sugmw" resname=": the author decided the design and the features, and tested the program many times, in different situations, to find errors and things to improve.">
+        <source>: the author decided the design and the features, and tested the program many times, in different situations, to find errors and things to improve.</source>
+        <target>~ : l'auteur a décidé de la conception et des fonctions, et a testé le programme de nombreuses fois, dans différentes situations, pour trouver des erreurs et des points à améliorer.</target>
+      </trans-unit>
+      <trans-unit id="kgluiy9" resname="The link contains a diagram that could not be read.">
+        <source>The link contains a diagram that could not be read.</source>
+        <target>~Le lien contient un diagramme qui n'a pas pu être lu.</target>
+      </trans-unit>
+      <trans-unit id="d3tu442" resname="Limits the size of the diagram on the page. Left empty, the diagram takes the available width.">
+        <source>Limits the size of the diagram on the page. Left empty, the diagram takes the available width.</source>
+        <target>~Limite la taille du diagramme dans la page. Laissé vide, le diagramme occupe la largeur disponible.</target>
+      </trans-unit>
+      <trans-unit id="rdjy0e6" resname="There is nothing to insert: the code is empty.">
+        <source>There is nothing to insert: the code is empty.</source>
+        <target>~Il n'y a rien à insérer : le code est vide.</target>
+      </trans-unit>
+      <trans-unit id="tl4cx7b" resname="Branch thickness">
+        <source>Branch thickness</source>
+        <target>~Épaisseur des branches</target>
+      </trans-unit>
+      <trans-unit id="nrv99us" resname="Changes the shape of all {n} boxes in the map.">
+        <source>Changes the shape of all {n} boxes in the map.</source>
+        <target>~Change la forme des {n} boîtes de la carte.</target>
+      </trans-unit>
+      <trans-unit id="tg3sbcq" resname="Branch colour">
+        <source>Branch colour</source>
+        <target>~Couleur de la branche</target>
+      </trans-unit>
+      <trans-unit id="ach9lv6" resname="Add a branch">
+        <source>Add a branch</source>
+        <target>~Ajouter une branche</target>
+      </trans-unit>
+      <trans-unit id="5g4njzp" resname="New idea">
+        <source>New idea</source>
+        <target>~Nouvelle idée</target>
+      </trans-unit>
+      <trans-unit id="ea2pi4j" resname="The default shape does not allow brackets or braces: the box becomes a square.">
+        <source>The default shape does not allow brackets or braces: the box becomes a square.</source>
+        <target>~La forme par défaut n’accepte ni parenthèses, ni crochets, ni accolades : la boîte devient carrée.</target>
+      </trans-unit>
+      <trans-unit id="eluzdtv" resname="Centre colour">
+        <source>Centre colour</source>
+        <target>~Couleur du centre</target>
+      </trans-unit>
+      <trans-unit id="vnen0pv" resname="Branch">
+        <source>Branch</source>
+        <target>~Branche</target>
+      </trans-unit>
+      <trans-unit id="vutjd3t" resname="The default shape does not allow brackets or braces in the text">
+        <source>The default shape does not allow brackets or braces in the text</source>
+        <target>~La forme par défaut n’accepte ni parenthèses, ni crochets, ni accolades dans le texte</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
