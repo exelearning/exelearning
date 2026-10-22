@@ -217,7 +217,7 @@ export async function createUserAsAdmin(
         password: string;
         userId?: string; // Optional: only for SSO users (CAS/OIDC)
         roles: string[];
-        quotaMb?: number;
+        quotaMb?: number | null;
     },
 ): Promise<User> {
     const timestamp = now();
@@ -250,6 +250,14 @@ export async function updateUserQuota(
         quota_mb: quotaMb,
         updated_at: now(),
     });
+}
+
+/**
+ * Set the same quota on every user. Returns the number of users updated.
+ */
+export async function updateAllUsersQuota(db: Kysely<Database>, quotaMb: number | null): Promise<number> {
+    const result = await db.updateTable('users').set({ quota_mb: quotaMb, updated_at: now() }).executeTakeFirst();
+    return Number(result.numUpdatedRows ?? 0);
 }
 
 // ============================================================================

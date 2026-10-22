@@ -7,11 +7,12 @@ import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import * as bcrypt from 'bcryptjs';
 import { db, resetClientCacheForTesting } from '../../../db/client';
-import { up } from '../../../db/migrations/001_initial';
+import { migrateToLatest } from '../../../db/migrations';
 import { now } from '../../../db/types';
 import { usersRoutes } from './users';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser } from '../../../db/queries';
+import { setSetting } from '../../../db/queries/admin';
 
 let originalEnv: Record<string, string | undefined>;
 
@@ -55,7 +56,7 @@ describe('Users API v1', () => {
         process.env.JWT_SECRET = 'test-secret-for-users-tests';
 
         await resetClientCacheForTesting();
-        await up(db);
+        await migrateToLatest(db);
 
         app = createTestApp();
 
@@ -176,9 +177,7 @@ describe('Users API v1', () => {
             expect(response.status).toBe(403);
         });
 
-        // Note: Full user creation requires proper db setup
-        // This test verifies auth passes for admin
-        it('should accept create request for admin (auth passes)', async () => {
+        it('should create the user for admin', async () => {
             const response = await app.handle(
                 new Request('http://localhost/users', {
                     method: 'POST',
@@ -192,15 +191,38 @@ describe('Users API v1', () => {
                     }),
                 }),
             );
-            // Auth passes, creation may succeed or fail due to db setup
-            expect([201, 500]).toContain(response.status);
-            if (response.status === 201) {
-                const data = (await response.json()) as {
-                    success: boolean;
-                    data: { id: number; email: string };
-                };
-                expect(data.success).toBe(true);
-                expect(data.data.email).toBe('createduser@test.com');
+            expect(response.status).toBe(201);
+            const data = (await response.json()) as {
+                success: boolean;
+                data: { id: number; email: string; roles: string[] };
+            };
+            expect(data.success).toBe(true);
+            expect(data.data.email).toBe('createduser@test.com');
+            expect(data.data.roles).toEqual(['ROLE_USER']);
+            expect((await findUserById(db, data.data.id))?.email).toBe('createduser@test.com');
+        });
+
+        it('should give the new user the configured DEFAULT_QUOTA', async () => {
+            await setSetting(db, 'DEFAULT_QUOTA', '250', 'number');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/users', {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${adminToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: 'quotauser@test.com',
+                            password: 'password123',
+                        }),
+                    }),
+                );
+                expect(response.status).toBe(201);
+                const created = await findUserByEmail(db, 'quotauser@test.com');
+                expect(created?.quota_mb).toBe(250);
+            } finally {
+                await db.deleteFrom('app_settings').where('key', '=', 'DEFAULT_QUOTA').execute();
             }
         });
     });
