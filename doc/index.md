@@ -14,6 +14,7 @@ Use the sections below to jump to what you need.
 
 ## For End Users
 - [Install](install.md)
+- [WebMCP](webmcp.md)
 - [Plugins](plugins/index.md): use eXeLearning inside Moodle, Nextcloud, WordPress, Omeka S and Google Drive
   ([en español](plugins/index.es.md))
 - [Profile pictures](profile-avatars.md)
@@ -32,6 +33,7 @@ Use the sections below to jump to what you need.
 - Customization: [Creating a Style](development/styles.md)
 - Version Control: [Branching and PRs](development/version-control.md)
 - Installers: [Installers](development/installers.md)
+- WebMCP: [Browser MCP integration](development/webmcp.md)
 
 - Embedding: [Embedding the editor in LMS plugins](development/embedding.md)
 
