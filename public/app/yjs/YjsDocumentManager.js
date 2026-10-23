@@ -865,9 +865,10 @@ class YjsDocumentManager {
           // server snapshot before this tab's next (auto)save can run; the
           // 'connectionChange' event that re-arms autosave is emitted after.
           this._wasDisconnected = false;
-          this.loadFromServer().finally(() => {
-            this.emit('connectionChange', { connected: true });
-          });
+          const announce = () => this.emit('connectionChange', { connected: true });
+          // loadFromServer() swallows its own errors; the rejection branch only
+          // guards a mocked/overridden implementation from leaking a rejection.
+          this.loadFromServer().then(announce, announce);
         } else {
           this.emit('connectionChange', { connected: true });
         }
