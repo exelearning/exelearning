@@ -72,6 +72,8 @@ class YjsDocumentManager {
 
     // Stateless relay architecture: track dirty state for explicit saves
     this.isDirty = false;
+    // Issue #2615: set when a deferred cleanup was skipped to keep unsaved local work.
+    this._recoverUnsavedLocalCopy = false;
     this.lastSavedAt = null;
     this.saveInProgress = false;
 
@@ -167,7 +169,18 @@ class YjsDocumentManager {
     if (needsCleanup) {
       Logger.log(`[YjsDocumentManager] Found pending cleanup flag for project ${this.projectId}, hasTabSession=${hasTabSession}`);
 
-      if (!hasTabSession) {
+      const hasUnsavedLocalWork = (() => {
+        try { return localStorage.getItem(this._dirtyStateKey) === 'true'; } catch (_) { return false; }
+      })();
+      if (!hasTabSession && hasUnsavedLocalWork && !this.config.offline) {
+        // Issue #2615: the last tab closed with edits the server never received
+        // (autosave still pending or failed). Wiping IndexedDB here would be the
+        // one remaining way to lose them, so keep the local copy and the dirty
+        // flag; the server snapshot is merged in below and the restored dirty
+        // state is autosaved once the connection is live.
+        this._recoverUnsavedLocalCopy = true;
+        Logger.log(`[YjsDocumentManager] Keeping local copy with unsaved work for project ${this.projectId} (skipping deferred cleanup)`);
+      } else if (!hasTabSession) {
         // New tab session after the previous last-tab close — perform full cleanup now.
         Logger.log(`[YjsDocumentManager] Performing deferred cleanup (deleting IndexedDB and dirty state)...`);
         await new Promise((resolve) => {
@@ -367,6 +380,11 @@ class YjsDocumentManager {
         }
       }
       // For online mode, YjsProjectBridge will call ensureBlankStructureIfEmpty() after sync
+    } else if (this._recoverUnsavedLocalCopy && !this.config.offline) {
+      // Issue #2615: the recovered local copy may predate saves made from another
+      // browser. Merge the server snapshot (Yjs merges are idempotent) so the
+      // pending autosave never overwrites work that reached the server meanwhile.
+      await this.loadFromServer();
     }
 
     // Setup UndoManager

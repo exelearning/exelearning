@@ -8300,6 +8300,19 @@ describe('YjsProjectBridge', () => {
       expect(bridge.collaborativeAutosave.options.idleDelayMs).toBeUndefined();
     });
 
+    it('passes the retry base override from window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__ (issue #2615)', () => {
+      global.window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__ = 700;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.retryBaseMs).toBe(700);
+      delete global.window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__;
+    });
+
+    it('uses the default retry base when no override is set', () => {
+      delete global.window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.retryBaseMs).toBeUndefined();
+    });
+
     it('destroys and clears the autosave manager on disconnect', async () => {
       bridge.enableAutoSync();
       const manager = bridge.collaborativeAutosave;

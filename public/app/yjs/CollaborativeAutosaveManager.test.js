@@ -377,20 +377,82 @@ describe('CollaborativeAutosaveManager', () => {
             expect(onStatusChange).toHaveBeenCalledWith('failed');
         });
 
-        it('stops retrying after the maximum number of attempts', async () => {
-            bridge.saveManager.save = vi.fn().mockResolvedValue({ success: false, error: 'boom' });
-
+        it('keeps retrying at the capped interval after the fast attempts are used up', async () => {
+            bridge.saveManager.save.mockImplementation(async () => ({ success: false, error: 'boom' }));
             manager.start();
             makeDirty(bridge.documentManager);
-
-            // Run far past every backoff window.
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
-            for (let i = 0; i < 10; i++) {
-                await vi.advanceTimersByTimeAsync(OPTIONS.retryBaseMs * Math.pow(2, i));
-            }
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
 
-            // 1 initial attempt + maxRetries retries, then it gives up.
-            expect(bridge.saveManager.save).toHaveBeenCalledTimes(OPTIONS.maxRetries + 1);
+            // Fast retries: 2s, 4s, 8s (maxRetries = 3) ...
+            await vi.advanceTimersByTimeAsync(2000);
+            await vi.advanceTimersByTimeAsync(4000);
+            await vi.advanceTimersByTimeAsync(8000);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(4);
+
+            // ... then the interval stays capped at 2^maxRetries * base = 16s, forever.
+            await vi.advanceTimersByTimeAsync(16000);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(5);
+            await vi.advanceTimersByTimeAsync(16000);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(6);
+            await vi.advanceTimersByTimeAsync(16000 * 10);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(16);
+            expect(manager.getPhase()).toBe('failed');
+        });
+
+        it('retries promptly when the connection comes back after failures', async () => {
+            bridge.saveManager.save.mockImplementation(async () => ({ success: false, error: 'offline' }));
+            manager.start();
+            makeDirty(bridge.documentManager);
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
+            await vi.advanceTimersByTimeAsync(2000);
+            await vi.advanceTimersByTimeAsync(4000);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(3);
+            expect(manager.getPhase()).toBe('failed');
+
+            // The endpoint is reachable again and the websocket reconnects.
+            bridge.saveManager.save.mockImplementation(async () => {
+                bridge.documentManager.isDirty = false;
+                bridge.documentManager.emit('saveStatus', { status: 'saved', isDirty: false });
+                return { success: true };
+            });
+            bridge.documentManager.emit('connectionChange', { connected: true });
+
+            // The backoff (8s next) is replaced by the idle delay.
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(4);
+            expect(manager.getPhase()).toBe('clean');
+        });
+
+        it('recovers on its own once the endpoint is back, without a manual save', async () => {
+            let failures = 2;
+            bridge.saveManager.save.mockImplementation(async () => {
+                if (failures > 0) {
+                    failures -= 1;
+                    return { success: false, error: '503' };
+                }
+                bridge.documentManager.isDirty = false;
+                bridge.documentManager.emit('saveStatus', { status: 'saved', isDirty: false });
+                return { success: true };
+            });
+            manager.start();
+            makeDirty(bridge.documentManager);
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
+            await vi.advanceTimersByTimeAsync(2000);
+            expect(manager.getPhase()).toBe('failed');
+            await vi.advanceTimersByTimeAsync(4000);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(3);
+            expect(manager.getPhase()).toBe('clean');
+            expect(onStatusChange.mock.calls.map((c) => c[0])).toEqual([
+                'clean',
+                'pending',
+                'saving',
+                'failed',
+                'saving',
+                'failed',
+                'saving',
+                'clean',
+            ]);
         });
 
         it('leaves the document dirty when autosave fails', async () => {

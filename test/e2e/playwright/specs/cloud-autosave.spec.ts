@@ -7,6 +7,7 @@ import { NavigationPage } from '../pages/navigation.page';
 declare global {
     interface Window {
         __EXE_COLLAB_AUTOSAVE_IDLE_MS__?: number;
+        __EXE_COLLAB_AUTOSAVE_RETRY_MS__?: number;
         __exeSaveCalls?: Array<{ reason: string | null }>;
     }
 }
@@ -42,6 +43,13 @@ test.describe('Cloud autosave (single user)', () => {
     async function setIdle(page: Page, ms: number): Promise<void> {
         await page.addInitScript(value => {
             window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = value;
+        }, ms);
+    }
+
+    /** Install the retry backoff base override before the app boots. */
+    async function setRetryBase(page: Page, ms: number): Promise<void> {
+        await page.addInitScript(value => {
+            window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__ = value;
         }, ms);
     }
 
@@ -307,6 +315,85 @@ test.describe('Cloud autosave (single user)', () => {
 
         await reopenFromServer(page, projectUuid);
         expect(await readAuthor(page)).toBe('Export Author');
+    });
+
+    test('unsaved edits survive closing the last tab and are autosaved on the next open', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await setIdle(page, LONG_IDLE_MS);
+        const projectUuid = await createProject(page, 'Cloud Autosave Tab Close');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await waitForYjsSync(page);
+
+        // Edit, and close the last tab before the (long) idle autosave fires.
+        await editMetadata(page, 'Closed Too Early');
+        await expect(page.locator('#head-top-save-button')).toHaveClass(/unsaved/);
+        await page.waitForTimeout(500); // let y-indexeddb flush
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            bridge?.documentManager?._tabTracker?.forceCleanup();
+        });
+        await page.waitForFunction(id => localStorage.getItem(`exe-needs-cleanup-${id}`) === 'true', projectUuid, {
+            timeout: 5000,
+        });
+        await page.evaluate(() => sessionStorage.clear());
+
+        // Fresh tab: the local copy with unsaved work is kept (not wiped), the
+        // dirty state is restored and, with a short idle, autosaved.
+        await setIdle(page, SHORT_IDLE_MS);
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await waitForYjsSync(page);
+        expect(await readAuthor(page)).toBe('Closed Too Early');
+        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+
+        // Now it is on the server: a real wipe (nothing unsaved) still shows it.
+        await reopenFromServer(page, projectUuid);
+        expect(await readAuthor(page)).toBe('Closed Too Early');
+    });
+
+    test('keeps retrying and recovers by itself once the save endpoint is back (no manual click)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await setIdle(page, SHORT_IDLE_MS);
+        await setRetryBase(page, 1000);
+        const projectUuid = await createProject(page, 'Cloud Autosave Retry Queue');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await waitForYjsSync(page);
+        await spyOnSaves(page);
+
+        const saveUrl = `**/api/projects/uuid/${projectUuid}/yjs-document**`;
+        let blocked = 0;
+        await page.route(saveUrl, route => {
+            if (route.request().method() === 'POST') {
+                blocked += 1;
+                return route.fulfill({ status: 503, body: 'unavailable' });
+            }
+            return route.continue();
+        });
+        await editMetadata(page, 'Retry Author');
+        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'failed', { timeout: 30000 });
+
+        // Let the retry loop run a few rounds while the endpoint is down ...
+        await expect.poll(() => blocked, { timeout: 30000 }).toBeGreaterThanOrEqual(3);
+        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'failed');
+
+        // ... then bring it back: the next retry succeeds on its own.
+        await page.unroute(saveUrl);
+        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 30000 });
+        await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
+        const calls = await saveCalls(page);
+        expect(calls.length).toBeGreaterThanOrEqual(4);
+        expect(calls.every(c => c.reason === 'collaborative-autosave')).toBe(true);
+
+        await reopenFromServer(page, projectUuid);
+        expect(await readAuthor(page)).toBe('Retry Author');
     });
 
     test('a failed autosave is reported and recovers on the next successful save', async ({

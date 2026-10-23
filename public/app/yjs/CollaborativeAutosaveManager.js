@@ -18,7 +18,8 @@
  *   - It requires a live WebSocket/synced document so the first autosave never
  *     races the initial load.
  *   - It never overlaps with another save (manual or automatic).
- *   - It retries failed saves with a bounded backoff rather than tight-looping.
+ *   - It retries failed saves with an exponential, capped backoff and never
+ *     gives up while the document is dirty; a reconnection retries at once.
  *
  * Persistence note: autosave uses the SAME explicit save path as a manual save
  * (`SaveManager.save`), which encodes the latest Yjs snapshot, uploads pending
@@ -40,7 +41,9 @@ class CollaborativeAutosaveManager {
      * @param {number} [options.idleDelayMs=8000] - Debounce window after the
      *   last change before autosaving.
      * @param {number} [options.retryBaseMs=5000] - Base delay for backoff retry.
-     * @param {number} [options.maxRetries=5] - Maximum consecutive retry attempts.
+     * @param {number} [options.maxRetries=5] - Number of fast (exponential)
+     *   retries before settling into the capped steady retry interval. Autosave
+     *   never gives up while the document is dirty (issue #2615).
      * @param {(phase: string) => void} [options.onStatusChange] - Notified when
      *   the collaborative save phase changes.
      */
@@ -205,7 +208,17 @@ class CollaborativeAutosaveManager {
             this._announced = true;
             this._notify(this._phase);
         }
-        if (this._isDirty() && !this._timer && !this._saveInProgress) {
+        if (!this._isDirty() || this._saveInProgress) return;
+        if (this._phase === 'failed') {
+            // The connection is back after failed attempts: drop the backoff
+            // timer and retry promptly (the UI keeps showing 'failed' until the
+            // save actually succeeds).
+            this._retryCount = 0;
+            this._clearTimer();
+            this.scheduleSave();
+            return;
+        }
+        if (!this._timer) {
             this._setPhase('pending');
             this.scheduleSave();
         }
@@ -257,12 +270,14 @@ class CollaborativeAutosaveManager {
         } else {
             this._pendingAfterSave = false;
             this._setPhase('failed');
-            if (this._retryCount < this.maxRetries) {
-                this.scheduleSave({ retry: true });
-                this._retryCount += 1;
-            }
-            // Otherwise give up retrying and leave the 'failed' notice up; the
-            // user must save manually, and the beforeunload warning still fires.
+            // Never give up while there is unsaved work (#2615): back off
+            // exponentially for the first `maxRetries` attempts, then keep
+            // retrying at the capped interval. A reconnection (see
+            // _handleConnectionChange) restarts the fast cycle immediately, the
+            // 'failed' notice stays visible and the beforeunload warning still
+            // protects the dirty document meanwhile.
+            this.scheduleSave({ retry: true });
+            this._retryCount += 1;
         }
     }
 
@@ -273,7 +288,7 @@ class CollaborativeAutosaveManager {
      * @private
      */
     _retryDelay() {
-        const exponent = Math.min(this._retryCount, 4);
+        const exponent = Math.min(this._retryCount, this.maxRetries, 4);
         return this.retryBaseMs * Math.pow(2, exponent);
     }
 

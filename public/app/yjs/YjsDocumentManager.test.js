@@ -333,6 +333,93 @@ describe('YjsDocumentManager', () => {
     });
   });
 
+  describe('deferred cleanup keeps unsaved local work (issue #2615)', () => {
+    let deleteDatabase;
+
+    function makeOnlineManager() {
+      const m = new YjsDocumentManager('test-project-123', {
+        wsUrl: 'ws://localhost:3001/yjs',
+        apiUrl: '/api',
+        token: 'test-token',
+        offline: false,
+      });
+      spyOn(m, '_validateIndexedDb').mockResolvedValue(true);
+      spyOn(m, 'loadFromServer').mockResolvedValue(undefined);
+      return m;
+    }
+
+    beforeEach(() => {
+      deleteDatabase = mock(() => {
+        const req = { onsuccess: null, onerror: null, onblocked: null };
+        setTimeout(() => req.onsuccess && req.onsuccess(), 0);
+        return req;
+      });
+      global.indexedDB = { deleteDatabase };
+      global.window.indexedDB = global.indexedDB;
+      // Previous session: last tab closed (cleanup scheduled) in a fresh tab session.
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+    });
+
+    it('keeps IndexedDB and the dirty flag when the last tab closed with unsaved work, and merges the server snapshot', async () => {
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      await manager.destroy();
+      manager = makeOnlineManager();
+
+      await manager.initialize();
+
+      expect(deleteDatabase).not.toHaveBeenCalled();
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+      expect(manager._recoverUnsavedLocalCopy).toBe(true);
+      // The local copy is not empty-checked here (mock provider), so the merge
+      // call is what matters: the server state is applied on top of it.
+      expect(manager.loadFromServer).toHaveBeenCalled();
+      // And captureBaselineState() restores the dirty state for autosave.
+      manager.captureBaselineState();
+      expect(manager.isDirty).toBe(true);
+    });
+
+    it('still wipes the local copy when the previous session had nothing unsaved', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+
+      await manager.initialize();
+
+      expect(deleteDatabase).toHaveBeenCalledWith('exelearning-project-test-project-123');
+      expect(manager._recoverUnsavedLocalCopy).toBe(false);
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('does not preserve anything for an offline manager (no remote storage to autosave to)', async () => {
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      // `manager` from the outer beforeEach is offline.
+      spyOn(manager, '_validateIndexedDb').mockResolvedValue(true);
+
+      await manager.initialize();
+
+      expect(deleteDatabase).toHaveBeenCalledTimes(1);
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBeNull();
+      expect(manager._recoverUnsavedLocalCopy).toBe(false);
+    });
+
+    it('preserves nothing on a same-tab reload (session storage marker present): existing behaviour', async () => {
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      global.sessionStorage.setItem('exe-tab-session-test-project-123', 'true');
+      await manager.destroy();
+      manager = makeOnlineManager();
+
+      await manager.initialize();
+
+      expect(deleteDatabase).not.toHaveBeenCalled();
+      expect(manager._recoverUnsavedLocalCopy).toBe(false);
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+    });
+  });
+
   describe('generateId', () => {
     it('generates unique UUIDs', () => {
       const id1 = manager.generateId();

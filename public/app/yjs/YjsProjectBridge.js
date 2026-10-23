@@ -2645,8 +2645,11 @@ class YjsProjectBridge {
       // manager's conservative default when unset.
       const idleOverride = window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
       const idleDelayMs = typeof idleOverride === 'number' && idleOverride >= 0 ? idleOverride : undefined;
+      const retryOverride = window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__;
+      const retryBaseMs = typeof retryOverride === 'number' && retryOverride >= 0 ? retryOverride : undefined;
       this.collaborativeAutosave = new window.CollaborativeAutosaveManager(this, {
         idleDelayMs,
+        retryBaseMs,
         onStatusChange: (phase) => this._updateCollaborativeSaveStatus(phase),
       });
       this.collaborativeAutosave.start();

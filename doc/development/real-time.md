@@ -279,7 +279,7 @@ const SERVER_CONFIG = {
 - Yjs uses CRDT, conflicts are auto-resolved
 - Check IndexedDB for local state
 - Use `manager.saveToServer()` to persist
-- Online sessions autosave after an idle period; the `beforeunload` `sendBeacon` fallback is best-effort only and silently fails for documents above 64 KiB, so never rely on it
+- Online sessions autosave after an idle period and keep retrying (capped backoff, immediate retry on reconnection) until the save succeeds; if the last tab closes with unsaved work the local IndexedDB copy is kept, merged with the server snapshot on the next open and autosaved. The `beforeunload` `sendBeacon` fallback is best-effort only and silently fails for documents above 64 KiB, so never rely on it
 
 ### Asset Loading
 
