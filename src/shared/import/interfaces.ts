@@ -142,6 +142,11 @@ export interface ElpxImportResult {
      * what lets the caller warn the author instead of only logging to console.
      */
     malformedProperties?: MalformedPropertiesRef[];
+    /**
+     * Activities whose damaged jsonProperties were repaired on import (#2611),
+     * so the caller can ask the author to check them.
+     */
+    repairedProperties?: MalformedPropertiesRef[];
 }
 
 /** An activity whose persisted jsonProperties could not be parsed (#2190). */
