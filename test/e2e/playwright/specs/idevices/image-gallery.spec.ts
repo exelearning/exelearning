@@ -7,6 +7,9 @@ import {
     waitForAppReady,
     reloadPage,
     gotoWorkarea,
+    serveWebSiteExport,
+    addPage,
+    selectPageByIndex,
 } from '../../helpers/workarea-helpers';
 
 /**
@@ -509,6 +512,86 @@ test.describe('Image Gallery iDevice', () => {
             // Verify close button is present (closing mechanism exists)
             const closeBtn = iframe.locator('.sl-close');
             await expect(closeBtn).toBeVisible({ timeout: 5000 });
+        });
+
+        test('presentation mode keys stay inactive while the lightbox is open, and work again once closed', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Image Gallery Keyboard Suppression Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // Page 1: image gallery iDevice with one photo.
+            await addImageGalleryFromPanel(page);
+            await uploadImagesToGallery(page, ['test/fixtures/sample-3.jpg']);
+            await page.locator('.imgSelectContainer').first().waitFor({ timeout: 10000 });
+
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            // Page 2: distinct, greppable content so ArrowRight has somewhere real to go
+            // if it isn't correctly suppressed while the lightbox is open.
+            await addPage(page, 'Keyboard Suppression Page Two');
+            await selectPageByIndex(page, 0);
+
+            // Presentation mode only exists in a web site export opened as the
+            // top-level document, so serve the export and open it directly.
+            const origin = 'http://image-gallery-presentation.test';
+            await serveWebSiteExport(page, origin);
+            await page.goto(`${origin}/index.html?exe-presentation=1`);
+            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined');
+
+            // =1 enters the mode at once; wait for the runtime to have bound its keys.
+            await page.waitForFunction(() => (window as any).$exeExport?.presentationMode?.isActive() === true);
+            await expect(page.locator('#exe-presentation-toggler')).toHaveText('Exit presentation mode');
+
+            // Check the page's own <h1> rather than the whole body: #siteNav
+            // always lists every page's title in the sidebar, so a body-text
+            // check can't distinguish "which page is actually showing".
+            const pageHeading = page.locator('main h1.page-title');
+            await expect(pageHeading).toHaveText('New page');
+
+            const galleryLink = page.locator('.imageGallery-IDevice a.imageLink').first();
+            await expect(galleryLink).toBeVisible({ timeout: 5000 });
+            await galleryLink.click();
+
+            const lightboxWrapper = page.locator('.sl-wrapper');
+            await expect(lightboxWrapper).toBeVisible({ timeout: 5000 });
+            await page.locator('.sl-image img').waitFor({ state: 'attached', timeout: 5000 });
+
+            // PageDown while the lightbox is open must do nothing: the gallery
+            // fully prevails. Deliberately not ArrowRight here: SimpleLightbox
+            // binds its OWN arrow-key photo navigation on `keyup` and that
+            // transition can leave its close() blocked by an internal
+            // animation-state guard — a vendor quirk unrelated to this check.
+            await page.keyboard.press('PageDown');
+            await page.waitForTimeout(300);
+            await expect(lightboxWrapper).toBeVisible();
+            await expect(pageHeading).toHaveText('New page');
+
+            // Closing the lightbox restores the presentation keys.
+            await page.locator('.sl-close').click();
+            await expect(lightboxWrapper).toBeHidden({ timeout: 5000 });
+
+            await pageHeading.click();
+            await page.keyboard.press('PageDown');
+            await expect(page.locator('main h1.page-title')).toHaveText('Keyboard Suppression Page Two', {
+                timeout: 10000,
+            });
         });
     });
 
