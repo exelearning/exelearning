@@ -1405,10 +1405,26 @@ class SaveManager {
       xhr.setRequestHeader('Content-Type', 'application/octet-stream');
       xhr.setRequestHeader('Authorization', `Bearer ${this.token}`);
       xhr.setRequestHeader('X-Project-Title', encodeURIComponent(title));
+      // Save validation (#2615): tell the server which stored version this
+      // state was built on. If the server holds a newer one it merges instead
+      // of replacing, so a stale client can never overwrite others' saves.
+      if (documentManager.serverVersion) {
+        xhr.setRequestHeader('X-Base-Version', String(documentManager.serverVersion));
+      }
       xhr.send(state);
     });
 
     Logger.log('[SaveManager] Yjs state saved:', result);
+
+    if (result && result.version) {
+      documentManager.serverVersion = String(result.version);
+    }
+    if (result && result.merged && typeof documentManager.loadFromServer === 'function') {
+      // The server merged our state with saves we had not seen: pull the merged
+      // document so this browser converges with what is now stored.
+      Logger.log('[SaveManager] Server merged the save with newer stored changes; reloading merged state');
+      await documentManager.loadFromServer();
+    }
     return result;
   }
 
