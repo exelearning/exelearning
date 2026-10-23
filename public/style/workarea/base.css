@@ -925,6 +925,21 @@ body.has-print-button .nav-buttons .nav-button-right {
     right: 74px;
 }
 
+body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+body.has-print-button .nav-buttons .nav-button-left {
+    right: 218px;
+}
+
+body:has(#exe-print-btn).exe-web-site #darkModeToggler,
+body.has-print-button.exe-web-site #darkModeToggler {
+    right: 362px;
+}
+
+body:has(#exe-print-btn).exe-web-site .page-counter,
+body.has-print-button.exe-web-site .page-counter {
+    right: 426px;
+}
+
 @media (max-width: 767.98px) {
     .exe-web-site .exe-print-action {
         right: 10px;
@@ -933,6 +948,21 @@ body.has-print-button .nav-buttons .nav-button-right {
     body:has(#exe-print-btn) .nav-buttons .nav-button-right,
     body.has-print-button .nav-buttons .nav-button-right {
         right: 60px;
+    }
+
+    body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+    body.has-print-button .nav-buttons .nav-button-left {
+        right: 120px;
+    }
+
+    body:has(#exe-print-btn).exe-web-site #darkModeToggler,
+    body.has-print-button.exe-web-site #darkModeToggler {
+        right: 180px;
+    }
+
+    body:has(#exe-print-btn).exe-web-site .page-counter,
+    body.has-print-button.exe-web-site .page-counter {
+        right: 240px;
     }
 }
 
