@@ -1,0 +1,330 @@
+/* Mind map editor (exemindmap plugin) */
+
+:root {
+    /* eXeLearning's colours (public/style/workarea) */
+    --exe-primary: #0ba1a1;
+    --exe-primary-dark: #107275;
+    --exe-primary-light: #e3f8f9;
+    --exe-border: #d1d5db;
+    --exe-surface: #f6f8fa;
+    --exe-hover: #e5e7eb;
+    --exe-text: #1f2937;
+    --exe-muted: #4b5563;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--exe-text);
+    background: #fff;
+}
+
+#toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--exe-border);
+    background: var(--exe-surface);
+}
+
+.group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.spacer {
+    flex: 1;
+}
+
+button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 30px;
+    padding: 3px 8px;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+
+button svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+button:hover:not(:disabled) {
+    background: var(--exe-hover);
+}
+
+button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+button[aria-pressed="true"] {
+    color: var(--exe-primary-dark);
+    border-color: var(--exe-primary);
+    background: var(--exe-primary-light);
+}
+
+button:focus-visible,
+input:focus-visible,
+.mind-elixir-toolbar span:focus-visible {
+    outline: 2px solid var(--exe-primary);
+    outline-offset: 1px;
+}
+
+#message {
+    padding: 6px 10px;
+    background: #fff8c5;
+    border-bottom: 1px solid #d4a72c;
+}
+
+#message.error {
+    background: #ffebe9;
+    border-color: #cf222e;
+}
+
+#main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+#map {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+/* A light grid, as in the previous editor; it is not part of the saved image */
+#map .map-container {
+    background-image: linear-gradient(#eef0f3 1px, transparent 1px), linear-gradient(90deg, #eef0f3 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+/* Mind Elixir applies a topic's style to the box, which leaves out the caption's
+   text-decoration; the SVG draws it too (textDecoration option) */
+#map .map-container me-tpc > .text {
+    text-decoration: inherit;
+}
+
+/* The dialog cannot go full screen from its iframe, and it is already as large as it can be */
+#map #fullscreen {
+    display: none;
+}
+
+/* The legacy nub on the selected idea: add a child, delete it */
+.node-action {
+    position: absolute;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-height: 0;
+    padding: 0;
+    color: var(--exe-primary-dark);
+    border-color: var(--exe-primary);
+    border-radius: 50%;
+    box-shadow: 0 1px 2px #0003;
+}
+
+.node-action svg {
+    width: 16px;
+    height: 16px;
+}
+
+.node-action[hidden] {
+    display: none;
+}
+
+#node-remove {
+    color: #cf222e;
+    border-color: #cf222e;
+}
+
+/* The legacy Navigator, over the canvas like the legacy panels */
+#navigator {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 190px;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 1px 2px #0003;
+}
+
+#navigator-toggle {
+    justify-content: space-between;
+    width: 100%;
+    min-height: 26px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 0;
+    border-radius: 6px;
+    background: var(--exe-surface);
+}
+
+#navigator-toggle::after {
+    content: "–";
+}
+
+#navigator-toggle[aria-expanded="false"]::after {
+    content: "+";
+}
+
+.navigator-view {
+    position: relative;
+    width: fit-content;
+    margin: 6px auto;
+    cursor: pointer;
+    touch-action: none;
+}
+
+.navigator-view[hidden] {
+    display: none;
+}
+
+.navigator-view img {
+    display: block;
+    max-width: 176px;
+    max-height: 110px;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.navigator-frame {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid #d32f2f;
+    pointer-events: none;
+}
+
+#inspector {
+    flex: none;
+    width: 210px;
+    padding: 12px;
+    overflow-y: auto;
+    border-left: 1px solid var(--exe-border);
+    background: var(--exe-surface);
+}
+
+#inspector section + section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--exe-border);
+}
+
+#inspector h2 {
+    margin: 0 0 8px;
+    font-size: 14px;
+}
+
+label[for="map-title"] {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+#map-title {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 5px 8px;
+    font: inherit;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+}
+
+.check {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.check input {
+    margin: 3px 0 0;
+}
+
+#format-hint {
+    margin: 0 0 10px;
+    color: var(--exe-muted);
+}
+
+.field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.field-label {
+    flex: 1 0 100%;
+    color: var(--exe-muted);
+}
+
+input[type="color"] {
+    width: 38px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+
+input[type="color"]:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+@media (max-width: 640px) {
+    #toolbar button span,
+    #navigator {
+        display: none;
+    }
+
+    #main {
+        flex-direction: column;
+    }
+
+    #inspector {
+        width: auto;
+        max-height: 40%;
+        border-top: 1px solid var(--exe-border);
+        border-left: 0;
+    }
+}
+
+@media print {
+    #toolbar,
+    #message,
+    #inspector,
+    #navigator,
+    .node-action,
+    .mind-elixir-toolbar,
+    .context-menu {
+        display: none !important;
+    }
+
+    #main {
+        height: 100vh;
+    }
+}
