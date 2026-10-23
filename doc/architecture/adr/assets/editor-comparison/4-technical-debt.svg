@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 350" width="760" height="350" role="img" aria-labelledby="t d" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<title id="t">Current TinyMCE 5 technical debt in eXe plugins</title>
+<desc id="d">Number of eXe plugins (own and forks) showing each kind of coupling.</desc>
+<rect width="760" height="350" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<text x="20" y="30" font-size="17" font-weight="600" fill="#1f2328">Current TinyMCE 5 technical debt in eXe plugins</text>
+<text x="20" y="48" font-size="12" fill="#57606a">Measured by scripts/analyze-editor-debt.mjs on 24 eXe plugins (regex counts over source).</text>
+<text x="20" y="78" font-size="13" fill="#1f2328" >eXe plugins (own + forks of core)</text>
+<rect x="290" y="65" width="400" height="18" fill="#8c959f"/>
+<text x="698" y="78" font-size="13" fill="#1f2328" font-weight="600">24</text>
+<text x="20" y="108" font-size="13" fill="#1f2328" >with direct DOM access</text>
+<rect x="290" y="95" width="316.66666666666663" height="18" fill="#d97b4a"/>
+<text x="614.6666666666666" y="108" font-size="13" fill="#1f2328" font-weight="600">19</text>
+<text x="20" y="138" font-size="13" fill="#1f2328" >with jQuery</text>
+<rect x="290" y="125" width="300" height="18" fill="#d97b4a"/>
+<text x="598" y="138" font-size="13" fill="#1f2328" font-weight="600">18</text>
+<text x="20" y="168" font-size="13" fill="#1f2328" >with direct tinymce global access</text>
+<rect x="290" y="155" width="333.33333333333337" height="18" fill="#d97b4a"/>
+<text x="631.3333333333334" y="168" font-size="13" fill="#1f2328" font-weight="600">20</text>
+<text x="20" y="198" font-size="13" fill="#1f2328" >with .tox-* UI selectors</text>
+<rect x="290" y="185" width="283.33333333333337" height="18" fill="#d97b4a"/>
+<text x="581.3333333333334" y="198" font-size="13" fill="#1f2328" font-weight="600">17</text>
+<text x="20" y="228" font-size="13" fill="#1f2328" >with APIs removed in TinyMCE 6</text>
+<rect x="290" y="215" width="233.33333333333334" height="18" fill="#d97b4a"/>
+<text x="531.3333333333334" y="228" font-size="13" fill="#1f2328" font-weight="600">14</text>
+<text x="20" y="258" font-size="13" fill="#1f2328" >with TinyMCE internal markers</text>
+<rect x="290" y="245" width="116.66666666666667" height="18" fill="#d97b4a"/>
+<text x="414.6666666666667" y="258" font-size="13" fill="#1f2328" font-weight="600">7</text>
+<text x="20" y="288" font-size="13" fill="#1f2328" >using parser / schema / serializer</text>
+<rect x="290" y="275" width="50" height="18" fill="#d97b4a"/>
+<text x="348" y="288" font-size="13" fill="#1f2328" font-weight="600">3</text>
+<text x="20" y="318" font-size="13" fill="#1f2328" >without any test file</text>
+<rect x="290" y="305" width="283.33333333333337" height="18" fill="#d97b4a"/>
+<text x="581.3333333333334" y="318" font-size="13" fill="#1f2328" font-weight="600">17</text>
+</svg>
