@@ -72,6 +72,11 @@ class YjsDocumentManager {
 
     // Stateless relay architecture: track dirty state for explicit saves
     this.isDirty = false;
+    // Issue #2615: set when a deferred cleanup was skipped to keep unsaved local work.
+    this._recoverUnsavedLocalCopy = false;
+    // Issue #2615: a reconnection after a drop merges the server snapshot first.
+    this._wasDisconnected = false;
+    this._serverMergePromise = null;
     this.lastSavedAt = null;
     this.saveInProgress = false;
 
@@ -167,7 +172,18 @@ class YjsDocumentManager {
     if (needsCleanup) {
       Logger.log(`[YjsDocumentManager] Found pending cleanup flag for project ${this.projectId}, hasTabSession=${hasTabSession}`);
 
-      if (!hasTabSession) {
+      const hasUnsavedLocalWork = (() => {
+        try { return localStorage.getItem(this._dirtyStateKey) === 'true'; } catch (_) { return false; }
+      })();
+      if (!hasTabSession && hasUnsavedLocalWork && !this.config.offline) {
+        // Issue #2615: the last tab closed with edits the server never received
+        // (autosave still pending or failed). Wiping IndexedDB here would be the
+        // one remaining way to lose them, so keep the local copy and the dirty
+        // flag; the server snapshot is merged in below like on every online
+        // open, and the restored dirty state is autosaved once connected.
+        this._recoverUnsavedLocalCopy = true;
+        Logger.log(`[YjsDocumentManager] Keeping local copy with unsaved work for project ${this.projectId} (skipping deferred cleanup)`);
+      } else if (!hasTabSession) {
         // New tab session after the previous last-tab close — perform full cleanup now.
         Logger.log(`[YjsDocumentManager] Performing deferred cleanup (deleting IndexedDB and dirty state)...`);
         await new Promise((resolve) => {
@@ -333,16 +349,19 @@ class YjsDocumentManager {
       // The YjsProjectBridge will call startWebSocketConnection() after AssetWebSocketHandler is ready
     }
 
-    // Check if document is empty (after IndexedDB sync, before WebSocket sync)
+    // Merge the server snapshot in online mode, whether or not IndexedDB had a
+    // local copy (issue #2615). The WebSocket is a pure relay with no document
+    // state, so a local copy that missed saves made elsewhere (laptop asleep,
+    // restored tab, kept unsaved work) would otherwise be shown as current and
+    // the next save would overwrite the server with it. Yjs merges are
+    // idempotent, so this only adds what the local copy lacks.
+    if (!this.config.offline) {
+      await this.loadFromServer();
+    }
+
+    // Check if document is empty (after IndexedDB + server merge, before WebSocket sync)
     const navigation = this.ydoc.getArray('navigation');
     if (navigation.length === 0) {
-      // Always try to load from server if not offline
-      // Server-side initialization creates initial Yjs document when project is created,
-      // so even new projects have data on the server
-      if (!this.config.offline) {
-        await this.loadFromServer();
-      }
-
       // For OFFLINE mode only: create blank structure immediately
       // (no WebSocket sync will happen, so no risk of duplicates)
       // For ONLINE mode: defer to ensureBlankStructureIfEmpty() after WebSocket sync
@@ -581,6 +600,15 @@ class YjsDocumentManager {
    * Load document state from server
    */
   async loadFromServer() {
+    if (this._serverMergePromise) return this._serverMergePromise;
+    this._serverMergePromise = this._loadFromServer().finally(() => {
+      this._serverMergePromise = null;
+    });
+    return this._serverMergePromise;
+  }
+
+  /** @private */
+  async _loadFromServer() {
     try {
       const response = await fetch(
         `${this.config.apiUrl}/projects/uuid/${this.projectId}/yjs-document`,
@@ -604,10 +632,12 @@ class YjsDocumentManager {
       const arrayBuffer = await response.arrayBuffer();
       const update = new Uint8Array(arrayBuffer);
 
-      // Apply server state
-      this.Y.applyUpdate(this.ydoc, update);
+      // Merge the server state. Yjs updates are idempotent, so applying the
+      // snapshot on top of a local copy only adds what the local copy lacks.
+      // The 'initial' origin keeps the merge out of dirty tracking and undo.
+      this.Y.applyUpdate(this.ydoc, update, 'initial');
 
-      Logger.log(`[YjsDocumentManager] Loaded ${update.length} bytes from server`);
+      Logger.log(`[YjsDocumentManager] Merged ${update.length} bytes from server`);
     } catch (error) {
       // Network errors or other issues - log but continue with local-only operation
       console.warn('[YjsDocumentManager] Could not load from server (using local data):', error.message);
@@ -829,10 +859,23 @@ class YjsDocumentManager {
     this.wsProvider.on('status', ({ status }) => {
       Logger.log(`[YjsDocumentManager] Connection status: ${status}`);
       if (status === 'connected') {
-        this.emit('connectionChange', { connected: true });
+        if (this._wasDisconnected) {
+          // Issue #2615: while this tab was offline other clients may have
+          // saved. The relay has no document state to hand us, so merge the
+          // server snapshot before this tab's next (auto)save can run; the
+          // 'connectionChange' event that re-arms autosave is emitted after.
+          this._wasDisconnected = false;
+          const announce = () => this.emit('connectionChange', { connected: true });
+          // loadFromServer() swallows its own errors; the rejection branch only
+          // guards a mocked/overridden implementation from leaking a rejection.
+          this.loadFromServer().then(announce, announce);
+        } else {
+          this.emit('connectionChange', { connected: true });
+        }
         // Refresh presence immediately after connect/reconnect.
         this.rebroadcastAwareness('status-connected');
       } else if (status === 'disconnected') {
+        this._wasDisconnected = true;
         this.emit('connectionChange', { connected: false });
       }
     });
