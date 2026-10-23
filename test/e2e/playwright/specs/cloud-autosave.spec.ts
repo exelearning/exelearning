@@ -36,7 +36,10 @@ test.describe('Cloud autosave (single user)', () => {
         skipInStaticMode(test, testInfo, 'Requires remote storage and WebSocket');
     });
 
-    const badge = (page: Page) => page.locator('#head-top-save-button .collab-autosave-badge');
+    // In cloud mode the toolbar control is the status chip itself (issue #2615):
+    // the phase is exposed as data-cloud-phase on #head-top-save-button.
+    const badge = (page: Page) => page.locator('#head-top-save-button');
+    const chipLabel = (page: Page) => page.locator('#head-top-save-button .cloud-save-label');
     const liveRegion = (page: Page) => page.locator('#exe-collab-save-status .content');
 
     /** Install the short/long idle override before the app boots. */
@@ -140,10 +143,17 @@ test.describe('Cloud autosave (single user)', () => {
         await editMetadata(page, 'Solo Author');
 
         // Status goes to clean once the idle autosave has persisted the change.
-        await expect(badge(page)).toBeVisible({ timeout: 15000 });
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
         await expect(liveRegion(page)).toHaveText('All changes are saved.');
         await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
+
+        // Google Docs style: no "Save" button, a status chip instead.
+        await expect(page.locator('#head-top-save-button .save-label')).toBeHidden();
+        await expect(page.locator('#head-top-save-button .save-icon-white')).toBeHidden();
+        await expect(page.locator('#head-top-save-button .cloud-save-icon')).toBeVisible();
+        await expect(page.locator('#head-top-save-button .cloud-save-icon')).toHaveText('cloud_done');
+        await expect(chipLabel(page)).toHaveText('Saved');
+        await expect(page.locator('#head-top-save-button')).toHaveAttribute('title', 'All changes are saved.');
 
         // The server copy must contain the edits: reopen after the local wipe.
         await reopenFromServer(page, projectUuid);
@@ -152,7 +162,7 @@ test.describe('Cloud autosave (single user)', () => {
         await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
     });
 
-    test('shows the pending state while an edit awaits autosave and keeps the manual Save button usable', async ({
+    test('shows the pending state while an edit awaits autosave; clicking the status chip saves now', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -165,14 +175,14 @@ test.describe('Cloud autosave (single user)', () => {
         await spyOnSaves(page);
 
         await editMetadata(page, 'Pending Author');
-
-        await expect(badge(page)).toBeVisible({ timeout: 15000 });
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'pending', { timeout: 15000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'pending', { timeout: 15000 });
         await expect(liveRegion(page)).toHaveText('Changes will be saved automatically.');
         await expect(page.locator('#head-top-save-button')).toHaveClass(/unsaved/);
+        await expect(chipLabel(page)).toHaveText('Unsaved changes');
+        await expect(page.locator('#head-top-save-button .cloud-save-icon')).toHaveText('cloud_upload');
+        await expect(page.locator('#head-top-save-button .save-label')).toBeHidden();
 
-        // The Save button is still there and still works (issue #2615 keeps it
-        // until autosave has proven itself in production).
+        // The chip replaces the Save button but a click still means "save now".
         const saveButton = page.locator('#head-top-save-button');
         await expect(saveButton).toBeVisible();
         await expect(saveButton).toBeEnabled();
@@ -183,7 +193,7 @@ test.describe('Cloud autosave (single user)', () => {
             { timeout: 30000 },
         );
 
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 15000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 15000 });
         await expect(saveButton).not.toHaveClass(/unsaved/);
 
         // Exactly one save ran: the manual one. The queued autosave was cancelled.
@@ -226,7 +236,7 @@ test.describe('Cloud autosave (single user)', () => {
         await spyOnSaves(page);
 
         await editMetadata(page, 'Reason Author');
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
 
         const calls = await saveCalls(page);
         expect(calls.length).toBe(1);
@@ -251,7 +261,7 @@ test.describe('Cloud autosave (single user)', () => {
             await page.waitForTimeout(SHORT_IDLE_MS / 3);
         }
 
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
         await page.waitForTimeout(SHORT_IDLE_MS);
         const calls = await saveCalls(page);
         expect(calls.length).toBe(1);
@@ -281,7 +291,7 @@ test.describe('Cloud autosave (single user)', () => {
         await waitForYjsSync(page);
 
         expect(await readAuthor(page)).toBe('Reload Author');
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
         await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
 
         // And the server now has it.
@@ -348,7 +358,7 @@ test.describe('Cloud autosave (single user)', () => {
         await waitForAppReady(page);
         await waitForYjsSync(page);
         expect(await readAuthor(page)).toBe('Closed Too Early');
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
 
         // Now it is on the server: a real wipe (nothing unsaved) still shows it.
         await reopenFromServer(page, projectUuid);
@@ -378,15 +388,15 @@ test.describe('Cloud autosave (single user)', () => {
             return route.continue();
         });
         await editMetadata(page, 'Retry Author');
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'failed', { timeout: 30000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'failed', { timeout: 30000 });
 
         // Let the retry loop run a few rounds while the endpoint is down ...
         await expect.poll(() => blocked, { timeout: 30000 }).toBeGreaterThanOrEqual(3);
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'failed');
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'failed');
 
         // ... then bring it back: the next retry succeeds on its own.
         await page.unroute(saveUrl);
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 30000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 30000 });
         await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
         const calls = await saveCalls(page);
         expect(calls.length).toBeGreaterThanOrEqual(4);
@@ -416,15 +426,17 @@ test.describe('Cloud autosave (single user)', () => {
             return route.continue();
         });
         await editMetadata(page, 'Failure Author');
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'failed', { timeout: 30000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'failed', { timeout: 30000 });
         await expect(liveRegion(page)).toHaveText('Autosave failed.');
+        await expect(chipLabel(page)).toHaveText('Not saved');
+        await expect(page.locator('#head-top-save-button .cloud-save-icon')).toHaveText('cloud_off');
         // The document stays dirty, so the leave warning still protects it.
         await expect(page.locator('#head-top-save-button')).toHaveClass(/unsaved/);
 
-        // Restore the endpoint: the bounded retry (or a manual Save) recovers.
+        // Restore the endpoint: clicking the chip is the manual retry.
         await page.unroute(saveUrl);
         await page.locator('#head-top-save-button').click();
-        await expect(badge(page)).toHaveAttribute('data-collab-phase', 'clean', { timeout: 30000 });
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 30000 });
         await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
 
         await reopenFromServer(page, projectUuid);

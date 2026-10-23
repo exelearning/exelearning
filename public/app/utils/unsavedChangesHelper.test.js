@@ -194,7 +194,7 @@ describe('UnsavedChangesHelper', () => {
       await UnsavedChangesHelper.promptIfUnsavedChanges();
 
       expect(window.confirm).toHaveBeenCalledWith(
-        'Your latest changes have not been saved yet. Click Save before leaving to avoid losing them.'
+        'Your latest changes have not been saved yet. Wait until the status shows "Saved" before leaving to avoid losing them.'
       );
     });
 

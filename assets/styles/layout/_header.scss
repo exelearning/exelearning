@@ -510,3 +510,87 @@
         animation: none;
     }
 }
+
+// Cloud autosave status chip (issue #2615). In cloud mode there is no manual
+// Save button: #head-top-save-button carries `.cloud-autosave` and shows the
+// autosave state as a Material icon + short label (Google Docs style). A click
+// still saves immediately. Static/Electron never get the class and keep the
+// green Save button untouched.
+#head-top-save-button {
+    .cloud-save-icon,
+    .cloud-save-label {
+        display: none;
+    }
+
+    &.cloud-autosave {
+        background: transparent;
+        border: 1px solid var(--gray-300);
+        gap: 6px;
+        --bs-btn-hover-bg: var(--gray-100);
+        --bs-btn-hover-color: var(--gray-700);
+
+        &:hover,
+        &:active {
+            background: var(--gray-100) !important;
+            color: var(--gray-700);
+        }
+
+        // The Save affordances and the collaborative dot do not exist here.
+        .save-icon-white,
+        .save-label,
+        .collab-autosave-badge {
+            display: none !important;
+        }
+        &.unsaved:before {
+            display: none;
+        }
+
+        .cloud-save-icon {
+            display: inline-block;
+            font-family: var(--icons-ff);
+            font-size: 20px !important;
+            line-height: 1;
+            color: var(--gray-600) !important;
+            transition: color 0.2s ease;
+        }
+        .cloud-save-label {
+            display: inline;
+            color: var(--gray-700) !important;
+            font-size: 13px !important;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        // Phase cues: colour plus a distinct icon per phase (WCAG 1.4.1), and
+        // motion only while saving.
+        &[data-cloud-phase="clean"] .cloud-save-icon {
+            color: var(--system-green, #2e7d32) !important;
+        }
+        &[data-cloud-phase="saving"] .cloud-save-icon {
+            animation: exe-collab-save-pulse 1.1s ease-in-out infinite;
+        }
+        &[data-cloud-phase="failed"] .cloud-save-icon,
+        &[data-cloud-phase="failed"] .cloud-save-label {
+            color: var(--system-red) !important;
+        }
+    }
+}
+
+@media (max-width: 767.98px) {
+    // Icon-only chip on narrow screens; the icon must survive the generic
+    // "hide spans in the Save button" mobile rule above.
+    #head-top-save-button.cloud-autosave {
+        .cloud-save-icon {
+            display: inline-block !important;
+        }
+        .cloud-save-label {
+            display: none !important;
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #head-top-save-button.cloud-autosave[data-cloud-phase="saving"] .cloud-save-icon {
+        animation: none;
+    }
+}

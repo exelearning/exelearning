@@ -55,6 +55,22 @@ const PHASE_BADGES = {
     failed: { glyph: 'priority_high', busy: false },
 };
 
+/**
+ * Cloud chip mode (issue #2615): when the toolbar control carries the
+ * `cloud-autosave` class there is no manual Save button any more; the control
+ * IS the autosave status (icon + short label, Google Docs style). Clicking it
+ * still saves immediately, which is also the manual retry on failure.
+ */
+const CLOUD_CHIP_CLASS = 'cloud-autosave';
+const CLOUD_ICON_SELECTOR = '.cloud-save-icon';
+const CLOUD_LABEL_SELECTOR = '.cloud-save-label';
+const CLOUD_CHIPS = {
+    clean: { icon: 'cloud_done', label: 'Saved' },
+    pending: { icon: 'cloud_upload', label: 'Unsaved changes' },
+    saving: { icon: 'cloud_sync', label: 'Saving...' },
+    failed: { icon: 'cloud_off', label: 'Not saved' },
+};
+
 // A save can complete in a fraction of a second, so the 'saving' state would
 // otherwise flash by unseen. Keep it on screen for at least this long before a
 // following 'clean'/'pending' is shown, so the "saving" feedback is perceptible.
@@ -95,6 +111,8 @@ class CollaborativeSaveStatusView {
             deps.minSavingVisibleMs != null ? deps.minSavingVisibleMs : DEFAULT_MIN_SAVING_VISIBLE_MS;
         this._savingSince = null;
         this._savingHoldTimer = null;
+        // Original tooltip of the control, restored when the chip is reset.
+        this._originalTitle = null;
     }
 
     /**
@@ -176,6 +194,10 @@ class CollaborativeSaveStatusView {
     _renderBadge(phase, badge) {
         const button = this._getSaveButton();
         if (!button) return;
+        if (this._isCloudChip(button)) {
+            this._renderCloudChip(button, phase, badge);
+            return;
+        }
 
         // aria-busy signals an in-progress collaborative save on the control the
         // status describes; removed for every other phase.
@@ -214,6 +236,65 @@ class CollaborativeSaveStatusView {
         // that comes from the live region below.
         el.setAttribute('title', this._messageFor(phase));
         el.classList.remove('d-none');
+    }
+
+    /**
+     * Whether the control is in cloud chip mode (no manual Save button).
+     * @param {Element} [button]
+     * @returns {boolean}
+     * @private
+     */
+    _isCloudChip(button = this._getSaveButton()) {
+        return !!(button && button.classList && button.classList.contains(CLOUD_CHIP_CLASS));
+    }
+
+    /**
+     * Render the cloud status chip (issue #2615): icon + short label + tooltip
+     * on the control itself, `data-cloud-phase` for CSS, aria-busy while a save
+     * is in flight. The dot badge is kept hidden so there is a single marker.
+     * @param {Element} button
+     * @param {?string} phase
+     * @param {?{glyph: string, busy: boolean}} badge - undefined for reset.
+     * @private
+     */
+    _renderCloudChip(button, phase, badge) {
+        const query = (selector) => (typeof button.querySelector === 'function' ? button.querySelector(selector) : null);
+        if (this._originalTitle === null) {
+            this._originalTitle = button.getAttribute('title') || '';
+        }
+
+        // The red-dot badge and its "takeover" class belong to the Save-button
+        // layout; in chip mode the chip is the only marker.
+        button.classList.remove('collab-autosave-active');
+        const dot = query(BADGE_SELECTOR);
+        if (dot) {
+            dot.classList.add('d-none');
+            dot.removeAttribute('data-collab-phase');
+            dot.removeAttribute('title');
+            dot.textContent = '';
+        }
+
+        const icon = query(CLOUD_ICON_SELECTOR);
+        const label = query(CLOUD_LABEL_SELECTOR);
+        const chip = badge ? CLOUD_CHIPS[phase] : undefined;
+        if (!chip) {
+            button.removeAttribute('data-cloud-phase');
+            button.removeAttribute('aria-busy');
+            if (icon) icon.textContent = '';
+            if (label) label.textContent = '';
+            button.setAttribute('title', this._originalTitle);
+            return;
+        }
+
+        if (badge.busy) {
+            button.setAttribute('aria-busy', 'true');
+        } else {
+            button.removeAttribute('aria-busy');
+        }
+        button.setAttribute('data-cloud-phase', phase);
+        if (icon) icon.textContent = chip.icon;
+        if (label) label.textContent = this._translate(chip.label);
+        button.setAttribute('title', this._messageFor(phase));
     }
 
     /**
@@ -356,6 +437,9 @@ class CollaborativeSaveStatusView {
      * @private
      */
     _failureMessage() {
+        if (this._isCloudChip()) {
+            return this._translate('Autosave failed. Retrying automatically. Click the status to retry now.');
+        }
         return this._isManualSaveAvailable()
             ? this._translate('Autosave failed. Please click Save before leaving.')
             : this._translate('Autosave failed. Your latest changes may not be saved.');

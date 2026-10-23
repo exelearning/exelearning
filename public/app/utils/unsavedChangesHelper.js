@@ -110,7 +110,7 @@ const UnsavedChangesHelper = {
     // Fallback to browser confirm dialog. In an autosave session the edits are
     // on their way to the server but not persisted yet; say so explicitly.
     const defaultMessage = this.isCollaborativeSession()
-      ? _('Your latest changes have not been saved yet. Click Save before leaving to avoid losing them.')
+      ? _('Your latest changes have not been saved yet. Wait until the status shows "Saved" before leaving to avoid losing them.')
       : _('You have unsaved changes. Are you sure you want to leave?');
     const message = options.message || defaultMessage;
     return window.confirm(message);

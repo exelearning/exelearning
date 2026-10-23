@@ -87,9 +87,9 @@ test.describe('Collaborative autosave', () => {
         // The compact Save-button badge settles on the "clean" state once the
         // idle autosave has persisted the change to the server, and the
         // visually-hidden live region announces it to screen readers.
-        const badge = authenticatedPage.locator('#head-top-save-button .collab-autosave-badge');
-        await expect(badge).toBeVisible({ timeout: 15000 });
-        await expect(badge).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+        // In cloud mode the toolbar control is the status chip (issue #2615).
+        const badge = authenticatedPage.locator('#head-top-save-button');
+        await expect(badge).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
         const liveRegion = authenticatedPage.locator('#exe-collab-save-status .content');
         await expect(liveRegion).toHaveText('All changes are saved.');
 
@@ -129,9 +129,8 @@ test.describe('Collaborative autosave', () => {
 
         // The compact badge shows the "pending" state and the visually-hidden
         // live region carries the full explanation for screen readers.
-        const badge = authenticatedPage.locator('#head-top-save-button .collab-autosave-badge');
-        await expect(badge).toBeVisible({ timeout: 15000 });
-        await expect(badge).toHaveAttribute('data-collab-phase', 'pending', { timeout: 15000 });
+        const badge = authenticatedPage.locator('#head-top-save-button');
+        await expect(badge).toHaveAttribute('data-cloud-phase', 'pending', { timeout: 15000 });
         const liveRegion = authenticatedPage.locator('#exe-collab-save-status .content');
         await expect(liveRegion).toHaveText('Changes will be saved automatically.');
 
@@ -139,6 +138,6 @@ test.describe('Collaborative autosave', () => {
         // at a narrow (mobile) width, where the Save button collapses to an icon.
         await authenticatedPage.setViewportSize({ width: 375, height: 720 });
         await expect(authenticatedPage.locator('#head-top-save-button')).toBeVisible();
-        await expect(badge).toBeVisible();
+        await expect(authenticatedPage.locator('#head-top-save-button .cloud-save-icon')).toBeVisible();
     });
 });
