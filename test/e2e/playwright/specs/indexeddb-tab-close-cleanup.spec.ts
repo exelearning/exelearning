@@ -14,6 +14,14 @@ import type { Page } from '@playwright/test';
  */
 
 test.describe('IndexedDB Tab-Close Cleanup', () => {
+    // Issue #2615: autosave now runs in every online session. These tests exercise
+    // the manual dirty/save flows, so push the idle autosave out of the way.
+    test.beforeEach(async ({ authenticatedPage }) => {
+        await authenticatedPage.addInitScript(() => {
+            (window as any).__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = 10 * 60 * 1000;
+        });
+    });
+
     test.beforeEach(({}, testInfo) => {
         skipInStaticMode(test, testInfo, 'Requires real Yjs IndexedDB and WebSocket');
     });

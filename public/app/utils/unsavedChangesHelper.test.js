@@ -185,7 +185,7 @@ describe('UnsavedChangesHelper', () => {
       expect(result).toBe(false);
     });
 
-    it('warns with collaborative copy in a collaborative session (confirm fallback)', async () => {
+    it('warns with autosave copy in an autosave-eligible session (confirm fallback)', async () => {
       mockDocumentManager.isDirty = true;
       mockApp.modals = null;
       mockYjsBridge.collaborativeAutosave = { isEligible: vi.fn(() => true) };
@@ -194,11 +194,11 @@ describe('UnsavedChangesHelper', () => {
       await UnsavedChangesHelper.promptIfUnsavedChanges();
 
       expect(window.confirm).toHaveBeenCalledWith(
-        'Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.'
+        'Your latest changes have not been saved yet. Click Save before leaving to avoid losing them.'
       );
     });
 
-    it('warns with generic copy outside a collaborative session (confirm fallback)', async () => {
+    it('warns with generic copy when autosave is not active (confirm fallback)', async () => {
       mockDocumentManager.isDirty = true;
       mockApp.modals = null;
       mockYjsBridge.collaborativeAutosave = null;

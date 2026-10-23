@@ -1,5 +1,5 @@
 /**
- * Tests for CollaborativeSaveStatusView (issue #1592).
+ * Tests for CollaborativeSaveStatusView (issues #1592 and #2615).
  *
  * Test helpers (describe/it/expect/vi/beforeEach/afterEach) are exposed as
  * globals by public/vitest.setup.js under happy-dom, so we can build a real DOM
@@ -70,7 +70,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             expect(badge.classList.contains('d-none')).toBe(false);
             expect(badge.getAttribute('data-collab-phase')).toBe('clean');
             expect(badge.textContent).toBe('check');
-            expect(getLiveText()).toBe('All collaborative changes are saved.');
+            expect(getLiveText()).toBe('All changes are saved.');
             expect(getButton().hasAttribute('aria-busy')).toBe(false);
             expect(createToast).not.toHaveBeenCalled();
         });
@@ -82,7 +82,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const badge = getBadge();
             expect(badge.getAttribute('data-collab-phase')).toBe('pending');
             expect(badge.textContent).toBe(''); // plain dot: colour + placement, no glyph
-            expect(getLiveText()).toBe('Collaborative changes are shared live and will be saved automatically.');
+            expect(getLiveText()).toBe('Changes will be saved automatically.');
             expect(getButton().hasAttribute('aria-busy')).toBe(false);
             expect(createToast).not.toHaveBeenCalled();
         });
@@ -94,7 +94,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const badge = getBadge();
             expect(badge.getAttribute('data-collab-phase')).toBe('saving');
             expect(badge.textContent).toBe(''); // motion cue comes from the CSS pulse
-            expect(getLiveText()).toBe('Saving collaborative changes...');
+            expect(getLiveText()).toBe('Saving changes...');
             expect(getButton().getAttribute('aria-busy')).toBe('true');
             expect(createToast).not.toHaveBeenCalled();
         });
@@ -117,7 +117,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const payload = createToast.mock.calls[0][0];
             expect(payload.error).toBe(true);
             expect(payload.icon).toBe('error');
-            expect(payload.title).toBe('Collaborative autosave failed');
+            expect(payload.title).toBe('Autosave failed');
             expect(payload.body).toBe('Autosave failed. Please click Save before leaving.');
             // The assertive toast body differs from the polite live-region text,
             // so a screen reader does not hear the identical sentence twice.
@@ -138,7 +138,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             expect(badge.hasAttribute('data-collab-phase')).toBe(false);
             expect(badge.textContent).toBe('');
             // Live region left untouched so no empty/confusing announcement.
-            expect(getLiveText()).toBe('Collaborative changes are shared live and will be saved automatically.');
+            expect(getLiveText()).toBe('Changes will be saved automatically.');
             expect(createToast).not.toHaveBeenCalled();
         });
 
@@ -270,10 +270,10 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const { view, createToast } = makeView();
             view.setPhase('failed');
             expect(getBadge().getAttribute('title')).toBe(
-                'Autosave failed. Your latest collaborative changes may not be saved.',
+                'Autosave failed. Your latest changes may not be saved.',
             );
             expect(createToast.mock.calls[0][0].body).toBe(
-                'Autosave failed. Your latest collaborative changes may not be saved.',
+                'Autosave failed. Your latest changes may not be saved.',
             );
         });
 
@@ -282,7 +282,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const { view } = makeView();
             view.setPhase('failed');
             expect(getBadge().getAttribute('title')).toBe(
-                'Autosave failed. Your latest collaborative changes may not be saved.',
+                'Autosave failed. Your latest changes may not be saved.',
             );
             document.body.removeAttribute('data-exe-hide-save');
         });
@@ -292,7 +292,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const { view } = makeView();
             view.setPhase('failed');
             expect(getBadge().getAttribute('title')).toBe(
-                'Autosave failed. Your latest collaborative changes may not be saved.',
+                'Autosave failed. Your latest changes may not be saved.',
             );
         });
     });
@@ -373,7 +373,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             });
             view.setPhase('clean');
             // The vitest global _() echoes the source string back.
-            expect(getLiveText()).toBe('All collaborative changes are saved.');
+            expect(getLiveText()).toBe('All changes are saved.');
         });
 
         it('resolves the toast manager from window.eXeLearning.app.toasts by default', () => {
@@ -403,7 +403,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             try {
                 const view = new CollaborativeSaveStatusView({ document, getToastManager: () => null });
                 view.setPhase('clean');
-                expect(getLiveText()).toBe('All collaborative changes are saved.');
+                expect(getLiveText()).toBe('All changes are saved.');
             } finally {
                 global._ = previousUnderscore;
             }

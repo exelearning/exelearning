@@ -1,8 +1,9 @@
 /**
  * CollaborativeSaveStatusView
  *
- * Focused presentation layer for the collaborative autosave status (issue
- * #1592). It is a UI hotfix follow-up to PR #1985: that PR communicated the
+ * Focused presentation layer for the autosave status (issues #1592 and
+ * #2615; since #2615 autosave runs in every online session, not only in
+ * collaborative ones). It is a UI hotfix follow-up to PR #1985: that PR communicated the
  * autosave state through a persistent full-sentence pill in the top toolbar
  * (#exe-collab-save-status), which consumed too much horizontal space next to
  * Save, Preview, Styles, Settings, Share, the concurrent-user list and the user
@@ -300,7 +301,7 @@ class CollaborativeSaveStatusView {
         // recovers, rather than vanishing before it can be read.
         this._failureToast =
             toasts.createToast({
-                title: this._translate('Collaborative autosave failed'),
+                title: this._translate('Autosave failed'),
                 body: this._failureMessage(),
                 icon: 'error',
                 error: true,
@@ -325,9 +326,9 @@ class CollaborativeSaveStatusView {
     // ---------------------------------------------------------------------
 
     /**
-     * Localised message for a phase, or null for an unknown phase. The
-     * clean/pending/saving strings are reused verbatim from PR #1985 so their
-     * existing translations still apply.
+     * Localised message for a phase, or null for an unknown phase. Since issue
+     * #2615 autosave runs in every online session, so the wording is neutral
+     * (it no longer talks about "collaborative" changes).
      * @param {string} phase
      * @returns {?string}
      * @private
@@ -335,11 +336,11 @@ class CollaborativeSaveStatusView {
     _messageFor(phase) {
         switch (phase) {
             case 'clean':
-                return this._translate('All collaborative changes are saved.');
+                return this._translate('All changes are saved.');
             case 'pending':
-                return this._translate('Collaborative changes are shared live and will be saved automatically.');
+                return this._translate('Changes will be saved automatically.');
             case 'saving':
-                return this._translate('Saving collaborative changes...');
+                return this._translate('Saving changes...');
             case 'failed':
                 return this._failureMessage();
             default:
@@ -357,7 +358,7 @@ class CollaborativeSaveStatusView {
     _failureMessage() {
         return this._isManualSaveAvailable()
             ? this._translate('Autosave failed. Please click Save before leaving.')
-            : this._translate('Autosave failed. Your latest collaborative changes may not be saved.');
+            : this._translate('Autosave failed. Your latest changes may not be saved.');
     }
 
     // ---------------------------------------------------------------------

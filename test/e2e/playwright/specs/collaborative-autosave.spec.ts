@@ -10,9 +10,8 @@ declare global {
 
 /**
  * Wait until this client's Yjs awareness reports at least one other (remote)
- * collaborator. The collaborative autosave only activates once a collaborator
- * has been present, so this makes the autosave deterministic instead of racing
- * awareness propagation.
+ * collaborator, so the test exercises a genuine collaborative session (since
+ * issue #2615 autosave no longer depends on it, but the scenario does).
  */
 async function waitForCollaboratorPresent(page: import('@playwright/test').Page): Promise<void> {
     await page.waitForFunction(
@@ -92,7 +91,7 @@ test.describe('Collaborative autosave', () => {
         await expect(badge).toBeVisible({ timeout: 15000 });
         await expect(badge).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
         const liveRegion = authenticatedPage.locator('#exe-collab-save-status .content');
-        await expect(liveRegion).toHaveText('All collaborative changes are saved.');
+        await expect(liveRegion).toHaveText('All changes are saved.');
 
         // Both editors leave WITHOUT clicking Save.
         await secondAuthenticatedPage.close();
@@ -134,7 +133,7 @@ test.describe('Collaborative autosave', () => {
         await expect(badge).toBeVisible({ timeout: 15000 });
         await expect(badge).toHaveAttribute('data-collab-phase', 'pending', { timeout: 15000 });
         const liveRegion = authenticatedPage.locator('#exe-collab-save-status .content');
-        await expect(liveRegion).toHaveText('Collaborative changes are shared live and will be saved automatically.');
+        await expect(liveRegion).toHaveText('Changes will be saved automatically.');
 
         // Responsive: the compact indicator must stay reachable and not vanish
         // at a narrow (mobile) width, where the Save button collapses to an icon.

@@ -1,5 +1,5 @@
 /**
- * Tests for CollaborativeAutosaveManager (issue #1592).
+ * Tests for CollaborativeAutosaveManager (issues #1592 and #2615).
  *
  * Test helpers (describe/it/expect/vi/beforeEach/afterEach) are exposed as
  * globals by public/vitest.setup.js, and `mock`/`spyOn` are the bun:test
@@ -21,7 +21,6 @@ function makeDocManager(overrides = {}) {
         wsProvider: { wsconnected: true, synced: true },
         synced: true,
         isDirty: false,
-        _users: [],
         on(event, cb) {
             (listeners[event] = listeners[event] || []).push(cb);
         },
@@ -34,13 +33,6 @@ function makeDocManager(overrides = {}) {
         hasUnsavedChanges() {
             return this.isDirty === true;
         },
-        getOnlineUsers() {
-            return this._users;
-        },
-        onUsersChange(cb) {
-            this.on('usersChange', cb);
-            return () => this.off('usersChange', cb);
-        },
         ...overrides,
     };
     dm._listeners = listeners;
@@ -49,7 +41,7 @@ function makeDocManager(overrides = {}) {
 
 /**
  * Build a bridge whose capabilities/documentManager/saveManager are all
- * controllable. By default it is a fully eligible collaborative session.
+ * controllable. By default it is a fully eligible online (cloud) session.
  */
 function makeBridge(overrides = {}) {
     const documentManager = overrides.documentManager || makeDocManager();
@@ -76,15 +68,6 @@ function makeBridge(overrides = {}) {
         saveManager,
         ...overrides,
     };
-}
-
-/** Mark a remote collaborator as present in the session. */
-function addCollaborator(documentManager) {
-    documentManager._users = [
-        { clientId: 1, isLocal: true },
-        { clientId: 2, isLocal: false },
-    ];
-    documentManager.emit('usersChange', { users: documentManager._users });
 }
 
 /** Flip the document to dirty and emit the one-shot 'dirty' transition event. */
@@ -117,7 +100,6 @@ describe('CollaborativeAutosaveManager', () => {
     describe('scheduling', () => {
         it('schedules a save after the idle delay following a dirty change', async () => {
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             expect(bridge.saveManager.save).not.toHaveBeenCalled();
@@ -134,7 +116,6 @@ describe('CollaborativeAutosaveManager', () => {
 
         it('debounce resets on repeated changes (only one save runs)', async () => {
             manager.start();
-            addCollaborator(bridge.documentManager);
             bridge.documentManager.isDirty = true;
 
             manager.scheduleSave();
@@ -150,7 +131,6 @@ describe('CollaborativeAutosaveManager', () => {
         });
 
         it('schedules immediately on start() when already dirty and eligible', async () => {
-            bridge.documentManager._users = [{ clientId: 2, isLocal: false }];
             bridge.documentManager.isDirty = true;
 
             manager.start();
@@ -164,7 +144,6 @@ describe('CollaborativeAutosaveManager', () => {
         it('does not autosave when remote storage is unavailable (static/offline)', async () => {
             bridge.app.capabilities.storage.remote = false;
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 2);
@@ -174,7 +153,6 @@ describe('CollaborativeAutosaveManager', () => {
         it('does not autosave when collaboration capability is disabled', async () => {
             bridge.app.capabilities.collaboration.enabled = false;
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 2);
@@ -185,7 +163,6 @@ describe('CollaborativeAutosaveManager', () => {
             bridge.documentManager.wsProvider = null;
             bridge.documentManager.synced = false;
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 2);
@@ -195,7 +172,6 @@ describe('CollaborativeAutosaveManager', () => {
         it('does not autosave when the document manager is offline', async () => {
             bridge.documentManager.config.offline = true;
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 2);
@@ -203,37 +179,123 @@ describe('CollaborativeAutosaveManager', () => {
         });
     });
 
-    describe('collaborator gating', () => {
-        it('does not autosave before any other collaborator has been present', async () => {
+    describe('single-user online sessions (issue #2615)', () => {
+        it('autosaves without any other collaborator ever being present', async () => {
             manager.start();
-            makeDirty(bridge.documentManager); // no collaborator yet
+            makeDirty(bridge.documentManager);
+
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+            expect(bridge.saveManager.save).toHaveBeenCalledWith(
+                expect.objectContaining({ silent: true, showProgress: false, reason: 'collaborative-autosave' }),
+            );
+        });
+
+        it('isEligible() depends only on the runtime mode and a live connection', () => {
+            expect(manager.isEligible()).toBe(true);
+            bridge.documentManager.wsProvider = { wsconnected: false, synced: false };
+            bridge.documentManager.synced = false;
+            expect(manager.isEligible()).toBe(false);
+        });
+
+        it('ignores presence events (they no longer gate autosave)', async () => {
+            manager.start();
+            bridge.documentManager.emit('usersChange', { users: [{ clientId: 1, isLocal: true }] });
+            makeDirty(bridge.documentManager);
+
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('connection-aware start (issue #2615)', () => {
+        function makeDisconnectedBridge() {
+            const dm = makeDocManager({ wsProvider: { wsconnected: false, synced: false }, synced: false });
+            return makeBridge({ documentManager: dm });
+        }
+
+        it('announces the current phase once at start when already eligible', () => {
+            manager.start();
+            expect(onStatusChange).toHaveBeenCalledTimes(1);
+            expect(onStatusChange).toHaveBeenCalledWith('clean');
+        });
+
+        it('does not announce or schedule while the websocket is still connecting', async () => {
+            bridge = makeDisconnectedBridge();
+            manager = new CollaborativeAutosaveManager(bridge, { ...OPTIONS, onStatusChange });
+            bridge.documentManager.isDirty = true;
+
+            manager.start();
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 2);
+
+            expect(onStatusChange).not.toHaveBeenCalled();
+            expect(bridge.saveManager.save).not.toHaveBeenCalled();
+        });
+
+        it('autosaves a dirty state restored from a reload once the connection syncs', async () => {
+            bridge = makeDisconnectedBridge();
+            manager = new CollaborativeAutosaveManager(bridge, { ...OPTIONS, onStatusChange });
+            bridge.documentManager.isDirty = true;
+            manager.start();
+
+            bridge.documentManager.wsProvider = { wsconnected: true, synced: true };
+            bridge.documentManager.synced = true;
+            bridge.documentManager.emit('sync', { synced: true });
+
+            expect(onStatusChange).toHaveBeenCalledWith('pending');
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+            expect(manager.getPhase()).toBe('clean');
+        });
+
+        it('announces clean once when a clean session becomes connected', () => {
+            bridge = makeDisconnectedBridge();
+            manager = new CollaborativeAutosaveManager(bridge, { ...OPTIONS, onStatusChange });
+            manager.start();
+
+            bridge.documentManager.wsProvider = { wsconnected: true, synced: true };
+            bridge.documentManager.emit('connectionChange', { connected: true });
+            bridge.documentManager.emit('connectionChange', { connected: true });
+
+            expect(onStatusChange).toHaveBeenCalledTimes(1);
+            expect(onStatusChange).toHaveBeenCalledWith('clean');
+        });
+
+        it('ignores connection events that leave the session ineligible', () => {
+            bridge = makeDisconnectedBridge();
+            manager = new CollaborativeAutosaveManager(bridge, { ...OPTIONS, onStatusChange });
+            bridge.documentManager.isDirty = true;
+            manager.start();
+
+            bridge.documentManager.emit('connectionChange', { connected: false });
+
+            expect(onStatusChange).not.toHaveBeenCalled();
+        });
+
+        it('does not double-schedule when a connection event arrives while a save is pending', async () => {
+            manager.start();
+            makeDirty(bridge.documentManager);
+            bridge.documentManager.emit('sync', { synced: true });
+            bridge.documentManager.emit('connectionChange', { connected: true });
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 2);
-            expect(bridge.saveManager.save).not.toHaveBeenCalled();
-        });
-
-        it('autosaves once a collaborator appears while changes are pending', async () => {
-            manager.start();
-            makeDirty(bridge.documentManager);
-            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
-            expect(bridge.saveManager.save).not.toHaveBeenCalled();
-
-            addCollaborator(bridge.documentManager); // collaborator joins now
-            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
             expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
         });
 
-        it('keeps autosaving after a collaborator who was present has left', async () => {
+        it('detaches the connection listeners on destroy', () => {
+            const offSpy = vi.spyOn(bridge.documentManager, 'off');
             manager.start();
-            addCollaborator(bridge.documentManager);
-            // Collaborator leaves: only the local user remains.
-            bridge.documentManager._users = [{ clientId: 1, isLocal: true }];
-            bridge.documentManager.emit('usersChange', { users: bridge.documentManager._users });
+            manager.destroy();
+            const events = offSpy.mock.calls.map((c) => c[0]).sort();
+            expect(events).toEqual(['connectionChange', 'saveStatus', 'sync']);
+        });
 
-            makeDirty(bridge.documentManager);
-            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
-
-            expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+        it('swallows listener errors raised by the initial announcement', () => {
+            const throwing = vi.fn(() => {
+                throw new Error('ui exploded');
+            });
+            manager = new CollaborativeAutosaveManager(bridge, { ...OPTIONS, onStatusChange: throwing });
+            expect(() => manager.start()).not.toThrow();
         });
     });
 
@@ -247,7 +309,6 @@ describe('CollaborativeAutosaveManager', () => {
             );
 
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
@@ -275,7 +336,6 @@ describe('CollaborativeAutosaveManager', () => {
             });
 
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
             expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
@@ -298,7 +358,6 @@ describe('CollaborativeAutosaveManager', () => {
             bridge.saveManager.save = vi.fn().mockResolvedValue({ success: false, error: 'boom' });
 
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
@@ -312,7 +371,6 @@ describe('CollaborativeAutosaveManager', () => {
             bridge.saveManager.save = vi.fn().mockRejectedValue(new Error('network down'));
 
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
@@ -323,7 +381,6 @@ describe('CollaborativeAutosaveManager', () => {
             bridge.saveManager.save = vi.fn().mockResolvedValue({ success: false, error: 'boom' });
 
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             // Run far past every backoff window.
@@ -340,7 +397,6 @@ describe('CollaborativeAutosaveManager', () => {
             bridge.saveManager.save = vi.fn().mockResolvedValue({ success: false, error: 'boom' });
 
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
@@ -352,7 +408,6 @@ describe('CollaborativeAutosaveManager', () => {
     describe('success handling', () => {
         it('marks the document clean after a successful autosave', async () => {
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
@@ -362,7 +417,6 @@ describe('CollaborativeAutosaveManager', () => {
 
         it('emits pending then saving then clean status transitions', async () => {
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
             expect(onStatusChange).toHaveBeenCalledWith('pending');
 
@@ -376,7 +430,6 @@ describe('CollaborativeAutosaveManager', () => {
     describe('manual save interaction', () => {
         it('cancel() discards a pending autosave timer', async () => {
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             manager.cancel();
@@ -386,7 +439,6 @@ describe('CollaborativeAutosaveManager', () => {
 
         it('goes clean and cancels the timer when a manual save emits saved', async () => {
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             // A manual save elsewhere completes and marks the doc clean.
@@ -403,7 +455,6 @@ describe('CollaborativeAutosaveManager', () => {
         it('stops timers and detaches listeners on destroy', async () => {
             const offSpy = vi.spyOn(bridge.documentManager, 'off');
             manager.start();
-            addCollaborator(bridge.documentManager);
             makeDirty(bridge.documentManager);
 
             manager.destroy();
@@ -415,7 +466,6 @@ describe('CollaborativeAutosaveManager', () => {
 
         it('ignores dirty events emitted after destroy', async () => {
             manager.start();
-            addCollaborator(bridge.documentManager);
             manager.destroy();
 
             makeDirty(bridge.documentManager);
@@ -430,7 +480,6 @@ describe('CollaborativeAutosaveManager', () => {
             const otherManager = new CollaborativeAutosaveManager(otherBridge, { ...OPTIONS });
 
             otherManager.start();
-            addCollaborator(dm);
             dm.isDirty = true;
             dm.emit('saveStatus', { status: 'dirty', isDirty: true });
 

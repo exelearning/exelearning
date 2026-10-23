@@ -8,7 +8,7 @@ eXeLearning implements a **stateless relay architecture**:
 
 - **No Y.Doc on server**: The server doesn't maintain document state in memory
 - **Client is the source of truth**: Each client holds the authoritative Y.Doc in memory + IndexedDB
-- **Explicit saves only**: Content persists to server only when user clicks save
+- **Explicit save path**: Content reaches the server only through `SaveManager.save()`. In online mode that path runs on a manual Save and automatically after a short idle period (`CollaborativeAutosaveManager`, issues #1592 and #2615); static/offline/Electron keep the file-based Save
 - **Binary Yjs protocol**: Efficient sync using Yjs encoding
 
 ```
@@ -279,6 +279,7 @@ const SERVER_CONFIG = {
 - Yjs uses CRDT, conflicts are auto-resolved
 - Check IndexedDB for local state
 - Use `manager.saveToServer()` to persist
+- Online sessions autosave after an idle period; the `beforeunload` `sendBeacon` fallback is best-effort only and silently fails for documents above 64 KiB, so never rely on it
 
 ### Asset Loading
 
