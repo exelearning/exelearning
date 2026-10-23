@@ -675,6 +675,22 @@ body.siteNav-off .exe-content #siteFooter {
     transform: rotate(180deg);
 }
 
+.exe-web-site .exe-print-action {
+    top: 5px;
+}
+body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+body.has-print-button .nav-buttons .nav-button-right {
+    right: 74px;
+}
+body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+body.has-print-button .nav-buttons .nav-button-left {
+    right: 124px;
+}
+body:has(#exe-print-btn) #darkModeToggler,
+body.has-print-button #darkModeToggler {
+    right: 174px;
+}
+
 /* Inside content button */
 input.feedbacktooglebutton {
     border: none;

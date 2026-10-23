@@ -860,6 +860,25 @@ body:not(.exe-web-site) #darkModeToggler {
     /* The only format where the counter sits on the top bar */
     color: #ffffff;
 }
+.exe-web-site .exe-print-action {
+    top: 5px;
+}
+body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+body.has-print-button .nav-buttons .nav-button-right {
+    right: 60px;
+}
+body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+body.has-print-button .nav-buttons .nav-button-left {
+    right: 110px;
+}
+body:has(#exe-print-btn).exe-web-site #darkModeToggler,
+body.has-print-button.exe-web-site #darkModeToggler {
+    right: 160px;
+}
+body:has(#exe-print-btn).exe-web-site .page-counter,
+body.has-print-button.exe-web-site .page-counter {
+    right: 230px;
+}
 body.exe-web-site {
     padding-top: 50px; /* .nav-buttons (top navigation bar) height */
 }
@@ -905,6 +924,22 @@ body.exe-web-site {
     }
     .exe-web-site .page-counter {
         right: 340px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+    body.has-print-button .nav-buttons .nav-button-right {
+        right: 70px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+    body.has-print-button .nav-buttons .nav-button-left {
+        right: 200px;
+    }
+    body:has(#exe-print-btn).exe-web-site #darkModeToggler,
+    body.has-print-button.exe-web-site #darkModeToggler {
+        right: 330px;
+    }
+    body:has(#exe-print-btn).exe-web-site .page-counter,
+    body.has-print-button.exe-web-site .page-counter {
+        right: 390px;
     }
 }
 

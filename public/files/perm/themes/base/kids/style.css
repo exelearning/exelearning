@@ -1570,6 +1570,10 @@ body.logos #siteLogos {
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
         overflow: hidden;
     }
+    body:has(#exe-print-btn) #topBarTitle,
+    body.has-print-button #topBarTitle {
+        right: 534px;
+    }
     body:not(.exe-search-on) #topBarTitle {
         left: 87px; /* Menu toggler ink ends at 47 */
     }
@@ -1641,6 +1645,22 @@ body.logos #siteLogos {
     margin: 0;
     line-height: var(--exe-bar-height); /* Centered in the bar */
 }
+body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+body.has-print-button .nav-buttons .nav-button-right {
+    right: 60px;
+}
+body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+body.has-print-button .nav-buttons .nav-button-left {
+    right: 120px;
+}
+body:has(#exe-print-btn).exe-web-site #darkModeToggler,
+body.has-print-button.exe-web-site #darkModeToggler {
+    right: 180px;
+}
+body:has(#exe-print-btn).exe-web-site .page-counter,
+body.has-print-button.exe-web-site .page-counter {
+    right: 240px;
+}
 body.exe-web-site {
     padding-top: calc(var(--exe-logos-height) + var(--exe-bar-height));
 }
@@ -1701,6 +1721,22 @@ body.exe-web-site {
     }
     .exe-web-site .page-counter {
         right: 372px; /* Toggler (308 + 50) + 14px gap */
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+    body.has-print-button .nav-buttons .nav-button-right {
+        right: 74px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+    body.has-print-button .nav-buttons .nav-button-left {
+        right: 218px;
+    }
+    body:has(#exe-print-btn).exe-web-site #darkModeToggler,
+    body.has-print-button.exe-web-site #darkModeToggler {
+        right: 362px;
+    }
+    body:has(#exe-print-btn).exe-web-site .page-counter,
+    body.has-print-button.exe-web-site .page-counter {
+        right: 426px;
     }
 }
 

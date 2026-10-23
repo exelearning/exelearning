@@ -602,6 +602,14 @@ button.toggler {
     background-image: url(img/arrow_forward.svg);
     right: 20px;
 }
+body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+body.has-print-button .nav-buttons .nav-button-right {
+    right: 74px;
+}
+body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+body.has-print-button .nav-buttons .nav-button-left {
+    right: 220px;
+}
 
 button#siteNavToggler {
     left: 14px;
@@ -1019,6 +1027,14 @@ body.siteNav-off button#searchBarToggler {
         right: 100px;
         background-position: center;
     }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+    body.has-print-button .nav-buttons .nav-button-right {
+        right: 74px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+    body.has-print-button .nav-buttons .nav-button-left {
+        right: 154px;
+    }
 
     .page > header .package-title,
     .siteNav-off .page > header .package-title {
@@ -1245,6 +1261,14 @@ body.siteNav-off button#searchBarToggler {
     }
     .nav-buttons .nav-button-left {
         right: 70px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+    body.has-print-button .nav-buttons .nav-button-right {
+        right: 70px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+    body.has-print-button .nav-buttons .nav-button-left {
+        right: 120px;
     }
 
     button#siteNavToggler {

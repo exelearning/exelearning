@@ -1751,7 +1751,7 @@ describe('exe_export.js', () => {
       window.ExePrintPreview = { open: vi.fn().mockResolvedValue() };
       const btn = document.getElementById('exe-print-btn');
       window.$exeExport.initPrintButton();
-      window.$exeExport.initPrintButton();
+      expect(document.body.classList.contains('has-print-button')).toBe(true);
       btn.click();
       expect(btn.disabled).toBe(true);
       await vi.waitFor(() => expect(btn.disabled).toBe(false));

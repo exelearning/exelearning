@@ -908,10 +908,32 @@ html:not(.mode-teacher) .js .teacher-only {
 
 .exe-web-site .exe-print-action {
     position: fixed;
-    top: 14px;
+    top: calc(var(--exe-logos-height, 0px) + (var(--exe-bar-height, 70px) - 40px) / 2);
     right: 20px;
     z-index: 1000;
     margin: 0;
+}
+
+body.exe-single-page .exe-print-action {
+    position: static;
+    float: right;
+    margin: 0 0 0.5em 1em;
+}
+
+body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+body.has-print-button .nav-buttons .nav-button-right {
+    right: 74px;
+}
+
+@media (max-width: 767.98px) {
+    .exe-web-site .exe-print-action {
+        right: 10px;
+    }
+
+    body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+    body.has-print-button .nav-buttons .nav-button-right {
+        right: 60px;
+    }
 }
 
 #exe-print-btn {

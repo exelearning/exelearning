@@ -677,7 +677,9 @@ window.$exeExport = {
     /** Load the shared preview on demand, using the base path supplied by the renderer. */
     initPrintButton: function () {
         var btn = document.getElementById('exe-print-btn');
-        if (!btn || btn.dataset.printBound) return;
+        if (!btn) return;
+        document.body.classList.add('has-print-button');
+        if (btn.dataset.printBound) return;
         btn.dataset.printBound = 'true';
         btn.addEventListener('click', async function (event) {
             event.preventDefault();

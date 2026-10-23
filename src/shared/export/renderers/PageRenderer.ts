@@ -179,7 +179,7 @@ export class PageRenderer {
         const currentIdx = currentPageIndex ?? allPages.findIndex(p => p.id === page.id);
 
         // Build body class
-        const bodyClassStr = bodyClass || 'exe-export exe-web-site';
+        const bodyClassStr = `${bodyClass || 'exe-export exe-web-site'}${addPrintButton ? ' has-print-button' : ''}`;
         const onLoadAttr = onLoadScript ? ` onload="${onLoadScript}"` : '';
         const onUnloadAttr = onUnloadScript ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"` : '';
 
@@ -1442,7 +1442,7 @@ ${themeIncludes}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
-<body class="exe-export exe-single-page">
+<body class="exe-export exe-single-page${addPrintButton ? ' has-print-button' : ''}">
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
 <main class="page">

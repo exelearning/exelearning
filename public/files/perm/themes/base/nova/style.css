@@ -598,6 +598,14 @@ button.toggler {
     background-image: url(img/arrow_forward.svg);
     right: 20px;
 }
+body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+body.has-print-button .nav-buttons .nav-button-right {
+    right: 74px;
+}
+body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+body.has-print-button .nav-buttons .nav-button-left {
+    right: 234px;
+}
 
 button#siteNavToggler {
     left: 10px;
@@ -1030,6 +1038,18 @@ button#searchBarToggler {
         right: 193px;
         top: 12px;
     }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+    body.has-print-button .nav-buttons .nav-button-right {
+        right: 74px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+    body.has-print-button .nav-buttons .nav-button-left {
+        right: 154px;
+    }
+    body:has(#exe-print-btn).exe-web-site .page-counter,
+    body.has-print-button.exe-web-site .page-counter {
+        right: 247px;
+    }
     .page-counter-label {
         display: none;
     }
@@ -1219,6 +1239,14 @@ button#searchBarToggler {
     }
     .nav-buttons .nav-button-left {
         right: 70px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+    body.has-print-button .nav-buttons .nav-button-right {
+        right: 70px;
+    }
+    body:has(#exe-print-btn) .nav-buttons .nav-button-left,
+    body.has-print-button .nav-buttons .nav-button-left {
+        right: 120px;
     }
 
     button#siteNavToggler {

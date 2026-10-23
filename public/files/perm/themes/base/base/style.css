@@ -383,6 +383,15 @@ button.toggler:focus {
     right: 15px;
 }
 
+.exe-web-site .exe-print-action {
+    top: 10px;
+    right: 15px;
+}
+body:has(#exe-print-btn) .nav-buttons .nav-button-right,
+body.has-print-button .nav-buttons .nav-button-right {
+    right: 65px;
+}
+
 /* Box toggler */
 .exe-export .box {
     position: relative;
