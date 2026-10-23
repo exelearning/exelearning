@@ -1736,65 +1736,60 @@ describe('exe_export.js', () => {
   });
 
   describe('initPrintButton', () => {
-    it('does nothing when #exe-print-btn is not in the DOM', () => {
+    afterEach(() => {
+      delete window.ExePrintPreview;
+      document.head.querySelectorAll('[data-print-root], link[href*="exe_print"]').forEach(node => node.remove());
+    });
+
+    it('does nothing without a print button', () => {
       expect(() => window.$exeExport.initPrintButton()).not.toThrow();
     });
 
-    it('triggers window.print() directly when document has exe-single-page class', () => {
-      const btn = document.createElement('button');
-      btn.id = 'exe-print-btn';
-      document.body.appendChild(btn);
-      document.body.classList.add('exe-single-page');
-
-      const originalPrint = window.print;
-      window.print = vi.fn();
-
+    it.each(['', 'exe-single-page'])('opens the shared overlay once in %s', async bodyClass => {
+      document.body.innerHTML = '<button id="exe-print-btn" data-print-root="../">Print</button>';
+      document.body.className = bodyClass;
+      window.ExePrintPreview = { open: vi.fn().mockResolvedValue() };
+      const btn = document.getElementById('exe-print-btn');
+      window.$exeExport.initPrintButton();
       window.$exeExport.initPrintButton();
       btn.click();
-
-      expect(window.print).toHaveBeenCalledTimes(1);
-
-      btn.remove();
-      document.body.classList.remove('exe-single-page');
-      window.print = originalPrint;
+      expect(btn.disabled).toBe(true);
+      await vi.waitFor(() => expect(btn.disabled).toBe(false));
+      expect(window.ExePrintPreview.open).toHaveBeenCalledTimes(1);
+      expect(document.querySelector('script[src*="exe_print"]')).toBeNull();
     });
 
-    it('opens print.html in new tab when on index page', () => {
-      const btn = document.createElement('button');
-      btn.id = 'exe-print-btn';
-      document.body.appendChild(btn);
-      document.body.classList.remove('exe-single-page');
-      document.documentElement.id = 'exe-index';
-
-      const originalOpen = window.open;
-      window.open = vi.fn();
-
+    it('loads the snapshot and runtime lazily using the explicit package root', async () => {
+      document.body.innerHTML = '<button id="exe-print-btn" data-print-root="https://example.test/html/course/">Print</button>';
+      const append = vi.spyOn(document.head, 'appendChild');
+      const loads = [];
+      append.mockImplementation(node => {
+        if (node.tagName === 'SCRIPT') {
+          loads.push(node.src);
+          if (node.src.endsWith('runtime.js')) window.ExePrintPreview = { open: vi.fn().mockResolvedValue() };
+          queueMicrotask(() => node.onload());
+        }
+        return node;
+      });
       window.$exeExport.initPrintButton();
-      btn.click();
-
-      expect(window.open).toHaveBeenCalledWith('print.html?print=1', '_blank', 'noopener');
-
-      btn.remove();
-      window.open = originalOpen;
+      document.getElementById('exe-print-btn').click();
+      await vi.waitFor(() => expect(window.ExePrintPreview?.open).toHaveBeenCalledTimes(1));
+      expect(loads).toEqual(['https://example.test/html/course/libs/exe_print/data.js', 'https://example.test/html/course/libs/exe_print/runtime.js']);
+      append.mockRestore();
     });
 
-    it('opens ../print.html in new tab when on subpage', () => {
-      const btn = document.createElement('button');
-      btn.id = 'exe-print-btn';
-      document.body.appendChild(btn);
-      document.body.classList.remove('exe-single-page');
-      document.documentElement.id = 'exe-subpage';
-
-      const originalOpen = window.open;
-      window.open = vi.fn();
-
+    it('announces a failed load and allows retrying', async () => {
+      document.body.innerHTML = '<button id="exe-print-btn">Print</button>';
+      const append = vi.spyOn(document.head, 'appendChild').mockImplementation(node => {
+        if (node.tagName === 'SCRIPT') queueMicrotask(() => node.onerror());
+        return node;
+      });
       window.$exeExport.initPrintButton();
+      const btn = document.getElementById('exe-print-btn');
       btn.click();
-
-      expect(window.open).toHaveBeenCalledWith('../print.html?print=1', '_blank', 'noopener');
-
-      btn.remove();
-      window.open = originalOpen;
+      await vi.waitFor(() => expect(btn.disabled).toBe(false));
+      expect(document.querySelector('[role="alert"]').textContent).toContain('Print preview not available');
+      append.mockRestore();
     });
   });
 

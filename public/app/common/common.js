@@ -3088,14 +3088,19 @@ var $exeDevices = {
                         var nodes = nodesFrom(target);
                         if (!nodes.length) return;
 
-                        if (typeof MathJax === 'undefined') {
+                        // A MathJax configuration object may exist before its engine loads.
+                        // Its startup options alone do not provide a typesetting API.
+                        if (typeof MathJax === 'undefined' ||
+                            (!MathJax.typesetPromise && !MathJax.typeset &&
+                                !(MathJax.startup && MathJax.startup.promise) &&
+                                !(MathJax.Hub && typeof MathJax.Hub.Queue === 'function'))) {
                             self.loadMathJax(function () {
                                 typesetNow();
                             });
                             return;
                         }
 
-                        if (MathJax.typesetPromise || MathJax.startup) return runV3(nodes);
+                        if (MathJax.typesetPromise || MathJax.typeset || (MathJax.startup && MathJax.startup.promise)) return runV3(nodes);
                         if (MathJax.Hub && typeof MathJax.Hub.Queue === 'function') return runV2(nodes);
                     }
 

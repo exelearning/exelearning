@@ -349,6 +349,11 @@ export class Scorm2004Exporter extends Html5Exporter {
             // 9. Add project assets (with tracking for ELPX manifest)
             await this.addAssetsToZipWithResourcePath(fileList);
 
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, (path, content) => {
+                addFile(path, content);
+                commonFiles.push(path);
+            });
+
             // 10. Generate ELPX manifest file if download-source-file is used
             if (needsElpxDownload && fileList) {
                 const pageUrls = Object.values(pageFiles).map(pf => pf.fileUrl);

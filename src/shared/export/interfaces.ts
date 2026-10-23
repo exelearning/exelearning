@@ -701,6 +701,7 @@ export interface PageRenderOptions {
 
     /** Translated labels for navigation buttons (resolved at export time from XLF) */
     navLabels?: {
+        print?: string;
         previous: string;
         next: string;
         page: string;

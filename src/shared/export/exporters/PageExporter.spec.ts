@@ -64,6 +64,9 @@ class MockResourceProvider implements ResourceProvider {
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
+        for (const name of _files.filter(file => file.startsWith('exe_print/'))) {
+            files.set(name, Buffer.from(name.endsWith('strings.json') ? '["Print"]' : '// print resource'));
+        }
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
                 'material-icons/material-icons.svg',

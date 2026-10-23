@@ -13,6 +13,7 @@ import type {
     AssetProvider,
     LatexPreRenderResult,
     MermaidPreRenderResult,
+    PageRenderOptions,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
@@ -27,6 +28,7 @@ import { nodeText } from '../worksheet/sanitizeHtml';
 import { parse, type DefaultTreeAdapterMap } from 'parse5';
 import { resolveMaterialIconDataUris } from './BaseExporter';
 import { PRERENDERED_LATEX_CSS } from '../constants';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import {
     applyActivityMode,
     convertedBy,
@@ -64,6 +66,13 @@ const APPENDIX_PRINT_STYLES = `
  * Options for print preview generation
  */
 export interface PrintPreviewOptions {
+    navLabels?: PageRenderOptions['navLabels'];
+    /** Resolve the finished document against an exported package instead of the editor's server. */
+    resolveResourceUrls?: (html: string) => string;
+    /** Export-relative asset paths; shared with the package's normal pages. */
+    assetExportPathMap?: Map<string, string>;
+    /** Material icons already resolved while building the package. */
+    materialIconDataUris?: Map<string, string>;
     /** Base path for versioned URLs (e.g., 'http://localhost:3001') */
     baseUrl?: string;
     /** App version for cache busting */
@@ -262,7 +271,10 @@ export class PrintPreviewExporter {
                 projectTitle: meta.title || 'eXeLearning',
                 projectSubtitle: meta.subtitle || '',
                 language: meta.language || 'en',
-                customStyles: meta.customStyles || '',
+                navLabels: options.navLabels,
+                customStyles:
+                    (meta.globalFont ? GlobalFontGenerator.generateCss(meta.globalFont, '') : '') +
+                    (meta.customStyles || ''),
                 usedIdevices,
                 author: meta.author || '',
                 license: meta.license || '',
@@ -271,8 +283,8 @@ export class PrintPreviewExporter {
                 passScore: meta.passScore,
                 passScoreEveryActivity: meta.passScoreEveryActivity,
                 version, // From browser context
-                assetExportPathMap: assetResolver.getExportPathMap(),
-                materialIconDataUris,
+                assetExportPathMap: options.assetExportPathMap ?? assetResolver.getExportPathMap(),
+                materialIconDataUris: options.materialIconDataUris ?? materialIconDataUris,
                 printContext: { kind: 'document', activities: options.activities?.mode ?? null },
                 themeFiles: themeRootFiles,
             });
@@ -284,7 +296,9 @@ export class PrintPreviewExporter {
             // 2. Patch relative paths (libs/, theme/) to server absolute paths, once the translated
             // strings the export scripts read are in the page itself
             html = await this.inlineTranslatedStrings(html, meta.language || 'en');
-            html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options, themeFiles);
+            if (!options.resolveResourceUrls) {
+                html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options, themeFiles);
+            }
 
             // 2b. Resolve any remaining content/resources or asset:// URLs to blob URLs.
             // Block header custom icons are generated at render time, so they are not covered
@@ -315,7 +329,7 @@ export class PrintPreviewExporter {
             }
             return {
                 success: true,
-                html,
+                html: options.resolveResourceUrls ? options.resolveResourceUrls(html) : html,
                 dispose: () => {
                     assetResolver.dispose();
                     themeFiles?.dispose();
@@ -851,6 +865,8 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
         };
 
         let processed = html;
+
+        processed = processed.replace(/url\(['"]?fonts\//g, `url('${getPath('files/perm/fonts/')}`);
 
         // Path Mappings
         const mappings: Record<string, string> = {

@@ -193,6 +193,7 @@ export class PageRenderer {
             addPrintButton,
             pageLabel: options.navLabels?.page,
             printLabel: options.navLabels?.print,
+            printBasePath: basePath,
             language,
         });
 
@@ -701,12 +702,14 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
             .substring(0, 50);
     }
 
-    /**
-     * Render page header with page counter, package title (h1), subtitle, and page title (h2)
-     * @param page - Page
-     * @param options - Header options including counter info
-     * @returns Header HTML
-     */
+    /** A font-independent, accessible print action shared by all web export layouts. */
+    private renderPrintButton(label: string, basePath: string): string {
+        const title = this.escapeHtml(label);
+        const root = this.escapeHtml(basePath);
+        return `<link rel="stylesheet" href="${root}libs/exe_print/button.css"><div class="exe-print-action"><button type="button" class="btn-print" id="exe-print-btn" data-print-root="${root}" title="${title}" aria-label="${title}"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg><span class="sr-av">${title}</span></button></div>\n`;
+    }
+
+    /** Render the page counter, package title, subtitle and page title. */
     renderPageHeader(
         page: ExportPage,
         options: {
@@ -718,6 +721,7 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
             addPrintButton?: boolean;
             pageLabel?: string;
             printLabel?: string;
+            printBasePath?: string;
             language?: string;
         },
     ): string {
@@ -739,7 +743,7 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
 
         const effectivePrintLabel = options.printLabel || trans('Print', {}, language);
         const printButtonHtml = addPrintButton
-            ? ` <div class="exe-print-action"><button type="button" class="btn-print" id="exe-print-btn" title="${this.escapeHtml(effectivePrintLabel)}" aria-label="${this.escapeHtml(effectivePrintLabel)}"><span class="sr-av">${this.escapeHtml(effectivePrintLabel)}</span></button></div>\n`
+            ? this.renderPrintButton(effectivePrintLabel, options.printBasePath || './')
             : '';
 
         // Check if page title should be hidden and get effective title
@@ -1298,7 +1302,7 @@ ${userFooterHtml}</div></footer>`;
             addExeLink?: boolean;
             addPrintButton?: boolean;
             userFooterContent?: string;
-            navLabels?: { previous?: string; next?: string; page?: string; license?: string; print?: string };
+            navLabels?: Partial<PageRenderOptions['navLabels']>;
             materialIconDataUris?: Map<string, string>;
             printContext?: PrintContext;
             assetExportPathMap?: Map<string, string>;
@@ -1414,9 +1418,7 @@ ${sectionContent}
         ].join('\n');
 
         const effectivePrintLabel = navLabels?.print || trans('Print', {}, language);
-        const printButtonHtml = addPrintButton
-            ? ` <div class="exe-print-action"><button type="button" class="btn-print" id="exe-print-btn" title="${this.escapeHtml(effectivePrintLabel)}" aria-label="${this.escapeHtml(effectivePrintLabel)}"><span class="sr-av">${this.escapeHtml(effectivePrintLabel)}</span></button></div>\n`
-            : '';
+        const printButtonHtml = addPrintButton ? this.renderPrintButton(effectivePrintLabel, './') : '';
 
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">

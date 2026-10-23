@@ -1,0 +1,66 @@
+/* Shared by all exported formats, including local files and editor previews. */
+.exe-print-action {
+    position: fixed;
+    top: 14px;
+    right: 20px;
+    z-index: 1000;
+    margin: 0;
+}
+
+/* Keep the next-page control reachable in website themes. */
+.exe-web-site .exe-print-action {
+    right: 76px;
+}
+
+#exe-print-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid #888;
+    border-radius: 4px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+#exe-print-btn svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    flex: none;
+}
+
+/* Older cached base styles used a mask instead of the SVG. */
+#exe-print-btn::before {
+    content: none;
+}
+
+#exe-print-btn:hover {
+    background: #f0f0f0;
+}
+
+#exe-print-btn:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+#exe-print-btn:disabled {
+    cursor: progress;
+    opacity: .65;
+}
+
+html.exe-dark-mode #exe-print-btn {
+    background: #2b2b2b;
+    color: #eee;
+    border-color: #aaa;
+}
+
+@media print {
+    .exe-print-action {
+        display: none !important;
+    }
+}

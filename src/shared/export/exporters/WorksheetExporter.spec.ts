@@ -845,3 +845,19 @@ describe('WorksheetExporter and the molecules it has to draw first', () => {
         expect(model.unsupported[0]).toMatchObject({ ideviceType: '3dmol', reason: 'media-required' });
     });
 });
+
+it('resolves the finished worksheet against the package only after rendering', async () => {
+    let received = '';
+    const result = await new WorksheetExporter(
+        documentOf([{ components: [{ type: 'guess', content: guessContent() }] }]),
+    ).generate({
+        resolveResourceUrls: html => {
+            received = html;
+            return html.replace('<body', '<body data-portable="true"');
+        },
+    });
+    expect(result.success).toBe(true);
+    expect(received).toContain('Ciudad');
+    expect(result.html).toContain('data-portable="true"');
+    result.dispose?.();
+});

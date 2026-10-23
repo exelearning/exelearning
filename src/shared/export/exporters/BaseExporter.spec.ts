@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { BaseExporter, resolveMaterialIconDataUris } from './BaseExporter';
+import { PRINT_RUNTIME_FILES } from '../printPackage';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -188,6 +189,12 @@ class MockZipProvider implements ZipProvider {
 
 // Concrete test implementation of BaseExporter
 class TestExporter extends BaseExporter {
+    testPrintPackage(meta: Partial<ExportMetadata>, pages: ExportPage[] = []) {
+        const files = new Map<string, string | Uint8Array>();
+        return this.addPrintPreviewFiles(pages, { ...this.getMetadata(), ...meta }, null, (name, content) =>
+            files.set(name, content),
+        ).then(() => files);
+    }
     getFileExtension(): string {
         return '.zip';
     }
@@ -242,6 +249,66 @@ describe('BaseExporter', () => {
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new TestExporter(document, resources, assets, zip);
+    });
+
+    describe('shared print package', () => {
+        const runtime = () =>
+            new Map([
+                ...PRINT_RUNTIME_FILES.map(name => [name, Buffer.from('resource')] as const),
+                ['exe_print/strings.json', Buffer.from('["Print", "Close"]')],
+            ]);
+
+        it('adds nothing when printing is disabled', async () => {
+            expect((await exporter.testPrintPackage({ title: 'Disabled' })).size).toBe(0);
+        });
+
+        it('fails with a useful build error for missing runtime or string keys', async () => {
+            await expect(exporter.testPrintPackage({ title: 'Missing', addPrintButton: true })).rejects.toThrow(
+                'bundle:exporters',
+            );
+            const files = runtime();
+            files.delete('exe_print/strings.json');
+            resources.setLibraryFiles(files);
+            await expect(exporter.testPrintPackage({ title: 'Missing', addPrintButton: true })).rejects.toThrow(
+                'translations missing',
+            );
+        });
+
+        it('publishes translated UI data and read-only metadata, with all local dependencies', async () => {
+            resources.setLibraryFiles(runtime());
+            resources.fetchI18nTranslations = async () => new Map([['Print', 'Imprimir']]);
+            const files = await exporter.testPrintPackage(
+                { title: 'Course', language: 'es', addPrintButton: true, addSearchBox: true, globalFont: 'andika' },
+                [
+                    {
+                        id: 'p',
+                        title: 'Mermaid',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'b',
+                                name: 'Diagram',
+                                order: 0,
+                                components: [
+                                    { id: 'c', type: 'text', order: 0, content: '<div class="mermaid">graph LR</div>' },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            );
+            expect(files.has('print.html')).toBe(true);
+            for (const name of PRINT_RUNTIME_FILES) expect(files.has(`libs/${name}`)).toBe(true);
+            const script = files.get('libs/exe_print/data.js') as string;
+            const data = JSON.parse(script.slice('window.__exePrintPackage='.length, -1));
+            expect(data.translations).toEqual({ Print: 'Imprimir', Close: 'Close' });
+            expect(data.metadata).toMatchObject({ title: 'Course', language: 'es', globalFont: 'andika' });
+            expect(data.metadata.addPrintButton).toBeUndefined();
+            expect(data.metadata.addSearchBox).toBeUndefined();
+            expect(data.pages[0].id).toBe('p');
+            expect(data.themeFiles).toEqual(['style.css', 'style.js']);
+        });
     });
 
     describe('Structure Access', () => {

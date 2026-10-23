@@ -5325,6 +5325,26 @@ describe('common.js $exeDevices', () => {
       expect(() => math.updateLatex('.math-content')).not.toThrow();
     });
 
+    it('loads the engine when MathJax only contains startup configuration', async () => {
+      const math = getMath();
+      const previous = global.MathJax;
+      global.MathJax = { startup: { typeset: false } };
+      document.body.innerHTML = '<div class="math-content">\\(x^2\\)</div>';
+      const typesetPromise = vi.fn().mockResolvedValue();
+      const load = vi.spyOn(math, 'loadMathJax').mockImplementation(callback => {
+        global.MathJax = { typesetPromise };
+        callback();
+      });
+      try {
+        math.updateLatex('.math-content');
+        await vi.waitFor(() => expect(typesetPromise).toHaveBeenCalledWith([document.querySelector('.math-content')]));
+        expect(load).toHaveBeenCalledOnce();
+      } finally {
+        load.mockRestore();
+        global.MathJax = previous;
+      }
+    });
+
     it('updateLatex accepts DOM element', () => {
       const math = getMath();
       document.body.innerHTML = '<div class="math-content">\\(x^2\\)</div>';

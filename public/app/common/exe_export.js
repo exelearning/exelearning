@@ -101,6 +101,8 @@ window.$exeExport = {
             }
         }, 100);
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
+        // The standard button is already visible at DOM ready. Bind it before a reader can click it.
+        this.initPrintButton();
         setTimeout(() => {
             try {
                 this.initPrintButton();
@@ -672,33 +674,43 @@ window.$exeExport = {
         }
     },
 
-    /**
-     * Initialize print button click handler.
-     * In single-page export, prints the page directly.
-     * In multi-page export, opens print.html in a new tab/window with ?print=1.
-     */
+    /** Load the shared preview on demand, using the base path supplied by the renderer. */
     initPrintButton: function () {
         var btn = document.getElementById('exe-print-btn');
-        if (!btn) return;
-
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-            if (document.body && document.body.classList.contains('exe-single-page')) {
-                if (typeof window.print === 'function') {
-                    window.print();
+        if (!btn || btn.dataset.printBound) return;
+        btn.dataset.printBound = 'true';
+        btn.addEventListener('click', async function (event) {
+            event.preventDefault();
+            btn.disabled = true;
+            try {
+                if (!window.ExePrintPreview) {
+                    var root = new URL(btn.dataset.printRoot || './', window.location.href).href;
+                    var style = document.createElement('link');
+                    style.rel = 'stylesheet';
+                    style.href = new URL('libs/exe_print/preview.css', root).href;
+                    document.head.appendChild(style);
+                    var load = function (path) {
+                        return new Promise(function (resolve, reject) {
+                            var script = document.createElement('script');
+                            script.src = new URL(path, root).href;
+                            script.dataset.printRoot = root;
+                            script.onload = resolve;
+                            script.onerror = function () { script.remove(); reject(new Error('Print preview not available')); };
+                            document.head.appendChild(script);
+                        });
+                    };
+                    await load('libs/exe_print/data.js');
+                    await load('libs/exe_print/runtime.js');
                 }
-                return;
+                await window.ExePrintPreview.open(btn);
+            } catch (error) {
+                var notice = document.createElement('p');
+                notice.setAttribute('role', 'alert');
+                notice.textContent = getI18nText('printPreviewUnavailable', 'Print preview not available');
+                btn.parentElement.appendChild(notice);
+            } finally {
+                btn.disabled = false;
             }
-
-            var isSubpage = false;
-            if (window.location && window.location.pathname) {
-                isSubpage = window.location.pathname.indexOf('/html/') !== -1;
-            }
-            if (!isSubpage && document.documentElement && document.documentElement.id) {
-                isSubpage = document.documentElement.id !== 'exe-index';
-            }
-            var printUrl = (isSubpage ? '../' : '') + 'print.html?print=1';
-            window.open(printUrl, '_blank', 'noopener');
         });
     }
 }

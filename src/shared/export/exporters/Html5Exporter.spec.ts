@@ -102,6 +102,9 @@ class MockResourceProvider implements ResourceProvider {
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
+        for (const name of _files.filter(file => file.startsWith('exe_print/'))) {
+            files.set(name, Buffer.from(name.endsWith('strings.json') ? '["Print"]' : '// print resource'));
+        }
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
                 'material-icons/material-icons.svg',
@@ -2060,8 +2063,9 @@ describe('Html5Exporter', () => {
             const indexHtml = zip.files.get('index.html') as string;
             expect(indexHtml).toContain('id="exe-print-btn"');
             const printHtml = zip.files.get('print.html') as string;
-            expect(printHtml).toContain('id="exe-print-btn"');
-            expect(printHtml).toContain('exe-single-page');
+            expect(printHtml).toContain('id="printPreviewMount"');
+            expect(printHtml).toContain('libs/exe_print/runtime.js');
+            expect(zip.files.has('libs/exe_print/data.js')).toBe(true);
 
             const previewFiles = await exporter.generateForPreview();
             expect(previewFiles.has('print.html')).toBe(true);

@@ -292,39 +292,7 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 2.5. Add print.html if print button is enabled
-            if (meta.addPrintButton) {
-                let printHtml = this.generatePrintHtml(
-                    pages,
-                    meta,
-                    usedIdevices,
-                    faviconInfo,
-                    [],
-                    meta.addMathJax === true,
-                    navLabels,
-                    materialIconDataUris,
-                    themeRootFiles,
-                    assetExportPathMap,
-                );
-
-                if (!meta.addMathJax) {
-                    const latexResult = await this.preRenderHtmlLatex(printHtml, options);
-                    printHtml = latexResult.html;
-                }
-
-                if (options?.preRenderMermaid) {
-                    try {
-                        const result = await options.preRenderMermaid(printHtml);
-                        if (result.mermaidRendered) {
-                            printHtml = result.html;
-                        }
-                    } catch (error) {
-                        console.warn('[Html5Exporter] Mermaid pre-render failed for print.html:', error);
-                    }
-                }
-
-                addFile('print.html', printHtml);
-            }
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile);
 
             // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
             this.addEditableContentXml(pages, meta, addFile, options);
@@ -570,48 +538,6 @@ export class Html5Exporter extends BaseExporter {
     }
 
     /**
-     * Generate standalone single-page HTML for printing in multi-page export
-     */
-    generatePrintHtml(
-        pages: ExportPage[],
-        meta: ExportMetadata,
-        usedIdevices: string[],
-        faviconInfo?: FaviconInfo | null,
-        detectedLibraries: string[] = [],
-        addMathJax = false,
-        navLabels?: { previous: string; next: string; page: string; license?: string; print?: string },
-        materialIconDataUris?: Map<string, string>,
-        themeFiles?: string[],
-        assetExportPathMap?: Map<string, string>,
-    ): string {
-        return this.pageRenderer.renderSinglePage(pages, {
-            projectTitle: meta.title || 'eXeLearning',
-            projectSubtitle: meta.subtitle || '',
-            language: meta.language || 'en',
-            customStyles: meta.customStyles || '',
-            usedIdevices,
-            author: meta.author || '',
-            license: meta.license || '',
-            licenseUrl: meta.licenseUrl || '',
-            faviconPath: faviconInfo?.path,
-            faviconType: faviconInfo?.type,
-            version: meta.exelearningVersion,
-            detectedLibraries,
-            linkToElp: false,
-            addMathJax,
-            passScore: meta.passScore,
-            passScoreEveryActivity: meta.passScoreEveryActivity,
-            addExeLink: meta.addExeLink ?? true,
-            userFooterContent: meta.footer,
-            navLabels,
-            materialIconDataUris,
-            themeFiles,
-            assetExportPathMap,
-            addPrintButton: true,
-        });
-    }
-
-    /**
      * Detect theme-specific favicon from theme files map
      * @param themeFilesMap - Map of theme files
      * @returns Favicon info or null if not found
@@ -824,39 +750,7 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 2.5. Add print.html if print button is enabled
-            if (meta.addPrintButton) {
-                let printHtml = this.generatePrintHtml(
-                    pages,
-                    meta,
-                    usedIdevices,
-                    faviconInfo,
-                    [],
-                    meta.addMathJax === true,
-                    navLabels,
-                    materialIconDataUris,
-                    themeRootFiles,
-                    assetExportPathMap,
-                );
-
-                if (!meta.addMathJax) {
-                    const latexResult = await this.preRenderHtmlLatex(printHtml, options);
-                    printHtml = latexResult.html;
-                }
-
-                if (options?.preRenderMermaid) {
-                    try {
-                        const result = await options.preRenderMermaid(printHtml);
-                        if (result.mermaidRendered) {
-                            printHtml = result.html;
-                        }
-                    } catch {
-                        // Continue without pre-rendering
-                    }
-                }
-
-                addFile('print.html', printHtml);
-            }
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile);
 
             // 3. Add content.xml (ODE format for re-import) when editable source is enabled.
             // Registered via addFile, so it is automatically listed in the ELPX manifest below.
