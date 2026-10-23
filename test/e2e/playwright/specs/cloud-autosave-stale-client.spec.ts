@@ -58,8 +58,12 @@ test.describe('Cloud autosave: stale client never overwrites newer saves', () =>
             timeout: 20000,
         });
 
-        // A goes offline (laptop asleep). Its WebSocket drops.
-        await authenticatedPage.context().setOffline(true);
+        // A's WebSocket drops (laptop asleep). Closing the provider directly is
+        // deterministic in every browser; Firefox's offline emulation does not
+        // close an already-open WebSocket.
+        await authenticatedPage.evaluate(() => {
+            (window as any).eXeLearning.app.project._yjsBridge.documentManager.wsProvider.disconnect();
+        });
         await authenticatedPage.waitForFunction(
             () =>
                 (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager?.wsProvider?.wsconnected ===
@@ -78,7 +82,9 @@ test.describe('Cloud autosave: stale client never overwrites newer saves', () =>
         expect(await navA.getNodeIdByTitle(laterNode)).toBeNull();
 
         // ...comes back online, and must converge with the server before anything else.
-        await authenticatedPage.context().setOffline(false);
+        await authenticatedPage.evaluate(() => {
+            (window as any).eXeLearning.app.project._yjsBridge.documentManager.wsProvider.connect();
+        });
         await authenticatedPage.waitForFunction(
             () =>
                 (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager?.wsProvider?.wsconnected ===
