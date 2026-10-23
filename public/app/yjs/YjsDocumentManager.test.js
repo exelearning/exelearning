@@ -375,8 +375,7 @@ describe('YjsDocumentManager', () => {
       expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
       expect(manager._recoverUnsavedLocalCopy).toBe(true);
-      // The local copy is not empty-checked here (mock provider), so the merge
-      // call is what matters: the server state is applied on top of it.
+      // The server state is merged on top of the kept copy (as on every online open).
       expect(manager.loadFromServer).toHaveBeenCalled();
       // And captureBaselineState() restores the dirty state for autosave.
       manager.captureBaselineState();
@@ -417,6 +416,127 @@ describe('YjsDocumentManager', () => {
       expect(deleteDatabase).not.toHaveBeenCalled();
       expect(manager._recoverUnsavedLocalCopy).toBe(false);
       expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+    });
+  });
+
+  describe('server snapshot merge on open and reconnect (issue #2615)', () => {
+    function makeOnlineManager() {
+      const m = new YjsDocumentManager('test-project-123', {
+        wsUrl: 'ws://localhost:3001/yjs',
+        apiUrl: '/api',
+        token: 'test-token',
+        offline: false,
+      });
+      spyOn(m, '_validateIndexedDb').mockResolvedValue(true);
+      return m;
+    }
+
+    it('merges the server snapshot on every online open, even when a local copy exists', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+      // Pretend IndexedDB already holds content (stale local copy).
+      const OriginalIdb = global.window.IndexeddbPersistence;
+      global.window.IndexeddbPersistence = class extends OriginalIdb {
+        constructor(name, ydoc) {
+          super(name, ydoc);
+          ydoc.getArray('navigation').push([new global.window.Y.Map()]);
+        }
+      };
+      try {
+        await manager.initialize();
+      } finally {
+        global.window.IndexeddbPersistence = OriginalIdb;
+      }
+      expect(manager.getNavigation().length).toBeGreaterThan(0);
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not consult the server in offline mode', async () => {
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+      await manager.initialize();
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('applies the server state with the initial origin so a merge never marks the document dirty', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+      await manager.initialize();
+      manager.captureBaselineState();
+      expect(manager.isDirty).toBe(false);
+
+      // Build a server snapshot from another document and serve it.
+      const Y = global.window.Y;
+      const serverDoc = new Y.Doc();
+      serverDoc.getMap('metadata').set('author', 'Someone Else');
+      const serverState = Y.encodeStateAsUpdate(serverDoc);
+      global.fetch = mock(() =>
+        Promise.resolve({ ok: true, status: 200, arrayBuffer: () => Promise.resolve(serverState.buffer) })
+      );
+
+      await manager.loadFromServer();
+
+      expect(manager.getMetadata().get('author')).toBe('Someone Else');
+      expect(manager.isDirty).toBe(false);
+    });
+
+    it('merges the server snapshot again after a reconnection, before announcing the connection', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+      await manager.initialize();
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+      const events = [];
+      manager.on('connectionChange', (data) => events.push(data.connected));
+
+      // First connect: no merge (initialize already merged).
+      manager.wsProvider.connect();
+      expect(loadSpy).not.toHaveBeenCalled();
+      expect(events).toEqual([true]);
+
+      // Drop and reconnect: merge, then announce.
+      manager.wsProvider.disconnect();
+      expect(events).toEqual([true, false]);
+      manager.wsProvider.connect();
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(events).toEqual([true, false, true]);
+    });
+
+    it('announces the reconnection even when the merge fails', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+      await manager.initialize();
+      spyOn(manager, 'loadFromServer').mockRejectedValue(new Error('offline again'));
+      const events = [];
+      manager.on('connectionChange', (data) => events.push(data.connected));
+
+      manager.wsProvider.connect();
+      manager.wsProvider.disconnect();
+      manager.wsProvider.connect();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(events).toEqual([true, false, true]);
+    });
+
+    it('deduplicates concurrent server merges into one request', async () => {
+      await manager.initialize();
+      let resolveFetch;
+      global.fetch = mock(
+        () => new Promise((resolve) => {
+          resolveFetch = resolve;
+        })
+      );
+      const first = manager.loadFromServer();
+      const second = manager.loadFromServer();
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      resolveFetch({ ok: false, status: 404 });
+      await Promise.all([first, second]);
+      // A later call starts a fresh request.
+      global.fetch = mock(() => Promise.resolve({ ok: false, status: 404 }));
+      await manager.loadFromServer();
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });
 

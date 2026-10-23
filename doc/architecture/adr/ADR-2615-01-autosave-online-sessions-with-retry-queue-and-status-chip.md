@@ -115,6 +115,11 @@ another browser; no server-side history yet to undo an unwanted autosave.
 - Last-tab cleanup and server load only when empty: `YjsDocumentManager.initialize()` @ `c848eca00`.
 - Export from the in-memory document: `public/app/workarea/menus/navbar/items/navbarFile.js`
   `exportViaYjs()`, `public/app/yjs/YjsProjectBridge.js` `exportToElpx()` @ `c848eca00`.
+- The WebSocket layer is a relay without document state ("No server-side persistence (client saves via REST
+  API)", `src/websocket/yjs-websocket.ts` @ `c848eca00`), so a reconnecting client only merges with clients that
+  are online at that moment, never with the stored snapshot. Reproduced by
+  `test/e2e/playwright/specs/cloud-autosave-stale-client.spec.ts`, which fails on `c848eca00`-era loading (both
+  scenarios time out waiting for the collaborator's saved node) and passes with the merge on open/reconnect.
 - Yjs update application is idempotent, so merging a server snapshot into a local copy that already contains
   part of it is safe (Yjs documentation, "Document updates": https://docs.yjs.dev/api/document-updates).
 - Implementation and tests: PR #2616, commits `98e80dc0e`, `5ec40f743`, `3632f00c3`
@@ -144,6 +149,14 @@ We will take Option 3. In every online session with remote storage and a live, s
    renders *Saved* / *Unsaved changes* / *Saving...* / *Not saved* with a distinct icon per phase. A click still
    saves immediately (the manual retry). The static build strips the template block and Electron never renders
    it, so both keep the file-based Save button.
+
+6. **Every online open and every reconnection merge the server snapshot.** `YjsDocumentManager.initialize()`
+   calls `loadFromServer()` whether or not IndexedDB had a local copy, and the WebSocket `status: connected`
+   handler calls it again after a drop before re-announcing the connection. The merge is applied with the
+   `initial` origin so it never marks the document dirty or enters the undo stack. Without this, the relay
+   (which holds no document state) left a tab that was offline while others saved on its old copy, and that
+   tab's next save overwrote the server; the field report's publisher saw the edits on the 15th, so the
+   server had them and lost them afterwards to exactly such a stale save.
 
 The `sendBeacon` unload save is left in place but is no longer relied upon.
 
@@ -179,6 +192,10 @@ The `sendBeacon` unload save is left in place but is no longer relied upon.
 - A kept local copy from browser A plus a newer save from browser B: the merge keeps both sets of edits, but
   the merged result is what browser A autosaves; concurrent deletions resolve by CRDT rules, not by the user.
   Mitigation: #2163 (version history) and the existing public read-only view for verification.
+- Two clients that merged the same server state, then saved divergent edits within the same seconds, still
+  resolve as last-writer-wins on the server, because the save replaces the snapshot. The client-side merge
+  closes every observed path (offline tab, stale copy, kept unsaved work); a server-side merge on version
+  conflict would close this residual race (see follow-up work).
 - Hidden Save button in installations that customise the toolbar through `data-exe-hide-save`: the chip is the
   same element, so the attribute still hides it.
 
@@ -196,6 +213,9 @@ The `sendBeacon` unload save is left in place but is no longer relied upon.
 
 ## Follow-up work
 
+- Server-side merge on conflict: the client sends the snapshot version it merged (`X-Base-Version`); when the
+  server holds a newer version it applies the incoming state on top of the stored one instead of replacing
+  it, decoding only in that conflict case. Closes the residual last-writer-wins race.
 - Remove the `sendBeacon` unload save or bound it to documents under the quota.
 - Server-side version history for recovery (#2163).
 - Consider incremental updates instead of full snapshots for very large projects.
