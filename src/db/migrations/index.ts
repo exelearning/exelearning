@@ -21,6 +21,7 @@ import * as migration007 from './007_activity_log';
 import * as migration008 from './008_project_public_view_id';
 import * as migration009 from './009_project_public_view_enabled';
 import * as migration010 from './010_project_platform_binding';
+import * as migration011 from './011_asset_metadata';
 
 // ============================================================================
 // MIGRATION REGISTRY
@@ -38,6 +39,7 @@ const migrations: Record<string, Migration> = {
     '008_project_public_view_id': migration008,
     '009_project_public_view_enabled': migration009,
     '010_project_platform_binding': migration010,
+    '011_asset_metadata': migration011,
 };
 
 // ============================================================================

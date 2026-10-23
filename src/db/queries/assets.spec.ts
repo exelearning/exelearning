@@ -14,6 +14,8 @@ import {
     findAssetByHash,
     findAssetsByHashes,
     findAllAssetsForProject,
+    searchAssetsForProject,
+    updateAssetMetadataByClientId,
     getProjectStorageSize,
     getUserStorageUsage,
     createAsset,
@@ -488,6 +490,180 @@ describe('Asset Queries', () => {
         it('should return undefined for non-existent asset', async () => {
             const updated = await updateAsset(db, 99999, { filename: 'test.png' });
             expect(updated).toBeUndefined();
+        });
+    });
+
+    describe('updateAssetMetadataByClientId', () => {
+        it('should save and retrieve centralized metadata', async () => {
+            const asset = await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'photo.jpg',
+                storage_path: '/photo.jpg',
+                client_id: 'meta-client',
+            });
+
+            const ok = await updateAssetMetadataByClientId(db, 'meta-client', testProjectId, {
+                description: 'A sunset',
+                title: 'Sunset',
+                license: 'Creative Commons BY',
+                author: 'Ada Lovelace',
+                authorUrl: 'https://ada.example',
+                sourceUrl: 'https://source.example/sunset.jpg',
+            });
+
+            expect(ok).toBe(true);
+            const found = await findAssetById(db, asset.id);
+            expect(found?.description).toBe('A sunset');
+            expect(found?.title).toBe('Sunset');
+            expect(found?.license).toBe('Creative Commons BY');
+            expect(found?.author).toBe('Ada Lovelace');
+            expect(found?.author_url).toBe('https://ada.example');
+            expect(found?.source_url).toBe('https://source.example/sunset.jpg');
+        });
+
+        it('should trim strings and allow clearing with empty values', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'p.jpg',
+                storage_path: '/p.jpg',
+                client_id: 'trim-client',
+            });
+
+            await updateAssetMetadataByClientId(db, 'trim-client', testProjectId, {
+                description: '  spaced  ',
+                authorUrl: '',
+            });
+
+            const found = await findAssetByClientId(db, 'trim-client', testProjectId);
+            expect(found?.description).toBe('spaced');
+            expect(found?.author_url).toBe('');
+        });
+
+        it('should only update provided keys', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'p.jpg',
+                storage_path: '/p.jpg',
+                client_id: 'partial-client',
+            });
+
+            await updateAssetMetadataByClientId(db, 'partial-client', testProjectId, { description: 'first' });
+            await updateAssetMetadataByClientId(db, 'partial-client', testProjectId, { author: 'Grace' });
+
+            const found = await findAssetByClientId(db, 'partial-client', testProjectId);
+            expect(found?.description).toBe('first');
+            expect(found?.author).toBe('Grace');
+        });
+
+        it('should return false when no asset matches', async () => {
+            const ok = await updateAssetMetadataByClientId(db, 'missing', testProjectId, { description: 'x' });
+            expect(ok).toBe(false);
+        });
+    });
+
+    describe('searchAssetsForProject', () => {
+        beforeEach(async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'mountain.jpg',
+                storage_path: '/mountain.jpg',
+                client_id: 's1',
+                description: 'A tall peak',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'beach.png',
+                storage_path: '/beach.png',
+                client_id: 's2',
+                author: 'Grace Hopper',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'doc.pdf',
+                storage_path: '/doc.pdf',
+                client_id: 's3',
+            });
+        });
+
+        it('returns all assets for a blank term', async () => {
+            const all = await searchAssetsForProject(db, testProjectId, '   ');
+            expect(all.length).toBe(3);
+        });
+
+        it('matches by filename (case-insensitive)', async () => {
+            const result = await searchAssetsForProject(db, testProjectId, 'BEACH');
+            expect(result.map(a => a.client_id)).toEqual(['s2']);
+        });
+
+        it('matches by description', async () => {
+            const result = await searchAssetsForProject(db, testProjectId, 'peak');
+            expect(result.map(a => a.client_id)).toEqual(['s1']);
+        });
+
+        it('matches by author', async () => {
+            const result = await searchAssetsForProject(db, testProjectId, 'hopper');
+            expect(result.map(a => a.client_id)).toEqual(['s2']);
+        });
+
+        it('returns empty when nothing matches', async () => {
+            const result = await searchAssetsForProject(db, testProjectId, 'nonexistent-xyz');
+            expect(result.length).toBe(0);
+        });
+
+        describe('LIKE wildcard escaping (SQLite ESCAPE clause)', () => {
+            beforeEach(async () => {
+                await createAsset(db, {
+                    project_id: testProjectId,
+                    filename: 'report_2024.pdf',
+                    storage_path: '/report_2024.pdf',
+                    client_id: 'w1',
+                });
+                await createAsset(db, {
+                    project_id: testProjectId,
+                    filename: 'reportX2024.pdf',
+                    storage_path: '/reportX2024.pdf',
+                    client_id: 'w2',
+                });
+                await createAsset(db, {
+                    project_id: testProjectId,
+                    filename: '100%_done.png',
+                    storage_path: '/100pct.png',
+                    client_id: 'w3',
+                });
+                await createAsset(db, {
+                    project_id: testProjectId,
+                    filename: 'hello!.png',
+                    storage_path: '/hello.png',
+                    client_id: 'w4',
+                });
+            });
+
+            it('finds filenames containing an underscore searched literally', async () => {
+                const result = await searchAssetsForProject(db, testProjectId, 'report_2024');
+                expect(result.map(a => a.client_id)).toEqual(['w1']);
+            });
+
+            it('does not treat _ in the term as a single-char wildcard', async () => {
+                // Without escaping, report_2024 would also match reportX2024.
+                const result = await searchAssetsForProject(db, testProjectId, 'report_');
+                expect(result.map(a => a.client_id)).toEqual(['w1']);
+            });
+
+            it('finds filenames containing a percent sign searched literally', async () => {
+                const result = await searchAssetsForProject(db, testProjectId, '100%_done');
+                expect(result.map(a => a.client_id)).toEqual(['w3']);
+            });
+
+            it('does not treat % in the term as a multi-char wildcard', async () => {
+                // Without escaping, "report%pdf" would match both report files.
+                const result = await searchAssetsForProject(db, testProjectId, 'report%pdf');
+                expect(result.length).toBe(0);
+            });
+
+            it('matches a literal escape character in values', async () => {
+                const result = await searchAssetsForProject(db, testProjectId, 'hello!');
+                expect(result.map(a => a.client_id)).toEqual(['w4']);
+            });
         });
     });
 

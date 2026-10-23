@@ -388,7 +388,7 @@ var $exeDevice = {
                                     <span id="adivinaTitleImage">${_('Image URL')}</span>
                                     <div class="flex-nowrap align-items-center  flex-nowrap gap-2 mb-3" id="adivinaEInputImage">
                                         <label class="sr-av" for="adivinaEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker form-control me-0" id="adivinaEURLImage"/>
+                                        <input type="text" class="exe-file-picker form-control me-0" id="adivinaEURLImage" data-author-target="#adivinaEAuthor"/>
                                         <a href="#" id="adivinaEPlayImage" class="ADVNE-ENavigationButton ADVNE-EPlayVideo" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ADVNE-ENavigationButton " />
                                         </a>
