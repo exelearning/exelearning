@@ -516,4 +516,108 @@ describe('elp:export command', () => {
             expect(xml).not.toContain('content/resources/resources/');
         });
     });
+    describe('execute - Mermaid diagrams (#2544)', () => {
+        const MERMAID_DIR = '/tmp/elp-export-mermaid-test';
+
+        async function writeElpx(name: string, htmlView: string): Promise<string> {
+            // The minimal project from issue #2544
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Mermaid</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page1</odePageId>
+        <odeBlockId>block1</odeBlockId>
+        <blockName>Block</blockName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page1</odePageId>
+            <odeBlockId>block1</odeBlockId>
+            <odeIdeviceId>20260101000000AAAAAA</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView><![CDATA[${htmlView}]]></htmlView>
+            <odeComponentsOrder>0</odeComponentsOrder>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+            const elpxPath = path.join(MERMAID_DIR, name);
+            await fs.mkdir(MERMAID_DIR, { recursive: true });
+            await fs.writeFile(elpxPath, Buffer.from(zipSync({ 'content.xml': strToU8(contentXml) })));
+            return elpxPath;
+        }
+
+        const DIAGRAMS =
+            '<pre class="mermaid">flowchart LR\n    A --&gt; B</pre>' +
+            '<pre class="mermaid">gantt\n  dateFormat YYYY-MM-DD\n  section S\n  Task :a1, 2026-09-01, 7d</pre>';
+
+        afterAll(async () => {
+            await fs.rm(MERMAID_DIR, { recursive: true, force: true });
+        });
+
+        for (const format of ['html5', 'html5-sp', 'scorm12', 'scorm2004', 'ims', 'epub3']) {
+            it(`renders the diagrams to SVG in a ${format} export`, async () => {
+                const input = await writeElpx(`${format}.elpx`, DIAGRAMS);
+                const outputPath = path.join(MERMAID_DIR, `${format}.zip`);
+                const result = await execute([input, outputPath, format], {});
+                expect(result.success).toBe(true);
+
+                const zip = unzipSync(new Uint8Array(await fs.readFile(outputPath)));
+                const pages = Object.keys(zip).filter(name => /\.x?html$/.test(name));
+                const html = pages.map(name => new TextDecoder().decode(zip[name])).join('\n');
+                const css = Object.keys(zip)
+                    .filter(name => name.endsWith('content/css/base.css'))
+                    .map(name => new TextDecoder().decode(zip[name]))
+                    .join('\n');
+
+                expect(html.match(/<div class="exe-mermaid-rendered"/g)).toHaveLength(2);
+                expect(html).not.toContain('<pre class="mermaid">');
+                for (const viewBox of html.matchAll(/<svg[^>]*class="pele[^>]*viewBox="([^"]+)"/g)) {
+                    const [, , width, height] = viewBox[1].split(' ').map(Number);
+                    expect(width).toBeGreaterThan(0);
+                    expect(height).toBeGreaterThan(0);
+                }
+                expect(html).not.toContain('mermaid.min.js');
+                expect(Object.keys(zip).some(name => name.includes('libs/mermaid'))).toBe(false);
+                expect(css).toContain('.exe-mermaid-rendered {');
+                expect(css).toContain('--pele-surface: #ececff');
+            });
+        }
+
+        it('keeps the diagram source in an elpx export', async () => {
+            const input = await writeElpx('source.elpx', DIAGRAMS);
+            const outputPath = path.join(MERMAID_DIR, 'source-out.elpx');
+            const result = await execute([input, outputPath, 'elpx'], {});
+            expect(result.success).toBe(true);
+
+            const zip = unzipSync(new Uint8Array(await fs.readFile(outputPath)));
+            const xml = new TextDecoder().decode(zip['content.xml']);
+            expect(xml).toContain('<pre class="mermaid">flowchart LR');
+        });
+
+        it('fails instead of writing a package with an unrendered diagram', async () => {
+            const input = await writeElpx('broken.elpx', '<pre class="mermaid">flowchart LR\n    A --&gt;</pre>');
+            const outputPath = path.join(MERMAID_DIR, 'broken.zip');
+            const result = await execute([input, outputPath, 'html5'], {});
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('1 Mermaid diagram(s) could not be rendered');
+            expect(result.message).toContain('"flowchart LR": Parse error on line 3: Expecting');
+            expect(result.message).toContain("got 'EOF'");
+            const written = await fs
+                .access(outputPath)
+                .then(() => true)
+                .catch(() => false);
+            expect(written).toBe(false);
+        });
+    });
 });

@@ -557,6 +557,30 @@ describe('Export Routes', () => {
         });
     });
 
+    describe('pre-render hooks', () => {
+        it('passes a Mermaid pre-render hook that renders diagrams to SVG', async () => {
+            const capturingDeps = createMockDependencies();
+            let options: { preRenderMermaid?: (html: string) => Promise<{ html: string; count: number }> } = {};
+            capturingDeps.exportSystem.Html5Exporter = class CapturingExporter {
+                export = async (exportOptions: typeof options) => {
+                    options = exportOptions;
+                    return { success: true, data: new Uint8Array([0x50, 0x4b, 0x03, 0x04]) };
+                };
+            } as any;
+            const capturingApp = new Elysia().use(createExportRoutes(capturingDeps));
+
+            const res = await handleWith(
+                capturingApp,
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+            expect(res.status).toBe(200);
+
+            const result = await options.preRenderMermaid!('<pre class="mermaid">graph TD\n A--&gt;B</pre>');
+            expect(result.count).toBe(1);
+            expect(result.html).toContain('<svg xmlns="http://www.w3.org/2000/svg" class="pele');
+        });
+    });
+
     describe('export error handling', () => {
         it('should return 500 when export fails (GET)', async () => {
             // Create deps with failing exporter
