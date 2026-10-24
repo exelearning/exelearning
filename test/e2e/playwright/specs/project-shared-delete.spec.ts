@@ -13,7 +13,10 @@ async function loginAsUser(browser: Browser, baseURL: string, email: string, pas
     });
     expect(loginResponse.ok()).toBeTruthy();
 
-    await page.goto('/workarea');
+    // Online mode redirects a bare /workarea to /projects, so open a real project
+    // to land in a fully-initialised workarea (needed by openProjectModal below).
+    const bootstrapUuid = await createProject(page, 'Session Bootstrap');
+    await page.goto(`/workarea?project=${bootstrapUuid}`);
     await page.waitForURL(/\/workarea/, { timeout: 30000 });
     await page.waitForFunction(
         () => {

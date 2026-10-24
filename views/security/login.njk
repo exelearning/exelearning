@@ -31,7 +31,7 @@
                     <h1 class="sign-in visually-hidden">{{ t.sign_in or 'Sign in' }}</h1>
                     <div class="text-center text-md-start">
                     <p class="mb-4">{{ t.logged_in_as or 'Logged in as' }} <strong>{{ user.username }}</strong></p>
-                    <a href="{{ basePath }}/workarea" class="btn button-secondary logout-button">{{ t.work_area or 'Work area' }}</a>
+                    <a href="{{ basePath }}/projects" class="btn button-secondary logout-button">{{ t.projects or 'Projects' }}</a>
                     <a href="{{ basePath }}/logout" class="btn button-primary logout-button mx-1">{{ t.logout or 'Logout' }}</a>
                     </div>
                 {% else %}
