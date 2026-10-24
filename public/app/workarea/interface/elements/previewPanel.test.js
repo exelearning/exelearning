@@ -2879,6 +2879,27 @@ describe('PreviewPanelManager', () => {
       expect(inject.mock.calls[0][0]).toContain('<object data="../content/doc.pdf"');
     });
 
+    it('inlines root-relative "./" scripts and author style="url()" backgrounds', () => {
+      // Measured on the static build: MathJax never rendered in the opaque document because
+      // the export links it as `./libs/...` and the inliner only stripped `../`; an author
+      // background in a style attribute was left pointing at the editor host (blocked by ORB).
+      const files = {
+        'libs/exe_math/tex-mml-svg.js': 'window.MathJaxLoaded = true;',
+        'content/img/logo.png': new Uint8Array([137, 80, 78, 71]),
+      };
+      const html =
+        '<script src="./libs/exe_math/tex-mml-svg.js"></script>' +
+        '<p style="color:red;background-image:url(content/img/logo.png)">bg</p>';
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toContain('<script>/* ./libs/exe_math/tex-mml-svg.js */\nwindow.MathJaxLoaded = true;</script>');
+      // Single-quoted so the attribute's own double quotes survive.
+      expect(result).toContain(`style="color:red;background-image:url('data:image/png;base64,`);
+      expect(result).not.toContain('url("data:');
+      expect(manager._findFileContent(files, './libs/exe_math/tex-mml-svg.js')).toBe(files['libs/exe_math/tex-mml-svg.js']);
+    });
+
     it('inlines local media under the size cap and leaves oversized files alone', () => {
       const small = new Uint8Array([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70]);
       const huge = new Uint8Array(new ArrayBuffer(25 * 1024 * 1024 + 1));

@@ -265,8 +265,16 @@ after a full adapter pass.
   cannot be fetched from an opaque origin, and PDF.js cannot be imported into it
   cross-origin); local media is inlined as `data:` URIs up to 25 MiB per file and
   larger files do not play; "open in a new tab" shows the **filtered** Service
-  Worker preview because a `srcdoc` document has no URL. None of this affects the
-  default filtered preview.
+  Worker preview because a `srcdoc` document has no URL. **MathJax does not
+  typeset** there: MathJax 4 loads its components and font ranges at runtime by
+  URL relative to the page, and an inlined document has no server to answer them
+  (measured on the static build: the combined `tex-mml-svg.js` is inlined, the
+  loader's follow-up requests are blocked). Anything else an iDevice fetches at
+  runtime by relative URL fails the same way; statically referenced scripts,
+  stylesheets, images, fonts, `style="url()"` backgrounds and media are inlined.
+  The document weighs ~2.6 MB per refresh for an empty project (the whole official
+  runtime, base64 assets included). None of this affects the default filtered
+  preview, which typesets and serves everything through the Service Worker.
 - **Full-snapshot refresh while opaque-enabled:** each scheduled refresh
   re-uploads the whole snapshot (capability URL) or re-inlines the page (srcdoc).
   Acceptable because it is opt-in and temporary; see the

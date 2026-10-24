@@ -1664,8 +1664,9 @@ export default class PreviewPanelManager {
         // 1. Direct match
         if (files[path] !== undefined) return files[path];
 
-        // 2. Remove leading ../ segments
-        const normalized = path.replace(/^(\.\.\/)+/, '');
+        // 2. Remove leading ./ and ../ segments (the export writes `./libs/...` from the
+        //    root page and `../libs/...` from the html/ pages)
+        const normalized = path.replace(/^(\.\.?\/)+/, '');
         if (files[normalized] !== undefined) return files[normalized];
 
         // 3. Extract content/resources/... from absolute URLs
@@ -1747,6 +1748,14 @@ export default class PreviewPanelManager {
             },
         );
 
+        // Inline url() references inside style="…" attributes (author backgrounds), which the
+        // stylesheet pass above never sees. Single-quoted data: URIs, so the attribute's own
+        // double quotes survive.
+        html = html.replace(
+            /(\sstyle=")([^"]*url\([^"]*)(")/gi,
+            (_match, prefix, css, suffix) => `${prefix}${this._inlineCssUrls(css, '', files, "'")}${suffix}`,
+        );
+
         // Inline local media: <video|audio|source|track src="path"> and <video poster="path">.
         // A tag may carry both src and poster, so the attributes are rewritten inside the tag.
         html = html.replace(/<(?:video|audio|source|track)\b[^>]*>/gi, tag =>
@@ -1771,15 +1780,16 @@ export default class PreviewPanelManager {
      * @param {string} css - Stylesheet content
      * @param {string} cssPath - Stylesheet path inside the export (e.g. 'theme/style.css')
      * @param {Object} files - Map of file paths to content
+     * @param {string} [quote] - Quote character around the data URI (`'` inside a style attribute)
      * @returns {string} CSS with resolvable references replaced by data URIs
      */
-    _inlineCssUrls(css, cssPath, files) {
+    _inlineCssUrls(css, cssPath, files, quote = '"') {
         const baseDir = cssPath.substring(0, cssPath.lastIndexOf('/') + 1);
         return css.replace(/url\(\s*(["']?)([^"')]+?)\1\s*\)/gi, (match, _quote, ref) => {
             if (/^([a-z][a-z0-9+.-]*:|\/|#)/i.test(ref)) return match;
             const path = this._resolveRelativePath(baseDir + ref.split(/[?#]/)[0]);
             const content = this._findFileContent(files, path);
-            return content ? `url("${this._toDataUri(content, path)}")` : match;
+            return content ? `url(${quote}${this._toDataUri(content, path)}${quote})` : match;
         });
     }
 

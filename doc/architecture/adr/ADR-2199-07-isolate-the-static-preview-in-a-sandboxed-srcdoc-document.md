@@ -207,8 +207,14 @@ are gone, which removes the sink PR #48 used for its characterization.
 - In the opaque static document: PDF embeds render as "open in a new tab" links rather
   than in place (an editor-minted `blob:` cannot be fetched, and PDF.js cannot be imported
   cross-origin); local media above the cap does not play; module scripts and fonts that an
-  author page loads from the editor host by relative URL fail CORS. The default filtered
-  preview is unaffected by all of this.
+  author page loads from the editor host by relative URL fail CORS. **MathJax does not
+  typeset**: MathJax 4 loads components and font ranges at runtime by URL relative to the
+  page, and an inlined document has no server to answer them (measured on the static
+  build). The same holds for anything an iDevice fetches at runtime by relative URL. The
+  inliner is a regex pass over the generated HTML (`<link>`, `<script src>`, `<img>`,
+  media, CSS and `style="url()"`); it resolves what is referenced statically, not what
+  code requests later. The inlined page weighs ~2.6 MB per refresh for an empty project.
+  The default filtered preview is unaffected by all of this.
 - "Open in a new tab" while enabled in static shows the filtered Service Worker preview:
   a `srcdoc` document has no URL, and an unfiltered editor-origin blob is exactly what must
   not exist.
