@@ -45,7 +45,6 @@ make test-integration
 make test-e2e              # Chromium; Firefox has its own target
 make test-e2e-static       # static/embedding/export changes
 make test-coverage         # test-unit + test-frontend with coverage
-make bench-preview         # three-way preview refresh benchmark (main vs filtered vs opaque)
 make architecture-check
 ```
 

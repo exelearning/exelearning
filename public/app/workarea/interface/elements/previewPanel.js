@@ -23,9 +23,7 @@ import {
     EmbeddedPreviewSnapshot,
     selfHostedPreviewSnapshotConfig,
 } from './preview/EmbeddedPreviewSnapshot.js';
-import { applyPreviewEmbedShim, EMBED_CHILD_SCRIPT_PATH } from './preview/previewEmbedShim.js';
 import { applyPreviewExternalMediaFallback } from './preview/previewExternalMediaFallback.js';
-import { PreviewEmbedHost } from './preview/previewEmbedHost.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -104,13 +102,6 @@ export default class PreviewPanelManager {
         this._activeContentReport = null;
         this._embeddedPreviewSnapshot = null;
         this._selfHostedPreviewSnapshot = null;
-        // External-media relay for the opaque preview (lazy: most previews never
-        // hold a provider embed, and the bridge scripts load on demand).
-        this._embedHost = null;
-        // Memoized fetch of the embed shim (see _loadEmbedShimSource).
-        this._embedShimPromise = null;
-        // Iframe the relay is currently attached to, so we attach only once.
-        this._embedHostIframe = null;
     }
 
     /**
@@ -760,9 +751,6 @@ export default class PreviewPanelManager {
         this.isOpen = false;
         this.panel?.classList.remove('active');
         this.overlay?.classList.remove('active');
-        // The relay's players live on the editor's own body; the panel only
-        // slides away via transform, so they would linger over the workarea.
-        this._embedHost?.hideOverlays();
 
         Logger.log('[PreviewPanel] Panel closed');
     }
@@ -994,9 +982,6 @@ export default class PreviewPanelManager {
     /** Filtered same-origin preview: sanitized content over SW (or the inlined fallback). */
     async _refreshFiltered() {
         this._clearOpaqueSandbox();
-        // Leaving the opaque transport: drop any relayed players, the filtered
-        // preview renders whitelisted videos inline by itself.
-        this._embedHost?.hideOverlays();
         if (this.isServiceWorkerPreviewAvailable()) {
             await this.refreshWithServiceWorker();
         } else {
@@ -1038,7 +1023,7 @@ export default class PreviewPanelManager {
      * sandboxed WITHOUT `allow-same-origin`. The browser gives that document an opaque
      * origin, so author code reaches neither the editor DOM nor its cookies, storage or
      * Service Worker — the same boundary the capability-URL transports provide, with no
-     * server and no network, so it holds offline too (ADR-2199-07). Page navigation and
+     * server and no network, so it holds offline too (ADR-2199-04). Page navigation and
      * opening project files stay parent-bridged through the postMessage handlers the
      * same-origin inlined fallback already uses.
      */
@@ -1048,15 +1033,13 @@ export default class PreviewPanelManager {
             throw new Error(result.error || 'Failed to generate opaque preview');
         }
         if (!result.files['index.html']) throw new Error('No index.html in generated files');
-        const { files, shimmed } = await this._prepareOpaqueMedia(result.files);
-        this._inlinedFiles = files;
+        this._inlinedFiles = this._prepareOpaqueMedia(result.files);
         this._inlinedOpaque = true;
         // The sandbox must be in place BEFORE the srcdoc navigation starts: an attribute
         // set while a document is already loading does not apply to that document.
         this.iframe?.setAttribute('sandbox', EMBEDDED_PREVIEW_SANDBOX);
         this.pinnedIframe?.setAttribute('sandbox', EMBEDDED_PREVIEW_SANDBOX);
         this._loadInlinedPage('index.html');
-        if (shimmed) this._startEmbedHost(this.isPinned ? this.pinnedIframe : this.iframe);
     }
 
     /**
@@ -1086,7 +1069,7 @@ export default class PreviewPanelManager {
         if (!result.success || !result.files) {
             throw new Error(result.error || `Failed to generate ${kind} preview`);
         }
-        const { files, shimmed } = await this._prepareOpaqueMedia(result.files);
+        const files = this._prepareOpaqueMedia(result.files);
         const snapshot = getSnapshot();
         const previewUrl = await snapshot.replace(files);
         snapshot.applySandbox(this.iframe);
@@ -1094,84 +1077,19 @@ export default class PreviewPanelManager {
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
         if (!targetIframe) throw new Error(`The ${kind} preview iframe is unavailable`);
         targetIframe.src = previewUrl;
-        if (shimmed) this._startEmbedHost(targetIframe);
     }
 
     /**
-     * External media in the opaque snapshot. Preferred: inject the embed shim so
-     * the editor-side relay can overlay the real player in place (videos play
-     * without leaving the preview). If the shim source cannot be fetched we fall
-     * back to the placeholder that links "open in a new tab", so the author is
-     * never left with a blank box.
+     * External media in the opaque snapshot: an opaque origin fails the providers'
+     * embedder checks (YouTube "Error 153"), so provider iframes become an accessible
+     * "open in a new tab" placeholder. The tab escapes the sandbox (decision D2) and
+     * plays the video in a clean top-level context.
      *
      * @param {Record<string, string|Uint8Array|ArrayBuffer>} generatedFiles
-     * @returns {Promise<Record<string, string|Uint8Array|ArrayBuffer>>}
+     * @returns {Record<string, string|Uint8Array|ArrayBuffer>}
      */
-    async _prepareOpaqueMedia(generatedFiles) {
-        const shimSource = await this._loadEmbedShimSource();
-        if (shimSource) {
-            const { files } = applyPreviewEmbedShim(generatedFiles, shimSource);
-            return { files, shimmed: true };
-        }
-        const { files } = applyPreviewExternalMediaFallback(generatedFiles);
-        return { files, shimmed: false };
-    }
-
-    /**
-     * Fetch (once) the canonical embed shim so it can travel with the opaque
-     * snapshot. Same-origin read from the editor's own assets; resolves to `null`
-     * when unavailable, which falls the preview back to the media placeholders.
-     *
-     * The PROMISE is memoized, not its value: two refreshes starting together
-     * then share one request instead of both issuing it.
-     *
-     * @returns {Promise<string|null>}
-     */
-    _loadEmbedShimSource() {
-        if (!this._embedShimPromise) {
-            const url = `${this._basePath()}/${EMBED_CHILD_SCRIPT_PATH}`;
-            this._embedShimPromise = fetch(url, { credentials: 'same-origin' })
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    return response.text();
-                })
-                .catch(error => {
-                    Logger.warn('[PreviewPanel] Embed shim unavailable, using media placeholders:', error);
-                    return null;
-                });
-        }
-        return this._embedShimPromise;
-    }
-
-    /** Base path of the editor's own assets. */
-    _basePath() {
-        return eXeLearning?.app?.getBasePath?.() || '';
-    }
-
-    /**
-     * Start the editor-side embed relay for the opaque preview iframe.
-     *
-     * The relay is page-global — it finds preview iframes by `event.source` —
-     * so it is started once. This runs on every opaque refresh, so a repeat on
-     * the same iframe is skipped, and a switch between the panel and pinned
-     * iframes drops the overlays left over the previous one.
-     *
-     * @param {HTMLIFrameElement} iframe
-     */
-    _startEmbedHost(iframe) {
-        if (!iframe || this._embedHostIframe === iframe) return;
-        try {
-            if (!this._embedHost) {
-                this._embedHost = new PreviewEmbedHost({ basePath: this._basePath() });
-            }
-            this._embedHost.hideOverlays();
-            this._embedHostIframe = iframe;
-            this._embedHost.start().catch(error => {
-                Logger.warn('[PreviewPanel] Embed relay start failed:', error);
-            });
-        } catch (error) {
-            Logger.warn('[PreviewPanel] Embed relay unavailable:', error);
-        }
+    _prepareOpaqueMedia(generatedFiles) {
+        return applyPreviewExternalMediaFallback(generatedFiles).files;
     }
 
     /**
@@ -2208,10 +2126,6 @@ export default class PreviewPanelManager {
 
         this._disposeSelfHostedSnapshot();
         this._selfHostedPreviewSnapshot = null;
-
-        this._embedHost?.stop();
-        this._embedHost = null;
-        this._embedHostIframe = null;
 
         Logger.log('[PreviewPanel] Destroyed');
     }

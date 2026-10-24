@@ -14,8 +14,8 @@
  *     same-origin policy; and
  *   - the opaque-enabled external-media fallback
  *     (`previewExternalMediaFallback.js`), which swaps those iframes for an
- *     "open in a new tab" placeholder when the embed relay is unavailable,
- *     because an opaque origin cannot satisfy the providers' embedder checks.
+ *     "open in a new tab" placeholder, because an opaque origin cannot satisfy
+ *     the providers' embedder checks.
  *
  * Host matching is exact or subdomain-suffix, computed from the parsed URL
  * hostname, so look-alikes such as `youtube.com.evil.com` or `evil-vimeo.com`
@@ -29,10 +29,9 @@ export const TRUSTED_EMBED_HOSTS = [
     'vimeo.com',
     'dailymotion.com',
     'dai.ly',
-    // Regional education media library, already a first-class provider in the
-    // canonical embed relay (exe_embed_bridge/exe_embed_relay.js). Trusted as a
-    // whole host, not just its `/video/` paths, because the same library serves
-    // the `/documentos/` embeds authors put next to their videos.
+    // Regional education media library. Trusted as a whole host, not just its
+    // `/video/` paths, because the same library serves the `/documentos/` embeds
+    // authors put next to their videos.
     'mediateca.educa.madrid.org',
 ];
 

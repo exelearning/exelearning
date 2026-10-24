@@ -8,7 +8,7 @@ import {
 } from '../helpers/workarea-helpers';
 
 /**
- * The static/PWA trust boundary (ADR-2199-07), against the BUILT static distribution.
+ * The static/PWA trust boundary (ADR-2199-04), against the BUILT static distribution.
  *
  * Static builds have no backend, so enabling author active content cannot use a capability
  * URL; the panel inlines the snapshot and loads it through `srcdoc` into an iframe sandboxed
@@ -182,9 +182,9 @@ test.describe('Static preview trust boundary — opaque srcdoc on enable', () =>
         // The Service-Worker-served viewer is not reachable from the opaque document.
         expect(probe.fetchViewer).not.toBe('OK:200');
 
-        // The provider embed became a geometry placeholder for the trusted-side relay (the
-        // opaque origin fails YouTube's embedder check); the raw iframe is gone.
-        await expect(frame.locator('[data-exe-embed-id]')).toHaveCount(1);
+        // The provider embed became the "open in a new tab" placeholder (the opaque origin
+        // fails YouTube's embedder check); the raw iframe is gone.
+        await expect(frame.locator('.exe-external-media-fallback')).toHaveCount(1);
         await expect(frame.locator('#custom-youtube')).toHaveCount(0);
 
         // Multi-page navigation is parent-bridged and needs NO network: the inlined document

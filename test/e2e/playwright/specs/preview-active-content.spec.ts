@@ -230,15 +230,12 @@ test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => 
         expect(snapshotResponses.some(r => r.status === 200)).toBe(true);
         expect(snapshotResponses.every(r => !r.setCookie)).toBe(true);
 
-        // The YouTube embed became a geometry placeholder: an opaque origin fails the
-        // provider's embedder check, so the shim demotes the iframe and reports it to
-        // the trusted side, where the relay overlays the real player in its place.
-        // (The "open in a new tab" fallback only applies when the shim cannot load.)
-        const placeholder = frame.locator('[data-exe-embed-id]');
+        // The YouTube embed became the "open in a new tab" placeholder: an opaque origin
+        // fails the provider's embedder check (Error 153), so the raw iframe is replaced
+        // and the link escapes the sandbox into a clean top-level tab (D2).
+        const placeholder = frame.locator('.exe-external-media-fallback');
         await expect(placeholder).toHaveCount(1);
-        await expect(placeholder).toHaveAttribute('data-exe-embed-url', /youtube\.com\/embed\/dQw4w9WgXcQ/);
-        await expect(placeholder).toHaveAttribute('data-exe-embed-provider', 'youtube');
-        await expect(placeholder).toHaveAttribute('data-exe-embed-object-id', 'dQw4w9WgXcQ');
+        await expect(placeholder.locator('a')).toHaveAttribute('href', /youtube\.com\/embed\/dQw4w9WgXcQ/);
         await expect(frame.locator('#custom-youtube')).toHaveCount(0);
     });
 
@@ -266,8 +263,9 @@ test.describe('Preview trust boundary — opaque-on-enable (web/server)', () => 
         await page.locator('#modalConfirm').getByRole('button', { name: 'Block external scripts' }).click();
         await expect(warning).toHaveAttribute('aria-pressed', 'false');
 
-        // Back to the same-origin SW preview — the iframe no longer carries the opaque sandbox.
-        await expect.poll(async () => (await iframe.getAttribute('sandbox')) ?? '').not.toContain('allow-scripts');
+        // Back to the same-origin SW preview — the template's own sandbox (with
+        // allow-same-origin) is restored in place of the opaque one.
+        await expect.poll(async () => (await iframe.getAttribute('sandbox')) ?? '').toContain('allow-same-origin');
         // The filtered SW preview reloads asynchronously; wait for it to replace
         // the opaque doc, then the author marker must be absent (script stripped).
         const frame = getPreviewFrame(page);

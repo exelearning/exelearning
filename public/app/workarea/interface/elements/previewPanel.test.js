@@ -2744,8 +2744,6 @@ describe('PreviewPanelManager', () => {
       window.eXeLearning.app.runtimeConfig = STATIC_RUNTIME;
       window.eXeLearning.app.getBasePath = () => '';
       window.eXeLearning.app.modals.alert = { show: vi.fn() };
-      // The shim is fetched from the editor's assets; it is not what these tests measure.
-      vi.spyOn(manager, '_loadEmbedShimSource').mockResolvedValue(null);
     });
 
     it('routes an enabled refresh through the srcdoc snapshot, never the SW or a server snapshot', async () => {
@@ -2826,18 +2824,21 @@ describe('PreviewPanelManager', () => {
       expect(html).toContain('doc%E0.pdf</a>');
     });
 
-    it('starts the embed relay when the shim travelled with the snapshot', async () => {
+    it('turns provider embeds into the "open in a new tab" placeholder in the opaque document', async () => {
       enableActivePreviewContent('project-a');
-      manager._loadEmbedShimSource.mockResolvedValue('/* shim */');
-      vi.spyOn(manager, '_generatePreviewFiles').mockResolvedValue({ success: true, files: snapshotFiles() });
-      vi.spyOn(manager, 'injectHtmlToIframe').mockImplementation(() => {});
-      const relaySpy = vi.spyOn(manager, '_startEmbedHost').mockImplementation(() => {});
+      const files = snapshotFiles();
+      files['index.html'] = new TextEncoder().encode(
+        '<html><body><iframe id="yt" src="https://www.youtube.com/embed/abc"></iframe></body></html>',
+      );
+      vi.spyOn(manager, '_generatePreviewFiles').mockResolvedValue({ success: true, files });
+      const inject = vi.spyOn(manager, 'injectHtmlToIframe').mockImplementation(() => {});
 
       await manager.refreshWithSrcdocSnapshot();
 
-      expect(relaySpy).toHaveBeenCalledWith(mockElements['preview-iframe']);
-      // The shim is inlined into the page like any other script of the snapshot.
-      expect(manager.injectHtmlToIframe.mock.calls[0][0]).toContain('/* shim */');
+      const html = inject.mock.calls[0][0];
+      expect(html).toContain('exe-external-media-fallback');
+      expect(html).toContain('href="https://www.youtube.com/embed/abc"');
+      expect(html).not.toContain('<iframe id="yt"');
     });
 
     it('navigates inside the opaque document and turns PDF embeds into links the editor opens', () => {
