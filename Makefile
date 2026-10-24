@@ -594,6 +594,10 @@ test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
 .PHONY: test-e2e
 test-e2e: test-e2e-chromium bundle ## Run Playwright E2E tests (alias for test-e2e-chromium)
 
+.PHONY: test-e2e-electron
+test-e2e-electron: check-bun bundle build-static ## Run Playwright E2E tests against the Electron app (needs the electron package)
+	bun x playwright test -c playwright.electron.config.ts
+
 .PHONY: test-e2e-ui
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 	bun x playwright test --ui

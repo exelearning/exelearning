@@ -15,6 +15,8 @@ const {
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
 const { createFileReadGrants } = require('./file-read-grants');
+const { guardIpcMain } = require('./ipc-sender-guard');
+const { createPreviewSnapshotStore, SCHEME: PREVIEW_SCHEME } = require('./preview-snapshot-scheme');
 const { savePrintPreviewAsPdf } = require('./print-to-pdf');
 const { printPreview } = require('./print-preview');
 const {
@@ -26,17 +28,33 @@ const contextMenu = require('electron-context-menu').default;
 // Register custom protocol BEFORE app.whenReady()
 // CRITICAL: This must be called before any window is created
 // Enables Service Workers with custom protocols (supported in Electron 10.x+)
-protocol.registerSchemesAsPrivileged([{
-    scheme: 'app',
-    privileges: {
-        standard: true,           // URLs follow RFC 3986
-        secure: true,             // Treated as HTTPS (required for SW)
-        allowServiceWorkers: true, // CRITICAL: Enables Service Workers
-        supportFetchAPI: true,    // Allows fetch() requests
-        corsEnabled: true,        // Allows CORS
-        stream: true,             // Enables streaming for media
-    }
-}]);
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'app',
+        privileges: {
+            standard: true,           // URLs follow RFC 3986
+            secure: true,             // Treated as HTTPS (required for SW)
+            allowServiceWorkers: true, // CRITICAL: Enables Service Workers
+            supportFetchAPI: true,    // Allows fetch() requests
+            corsEnabled: true,        // Allows CORS
+            stream: true,             // Enables streaming for media
+        },
+    },
+    {
+        // The enabled preview: author content served by the main process from an
+        // in-memory snapshot. `standard` makes `preview://{id}` a real origin — distinct
+        // from app://localhost by scheme and by host — so the same-origin policy, not a
+        // sanitizer, separates it from the editor. No Service Workers, no CORS: nothing
+        // outside the snapshot's own frame has any business fetching it.
+        scheme: PREVIEW_SCHEME,
+        privileges: {
+            standard: true,
+            secure: true,
+            supportFetchAPI: true,
+            stream: true,
+        },
+    },
+]);
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged ? process.resourcesPath : app.getAppPath();
@@ -100,6 +118,14 @@ const MIME_TYPES = {
     '.dtd': 'application/xml-dtd',
 };
 
+// Opaque preview snapshots served on preview:// (one per window, see preview-snapshot-scheme.js)
+const previewSnapshots = createPreviewSnapshotStore({ mimeTypes: MIME_TYPES });
+
+// Every IPC handler refuses events that do not come from the main frame of a window this
+// app loaded (ipc-sender-guard.js). The enabled preview runs author code in the renderer
+// process family, and the preload is deliberately never injected where that code lives.
+const ipc = guardIpcMain(ipcMain);
+
 /**
  * Register the app:// protocol handler
  * Serves static files from the static directory
@@ -111,6 +137,13 @@ function registerProtocolHandler() {
     }
 
     const staticDir = getStaticPath();
+
+    // preview://{id}/{path}: the enabled preview's snapshot, hardening headers and the
+    // sandbox-first CSP on every scriptable type included (the store builds them all).
+    protocol.handle(PREVIEW_SCHEME, request => {
+        const { status, headers, body } = previewSnapshots.serve(request.url);
+        return new Response(body, { status, headers });
+    });
 
     protocol.handle('app', async (request) => {
         const url = new URL(request.url);
@@ -178,7 +211,46 @@ function registerProtocolHandler() {
     });
 
     protocolHandlerRegistered = true;
-    console.log('[Electron] Protocol handler registered for app://');
+    console.log(`[Electron] Protocol handlers registered for app:// and ${PREVIEW_SCHEME}://`);
+}
+
+/** Whether a URL names an enabled-preview snapshot (preview://{id}/…). */
+function isPreviewSnapshotUrl(url) {
+    return typeof url === 'string' && url.startsWith(`${PREVIEW_SCHEME}://`);
+}
+
+/**
+ * Open a preview snapshot in its own window ("open in a new tab" while author scripts are
+ * allowed). The window is created here, never through the default `window.open` path, so it
+ * carries NO preload whatever opened it: the document is author content and must never see
+ * `electronAPI`. It is sandboxed, may only navigate inside the scheme, and sends external
+ * links to the system browser.
+ */
+function openPreviewSnapshotWindow(ownerWindow, url) {
+    const { width, height } = ownerWindow.getBounds();
+    const [x, y] = ownerWindow.getPosition();
+    const win = new BrowserWindow({
+        x: x + 10,
+        y: y + 10,
+        width,
+        height,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
+        },
+    });
+    win.webContents.setWindowOpenHandler(({ url: target }) => {
+        if (isExternalUrl(target)) shell.openExternal(target);
+        return { action: 'deny' };
+    });
+    win.webContents.on('will-navigate', (event, target) => {
+        if (isPreviewSnapshotUrl(target)) return;
+        event.preventDefault();
+        if (isExternalUrl(target)) shell.openExternal(target);
+    });
+    win.loadURL(url);
+    return win;
 }
 
 // Optional: force a predictable path/name
@@ -552,10 +624,23 @@ function attachOpenHandler(win) {
     const { width, height } = win.getBounds();
     const [mainX, mainY] = win.getPosition();
 
-    win.webContents.setWindowOpenHandler(({ url }) => {
+    win.webContents.setWindowOpenHandler(({ url, referrer }) => {
         // URLs externas → abrir en navegador del sistema
         if (isExternalUrl(url)) {
             shell.openExternal(url);
+            return { action: 'deny' };
+        }
+
+        // The enabled preview in its own window: created by us, without the preload.
+        if (isPreviewSnapshotUrl(url)) {
+            openPreviewSnapshotWindow(win, url);
+            return { action: 'deny' };
+        }
+
+        // Anything the opaque preview itself tries to open (about:blank, blob:, …) must not
+        // get a window that carries the editor's preload — that would hand author code the
+        // IPC bridge. The referrer names the opener document.
+        if (isPreviewSnapshotUrl(referrer?.url)) {
             return { action: 'deny' };
         }
 
@@ -615,10 +700,11 @@ function configureYouTubeEmbedHeaders() {
         const headers = details.requestHeaders || {};
         const referer = headers.Referer || headers.referer || '';
 
-        // app:// and file:// referers are not accepted by YouTube embed checks.
+        // app://, preview:// and file:// referers are not accepted by YouTube embed checks.
         const hasInvalidReferer =
             !referer ||
             referer.startsWith('app://') ||
+            referer.startsWith(`${PREVIEW_SCHEME}://`) ||
             referer.startsWith('file://');
 
         if (hasInvalidReferer) {
@@ -703,7 +789,7 @@ async function getCloseCopyFromRenderer(win) {
             resolve(null);
         }, 3000);
 
-        ipcMain.once('app:close-copy-response', (_event, copy) => {
+        ipc.once('app:close-copy-response', (_event, copy) => {
             clearTimeout(timeout);
             resolve(copy || null);
         });
@@ -741,6 +827,12 @@ async function createWindow() {
     // This replaces the HTTP server and enables Service Workers
     registerProtocolHandler();
     configureYouTubeEmbedHeaders();
+
+    // A window's preview snapshot must not outlive the window that owns it.
+    app.on('web-contents-created', (_event, contents) => {
+        const ownerId = contents.id;
+        contents.once('destroyed', () => previewSnapshots.disposeOwner(ownerId));
+    });
 
     const isDev = determineDevMode();
 
@@ -1120,7 +1212,7 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
 }
 
 // Export a ZIP URL to a chosen folder by downloading and unzipping
-ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, suggestedDirName }) => {
+ipc.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, suggestedDirName }) => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     try {
         const lastUsedDir = getLastUsedDir();
@@ -1181,7 +1273,7 @@ ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, sugges
 });
 
 // Export base64 ZIP data to a chosen folder by unzipping (for client-side exports)
-ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirName }) => {
+ipc.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirName }) => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     try {
         const lastUsedDir = getLastUsedDir();
@@ -1227,7 +1319,7 @@ ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirN
 // base64-encoded zip the renderer can feed into importFromElpxViaYjs.
 // The folder layout is the same one that lives inside an .elpx — this
 // handler is the inverse of app:exportBufferToFolder.
-ipcMain.handle('app:openProjectFolder', async (e) => {
+ipc.handle('app:openProjectFolder', async (e) => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     const lastUsedDir = getLastUsedDir();
     const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
@@ -1391,7 +1483,7 @@ app.whenReady().then(() => {
         writeSettings,
         onError: error => console.warn('[SpellChecker] Settings operation failed:', error),
     });
-    registerSpellCheckerIpc(ipcMain, spellCheckerController);
+    registerSpellCheckerIpc(ipc, spellCheckerController);
     spellCheckerController.applyPersisted();
     // A fresh process has no file "currently associated" with the window
     // yet — clear the on-disk slot so a leftover filename from a previous
@@ -1472,13 +1564,13 @@ async function saveUrlWithDialog(e, { downloadUrl, projectKey, suggestedName }) 
         return false;
     }
 }
-ipcMain.handle('app:save', saveUrlWithDialog);
-ipcMain.handle('app:saveAs', saveUrlWithDialog);
+ipc.handle('app:save', saveUrlWithDialog);
+ipc.handle('app:saveAs', saveUrlWithDialog);
 
 // Persist the file currently associated with the window so the next Save
 // dialog pre-fills with its name. Called by the renderer when the user picks
 // a file from disk (File > Open or Electron file association).
-ipcMain.handle('app:setSavedPath', async (_e, payload = {}) => {
+ipc.handle('app:setSavedPath', async (_e, payload = {}) => {
     try {
         const filePath = typeof payload === 'string' ? payload : payload?.filePath;
         const split = splitSavePath(filePath);
@@ -1492,7 +1584,7 @@ ipcMain.handle('app:setSavedPath', async (_e, payload = {}) => {
 
 // Forget the previously-associated file. Called by the renderer when the user
 // starts a fresh project so the Save dialog falls back to the project title.
-ipcMain.handle('app:clearSavedPath', async () => {
+ipc.handle('app:clearSavedPath', async () => {
     try {
         clearCurrentFileSaveInfo();
         return true;
@@ -1502,7 +1594,7 @@ ipcMain.handle('app:clearSavedPath', async () => {
 });
 
 // Open system file picker for .elpx files (offline open)
-ipcMain.handle('app:openElp', async e => {
+ipc.handle('app:openElp', async e => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     const lastUsedDir = getLastUsedDir();
     const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
@@ -1517,17 +1609,27 @@ ipcMain.handle('app:openElp', async e => {
 });
 
 // Read file contents as base64 for upload (renderer builds a File), only for granted paths
-ipcMain.handle('app:readFile', async (_e, { filePath } = {}) => fileReadGrants.read(filePath));
+ipc.handle('app:readFile', async (_e, { filePath } = {}) => fileReadGrants.read(filePath));
+
+// Opaque preview snapshot (preview:// scheme) for the enabled preview: the renderer hands over
+// the generated file map and gets a capability URL for a sandboxed iframe. One per window;
+// a replace keeps the id so the iframe URL stays valid; the snapshot dies with its window.
+ipc.handle('app:previewSnapshot:replace', async (e, { previewId = null, files } = {}) =>
+    previewSnapshots.replace(e.sender.id, previewId, files),
+);
+ipc.handle('app:previewSnapshot:dispose', async (e, { previewId } = {}) =>
+    previewSnapshots.dispose(e.sender.id, previewId),
+);
 
 // Check an external link from the main process, where CORS does not apply,
 // and report the real HTTP status — same outcome as server-side validation.
 // Policy, network-stack rationale (undici primary, net.fetch as proxy
 // fallback) and the private-address guard live in link-check.js.
-ipcMain.handle('app:checkLink', async (_e, { url } = {}) => {
+ipc.handle('app:checkLink', async (_e, { url } = {}) => {
     return checkLink(url, { fetchImpl: fetch, fallbackFetchImpl: net.fetch.bind(net) });
 });
 
-ipcMain.handle('app:getMemoryUsage', async (e) => {
+ipc.handle('app:getMemoryUsage', async (e) => {
     let renderer = null;
     try {
         if (e?.sender?.getProcessMemoryInfo) {
@@ -1546,7 +1648,7 @@ ipcMain.handle('app:getMemoryUsage', async (e) => {
 // Close the window that initiated the request (File > Close). The unsaved
 // changes confirmation is handled by the close guard attached in
 // attachEditorWindowCloseGuard(), so we only trigger the close here.
-ipcMain.handle('app:closeCurrentWindow', async (e) => {
+ipc.handle('app:closeCurrentWindow', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (win && !win.isDestroyed()) {
         win.close();
@@ -1680,10 +1782,10 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
         });
     }
 }
-ipcMain.handle('app:saveBuffer', saveBufferWithDialog);
-ipcMain.handle('app:saveBufferAs', saveBufferWithDialog);
+ipc.handle('app:saveBuffer', saveBufferWithDialog);
+ipc.handle('app:saveBufferAs', saveBufferWithDialog);
 
-ipcMain.handle('app:printPreview', (e, { url } = {}) =>
+ipc.handle('app:printPreview', (e, { url } = {}) =>
     printPreview(url, {
         owner: e.sender.id,
         createWindow: () => {
@@ -1705,7 +1807,7 @@ ipcMain.handle('app:printPreview', (e, { url } = {}) =>
 
 // Save the print preview as a PDF: printing needs a print service and a printer, a PDF does not
 // (issue #1398). The PDF is made from the preview's own frame; see print-to-pdf.js.
-ipcMain.handle('app:savePrintPreviewAsPdf', async (e, { frameName, title } = {}) => {
+ipc.handle('app:savePrintPreviewAsPdf', async (e, { frameName, title } = {}) => {
     const owner = BrowserWindow.fromWebContents(e.sender) || mainWindow;
     const result = await savePrintPreviewAsPdf(
         { webContents: e.sender, frameName, title },
@@ -1783,7 +1885,7 @@ function createNewProjectWindow(filePath) {
     return newWindow;
 }
 
-ipcMain.on('app:renderer-ready-for-open-file', (event) => {
+ipc.on('app:renderer-ready-for-open-file', (event) => {
     const wcId = event.sender.id;
     const filePath = pendingOpenFileByWebContentsId.get(wcId);
     if (!filePath) return;

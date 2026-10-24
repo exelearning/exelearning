@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+    BLOCKED_DECISION,
     PREVIEW_RUNTIMES,
     canEnableActiveContent,
     resolvePreviewTransport,
@@ -26,20 +27,27 @@ const POLICY = join(ROOT, 'public/app/utils/previewContentPolicy.js');
 const RUNTIME_CONFIG: Record<PreviewRuntime, { config: Record<string, unknown>; electron: boolean }> = {
     cloud: { config: { mode: 'server' }, electron: false },
     embedded: { config: { mode: 'server', isEmbedded: true }, electron: false },
-    electron: { config: { mode: 'server' }, electron: true },
+    electron: { config: { mode: 'static' }, electron: true },
     static: { config: { mode: 'static' }, electron: false },
 };
 
+/** The preload bridge of an Electron build that ships the preview scheme. */
+const ELECTRON_WITH_SCHEME = { electronAPI: { previewSnapshot: { replace() {}, dispose() {} } } };
+
 /** The shipped policy reads `window.electronAPI`; nothing else here needs a DOM. */
-function withRuntime<T>(runtime: PreviewRuntime, run: () => T): T {
+function withWindow<T>(win: unknown, run: () => T): T {
     const globals = globalThis as { window?: unknown };
     const prior = globals.window;
-    globals.window = RUNTIME_CONFIG[runtime].electron ? { electronAPI: {} } : {};
+    globals.window = win;
     try {
         return run();
     } finally {
         globals.window = prior;
     }
+}
+
+function withRuntime<T>(runtime: PreviewRuntime, run: () => T): T {
+    return withWindow(RUNTIME_CONFIG[runtime].electron ? ELECTRON_WITH_SCHEME : {}, run);
 }
 
 type Policy = {
@@ -62,6 +70,7 @@ const policy = (await import(POLICY)) as unknown as Policy;
 const SHIPPED_TRANSPORT_TO_MATRIX: Record<string, string> = {
     'self-hosted-opaque': 'opaque-capability',
     'embedded-opaque': 'opaque-capability',
+    'electron-opaque': 'opaque-capability',
     'srcdoc-opaque': 'opaque-srcdoc',
     'electron-blocked': 'blocked',
 };
@@ -112,6 +121,23 @@ describe('the shipped client policy agrees with the matrix', () => {
                 expect(policy.canEnableActivePreviewContent(), runtime).toBe(canEnableActiveContent(runtime));
             });
         }
+    });
+
+    /**
+     * Not a runtime of the matrix but a configuration failure of one: an Electron preload
+     * without the preview scheme has no opaque transport to offer, so the grant is refused
+     * and the preview stays filtered — the same fail-closed answer the matrix reserves for
+     * `blocked`.
+     */
+    it('electron without the preview scheme refuses the grant and stays filtered', () => {
+        withWindow({ electronAPI: {} }, () => {
+            policy.resetPreviewContentAuthorizationForTests();
+            expect(policy.canEnableActivePreviewContent()).toBe(false);
+            policy.enableActivePreviewContent('p1');
+            expect(policy.resolvePreviewTransport(RUNTIME_CONFIG.electron.config)).toBe('electron-blocked');
+            expect(shippedCell('electron')).toBe('sw-filtered');
+            expect(BLOCKED_DECISION.transport).toBe('blocked');
+        });
     });
 
     it('revoking returns every runtime to the filtered default', () => {

@@ -9,7 +9,7 @@ deciders:
 related:
   prs: [1968, 2199]
   changes: []
-  adrs: [ADR-2199-01, ADR-2199-04]
+  adrs: [ADR-2199-01, ADR-2199-04, ADR-2620-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -134,8 +134,10 @@ minimal subset of PR #1968's `preview-serving`:
   absolute cap; per-user quota of 2 with LRU eviction; byte cap following
   `MAX_UPLOAD_SIZE`; file-count cap; lazy expiry plus a periodic sweeper. Replace is atomic
   by construction (the new map is materialized before one synchronous swap).
-- **Registered only by the Bun server.** Electron and static/PWA have no capability
-  server; their transports are blocked and `srcdoc` respectively
+- **Registered only by the Bun server.** Electron implements the same contract from its
+  main process on the `preview://` scheme
+  ([ADR-2620-01](ADR-2620-01-serve-the-electron-preview-from-the-main-process-on-a-preview-scheme.md));
+  static/PWA has no server and uses the inlined `srcdoc` transport
   ([ADR-2199-04](ADR-2199-04-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)).
 
 ## Consequences
