@@ -1,7 +1,7 @@
 ---
 id: ADR-2199-07
 title: "OPFS plus a Service Worker does not create an opaque origin (static/PWA limit)"
-status: Accepted
+status: Superseded
 date: 2026-07-22
 tracking_issue: 2199
 legacy_id: ADR-0016
@@ -12,7 +12,7 @@ related:
   changes: []
   adrs: [ADR-2199-02, ADR-2199-05]
 supersedes: []
-superseded_by: []
+superseded_by: [ADR-2199-16]
 ai_assistance:
   tool: "Claude Code"
   model: "Claude Fable 5"

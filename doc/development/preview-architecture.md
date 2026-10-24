@@ -10,50 +10,61 @@ editor's DOM, storage, or session on the default path.
 This page documents the **hybrid trust boundary**: source-filtered by default,
 opaque-on-enable. See [ADR-2199-02](../architecture/adr/ADR-2199-02-hybrid-preview-trust-boundary.md)
 for the decision, [ADR-2199-03](../architecture/adr/ADR-2199-03-preview-grant-revocation-under-collaboration.md)
-for revocation under collaboration, and
+for revocation under collaboration,
 [ADR-2199-04](../architecture/adr/ADR-2199-04-self-hosted-capability-snapshots-for-editor-preview.md)
-for the capability-snapshot server.
+for the capability-snapshot server, and
+[ADR-2199-16](../architecture/adr/ADR-2199-16-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)
+for the backend-less (static/PWA) transport.
 
 ## Transport matrix
 
 The transport is chosen by the **runtime**, never by content, and there is **no
-silent fallback** between rows: a web/server enable that cannot reach the
-snapshot routes fails visibly and stays filtered.
+silent fallback** between rows: an enable whose opaque transport cannot be
+established fails visibly and stays filtered. **No row runs author code with the
+editor's origin**: every enabled transport is a browser-enforced opaque origin,
+or blocked.
 
 | Runtime | Default preview | Active content detected | After explicit enable |
 |---|---|---|---|
 | Web / server | Same-origin SW, source-filtered | Indicator + dialog | **Opaque snapshot** served by eXe's server via a capability URL; iframe `sandbox` without `allow-same-origin` |
-| Embedded LMS/CMS (Moodle, WordPress, …) | Opaque snapshot via **host** capability routes; full authored content retained — the origin boundary is the control | n/a (always isolated) | n/a |
-| Static bundle / PWA / PHP-WASM (no backend) | Same-origin SW, source-filtered | Indicator + dialog | Same-origin with consent (**documented residual risk**; no server to mint capability URLs) |
+| Embedded LMS/CMS (Moodle, WordPress, …) | Same-origin SW, source-filtered | Indicator + dialog | **Opaque snapshot** via the **host's** capability routes; same sandbox |
+| Static bundle / PWA / PHP-WASM (no backend) | Same-origin SW, source-filtered | Indicator + dialog | **Opaque `srcdoc` document**: the snapshot page is inlined (CSS, scripts, images, fonts, local media) and loaded through `srcdoc` into the same sandbox without `allow-same-origin`; no server, no network |
 | Electron | Same-origin SW, source-filtered | Dialog explains restriction | **Blocked** (preview shares a renderer with the preload bridge) |
 
-Resolution lives in `resolvePreviewTransport()`
-(`public/app/utils/previewContentPolicy.js`) and is mirrored by
-`Capabilities.preview` (`public/app/core/Capabilities.js`); a unit test asserts
-the two agree for every runtime.
+The canonical table is `src/shared/preview/preview-mode-matrix.ts`; the shipped
+browser decision is `resolvePreviewTransport()` in
+`public/app/utils/previewContentPolicy.js`, and
+`preview-mode-matrix.consistency.spec.ts` executes the latter across every cell
+and fails if the two disagree ([ADR-2199-10](../architecture/adr/ADR-2199-10-preview-transport-matrix-as-a-single-source.md)).
 
 ## Enable/disable state machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> filtered
-    filtered --> opaque_enabled: enable (web/server)
-    filtered --> consented_same_origin: enable (static/PWA)
+    filtered --> opaque_enabled: enable (web/server, embedded, static/PWA)
     filtered --> filtered: enable blocked (Electron)
     opaque_enabled --> filtered: disable / revoke / session end
-    consented_same_origin --> filtered: disable / revoke / session end
     note right of opaque_enabled
+        Transport by runtime: capability URL
+        (eXe or host routes) or sandboxed srcdoc.
         Revocation (D1): project replacement/import,
         explicit disable, session end, and any
-        REMOTE-origin ydoc update. Local edits keep it.
-        On exit: dispose the server snapshot session.
+        update not identified as local. Local edits keep it.
+        On exit: dispose the server snapshot or
+        unload the srcdoc document.
     end note
 ```
 
-`filtered` is the default. Enabling maps to `opaque-enabled` (web/server) or
-`consented-same-origin` (static/PWA); Electron blocks the enable. Every exit edge
-returns to `filtered`, and any exit out of `opaque-enabled` disposes the server
-snapshot (best-effort client `DELETE` + guaranteed server-side TTL expiry).
+`filtered` is the default and the only other state is `opaque-enabled`; which
+opaque transport delivers it is the runtime's decision. Electron blocks the
+enable. Every exit edge returns to `filtered`: a capability-URL exit disposes the
+server snapshot (best-effort client `DELETE` + guaranteed server-side TTL expiry),
+a srcdoc exit removes the `srcdoc` attribute so the author code stops at once
+rather than at the next navigation. The same-origin content policy
+(`createPreviewContentPolicy()`) takes no runtime input and is always filtered:
+the grant switches the transport, it never loosens what a same-origin document —
+Service Worker preview, inlined fallback, print preview — is built with.
 
 ## Sequence — default (same-origin, source-filtered)
 
@@ -120,6 +131,36 @@ sequenceDiagram
     Note over F: full authored content, isolated by origin
 ```
 
+## Sequence — enable → opaque srcdoc (static/PWA, no backend)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as PreviewPanel
+    participant X as SharedExporters
+    participant F as iframe (opaque origin)
+
+    U->>P: click enable (dialog explains isolated reload)
+    P->>X: generatePreviewForSW(report-only policy)  %% author bytes intact
+    X-->>P: unfiltered file map
+    P->>P: inject embed shim; inline CSS/JS/images/fonts/media; PDF embeds → links
+    P->>F: sandbox = allow-scripts … (NO allow-same-origin), set BEFORE the load
+    P->>F: srcdoc = self-contained page
+    Note over F: opaque origin: no parent, cookies, storage, IndexedDB or SW; no network needed
+    F->>P: postMessage(exe-blob-navigate | exe-blob-open-document)
+    P->>P: accept only if event.source IS a preview frame
+    P->>F: srcdoc = next inlined page / open inert file in a new tab
+```
+
+The panel reuses the inlining pipeline of its same-origin fallback (the path used
+where a Service Worker cannot register); the difference between the two is only
+the sandbox attribute present when `srcdoc` is set. Measured browser facts behind
+this transport — opaque origin, no Service Worker control, editor-minted `blob:`
+URLs unreachable, relative classic resources still loading — are in
+`test/e2e/playwright/specs/preview-srcdoc-isolation.spec.ts`; the end-to-end
+boundary on the built static distribution is in
+`test/e2e/playwright/specs/preview-active-content-static.spec.ts`.
+
 ## Serving contract (capability route)
 
 `/preview-snapshot/{previewId}/{path}` is authless and cookieless — the
@@ -168,9 +209,15 @@ iframe's relative-URL base is correct under any `BASE_PATH`.
 ## Threat model
 
 - **Assets:** editor DOM and JS context, Yjs project state, eXe server session
-  cookies, host LMS credentials (embedded), the user's machine (Electron).
+  cookies, host LMS credentials (embedded), editor-origin storage (IndexedDB,
+  Cache Storage, OPFS) and any file capability the static editor may one day
+  hold, the user's machine (Electron).
 - **Adversary:** a malicious `.elpx`/`.elp` project, or a malicious collaborator
-  injecting active content mid-session.
+  injecting active content mid-session. In the opaque transports the adversary's
+  script runs and can forge any `postMessage` to the editor, so the parent's
+  handlers trust only the two preview frames (by window identity, never
+  `event.origin`, which is `"null"` for an opaque document) and never mint a
+  scriptable editor-origin blob from a request.
 - **In scope:** preventing author-controlled code from reaching those assets
   during preview.
 - **Out of scope:** network requests initiated from inside the opaque frame,
@@ -212,14 +259,23 @@ after a full adapter pass.
 - **Electron:** custom active content cannot be enabled — the preview shares a
   renderer with the `preload.js` bridge. Revisiting needs an isolated-renderer
   design.
-- **Static bundle / PWA / PHP-WASM:** enabling runs author code same-origin
-  (documented residual risk) — no backend exists to mint capability URLs, and
-  OPFS + a Service Worker does not create an opaque origin
-  ([ADR-2199-07](../architecture/adr/ADR-2199-07-opfs-service-worker-is-not-an-opaque-origin.md)).
+- **Static bundle / PWA / PHP-WASM, while enabled** (the srcdoc transport,
+  [ADR-2199-16](../architecture/adr/ADR-2199-16-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)):
+  PDF embeds render as "open in a new tab" links (an editor-minted `blob:` URL
+  cannot be fetched from an opaque origin, and PDF.js cannot be imported into it
+  cross-origin); local media is inlined as `data:` URIs up to 25 MiB per file and
+  larger files do not play; "open in a new tab" shows the **filtered** Service
+  Worker preview because a `srcdoc` document has no URL. None of this affects the
+  default filtered preview.
 - **Full-snapshot refresh while opaque-enabled:** each scheduled refresh
-  re-uploads the whole snapshot. Acceptable because it is opt-in and temporary;
-  see the [benchmark](../../test/benchmarks/preview/README.md) for the payload
-  size (~400 KiB for text projects).
+  re-uploads the whole snapshot (capability URL) or re-inlines the page (srcdoc).
+  Acceptable because it is opt-in and temporary; see the
+  [benchmark](../../test/benchmarks/preview/README.md) for the payload size
+  (~400 KiB for text projects).
+- **Already-running contexts:** changing the transport does not revoke what a
+  stale tab or an installed PWA is executing with older code. Persistent file
+  capabilities (ateeducacion/exelearning#48) need a deployment boundary on top of
+  this: all static clients on this code, old tabs reloaded.
 
 ## YouTube "Error 153" and `referrerpolicy`
 

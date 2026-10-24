@@ -10,7 +10,7 @@ deciders:
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-05, ADR-2199-06, ADR-2199-07, ADR-2199-08]
+  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-05, ADR-2199-06, ADR-2199-07, ADR-2199-08, ADR-2199-16]
 supersedes: []
 superseded_by: []
 ai_assistance:
