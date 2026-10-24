@@ -12,6 +12,43 @@
  *     console.log('Imported block:', result.blockId);
  *   }
  */
+
+/**
+ * Maximum size (compressed) accepted for a .idevice/.block ZIP file. Rejecting
+ * oversized files before reading them into memory protects the browser from
+ * memory exhaustion (see "decompression bomb" / zip-bomb hardening).
+ *
+ * DEGRADED-MODE FALLBACK: the primary source of this value is the shared
+ * COMPONENT_IMPORT_LIMITS tier in src/shared/import/importPolicy.ts, exposed
+ * by the importers bundle as window.ExeImportPolicy (see resolveComponentLimits).
+ * This constant only applies when that bundle is not loaded — keep in sync.
+ */
+const MAX_COMPONENT_FILE_BYTES = 50 * 1024 * 1024; // 50 MiB
+
+/**
+ * Maximum total size (uncompressed) accepted across all ZIP entries. Enforced
+ * in three layers:
+ * 1. BEFORE any inflation, on the declared cumulative size read from the
+ *    central directory (validateZipPreflight), reusing the shared
+ *    import-policy machinery exposed by the bundled importer
+ *    (window.ExeImportPolicy, see #2193).
+ * 2. DURING extraction, on the declared uncompressed size of each entry, via
+ *    the unzipSync filter (see createDeclaredSizeFilter). fflate allocates the
+ *    output buffer at that declared size and never grows past it, so skipping
+ *    entries whose cumulative total exceeds the limit bounds the memory used
+ *    by unzipSync itself — a heavily-compressed ZIP is rejected before it can
+ *    inflate, instead of after.
+ * 3. AFTER decompression, on the actual byte lengths (validateUncompressedSize),
+ *    as a backstop for archives that lie in their central directory (a forged
+ *    small declared size only yields truncated, memory-bounded output).
+ *
+ * DEGRADED-MODE FALLBACK: the primary source of this value is the shared
+ * COMPONENT_IMPORT_LIMITS tier in src/shared/import/importPolicy.ts, exposed
+ * by the importers bundle as window.ExeImportPolicy (see resolveComponentLimits).
+ * This constant only applies when that bundle is not loaded — keep in sync.
+ */
+const MAX_COMPONENT_UNCOMPRESSED_BYTES = 200 * 1024 * 1024; // 200 MiB
+
 class ComponentImporter {
   /**
    * @param {YjsDocumentManager} documentManager - The Yjs document manager
@@ -36,6 +73,12 @@ class ComponentImporter {
     Logger.log(`[ComponentImporter] Importing ${file.name} to page ${targetPageId}...`);
 
     try {
+      // Reject oversized files before reading them into memory
+      const sizeError = this.validateCompressedSize(file);
+      if (sizeError) {
+        return { success: false, error: sizeError };
+      }
+
       // Validate target page exists
       const targetPage = this.findPage(targetPageId);
       if (!targetPage) {
@@ -52,12 +95,37 @@ class ComponentImporter {
       const arrayBuffer = await file.arrayBuffer();
       const uint8Data = new Uint8Array(arrayBuffer);
 
-      // Use sync decompression
+      // Preflight: inspect the central directory (declared metadata only, no
+      // inflation) and reject an over-limit archive before unzipping anything.
+      const preflightError = this.validateZipPreflight(uint8Data);
+      if (preflightError) {
+        return { success: false, error: preflightError };
+      }
+
+      // Use sync decompression. The filter runs BEFORE each entry is inflated
+      // and receives its declared uncompressed size, so entries that would
+      // push the cumulative total past the limit are skipped (never
+      // decompressed, never allocated) instead of inflating first.
       let zip;
+      let declaredSizeViolation = { error: null };
       try {
-        zip = fflateLib.unzipSync(uint8Data);
+        zip = fflateLib.unzipSync(uint8Data, {
+          filter: this.createDeclaredSizeFilter(declaredSizeViolation),
+        });
       } catch (e) {
         return { success: false, error: 'Invalid ZIP file: ' + e.message };
+      }
+
+      // A declared-size violation was detected while extracting: reject.
+      if (declaredSizeViolation.error) {
+        return { success: false, error: declaredSizeViolation.error };
+      }
+
+      // Backstop: verify the actual decompressed sizes (a forged central
+      // directory can only produce truncated, memory-bounded output).
+      const uncompressedSizeError = this.validateUncompressedSize(zip);
+      if (uncompressedSizeError) {
+        return { success: false, error: uncompressedSizeError };
       }
 
       // Find content.xml
@@ -153,6 +221,179 @@ class ComponentImporter {
       console.error('[ComponentImporter] Import failed:', error);
       return { success: false, error: error.message || 'Import failed' };
     }
+  }
+
+  /**
+   * Import a single .idevice file into an existing block.
+   *
+   * Unlike importComponent (which creates a new block in a page), this appends
+   * the parsed component(s) to the `components` Y.Array of an existing block.
+   * Only .idevice files are accepted; .block files are rejected.
+   *
+   * @param {File} file - The .idevice file to import
+   * @param {string} pageId - Page ID that contains the target block
+   * @param {string} blockId - Target block ID
+   * @returns {Promise<{success: boolean, blockId?: string, componentIds?: string[], error?: string}>}
+   */
+  async importIdeviceIntoBlock(file, pageId, blockId) {
+    Logger.log(`[ComponentImporter] Importing ${file.name} into block ${blockId}...`);
+
+    try {
+      // Reject oversized files before reading them into memory
+      const sizeError = this.validateCompressedSize(file);
+      if (sizeError) {
+        return { success: false, error: sizeError };
+      }
+
+      // Only .idevice files are allowed in this flow
+      if (!file.name.toLowerCase().endsWith('.idevice')) {
+        return { success: false, error: 'The file is not an iDevice (.idevice)' };
+      }
+
+      const fflateLib = window.fflate;
+      if (!fflateLib) {
+        return { success: false, error: 'fflate library not loaded' };
+      }
+
+      // Load ZIP. The preflight inspects the central directory (no inflation)
+      // first; the filter then runs BEFORE each entry is inflated and receives
+      // its declared uncompressed size, so entries that would push the
+      // cumulative total past the limit are skipped (never decompressed, never
+      // allocated) instead of inflating first.
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Data = new Uint8Array(arrayBuffer);
+
+      const preflightError = this.validateZipPreflight(uint8Data);
+      if (preflightError) {
+        return { success: false, error: preflightError };
+      }
+
+      let zip;
+      let declaredSizeViolation = { error: null };
+      try {
+        zip = fflateLib.unzipSync(uint8Data, {
+          filter: this.createDeclaredSizeFilter(declaredSizeViolation),
+        });
+      } catch (e) {
+        return { success: false, error: 'Invalid ZIP file: ' + e.message };
+      }
+
+      // A declared-size violation was detected while extracting: reject.
+      if (declaredSizeViolation.error) {
+        return { success: false, error: declaredSizeViolation.error };
+      }
+
+      // Backstop: verify the actual decompressed sizes (a forged central
+      // directory can only produce truncated, memory-bounded output).
+      const uncompressedSizeError = this.validateUncompressedSize(zip);
+      if (uncompressedSizeError) {
+        return { success: false, error: uncompressedSizeError };
+      }
+
+      const contentFile = zip['content.xml'];
+      if (!contentFile) {
+        return { success: false, error: 'No content.xml found in component file' };
+      }
+      const contentXml = new TextDecoder().decode(contentFile);
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(contentXml, 'text/xml');
+      const parseError = xmlDoc.querySelector('parsererror');
+      if (parseError) {
+        return { success: false, error: 'XML parsing error: ' + parseError.textContent };
+      }
+
+      if (!this.isComponentExport(xmlDoc)) {
+        return { success: false, error: 'Invalid component file: missing odeComponentsResources marker' };
+      }
+
+      // Import assets first
+      if (this.assetManager) {
+        this.assetMap = await this.assetManager.extractAssetsFromZip(zip);
+        Logger.log(`[ComponentImporter] Imported ${this.assetMap.size} assets`);
+      }
+
+      // Parse components from the XML (a .idevice carries a single component
+      // wrapped in its own block, but we accept all components found)
+      const blockData = this.parseBlockFromXml(xmlDoc);
+      if (!blockData || blockData.components.length === 0) {
+        return { success: false, error: 'No iDevice found in component file' };
+      }
+
+      // Find the target page and block
+      const targetPage = this.findPage(pageId);
+      if (!targetPage) {
+        return { success: false, error: 'Target page not found' };
+      }
+
+      // Generate fresh IDs for the components, keeping an embedded
+      // jsonProperties.ideviceId in sync (same rule as importComponent, #1786)
+      for (const comp of blockData.components) {
+        const originalCompId = comp.id;
+        const newCompId = this.generateId('idevice');
+        comp.id = newCompId;
+        comp.ideviceId = newCompId;
+        if (originalCompId && comp.properties && typeof comp.properties === 'object'
+            && comp.properties.ideviceId === originalCompId) {
+          comp.properties.ideviceId = newCompId;
+        }
+      }
+
+      // Insert components into the target block
+      const ydoc = this.manager.getDoc();
+      let inserted = false;
+
+      ydoc.transact(() => {
+        const blocksArray = targetPage.get('blocks');
+        if (!blocksArray) return;
+
+        const blockMap = this.findBlockInArray(blocksArray, blockId);
+        if (!blockMap) return;
+
+        let componentsArray = blockMap.get('components');
+        if (!componentsArray) {
+          componentsArray = new this.Y.Array();
+          blockMap.set('components', componentsArray);
+        }
+
+        for (const compData of blockData.components) {
+          compData.order = componentsArray.length;
+          componentsArray.push([this.createComponentYMap(compData)]);
+        }
+        inserted = true;
+      }, ydoc.clientID);
+
+      if (!inserted) {
+        return { success: false, error: 'Target block not found' };
+      }
+
+      Logger.log(`[ComponentImporter] Imported ${blockData.components.length} iDevice(s) into block ${blockId}`);
+      return {
+        success: true,
+        blockId: blockId,
+        componentIds: blockData.components.map((c) => c.id),
+      };
+    } catch (error) {
+      console.error('[ComponentImporter] Import into block failed:', error);
+      return { success: false, error: error.message || 'Import failed' };
+    }
+  }
+
+  /**
+   * Find a block Y.Map inside a blocks Y.Array by id/blockId
+   * @param {Y.Array} blocksArray
+   * @param {string} blockId
+   * @returns {Y.Map|null}
+   */
+  findBlockInArray(blocksArray, blockId) {
+    for (let i = 0; i < blocksArray.length; i++) {
+      const blockMap = blocksArray.get(i);
+      const id = blockMap.get('blockId') || blockMap.get('id');
+      if (id === blockId) {
+        return blockMap;
+      }
+    }
+    return null;
   }
 
   /**
@@ -528,6 +769,147 @@ class ComponentImporter {
     const textarea = document.createElement('textarea');
     textarea.innerHTML = content;
     return textarea.value;
+  }
+
+  /**
+   * Resolve the component-scoped import limits (ADR-2473-01: a per-component
+   * budget is not a per-project budget). The primary source is
+   * COMPONENT_IMPORT_LIMITS, exported by the shared import policy
+   * (src/shared/import/importPolicy.ts) and exposed by the bundled importer as
+   * window.ExeImportPolicy — one source of truth shared with the ELPX tiers.
+   * The local constants above are only a documented fallback for the degraded
+   * mode where the policy bundle is not loaded; keep them in sync.
+   *
+   * @returns {{maxFileBytes: number, maxTotalBytes: number, maxEntryBytes: number, maxEntries: number}}
+   */
+  resolveComponentLimits() {
+    const policy = window.ExeImportPolicy;
+    const tier = policy && policy.COMPONENT_IMPORT_LIMITS;
+    if (tier && typeof tier === 'object'
+        && typeof tier.maxFileBytes === 'number'
+        && typeof tier.maxTotalBytes === 'number'
+        && typeof tier.maxEntryBytes === 'number'
+        && Number.isInteger(tier.maxEntries)) {
+      return tier;
+    }
+    return {
+      maxFileBytes: MAX_COMPONENT_FILE_BYTES,
+      maxTotalBytes: MAX_COMPONENT_UNCOMPRESSED_BYTES,
+      maxEntryBytes: MAX_COMPONENT_UNCOMPRESSED_BYTES,
+      maxEntries: Number.MAX_SAFE_INTEGER,
+    };
+  }
+
+  /**
+   * Validate the compressed size of a component file, returning an error
+   * message when the file exceeds the tier's maxFileBytes, or null otherwise.
+   *
+   * @param {File} file
+   * @returns {string|null}
+   */
+  validateCompressedSize(file) {
+    const { maxFileBytes } = this.resolveComponentLimits();
+    if (typeof file.size === 'number' && file.size > maxFileBytes) {
+      return `Component file is too large (${Math.round(file.size / (1024 * 1024))} MB). Maximum allowed is ${maxFileBytes / (1024 * 1024)} MB.`;
+    }
+    return null;
+  }
+
+  /**
+   * Preflight a component ZIP by inspecting its central directory — declared
+   * metadata only, no entry is inflated. Reuses the shared import-policy
+   * machinery exposed by the bundled importer (window.ExeImportPolicy, see
+   * #2193) so the limits logic lives in one place. The limits come from
+   * resolveComponentLimits() — the shared COMPONENT_IMPORT_LIMITS tier, which
+   * deliberately introduces no caps beyond the cumulative one the extraction
+   * filter and the post-inflation backstop already enforce; per-entry and
+   * entry-count caps remain follow-up work (ADR-2473-01).
+   *
+   * Degrades gracefully when the shared policy bundle is not loaded: it
+   * returns null and the extraction filter plus the backstop still enforce
+   * the same cumulative cap.
+   *
+   * @param {Uint8Array} uint8Data - Raw ZIP bytes
+   * @returns {string|null} Error message when the preflight rejects, null otherwise
+   */
+  validateZipPreflight(uint8Data) {
+    const policy = window.ExeImportPolicy;
+    if (!policy
+        || typeof policy.inspectZipArchive !== 'function'
+        || typeof policy.assertInspectionWithinLimits !== 'function') {
+      return null;
+    }
+    const limits = this.resolveComponentLimits();
+    try {
+      const inspection = policy.inspectZipArchive(uint8Data, 'Component file');
+      policy.assertInspectionWithinLimits(inspection, limits, 'Component file');
+    } catch (e) {
+      if (e && (e.name === 'ZipLimitError' || (policy.ZipLimitError && e instanceof policy.ZipLimitError))) {
+        return `Component file expands beyond the allowed size (${limits.maxTotalBytes / (1024 * 1024)} MB uncompressed).`;
+      }
+      // Inspection failed for another reason (e.g. malformed central
+      // directory): fall through and let unzipSync report the specific error.
+    }
+    return null;
+  }
+
+  /**
+   * Validate the total uncompressed size of a decompressed ZIP, returning an
+   * error message when the cumulative bytes exceed the tier's maxTotalBytes,
+   * or null otherwise. Backstop against decompression bombs whose central
+   * directory under-reports entry sizes.
+   *
+   * @param {Object} zip - Result of fflate.unzipSync (path -> Uint8Array)
+   * @returns {string|null}
+   */
+  validateUncompressedSize(zip) {
+    const { maxTotalBytes } = this.resolveComponentLimits();
+    let totalBytes = 0;
+    for (const entry of Object.values(zip)) {
+      if (entry && typeof entry.byteLength === 'number') {
+        totalBytes += entry.byteLength;
+        if (totalBytes > maxTotalBytes) {
+          return `Component file expands beyond the allowed size (${maxTotalBytes / (1024 * 1024)} MB uncompressed).`;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Create a filter for fflate's unzipSync that enforces
+   * MAX_COMPONENT_UNCOMPRESSED_BYTES against the DECLARED uncompressed size of
+   * each ZIP entry, before that entry is inflated. This is the primary guard
+   * against decompression bombs: fflate only decompresses (and only allocates
+   * the output buffer for) entries the filter accepts, and its inflate never
+   * grows past the declared size, so a bomb is rejected without ever
+   * inflating into memory.
+   *
+   * On violation the filter records the error on the passed violation object
+   * (which the caller checks after unzipSync) and skips the offending entry
+   * and every subsequent one.
+   *
+   * @param {{error: string|null}} violation - Mutated to carry the error message
+   * @returns {function(Object): boolean} unzipSync filter
+   */
+  createDeclaredSizeFilter(violation) {
+    const { maxTotalBytes } = this.resolveComponentLimits();
+    let totalBytes = 0;
+    return (info) => {
+      if (violation.error) {
+        return false;
+      }
+      const declaredBytes =
+        info && typeof info.originalSize === 'number' && info.originalSize > 0
+          ? info.originalSize
+          : 0;
+      totalBytes += declaredBytes;
+      if (totalBytes > maxTotalBytes) {
+        violation.error = `Component file expands beyond the allowed size (${maxTotalBytes / (1024 * 1024)} MB uncompressed).`;
+        return false;
+      }
+      return true;
+    };
   }
 
   /**

@@ -1580,6 +1580,34 @@ export async function importComponent(page: Page, filePath: string): Promise<voi
 }
 
 /**
+ * Import a .idevice file into an existing block via the block's actions menu
+ * ("Import iDevice"). Mirrors the user flow: open the block dropdown, click
+ * the menu item, and answer the file picker created on the fly by
+ * addBehaviourImportIdeviceButton() through Playwright's filechooser event.
+ *
+ * This helper only performs the interaction. Callers decide what to wait for
+ * afterwards: the imported iDevice node (success) or the "Import error" modal
+ * (rejection).
+ *
+ * @param page - Playwright page
+ * @param blockId - The block element ID
+ * @param filePath - Absolute path to the file to feed the picker
+ */
+export async function importIdeviceIntoBlock(page: Page, blockId: string, filePath: string): Promise<void> {
+    const importSelector = `#dropdownBlockMore-button-import-idevice${blockId}`;
+    await openActionsDropdown(page, `#dropdownMenuButton${blockId}`, importSelector);
+
+    // The menu item click creates a one-shot hidden <input type="file"> and
+    // opens the picker; Playwright drives it through the filechooser event.
+    // Force the click: the dropdown carries `exe-advanced` and may be hidden
+    // by CSS depending on the user's mode.
+    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
+    await page.locator(importSelector).click({ force: true });
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(filePath);
+}
+
+/**
  * Get the block and iDevice IDs from the first block on the current page
  *
  * @param page - Playwright page
