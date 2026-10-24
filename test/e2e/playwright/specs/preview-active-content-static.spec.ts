@@ -8,7 +8,7 @@ import {
 } from '../helpers/workarea-helpers';
 
 /**
- * The static/PWA trust boundary (ADR-2199-16), against the BUILT static distribution.
+ * The static/PWA trust boundary (ADR-2199-07), against the BUILT static distribution.
  *
  * Static builds have no backend, so enabling author active content cannot use a capability
  * URL; the panel inlines the snapshot and loads it through `srcdoc` into an iframe sandboxed

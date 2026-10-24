@@ -10,7 +10,7 @@ deciders:
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-05, ADR-2199-06, ADR-2199-07, ADR-2199-08, ADR-2199-16]
+  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-05, ADR-2199-06, ADR-2199-07, ADR-2199-08]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -71,15 +71,18 @@ knowing any drift would already have gone red.
 - The default is Service Worker filtering everywhere. Its cost was measured in Phase 0
   at **1–3 ms** on an 8–10 ms generation step, of which the content policy is ~1.4 ms —
   inside a 500 ms-debounced refresh whose SW hand-off is excluded from the measurement.
-- The `static` exception is **not** caused by missing HTTP headers. The `sandbox`
-  attribute alone already yields an opaque origin with no server involvement. The real
-  blocker is that a sandboxed frame without `allow-same-origin` is **never controlled by
-  a Service Worker** — verified in Chromium, Firefox and WebKit (Phase 0, spike S3) —
-  and a backend-less deployment has nothing else to serve the preview from. Spike S2
-  separately established that `online.exelearning.net` is plain nginx and *can* set
-  headers, so the exception survives regardless. Project documentation that attributed
-  it to headers was wrong and is corrected in
-  `doc/development/external-media-inventory.md`.
+- `static` cannot use the Service Worker transport once sandboxed, and the cause is
+  **not** missing HTTP headers. The `sandbox` attribute alone already yields an opaque
+  origin with no server involvement. The real constraint is that a sandboxed frame without
+  `allow-same-origin` is **never controlled by a Service Worker** — verified in Chromium,
+  Firefox and WebKit (Phase 0, spike S3; re-verified by
+  `test/e2e/playwright/specs/preview-srcdoc-isolation.spec.ts`) — and a backend-less
+  deployment has no capability server. Spike S2 separately established that
+  `online.exelearning.net` is plain nginx and *can* set headers, so headers were never the
+  limit. [ADR-2199-07](ADR-2199-07-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md) draws the consequence: the static cell loads the inlined
+  snapshot through a sandboxed `srcdoc` document, which the browser gives an opaque origin
+  without any server. Project documentation that attributed the limit to headers was wrong
+  and is corrected in `doc/development/external-media-inventory.md`.
 - `dedicated-origin` is **not** modelled: spike S7 found Electron's custom scheme does
   not satisfy provider embedder checks without rewriting `Referer`/`Origin`
   (`app/main.js:583-618` already does exactly that), so no code path can produce it.
@@ -96,18 +99,19 @@ We will declare the matrix once, model only what the code can produce, and gate 
 | `cloud` | `sw-filtered` | `opaque-capability` |
 | `embedded` | `sw-filtered` | `opaque-capability` (host routes) |
 | `electron` | `sw-filtered` | `blocked` — the grant is refused |
-| `static` | `sw-filtered` | `consented-same-origin` ⚠ warns |
+| `static` | `sw-filtered` | `opaque-srcdoc` |
 
-`resolvePreviewTransport(runtime, activeContentEnabled)` returns the transport, a stable
-machine-readable `reason`, and `requiresConsentWarning`. An unmodelled runtime
-**throws**, because guessing is the silent degradation the matrix exists to prevent.
+`resolvePreviewTransport(runtime, activeContentEnabled)` returns the transport and a
+stable machine-readable `reason`. No enabled cell is same-origin: every transport is an
+opaque origin or blocked. An unmodelled runtime **throws**, because guessing is the silent
+degradation the matrix exists to prevent.
 
 ## Consequences
 
 ### Positive
 
 - One readable table; a spec fails if any other site disagrees, proven by mutation
-  (claiming `static` can isolate opaquely reddens three assertions).
+  (claiming `static` falls back to same-origin execution reddens the consistency spec).
 - Modelling only reachable states keeps the type honest: no transport exists in the
   union that the code cannot produce.
 - The no-silent-degradation rule is now asserted, not just intended: the spec checks
@@ -137,8 +141,8 @@ machine-readable `reason`, and `requiresConsentWarning`. An unmodelled runtime
 
 ## Validation
 
-- `src/shared/preview/preview-mode-matrix.spec.ts` — the table, totality, and that
-  exactly one cell warns.
+- `src/shared/preview/preview-mode-matrix.spec.ts` — the table, totality, and that no
+  enabled cell runs author code with the editor's origin.
 - `src/shared/preview/preview-mode-matrix.consistency.spec.ts` — executes
   `previewContentPolicy.js` across all four runtimes × both states, checks revocation
   returns every runtime to filtered, asserts the visible-failure paths, and asserts the
@@ -159,4 +163,4 @@ machine-readable `reason`, and `requiresConsentWarning`. An unmodelled runtime
 - `src/shared/security/previewSandbox.ts` — the sandbox token owner
 - `doc/development/external-media-inventory.md` — spikes S1, S2, S3, S7
 - [ADR-2199-02](ADR-2199-02-hybrid-preview-trust-boundary.md),
-  [ADR-2199-07](ADR-2199-07-opfs-service-worker-is-not-an-opaque-origin.md)
+  [ADR-2199-07](ADR-2199-07-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)

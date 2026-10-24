@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 
 /**
- * The browser facts the static/PWA opaque preview transport rests on (ADR-2199-16), measured
+ * The browser facts the static/PWA opaque preview transport rests on (ADR-2199-07), measured
  * rather than assumed, in every engine the suite runs:
  *
  * 1. A frame sandboxed without `allow-same-origin` is never Service-Worker controlled

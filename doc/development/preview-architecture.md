@@ -13,7 +13,7 @@ for the decision, [ADR-2199-03](../architecture/adr/ADR-2199-03-preview-grant-re
 for revocation under collaboration,
 [ADR-2199-04](../architecture/adr/ADR-2199-04-self-hosted-capability-snapshots-for-editor-preview.md)
 for the capability-snapshot server, and
-[ADR-2199-16](../architecture/adr/ADR-2199-16-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)
+[ADR-2199-07](../architecture/adr/ADR-2199-07-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)
 for the backend-less (static/PWA) transport.
 
 ## Transport matrix
@@ -260,7 +260,7 @@ after a full adapter pass.
   renderer with the `preload.js` bridge. Revisiting needs an isolated-renderer
   design.
 - **Static bundle / PWA / PHP-WASM, while enabled** (the srcdoc transport,
-  [ADR-2199-16](../architecture/adr/ADR-2199-16-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)):
+  [ADR-2199-07](../architecture/adr/ADR-2199-07-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)):
   PDF embeds render as "open in a new tab" links (an editor-minted `blob:` URL
   cannot be fetched from an opaque origin, and PDF.js cannot be imported into it
   cross-origin); local media is inlined as `data:` URIs up to 25 MiB per file and

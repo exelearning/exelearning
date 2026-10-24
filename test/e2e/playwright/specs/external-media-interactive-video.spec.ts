@@ -261,13 +261,11 @@ for (const target of PLAYABLE) {
         expect(afterWait).toBeLessThanOrEqual(stopped + 0.5);
 
         /**
-         * Hand the measurement to the migration report, so it can cite numbers instead of
-         * describing them. Written after the assertions, never instead of them.
+         * Keep the measurement with the test's own artifacts, so a report can cite numbers
+         * instead of describing them. Written after the assertions, never instead of them.
          */
-        const out = join(__dirname, '../../../../doc/development/external-media-report/shots');
-        mkdirSync(out, { recursive: true });
         writeFileSync(
-            join(out, `playback-${target.provider}-${testInfo.project.name}.json`),
+            testInfo.outputPath(`playback-${target.provider}-${testInfo.project.name}.json`),
             JSON.stringify(
                 {
                     engine: testInfo.project.name,

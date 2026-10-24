@@ -1038,7 +1038,7 @@ export default class PreviewPanelManager {
      * sandboxed WITHOUT `allow-same-origin`. The browser gives that document an opaque
      * origin, so author code reaches neither the editor DOM nor its cookies, storage or
      * Service Worker — the same boundary the capability-URL transports provide, with no
-     * server and no network, so it holds offline too (ADR-2199-16). Page navigation and
+     * server and no network, so it holds offline too (ADR-2199-07). Page navigation and
      * opening project files stay parent-bridged through the postMessage handlers the
      * same-origin inlined fallback already uses.
      */

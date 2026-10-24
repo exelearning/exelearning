@@ -399,7 +399,7 @@ export function canEnableActivePreviewContent() {
 
 /**
  * Preview transports — one per row of the trust-boundary matrix (ADR-2199-02,
- * static row replaced by ADR-2199-16). The transport is decided by the runtime,
+ * static row: ADR-2199-07). The transport is decided by the runtime,
  * never by content, and there is no fallback between rows: a transport that
  * cannot deliver fails visibly. Every transport that can carry enabled author
  * code renders it in a browser-enforced OPAQUE origin; none runs it with the

@@ -1,5 +1,5 @@
 ---
-id: ADR-2199-16
+id: ADR-2199-07
 title: "Isolate the static/PWA preview in a sandboxed srcdoc document instead of consenting to same-origin execution"
 status: Proposed
 date: 2026-10-24
@@ -10,15 +10,15 @@ reviewers: []
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-05, ADR-2199-07, ADR-2199-10]
-supersedes: [ADR-2199-07]
+  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-05, ADR-2199-10]
+supersedes: []
 superseded_by: []
 ai_assistance:
   tool: "Claude Code"
   model: "claude-mythos-5-1"
 ---
 
-# ADR-2199-16: Isolate the static/PWA preview in a sandboxed srcdoc document instead of consenting to same-origin execution
+# ADR-2199-07: Isolate the static/PWA preview in a sandboxed srcdoc document instead of consenting to same-origin execution
 
 ## Context
 
@@ -30,11 +30,12 @@ mode, the host's routes when embedded. Its static/PWA/PHP-WASM row was the excep
 Service-Worker-served preview iframe, which carries `allow-same-origin`, and therefore with
 the editor's origin, DOM, IndexedDB and Service Worker messaging surface.
 
-[ADR-2199-07](ADR-2199-07-opfs-service-worker-is-not-an-opaque-origin.md) justified that
-exception: a Service Worker cannot serve an opaque frame (Phase 0 spike S3, three engines),
-OPFS is origin-scoped, and "`srcdoc`/`blob:`-based transports either inherit the app origin
-or cannot carry a multi-file package with working relative references". It concluded that
-"no client-only mechanism is claimed to isolate" the static preview.
+A draft record carried from PR #1968 (its ADR 0016, which held this sequence slot until
+this record replaced it) justified that exception: a Service Worker cannot serve an opaque
+frame (Phase 0 spike S3, three engines), OPFS is origin-scoped, and "`srcdoc`/`blob:`-based
+transports either inherit the app origin or cannot carry a multi-file package with working
+relative references". It concluded that "no client-only mechanism is claimed to isolate" the
+static preview. The first two findings stand and are kept below; the third was wrong.
 
 That conclusion blocks [ateeducacion/exelearning#48](https://github.com/ateeducacion/exelearning/pull/48)
 (direct ELPX Save/Save As in the static editor): an editor origin that can be made to run
@@ -167,12 +168,12 @@ No row runs author code with the editor's origin. The `consented-same-origin` tr
 trust state and its consent dialog are removed, not renamed. The same-origin content policy
 (`createPreviewContentPolicy`) no longer takes a runtime or project: it is always filtered,
 so a same-origin surface — Service Worker preview, inlined fallback, print preview — can
-never be loosened by a grant. This record replaces the static row of ADR-2199-02 and
-ADR-2199-10; their other decisions (hybrid boundary, D1 revocation, single-source matrix
-with a consistency gate) stand. It supersedes ADR-2199-07, whose conclusion that no
-client-only mechanism can isolate the static preview was wrong on `srcdoc`: a sandboxed
-`srcdoc` document does get an opaque origin, and inlining removes the need for relative
-references to a server.
+never be loosened by a grant. ADR-2199-02 and ADR-2199-10 carry this static row directly
+(all three are drafts on the same branch); their other decisions — hybrid boundary, D1
+revocation, single-source matrix with a consistency gate — stand. The earlier draft
+conclusion that no client-only mechanism can isolate the static preview was wrong on
+`srcdoc`: a sandboxed `srcdoc` document does get an opaque origin, and inlining removes the
+need for relative references to a server.
 
 Alongside, two same-origin sinks reachable from the opaque document are hardened: the
 parent's `message` handlers accept only events whose `source` is one of the two preview
@@ -281,7 +282,6 @@ are gone, which removes the sink PR #48 used for its characterization.
 - `doc/development/preview-architecture.md`, `doc/development/external-media-inventory.md`
   (spike S3)
 - [ADR-2199-02](ADR-2199-02-hybrid-preview-trust-boundary.md),
-  [ADR-2199-07](ADR-2199-07-opfs-service-worker-is-not-an-opaque-origin.md),
   [ADR-2199-10](ADR-2199-10-preview-transport-matrix-as-a-single-source.md)
 - [ateeducacion/exelearning#48](https://github.com/ateeducacion/exelearning/pull/48) and its
   ADR-48-01 (content isolation before file capabilities)

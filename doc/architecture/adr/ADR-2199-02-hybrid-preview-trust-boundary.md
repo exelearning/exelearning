@@ -10,7 +10,7 @@ deciders:
 related:
   prs: [1968]
   changes: []
-  adrs: [ADR-2199-01, ADR-2199-03, ADR-2199-04, ADR-2199-05, ADR-2199-06, ADR-2199-07, ADR-2199-16]
+  adrs: [ADR-2199-01, ADR-2199-03, ADR-2199-04, ADR-2199-05, ADR-2199-06, ADR-2199-07]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -81,15 +81,16 @@ fallback between rows.
 |---|---|---|---|
 | Web / server | Same-origin SW, source-filtered | Indicator + dialog | **Opaque snapshot** served by eXe's server via a capability URL; iframe `sandbox` without `allow-same-origin` |
 | Embedded LMS/CMS | Opaque snapshot via **host** capability routes (unchanged from ADR-2199-01); full authored content retained — the origin boundary is the control | n/a (always isolated) | n/a |
-| Static bundle / PWA / PHP-WASM (no backend) | Same-origin SW, source-filtered | Indicator + dialog | Same-origin with consent (**documented residual risk**; no server exists to mint capability URLs — the same limit PR #1968 accepted) |
+| Static bundle / PWA / PHP-WASM (no backend) | Same-origin SW, source-filtered | Indicator + dialog | **Opaque `srcdoc` document**: the snapshot is inlined and loaded into the same sandbox without `allow-same-origin`; no server, no network ([ADR-2199-07](ADR-2199-07-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)) |
 | Electron | Same-origin SW, source-filtered | Dialog explains restriction | **Blocked** (preview shares a renderer with the preload bridge) |
 
 The transport is resolved by `resolvePreviewTransport()` in
-`public/app/utils/previewContentPolicy.js` and mirrored by
-`Capabilities.preview` in `public/app/core/Capabilities.js` (a unit test asserts
-the two agree for every runtime). An unknown/missing runtime resolves to the
-self-hosted opaque transport, whose enable path fails **visibly** and stays
-filtered when the snapshot routes cannot be reached — the fail-closed direction.
+`public/app/utils/previewContentPolicy.js`; `src/shared/preview/preview-mode-matrix.ts`
+is the canonical table and a consistency spec executes the policy across every cell
+([ADR-2199-10](ADR-2199-10-preview-transport-matrix-as-a-single-source.md)). An
+unknown/missing runtime resolves to the self-hosted opaque transport, whose enable path
+fails **visibly** and stays filtered when the snapshot routes cannot be reached — the
+fail-closed direction. No row runs author code with the editor's origin.
 
 ### Why opaque-on-enable beats both extremes
 
@@ -114,10 +115,11 @@ in [ADR-2199-03](ADR-2199-03-preview-grant-revocation-under-collaboration.md) (D
 revocation) and [ADR-2199-04](ADR-2199-04-self-hosted-capability-snapshots-for-editor-preview.md)
 (self-hosted snapshots). Concessions accepted explicitly:
 
-- **Static/PWA/PHP-WASM:** no backend can mint capability URLs, so enable is
-  consent-same-origin — a documented residual risk, the same one PR #1968's
-  draft ADR 0015/0016 accepted (a trusted same-origin SW, and OPFS+SW is not an opaque
-  origin; see [ADR-2199-07](ADR-2199-07-opfs-service-worker-is-not-an-opaque-origin.md)).
+- **Static/PWA/PHP-WASM:** no backend can mint capability URLs and a sandboxed frame
+  is never Service-Worker controlled, so enable loads the inlined snapshot through a
+  sandboxed `srcdoc` document instead — an opaque origin without a server
+  ([ADR-2199-07](ADR-2199-07-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)). PR #1968's draft ADR 0015/0016 had
+  accepted a same-origin consent path here; that concession is not carried.
 - **Electron:** the preview shares a renderer with the `preload.js` bridge
   (`app/main.js`), so an opaque child could still reach the exposed IPC surface;
   enable is blocked, and the dialog explains why. Revisiting this needs an
@@ -152,7 +154,7 @@ GeoGebra) for no in-scope benefit.
 - While opaque-enabled, each scheduled refresh re-uploads the full snapshot
   (acceptable: opt-in and temporary; ~400 KiB for text projects per the
   benchmark, plus the project's own media which every mode carries equally).
-- Static/PWA enable and Electron remain unresolved for true isolation.
+- Electron remains unresolved for true isolation; enabling is blocked there.
 - Default-preview safety still depends on a complete inventory of
   author-controlled fields — enforced by a test that fails when
   `YjsDocumentAdapter` gains an unclassified metadata field
@@ -174,7 +176,9 @@ GeoGebra) for no in-scope benefit.
 - E2E (`test/e2e/playwright/specs/preview-active-content.spec.ts`): filtered
   default, safe-default dialog, opaque enable (sandbox without
   `allow-same-origin`, capability URL, parent unreachable, cookieless, media
-  fallback), disable + capability 404, D1 remote revoke, extract-to-new-tab.
+  fallback), disable + capability 404, D1 remote revoke, extract-to-new-tab;
+  `preview-active-content-static.spec.ts` and `preview-srcdoc-isolation.spec.ts`
+  for the static srcdoc boundary and the browser facts behind it.
 - Benchmark (`test/benchmarks/preview/`): three-way, default within 10% of `main`.
 
 ## PR #1968 ADR disposition
@@ -184,8 +188,9 @@ Carried forward and extended from [ADR-2199-01](ADR-2199-01-source-aware-preview
 - **ADR-2199-05** and **ADR-2199-06**: carried to this branch (see the files) as the
   opaque-origin sandbox rationale and the sandbox-first-CSP-on-every-scriptable-type
   insight — both now apply to eXe's own snapshot serving, not only embedded hosts.
-- **ADR-2199-07**: carried as historical evidence that OPFS + a Service Worker does
-  not create an opaque origin (why static/PWA cannot self-host opacity).
+- **draft ADR 0016** (OPFS + a Service Worker is not an opaque origin): its evidence is
+  kept inside ADR-2199-07, which chooses the sandboxed `srcdoc` transport for static/PWA
+  instead of the same-origin consent path that draft accepted.
 - **draft ADR 0007, draft ADR 0008, draft ADR 0011, draft ADR 0012, draft ADR 0015**: superseded for the normal
   editor; capability serving is kept as a minimal subset (ADR-2199-04), not the full
   session/provider/Electron machinery.
