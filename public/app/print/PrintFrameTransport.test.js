@@ -103,6 +103,7 @@ describe('opaque print frame transport', () => {
         const oldToken = transport.token;
         const current = transport.load('<body>New</body>');
         await stale;
+        expect(iframe.contentWindow.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'dispose', token: oldToken }), '*');
         expect(transport.token).not.toBe(oldToken);
         transport.destroy();
         await current;

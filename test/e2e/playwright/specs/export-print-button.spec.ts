@@ -214,25 +214,6 @@ test.describe('Export print button project property (addPrintButton)', () => {
         expect(buttonPosition.width).toBe(40);
         expect(buttonPosition.height).toBe(40);
         await resourcePreview.locator('#exe-print-btn').click();
-        if (process.env.PRINT_DIAGNOSTICS) {
-            await expect.poll(() => resourcePreview.locator('body').evaluate(() => !!(window as any).ExePrintPreview)).toBe(true);
-            await resourcePreview.locator('body').evaluate(() => {
-                const controller = (window as any).ExePrintPreview.controller;
-                const showError = controller.showError.bind(controller);
-                controller.showError = (message: string) => {
-                    const iframe = controller.iframe;
-                    const doc = iframe.contentDocument;
-                    console.log('PRINT DIAGNOSTICS before error', JSON.stringify({
-                        message, url: doc?.URL, frameUrl: iframe.src, frameClass: iframe.className,
-                        fonts: doc?.fonts.status, state: doc?.readyState,
-                        images: [...doc?.images || []].map((image: HTMLImageElement) => ({ src: image.src, complete: image.complete })),
-                        html: doc?.documentElement.outerHTML,
-                    }));
-                    showError(message);
-                };
-            });
-            page.on('console', message => { if (message.text().includes('PRINT DIAGNOSTICS')) console.log(message.text()); });
-        }
         await expect(resourcePreview.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 60_000 });
         const nestedPrint = resourcePreview.frameLocator('.print-preview-iframe');
         await expect(nestedPrint.locator('body')).toContainText('A star');
@@ -279,6 +260,12 @@ test.describe('Export print button project property (addPrintButton)', () => {
         const context = await browser.newContext();
         const exported = await context.newPage();
         const missing: string[] = [];
+        let imageMode: 'hold' | 'fail' | 'pass' = 'hold';
+        const heldImages: Array<() => void> = [];
+        const releaseImages = () => {
+            imageMode = 'pass';
+            for (const release of heldImages.splice(0)) release();
+        };
         await context.route('https://export.example.test/**', async route => {
             const name = decodeURIComponent(new URL(route.request().url()).pathname.replace('/html/course/', ''));
             const body = files[name];
@@ -288,6 +275,13 @@ test.describe('Export print button project property (addPrintButton)', () => {
                 return;
             }
             const ext = path.extname(name);
+            if (name.endsWith('/rabbit.svg') && route.request().frame().parentFrame()) {
+                if (imageMode === 'fail') {
+                    await route.fulfill({ status: 503 });
+                    return;
+                }
+                if (imageMode === 'hold') await new Promise<void>(resolve => heldImages.push(resolve));
+            }
             const types: Record<string, string> = {
                 '.html': 'text/html',
                 '.js': 'text/javascript',
@@ -308,18 +302,31 @@ test.describe('Export print button project property (addPrintButton)', () => {
             const subpage = Object.keys(files).find(name => /^html\/.*\.html$/.test(name))!;
             await exported.goto('https://export.example.test/html/course/' + subpage);
             await expect(exported.locator('#exe-print-btn')).toHaveAttribute('data-print-bound', 'true');
+            await exported.clock.install();
             await exported.locator('#exe-print-btn').click();
             const overlay = exported.locator('#printPreviewOverlay');
             const frame = exported.frameLocator('.print-preview-iframe');
+            await expect.poll(() => heldImages.length).toBeGreaterThan(0);
+            await expect.poll(() => frame.locator('html').evaluate(() => document.readyState)).toBe('interactive');
+            await exported.clock.fastForward(3500);
+            await expect(overlay.locator('.print-preview-print-btn')).toBeDisabled();
+            expect(await frame.locator('img[alt="Rabbit"]').evaluate((img: HTMLImageElement) => img.complete)).toBe(
+                false,
+            );
+            releaseImages();
             await expect(overlay.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 60_000 });
             await expect(frame.locator('body')).toContainText('Ordinary reading');
             await expect(frame.locator('body')).toContainText('A star');
             await expect(frame.getByText('Teacher explanation', { exact: true })).not.toBeVisible();
             await expect(exported.locator('#printOptLinkUrls')).toBeChecked();
             const linkSuffix = () =>
-                frame
-                    .locator('a[href="https://example.org/lesson"]')
-                    .evaluate(link => getComputedStyle(link, '::after').content);
+                frame.locator('a[href="https://example.org/lesson"]').evaluate(link => {
+                    // Firefox preserves attr(href) in computed content; Chromium resolves it.
+                    return getComputedStyle(link, '::after').content.replace(
+                        /attr\(href\)/g,
+                        JSON.stringify(link.getAttribute('href')),
+                    );
+                });
             await expect.poll(linkSuffix).toContain('https://example.org/lesson');
             await exported.locator('#printOptLinkUrls').uncheck();
             await expect.poll(linkSuffix).toBe('none');
@@ -355,6 +362,35 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await overlay.locator('.print-preview-close-btn').click();
             await expect(exported.locator('#exe-print-btn')).toBeFocused();
             expect(missing).toEqual([]);
+
+            imageMode = 'fail';
+            await exported.locator('#exe-print-btn').click();
+            await expect(overlay.locator('.print-preview-error')).toContainText('An image could not be loaded');
+            await expect(overlay.locator('.print-preview-print-btn')).toBeDisabled();
+            await overlay.locator('.print-preview-close-btn').click();
+
+            imageMode = 'hold';
+            await exported.locator('#exe-print-btn').click();
+            await expect.poll(() => heldImages.length).toBeGreaterThan(0);
+            await expect.poll(() => frame.locator('html').evaluate(() => document.readyState)).toBe('interactive');
+            await exported.clock.fastForward(25001);
+            await expect(overlay.locator('.print-preview-error')).toContainText(
+                'Print resources did not finish loading',
+            );
+            await expect(overlay.locator('.print-preview-print-btn')).toBeDisabled();
+            await overlay.locator('.print-preview-close-btn').click();
+            releaseImages();
+
+            // Closing a loading frame must not let its eventual response enable a newer preview.
+            imageMode = 'hold';
+            await exported.locator('#exe-print-btn').click();
+            await expect.poll(() => heldImages.length).toBeGreaterThan(0);
+            await overlay.locator('.print-preview-close-btn').click();
+            releaseImages();
+            await exported.locator('#exe-print-btn').click();
+            await expect(overlay.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
+            await expect(overlay.locator('.print-preview-error')).toHaveCount(0);
+            await overlay.locator('.print-preview-close-btn').click();
 
             for (const [name, bytes] of Object.entries(files)) {
                 const target = path.resolve(folder, name);
@@ -393,6 +429,7 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await exported.locator('#printPreviewLaunch').click();
             await expect(overlay.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
         } finally {
+            releaseImages();
             await context.close();
             // This directory was created by mkdtemp above and never comes from package paths.
             if (

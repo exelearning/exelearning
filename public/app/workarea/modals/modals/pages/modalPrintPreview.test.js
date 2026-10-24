@@ -251,6 +251,19 @@ describe('ModalPrintPreview', () => {
 
             expect(showErrorSpy).toHaveBeenCalledWith('Test error');
         });
+
+        it.each([
+            ['PRINT_RESOURCES_TIMEOUT', 'Print resources did not finish loading. Please try again.'],
+            ['PRINT_IMAGE_FAILED', 'An image could not be loaded. Check the resource and try again.'],
+        ])('shows a translated resource error for %s and keeps printing disabled', async (code, message) => {
+            modal.translate = vi.fn(text => `Translated: ${text}`);
+            vi.spyOn(modal, 'generatePreview').mockRejectedValue(new Error(`Error: ${code}`));
+            await modal.show();
+            expect(modal.translate).toHaveBeenCalledWith(message);
+            expect(modal.loadingEl.textContent).toContain(`Translated: ${message}`);
+            expect(modal.overlay.querySelector('.print-preview-print-btn').disabled).toBe(true);
+            expect(modal.ready).toBe(false);
+        });
     });
 
     describe('close', () => {

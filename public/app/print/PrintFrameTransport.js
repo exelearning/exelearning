@@ -82,6 +82,7 @@ export default class PrintFrameTransport {
     snapshot() { return this.send('snapshot', null, 'snapshot', 30000); }
 
     clear() {
+        if (this.token) this.send('dispose');
         for (const pending of this.pending.values()) {
             clearTimeout(pending.timer);
             // A superseded load has no result to show; the controller checks its request id.

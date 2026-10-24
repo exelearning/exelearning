@@ -163,6 +163,7 @@ for (const theme of themes) {
         await preview.locator('#exe-print-btn').click();
         await expect(preview.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true');
         await expect(preview.locator('#printPreviewOverlay')).toHaveAttribute('data-busy', 'false', { timeout: 60000 });
+        await expect(preview.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 60000 });
         expect(missingPrintResources).toEqual([]);
     });
 }

@@ -249,7 +249,12 @@ export default class ModalPrintPreview {
         const generation = this.generatePreview(requestId).catch((error) => {
             if (requestId !== this.requestId) return;
             console.error('[PrintPreview] Error:', error);
-            this.showError(error.message || 'An error occurred');
+            const _ = this.translate;
+            const resourceErrors = {
+                'Error: PRINT_RESOURCES_TIMEOUT': _('Print resources did not finish loading. Please try again.'),
+                'Error: PRINT_IMAGE_FAILED': _('An image could not be loaded. Check the resource and try again.'),
+            };
+            this.showError(resourceErrors[error.message] || error.message || 'An error occurred');
         });
         this.generationPromise = generation;
         try {
