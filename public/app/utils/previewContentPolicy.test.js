@@ -192,17 +192,11 @@ describe('prepareUserHtmlForPreview', () => {
         expect(isActivePreviewContentEnabled('electron-project')).toBe(false);
     });
 
-    it('allows active content same-origin ONLY in the consented-same-origin state (static runtime)', () => {
+    it('keeps same-origin surfaces FILTERED even while the grant is in effect', () => {
+        // The grant switches the TRANSPORT to an opaque origin; it never loosens the
+        // policy a same-origin document (SW preview, inlined fallback, print) is built with.
         enableActivePreviewContent('project-a');
-        const staticRuntime = { mode: 'static', isEmbedded: false };
-        const result = createPreviewContentPolicy('project-a', staticRuntime).prepare('<script>run()</script>');
-        expect(result.actions).toEqual(['allowed']);
-    });
-
-    it('keeps same-origin surfaces FILTERED while the grant maps to the opaque transport', () => {
-        enableActivePreviewContent('project-a');
-        const serverRuntime = { mode: 'server', isEmbedded: false };
-        const result = createPreviewContentPolicy('project-a', serverRuntime).prepare('<script>run()</script>');
+        const result = createPreviewContentPolicy().prepare('<script>run()</script>');
         expect(result.actions).toEqual(['disabled']);
         expect(result.html).not.toContain('<script');
     });
@@ -262,7 +256,7 @@ describe('transport matrix', () => {
         ['web/server', { mode: 'server', isEmbedded: false }, PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE],
         ['embedded server', { mode: 'server', isEmbedded: true }, PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE],
         ['embedded static', { mode: 'static', isEmbedded: true }, PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE],
-        ['static bundle / PWA / PHP-WASM', { mode: 'static', isEmbedded: false }, PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN],
+        ['static bundle / PWA / PHP-WASM', { mode: 'static', isEmbedded: false }, PREVIEW_TRANSPORTS.SRCDOC_OPAQUE],
     ])('resolves %s', (_label, runtimeConfig, expected) => {
         expect(resolvePreviewTransport(runtimeConfig)).toBe(expected);
     });
@@ -303,9 +297,14 @@ describe('trust state machine', () => {
         expect(getActivePreviewTrustState('p', SERVER)).toBe(PREVIEW_TRUST_STATES.OPAQUE_ENABLED);
     });
 
-    it('enable in static transitions to consented-same-origin', () => {
+    it('enable in static transitions to opaque-enabled (sandboxed srcdoc transport)', () => {
         enableActivePreviewContent('p');
-        expect(getActivePreviewTrustState('p', STATIC)).toBe(PREVIEW_TRUST_STATES.CONSENTED_SAME_ORIGIN);
+        expect(getActivePreviewTrustState('p', STATIC)).toBe(PREVIEW_TRUST_STATES.OPAQUE_ENABLED);
+        expect(resolvePreviewTransport(STATIC)).toBe(PREVIEW_TRANSPORTS.SRCDOC_OPAQUE);
+    });
+
+    it('has no state that runs author code with the editor origin', () => {
+        expect(Object.values(PREVIEW_TRUST_STATES)).toEqual(['filtered', 'opaque-enabled']);
     });
 
     it('embedded starts filtered and goes opaque-enabled on enable', () => {
@@ -320,6 +319,15 @@ describe('trust state machine', () => {
     it('Electron can never hold a grant', () => {
         window.electronAPI = {};
         expect(enableActivePreviewContent('p')).toBe(false);
+        expect(getActivePreviewTrustState('p', STATIC)).toBe(PREVIEW_TRUST_STATES.FILTERED);
+    });
+
+    it('a grant that was given before the runtime turned out to be Electron reads as filtered', () => {
+        // The stored grant is a single bit; the transport is decided at read time, so a
+        // runtime change can only ever tighten the interpretation.
+        enableActivePreviewContent('p');
+        expect(getActivePreviewTrustState('p', STATIC)).toBe(PREVIEW_TRUST_STATES.OPAQUE_ENABLED);
+        window.electronAPI = {};
         expect(getActivePreviewTrustState('p', STATIC)).toBe(PREVIEW_TRUST_STATES.FILTERED);
     });
 
@@ -398,11 +406,8 @@ describe('prepareStyleForPreview', () => {
 
     it('policies expose prepareStyle consistently with their prepare mode', () => {
         enableActivePreviewContent('project-a');
-        const staticRuntime = { mode: 'static', isEmbedded: false };
-        const serverRuntime = { mode: 'server', isEmbedded: false };
         const breakout = '</style><script>x()</script>';
-        expect(createPreviewContentPolicy('project-a', staticRuntime).prepareStyle(breakout).html).toBe(breakout);
-        expect(createPreviewContentPolicy('project-a', serverRuntime).prepareStyle(breakout).html).toBe('');
+        expect(createPreviewContentPolicy().prepareStyle(breakout).html).toBe('');
         expect(createReportingPreviewContentPolicy().prepareStyle(breakout).html).toBe(breakout);
     });
 });

@@ -53,12 +53,26 @@ type Policy = {
 
 const policy = (await import(POLICY)) as unknown as Policy;
 
-/** The shipped trust states, expressed in the matrix's transport vocabulary. */
-const TRUST_STATE_TO_TRANSPORT: Record<string, string> = {
-    filtered: 'sw-filtered',
-    'opaque-enabled': 'opaque-capability',
-    'consented-same-origin': 'consented-same-origin',
+/**
+ * The shipped policy answers in two parts — a trust STATE (is the grant in effect?) and a
+ * TRANSPORT (how is it delivered?) — while the matrix answers with one cell. This joins
+ * them: a filtered state is `sw-filtered` whatever the transport; an opaque-enabled state
+ * is the shipped transport, expressed in the matrix's vocabulary.
+ */
+const SHIPPED_TRANSPORT_TO_MATRIX: Record<string, string> = {
+    'self-hosted-opaque': 'opaque-capability',
+    'embedded-opaque': 'opaque-capability',
+    'srcdoc-opaque': 'opaque-srcdoc',
+    'electron-blocked': 'blocked',
 };
+
+function shippedCell(runtime: PreviewRuntime): string {
+    const config = RUNTIME_CONFIG[runtime].config;
+    const state = policy.getActivePreviewTrustState('p1', config);
+    if (state === 'filtered') return 'sw-filtered';
+    expect(state).toBe('opaque-enabled'); // the only other state the policy may be in
+    return SHIPPED_TRANSPORT_TO_MATRIX[policy.resolvePreviewTransport(config)];
+}
 
 afterEach(() => policy.resetPreviewContentAuthorizationForTests());
 
@@ -67,8 +81,7 @@ describe('the shipped client policy agrees with the matrix', () => {
         it(`${runtime}: filtered before the user enables anything`, () => {
             withRuntime(runtime, () => {
                 policy.resetPreviewContentAuthorizationForTests();
-                const state = policy.getActivePreviewTrustState('p1', RUNTIME_CONFIG[runtime].config);
-                expect(TRUST_STATE_TO_TRANSPORT[state]).toBe(resolvePreviewTransport(runtime, false).transport);
+                expect(shippedCell(runtime)).toBe(resolvePreviewTransport(runtime, false).transport);
             });
         });
 
@@ -82,15 +95,13 @@ describe('the shipped client policy agrees with the matrix', () => {
                 if (expected.transport === 'blocked') {
                     expect(policy.canEnableActivePreviewContent()).toBe(false);
                     policy.enableActivePreviewContent('p1');
-                    const state = policy.getActivePreviewTrustState('p1', RUNTIME_CONFIG[runtime].config);
-                    expect(TRUST_STATE_TO_TRANSPORT[state]).toBe('sw-filtered');
+                    expect(shippedCell(runtime)).toBe('sw-filtered');
                     return;
                 }
 
                 expect(policy.canEnableActivePreviewContent()).toBe(true);
                 policy.enableActivePreviewContent('p1');
-                const state = policy.getActivePreviewTrustState('p1', RUNTIME_CONFIG[runtime].config);
-                expect(TRUST_STATE_TO_TRANSPORT[state]).toBe(expected.transport);
+                expect(shippedCell(runtime)).toBe(expected.transport);
             });
         });
     }
@@ -108,8 +119,7 @@ describe('the shipped client policy agrees with the matrix', () => {
             withRuntime(runtime, () => {
                 policy.enableActivePreviewContent('p1');
                 policy.disableActivePreviewContent('p1');
-                const state = policy.getActivePreviewTrustState('p1', RUNTIME_CONFIG[runtime].config);
-                expect(TRUST_STATE_TO_TRANSPORT[state], runtime).toBe('sw-filtered');
+                expect(shippedCell(runtime), runtime).toBe('sw-filtered');
             });
         }
     });
@@ -124,11 +134,15 @@ describe('no silent degradation', () => {
     it('the panel drops the grant and re-renders filtered when the opaque path fails', () => {
         const panel = readFileSync(join(ROOT, 'public/app/workarea/interface/elements/previewPanel.js'), 'utf8');
 
-        // Both transports route their failure through ONE fail-closed body. They used to
-        // carry a copy each, and the copies had already diverged — the embedded one never
-        // threw away its snapshot. Asserting the routing plus the body keeps the invariant
-        // exactly as strong while there is only one place left for it to live.
-        for (const entry of ['_refreshOpaqueOrStayFiltered', '_refreshEmbeddedOpaqueOrStayFiltered']) {
+        // All three opaque transports route their failure through ONE fail-closed body. They
+        // used to carry a copy each, and the copies had already diverged — the embedded one
+        // never threw away its snapshot. Asserting the routing plus the body keeps the
+        // invariant exactly as strong while there is only one place left for it to live.
+        for (const entry of [
+            '_refreshOpaqueOrStayFiltered',
+            '_refreshEmbeddedOpaqueOrStayFiltered',
+            '_refreshSrcdocOpaqueOrStayFiltered',
+        ]) {
             const body = panel.slice(panel.indexOf(`async ${entry}(`));
             expect(body, entry).toContain('_refreshOpaqueOr(');
         }
@@ -139,6 +153,25 @@ describe('no silent degradation', () => {
         // And each entry point hands in the disposer for its own snapshot.
         expect(panel).toContain('_disposeSelfHostedSnapshot()');
         expect(panel).toContain('_disposeEmbeddedSnapshot()');
+    });
+
+    /**
+     * The same-origin surfaces must stay filtered in every state. The policy used to carry a
+     * `consented-same-origin` state that let the Service Worker preview serve author code
+     * unfiltered in static builds; that state no longer exists, and nothing may bring back a
+     * runtime-dependent loosening of the filtered policy.
+     */
+    it('the shipped policy has no same-origin state that passes author code through', () => {
+        const source = readFileSync(POLICY, 'utf8');
+        expect(source).not.toMatch(/consent/i);
+        // The same-origin policy takes no runtime or project input at all, so there is nothing
+        // a runtime could flip; its behaviour under a real DOM is covered by its Vitest suite.
+        const factory = (policy as unknown as { createPreviewContentPolicy: () => unknown }).createPreviewContentPolicy;
+        expect(factory.length).toBe(0);
+        const start = source.indexOf('export function createPreviewContentPolicy(');
+        const body = source.slice(start, source.indexOf('export function', start + 1));
+        expect(body).toContain('allowActiveContent: false');
+        expect(body).not.toContain('allowActiveContent: true');
     });
 });
 

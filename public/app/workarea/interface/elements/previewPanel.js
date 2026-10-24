@@ -18,7 +18,11 @@ import {
     resolvePreviewTransport,
     shouldRevokeOnYdocUpdate,
 } from '../../../utils/previewContentPolicy.js';
-import { EmbeddedPreviewSnapshot, selfHostedPreviewSnapshotConfig } from './preview/EmbeddedPreviewSnapshot.js';
+import {
+    EMBEDDED_PREVIEW_SANDBOX,
+    EmbeddedPreviewSnapshot,
+    selfHostedPreviewSnapshotConfig,
+} from './preview/EmbeddedPreviewSnapshot.js';
 import { applyPreviewEmbedShim, EMBED_CHILD_SCRIPT_PATH } from './preview/previewEmbedShim.js';
 import { applyPreviewExternalMediaFallback } from './preview/previewExternalMediaFallback.js';
 import { PreviewEmbedHost } from './preview/previewEmbedHost.js';
@@ -26,13 +30,21 @@ import { PreviewEmbedHost } from './preview/previewEmbedHost.js';
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
-// MIME types for resources inlined as data: URIs in blob URL mode (images and CSS assets)
+// MIME types for resources inlined as data: URIs in the inlined (srcdoc) preview
 const DATA_URI_MIME_TYPES = {
     png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml',
     webp: 'image/webp', avif: 'image/avif', ico: 'image/x-icon', bmp: 'image/bmp',
     woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf',
     eot: 'application/vnd.ms-fontobject', css: 'text/css',
+    mp3: 'audio/mpeg', mp4: 'video/mp4', m4v: 'video/mp4', m4a: 'audio/mp4', webm: 'video/webm',
+    ogg: 'audio/ogg', oga: 'audio/ogg', ogv: 'video/ogg', wav: 'audio/wav', vtt: 'text/vtt',
 };
+
+// Largest local media file inlined as a data: URI. A data: URI holds ~1.33x the bytes as a
+// string and is re-encoded on every refresh, so bigger files are left as they are (and do not
+// play in the inlined preview).
+// ponytail: fixed cap; a streaming transport if large local media in the opaque preview matters.
+const INLINE_MEDIA_MAX_BYTES = 25 * 1024 * 1024;
 
 export default class PreviewPanelManager {
     /** Timeout for Service Worker status check (ms) */
@@ -59,6 +71,12 @@ export default class PreviewPanelManager {
         this.pinnedMobileButton = document.getElementById('preview-pinned-mobile-button');
         this.pinnedActiveContentButton = document.getElementById('preview-pinned-active-content-button');
 
+        // The template's own sandbox for the same-origin (SW/inlined) preview, restored when an
+        // opaque transport is left. Removing the attribute instead would hand the filtered
+        // preview powers the template withholds (top navigation, for one).
+        this._defaultSandbox = this.iframe?.getAttribute('sandbox') ?? null;
+        this._defaultPinnedSandbox = this.pinnedIframe?.getAttribute('sandbox') ?? null;
+
         // State
         this.isOpen = false;
         this.isPinned = false;
@@ -72,9 +90,12 @@ export default class PreviewPanelManager {
         this._unsubscribeStructure = null;
         this._onYdocUpdate = null;
 
-        // Blob URL navigation state
-        this._blobUrlFiles = null;
-        this._blobUrlCurrentPage = null;
+        // Inlined (srcdoc) preview state: the generated file map the parent navigates and
+        // opens documents from, and whether the current inlined document is the OPAQUE
+        // snapshot (sandboxed without allow-same-origin) or the same-origin fallback.
+        this._inlinedFiles = null;
+        this._inlinedCurrentPage = null;
+        this._inlinedOpaque = false;
 
         // Popup window tracking
         this._popupWindow = null;
@@ -422,16 +443,22 @@ export default class PreviewPanelManager {
 
 
 
-            // Handle blob URL document open requests from preview iframe
-            if (event.data?.type === 'exe-blob-open-document' && fromPreviewIframe && this._blobUrlFiles) {
+            // Handle document open requests from the inlined preview iframe
+            if (
+                event.data?.type === 'exe-blob-open-document' &&
+                fromPreviewIframe &&
+                this._inlinedFiles &&
+                typeof event.data.href === 'string'
+            ) {
                 const href = event.data.href;
-                const currentDir = event.data.currentPage?.includes('/')
-                    ? event.data.currentPage.substring(0, event.data.currentPage.lastIndexOf('/') + 1)
-                    : '';
+                const currentDir =
+                    typeof event.data.currentPage === 'string' && event.data.currentPage.includes('/')
+                        ? event.data.currentPage.substring(0, event.data.currentPage.lastIndexOf('/') + 1)
+                        : '';
                 let targetPath = currentDir ? this._resolveRelativePath(currentDir + href) : href;
-                Logger.log(`[PreviewPanel] Blob URL document open: ${href} → ${targetPath}`);
+                Logger.log(`[PreviewPanel] Inlined preview document open: ${href} → ${targetPath}`);
 
-                const fileContent = this._findFileContent(this._blobUrlFiles, targetPath);
+                const fileContent = this._findFileContent(this._inlinedFiles, targetPath);
                 if (fileContent) {
                     const bytes = fileContent instanceof ArrayBuffer
                         ? new Uint8Array(fileContent)
@@ -439,6 +466,11 @@ export default class PreviewPanelManager {
                             ? fileContent
                             : new TextEncoder().encode(fileContent);
                     const ext = targetPath.split('.').pop()?.toLowerCase() || '';
+                    // The blob is minted in the EDITOR's origin and opened top-level, so a
+                    // scriptable type (HTML/XHTML/SVG/XML) here would run author code with the
+                    // editor's authority — and in the opaque preview the author's own script can
+                    // forge this message. Only inert types get a viewable MIME type; everything
+                    // else is served as octet-stream, which downloads instead of rendering.
                     const mimeMap = {
                         pdf: 'application/pdf', doc: 'application/msword',
                         docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -450,7 +482,7 @@ export default class PreviewPanelManager {
                         ods: 'application/vnd.oasis.opendocument.spreadsheet',
                         odp: 'application/vnd.oasis.opendocument.presentation',
                         png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-                        gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+                        gif: 'image/gif', webp: 'image/webp',
                         avif: 'image/avif', ico: 'image/x-icon',
                         mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'video/webm',
                         ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4',
@@ -569,16 +601,22 @@ export default class PreviewPanelManager {
                 return;
             }
 
-            // Handle blob URL navigation requests from preview iframe
-            if (event.data?.type === 'exe-blob-navigate' && fromPreviewIframe && this._blobUrlFiles) {
+            // Handle page navigation requests from the inlined preview iframe
+            if (
+                event.data?.type === 'exe-blob-navigate' &&
+                fromPreviewIframe &&
+                this._inlinedFiles &&
+                typeof event.data.href === 'string'
+            ) {
                 const href = event.data.href;
-                const currentDir = event.data.currentPage?.includes('/')
-                    ? event.data.currentPage.substring(0, event.data.currentPage.lastIndexOf('/') + 1)
-                    : '';
+                const currentDir =
+                    typeof event.data.currentPage === 'string' && event.data.currentPage.includes('/')
+                        ? event.data.currentPage.substring(0, event.data.currentPage.lastIndexOf('/') + 1)
+                        : '';
                 // Resolve relative path against current page directory
                 let targetPage = currentDir ? this._resolveRelativePath(currentDir + href) : href;
-                Logger.log(`[PreviewPanel] Blob URL navigation: ${href} → ${targetPage}`);
-                this._loadBlobPage(targetPage);
+                Logger.log(`[PreviewPanel] Inlined preview navigation: ${href} → ${targetPage}`);
+                this._loadInlinedPage(targetPage);
                 return;
             }
 
@@ -816,16 +854,20 @@ export default class PreviewPanelManager {
             if (this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED) {
                 // Active content enabled: isolate the unfiltered snapshot in an
                 // opaque-origin iframe — the host's routes when embedded, eXe's own
-                // routes when self-hosted. Both fail closed to the filtered preview.
-                if (this._isEmbeddedPreview()) {
+                // routes when self-hosted, a sandboxed srcdoc document where there is
+                // no server at all. All three fail closed to the filtered preview.
+                const transport = this._previewTransport();
+                if (transport === PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE) {
                     await this._refreshEmbeddedOpaqueOrStayFiltered();
+                } else if (transport === PREVIEW_TRANSPORTS.SRCDOC_OPAQUE) {
+                    await this._refreshSrcdocOpaqueOrStayFiltered();
                 } else {
                     await this._refreshOpaqueOrStayFiltered();
                 }
             } else {
-                // Default (filtered) — including the default embedded preview — and
-                // consented same-origin: a same-origin surface. Filtered content is
-                // sanitized, so whitelisted external videos play inline.
+                // Default (filtered) — including the default embedded preview: a
+                // same-origin surface. Filtered content is sanitized, so whitelisted
+                // external videos play inline.
                 await this._refreshFiltered();
             }
         } catch (error) {
@@ -886,10 +928,23 @@ export default class PreviewPanelManager {
         this._embeddedPreviewSnapshot = null;
     }
 
-    /** Remove the opaque sandbox attribute before a same-origin (SW/blob) load. */
+    /**
+     * Put the template's own sandbox back before a same-origin (SW or inlined) load. An
+     * opaque srcdoc document is dropped with it: the attribute only applies to the NEXT
+     * navigation, so the author code already running would otherwise stay alive until one.
+     */
     _clearOpaqueSandbox() {
-        this.iframe?.removeAttribute('sandbox');
-        this.pinnedIframe?.removeAttribute('sandbox');
+        const defaults = [
+            [this.iframe, this._defaultSandbox],
+            [this.pinnedIframe, this._defaultPinnedSandbox],
+        ];
+        for (const [iframe, sandbox] of defaults) {
+            if (!iframe) continue;
+            if (sandbox === null) iframe.removeAttribute('sandbox');
+            else iframe.setAttribute('sandbox', sandbox);
+            if (this._inlinedOpaque) iframe.removeAttribute('srcdoc');
+        }
+        this._inlinedOpaque = false;
     }
 
     /**
@@ -936,7 +991,7 @@ export default class PreviewPanelManager {
         }
     }
 
-    /** Filtered same-origin preview: sanitized content over SW (or blob fallback). */
+    /** Filtered same-origin preview: sanitized content over SW (or the inlined fallback). */
     async _refreshFiltered() {
         this._clearOpaqueSandbox();
         // Leaving the opaque transport: drop any relayed players, the filtered
@@ -946,8 +1001,8 @@ export default class PreviewPanelManager {
             await this.refreshWithServiceWorker();
         } else {
             // Fallback for cross-origin iframes where a Service Worker can't register.
-            Logger.log('[PreviewPanel] SW not available, using blob URL fallback');
-            await this.refreshWithBlobUrl();
+            Logger.log('[PreviewPanel] SW not available, using the inlined preview fallback');
+            await this.refreshWithInlinedPreview();
         }
     }
 
@@ -964,6 +1019,44 @@ export default class PreviewPanelManager {
             () => this._disposeEmbeddedSnapshot(),
             'Embedded opaque',
         );
+    }
+
+    /** Same contract for the backend-less transport; its "snapshot" is the inlined file map. */
+    async _refreshSrcdocOpaqueOrStayFiltered() {
+        await this._refreshOpaqueOr(
+            () => this.refreshWithSrcdocSnapshot(),
+            () => {
+                this._inlinedFiles = null;
+            },
+            'Srcdoc opaque',
+        );
+    }
+
+    /**
+     * Backend-less runtimes (static bundle / PWA / PHP-WASM): the unfiltered snapshot is
+     * inlined into self-contained documents and loaded through `srcdoc` into an iframe
+     * sandboxed WITHOUT `allow-same-origin`. The browser gives that document an opaque
+     * origin, so author code reaches neither the editor DOM nor its cookies, storage or
+     * Service Worker — the same boundary the capability-URL transports provide, with no
+     * server and no network, so it holds offline too (ADR-2199-16). Page navigation and
+     * opening project files stay parent-bridged through the postMessage handlers the
+     * same-origin inlined fallback already uses.
+     */
+    async refreshWithSrcdocSnapshot() {
+        const result = await this._generatePreviewFiles({ forOpaqueSnapshot: true });
+        if (!result.success || !result.files) {
+            throw new Error(result.error || 'Failed to generate opaque preview');
+        }
+        if (!result.files['index.html']) throw new Error('No index.html in generated files');
+        const { files, shimmed } = await this._prepareOpaqueMedia(result.files);
+        this._inlinedFiles = files;
+        this._inlinedOpaque = true;
+        // The sandbox must be in place BEFORE the srcdoc navigation starts: an attribute
+        // set while a document is already loading does not apply to that document.
+        this.iframe?.setAttribute('sandbox', EMBEDDED_PREVIEW_SANDBOX);
+        this.pinnedIframe?.setAttribute('sandbox', EMBEDDED_PREVIEW_SANDBOX);
+        this._loadInlinedPage('index.html');
+        if (shimmed) this._startEmbedHost(this.isPinned ? this.pinnedIframe : this.iframe);
     }
 
     /**
@@ -1105,8 +1198,8 @@ export default class PreviewPanelManager {
                 throw error;
             }
             // The app gave up on the Service Worker (recovery failed): degrade instead of erroring.
-            Logger.warn('[PreviewPanel] Preview Service Worker unavailable, using blob URL fallback:', error);
-            await this.refreshWithBlobUrl();
+            Logger.warn('[PreviewPanel] Preview Service Worker unavailable, using the inlined fallback:', error);
+            await this.refreshWithInlinedPreview();
             return;
         }
 
@@ -1130,11 +1223,12 @@ export default class PreviewPanelManager {
     }
 
     /**
-     * Refresh preview using blob URL approach (fallback when SW not available).
-     * Generates preview HTML, inlines resources, creates a blob URL for the iframe.
+     * Refresh the FILTERED preview as an inlined document (fallback when the SW is not
+     * available). Generates the preview files, inlines resources and loads the page through
+     * `srcdoc` with no sandbox, so it keeps the editor origin exactly like the SW preview.
      * Used in cross-origin iframe environments where Service Workers can't register.
      */
-    async refreshWithBlobUrl() {
+    async refreshWithInlinedPreview() {
         const result = await this._generatePreviewFiles();
 
         if (!result.success || !result.files) {
@@ -1146,12 +1240,13 @@ export default class PreviewPanelManager {
         }
 
         // Store files for multi-page navigation
-        this._blobUrlFiles = result.files;
+        this._inlinedFiles = result.files;
+        this._inlinedOpaque = false;
 
         // Load the first page
-        this._loadBlobPage('index.html');
+        this._loadInlinedPage('index.html');
 
-        Logger.log('[PreviewPanel] Preview loaded via blob URL fallback');
+        Logger.log('[PreviewPanel] Preview loaded via the inlined fallback');
     }
 
     /**
@@ -1181,7 +1276,7 @@ export default class PreviewPanelManager {
         // content but keeps whitelisted external videos playable inline.
         const previewContentPolicy = forOpaqueSnapshot
             ? createReportingPreviewContentPolicy()
-            : createPreviewContentPolicy(this._projectId());
+            : createPreviewContentPolicy();
 
         const result = await SharedExporters.generatePreviewForSW(
             yjsBridge.documentManager,
@@ -1269,10 +1364,10 @@ export default class PreviewPanelManager {
                 `<p>${_('This project contains external scripts, disabled for security in the editor preview.')}</p>` +
                 `<p>${_('Allowing them lets that code access the data available to the preview. This is a trust decision and does not make the content safe. Allow them only if you trust the project.')}</p>`;
             confirmButtonText = _('Allow external scripts');
-            if (transport === PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE) {
+            // Every transport that accepts the grant isolates the content; the embedded
+            // host explains its own preview.
+            if (transport !== PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE) {
                 body += `<p>${_('The preview will reload in an isolated context that cannot access your editor session. External videos (YouTube, Vimeo) will offer an "open in a new tab" link while scripts are allowed.')}</p>`;
-            } else if (transport === PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN) {
-                body += `<p>${_('This version of the editor cannot isolate the preview, so the code will run with the same access as the editor itself. Enable it only for projects you fully trust.')}</p>`;
             }
         }
 
@@ -1297,41 +1392,46 @@ export default class PreviewPanelManager {
     }
 
     /**
-     * Load a specific page in blob URL mode.
+     * Load a specific page of the inlined preview.
      * Resolves the page from the stored files map, inlines resources,
-     * injects navigation handler, and loads via blob URL.
+     * injects the navigation handler, and loads it through `srcdoc`.
      * @param {string} pagePath - Path to the page (e.g., 'index.html', 'html/page2.html')
      */
-    _loadBlobPage(pagePath) {
-        if (!this._blobUrlFiles) {
-            Logger.error('[PreviewPanel] No files available for blob URL navigation');
+    _loadInlinedPage(pagePath) {
+        if (!this._inlinedFiles) {
+            Logger.error('[PreviewPanel] No files available for inlined preview navigation');
             return;
         }
 
-        let html = this._decodeFileContent(this._blobUrlFiles[pagePath]);
+        let html = this._decodeFileContent(this._inlinedFiles[pagePath]);
         if (!html) {
             Logger.error(`[PreviewPanel] Page not found in files: ${pagePath}`);
             return;
         }
 
-        this._blobUrlCurrentPage = pagePath;
-        html = this._inlineResources(html, this._blobUrlFiles);
-        html = this._replacePdfEmbedsForBlob(html, this._blobUrlFiles);
-        html = this._injectBlobNavigationHandler(html, pagePath);
-        this._loadBlobUrlInIframe(html);
+        this._inlinedCurrentPage = pagePath;
+        html = this._inlineResources(html, this._inlinedFiles);
+        // A blob: URL minted by the editor is unreachable from an opaque origin (the browser
+        // refuses the cross-origin blob fetch), so the opaque document gets links the parent
+        // turns into a PDF.js tab instead of in-page placeholders.
+        html = this._inlinedOpaque
+            ? this._replacePdfEmbedsWithLinks(html)
+            : this._replacePdfEmbedsForBlob(html, this._inlinedFiles);
+        html = this._injectInlinedNavigationHandler(html, pagePath);
+        this.injectHtmlToIframe(html);
 
-        Logger.log(`[PreviewPanel] Blob URL page loaded: ${pagePath}`);
+        Logger.log(`[PreviewPanel] Inlined preview page loaded: ${pagePath}`);
     }
 
     /**
-     * Inject a navigation handler script into HTML for blob URL mode.
+     * Inject a navigation handler script into an inlined preview page.
      * External links open directly in a new tab. Document/media links and
      * internal page links send postMessage to parent for handling.
      * @param {string} html - The HTML content
      * @param {string} currentPage - Current page path for relative resolution
      * @returns {string} HTML with navigation handler injected
      */
-    _injectBlobNavigationHandler(html, currentPage) {
+    _injectInlinedNavigationHandler(html, currentPage) {
         const script = `<script>
 (function() {
     document.addEventListener('click', function(e) {
@@ -1373,7 +1473,8 @@ export default class PreviewPanelManager {
     }, true);
 })();
 </script>`;
-        // PDF.js embed rendering for blob URL mode: renders [data-exe-pdf-src] placeholders
+        // PDF.js embed rendering for the same-origin inlined fallback: renders the
+        // [data-exe-pdf-src] placeholders (the opaque document has none; see _loadInlinedPage).
         const bp = (window.eXeLearning?.app?.getBasePath?.() || '') + '/';
         const pdfScript = `<script>
 (function() {
@@ -1646,6 +1747,18 @@ export default class PreviewPanelManager {
             },
         );
 
+        // Inline local media: <video|audio|source|track src="path"> and <video poster="path">.
+        // A tag may carry both src and poster, so the attributes are rewritten inside the tag.
+        html = html.replace(/<(?:video|audio|source|track)\b[^>]*>/gi, tag =>
+            tag.replace(/(\s(?:src|poster)=["'])([^"']+)(["'])/gi, (match, prefix, src, suffix) => {
+                if (/^(data:|blob:|[a-z][a-z0-9+.-]*:\/\/)/i.test(src)) return match;
+                const content = this._findFileContent(files, src);
+                if (!(content instanceof ArrayBuffer || content instanceof Uint8Array)) return match;
+                if (content.byteLength > INLINE_MEDIA_MAX_BYTES) return match;
+                return `${prefix}${this._toDataUri(content, src)}${suffix}`;
+            }),
+        );
+
         return html;
     }
 
@@ -1689,38 +1802,68 @@ export default class PreviewPanelManager {
     }
 
     /**
-     * Replace embedded PDF elements with blob URL placeholder divs for blob URL mode.
-     * In blob URL mode, relative PDF paths can't resolve from a blob: context.
-     * This creates blob URLs for each PDF and replaces the embed with a
-     * <div data-exe-pdf-src="blob:..."> placeholder that the PDF.js embed script renders.
+     * Rewrite every embedded PDF element — <object data>, <embed src>, <iframe src> — with
+     * `replace(src, originalHtml)`. The inlined document cannot load a relative PDF path, so
+     * both inlined modes substitute something for the embed; what, depends on the origin.
      * @param {string} html - The HTML content
-     * @param {Object} files - Files map from blob URL mode
-     * @returns {string} HTML with PDF embeds replaced
+     * @param {(src: string, originalHtml: string) => string} replace
+     * @returns {string}
      */
-    _replacePdfEmbedsForBlob(html, files) {
-        // Replace <object data="*.pdf"...>...</object>
+    _replacePdfEmbeds(html, replace) {
         html = html.replace(
             /<object([^>]*?)data=(["'])([^"']*\.pdf(?:[?#][^"']*)?)\2([^>]*)>[\s\S]*?<\/object>/gi,
-            (match, pre, _q, src, post) => this._createPdfBlobPlaceholder(files, src, match),
+            (match, _pre, _q, src) => replace(src, match),
         );
-
-        // Replace <embed src="*.pdf"...>
         html = html.replace(
             /<embed([^>]*?)src=(["'])([^"']*\.pdf(?:[?#][^"']*)?)\2([^>]*?)\/?>/gi,
-            (match, pre, _q, src, post) => this._createPdfBlobPlaceholder(files, src, match),
+            (match, _pre, _q, src) => replace(src, match),
         );
-
-        // Replace <iframe src="*.pdf"...>...</iframe>
         html = html.replace(
             /<iframe([^>]*?)src=(["'])([^"']*\.pdf(?:[?#][^"']*)?)\2([^>]*)>[\s\S]*?<\/iframe>/gi,
-            (match, pre, _q, src, post) => this._createPdfBlobPlaceholder(files, src, match),
+            (match, _pre, _q, src) => replace(src, match),
         );
-
         return html;
     }
 
     /**
-     * Create a blob URL placeholder div for a PDF embed element.
+     * Same-origin inlined fallback: each PDF becomes a <div data-exe-pdf-src="blob:...">
+     * placeholder that the injected PDF.js script renders in place.
+     * @param {string} html - The HTML content
+     * @param {Object} files - Files map of the inlined preview
+     * @returns {string} HTML with PDF embeds replaced
+     */
+    _replacePdfEmbedsForBlob(html, files) {
+        return this._replacePdfEmbeds(html, (src, original) => this._createPdfBlobPlaceholder(files, src, original));
+    }
+
+    /**
+     * Opaque inlined document: a blob: URL minted by the editor cannot be fetched from an
+     * opaque origin, and PDF.js cannot be imported into it either (module scripts need CORS),
+     * so each PDF becomes a link. Clicking it goes through the navigation handler's
+     * `exe-blob-open-document` path, and the EDITOR opens the PDF.js viewer in a new tab.
+     * An embed whose file is not in the snapshot is left as it is.
+     * @param {string} html - The HTML content
+     * @returns {string}
+     */
+    _replacePdfEmbedsWithLinks(html) {
+        return this._replacePdfEmbeds(html, (src, original) => {
+            if (!this._findFileContent(this._inlinedFiles, src)) return original;
+            const rawName = src.split('/').pop()?.split(/[?#]/)[0] || 'document.pdf';
+            let name = rawName;
+            try {
+                name = decodeURIComponent(rawName);
+            } catch {
+                name = rawName;
+            }
+            return (
+                `<p class="exe-preview-pdf-link"><a href="${this.escapeHtml(src)}">` +
+                `${this.escapeHtml(_('Open the PDF in a new tab'))}: ${this.escapeHtml(name)}</a></p>`
+            );
+        });
+    }
+
+    /**
+     * Create a blob URL placeholder div for a PDF embed element (same-origin fallback only).
      * @param {Object} files - Files map
      * @param {string} src - PDF source path
      * @param {string} originalHtml - Original element HTML (for dimension extraction)
@@ -1750,39 +1893,15 @@ export default class PreviewPanelManager {
     }
 
     /**
-     * Load HTML content via blob URL in the active iframe.
-     * Revokes any previous blob URL before creating a new one.
-     * @param {string} html - The HTML content to load
-     */
-    _loadBlobUrlInIframe(html) {
-        const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
-        if (!targetIframe) {
-            Logger.error('[PreviewPanel] No iframe available');
-            return;
-        }
-
-        // Revoke previous blob URL
-        if (targetIframe._blobUrl) {
-            URL.revokeObjectURL(targetIframe._blobUrl);
-        }
-
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const blobUrl = URL.createObjectURL(blob);
-        targetIframe._blobUrl = blobUrl;
-        targetIframe.removeAttribute('srcdoc');
-        targetIframe.src = blobUrl;
-
-        Logger.log('[PreviewPanel] Preview content loaded via blob URL');
-    }
-
-    /**
-     * Check whether a MessageEvent source matches one of the preview iframes.
+     * Check whether a MessageEvent source is one of the two preview iframes. Window identity
+     * is the only usable signal: `event.origin` is "null" for the opaque document, and a
+     * message without a source (or from any other window) is ignored.
      * @param {*} source
      * @returns {boolean}
      * @private
      */
     _isPreviewIframeSource(source) {
-        if (!source) return true;
+        if (!source) return false;
         const previewSource = this.iframe?.contentWindow || null;
         const pinnedSource = this.pinnedIframe?.contentWindow || null;
         return source === previewSource || source === pinnedSource;
@@ -1800,11 +1919,9 @@ export default class PreviewPanelManager {
             return;
         }
 
-        // Revoke previous blob URL if exists (from legacy approach)
-        if (targetIframe._blobUrl) {
-            URL.revokeObjectURL(targetIframe._blobUrl);
-            targetIframe._blobUrl = null;
-        }
+        // An inlined document (`srcdoc`) takes precedence over `src`, so it goes first; the
+        // opaque sandbox was already cleared by the filtered refresh.
+        targetIframe.removeAttribute('srcdoc');
 
         // Get base path for the viewer URL
         const basePath = eXeLearning.app?.getBasePath?.() || '';
@@ -1825,7 +1942,6 @@ export default class PreviewPanelManager {
             targetIframe.src = viewerUrl;
         }
 
-        targetIframe.removeAttribute('srcdoc');
         Logger.log('[PreviewPanel] Preview iframe src set to:', viewerUrl);
     }
 
@@ -1839,7 +1955,12 @@ export default class PreviewPanelManager {
         // host snapshot, self-hosted its own; never hand unfiltered files to the
         // same-origin SW here. If the snapshot is not ready, fail quietly — do
         // NOT throw, or the click handler surfaces an uncaught rejection.
-        if (this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED) {
+        // The srcdoc transport has no URL at all, so it falls through to the
+        // filtered viewer below: a new tab never shows unfiltered content there.
+        if (
+            this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED &&
+            this._previewTransport() !== PREVIEW_TRANSPORTS.SRCDOC_OPAQUE
+        ) {
             const snapshot = this._isEmbeddedPreview()
                 ? this._embeddedPreviewSnapshot
                 : this._selfHostedPreviewSnapshot;
@@ -1904,8 +2025,14 @@ export default class PreviewPanelManager {
     // The Service Worker-based preview serves content via HTTP, eliminating blob:// context issues.
 
     /**
-     * Inject HTML content into the active iframe
-     * @param {string} html - HTML content to inject
+     * Load an HTML document into the active iframe through `srcdoc`.
+     *
+     * The document's origin is decided solely by the iframe's `sandbox` attribute at this
+     * point: none, and it shares the editor origin (error page, same-origin inlined
+     * fallback); the opaque token set, and the browser gives it an opaque origin (the
+     * static/PWA opaque snapshot). `srcdoc` takes precedence over `src`, so a stale SW URL
+     * is dropped first.
+     * @param {string} html - HTML content to load
      */
     injectHtmlToIframe(html) {
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
@@ -1915,21 +2042,10 @@ export default class PreviewPanelManager {
             return;
         }
 
-        // Revoke previous blob URL if exists
-        if (targetIframe._blobUrl) {
-            URL.revokeObjectURL(targetIframe._blobUrl);
-            targetIframe._blobUrl = null;
-        }
+        targetIframe.removeAttribute('src');
+        targetIframe.setAttribute('srcdoc', html);
 
-        // Use blob URL for preview - this gives proper origin (http://localhost:...)
-        // which allows popups to use window.opener to access parent window data
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const blobUrl = URL.createObjectURL(blob);
-        targetIframe._blobUrl = blobUrl;
-        targetIframe.removeAttribute('srcdoc');
-        targetIframe.src = blobUrl;
-
-        Logger.log('[PreviewPanel] Preview content injected via blob URL');
+        Logger.log('[PreviewPanel] Preview content loaded via srcdoc');
     }
 
     /**
@@ -2072,14 +2188,7 @@ export default class PreviewPanelManager {
             this._swContentNeededTimer = null;
         }
 
-        // Revoke blob URLs
-        [this.iframe, this.pinnedIframe].forEach((iframe) => {
-            if (iframe?._blobUrl) {
-                URL.revokeObjectURL(iframe._blobUrl);
-            }
-        });
-
-        // Revoke PDF embed blob URLs (from blob URL mode)
+        // Revoke PDF embed blob URLs (from the same-origin inlined fallback)
         if (this._pdfEmbedBlobUrls) {
             this._pdfEmbedBlobUrls.forEach(url => URL.revokeObjectURL(url));
             this._pdfEmbedBlobUrls = null;

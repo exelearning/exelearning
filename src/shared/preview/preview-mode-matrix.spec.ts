@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import {
     PREVIEW_RUNTIMES,
     PREVIEW_TRANSPORTS,
+    canEnableActiveContent,
     resolvePreviewTransport,
     type PreviewRuntime,
 } from './preview-mode-matrix';
@@ -25,41 +26,38 @@ describe('preview mode matrix', () => {
     it('filters by default in every runtime', () => {
         for (const runtime of PREVIEW_RUNTIMES) {
             expect(resolvePreviewTransport(runtime, false).transport, runtime).toBe('sw-filtered');
-            expect(resolvePreviewTransport(runtime, false).requiresConsentWarning, runtime).toBe(false);
         }
     });
 
     it('isolates in an opaque origin where a backend can mint a capability URL', () => {
         expect(resolvePreviewTransport('cloud', true).transport).toBe('opaque-capability');
         expect(resolvePreviewTransport('embedded', true).transport).toBe('opaque-capability');
-        expect(resolvePreviewTransport('cloud', true).requiresConsentWarning).toBe(false);
     });
 
     /**
-     * Static/PWA has no backend to mint a capability URL, and a sandboxed frame is
-     * never Service Worker controlled (Phase 0, spike S3) — so there is no opaque
-     * transport available. The residual risk is accepted explicitly, never silently.
+     * Static/PWA has no backend to mint a capability URL, and a sandboxed frame is never
+     * Service Worker controlled (Phase 0, spike S3) — so the inlined snapshot is loaded
+     * through `srcdoc` into a sandbox without `allow-same-origin`, which the browser gives
+     * an opaque origin on its own (ADR-2199-16).
      */
-    it('falls to consented same-origin only where no backend exists, and warns', () => {
-        const decision = resolvePreviewTransport('static', true);
-        expect(decision.transport).toBe('consented-same-origin');
-        expect(decision.requiresConsentWarning).toBe(true);
+    it('isolates static/PWA through a sandboxed srcdoc document', () => {
+        expect(resolvePreviewTransport('static', true).transport).toBe('opaque-srcdoc');
     });
 
     it('refuses to enable at all in Electron', () => {
-        const decision = resolvePreviewTransport('electron', true);
-        expect(decision.transport).toBe('blocked');
-        expect(decision.requiresConsentWarning).toBe(false);
+        expect(resolvePreviewTransport('electron', true).transport).toBe('blocked');
+        expect(canEnableActiveContent('electron')).toBe(false);
     });
 
-    /** A warning is only ever attached to the one transport that carries residual risk. */
-    it('warns for exactly one cell of the matrix', () => {
-        const warned = PREVIEW_RUNTIMES.flatMap(runtime =>
-            [false, true]
-                .map(enabled => ({ runtime, enabled, decision: resolvePreviewTransport(runtime, enabled) }))
-                .filter(entry => entry.decision.requiresConsentWarning),
-        );
-        expect(warned.map(w => `${w.runtime}/${w.enabled}`)).toEqual(['static/true']);
+    /**
+     * The whole point of the matrix: no cell lets enabled author code run with the editor's
+     * origin. Every enabled transport is either opaque or blocked.
+     */
+    it('never runs enabled author code same-origin with the editor', () => {
+        for (const runtime of PREVIEW_RUNTIMES) {
+            const { transport } = resolvePreviewTransport(runtime, true);
+            expect(['opaque-capability', 'opaque-srcdoc', 'blocked'], runtime).toContain(transport);
+        }
     });
 
     it('gives a machine-readable reason distinct per transport', () => {

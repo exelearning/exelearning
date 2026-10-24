@@ -730,7 +730,7 @@ export default class ModalPrintPreview {
             yjsBridge.resourceFetcher || null,
             {
                 ...this.buildPreviewOptions(),
-                previewContentPolicy: createPreviewContentPolicy(yjsBridge.documentManager.projectId),
+                previewContentPolicy: createPreviewContentPolicy(),
             },
             yjsBridge.assetManager || null
         );

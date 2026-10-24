@@ -398,34 +398,41 @@ export function canEnableActivePreviewContent() {
 }
 
 /**
- * Preview transports — one per row of the trust-boundary matrix (ADR-2199-02).
- * The transport is decided by the runtime, never by content, and there is no
- * fallback between rows: a transport that cannot deliver fails visibly.
+ * Preview transports — one per row of the trust-boundary matrix (ADR-2199-02,
+ * static row replaced by ADR-2199-16). The transport is decided by the runtime,
+ * never by content, and there is no fallback between rows: a transport that
+ * cannot deliver fails visibly. Every transport that can carry enabled author
+ * code renders it in a browser-enforced OPAQUE origin; none runs it with the
+ * editor's origin.
  */
 export const PREVIEW_TRANSPORTS = Object.freeze({
     /** Electron: enabling custom active content is blocked outright. */
     ELECTRON_BLOCKED: 'electron-blocked',
-    /** Embedded LMS/CMS host: always-opaque snapshot via HOST capability routes. */
+    /** Embedded LMS/CMS host: opaque snapshot via HOST capability routes. */
     EMBEDDED_OPAQUE: 'embedded-opaque',
     /** Web/server editor: opaque snapshot via eXe's own capability routes on enable. */
     SELF_HOSTED_OPAQUE: 'self-hosted-opaque',
-    /** Static/PWA (no backend): same-origin with explicit consent — documented residual risk. */
-    CONSENT_SAME_ORIGIN: 'consent-same-origin',
+    /**
+     * Static/PWA (no backend): the inlined snapshot is loaded through `srcdoc` into
+     * an iframe sandboxed without `allow-same-origin`. No server is involved and no
+     * network is needed, so it also holds offline.
+     */
+    SRCDOC_OPAQUE: 'srcdoc-opaque',
 });
 
 /**
  * Resolve the preview transport for the current runtime.
  *
  * Only a runtime that positively declares itself backend-less (`mode ===
- * 'static'`) gets the consent-same-origin row; an unknown or missing runtime
- * config resolves to the self-hosted opaque transport, whose enable path
- * fails visibly (and stays filtered) when no snapshot routes exist — the
+ * 'static'`) gets the srcdoc row; an unknown or missing runtime config
+ * resolves to the self-hosted opaque transport, whose enable path fails
+ * visibly (and stays filtered) when no snapshot routes exist — the
  * fail-closed direction.
  */
 export function resolvePreviewTransport(runtimeConfig) {
     if (isElectronPreview()) return PREVIEW_TRANSPORTS.ELECTRON_BLOCKED;
     if (runtimeConfig?.isEmbedded) return PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE;
-    if (runtimeConfig?.mode === 'static') return PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN;
+    if (runtimeConfig?.mode === 'static') return PREVIEW_TRANSPORTS.SRCDOC_OPAQUE;
     return PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE;
 }
 
@@ -433,31 +440,24 @@ export function resolvePreviewTransport(runtimeConfig) {
 export const PREVIEW_TRUST_STATES = Object.freeze({
     FILTERED: 'filtered',
     OPAQUE_ENABLED: 'opaque-enabled',
-    CONSENTED_SAME_ORIGIN: 'consented-same-origin',
 });
 
 /**
  * Current trust state for a project under a given runtime. The stored grant
  * is a single bit; what it MEANS is decided by the transport at read time,
  * so a runtime change (e.g. a project reopened in Electron) can only ever
- * tighten the interpretation.
+ * tighten the interpretation. Every transport that accepts the grant isolates
+ * the unfiltered content in an opaque-origin iframe; before enabling, all of
+ * them render the filtered same-origin preview (the `!enabled` guard), which
+ * is where whitelisted external videos play inline.
  */
 export function getActivePreviewTrustState(projectId, runtimeConfig) {
     if (!isActivePreviewContentEnabled(projectId)) return PREVIEW_TRUST_STATES.FILTERED;
-    const transport = resolvePreviewTransport(runtimeConfig);
-    // Both the self-hosted and the embedded opaque transports isolate the
-    // unfiltered content in an opaque-origin iframe once enabled; before enabling,
-    // both fall through to the filtered same-origin preview (the `!enabled` guard
-    // above), which is where whitelisted external videos play inline.
-    if (
-        transport === PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE ||
-        transport === PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE
-    ) {
-        return PREVIEW_TRUST_STATES.OPAQUE_ENABLED;
-    }
-    if (transport === PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN) return PREVIEW_TRUST_STATES.CONSENTED_SAME_ORIGIN;
     // Electron can never hold a grant (enableActivePreviewContent refuses).
-    return PREVIEW_TRUST_STATES.FILTERED;
+    if (resolvePreviewTransport(runtimeConfig) === PREVIEW_TRANSPORTS.ELECTRON_BLOCKED) {
+        return PREVIEW_TRUST_STATES.FILTERED;
+    }
+    return PREVIEW_TRUST_STATES.OPAQUE_ENABLED;
 }
 
 /**
@@ -504,20 +504,17 @@ export function invalidateActivePreviewAuthorization(projectId) {
 }
 
 /**
- * Policy for SAME-ORIGIN preview surfaces (Service Worker preview, blob
- * fallback, print preview). Author active content passes through only in the
- * `consented-same-origin` state (static/PWA runtimes, where no server exists
- * to mint capability URLs). In every other state — including `opaque-enabled`
- * — same-origin surfaces stay filtered: while the opaque transport is active,
- * unfiltered content may only ever reach the sandboxed capability-URL iframe,
- * never a same-origin document.
+ * Policy for SAME-ORIGIN preview surfaces (Service Worker preview, inlined
+ * same-origin fallback, print preview). Always filtered, in every state and
+ * every runtime: unfiltered author content may only ever reach an opaque-origin
+ * document (capability-URL or sandboxed `srcdoc` iframe), never one that shares
+ * the editor's origin. The grant does not loosen this policy; it switches the
+ * transport.
  */
-export function createPreviewContentPolicy(projectId, runtimeConfig = globalThis.eXeLearning?.app?.runtimeConfig) {
-    const allowActiveContent =
-        getActivePreviewTrustState(projectId, runtimeConfig) === PREVIEW_TRUST_STATES.CONSENTED_SAME_ORIGIN;
+export function createPreviewContentPolicy() {
     return {
-        prepare: html => prepareUserHtmlForPreview(html, { allowActiveContent }),
-        prepareStyle: css => prepareStyleForPreview(css, { allowActiveContent }),
+        prepare: html => prepareUserHtmlForPreview(html, { allowActiveContent: false }),
+        prepareStyle: css => prepareStyleForPreview(css, { allowActiveContent: false }),
     };
 }
 
