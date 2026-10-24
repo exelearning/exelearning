@@ -831,10 +831,15 @@ describe('Convert Routes', () => {
         });
 
         it('should handle internal error in export/:format endpoint', async () => {
-            // Create a mock that will cause temp directory issues
+            // Injected rather than an unwritable path: root can create any path, and the export then succeeds
             const brokenDeps = {
                 ...mockDeps,
-                tempDir: '/nonexistent/path/that/cannot/exist/export-test-' + Date.now(),
+                fs: {
+                    ...fs,
+                    ensureDir: async () => {
+                        throw new Error('Filesystem error');
+                    },
+                } as any,
             };
 
             const brokenApp = new Elysia().use(createConvertRoutes(brokenDeps));
@@ -853,10 +858,8 @@ describe('Convert Routes', () => {
                 }),
             );
 
-            // Should return 500 with INTERNAL_ERROR or EXPORT_FAILED
             expect(res.status).toBe(500);
-            const body = await res.json();
-            expect(['INTERNAL_ERROR', 'EXPORT_FAILED']).toContain(body.code);
+            expect(await res.json()).toEqual({ code: 'INTERNAL_ERROR', detail: 'Filesystem error' });
         });
     });
 
