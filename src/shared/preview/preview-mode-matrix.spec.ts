@@ -38,7 +38,7 @@ describe('preview mode matrix', () => {
      * Static/PWA has no backend to mint a capability URL, and a sandboxed frame is never
      * Service Worker controlled (Phase 0, spike S3) — so the inlined snapshot is loaded
      * through `srcdoc` into a sandbox without `allow-same-origin`, which the browser gives
-     * an opaque origin on its own (ADR-2199-07).
+     * an opaque origin on its own (ADR-2199-04).
      */
     it('isolates static/PWA through a sandboxed srcdoc document', () => {
         expect(resolvePreviewTransport('static', true).transport).toBe('opaque-srcdoc');

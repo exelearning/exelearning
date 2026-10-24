@@ -398,8 +398,8 @@ export function canEnableActivePreviewContent() {
 }
 
 /**
- * Preview transports — one per row of the trust-boundary matrix (ADR-2199-02,
- * static row: ADR-2199-07). The transport is decided by the runtime,
+ * Preview transports — one per row of the trust-boundary matrix (ADR-2199-01,
+ * static row: ADR-2199-04). The transport is decided by the runtime,
  * never by content, and there is no fallback between rows: a transport that
  * cannot deliver fails visibly. Every transport that can carry enabled author
  * code renders it in a browser-enforced OPAQUE origin; none runs it with the
@@ -436,7 +436,7 @@ export function resolvePreviewTransport(runtimeConfig) {
     return PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE;
 }
 
-/** Trust states of the enable/disable machine (ADR-2199-02 §state machine). */
+/** Trust states of the enable/disable machine (ADR-2199-01 §state machine). */
 export const PREVIEW_TRUST_STATES = Object.freeze({
     FILTERED: 'filtered',
     OPAQUE_ENABLED: 'opaque-enabled',

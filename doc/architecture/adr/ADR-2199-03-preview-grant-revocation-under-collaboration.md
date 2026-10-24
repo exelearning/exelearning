@@ -10,7 +10,7 @@ deciders:
 related:
   prs: []
   changes: []
-  adrs: [ADR-2199-02]
+  adrs: [ADR-2199-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -25,7 +25,7 @@ ai_assistance:
 When a user enables custom active content, the grant is scoped to the current
 project and editor session. eXeLearning documents are collaborative: a second
 person (or the same person in another tab) can push Yjs updates into the same
-`Y.Doc` at any time. The base branch (ADR-2199-01) took the conservative line: **any**
+`Y.Doc` at any time. The first draft of this boundary took the conservative line: **any**
 non-system document update revokes the grant, forcing the user to re-consent.
 That is safe but noisy — a user who enables active content and then keeps typing
 is asked to re-enable on essentially every keystroke-batch.
@@ -126,4 +126,4 @@ disabled and the session is disposed.
 - `public/app/utils/previewContentPolicy.js` — `shouldRevokeOnYdocUpdate`
 - `public/app/workarea/interface/elements/previewPanel.js` — update handler + disposal
 - `public/app/yjs/YjsDocumentManager.js` — UndoManager and provider origins
-- [ADR-2199-02](ADR-2199-02-hybrid-preview-trust-boundary.md)
+- [ADR-2199-01](ADR-2199-01-hybrid-preview-trust-boundary.md)

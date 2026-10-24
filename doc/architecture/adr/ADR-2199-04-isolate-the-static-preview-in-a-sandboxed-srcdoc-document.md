@@ -1,5 +1,5 @@
 ---
-id: ADR-2199-07
+id: ADR-2199-04
 title: "Isolate the static/PWA preview in a sandboxed srcdoc document instead of consenting to same-origin execution"
 status: Proposed
 date: 2026-10-24
@@ -10,7 +10,7 @@ reviewers: []
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-05, ADR-2199-10]
+  adrs: [ADR-2199-01, ADR-2199-02, ADR-2199-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +18,11 @@ ai_assistance:
   model: "claude-mythos-5-1"
 ---
 
-# ADR-2199-07: Isolate the static/PWA preview in a sandboxed srcdoc document instead of consenting to same-origin execution
+# ADR-2199-04: Isolate the static/PWA preview in a sandboxed srcdoc document instead of consenting to same-origin execution
 
 ## Context
 
-The hybrid trust boundary ([ADR-2199-02](ADR-2199-02-hybrid-preview-trust-boundary.md))
+The hybrid trust boundary ([ADR-2199-01](ADR-2199-01-hybrid-preview-trust-boundary.md))
 filters author-controlled active content by default and, when the user enables it, moves
 the unfiltered snapshot into an opaque origin: eXe's own capability routes in web/server
 mode, the host's routes when embedded. Its static/PWA/PHP-WASM row was the exception —
@@ -30,8 +30,8 @@ mode, the host's routes when embedded. Its static/PWA/PHP-WASM row was the excep
 Service-Worker-served preview iframe, which carries `allow-same-origin`, and therefore with
 the editor's origin, DOM, IndexedDB and Service Worker messaging surface.
 
-A draft record carried from PR #1968 (its ADR 0016, which held this sequence slot until
-this record replaced it) justified that exception: a Service Worker cannot serve an opaque
+A draft record carried from PR #1968 (its ADR 0016, withdrawn when this record was
+written) justified that exception: a Service Worker cannot serve an opaque
 frame (Phase 0 spike S3, three engines), OPFS is origin-scoped, and "`srcdoc`/`blob:`-based
 transports either inherit the app origin or cannot carry a multi-file package with working
 relative references". It concluded that "no client-only mechanism is claimed to isolate" the
@@ -168,9 +168,9 @@ No row runs author code with the editor's origin. The `consented-same-origin` tr
 trust state and its consent dialog are removed, not renamed. The same-origin content policy
 (`createPreviewContentPolicy`) no longer takes a runtime or project: it is always filtered,
 so a same-origin surface — Service Worker preview, inlined fallback, print preview — can
-never be loosened by a grant. ADR-2199-02 and ADR-2199-10 carry this static row directly
-(all three are drafts on the same branch); their other decisions — hybrid boundary, D1
-revocation, single-source matrix with a consistency gate — stand. The earlier draft
+never be loosened by a grant. [ADR-2199-01](ADR-2199-01-hybrid-preview-trust-boundary.md) carries this static row
+directly; its other decisions — hybrid boundary, single-source matrix with a consistency
+gate — and D1 revocation ([ADR-2199-03](ADR-2199-03-preview-grant-revocation-under-collaboration.md)) stand. The earlier draft
 conclusion that no client-only mechanism can isolate the static preview was wrong on
 `srcdoc`: a sandboxed `srcdoc` document does get an opaque origin, and inlining removes the
 need for relative references to a server.
@@ -242,7 +242,7 @@ are gone, which removes the sink PR #48 used for its characterization.
   frame). PR #48 remains blocked until that lands.
 - **The default preview remains a filter.** The Service Worker preview keeps
   `allow-same-origin` because S3 leaves no alternative for a Service Worker transport; its
-  safety is the content policy plus DOMPurify, exactly as ADR-2199-02 accepted. This record
+  safety is the content policy plus DOMPurify, exactly as ADR-2199-01 accepts. This record
   changes the *enabled* path only.
 - **Engine drift.** The facts in Evidence are measured, and the spec that measures them is
   in the suite, so a browser change that broke the boundary would fail CI rather than
@@ -285,10 +285,9 @@ are gone, which removes the sink PR #48 used for its characterization.
 - `public/app/utils/previewContentPolicy.js`,
   `public/app/workarea/interface/elements/previewPanel.js`,
   `src/shared/preview/preview-mode-matrix.ts`, `src/shared/security/previewSandbox.ts`
-- `doc/development/preview-architecture.md`, `doc/development/external-media-inventory.md`
-  (spike S3)
-- [ADR-2199-02](ADR-2199-02-hybrid-preview-trust-boundary.md),
-  [ADR-2199-10](ADR-2199-10-preview-transport-matrix-as-a-single-source.md)
+- `doc/development/preview-architecture.md`
+- [ADR-2199-01](ADR-2199-01-hybrid-preview-trust-boundary.md),
+  [ADR-2199-02](ADR-2199-02-serve-the-enabled-preview-from-an-opaque-capability-snapshot.md)
 - [ateeducacion/exelearning#48](https://github.com/ateeducacion/exelearning/pull/48) and its
   ADR-48-01 (content isolation before file capabilities)
 - [HTML: iframe sandbox and the sandboxed origin browsing context flag](https://html.spec.whatwg.org/multipage/browsers.html#sandboxed-origin-browsing-context-flag)

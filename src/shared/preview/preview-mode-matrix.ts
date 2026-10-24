@@ -35,7 +35,7 @@
  * `test/e2e/playwright/specs/preview-srcdoc-isolation.spec.ts`) — and a backend-less
  * deployment has no capability server. The sandbox attribute alone still yields an
  * opaque origin, so the snapshot is inlined into self-contained documents and loaded
- * through `srcdoc` (ADR-2199-07). No row runs author code with the editor's origin.
+ * through `srcdoc` (ADR-2199-04). No row runs author code with the editor's origin.
  */
 
 export const PREVIEW_RUNTIMES = ['cloud', 'embedded', 'electron', 'static'] as const;

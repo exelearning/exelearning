@@ -1,5 +1,5 @@
 /**
- * Opaque preview snapshot routes (editor trust boundary — ADR-2199-02).
+ * Opaque preview snapshot routes (editor trust boundary — ADR-2199-01).
  *
  * Two deliberately separate plugins:
  *

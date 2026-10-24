@@ -8,12 +8,12 @@ runtime must keep working; author-controlled active content must not reach the
 editor's DOM, storage, or session on the default path.
 
 This page documents the **hybrid trust boundary**: source-filtered by default,
-opaque-on-enable. See [ADR-2199-02](../architecture/adr/ADR-2199-02-hybrid-preview-trust-boundary.md)
+opaque-on-enable. See [ADR-2199-01](../architecture/adr/ADR-2199-01-hybrid-preview-trust-boundary.md)
 for the decision, [ADR-2199-03](../architecture/adr/ADR-2199-03-preview-grant-revocation-under-collaboration.md)
 for revocation under collaboration,
-[ADR-2199-04](../architecture/adr/ADR-2199-04-self-hosted-capability-snapshots-for-editor-preview.md)
+[ADR-2199-02](../architecture/adr/ADR-2199-02-serve-the-enabled-preview-from-an-opaque-capability-snapshot.md)
 for the capability-snapshot server, and
-[ADR-2199-07](../architecture/adr/ADR-2199-07-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)
+[ADR-2199-04](../architecture/adr/ADR-2199-04-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)
 for the backend-less (static/PWA) transport.
 
 ## Transport matrix
@@ -35,7 +35,7 @@ The canonical table is `src/shared/preview/preview-mode-matrix.ts`; the shipped
 browser decision is `resolvePreviewTransport()` in
 `public/app/utils/previewContentPolicy.js`, and
 `preview-mode-matrix.consistency.spec.ts` executes the latter across every cell
-and fails if the two disagree ([ADR-2199-10](../architecture/adr/ADR-2199-10-preview-transport-matrix-as-a-single-source.md)).
+and fails if the two disagree ([ADR-2199-01](../architecture/adr/ADR-2199-01-hybrid-preview-trust-boundary.md)).
 
 ## Enable/disable state machine
 
@@ -143,7 +143,7 @@ sequenceDiagram
     U->>P: click enable (dialog explains isolated reload)
     P->>X: generatePreviewForSW(report-only policy)  %% author bytes intact
     X-->>P: unfiltered file map
-    P->>P: inject embed shim; inline CSS/JS/images/fonts/media; PDF embeds → links
+    P->>P: inline CSS/JS/images/fonts/media; PDF embeds → links; provider iframes → placeholders
     P->>F: sandbox = allow-scripts … (NO allow-same-origin), set BEFORE the load
     P->>F: srcdoc = self-contained page
     Note over F: opaque origin: no parent, cookies, storage, IndexedDB or SW; no network needed
@@ -252,15 +252,18 @@ after a full adapter pass.
 
 ## Known limitations
 
-- **YouTube/Vimeo in opaque-enabled mode** become an accessible "open in a new
-  tab" placeholder (`previewExternalMediaFallback.js`) — an opaque frame cannot
-  satisfy the providers' embedder-identity checks. The full media bridge (relay +
-  trusted-parent modal) is follow-up work for embedded hosts.
+- **Provider embeds (YouTube, Vimeo, Dailymotion, Mediateca) in opaque-enabled
+  mode** become an accessible "open in a new tab" placeholder
+  (`previewExternalMediaFallback.js`) — an opaque frame cannot satisfy the
+  providers' embedder-identity checks, and the tab escapes the sandbox (D2). A
+  relay that overlays real players on the trusted side is the external-media
+  programme, developed in its own PR. In the default filtered preview these
+  embeds play inline.
 - **Electron:** custom active content cannot be enabled — the preview shares a
   renderer with the `preload.js` bridge. Revisiting needs an isolated-renderer
   design.
 - **Static bundle / PWA / PHP-WASM, while enabled** (the srcdoc transport,
-  [ADR-2199-07](../architecture/adr/ADR-2199-07-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)):
+  [ADR-2199-04](../architecture/adr/ADR-2199-04-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)):
   PDF embeds render as "open in a new tab" links (an editor-minted `blob:` URL
   cannot be fetched from an opaque origin, and PDF.js cannot be imported into it
   cross-origin); local media is inlined as `data:` URIs up to 25 MiB per file and
@@ -276,10 +279,9 @@ after a full adapter pass.
   runtime, base64 assets included). None of this affects the default filtered
   preview, which typesets and serves everything through the Service Worker.
 - **Full-snapshot refresh while opaque-enabled:** each scheduled refresh
-  re-uploads the whole snapshot (capability URL) or re-inlines the page (srcdoc).
-  Acceptable because it is opt-in and temporary; see the
-  [benchmark](../../test/benchmarks/preview/README.md) for the payload size
-  (~400 KiB for text projects).
+  re-uploads the whole snapshot (capability URL, ~240–400 KiB for text projects)
+  or re-inlines the page (srcdoc, ~2.6 MB). Acceptable because it is opt-in and
+  temporary.
 - **Already-running contexts:** changing the transport does not revoke what a
   stale tab or an installed PWA is executing with older code. Persistent file
   capabilities (ateeducacion/exelearning#48) need a deployment boundary on top of
@@ -294,10 +296,10 @@ both the sanitizer and the export/preview renderer. Full details, including the
 host-side `Referrer-Policy` header and the WordPress/Jetpack note, are in
 [embedding.md](embedding.md#youtube-error-153-and-referrerpolicy).
 
-## Benchmark
+## Cost of the default filter
 
-`test/benchmarks/preview/` runs a three-way, real-browser comparison — `main` vs
-this branch's filtered default vs opaque-enabled — with a gate that the default
-mode stays within 10% of `main`. See the
-[benchmark README](../../test/benchmarks/preview/README.md) and
-[committed results](../../test/benchmarks/preview/results/comparison.md).
+Measured in a real-browser three-way comparison during development (`main` vs
+filtered default vs opaque, 25 samples, Chromium, 2026-10-24): the source-aware
+policy adds +1.4 / +2.9 / +4.4 ms to a 7–8 ms generation step for 3/25/50-page
+fixtures, inside a 500 ms-debounced refresh whose Service Worker hand-off is
+unchanged. The harness is not kept in the repository.
