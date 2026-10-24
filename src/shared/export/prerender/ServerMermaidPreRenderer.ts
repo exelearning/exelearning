@@ -220,6 +220,15 @@ let mermaidModule: MermaidAPI | null = null;
  */
 let mermaidDom: JSDOM | null = null;
 
+/** Browser globals Mermaid expects, installed from the jsdom window while a renderer is in use. */
+const MERMAID_GLOBALS = ['window', 'document', 'navigator', 'Element', 'HTMLElement', 'SVGElement', 'CSSStyleSheet'];
+
+/**
+ * What those globals were before a renderer replaced them. The runtime may own some of them (Bun
+ * has a navigator, read by its node:os), so cleanup puts them back rather than deleting them.
+ */
+let replacedGlobals: Map<string, PropertyDescriptor | undefined> | null = null;
+
 /**
  * Server-side Mermaid Pre-renderer using mermaid npm package
  */
@@ -275,23 +284,18 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
             };
         }
 
-        // Set up minimal browser globals that Mermaid expects
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.window = window;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.document = window.document;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.navigator = window.navigator;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.Element = window.Element;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.HTMLElement = window.HTMLElement;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.SVGElement = window.SVGElement;
-        // Mermaid builds each diagram's styles in a constructed stylesheet; without it every
-        // diagram fails to render and the export keeps the source instead.
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.CSSStyleSheet = window.CSSStyleSheet;
+        // Set up minimal browser globals that Mermaid expects. Mermaid builds each diagram's styles
+        // in a constructed stylesheet; without CSSStyleSheet every diagram fails to render and the
+        // export keeps the source instead.
+        const globals = globalThis as unknown as Record<string, unknown>;
+        if (!replacedGlobals) {
+            replacedGlobals = new Map(
+                MERMAID_GLOBALS.map(name => [name, Object.getOwnPropertyDescriptor(globals, name)]),
+            );
+        }
+        for (const name of MERMAID_GLOBALS) {
+            globals[name] = (window as unknown as Record<string, unknown>)[name];
+        }
 
         try {
             // Import mermaid from npm package (cached for subsequent initializations)
@@ -528,21 +532,17 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         this.mermaid = null;
         this.initialized = false;
 
-        // Clean up global references
-        // @ts-expect-error - Cleaning up globals
-        delete global.window;
-        // @ts-expect-error - Cleaning up globals
-        delete global.document;
-        // @ts-expect-error - Cleaning up globals
-        delete global.navigator;
-        // @ts-expect-error - Cleaning up globals
-        delete global.Element;
-        // @ts-expect-error - Cleaning up globals
-        delete global.HTMLElement;
-        // @ts-expect-error - Cleaning up globals
-        delete global.SVGElement;
-        // @ts-expect-error - Cleaning up globals
-        delete global.CSSStyleSheet;
+        // Put back the globals initialize() replaced
+        if (replacedGlobals) {
+            for (const [name, descriptor] of replacedGlobals) {
+                if (descriptor) {
+                    Object.defineProperty(globalThis, name, descriptor);
+                } else {
+                    delete (globalThis as Record<string, unknown>)[name];
+                }
+            }
+            replacedGlobals = null;
+        }
     }
 }
 
