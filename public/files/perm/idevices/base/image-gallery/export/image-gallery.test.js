@@ -116,6 +116,9 @@ describe('image-gallery iDevice export', () => {
     let OriginalImage;
 
     beforeEach(() => {
+      // The open lightbox animates with timeouts; fake ones are dropped in afterEach
+      // instead of firing after the test environment is gone
+      vi.useFakeTimers();
       preloads = [];
       OriginalImage = window.Image;
       // Capture the lightbox's off-DOM preload image so the test can fire its
@@ -143,6 +146,8 @@ describe('image-gallery iDevice export', () => {
     });
 
     afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
       window.Image = OriginalImage;
       vi.restoreAllMocks();
       document.body.innerHTML = '';
