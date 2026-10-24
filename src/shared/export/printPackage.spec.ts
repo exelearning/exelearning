@@ -131,4 +131,48 @@ describe('portable print package', () => {
         expect(printPackageEntry('es')).toContain('data-print-open="true"');
         expect(printPackageEntry('es')).not.toContain('type="module"');
     });
+
+    it.each(['animal photo.svg', 'animal%20photo.svg', 'niño.svg', 'ni%C3%B1o.svg', '100%.svg'])(
+        'resolves complete filenames against blob archive keys: %s',
+        name => {
+            let decoded = name;
+            try {
+                decoded = decodeURIComponent(name);
+            } catch {
+                /* Literal percent in filename. */
+            }
+            const urls = { [`content/resources/${decoded}`]: 'blob:picture' };
+            const input =
+                `<img src="content/resources/${name}"><img src='content/resources/${name}?v=2#part'>` +
+                `<p data-json="{&quot;image&quot;:&quot;content/resources/${name}&quot;}"></p>` +
+                `<div style="background:url('content/resources/${name}')"></div>`;
+            expect(resolvePrintResourceUrls(input, 'https://example.test/viewer/', new Map(), urls)).toBe(
+                '<img src="blob:picture"><img src=\'blob:picture#part\'>' +
+                    '<p data-json="{&quot;image&quot;:&quot;blob:picture&quot;}"></p>' +
+                    '<div style="background:url(\'blob:picture\')"></div>',
+            );
+        },
+    );
+
+    it('keeps literal archive keys ahead of decoding and resolves spaces in asset paths offline', () => {
+        const urls = {
+            'content/resources/photo%20one.svg': 'blob:literal',
+            'content/resources/photo one.svg': 'blob:decoded',
+        };
+        expect(
+            resolvePrintResourceUrls(
+                '<img src="content/resources/photo%20one.svg">',
+                'file:///C:/course/',
+                new Map(),
+                urls,
+            ),
+        ).toBe('<img src="blob:literal">');
+        expect(
+            resolvePrintResourceUrls(
+                '<img src="asset://picture">',
+                'file:///C:/course/',
+                new Map([['picture', 'animal photo.svg']]),
+            ),
+        ).toBe('<img src="file:///C:/course/content/resources/animal%20photo.svg">');
+    });
 });

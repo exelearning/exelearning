@@ -53,18 +53,35 @@ export function resolvePrintResourceUrls(
         const id = reference.split('/')[0].replace(/\.[a-z0-9]+$/i, '');
         return assets.get(reference) || assets.get(id) || reference;
     };
+    const resolve = (reference: string) => {
+        const hash = reference.indexOf('#');
+        const path = hash < 0 ? reference : reference.slice(0, hash);
+        const key = path.split('?')[0];
+        let decoded = key;
+        try {
+            decoded = decodeURIComponent(key);
+        } catch {
+            // A literal percent sign is a valid archive filename.
+        }
+        const url = resourceUrls[key] || resourceUrls[decoded] || new URL(path, root).href;
+        return url + (hash < 0 ? '' : reference.slice(hash));
+    };
     return (
         html
             // Export preprocessing leaves this marker in activity sidecars and rich text.
             // A standalone worksheet has no page renderer to substitute it afterwards.
             .replace(/(?:\{\{context_path\}\}|%7B%7Bcontext_path%7D%7D)\//gi, '')
             .replace(/asset:\/\/([^"'\s<>\\)]+)/g, (_match, ref: string) => `content/resources/${resource(ref)}`)
+            // Quoted HTML/CSS URLs and HTML-encoded activity data can contain spaces.
+            // Resolve the whole value before handling unquoted URLs below.
+            .replace(
+                /(["']|&quot;)((?:content\/|libs\/|theme\/|idevices\/|fonts\/)(?:(?!\1)[^<>\\])*)\1/g,
+                (_match, quote: string, reference: string) => `${quote}${resolve(reference)}${quote}`,
+            )
             .replace(
                 /(["'(=]|&quot;)((?:content\/|libs\/|theme\/|idevices\/|fonts\/)(?:(?!&quot;)[^"'\s<>\\)])+)/g,
                 (_match, prefix: string, reference: string) => {
-                    const [path, fragment] = reference.split('#');
-                    const url = resourceUrls[path.split('?')[0]] || new URL(path, root).href;
-                    return `${prefix}${url}${fragment === undefined ? '' : `#${fragment}`}`;
+                    return `${prefix}${resolve(reference)}`;
                 },
             )
     );

@@ -23,19 +23,113 @@ vi.mock('../common/LatexPreRenderer.js', () => ({ default: {
 } }));
 vi.mock('../common/MermaidPreRenderer.js', () => ({ default: { preRender: vi.fn(async html => ({ html, success: true })) } }));
 vi.mock('../common/MoleculeCapture.js', () => ({ default: { capture: vi.fn(async () => 'data:image/png;base64,capture') } }));
-import { createExportedPrintPreview } from './exportedPrintPreview.js';
+import { createExportedPrintPreview, PREPARATION_TIMEOUT_MS } from './exportedPrintPreview.js';
 
 describe('exported print preview adapter', () => {
     let preview;
     beforeEach(() => {
         vi.clearAllMocks();
+        doubles.document.mockReset().mockResolvedValue({ success: true, html: '<html><body>Course</body></html>' });
         document.body.innerHTML = '<button id="opener">Print</button>';
         document.getElementById('opener').focus();
         preview = createExportedPrintPreview({ metadata: { title: 'Course' }, pages: [],
             translations: { 'Print preview': 'Vista previa' }, assetPaths: [['image', 'figure.png']], themeFiles: ['style.css'],
             materialIcons: [], i18n: '', navLabels: { licenseLabel: 'Licencia' } }, 'https://example.test/html/course/');
     });
-    afterEach(() => { preview.destroy(); vi.restoreAllMocks(); delete window.MathJax; });
+    afterEach(() => { preview.destroy(); vi.restoreAllMocks(); vi.useRealTimers(); delete window.MathJax; });
+
+    it.each([
+        ['preRenderLatex', 'formula'],
+        ['preRenderMermaid', '<div class="mermaid">graph</div>'],
+        ['captureMolecule', {}],
+    ])('bounds stalled %s loading, rejects incomplete output and permits retry', async (hook, input) => {
+        vi.useFakeTimers();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const dispose = vi.fn();
+        doubles.document.mockImplementation(async options => {
+            // The document exporter deliberately tolerates individual hook errors.
+            try { await options[hook](input); } catch { /* Adapter must reject incomplete output. */ }
+            return { success: true, html: '<html><body>Rendered</body></html>', dispose };
+        });
+        const append = vi.spyOn(document.head, 'append').mockImplementation(() => {});
+        const pending = preview.open();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(append).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(PREPARATION_TIMEOUT_MS);
+        await pending;
+        expect(preview.controller.loadingEl.textContent).toContain('Print resources did not finish loading');
+        expect(preview.controller.busy).toBe(false);
+        expect(preview.controller.printBtn.disabled).toBe(true);
+        expect(doubles.load).not.toHaveBeenCalled();
+        expect(dispose).toHaveBeenCalledOnce();
+        append.mockImplementation(script => queueMicrotask(() => script.onload()));
+        await preview.open();
+        expect(append).toHaveBeenCalledTimes(2);
+        expect(preview.controller.ready).toBe(true);
+        expect(new URL(append.mock.calls[1][0].src).searchParams.get('exe-print-attempt')).toBe('2');
+    });
+
+    it('bounds MathJax startup after script load and retries with a fresh runtime', async () => {
+        vi.useFakeTimers();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        window.MathJax = { config: { startup: { typeset: false } }, tex2svgPromise: vi.fn(),
+            startup: { promise: new Promise(() => {}) } };
+        doubles.document.mockImplementation(async options => {
+            await options.preRenderLatex('formula');
+            return { success: true, html: '<html><body>Formula</body></html>' };
+        });
+        const pending = preview.open();
+        await vi.advanceTimersByTimeAsync(PREPARATION_TIMEOUT_MS);
+        await pending;
+        expect(preview.controller.loadingEl.textContent).toContain('Print resources did not finish loading');
+        vi.spyOn(document.head, 'append').mockImplementation(script => {
+            window.MathJax = { tex2svgPromise: vi.fn(), startup: { promise: Promise.resolve() } };
+            queueMicrotask(() => script.onload());
+        });
+        await preview.open();
+        expect(preview.controller.ready).toBe(true);
+    });
+
+    it.each(['close', 'options'])('cancels stalled loading on %s and ignores late completion before retry', async action => {
+        vi.useFakeTimers();
+        doubles.document.mockImplementation(async options => {
+            await options.preRenderLatex('formula');
+            return { success: true, html: '<html><body>Current</body></html>' };
+        });
+        const append = vi.spyOn(document.head, 'append').mockImplementation(() => {});
+        const first = preview.open();
+        await vi.advanceTimersByTimeAsync(0);
+        const lateLoad = append.mock.calls[0][0].onload;
+        if (action === 'close') preview.controller.close();
+        else preview.controller.scheduleRegeneration();
+        await first;
+        expect(preview.controller.generationPromise).toBeNull();
+        const next = action === 'close' ? preview.open() : vi.advanceTimersByTimeAsync(250);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(append).toHaveBeenCalledTimes(2);
+        lateLoad();
+        expect(doubles.load).not.toHaveBeenCalled();
+        append.mock.calls[1][0].onload();
+        await next;
+        await vi.advanceTimersByTimeAsync(0);
+        expect(preview.controller.ready).toBe(true);
+        expect(doubles.load).toHaveBeenCalledOnce();
+    });
+
+    it('removes a failed script and allows another load', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        doubles.document.mockImplementation(async options => {
+            await options.preRenderMermaid('<div class="mermaid">graph</div>');
+            return { success: true, html: '<html><body>Diagram</body></html>' };
+        });
+        const append = vi.spyOn(document.head, 'append').mockImplementation(script => queueMicrotask(() => script.onerror()));
+        await preview.open();
+        expect(preview.controller.ready).toBe(false);
+        append.mockImplementation(script => queueMicrotask(() => script.onload()));
+        await preview.open();
+        expect(preview.controller.ready).toBe(true);
+        expect(append).toHaveBeenCalledTimes(2);
+    });
 
     it('uses the shared shell and defaults, supports mode changes and returns focus on close', async () => {
         const opener = document.getElementById('opener');

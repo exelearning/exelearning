@@ -104,6 +104,13 @@ test.describe('Export print button project property (addPrintButton)', () => {
         const singlePageIndexHtml = new TextDecoder().decode(singlePageZip['index.html']);
         expect(singlePageIndexHtml).toContain('id="exe-print-btn"');
         expect(singlePageIndexHtml).toContain('exe-single-page');
+
+        for (const enabled of [false, true]) {
+            const elpx = await exportPackage(page, 'elpx', enabled);
+            expect(Boolean(elpx['print.html'])).toBe(enabled);
+            expect(Boolean(elpx['libs/exe_print/runtime.js'])).toBe(enabled);
+            expect(new TextDecoder().decode(elpx['index.html']).includes('id="exe-print-btn"')).toBe(enabled);
+        }
     });
 
     for (const format of ['scorm12', 'scorm2004', 'ims']) {
@@ -132,6 +139,85 @@ test.describe('Export print button project property (addPrintButton)', () => {
         );
     }
 
+    test('recovers from stalled print preparation after timeout, closing and reopening', async ({
+        authenticatedPage: page,
+        createProject,
+        browser,
+    }) => {
+        test.setTimeout(120_000);
+        const uuid = await createProject(page, 'Print preparation recovery');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('language', 'en');
+            const binding = bridge.structureBinding;
+            const node = binding.createPage('Formula');
+            const block = binding.createBlock(node.id, 'Formula');
+            binding.createComponent(node.id, block, 'text', { htmlContent: '<p>\\(x^2+1\\)</p>' });
+        });
+        const files = await exportPackage(page, 'html5', true);
+        const context = await browser.newContext();
+        const exported = await context.newPage();
+        let hold = true;
+        const held: Array<() => void> = [];
+        const missing: string[] = [];
+        await context.route('https://print-recovery.test/**', async route => {
+            const name = decodeURIComponent(new URL(route.request().url()).pathname.slice('/course/'.length));
+            if (!files[name]) {
+                missing.push(name);
+                await route.fulfill({ status: 404 });
+                return;
+            }
+            if (hold && name === 'libs/exe_math/tex-mml-svg.js') await new Promise<void>(resolve => held.push(resolve));
+            const types: Record<string, string> = {
+                '.html': 'text/html',
+                '.js': 'text/javascript',
+                '.css': 'text/css',
+                '.svg': 'image/svg+xml',
+                '.woff2': 'font/woff2',
+            };
+            await route
+                .fulfill({
+                    body: Buffer.from(files[name]),
+                    contentType: types[path.extname(name)] || 'application/octet-stream',
+                })
+                .catch(() => {});
+        });
+        try {
+            await exported.clock.install();
+            await exported.goto('https://print-recovery.test/course/print.html', { waitUntil: 'domcontentloaded' });
+            await expect.poll(() => held.length).toBe(1);
+            await exported.clock.fastForward(25001);
+            await expect(exported.locator('.print-preview-error')).toContainText(
+                'Print resources did not finish loading',
+            );
+            await expect(exported.locator('.print-preview-print-btn')).toBeDisabled();
+            await exported.locator('.print-preview-close-btn').click();
+            await exported.locator('#printPreviewLaunch').click();
+            await expect.poll(() => held.length).toBe(2);
+            await exported.locator('.print-preview-close-btn').click();
+            await expect
+                .poll(() =>
+                    exported.evaluate(() => (window as any).ExePrintPreview.controller.generationPromise === null),
+                )
+                .toBe(true);
+            await exported.locator('#printPreviewLaunch').click();
+            await expect.poll(() => held.length).toBe(3);
+            hold = false;
+            for (const release of held.splice(0)) release();
+            await expect(exported.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
+            await expect(exported.frameLocator('.print-preview-iframe').locator('.exe-math-rendered svg')).toHaveCount(
+                1,
+            );
+            expect(missing).toEqual([]);
+        } finally {
+            hold = false;
+            for (const release of held.splice(0)) release();
+            await context.close();
+        }
+    });
+
     test('uses the editor options in a nested web path and offline from print.html', async ({
         authenticatedPage: page,
         createProject,
@@ -153,7 +239,7 @@ test.describe('Export print button project property (addPrintButton)', () => {
                 );
                 await bridge.assetManager.putAsset({
                     id: 'bd270ba8-8fc1-4137-97b3-4a10432a42bd',
-                    filename: 'rabbit.svg',
+                    filename: 'rabbit photo.svg',
                     mime: picture.type,
                     size: picture.size,
                     blob: picture,
@@ -275,7 +361,7 @@ test.describe('Export print button project property (addPrintButton)', () => {
                 return;
             }
             const ext = path.extname(name);
-            if (name.endsWith('/rabbit.svg') && route.request().frame().parentFrame()) {
+            if (name.endsWith('/rabbit photo.svg') && route.request().frame().parentFrame()) {
                 if (imageMode === 'fail') {
                     await route.fulfill({ status: 503 });
                     return;

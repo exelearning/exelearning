@@ -223,6 +223,7 @@ export default class ModalPrintPreview {
         this.selectedActivities = selectedActivities;
         this.activities = Array.isArray(activities) ? activities : [];
         const requestId = ++this.requestId;
+        this.adapter?.cancelGeneration?.();
         this.cleanup();
         this.configurePanel();
         this.applyTitle();
@@ -251,10 +252,10 @@ export default class ModalPrintPreview {
             console.error('[PrintPreview] Error:', error);
             const _ = this.translate;
             const resourceErrors = {
-                'Error: PRINT_RESOURCES_TIMEOUT': _('Print resources did not finish loading. Please try again.'),
-                'Error: PRINT_IMAGE_FAILED': _('An image could not be loaded. Check the resource and try again.'),
+                PRINT_RESOURCES_TIMEOUT: _('Print resources did not finish loading. Please try again.'),
+                PRINT_IMAGE_FAILED: _('An image could not be loaded. Check the resource and try again.'),
             };
-            this.showError(resourceErrors[error.message] || error.message || 'An error occurred');
+            this.showError(resourceErrors[error.message?.replace(/^Error: /, '')] || error.message || 'An error occurred');
         });
         this.generationPromise = generation;
         try {
@@ -280,6 +281,7 @@ export default class ModalPrintPreview {
      */
     close() {
         this.requestId++;
+        this.adapter?.cancelGeneration?.();
         if (this.overlay) {
             this.overlay.setAttribute('data-visible', 'false');
         }
@@ -468,6 +470,7 @@ export default class ModalPrintPreview {
         this.cancelRegeneration();
         this.requestId++;
         this.showLoading(true);
+        this.adapter?.cancelGeneration?.();
         this.regenerateTimer = setTimeout(() => {
             this.regenerateTimer = null;
             this.regenerate();
@@ -488,6 +491,7 @@ export default class ModalPrintPreview {
      * Draw the preview again with the options as they are now.
      */
     async regenerate() {
+        this.adapter?.cancelGeneration?.();
         await this.loadPreview(++this.requestId);
     }
 

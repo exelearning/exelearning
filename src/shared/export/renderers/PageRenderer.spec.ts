@@ -705,7 +705,7 @@ describe('PageRenderer', () => {
             expect(html).toContain('title="Imprimir"');
             expect(html).toContain('aria-label="Imprimir"');
             expect(html).toContain('<span class="sr-av">Imprimir</span>');
-            expect(html).toContain('libs/exe_print/button.css');
+            expect(html).toContain('href="libs/exe_print/button.css"');
             expect(html).toContain('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"');
             expect(html).toContain('aria-hidden="true" focusable="false"');
         });

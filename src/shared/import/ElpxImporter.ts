@@ -1306,6 +1306,7 @@ export class ElpxImporter {
         metadata.set('addSearchBox', values.addSearchBox);
         metadata.set('addExeLink', values.addExeLink);
         metadata.set('addAccessibilityToolbar', values.addAccessibilityToolbar);
+        metadata.set('addPrintButton', values.addPrintButton);
         metadata.set('exportSource', values.exportSource);
         metadata.set('addMathJax', values.addMathJax);
         metadata.set('globalFont', values.globalFont);
