@@ -1,0 +1,18 @@
+{
+    "libraryVersion": "1.0.0",
+    "protocolVersion": 1,
+    "buildHash": "e449ede37e7c9dee6a0d7d4667a71ce881a7b349a60205fa68f22ab369eb2aac",
+    "sourceCommit": "b9f6e7ed6",
+    "files": {
+        "child": {
+            "path": "exe-external-media-child.min.js",
+            "sha256": "26d93af912eb172de2ed7c990258c1cdb69cc41a16a8d1a23850b78bf50c4d0d",
+            "bytes": 13045
+        },
+        "host": {
+            "path": "exe-external-media-host.min.js",
+            "sha256": "815adf81157c81a78c728559eca29d7f1c453666448918554941b29da2f0c2ad",
+            "bytes": 25611
+        }
+    }
+}
