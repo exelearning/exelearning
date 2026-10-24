@@ -50,15 +50,20 @@ export default class PrintFrameTransport {
         if (sharesOrigin && this.host.navigator?.serviceWorker?.controller) {
             // Navigate within the worker's scope first. Firefox does not inherit its
             // controller in srcdoc/blob frames, so their package requests bypass it.
+            const frameUrl = new URL('libs/exe_print/frame.html?generation=' + this.token, this.root).href;
             this.frameLoadHandler = () => {
-                this.frameLoadHandler = null;
                 const doc = this.iframe.contentDocument;
+                // Cleanup may still be navigating to about:blank, or an older preview
+                // may finish loading. Only write into this generation's document.
+                if (doc?.URL !== frameUrl) return;
+                this.iframe.removeEventListener('load', this.frameLoadHandler);
+                this.frameLoadHandler = null;
                 doc.open();
                 doc.write(documentHtml);
                 doc.close();
             };
-            this.iframe.addEventListener('load', this.frameLoadHandler, { once: true });
-            this.iframe.src = new URL('libs/exe_print/frame.html?generation=' + this.token, this.root).href;
+            this.iframe.addEventListener('load', this.frameLoadHandler);
+            this.iframe.src = frameUrl;
         } else {
             this.iframe.srcdoc = documentHtml;
         }

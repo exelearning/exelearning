@@ -162,7 +162,8 @@ test.describe('Export print button project property (addPrintButton)', () => {
                 const parent = binding.createPage('Printable page');
                 const text = binding.createBlock(parent.id, 'Reading');
                 binding.createComponent(parent.id, text, 'text', {
-                    htmlContent: '<p>Ordinary reading <a href="https://example.org/lesson">lesson</a> \\(\\mathbb{R}+x^2+1\\)</p>',
+                    htmlContent:
+                        '<p>Ordinary reading <a href="https://example.org/lesson">lesson</a> \\(\\mathbb{R}+x^2+1\\)</p>',
                 });
                 const folded = binding.createBlock(parent.id, 'Folded box');
                 binding.updateBlock(folded, { properties: { minimized: true, allowToggle: true } });
@@ -208,11 +209,30 @@ test.describe('Export print button project property (addPrintButton)', () => {
             const box = button.getBoundingClientRect();
             return { top: box.top, right: innerWidth - box.right, width: box.width, height: box.height };
         });
-        expect(buttonPosition.top).toBeCloseTo(14, 0);
-        expect(buttonPosition.right).toBeCloseTo(76, 0);
+        expect(buttonPosition.top).toBeCloseTo(10, 0);
+        expect(buttonPosition.right).toBeCloseTo(15, 0);
         expect(buttonPosition.width).toBe(40);
         expect(buttonPosition.height).toBe(40);
         await resourcePreview.locator('#exe-print-btn').click();
+        if (process.env.PRINT_DIAGNOSTICS) {
+            await expect.poll(() => resourcePreview.locator('body').evaluate(() => !!(window as any).ExePrintPreview)).toBe(true);
+            await resourcePreview.locator('body').evaluate(() => {
+                const controller = (window as any).ExePrintPreview.controller;
+                const showError = controller.showError.bind(controller);
+                controller.showError = (message: string) => {
+                    const iframe = controller.iframe;
+                    const doc = iframe.contentDocument;
+                    console.log('PRINT DIAGNOSTICS before error', JSON.stringify({
+                        message, url: doc?.URL, frameUrl: iframe.src, frameClass: iframe.className,
+                        fonts: doc?.fonts.status, state: doc?.readyState,
+                        images: [...doc?.images || []].map((image: HTMLImageElement) => ({ src: image.src, complete: image.complete })),
+                        html: doc?.documentElement.outerHTML,
+                    }));
+                    showError(message);
+                };
+            });
+            page.on('console', message => { if (message.text().includes('PRINT DIAGNOSTICS')) console.log(message.text()); });
+        }
         await expect(resourcePreview.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 60_000 });
         const nestedPrint = resourcePreview.frameLocator('.print-preview-iframe');
         await expect(nestedPrint.locator('body')).toContainText('A star');

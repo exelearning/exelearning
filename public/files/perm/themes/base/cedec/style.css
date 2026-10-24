@@ -1582,10 +1582,6 @@ body.logos #siteLogos {
         color: #ffffff;
         overflow: hidden;
     }
-    body:has(#exe-print-btn) #topBarTitle,
-    body.has-print-button #topBarTitle {
-        right: 534px;
-    }
     body:not(.exe-search-on) #topBarTitle {
         left: 87px; /* Menu toggler ink ends at 47 */
     }
@@ -1657,22 +1653,6 @@ body.logos #siteLogos {
     margin: 0;
     line-height: var(--exe-bar-height); /* Centered in the bar */
 }
-body:has(#exe-print-btn) .nav-buttons .nav-button-right,
-body.has-print-button .nav-buttons .nav-button-right {
-    right: 60px;
-}
-body:has(#exe-print-btn) .nav-buttons .nav-button-left,
-body.has-print-button .nav-buttons .nav-button-left {
-    right: 120px;
-}
-body:has(#exe-print-btn).exe-web-site #darkModeToggler,
-body.has-print-button.exe-web-site #darkModeToggler {
-    right: 180px;
-}
-body:has(#exe-print-btn).exe-web-site .page-counter,
-body.has-print-button.exe-web-site .page-counter {
-    right: 240px;
-}
 body.exe-web-site {
     padding-top: calc(var(--exe-logos-height) + var(--exe-bar-height));
 }
@@ -1733,22 +1713,6 @@ body.exe-web-site {
     }
     .exe-web-site .page-counter {
         right: 372px; /* Toggler (308 + 50) + 14px gap */
-    }
-    body:has(#exe-print-btn) .nav-buttons .nav-button-right,
-    body.has-print-button .nav-buttons .nav-button-right {
-        right: 74px;
-    }
-    body:has(#exe-print-btn) .nav-buttons .nav-button-left,
-    body.has-print-button .nav-buttons .nav-button-left {
-        right: 218px;
-    }
-    body:has(#exe-print-btn).exe-web-site #darkModeToggler,
-    body.has-print-button.exe-web-site #darkModeToggler {
-        right: 362px;
-    }
-    body:has(#exe-print-btn).exe-web-site .page-counter,
-    body.has-print-button.exe-web-site .page-counter {
-        right: 426px;
     }
 }
 
@@ -2037,4 +2001,64 @@ body.exe-web-site {
 #node-content-container .box-head {
     border: 0 !important; /* The head is delimited by its background */
     margin-bottom: 0;
+}
+
+/* Print action: reserve the rightmost slot and match this theme's navigation. */
+:root {
+    --exe-print-size: 44px;
+    --exe-print-top: calc(var(--exe-logos-height) + (var(--exe-bar-height) - var(--exe-print-size)) / 2);
+    --exe-print-right: 20px;
+    --exe-print-radius: 6px;
+    --exe-print-background: transparent;
+    --exe-print-color: #fff;
+    --exe-print-border: 1px solid #ffffff70;
+    --exe-print-shadow: none;
+    --exe-print-hover-background: var(--exe-teal-hover);
+    --exe-print-icon-size: 24px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+    right: 78px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+    right: 222px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) #darkModeToggler {
+    right: 366px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+    right: 430px;
+}
+
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) #topBarTitle {
+    right: 538px;
+}
+@media (max-width: 767.98px) {
+    :root {
+        --exe-print-right: 10px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+        right: 64px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+        right: 124px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) #darkModeToggler {
+        right: 184px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+        right: 244px;
+    }
+
+}
+@media (max-width: 460px) {
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter-label {
+        display: none;
+    }
+}
+
+@media screen {
+    html.exe-dark-mode .exe-web-site .exe-print-action {
+        filter: invert(100%) hue-rotate(180deg);
+        --exe-print-hover-background: #272727;
+    }
 }

@@ -383,15 +383,6 @@ button.toggler:focus {
     right: 15px;
 }
 
-.exe-web-site .exe-print-action {
-    top: 10px;
-    right: 15px;
-}
-body:has(#exe-print-btn) .nav-buttons .nav-button-right,
-body.has-print-button .nav-buttons .nav-button-right {
-    right: 65px;
-}
-
 /* Box toggler */
 .exe-export .box {
     position: relative;
@@ -866,5 +857,32 @@ button.toggler:focus-visible,
 
     .exe-web-site main.page {
         padding-top: 1em;
+    }
+}
+
+/* Print action: reserve the rightmost slot and match this theme's navigation. */
+body #exe-print-btn:focus-visible {
+    outline-color: #066d6d;
+}
+:root {
+    --exe-print-top: 10px;
+    --exe-print-right: 15px;
+    --exe-print-radius: 50%;
+    --exe-print-background: #078e8e;
+    --exe-print-color: #fff;
+    --exe-print-border: 0;
+    --exe-print-shadow: none;
+    --exe-print-hover-background: #066d6d;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+    right: 65px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+    right: 120px;
+}
+
+@media (max-width: 767.98px) {
+    .exe-web-site .exe-print-action {
+        position: absolute;
     }
 }
