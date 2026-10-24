@@ -15,7 +15,7 @@
  * |----------|----------------|----------------------------|
  * | cloud    | `sw-filtered`  | `opaque-capability`        |
  * | embedded | `sw-filtered`  | `opaque-capability` (host) |
- * | electron | `sw-filtered`  | `blocked` — cannot enable  |
+ * | electron | `sw-filtered`  | `opaque-capability` (main process, `preview://`) |
  * | static   | `sw-filtered`  | `opaque-srcdoc`            |
  *
  * Why the default is Service Worker filtering and not opacity: it is the fast path —
@@ -51,6 +51,13 @@ export type PreviewRuntime = (typeof PREVIEW_RUNTIMES)[number];
  * can distinguish it, and it is backend-less, so it resolves as `static` — which is
  * also the right security answer for it.
  */
+/**
+ * `blocked` is not a cell of this table any more: Electron serves the enabled preview from
+ * its main process on the `preview://` scheme. It stays in the union because the shipped
+ * policy still produces it, fail closed, when an Electron preload predates that scheme —
+ * a configuration failure of the `electron` runtime, like an embedded host without
+ * snapshot routes, not a runtime of its own.
+ */
 export const PREVIEW_TRANSPORTS = ['sw-filtered', 'opaque-capability', 'opaque-srcdoc', 'blocked'] as const;
 export type PreviewTransport = (typeof PREVIEW_TRANSPORTS)[number];
 
@@ -83,9 +90,12 @@ const BLOCKED: PreviewModeDecision = {
 const ENABLED_BY_RUNTIME: Record<PreviewRuntime, PreviewModeDecision> = {
     cloud: OPAQUE,
     embedded: OPAQUE,
-    electron: BLOCKED,
+    electron: OPAQUE,
     static: SRCDOC,
 };
+
+/** The fail-closed decision for an Electron preload without the preview scheme. */
+export const BLOCKED_DECISION: PreviewModeDecision = BLOCKED;
 
 /**
  * Resolve the transport for a runtime and grant state.

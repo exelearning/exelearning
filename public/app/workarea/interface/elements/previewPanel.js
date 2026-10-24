@@ -24,6 +24,7 @@ import {
     selfHostedPreviewSnapshotConfig,
 } from './preview/EmbeddedPreviewSnapshot.js';
 import { applyPreviewExternalMediaFallback } from './preview/previewExternalMediaFallback.js';
+import { ElectronPreviewSnapshot } from './preview/ElectronPreviewSnapshot.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -102,6 +103,7 @@ export default class PreviewPanelManager {
         this._activeContentReport = null;
         this._embeddedPreviewSnapshot = null;
         this._selfHostedPreviewSnapshot = null;
+        this._electronPreviewSnapshot = null;
     }
 
     /**
@@ -137,7 +139,7 @@ export default class PreviewPanelManager {
         disableActivePreviewContent(this._projectId());
         this._updateActiveContentIndicator(null);
         this._disposeEmbeddedSnapshot();
-        this._disposeSelfHostedSnapshot();
+        this._disposeOwnSnapshots();
         this._clearOpaqueSandbox();
     }
 
@@ -679,7 +681,7 @@ export default class PreviewPanelManager {
                 ) {
                     invalidateActivePreviewAuthorization(this._projectId());
                     this._updateActiveContentIndicator(this._activeContentReport);
-                    this._disposeSelfHostedSnapshot();
+                    this._disposeOwnSnapshots();
                     this._clearOpaqueSandbox();
                 }
 
@@ -849,6 +851,8 @@ export default class PreviewPanelManager {
                     await this._refreshEmbeddedOpaqueOrStayFiltered();
                 } else if (transport === PREVIEW_TRANSPORTS.SRCDOC_OPAQUE) {
                     await this._refreshSrcdocOpaqueOrStayFiltered();
+                } else if (transport === PREVIEW_TRANSPORTS.ELECTRON_OPAQUE) {
+                    await this._refreshElectronOpaqueOrStayFiltered();
                 } else {
                     await this._refreshOpaqueOrStayFiltered();
                 }
@@ -899,6 +903,26 @@ export default class PreviewPanelManager {
         this._selfHostedPreviewSnapshot
             .dispose()
             .catch(error => Logger.warn('[PreviewPanel] Opaque snapshot cleanup failed:', error));
+    }
+
+    _getElectronPreviewSnapshot() {
+        if (this._electronPreviewSnapshot) return this._electronPreviewSnapshot;
+        this._electronPreviewSnapshot = new ElectronPreviewSnapshot();
+        return this._electronPreviewSnapshot;
+    }
+
+    /** Best-effort; the main process also drops the snapshot when the window closes. */
+    _disposeElectronSnapshot() {
+        if (!this._electronPreviewSnapshot) return;
+        this._electronPreviewSnapshot
+            .dispose()
+            .catch(error => Logger.warn('[PreviewPanel] Electron snapshot cleanup failed:', error));
+    }
+
+    /** The snapshots this editor minted itself (eXe's routes, the Electron main process). */
+    _disposeOwnSnapshots() {
+        this._disposeSelfHostedSnapshot();
+        this._disposeElectronSnapshot();
     }
 
     /**
@@ -1004,6 +1028,24 @@ export default class PreviewPanelManager {
             () => this._disposeEmbeddedSnapshot(),
             'Embedded opaque',
         );
+    }
+
+    /**
+     * Electron: the main process is the capability server. It answers `preview://{id}/…`
+     * from an in-memory snapshot with the same headers as eXe's HTTP route, and
+     * `preview://{id}` is a different origin from the editor's `app://localhost` by scheme
+     * and by host. The iframe keeps the same sandbox without `allow-same-origin`.
+     */
+    async _refreshElectronOpaqueOrStayFiltered() {
+        await this._refreshOpaqueOr(
+            () => this.refreshWithElectronSnapshot(),
+            () => this._disposeElectronSnapshot(),
+            'Electron opaque',
+        );
+    }
+
+    async refreshWithElectronSnapshot() {
+        await this._refreshWithSnapshot(() => this._getElectronPreviewSnapshot(), 'electron');
     }
 
     /** Same contract for the backend-less transport; its "snapshot" is the inlined file map. */
@@ -1298,7 +1340,7 @@ export default class PreviewPanelManager {
             confirmExec: async () => {
                 if (enabled || electronRestricted) {
                     disableActivePreviewContent(projectId);
-                    this._disposeSelfHostedSnapshot();
+                    this._disposeOwnSnapshots();
                     this._clearOpaqueSandbox();
                 } else {
                     enableActivePreviewContent(projectId);
@@ -1885,13 +1927,17 @@ export default class PreviewPanelManager {
         // NOT throw, or the click handler surfaces an uncaught rejection.
         // The srcdoc transport has no URL at all, so it falls through to the
         // filtered viewer below: a new tab never shows unfiltered content there.
+        const transport = this._previewTransport();
         if (
             this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED &&
-            this._previewTransport() !== PREVIEW_TRANSPORTS.SRCDOC_OPAQUE
+            transport !== PREVIEW_TRANSPORTS.SRCDOC_OPAQUE
         ) {
-            const snapshot = this._isEmbeddedPreview()
-                ? this._embeddedPreviewSnapshot
-                : this._selfHostedPreviewSnapshot;
+            const snapshot =
+                transport === PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE
+                    ? this._embeddedPreviewSnapshot
+                    : transport === PREVIEW_TRANSPORTS.ELECTRON_OPAQUE
+                      ? this._electronPreviewSnapshot
+                      : this._selfHostedPreviewSnapshot;
             const previewUrl = snapshot?.previewUrl;
             if (!previewUrl) {
                 Logger.warn('[PreviewPanel] Opaque preview not ready; cannot open in a new tab');
@@ -2124,8 +2170,9 @@ export default class PreviewPanelManager {
 
         this._disposeEmbeddedSnapshot();
 
-        this._disposeSelfHostedSnapshot();
+        this._disposeOwnSnapshots();
         this._selfHostedPreviewSnapshot = null;
+        this._electronPreviewSnapshot = null;
 
         Logger.log('[PreviewPanel] Destroyed');
     }
