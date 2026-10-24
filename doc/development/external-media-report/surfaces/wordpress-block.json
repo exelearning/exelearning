@@ -1,0 +1,20 @@
+{
+  "id": "wordpress-block",
+  "expect": "promoted",
+  "platform": "WordPress",
+  "name": "Bloque Gutenberg, ancho completo",
+  "url": "http://localhost:8888/2026/07/28/evil-elpx/",
+  "frame": "iframe.exelearning-iframe",
+  "note": "render_block() en la página pública, con align=full",
+  "players": [
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+  ],
+  "sandboxes": [
+    "allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+  ],
+  "canonicalHost": "object",
+  "youtubeSdk": "undefined",
+  "vimeoSdk": "undefined",
+  "contentSandbox": "allow-scripts allow-popups allow-forms",
+  "contentOpaque": true
+}
