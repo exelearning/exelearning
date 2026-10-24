@@ -1,6 +1,6 @@
 # Preview refresh benchmark — three-way comparison (real browser)
 
-Generated 2026-07-26T05:01:14.690Z · 1310d1c5c · darwin arm64 · Apple M5 (10 cores) · median of 25 runs (Chromium)
+Generated 2026-10-24T21:20:20.219Z · b9f6e7ed6 · darwin arm64 · Apple M5 (10 cores) · median of 25 runs (Chromium)
 
 Preview-generation wall-clock in the real browser (native DOM + real
 resource pipeline). The Service Worker `postMessage` hand-off is
@@ -18,9 +18,9 @@ Percentages below are informational; the spread columns show why.
 
 | Fixture | Pages | (a) main | (b) filtered | Δ (b vs a) | Gate | (c) opaque | (c) snapshot upload |
 |---|--:|--:|--:|--:|:--:|--:|--:|
-| SMALL | 3 | 8.2 ms<br><sub>7.0–13.2 (median 8.2)</sub> | 9.2 ms<br><sub>7.5–14.9 (median 9.2)</sub> | +1.0 ms <sub>(+12.2%)</sub> | ✅ | 36.9 ms | 401.4 KiB |
-| MEDIUM | 25 | 8.2 ms<br><sub>7.3–11.1 (median 8.2)</sub> | 10.0 ms<br><sub>8.4–14.4 (median 10.0)</sub> | +1.8 ms <sub>(+22.0%)</sub> | ✅ | 38.1 ms | 402.3 KiB |
-| LARGE | 50 | 8.5 ms<br><sub>8.0–11.9 (median 8.5)</sub> | 10.7 ms<br><sub>9.1–15.4 (median 10.7)</sub> | +2.2 ms <sub>(+25.9%)</sub> | ✅ | 39.8 ms | 403.3 KiB |
+| SMALL | 3 | 6.5 ms<br><sub>5.9–13.1 (median 6.5)</sub> | 7.9 ms<br><sub>6.9–13.0 (median 7.9)</sub> | +1.4 ms <sub>(+21.5%)</sub> | ✅ | 24.7 ms | 242.3 KiB |
+| MEDIUM | 25 | 6.9 ms<br><sub>6.4–11.3 (median 6.9)</sub> | 9.8 ms<br><sub>8.3–16.1 (median 9.8)</sub> | +2.9 ms <sub>(+42.0%)</sub> | ✅ | 26.7 ms | 244.4 KiB |
+| LARGE | 50 | 7.5 ms<br><sub>6.9–11.7 (median 7.5)</sub> | 11.9 ms<br><sub>10.4–29.5 (median 11.9)</sub> | +4.4 ms <sub>(+58.7%)</sub> | ✅ | 29.4 ms | 246.5 KiB |
 
 ### Reading the numbers
 
