@@ -24,7 +24,6 @@ describe('abcmusic.html resource URLs', () => {
     const expected = [
         'https://example.org/v1.0.0/libs/abcjs/abcjs-basic-min.js',
         'https://example.org/v1.0.0/libs/abcjs/abcjs-audio.css',
-        `${pluginDir}css/content.css`,
         'https://example.org/v1.0.0/libs/jquery/jquery.min.js',
         'https://example.org/v1.0.0/libs/abcjs/exe_abc_music.js',
     ];
@@ -41,5 +40,51 @@ describe('abcmusic.html resource URLs', () => {
         const { document } = new JSDOM(html).window;
         expect(document.querySelector('script.abcjs-basic-js')).not.toBeNull();
         expect(document.querySelector('link.abcjs-basic-css')).not.toBeNull();
+    });
+});
+
+describe('abcmusic.html preview markup', () => {
+    // The dialog builds the exported markup so exe_abc_music.js renders it as in the export (ABC/MIDI buttons).
+    function previewDocument(parentWindow) {
+        return new JSDOM(html, {
+            url: `${pluginDir}abcmusic.html`,
+            runScripts: 'dangerously',
+            virtualConsole: new VirtualConsole(),
+            beforeParse(window) {
+                Object.defineProperty(window, 'parent', { value: parentWindow });
+            },
+        }).window;
+    }
+
+    function editorWindow({ source = 'abcde', previewMidi, i18n } = {}) {
+        const { window } = new JSDOM(`<textarea id="htmlSource">${source}</textarea>`);
+        window.ABCmusicDialog = previewMidi === undefined ? undefined : { previewMidi };
+        window.$exe_i18n = i18n;
+        return window;
+    }
+
+    it('adds the ABC source as exported content with the MIDI class when MIDI is checked', () => {
+        const win = previewDocument(editorWindow({ source: 'X:1\nK:C\nabc', previewMidi: true }));
+        const pre = win.document.querySelector('main > pre');
+        expect(pre.className).toBe('abc-music abc-music-midi');
+        expect(pre.textContent).toBe('X:1\nK:C\nabc');
+    });
+
+    it('omits the MIDI class when MIDI is not checked or the dialog state is missing', () => {
+        expect(previewDocument(editorWindow({ previewMidi: false })).document.querySelector('pre').className).toBe(
+            'abc-music',
+        );
+        expect(previewDocument(editorWindow()).document.querySelector('pre').className).toBe('abc-music');
+    });
+
+    it('takes $exe_i18n from the editor window, with an English fallback', () => {
+        const i18n = { download: 'Descargar' };
+        expect(previewDocument(editorWindow({ i18n })).$exe_i18n).toBe(i18n);
+        expect(previewDocument(editorWindow()).$exe_i18n).toEqual({ download: 'Download' });
+    });
+
+    it('leaves the source empty when the editor textarea is missing', () => {
+        const parent = new JSDOM('').window;
+        expect(previewDocument(parent).document.querySelector('pre').textContent).toBe('');
     });
 });
