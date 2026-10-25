@@ -6,14 +6,13 @@
     <meta charset="UTF-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Relative URLs: some hosts (Cloudflare Pages) serve this page without its .html extension (#2624) -->
+    <script class="abcjs-basic-js" type="text/javascript" src="../../../../../abcjs/abcjs-basic-min.js"></script>
+    <link class="abcjs-basic-css" href="../../../../../abcjs/abcjs-audio.css" rel="stylesheet" type="text/css" />
+    <link href="css/content.css" media="all" rel="stylesheet" type="text/css" />
+    <script class="exe-abcjs" type="text/javascript" src="../../../../../jquery/jquery.min.js"></script>
+    <script class="exe-abcjs" type="text/javascript" src="../../../../../abcjs/exe_abc_music.js"></script>
     <script>
-        let abcmusicPath = window.location.pathname.replace("abcmusic.html", "");
-        let libsPath = window.location.pathname.replace("tinymce_5/js/tinymce/plugins/abcmusic/abcmusic.html", "");
-        document.write(`<script class="abcjs-basic-js" type="text/javascript" src="${libsPath}abcjs/abcjs-basic-min.js"><\/script>`);
-        document.write(`<link class="abcjs-basic-css" href="${libsPath}abcjs/abcjs-audio.css" rel="stylesheet" type="text/css" \/>`);
-        document.write(`<link href="${abcmusicPath}css/content.css" media="all" rel="stylesheet" type="text/css" \/>`);
-        document.write(`<script class="exe-abcjs" type="text/javascript" src="${libsPath}jquery/jquery.min.js"><\/script>`);
-        document.write(`<script class="exe-abcjs" type="text/javascript" src="${libsPath}abcjs/exe_abc_music.js"><\/script>`);
         window.onload = function(){
                 abcjsLoad();
         }
